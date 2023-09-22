@@ -335,6 +335,22 @@ class HyDAMO:
             )
 
     def get(self, layer: str, global_id: str):
+        """
+        Get a DataFrame row (feature) providing a layer an global_id.
+
+        Parameters
+        ----------
+        layer : str
+            DESCRIPTION.
+        global_id : str
+            DESCRIPTION.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         return getattr(self,layer).set_index("globalid").loc[global_id]
 
     def set_data(

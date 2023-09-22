@@ -30,7 +30,7 @@ version = { attr = "hydamo.__version__" }
 include = ["hydamo"]
 
 [tool.setuptools.package-data]
-"hydamo" = ["*.csv", "*.qml", "*.sld", "*.json"]
+"hydamo" = ["**/*.csv", "**/*.qml", "**/*.sld", "**/*.json"]
 
 [project.urls]
 Documentation = "https://deltares.github.io/Ribasim-NL/HyDAMO"
