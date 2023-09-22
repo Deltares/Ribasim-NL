@@ -1,0 +1,9 @@
+name: hydamo
+
+dependencies:
+  - python=3.9.17
+  - black
+  - fiona=1.9.1
+  - GDAL=3.6.2
+  - geopandas=0.12.2
+  - pytest
