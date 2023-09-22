@@ -1,0 +1,6603 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"id": "",
+	"type": "object",
+	"properties": {
+		"HyDAMO": {
+			"type": "object",
+			"anyOf": [
+				{
+					"$ref": "#/definitions/admingrenswaterschap"
+				},
+				{
+					"$ref": "#/definitions/afsluitmiddel"
+				},
+				{
+					"$ref": "#/definitions/afvoergebiedaanvoergebied"
+				},
+				{
+					"$ref": "#/definitions/aquaduct"
+				},
+				{
+					"$ref": "#/definitions/beheergrenswaterschap"
+				},
+				{
+					"$ref": "#/definitions/bijzonderhydraulischobject"
+				},
+				{
+					"$ref": "#/definitions/bodemval"
+				},
+				{
+					"$ref": "#/definitions/brug"
+				},
+				{
+					"$ref": "#/definitions/doorstroomopening"
+				},
+				{
+					"$ref": "#/definitions/duikersifonhevel"
+				},
+				{
+					"$ref": "#/definitions/gemaal"
+				},
+				{
+					"$ref": "#/definitions/grondwaterinfolijn"
+				},
+				{
+					"$ref": "#/definitions/grondwaterinfopunt"
+				},
+				{
+					"$ref": "#/definitions/grondwaterkoppellijn"
+				},
+				{
+					"$ref": "#/definitions/grondwaterkoppelpunt"
+				},
+				{
+					"$ref": "#/definitions/hydrologischerandvoorwaarde"
+				},
+				{
+					"$ref": "#/definitions/hydroobject"
+				},
+				{
+					"$ref": "#/definitions/hydroobject_normgp"
+				},
+				{
+					"$ref": "#/definitions/kunstwerkopening"
+				},
+				{
+					"$ref": "#/definitions/lateraleknoop"
+				},
+				{
+					"$ref": "#/definitions/meetlocatie"
+				},
+				{
+					"$ref": "#/definitions/meetwaardeactiewaarde"
+				},
+				{
+					"$ref": "#/definitions/normgeparamprofiel"
+				},
+				{
+					"$ref": "#/definitions/normgeparamprofielwaarde"
+				},
+				{
+					"$ref": "#/definitions/peilafwijkinggebied"
+				},
+				{
+					"$ref": "#/definitions/peilbesluitgebied"
+				},
+				{
+					"$ref": "#/definitions/peilgebiedpraktijk"
+				},
+				{
+					"$ref": "#/definitions/peilgebiedvigerend"
+				},
+				{
+					"$ref": "#/definitions/pomp"
+				},
+				{
+					"$ref": "#/definitions/profielgroep"
+				},
+				{
+					"$ref": "#/definitions/profiellijn"
+				},
+				{
+					"$ref": "#/definitions/profielpunt"
+				},
+				{
+					"$ref": "#/definitions/regelmiddel"
+				},
+				{
+					"$ref": "#/definitions/reglementgrenswaterschap"
+				},
+				{
+					"$ref": "#/definitions/ruwheidprofiel"
+				},
+				{
+					"$ref": "#/definitions/streefpeil"
+				},
+				{
+					"$ref": "#/definitions/sturing"
+				},
+				{
+					"$ref": "#/definitions/stuw"
+				},
+				{
+					"$ref": "#/definitions/vispassage"
+				},
+				{
+					"$ref": "#/definitions/vispassagevlak"
+				},
+				{
+					"$ref": "#/definitions/vuilvang"
+				},
+				{
+					"$ref": "#/definitions/zandvang"
+				},
+				{
+					"$ref": "#/definitions/sluis"
+				}
+			]
+		}
+	},
+	"definitions": {
+		"admingrenswaterschap": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"waterschapcode": {
+					"type": "string",
+					"enum": [
+						"België",
+						"Duitsland",
+						"Hoogheemraadschap Amstel Gooi en Vecht",
+						"Hoogheemraadschap De Stichtse Rijnlanden",
+						"Hoogheemraadschap Hollands Noorderkwartier",
+						"Hoogheemraadschap van Delfland",
+						"Hoogheemraadschap van Rijnland",
+						"Hoogheemraadschap van Schieland en Krimpenerwaard",
+						"meerdere waterbeheerders",
+						"Provincie Drenthe",
+						"Provincie Flevoland",
+						"Provincie Fryslân",
+						"Provincie Gelderland",
+						"Provincie Groningen",
+						"Provincie Limburg",
+						"Provincie Noord-Brabant",
+						"Provincie Noord-Holland",
+						"Provincie Overijssel",
+						"Provincie Utrecht",
+						"Provincie Zeeland",
+						"Provincie Zuid-Holland",
+						"Rijkswaterstaat",
+						"Waterschap Aa en Maas",
+						"Waterschap Brabantse Delta",
+						"Waterschap De Dommel",
+						"Waterschap Drents Overijsselse Delta",
+						"Waterschap Hollandse Delta",
+						"Waterschap Hunze en Aa's",
+						"Waterschap Limburg",
+						"Waterschap Noorderzijlvest",
+						"Waterschap Peel en Maasvallei",
+						"Waterschap Rijn en IJssel",
+						"Waterschap Rivierenland",
+						"Waterschap Roer en Overmaas",
+						"Waterschap Scheldestromen",
+						"Waterschap Vallei en Veluwe",
+						"Waterschap Vechtstromen",
+						"Waterschap Zuiderzeeland",
+						"Waterschapsbedrijf Limburg",
+						"Wetterskip Blija Buitendijks",
+						"Wetterskip Fryslân"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"afsluitmiddel": {
+			"type": "object",
+			"properties": {
+				"breedteopening": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"coupureid": {
+					"type": "string",
+					"VerwijstNaar": "Coupure",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"duikersifonhevelid": {
+					"type": "string",
+					"VerwijstNaar": "DuikerSifonHevel",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"flexibelewaterkeringid": {
+					"type": "string",
+					"VerwijstNaar": "FlexibeleWaterkering",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"functieafsluitmiddel": {
+					"type": "string",
+					"enum": [
+						"Aflaat",
+						"In- en aflaat",
+						"Inlaat",
+						"Kerend",
+						"Onbekend"
+					],
+					"maxItems": 1
+				},
+				"gemaalid": {
+					"type": "string",
+					"VerwijstNaar": "Gemaal",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogteopening": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"regenwaterbuffercompartimentid": {
+					"type": "string",
+					"VerwijstNaar": "RegenwaterbufferCompart",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"sluisid": {
+					"type": "string",
+					"VerwijstNaar": "Sluis",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"soortafsluitmiddel": {
+					"type": "string",
+					"enum": [
+						"deur",
+						"niet afsluitbaar",
+						"onbekend",
+						"overig",
+						"schotbalk sponning",
+						"schuif",
+						"stuwklep",
+						"terugslagklep",
+						"tolklep",
+						"zandzakken"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"soortregelbaarheid": {
+					"type": "string",
+					"enum": [
+						"handmatig",
+						"niet regelbaar (vast)",
+						"onbekend",
+						"overig",
+						"regelbaar, automatisch",
+						"regelbaar, niet automatisch"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwaterveiligheid": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"stuwid": {
+					"type": "string",
+					"VerwijstNaar": "Stuw",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"tunnelid": {
+					"type": "string",
+					"VerwijstNaar": "Tunnel",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"typemateriaalafsluitmiddel": {
+					"type": "string",
+					"enum": [
+						"aluminium",
+						"asbestcement",
+						"beton",
+						"gegolfd plaatstaal",
+						"gewapend beton",
+						"gietijzer",
+						"gips",
+						"glad staal",
+						"glas",
+						"grasbetontegels",
+						"gres",
+						"hout",
+						"ijzer",
+						"klei",
+						"koper",
+						"kunststof",
+						"kunststoffolie",
+						"kurk",
+						"lokale bodemsoort",
+						"lood",
+						"metselwerk",
+						"plaatstaal",
+						"puinsteen",
+						"PVC",
+						"riet en/of biezen",
+						"roestvrij staal",
+						"staal",
+						"steen",
+						"veen",
+						"voorgespannen beton",
+						"zand"
+					],
+					"maxItems": 1
+				},
+				"vispassageid": {
+					"type": "string",
+					"VerwijstNaar": "Vispassage",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				}
+			}
+		},
+		"afvoeraanvoergebied": {
+			"type": "object",
+			"properties": {
+			}
+		},
+		"afvoergebiedaanvoergebied": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"gerelateerdafaanvoergebied": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lateraleknoopid": {
+					"type": "string",
+					"VerwijstNaar": "LateraleKnoop",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ontstaanswijze": {
+					"type": "string",
+					"enum": [
+						"Door de mens gemaakt",
+						"Natuurlijk"
+					],
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"oppervlakte": {
+					"type": "number",
+					"Eenheid": "m²",
+					"maxlength": 12,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ordecode": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"ordescope": {
+					"type": "string",
+					"enum": [
+						"Unie van Waterschappen / subwerkgroep Geo-informatie"
+					],
+					"maxItems": 1
+				},
+				"ordesystematiek": {
+					"type": "string",
+					"enum": [
+						"Nederlandse Methodiek Afvoergebieden"
+					],
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"soortafvoeraanvoergebied": {
+					"type": "string",
+					"enum": [
+						"Aanvoergebied",
+						"Afvoergebied",
+						"Afwateringseenheid",
+						"Afwateringsgebied",
+						"Bemalingsgebied",
+						"Deelstroomgebied",
+						"Overig"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"waterafvoer": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				}
+			}
+		},
+		"aquaduct": {
+			"type": "object",
+			"properties": {
+				"bodemhoogtebenedenstrooms": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"bodemhoogtebovenstrooms": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"breedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogteconstructie": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"ruwheid": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"soortmateriaal": {
+					"type": "string",
+					"enum": [
+						"aluminium",
+						"asbestcement",
+						"beton",
+						"gegolfd plaatstaal",
+						"gewapend beton",
+						"gietijzer",
+						"gips",
+						"glad staal",
+						"glas",
+						"grasbetontegels",
+						"gres",
+						"hout",
+						"ijzer",
+						"klei",
+						"koper",
+						"kunststof",
+						"kunststoffolie",
+						"kurk",
+						"lokale bodemsoort",
+						"lood",
+						"metselwerk",
+						"plaatstaal",
+						"puinsteen",
+						"PVC",
+						"riet en/of biezen",
+						"roestvrij staal",
+						"staal",
+						"steen",
+						"veen",
+						"voorgespannen beton",
+						"zand"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typekruising": {
+					"type": "string",
+					"enum": [
+						"Aquaduct",
+						"Brug",
+						"Bypass",
+						"Duiker",
+						"Hevel",
+						"Sifon"
+					],
+					"maxItems": 1
+				},
+				"typeruwheid": {
+					"type": "string",
+					"enum": [
+						"Bos en Bijkerk",
+						"Chezy",
+						"Manning",
+						"Onbekend",
+						"Overig",
+						"StricklerKn",
+						"StricklerKs",
+						"White Colebrook"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				}
+			}
+		},
+		"beheergrenswaterschap": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"maxItems": 1
+				},
+				"soorttaak": {
+					"type": "string",
+					"enum": [
+						"muskusratten bestrijding",
+						"Onbekend",
+						"Overig",
+						"waterketen",
+						"watersysteem",
+						"waterveiligheid",
+						"wegenbeheer"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"bijzonderhydraulischobject": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typehydraulischobject": {
+					"type": "string",
+					"enum": [
+						"Beverdam",
+						"Dood hout",
+						"Onbekend",
+						"Overig",
+						"Watermolen"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				}
+			}
+		},
+		"bodemval": {
+			"type": "object",
+			"properties": {
+				"bodemhoogtebenedenstrooms": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"bodemhoogtebovenstrooms": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"breedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"brug": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"doorvaartbreedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogtebovenzijde": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"hoogteconstructie": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"hoogteonderzijde": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"intreeverlies": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lengte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"ruwheid": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"soortmateriaal": {
+					"type": "string",
+					"enum": [
+						"aluminium",
+						"asbestcement",
+						"beton",
+						"gegolfd plaatstaal",
+						"gewapend beton",
+						"gietijzer",
+						"gips",
+						"glad staal",
+						"glas",
+						"grasbetontegels",
+						"gres",
+						"hout",
+						"ijzer",
+						"klei",
+						"koper",
+						"kunststof",
+						"kunststoffolie",
+						"kurk",
+						"lokale bodemsoort",
+						"lood",
+						"metselwerk",
+						"plaatstaal",
+						"puinsteen",
+						"PVC",
+						"riet en/of biezen",
+						"roestvrij staal",
+						"staal",
+						"steen",
+						"veen",
+						"voorgespannen beton",
+						"zand"
+					],
+					"maxItems": 1
+				},
+				"soortoverspanning": {
+					"type": "string",
+					"enum": [
+						"onbekend",
+						"overig",
+						"overspan. via landhfd. binnen doorstroomprof. en tussenpunten",
+						"overspanning via landhoofden binnen het doorstroomprofiel",
+						"overspanning via tussenpunten",
+						"vrije overspanning"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typekruising": {
+					"type": "string",
+					"enum": [
+						"Aquaduct",
+						"Brug",
+						"Bypass",
+						"Duiker",
+						"Hevel",
+						"Sifon"
+					],
+					"maxItems": 1
+				},
+				"typeruwheid": {
+					"type": "string",
+					"enum": [
+						"Bos en Bijkerk",
+						"Chezy",
+						"Manning",
+						"Onbekend",
+						"Overig",
+						"StricklerKn",
+						"StricklerKs",
+						"White Colebrook"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"uittreeverlies": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				}
+			}
+		},
+		"doorstroomopening": {
+			"type": "object",
+			"properties": {
+				"breedteopening": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"brugid": {
+					"type": "string",
+					"VerwijstNaar": "Brug",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"doorvaartnummer": {
+					"type": "integer",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"indicatiedoorvaarbaarheid": {
+					"type": "string",
+					"enum": [
+						"ja",
+						"nee",
+						"onbekend"
+					],
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				}
+			}
+		},
+		"duikersifonhevel": {
+			"type": "object",
+			"properties": {
+				"aantaldoorstroomopeningen": {
+					"type": "integer",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"afvoercoefficient": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"bochtenknikverlies": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"breedteopening": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"categorie": {
+					"type": "string",
+					"enum": [
+						"Boezemkade (regionaal)",
+						"Categorie A (primair)",
+						"Categorie B (primair)",
+						"Categorie C (primair)",
+						"Categorie D (primair)",
+						"Compartimenteringskering (regionaal)",
+						"Kering langs regionale rivieren en kanalen (regionaal)",
+						"Overige waterkering",
+						"Voorlandkering en zomerkade (regionaal)"
+					],
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"drempelpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogtebinnenonderkantbene": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogtebinnenonderkantbov": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogteopening": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"indicatiewaterkerend": {
+					"type": "string",
+					"enum": [
+						"Ja",
+						"Nee",
+						"Niet van toepassing"
+					],
+					"maxItems": 1
+				},
+				"indpeilregulpeilscheidend": {
+					"type": "string",
+					"enum": [
+						"ja",
+						"nee",
+						"onbekend"
+					],
+					"maxItems": 1
+				},
+				"intreeverlies": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"kerendehoogte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lengte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ontwerpbuitenwaterstand": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"openingspeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"openkeerpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"ruwheid": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "LineString",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"signaleringspeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"sluitpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"soortmateriaal": {
+					"type": "string",
+					"enum": [
+						"aluminium",
+						"asbestcement",
+						"beton",
+						"gegolfd plaatstaal",
+						"gewapend beton",
+						"gietijzer",
+						"gips",
+						"glad staal",
+						"glas",
+						"grasbetontegels",
+						"gres",
+						"hout",
+						"ijzer",
+						"klei",
+						"koper",
+						"kunststof",
+						"kunststoffolie",
+						"kurk",
+						"lokale bodemsoort",
+						"lood",
+						"metselwerk",
+						"plaatstaal",
+						"puinsteen",
+						"PVC",
+						"riet en/of biezen",
+						"roestvrij staal",
+						"staal",
+						"steen",
+						"veen",
+						"voorgespannen beton",
+						"zand"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwaterveiligheid": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typekruising": {
+					"type": "string",
+					"enum": [
+						"Aquaduct",
+						"Brug",
+						"Bypass",
+						"Duiker",
+						"Hevel",
+						"Sifon"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"typeruwheid": {
+					"type": "string",
+					"enum": [
+						"Bos en Bijkerk",
+						"Chezy",
+						"Manning",
+						"Onbekend",
+						"Overig",
+						"StricklerKn",
+						"StricklerKs",
+						"White Colebrook"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"typewaterkerendeconstructie": {
+					"type": "string",
+					"enum": [
+						"Type I: zelfstandig waterkerend",
+						"Type II: waterkerend in combinatie met grondconstructie",
+						"Type III: waterkerend bij falen van een andere constructie",
+						"Type IV: tast bij falen de functie van de waterkering aan"
+					],
+					"maxItems": 1
+				},
+				"uittreeverlies": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"vormkoker": {
+					"type": "string",
+					"enum": [
+						"Driehoekig",
+						"Eivormig",
+						"Ellipsvormig",
+						"Heulprofiel",
+						"Langwerpig",
+						"Muilprofiel",
+						"Onbekend",
+						"Overig",
+						"Paraboolvormig",
+						"Rechthoekig",
+						"Rond",
+						"Scherp",
+						"Trapeziumvormig"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"waterkeringid": {
+					"type": "string",
+					"VerwijstNaar": "Waterkering",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				}
+			}
+		},
+		"gemaal": {
+			"type": "object",
+			"properties": {
+				"aantaldoorstroomopeningen": {
+					"type": "integer",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"afslagpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"afvoercoefficient": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"breedteopening": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"categorie": {
+					"type": "string",
+					"enum": [
+						"Boezemkade (regionaal)",
+						"Categorie A (primair)",
+						"Categorie B (primair)",
+						"Categorie C (primair)",
+						"Categorie D (primair)",
+						"Compartimenteringskering (regionaal)",
+						"Kering langs regionale rivieren en kanalen (regionaal)",
+						"Overige waterkering",
+						"Voorlandkering en zomerkade (regionaal)"
+					],
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"drempelpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"filteruitstroming": {
+					"type": "string",
+					"enum": [
+						"ja",
+						"nee"
+					],
+					"maxItems": 1
+				},
+				"functiegemaal": {
+					"type": "string",
+					"enum": [
+						"Aanvoergemaal",
+						"Af- en Aanvoergemaal",
+						"Afvoergemaal",
+						"Doorspoelgemaal",
+						"Noodpomp",
+						"Onbekend",
+						"Onderbemaling",
+						"Onderbemaling / opmaling",
+						"Opmaling",
+						"Overig"
+					],
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"indicatiewaterkerend": {
+					"type": "string",
+					"enum": [
+						"Ja",
+						"Nee",
+						"Niet van toepassing"
+					],
+					"maxItems": 1
+				},
+				"kerendehoogte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"maximalecapaciteit": {
+					"type": "number",
+					"Eenheid": "m³/minuut",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ontwerpbuitenwaterstand": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"openingspeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"openkeerpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"signaleringspeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"sluitpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwaterveiligheid": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typewaterkerendeconstructie": {
+					"type": "string",
+					"enum": [
+						"Type I: zelfstandig waterkerend",
+						"Type II: waterkerend in combinatie met grondconstructie",
+						"Type III: waterkerend bij falen van een andere constructie",
+						"Type IV: tast bij falen de functie van de waterkering aan"
+					],
+					"maxItems": 1
+				},
+				"waterkeringid": {
+					"type": "string",
+					"VerwijstNaar": "Waterkering",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				}
+			}
+		},
+		"grondwaterinfolijn": {
+			"type": "object",
+			"properties": {
+				"beginperiode": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"bodemhoogtebenedenstrooms": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"bodemhoogtebovenstrooms": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"bodemweerstand": {
+					"type": "number",
+					"Eenheid": "d",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"eindperiode": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"flux": {
+					"type": "number",
+					"Eenheid": "m2 / s",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"grondwaterkoppellijnid": {
+					"type": "string",
+					"VerwijstNaar": "GrondwaterKoppelLijn",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"infiltratiefactor": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"natteomtrek": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"maxItems": 1
+				}
+			}
+		},
+		"grondwaterinfopunt": {
+			"type": "object",
+			"properties": {
+				"beginperiode": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"eindperiode": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"grondwaterkoppelpuntid": {
+					"type": "string",
+					"VerwijstNaar": "GrondwaterKoppelPunt",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"maxItems": 1
+				},
+				"waterstand": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				}
+			}
+		},
+		"grondwaterkoppellijn": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "LineString",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"grondwaterkoppelpunt": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"hydrologischerandvoorwaarde": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"debiet": {
+					"type": "number",
+					"Eenheid": "m3/s",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typerandvoorwaarde": {
+					"type": "string",
+					"enum": [
+						"debiet variabel",
+						"debiet vaste waarde",
+						"Qh-relatie",
+						"waterstand getijdebeweging",
+						"waterstand variabel",
+						"waterstand vaste waarde"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"waterstand": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				}
+			}
+		},
+		"hydroobject": {
+			"type": "object",
+			"properties": {
+				"breedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"categorieoppwaterlichaam": {
+					"type": "string",
+					"enum": [
+						"overig",
+						"primair",
+						"secundair",
+						"tertiair"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"draineert": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"getijdebeinvloed": {
+					"type": "string",
+					"enum": [
+						"ja",
+						"nee"
+					],
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hydroobjectgroeperingid": {
+					"type": "string",
+					"VerwijstNaar": "HydroObjectGroepering",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"krwstromendid": {
+					"type": "string",
+					"VerwijstNaar": "KRWOppwStromend",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lengte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"niveau": {
+					"type": "string",
+					"enum": [
+						"boven maaiveld",
+						"onder bodem/maaiveld",
+						"op maaiveld"
+					],
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ontstaanswijze": {
+					"type": "string",
+					"enum": [
+						"Door de mens gemaakt",
+						"Natuurlijk"
+					],
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"oppervlaktewaterlichaamid": {
+					"type": "string",
+					"VerwijstNaar": "Oppervlaktewaterlichaam",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"oppwatervolgnummer": {
+					"type": "integer",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"persistentie": {
+					"type": "string",
+					"enum": [
+						"afwisselend",
+						"continue",
+						"droog",
+						"kortstondig"
+					],
+					"maxItems": 1
+				},
+				"ruimtelijkeafbakeningbekend": {
+					"type": "string",
+					"enum": [
+						"ja",
+						"nee"
+					],
+					"maxItems": 1
+				},
+				"ruwheidhoog": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ruwheidlaag": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "LineString",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"soortoppwaterkwaliteit": {
+					"type": "string",
+					"enum": [
+						"afgesloten zeearmen",
+						"afgesloten, oude rivierarmen",
+						"beken",
+						"bergbeken",
+						"binnendijkse, brakke wateren",
+						"binnendijkse, licht brakke wateren",
+						"binnendijkse, zeer brakken wateren",
+						"binnendijkse, zeer licht brakke tot zoete wateren",
+						"boezem- en polderkanalen",
+						"brakke en zoute wateren",
+						"brakke kanalen",
+						"brakke sloten",
+						"brede lijnvormige stadswateren",
+						"bronbeken",
+						"bronnen",
+						"diepe niet-lijnvormige stadswateren",
+						"diffuse bronnen (helokrenen)",
+						"dobben",
+						"drinkpoelen",
+						"droogleggingsplassen",
+						"droogvallende wateren",
+						"duinbeken",
+						"duinmeren",
+						"dystrofe vennen",
+						"genormaliseerde beken",
+						"getijde wateren en estuaria",
+						"geultype beken",
+						"grachten",
+						"grindgaten",
+						"grondwatermeren",
+						"grote rivieren",
+						"havens",
+						"heuvellandbeken",
+						"heuvellandbeken benedenloop",
+						"heuvellandbeken bovenloop",
+						"heuvellandbeken middenloop",
+						"hoogveenvennen",
+						"inlagen",
+						"jachthavens",
+						"kanalen",
+						"kleigaten",
+						"kleikanalen",
+						"kleine rivieren",
+						"kleisloten",
+						"kleivaarten",
+						"kreken",
+						"kwelbeken",
+						"laaglandbeken",
+						"laaglandbeken benedenloop",
+						"laaglandbeken bovenloop",
+						"laaglandbeken middenloop",
+						"laagveenplassen",
+						"licht brakke sloten",
+						"meren en plassen",
+						"mesostrofe vennen",
+						"oeveraantastingsplassen",
+						"ondiepe niet-lijnvormige stadswateren",
+						"open, oude rivierarmen",
+						"oude rivierarmen",
+						"overige beektypes",
+						"overige brakke en zoute wateren",
+						"overige brontypes",
+						"overige duinmeren",
+						"overige getijdewateren",
+						"overige havens",
+						"overige kanalen",
+						"overige meren en plassen",
+						"overige rivieren",
+						"overige sloten",
+						"overige stadswateren",
+						"overige stagnante wateren, al dan niet gegraven",
+						"overige vennen",
+						"overige weteringen en vaarten",
+						"petgaten",
+						"pingo-ruines",
+						"puntbronnen (akrokrenen)",
+						"randmeren",
+						"regenwatermeren",
+						"ringvennen",
+						"rivierdelta-estuaria",
+						"rivieren",
+						"scheepvaartkanalen",
+						"sierwateren",
+						"sloten",
+						"smalle lijnvormige stadswateren",
+						"snelstromende zandbeken",
+						"sprengenbeken",
+						"stadswateren",
+						"sterk brakke kanalen",
+						"stromende stadswateren",
+						"trechtervormige bronnen (limnokrenen)",
+						"veenbeken",
+						"veenkanalen",
+						"veenpolderplassen",
+						"veensloten",
+						"veenvaarten",
+						"vennen en pingo-runes",
+						"verticale bronnen (rheokrenen)",
+						"voedselarme (oligotrofe) vennen",
+						"wadden",
+						"weteringen en vaarten",
+						"wielen",
+						"zand-, grind- en kleigaten",
+						"zandgaten",
+						"zandkanalen",
+						"zandsloten",
+						"zandvaarten",
+						"zee",
+						"zeehavens",
+						"zoute meren",
+						"zure sloten"
+					],
+					"maxItems": 1
+				},
+				"soortoppwaterkwantiteit": {
+					"type": "string",
+					"enum": [
+						"beek",
+						"bergingsvijver",
+						"bermsloot",
+						"boezemdijksloot",
+						"boezemsloot",
+						"boezemspoorsloot",
+						"boezemwater",
+						"dijksloot",
+						"dobbe",
+						"duinmeer",
+						"duinrel",
+						"gracht",
+						"greppel",
+						"hoofdwaterloop",
+						"inlaag",
+						"kadesloot",
+						"kanaal",
+						"karreveld",
+						"kavelsloot",
+						"kreek",
+						"kweekvijver",
+						"leigraaf",
+						"meer",
+						"moeras",
+						"perceelsloot",
+						"pingo-ruine",
+						"plas",
+						"poel",
+						"poldersloot",
+						"polderwater",
+						"polderwaterloop (polderwatergang)",
+						"primair boezemwater",
+						"rivier",
+						"scheisloot",
+						"schouwsloot",
+						"secundair boezemwater",
+						"sloot",
+						"spaarbekken",
+						"spoorsloot",
+						"stadsvijver",
+						"te verlanden sloot",
+						"tertiair boezemwater",
+						"tocht",
+						"toevoerleiding voor infiltratiewater",
+						"uitmonding",
+						"vaarsloot",
+						"vaart",
+						"ven",
+						"vijver",
+						"visvijver",
+						"vliet",
+						"voert",
+						"waterleiding",
+						"waterloop (watergang)",
+						"watervoerende weg",
+						"weel",
+						"wegsloot",
+						"wetering",
+						"wiel",
+						"Zandvang",
+						"zee"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typeruwheid": {
+					"type": "string",
+					"enum": [
+						"Bos en Bijkerk",
+						"Chezy",
+						"Manning",
+						"Onbekend",
+						"Overig",
+						"StricklerKn",
+						"StricklerKs",
+						"White Colebrook"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"vaarwegid": {
+					"type": "string",
+					"VerwijstNaar": "Vaarweg",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				}
+			}
+		},
+		"hydroobject_normgp": {
+			"type": "object",
+			"properties": {
+				"hydroobjectid": {
+					"type": "string",
+					"VerwijstNaar": "HydroObject",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": false,
+					"maxItems": 1
+				},
+				"normgeparamprofielid": {
+					"type": "string",
+					"VerwijstNaar": "NormGeparamProfiel",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": false,
+					"maxItems": 1
+				}
+			}
+		},
+		"imwa_geoobject": {
+			"type": "object",
+			"properties": {
+			}
+		},
+		"kunstwerkopening": {
+			"type": "object",
+			"properties": {
+				"afvoercoefficient": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"brugid": {
+					"type": "string",
+					"VerwijstNaar": "Brug",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"doorstroomlengte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogstedoorstroombreedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogstedoorstroomhoogte": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"laagstedoorstroombreedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"laagstedoorstroomhoogte": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"regelmiddelid": {
+					"type": "string",
+					"VerwijstNaar": "Regelmiddel",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"stuwid": {
+					"type": "string",
+					"VerwijstNaar": "Stuw",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"vormopening": {
+					"type": "string",
+					"enum": [
+						"Driehoekig",
+						"Eivormig",
+						"Ellipsvormig",
+						"Heulprofiel",
+						"Langwerpig",
+						"Muilprofiel",
+						"Onbekend",
+						"Overig",
+						"Paraboolvormig",
+						"Rechthoekig",
+						"Rond",
+						"Scherp",
+						"Trapeziumvormig"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				}
+			}
+		},
+		"lateraleknoop": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"leggerwatersysteem": {
+			"type": "object",
+			"properties": {
+			}
+		},
+		"leggerwaterveiligheid": {
+			"type": "object",
+			"properties": {
+			}
+		},
+		"meetlocatie": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hydroobjectid": {
+					"type": "string",
+					"VerwijstNaar": "HydroObject",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"metingomschrijving": {
+					"type": "string",
+					"maxlength": 250,
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"meetwaardeactiewaarde": {
+			"type": "object",
+			"properties": {
+				"actiewaarde": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"eenheidactiewaarde": {
+					"type": "string",
+					"enum": [
+						"DatumTijd",
+						"m NAP",
+						"m3/s"
+					],
+					"maxItems": 1
+				},
+				"eenheidmeetwaarde": {
+					"type": "string",
+					"enum": [
+						"DatumTijd",
+						"m NAP",
+						"m3/s"
+					],
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"meetwaarde": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"sturingid": {
+					"type": "string",
+					"VerwijstNaar": "Sturing",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"tijd": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				}
+			}
+		},
+		"normgeparamprofiel": {
+			"type": "object",
+			"properties": {
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"referentievlak": {
+					"type": "string",
+					"enum": [
+						"KP (Kanaalpeil)",
+						"MP (Meerpeil)",
+						"NAP",
+						"SP (Stuwpeil)"
+					],
+					"maxItems": 1
+				},
+				"soortprofiel": {
+					"type": "string",
+					"enum": [
+						"afgeleid profiel",
+						"dwarsprofiel bodemval",
+						"dwarsprofiel oppervlaktewater",
+						"dwarsprofiel waterkering",
+						"geotechnisch profiel",
+						"kruinprofiel stuw",
+						"lengteprofiel oppervlaktewater",
+						"lengteprofiel waterkering",
+						"lengteprofiel waterloop linkeroever",
+						"lengteprofiel waterloop rechteroever",
+						"overige profielen",
+						"profiel bergingsgebied",
+						"profiel brug",
+						"profiel gemeten over kunstwerk",
+						"profiel oppervlaktewater"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwaterveiligheid": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"normgeparamprofielwaarde": {
+			"type": "object",
+			"properties": {
+				"codevolgnummer": {
+					"type": "integer",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"normgeparamprofielid": {
+					"type": "string",
+					"VerwijstNaar": "NormGeparamProfiel",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ruwheidhoog": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"ruwheidlaag": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"soortparameter": {
+					"type": "string",
+					"enum": [
+						"bodembreedte",
+						"bodemhoogte benedenstrooms",
+						"bodemhoogte bovenstrooms",
+						"breedte plasberm linkerzijde",
+						"breedte plasberm rechterzijde",
+						"hoogte insteek linkerzijde",
+						"hoogte insteek rechterzijde",
+						"hoogte plasberm linkerzijde",
+						"hoogte plasberm rechterzijde",
+						"taludhelling linkerzijde",
+						"taludhelling plasberm linkerzijde",
+						"taludhelling plasberm rechterzijde",
+						"taludhelling rechterzijde"
+					],
+					"maxItems": 1
+				},
+				"typeruwheid": {
+					"type": "string",
+					"enum": [
+						"Bos en Bijkerk",
+						"Chezy",
+						"Manning",
+						"Onbekend",
+						"Overig",
+						"StricklerKn",
+						"StricklerKs",
+						"White Colebrook"
+					],
+					"maxItems": 1
+				},
+				"waarde": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				}
+			}
+		},
+		"peilafwijkinggebied": {
+			"type": "object",
+			"properties": {
+				"bevat": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"statuspeilgebied": {
+					"type": "string",
+					"enum": [
+						"Onbekend",
+						"Ontwerp",
+						"Overig",
+						"Praktijk",
+						"Vigerend definitief",
+						"Vigerend interim"
+					],
+					"maxItems": 1
+				},
+				"voertafop": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				}
+			}
+		},
+		"peilbesluitgebied": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"peilgebiedpraktijk": {
+			"type": "object",
+			"properties": {
+				"bevat": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"statuspeilgebied": {
+					"type": "string",
+					"enum": [
+						"Onbekend",
+						"Ontwerp",
+						"Overig",
+						"Praktijk",
+						"Vigerend definitief",
+						"Vigerend interim"
+					],
+					"maxItems": 1
+				},
+				"voertafop": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				}
+			}
+		},
+		"peilgebiedvigerend": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"peilbesluitgebiedid": {
+					"type": "string",
+					"VerwijstNaar": "PeilbesluitGebied",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"statuspeilgebied": {
+					"type": "string",
+					"enum": [
+						"Onbekend",
+						"Ontwerp",
+						"Overig",
+						"Praktijk",
+						"Vigerend definitief",
+						"Vigerend interim"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"pomp": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"gemaalid": {
+					"type": "string",
+					"VerwijstNaar": "Gemaal",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"maximalecapaciteit": {
+					"type": "number",
+					"Eenheid": "m³/minuut",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"minimalecapaciteit": {
+					"type": "number",
+					"Eenheid": "m3/uur",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opstellingpomp": {
+					"type": "string",
+					"enum": [
+						"Gemaal droge opstelling",
+						"Gemaal natte opstelling",
+						"Onbekend",
+						"Overig"
+					],
+					"maxItems": 1
+				},
+				"pompcurve": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"pomprichting": {
+					"type": "string",
+					"enum": [
+						"Beide",
+						"Negatief",
+						"Positief"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"rioolgemaalid": {
+					"type": "string",
+					"VerwijstNaar": "Rioolgemaal",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"soortaandrijving": {
+					"type": "string",
+					"enum": [
+						"Axiaal",
+						"Centrifugaal",
+						"Diesel",
+						"Elektrisch",
+						"Halfaxiaal",
+						"Ntb",
+						"Onbekend",
+						"Overig",
+						"Radiaal",
+						"Schroef",
+						"Schroefcentrifugaal",
+						"Vijzelgemaal",
+						"Wind",
+						"Zonne-energie"
+					],
+					"maxItems": 1
+				},
+				"typepomp": {
+					"type": "string",
+					"enum": [
+						"Onbekend",
+						"Overig",
+						"Versnijdend",
+						"Vuildoorlatend"
+					],
+					"maxItems": 1
+				},
+				"typepompschakeling": {
+					"type": "string",
+					"enum": [
+						"Enkelloop",
+						"Onbekend",
+						"Overig",
+						"Samenloop"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"profielgroep": {
+			"type": "object",
+			"properties": {
+				"bergingsgebiedid": {
+					"type": "string",
+					"VerwijstNaar": "Bergingsgebied",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"bodemvalid": {
+					"type": "string",
+					"VerwijstNaar": "Bodemval",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"brugid": {
+					"type": "string",
+					"VerwijstNaar": "Brug",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"maxItems": 1
+				},
+				"grondwaterkoppellijnid": {
+					"type": "string",
+					"VerwijstNaar": "GrondwaterKoppelLijn",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"hydroobjectid": {
+					"type": "string",
+					"VerwijstNaar": "HydroObject",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"stuwid": {
+					"type": "string",
+					"VerwijstNaar": "Stuw",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"waterkeringid": {
+					"type": "string",
+					"VerwijstNaar": "Waterkering",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				}
+			}
+		},
+		"profiellijn": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naamspace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"profielgroepid": {
+					"type": "string",
+					"VerwijstNaar": "ProfielGroep",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"profielweergave": {
+					"type": "string",
+					"enum": [
+						"gemeten: doorstroomprofiel",
+						"gemeten: modderlaag",
+						"gemeten: vaste bodem",
+						"gemeten: waterlijn",
+						"theoretisch profiel"
+					],
+					"maxItems": 1
+				},
+				"referentievlak": {
+					"type": "string",
+					"enum": [
+						"KP (Kanaalpeil)",
+						"MP (Meerpeil)",
+						"NAP",
+						"SP (Stuwpeil)"
+					],
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "LineString",
+					"maxItems": 1
+				},
+				"soortprofiel": {
+					"type": "string",
+					"enum": [
+						"afgeleid profiel",
+						"dwarsprofiel bodemval",
+						"dwarsprofiel oppervlaktewater",
+						"dwarsprofiel waterkering",
+						"geotechnisch profiel",
+						"kruinprofiel stuw",
+						"lengteprofiel oppervlaktewater",
+						"lengteprofiel waterkering",
+						"lengteprofiel waterloop linkeroever",
+						"lengteprofiel waterloop rechteroever",
+						"overige profielen",
+						"profiel bergingsgebied",
+						"profiel brug",
+						"profiel gemeten over kunstwerk",
+						"profiel oppervlaktewater"
+					],
+					"maxItems": 1
+				},
+				"status": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"profielpunt": {
+			"type": "object",
+			"properties": {
+				"afstand": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"codevolgnummer": {
+					"type": "integer",
+					"maxlength": 5,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"profiellijnid": {
+					"type": "string",
+					"VerwijstNaar": "ProfielLijn",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "PointZ",
+					"maxItems": 1
+				},
+				"soortmeetpunt": {
+					"type": "string",
+					"enum": [
+						"as bodem",
+						"as bodem landzijde",
+						"as bodem rivierzijde",
+						"begin berm landzijde",
+						"begin berm rivierzijde",
+						"begin profiel",
+						"eind berm landzijde",
+						"eind berm rivierzijde",
+						"eind profiel",
+						"insteek binnenberm",
+						"insteek buitenberm",
+						"insteek geul",
+						"insteek sloot (polderzijde)",
+						"insteek sloot (waterkeringzijde)",
+						"insteek sloot buitendijks (buitenzijde)",
+						"insteek sloot buitendijks (waterkeringzijde)",
+						"intrede piping",
+						"kruin berm binnenwaarts",
+						"kruin berm buitenwaarts",
+						"kruin binnenzijde",
+						"kruin buitenzijde",
+						"kruin midden",
+						"linker bodem",
+						"linker bodem landzijde",
+						"linker bodem rivierzijde",
+						"linker insteek",
+						"linker insteek landzijde",
+						"linker insteek plasberm",
+						"linker insteek rivierzijde",
+						"linker teen plasberm",
+						"linkeroever lengteprofiel",
+						"maaiveld binnenwaarts",
+						"maaiveld buitenwaarts",
+						"onbekend",
+						"overig",
+						"plasberm",
+						"rechter bodem",
+						"rechter bodem landzijde",
+						"rechter bodem rivierzijde",
+						"rechter insteek",
+						"rechter insteek landzijde",
+						"rechter insteek plasberm",
+						"rechter insteek rivierzijde",
+						"rechter teen plasberm",
+						"rechteroever lengteprofiel",
+						"teen dijk binnenwaarts",
+						"teen dijk buitenwaarts",
+						"teen geul",
+						"uitreding piping",
+						"verdichting binnenzijde",
+						"verdichting buitenzijde",
+						"verkeersbelasting kant binnenwaarts",
+						"verkeersbelasting kant buitenwaarts",
+						"waterbodem (polderzijde)",
+						"waterbodem (waterkeringzijde)",
+						"waterbodem sloot buitendijks (buitenzijde)",
+						"waterbodem sloot buitendijks (waterkeringzijde)"
+					],
+					"maxItems": 1
+				},
+				"tekencode": {
+					"type": "string",
+					"enum": [
+						"(perkoen)paaltjes",
+						"aankoopgrens",
+						"afrastering",
+						"asfalt",
+						"aslijn",
+						"azobe matten",
+						"bebouwing (links)",
+						"bebouwing (rechts)",
+						"beschoeiing",
+						"beton",
+						"betuining",
+						"bodembekleding",
+						"bomenrij",
+						"boom",
+						"boomgaard",
+						"bos",
+						"bouwland",
+						"cascades (stroombrekers)",
+						"damwand",
+						"damwand beton",
+						"damwand hout",
+						"damwand staal",
+						"erf/siertuin",
+						"haag/heg",
+						"hectometerpaal",
+						"hek",
+						"houtwal",
+						"kadastrale grens",
+						"kant onverhard",
+						"kant verharding",
+						"kasseien",
+						"kassen/glastuinbouw",
+						"keer- of kademuur",
+						"keerwand beton",
+						"keerwand metselwerk",
+						"keien/arcering",
+						"krib",
+						"lantaarnpaal",
+						"linker gevel bijgebouw",
+						"linker gevel hoofdgebouw",
+						"linkeroever lengte profiel",
+						"losse verharding/grind",
+						"muur",
+						"onverhard",
+						"overig",
+						"perkoenpalenrij",
+						"piket",
+						"rechter gevel bijgebouw",
+						"rechter gevel hoofdgebouw",
+						"rechteroever lengte profiel",
+						"schutting",
+						"stortsteen",
+						"strekdam",
+						"talud- en bodembekleding",
+						"taludbekleding",
+						"tegels",
+						"trafo/gasgebouw",
+						"tuinbouw/moestuin",
+						"tussenoplossing of cominatie van damwand en talud (gebroken)",
+						"weiland",
+						"wiepen",
+						"woelbak",
+						"zetsteen",
+						"zetsteen (veldkeien)"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"regelmiddel": {
+			"type": "object",
+			"properties": {
+				"afvoercoefficient": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"breedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"duikersifonhevelid": {
+					"type": "string",
+					"VerwijstNaar": "DuikerSifonHevel",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"gemaalid": {
+					"type": "string",
+					"VerwijstNaar": "Gemaal",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"hoogteopening": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"kunstwerkopeningid": {
+					"type": "string",
+					"VerwijstNaar": "KunstwerkOpening",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"maximalehoogtebovenkant": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"minimalehoogtebovenkant": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"overlaatonderlaat": {
+					"type": "string",
+					"enum": [
+						"Nvt",
+						"Onderlaat",
+						"Overlaat"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "string",
+					"enum": [
+						"Beide",
+						"Negatief",
+						"Positief"
+					],
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"soortregelbaarheid": {
+					"type": "string",
+					"enum": [
+						"handmatig",
+						"niet regelbaar (vast)",
+						"onbekend",
+						"overig",
+						"regelbaar, automatisch",
+						"regelbaar, niet automatisch"
+					],
+					"maxItems": 1
+				},
+				"soortregelmiddel": {
+					"type": "string",
+					"enum": [
+						"deur",
+						"niet afsluitbaar",
+						"onbekend",
+						"overig",
+						"schotbalk sponning",
+						"schuif",
+						"stuwklep",
+						"terugslagklep",
+						"tolklep",
+						"zandzakken"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typemateriaaregelmiddel": {
+					"type": "string",
+					"enum": [
+						"aluminium",
+						"asbestcement",
+						"beton",
+						"gegolfd plaatstaal",
+						"gewapend beton",
+						"gietijzer",
+						"gips",
+						"glad staal",
+						"glas",
+						"grasbetontegels",
+						"gres",
+						"hout",
+						"ijzer",
+						"klei",
+						"koper",
+						"kunststof",
+						"kunststoffolie",
+						"kurk",
+						"lokale bodemsoort",
+						"lood",
+						"metselwerk",
+						"plaatstaal",
+						"puinsteen",
+						"PVC",
+						"riet en/of biezen",
+						"roestvrij staal",
+						"staal",
+						"steen",
+						"veen",
+						"voorgespannen beton",
+						"zand"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"reglementgrenswaterschap": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"datumvastelling": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"provinciereglement": {
+					"type": "string",
+					"enum": [
+						"Provincie Drenthe",
+						"Provincie Flevoland",
+						"Provincie Friesland",
+						"Provincie Gelderland",
+						"Provincie Groningen",
+						"Provincie Limburg",
+						"Provincie Noord-Brabant",
+						"Provincie Noord-Holland",
+						"Provincie Overijssel",
+						"Provincie Utrecht",
+						"Provincie Zeeland",
+						"Provincie Zuid-Holland"
+					],
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"verwijzingnaarreglement": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				}
+			}
+		},
+		"ruwheidprofiel": {
+			"type": "object",
+			"properties": {
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"profielpuntid": {
+					"type": "string",
+					"VerwijstNaar": "ProfielPunt",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"ruwheidhoog": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"ruwheidlaag": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"typeruwheid": {
+					"type": "string",
+					"enum": [
+						"Bos en Bijkerk",
+						"Chezy",
+						"Manning",
+						"Onbekend",
+						"Overig",
+						"StricklerKn",
+						"StricklerKs",
+						"White Colebrook"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"sluis": {
+			"type": "object",
+			"properties": {
+				"aantaldoorstroomopeningen": {
+					"type": "integer",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"doorstroombreedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"drempelpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				}
+			}
+		},
+		"streefpeil": {
+			"type": "object",
+			"properties": {
+				"beginperiode": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"eenheid": {
+					"type": "string",
+					"enum": [
+						"mNAP"
+					],
+					"maxItems": 1
+				},
+				"eindperiode": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"peilafwijkinggebiedid": {
+					"type": "string",
+					"VerwijstNaar": "PeilafwijkingGebied",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"peilgebiedpraktijkid": {
+					"type": "string",
+					"VerwijstNaar": "PeilgebiedPraktijk",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"peilgebiedvigerendid": {
+					"type": "string",
+					"VerwijstNaar": "PeilgebiedVigerend",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"soortstreefpeil": {
+					"type": "string",
+					"enum": [
+						"Dynamisch bovengrens",
+						"Dynamisch bovengrens winter",
+						"Dynamisch bovengrens zomer",
+						"Dynamisch ondergrens",
+						"Dynamisch ondergrens winter",
+						"Dynamisch ondergrens zomer",
+						"Onbekend",
+						"Schouw",
+						"Vast",
+						"Winter",
+						"Zomer"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"waterhoogte": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				}
+			}
+		},
+		"sturing": {
+			"type": "object",
+			"properties": {
+				"beginperiode": {
+					"type": "string",
+					"maxlength": 4,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"bovengrens": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"doelvariabele": {
+					"type": "string",
+					"enum": [
+						"debiet",
+						"tijd",
+						"vaste waarde",
+						"waterstand"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"eenheiddoelvariabele": {
+					"type": "string",
+					"enum": [
+						"DatumTijd",
+						"m NAP",
+						"m3/s"
+					],
+					"maxItems": 1
+				},
+				"eindperiode": {
+					"type": "string",
+					"maxlength": 4,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hydrologischerandvoorwaardeid": {
+					"type": "string",
+					"VerwijstNaar": "HydrologischeRandvoorwaarde",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"indicatiecomplexesturing": {
+					"type": "string",
+					"enum": [
+						"Ja",
+						"Nee",
+						"Niet van toepassing"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"meetlocatieid": {
+					"type": "string",
+					"VerwijstNaar": "Meetlocatie",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ondergrens": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"pompid": {
+					"type": "string",
+					"VerwijstNaar": "Pomp",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"prioriteit": {
+					"type": "string",
+					"enum": [
+						"Geen",
+						"Hoog",
+						"Laag",
+						"Midden"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"regelmiddelid": {
+					"type": "string",
+					"VerwijstNaar": "Regelmiddel",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"streefwaarde": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"stuurvariabele": {
+					"type": "string",
+					"enum": [
+						"bovenkant afsluitmiddel,",
+						"hoogte opening",
+						"hydrologische randvoorwaarde",
+						"pompdebiet"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"typecontroller": {
+					"type": "string",
+					"enum": [
+						"hydraulic",
+						"interval",
+						"nvt",
+						"onbekend",
+						"overig",
+						"PID",
+						"time"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"typesturing": {
+					"type": "string",
+					"enum": [
+						"Continu",
+						"Discreet"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"vastewaarde": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				}
+			}
+		},
+		"stuw": {
+			"type": "object",
+			"properties": {
+				"aantaldoorstroomopeningen": {
+					"type": "integer",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"afvoercoefficient": {
+					"type": "number",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"categorie": {
+					"type": "string",
+					"enum": [
+						"Boezemkade (regionaal)",
+						"Categorie A (primair)",
+						"Categorie B (primair)",
+						"Categorie C (primair)",
+						"Categorie D (primair)",
+						"Compartimenteringskering (regionaal)",
+						"Kering langs regionale rivieren en kanalen (regionaal)",
+						"Overige waterkering",
+						"Voorlandkering en zomerkade (regionaal)"
+					],
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"doorstroombreedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"drempelpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"filteruitstroming": {
+					"type": "string",
+					"enum": [
+						"ja",
+						"nee"
+					],
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hoogstedoorstroomhoogte": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"hoogteconstructie": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"indicatiewaterkerend": {
+					"type": "string",
+					"enum": [
+						"Ja",
+						"Nee",
+						"Niet van toepassing"
+					],
+					"maxItems": 1
+				},
+				"kerendehoogte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"kruinbreedte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"laagstedoorstroomhoogte": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ontwerpbuitenwaterstand": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"openingspeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"openkeerpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"regenwaterbuffercompartimentid": {
+					"type": "string",
+					"VerwijstNaar": "RegenwaterbufferCompart",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"signaleringspeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"sluitpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"soortmateriaal": {
+					"type": "string",
+					"enum": [
+						"aluminium",
+						"asbestcement",
+						"beton",
+						"gegolfd plaatstaal",
+						"gewapend beton",
+						"gietijzer",
+						"gips",
+						"glad staal",
+						"glas",
+						"grasbetontegels",
+						"gres",
+						"hout",
+						"ijzer",
+						"klei",
+						"koper",
+						"kunststof",
+						"kunststoffolie",
+						"kurk",
+						"lokale bodemsoort",
+						"lood",
+						"metselwerk",
+						"plaatstaal",
+						"puinsteen",
+						"PVC",
+						"riet en/of biezen",
+						"roestvrij staal",
+						"staal",
+						"steen",
+						"veen",
+						"voorgespannen beton",
+						"zand"
+					],
+					"maxItems": 1
+				},
+				"soortregelbaarheid": {
+					"type": "string",
+					"enum": [
+						"handmatig",
+						"niet regelbaar (vast)",
+						"onbekend",
+						"overig",
+						"regelbaar, automatisch",
+						"regelbaar, niet automatisch"
+					],
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"soortstuw": {
+					"type": "string",
+					"enum": [
+						"balgstuw",
+						"brievenbusstuw",
+						"cascadestuw",
+						"conserveringstuw",
+						"drijverstuw",
+						"gronddamstuw",
+						"hevelstuw",
+						"inlaat- en/of aflaatstuw",
+						"knijpstuw",
+						"meetschot",
+						"meetstuw",
+						"onbekend",
+						"overig",
+						"overlaat",
+						"schotbalkstuw",
+						"segmentstuw",
+						"stuw met contra-gewicht",
+						"stuw met klep",
+						"stuw met schuif",
+						"stuwbak",
+						"trommelstuw",
+						"tuimel- of kantelstuw"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwaterveiligheid": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"typewaterkerendeconstructie": {
+					"type": "string",
+					"enum": [
+						"Type I: zelfstandig waterkerend",
+						"Type II: waterkerend in combinatie met grondconstructie",
+						"Type III: waterkerend bij falen van een andere constructie",
+						"Type IV: tast bij falen de functie van de waterkering aan"
+					],
+					"maxItems": 1
+				},
+				"waterkeringid": {
+					"type": "string",
+					"VerwijstNaar": "Waterkering",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				}
+			}
+		},
+		"vispassage": {
+			"type": "object",
+			"properties": {
+				"afvoercoefficient": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"breedteopening": {
+					"type": "number",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"categorie": {
+					"type": "string",
+					"enum": [
+						"Boezemkade (regionaal)",
+						"Categorie A (primair)",
+						"Categorie B (primair)",
+						"Categorie C (primair)",
+						"Categorie D (primair)",
+						"Compartimenteringskering (regionaal)",
+						"Kering langs regionale rivieren en kanalen (regionaal)",
+						"Overige waterkering",
+						"Voorlandkering en zomerkade (regionaal)"
+					],
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"drempelpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"kerendehoogte": {
+					"type": "number",
+					"Eenheid": "m",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"ontwerpbuitenwaterstand": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"openingspeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"openkeerpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"maxItems": 1
+				},
+				"signaleringspeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"sluitpeil": {
+					"type": "number",
+					"Eenheid": "m NAP",
+					"maxlength": 8,
+					"maxItems": 1
+				},
+				"soortvispassage": {
+					"type": "string",
+					"enum": [
+						"aalpijp",
+						"bekkentrap",
+						"deniltrap",
+						"onbekend",
+						"overig",
+						"vislift",
+						"vissluis",
+						"vistrap"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwaterveiligheid": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				},
+				"waterkeringid": {
+					"type": "string",
+					"VerwijstNaar": "Waterkering",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				}
+			}
+		},
+		"vispassagevlak": {
+			"type": "object",
+			"properties": {
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": [
+						"Polygon",
+						"MultiPolygon"
+					],
+					"maxItems": 1
+				},
+				"vispassageid": {
+					"type": "string",
+					"VerwijstNaar": "Vispassage",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				}
+			}
+		},
+		"vuilvang": {
+			"type": "object",
+			"properties": {
+				"bgtstatus": {
+					"type": "string",
+					"enum": [
+						"Bestaand"
+					],
+					"maxItems": 1
+				},
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"maxItems": 1
+				},
+				"soortregelbaarheid": {
+					"type": "string",
+					"enum": [
+						"handmatig",
+						"niet regelbaar (vast)",
+						"onbekend",
+						"overig",
+						"regelbaar, automatisch",
+						"regelbaar, niet automatisch"
+					],
+					"maxItems": 1
+				},
+				"soortvuilvang": {
+					"type": "string",
+					"enum": [
+						"krooshek",
+						"onbekend",
+						"overig",
+						"vangbalk"
+					],
+					"maxItems": 1
+				},
+				"soortwaterinrichtingselement": {
+					"type": "string",
+					"enum": [
+						"Vuilvang"
+					],
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		},
+		"waterbeheergebied": {
+			"type": "object",
+			"properties": {
+			}
+		},
+		"zandvang": {
+			"type": "object",
+			"properties": {
+				"code": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"created_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"detailniveaugeometrie": {
+					"type": "integer",
+					"maxlength": 10,
+					"maxItems": 1
+				},
+				"featuretype": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"globalid": {
+					"type": "string",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"hyperlink": {
+					"type": "string",
+					"maxlength": 256,
+					"maxItems": 1
+				},
+				"last_edited_date": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"lvpublicatiedatum": {
+					"type": "string",
+					"format": "date-time",
+					"maxItems": 1
+				},
+				"metadataid": {
+					"type": "string",
+					"VerwijstNaar": "Metadata",
+					"maxlength": 38,
+					"pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$",
+					"maxItems": 1
+				},
+				"naam": {
+					"type": "string",
+					"maxlength": 100,
+					"maxItems": 1
+				},
+				"namespace": {
+					"type": "string",
+					"maxlength": 50,
+					"maxItems": 1
+				},
+				"nen3610id": {
+					"type": "string",
+					"maxlength": 256,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"objectid": {
+					"type": "integer",
+					"maxlength": 10,
+					"uniqueItems": true,
+					"minItems": 1,
+					"maxItems": 1
+				},
+				"opmerking": {
+					"type": "string",
+					"maxlength": 2000,
+					"maxItems": 1
+				},
+				"richting": {
+					"type": "number",
+					"maxlength": 5,
+					"maxItems": 1
+				},
+				"shape": {
+					"type": "Point",
+					"maxItems": 1
+				},
+				"soortzandvang": {
+					"type": "integer",
+					"maxlength": 3,
+					"maxItems": 1
+				},
+				"statusleggerwatersysteem": {
+					"type": "string",
+					"enum": [
+						"Gewijzigd",
+						"In ontwerp",
+						"Niet van toepassing",
+						"Vastgesteld",
+						"Verwijderd"
+					],
+					"maxItems": 1
+				},
+				"statusobject": {
+					"type": "string",
+					"enum": [
+						"buiten bedrijf",
+						"gerealiseerd",
+						"niet meer aanwezig",
+						"onbekend",
+						"planvorming",
+						"realisatie",
+						"te verwijderen"
+					],
+					"maxItems": 1
+				}
+			}
+		}
+	}
+}

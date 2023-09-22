@@ -1,0 +1,492 @@
+﻿naam,bgt_code,type_organisatie
+Appingedam,G0003,gemeente
+Bedum,G0005,gemeente
+Bellingwedde,G0007,gemeente
+Ten Boer,G0009,gemeente
+Delfzijl,G0010,gemeente
+Groningen,G0014,gemeente
+Grootegast,G0015,gemeente
+Haren,G0017,gemeente
+Hoogezand-Sappemeer,G0018,gemeente
+Leek,G0022,gemeente
+Loppersum,G0024,gemeente
+Marum,G0025,gemeente
+Almere,G0034,gemeente
+Stadskanaal,G0037,gemeente
+Slochteren,G0040,gemeente
+Veendam,G0047,gemeente
+Vlagtwedde,G0048,gemeente
+Zeewolde,G0050,gemeente
+Skarsterlân,G0051,gemeente
+Winsum,G0053,gemeente
+Boarnsterhim,G0055,gemeente
+Zuidhorn,G0056,gemeente
+Dongeradeel,G0058,gemeente
+Achtkarspelen,G0059,gemeente
+Ameland,G0060,gemeente
+het Bildt,G0063,gemeente
+Franekeradeel,G0070,gemeente
+Harlingen,G0072,gemeente
+Heerenveen,G0074,gemeente
+Kollumerland en Nieuwkruisland,G0079,gemeente
+Leeuwarden,G0080,gemeente
+Leeuwarderadeel,G0081,gemeente
+Lemsterland,G0082,gemeente
+Ooststellingwerf,G0085,gemeente
+Opsterland,G0086,gemeente
+Schiermonnikoog,G0088,gemeente
+Smallingerland,G0090,gemeente
+Terschelling,G0093,gemeente
+Vlieland,G0096,gemeente
+Weststellingwerf,G0098,gemeente
+Assen,G0106,gemeente
+Coevorden,G0109,gemeente
+Emmen,G0114,gemeente
+Hoogeveen,G0118,gemeente
+Meppel,G0119,gemeente
+Littenseradiel,G0140,gemeente
+Almelo,G0141,gemeente
+Borne,G0147,gemeente
+Dalfsen,G0148,gemeente
+Deventer,G0150,gemeente
+Enschede,G0153,gemeente
+Haaksbergen,G0158,gemeente
+Hardenberg,G0160,gemeente
+Hellendoorn,G0163,gemeente
+Hengelo (O),G0164,gemeente
+Kampen,G0166,gemeente
+Losser,G0168,gemeente
+Noordoostpolder,G0171,gemeente
+Oldenzaal,G0173,gemeente
+Ommen,G0175,gemeente
+Raalte,G0177,gemeente
+Staphorst,G0180,gemeente
+Tubbergen,G0183,gemeente
+Urk,G0184,gemeente
+Wierden,G0189,gemeente
+Zwolle,G0193,gemeente
+Rijnwaarden,G0196,gemeente
+Aalten,G0197,gemeente
+Goeree-Overflakkee,G1924,gemeente
+Molenwaard,G1927,gemeente
+Apeldoorn,G0200,gemeente
+Arnhem,G0202,gemeente
+Barneveld,G0203,gemeente
+Beuningen,G0209,gemeente
+Brummen,G0213,gemeente
+Buren,G0214,gemeente
+Culemborg,G0216,gemeente
+Doesburg,G0221,gemeente
+Doetinchem,G0222,gemeente
+Druten,G0225,gemeente
+Duiven,G0226,gemeente
+Ede,G0228,gemeente
+Elburg,G0230,gemeente
+Epe,G0232,gemeente
+Ermelo,G0233,gemeente
+Geldermalsen,G0236,gemeente
+Groesbeek,G0241,gemeente
+Harderwijk,G0243,gemeente
+Hattem,G0244,gemeente
+Heerde,G0246,gemeente
+Heumen,G0252,gemeente
+Lochem,G0262,gemeente
+Maasdriel,G0263,gemeente
+Millingen aan de Rijn,G0265,gemeente
+Nijkerk,G0267,gemeente
+Nijmegen,G0268,gemeente
+Oldebroek,G0269,gemeente
+Putten,G0273,gemeente
+Renkum,G0274,gemeente
+Rheden,G0275,gemeente
+Rozendaal,G0277,gemeente
+Scherpenzeel,G0279,gemeente
+Tiel,G0281,gemeente
+Ubbergen,G0282,gemeente
+Voorst,G0285,gemeente
+Wageningen,G0289,gemeente
+Westervoort,G0293,gemeente
+Winterswijk,G0294,gemeente
+Wijchen,G0296,gemeente
+Zaltbommel,G0297,gemeente
+Zevenaar,G0299,gemeente
+Zutphen,G0301,gemeente
+Nunspeet,G0302,gemeente
+Dronten,G0303,gemeente
+Neerijnen,G0304,gemeente
+Amersfoort,G0307,gemeente
+Baarn,G0308,gemeente
+De Bilt,G0310,gemeente
+Bunnik,G0312,gemeente
+Bunschoten,G0313,gemeente
+Eemnes,G0317,gemeente
+Houten,G0321,gemeente
+Leusden,G0327,gemeente
+Lopik,G0331,gemeente
+Montfoort,G0335,gemeente
+Renswoude,G0339,gemeente
+Rhenen,G0340,gemeente
+Soest,G0342,gemeente
+Utrecht,G0344,gemeente
+Veenendaal,G0345,gemeente
+Woudenberg,G0351,gemeente
+Wijk bij Duurstede,G0352,gemeente
+IJsselstein,G0353,gemeente
+Zeist,G0355,gemeente
+Nieuwegein,G0356,gemeente
+Aalsmeer,G0358,gemeente
+Alkmaar,G0361,gemeente
+Amstelveen,G0362,gemeente
+Amsterdam,G0363,gemeente
+Graft-De Rijp,G0365,gemeente
+Beemster,G0370,gemeente
+Bergen (NH),G0373,gemeente
+Beverwijk,G0375,gemeente
+Blaricum,G0376,gemeente
+Bloemendaal,G0377,gemeente
+Bussum,G0381,gemeente
+Castricum,G0383,gemeente
+Diemen,G0384,gemeente
+Edam-Volendam,G0385,gemeente
+Enkhuizen,G0388,gemeente
+Haarlem,G0392,gemeente
+Haarlemmerliede en Spaarnwoude,G0393,gemeente
+Haarlemmermeer,G0394,gemeente
+Harenkarspel,G0395,gemeente
+Heemskerk,G0396,gemeente
+Heemstede,G0397,gemeente
+Heerhugowaard,G0398,gemeente
+Heiloo,G0399,gemeente
+Den Helder,G0400,gemeente
+Hilversum,G0402,gemeente
+Hoorn,G0405,gemeente
+Huizen,G0406,gemeente
+Landsmeer,G0415,gemeente
+Langedijk,G0416,gemeente
+Laren,G0417,gemeente
+Medemblik,G0420,gemeente
+Muiden,G0424,gemeente
+Naarden,G0425,gemeente
+Oostzaan,G0431,gemeente
+Opmeer,G0432,gemeente
+Ouder-Amstel,G0437,gemeente
+Purmerend,G0439,gemeente
+Schagen,G0441,gemeente
+Texel,G0448,gemeente
+Uitgeest,G0450,gemeente
+Uithoorn,G0451,gemeente
+Velsen,G0453,gemeente
+Weesp,G0457,gemeente
+Schermer,G0458,gemeente
+Zandvoort,G0473,gemeente
+Zijpe,G0476,gemeente
+Zeevang,G0478,gemeente
+Zaanstad,G0479,gemeente
+Alblasserdam,G0482,gemeente
+Alphen aan den Rijn,G0484,gemeente
+Barendrecht,G0489,gemeente
+Bergambacht,G0491,gemeente
+Drechterland,G0498,gemeente
+Boskoop,G0499,gemeente
+Brielle,G0501,gemeente
+Capelle aan den IJssel,G0502,gemeente
+Delft,G0503,gemeente
+Dirksland,G0504,gemeente
+Dordrecht,G0505,gemeente
+Goedereede,G0511,gemeente
+Gorinchem,G0512,gemeente
+Gouda,G0513,gemeente
+'s-Gravenhage,G0518,gemeente
+Hardinxveld-Giessendam,G0523,gemeente
+Hellevoetsluis,G0530,gemeente
+Hendrik-Ido-Ambacht,G0531,gemeente
+Stede Broec,G0532,gemeente
+Hillegom,G0534,gemeente
+Katwijk,G0537,gemeente
+Krimpen aan den IJssel,G0542,gemeente
+Leerdam,G0545,gemeente
+Leiden,G0546,gemeente
+Leiderdorp,G0547,gemeente
+Lisse,G0553,gemeente
+Maassluis,G0556,gemeente
+Middelharnis,G0559,gemeente
+Bernisse,G0568,gemeente
+Nieuwkoop,G0569,gemeente
+Nieuw-Lekkerland,G0571,gemeente
+Noordwijk,G0575,gemeente
+Noordwijkerhout,G0576,gemeente
+Oegstgeest,G0579,gemeente
+Oostflakkee,G0580,gemeente
+Oud-Beijerland,G0584,gemeente
+Binnenmaas,G0585,gemeente
+Korendijk,G0588,gemeente
+Oudewater,G0589,gemeente
+Papendrecht,G0590,gemeente
+Ridderkerk,G0597,gemeente
+Rotterdam,G0599,gemeente
+Rijswijk,G0603,gemeente
+Schiedam,G0606,gemeente
+Schoonhoven,G0608,gemeente
+Sliedrecht,G0610,gemeente
+Cromstrijen,G0611,gemeente
+Spijkenisse,G0612,gemeente
+Albrandswaard,G0613,gemeente
+Westvoorne,G0614,gemeente
+Strijen,G0617,gemeente
+Vianen,G0620,gemeente
+Vlaardingen,G0622,gemeente
+Vlist,G0623,gemeente
+Voorschoten,G0626,gemeente
+Waddinxveen,G0627,gemeente
+Wassenaar,G0629,gemeente
+Woerden,G0632,gemeente
+Zoetermeer,G0637,gemeente
+Zoeterwoude,G0638,gemeente
+Zwijndrecht,G0642,gemeente
+Nederlek,G0643,gemeente
+Ouderkerk,G0644,gemeente
+Gaasterlân-Sleat,G0653,gemeente
+Borsele,G0654,gemeente
+Goes,G0664,gemeente
+West Maas en Waal,G0668,gemeente
+Hulst,G0677,gemeente
+Kapelle,G0678,gemeente
+Middelburg,G0687,gemeente
+Giessenlanden,G0689,gemeente
+Graafstroom,G0693,gemeente
+Liesveld,G0694,gemeente
+Reimerswaal,G0703,gemeente
+Zederik,G0707,gemeente
+Terneuzen,G0715,gemeente
+Tholen,G0716,gemeente
+Veere,G0717,gemeente
+Vlissingen,G0718,gemeente
+Lingewaal,G0733,gemeente
+De Ronde Venen,G0736,gemeente
+Tytsjerksteradiel,G0737,gemeente
+Aalburg,G0738,gemeente
+Asten,G0743,gemeente
+Baarle-Nassau,G0744,gemeente
+Bergen op Zoom,G0748,gemeente
+Best,G0753,gemeente
+Boekel,G0755,gemeente
+Boxmeer,G0756,gemeente
+Boxtel,G0757,gemeente
+Breda,G0758,gemeente
+Deurne,G0762,gemeente
+Pekela,G0765,gemeente
+Dongen,G0766,gemeente
+Eersel,G0770,gemeente
+Eindhoven,G0772,gemeente
+Etten-Leur,G0777,gemeente
+Geertruidenberg,G0779,gemeente
+Gilze en Rijen,G0784,gemeente
+Goirle,G0785,gemeente
+Grave,G0786,gemeente
+Haaren,G0788,gemeente
+Helmond,G0794,gemeente
+'s-Hertogenbosch,G0796,gemeente
+Heusden,G0797,gemeente
+Hilvarenbeek,G0798,gemeente
+Loon op Zand,G0809,gemeente
+Mill en Sint Hubert,G0815,gemeente
+"Nuenen, Gerwen en Nederwetten",G0820,gemeente
+Oirschot,G0823,gemeente
+Oisterwijk,G0824,gemeente
+Oosterhout,G0826,gemeente
+Oss,G0828,gemeente
+Rucphen,G0840,gemeente
+Schijndel,G0844,gemeente
+Sint-Michielsgestel,G0845,gemeente
+Sint-Oedenrode,G0846,gemeente
+Someren,G0847,gemeente
+Son en Breugel,G0848,gemeente
+Steenbergen,G0851,gemeente
+Waterland,G0852,gemeente
+Tilburg,G0855,gemeente
+Uden,G0856,gemeente
+Valkenswaard,G0858,gemeente
+Veghel,G0860,gemeente
+Veldhoven,G0861,gemeente
+Vught,G0865,gemeente
+Waalre,G0866,gemeente
+Waalwijk,G0867,gemeente
+Werkendam,G0870,gemeente
+Woensdrecht,G0873,gemeente
+Woudrichem,G0874,gemeente
+Zundert,G0879,gemeente
+Wormerland,G0880,gemeente
+Onderbanken,G0881,gemeente
+Landgraaf,G0882,gemeente
+Beek,G0888,gemeente
+Beesel,G0889,gemeente
+Bergen (L),G0893,gemeente
+Brunssum,G0899,gemeente
+Gennep,G0907,gemeente
+Heerlen,G0917,gemeente
+Kerkrade,G0928,gemeente
+Maastricht,G0935,gemeente
+Meerssen,G0938,gemeente
+Mook en Middelaar,G0944,gemeente
+Nederweert,G0946,gemeente
+Nuth,G0951,gemeente
+Roermond,G0957,gemeente
+Schinnen,G0962,gemeente
+Simpelveld,G0965,gemeente
+Stein,G0971,gemeente
+Vaals,G0981,gemeente
+Venlo,G0983,gemeente
+Venray,G0984,gemeente
+Voerendaal,G0986,gemeente
+Weert,G0988,gemeente
+Valkenburg aan de Geul,G0994,gemeente
+Lelystad,G0995,gemeente
+Horst aan de Maas,G1507,gemeente
+Oude IJsselstreek,G1509,gemeente
+Teylingen,G1525,gemeente
+Utrechtse Heuvelrug,G1581,gemeente
+Oost Gelre,G1586,gemeente
+Koggenland,G1598,gemeente
+Lansingerland,G1621,gemeente
+Leudal,G1640,gemeente
+Maasgouw,G1641,gemeente
+Eemsmond,G1651,gemeente
+Gemert-Bakel,G1652,gemeente
+Halderberge,G1655,gemeente
+Heeze-Leende,G1658,gemeente
+Laarbeek,G1659,gemeente
+De Marne,G1663,gemeente
+Reusel-De Mierden,G1667,gemeente
+Roerdalen,G1669,gemeente
+Maasdonk,G1671,gemeente
+Rijnwoude,G1672,gemeente
+Roosendaal,G1674,gemeente
+Schouwen-Duiveland,G1676,gemeente
+Aa en Hunze,G1680,gemeente
+Borger-Odoorn,G1681,gemeente
+Cuijk,G1684,gemeente
+Landerd,G1685,gemeente
+De Wolden,G1690,gemeente
+Noord-Beveland,G1695,gemeente
+Wijdemeren,G1696,gemeente
+Noordenveld,G1699,gemeente
+Twenterand,G1700,gemeente
+Westerveld,G1701,gemeente
+Sint Anthonis,G1702,gemeente
+Lingewaard,G1705,gemeente
+Cranendonck,G1706,gemeente
+Steenwijkerland,G1708,gemeente
+Moerdijk,G1709,gemeente
+Echt-Susteren,G1711,gemeente
+Sluis,G1714,gemeente
+Drimmelen,G1719,gemeente
+Bernheze,G1721,gemeente
+Ferwerderadiel,G1722,gemeente
+Alphen-Chaam,G1723,gemeente
+Bergeijk,G1724,gemeente
+Bladel,G1728,gemeente
+Gulpen-Wittem,G1729,gemeente
+Tynaarlo,G1730,gemeente
+Midden-Drenthe,G1731,gemeente
+Overbetuwe,G1734,gemeente
+Hof van Twente,G1735,gemeente
+Neder-Betuwe,G1740,gemeente
+Rijssen-Holten,G1742,gemeente
+Geldrop-Mierlo,G1771,gemeente
+Olst-Wijhe,G1773,gemeente
+Dinkelland,G1774,gemeente
+Westland,G1783,gemeente
+Midden-Delfland,G1842,gemeente
+Berkelland,G1859,gemeente
+Bronckhorst,G1876,gemeente
+Sittard-Geleen,G1883,gemeente
+Kaag en Braassem,G1884,gemeente
+Dantumadiel,G1891,gemeente
+Zuidplas,G1892,gemeente
+Peel en Maas,G1894,gemeente
+Oldambt,G1895,gemeente
+Zwartewaterland,G1896,gemeente
+Súdwest-Fryslân,G1900,gemeente
+Bodegraven-Reeuwijk,G1901,gemeente
+Eijsden-Margraten,G1903,gemeente
+Stichtse Vecht,G1904,gemeente
+Menameradiel,G1908,gemeente
+Hollands Kroon,G1911,gemeente
+Leidschendam-Voorburg,G1916,gemeente
+De Friese Meren,G1921,gemeente
+Pijnacker-Nootdorp,G1926,gemeente
+Montferland,G1955,gemeente
+Menterwolde,G1987,gemeente
+Nissewaard,G1930,gemeente
+Krimpenerwaard,G1931,gemeente
+De Fryske Marren,G1940,gemeente
+Gooise Meren,G1942,gemeente
+Berg en Dal,G1945,gemeente
+Meierijstad,G1948,gemeente
+Waadhoeke ,G1949,gemeente
+Westerwolde,G1950,gemeente
+Midden-Groningen ,G1952,gemeente
+Beekdaelen,G1954,gemeente
+Altena,G1959,gemeente
+West Betuwe,G1960,gemeente
+Vijfheerenlanden,G1961,gemeente
+Hoeksche Waard,G1963,gemeente
+Het Hogeland,G1966,gemeente
+Westerkwartier,G1969,gemeente
+Noardeast-Fryslân,G1970,gemeente
+Molenlanden,G1978,gemeente
+Eemsdelta,G1979,gemeente
+Dijk en Waard,G1980,gemeente
+Land van Cuijk,G1982,gemeente
+Maashorst,G1991,gemeente
+Voorne aan Zee,G1992,gemeente
+Groningen,P0020,provincie
+Fryslân,P0021,provincie
+Drenthe,P0022,provincie
+Overijssel,P0023,provincie
+Flevoland,P0024,provincie
+Gelderland,P0025,provincie
+Utrecht,P0026,provincie
+Noord-Holland,P0027,provincie
+Zuid-Holland,P0028,provincie
+Zeeland,P0029,provincie
+Noord-Brabant,P0030,provincie
+Limburg,P0031,provincie
+Waterschap Groot Salland,W0151,waterschap
+Waterschap Rijn en IJssel,W0152,waterschap
+Waterschap Veluwe,W0153,waterschap
+Waterschap Vallei & Eem,W0154,waterschap
+"Waterschap Amstel, Gooi en Vecht",W0155,waterschap
+Waterschap Regge en Dinkel,W0201,waterschap
+Hoogheemraadschap van Delfland,W0372,waterschap
+Waterschap Zeeuwse Eilanden,W0524,waterschap
+Waterschap Zeeuws-Vlaanderen,W0524,waterschap
+Waterschap De Dommel,W0539,waterschap
+Waterschap Roer en Overmaas,W0585,waterschap
+Waterschap Rivierenland,W0621,waterschap
+Hoogheemraadschap van Rijnland,W0616,waterschap
+Hoogheemraadschap De Stichtse Rijnlanden,W0636,waterschap
+Waterschap Peel en Maasvallei,W0638,waterschap
+Waterschap Hunze en Aa's,W0646,waterschap
+Waterschap Noorderzijlvest,W0647,waterschap
+Waterschap Reest en Wieden,W0648,waterschap
+Waterschap Velt en Vecht,W0649,waterschap
+Waterschap Zuiderzeeland,W0650,waterschap
+Hoogheemraadschap Hollands Noorderkwartier,W0651,waterschap
+Waterschap Brabantse Delta,W0652,waterschap
+Wetterskip Fryslân,W0653,waterschap
+Waterschap Aa en Maas,W0654,waterschap
+Waterschap Hollandse Delta,W0655,waterschap
+Hoogheemraadschap van Schieland en de Krimpenerwaard,W0656,waterschap
+Waterschapsbedrijf Limburg,W0659,waterschap
+Waterschap Scheldestromen,W0661,waterschap
+Waterschap Vallei en Veluwe,W0662,waterschap
+Waterschap Vechtstromen,W0663,waterschap
+Waterschap Drents Overijsselse Delta,W0664,waterschap
+Waterschap Limburg,W0665,waterschap
+"Ministerie van Landbouw, Natuur en Voedselkwaliteit (LNV)",L0001,landelijke_organisatie
+Ministerie van Infrastructuur en Waterstaat (IenW),L0002,landelijke_organisatie
+Ministerie van Defensie,L0003,landelijke_organisatie
+Prorail,L0004,landelijke_organisatie
+Samenwerkingsverband voor Bronhouders,S0001,landelijke_organisatie
+Kadaster,K0001,landelijke_organisatie
