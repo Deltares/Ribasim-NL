@@ -1,0 +1,11 @@
+# pixi environments
+.pixi
+
+# visual studio code
+.vscode/settings.json
+
+.ipynb_checkpoints
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class

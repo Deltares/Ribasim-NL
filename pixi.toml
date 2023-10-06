@@ -1,0 +1,51 @@
+[project]
+name = "Ribasim-NL"
+version = "0.1.0"
+description = "Ribasim water resources modeling in the Netherlands"
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64"]
+readme = "README.md"
+license = "MIT"
+license-file = "LICENSE"
+
+[tasks]
+# Installation
+install-ribasim-python = "pip install --no-deps ribasim==0.4.0"
+install-hydamo = "pip install --no-deps --editable src/hydamo"
+install-quartodoc = "pip install quartodoc"
+install-pre-commit = "pre-commit install"
+install-without-pre-commit = { depends_on = [
+    "install-ribasim-python",
+    "install-hydamo",
+    "install-quartodoc",
+] }
+install = { depends_on = [
+    "install-without-pre-commit",
+    "install-pre-commit",
+] }
+# Lint
+mypy-hydamo = "mypy --ignore-missing-imports src/hydamo"
+pre-commit = "pre-commit run --all-files"
+lint = { depends_on = [
+    "pre-commit",
+    "mypy-hydamo",
+] }
+
+[dependencies]
+python = ">=3.9"
+geopandas = "0.14.0.*"
+fiona = "1.9.4.*"
+black = "23.9.1.*"
+pytest = "7.4.2.*"
+ruff = "0.0.292.*"
+pandas = "<2.1"
+tomli = "2.0.1.*"
+shapely = ">=2"
+pydantic = "~=1.0"
+pandera = "!=0.16.0"
+pyarrow = "13.0.0.*"
+pyogrio = "0.6.0.*"
+tomli-w = "1.0.0.*"
+matplotlib = "3.8.0.*"
+pip = "23.2.1.*"
+pre-commit = "3.4.0.*"
