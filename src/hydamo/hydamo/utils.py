@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 
@@ -7,7 +8,9 @@ BGT_DF = None
 BGT_ORGANIZATIONS = ["gemeente", "waterschap", "landelijke_organisatie"]
 
 
-def find_bgt_code(organisatie: str, type_organisatie: str = None) -> dict:
+def find_bgt_code(
+    organisatie: str, type_organisatie: Optional[str] = None
+) -> dict[str, str]:
     """
     Find a dictionary with bgt-code(s) based on a (part of) an organisation
     name.

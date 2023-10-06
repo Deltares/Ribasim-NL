@@ -5,7 +5,7 @@ import logging
 import re
 import warnings
 from pathlib import Path
-from typing import Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 import fiona
 import geopandas as gpd
@@ -40,10 +40,15 @@ DTYPE_MAPPING = {
     "number": "float",
 }
 
-default_properties = {"id": None, "dtype": "str", "required": False, "unique": False}
+default_properties: Dict[str, Any] = {
+    "id": None,
+    "dtype": "str",
+    "required": False,
+    "unique": False,
+}
 
 
-def map_definition(definition: Dict) -> List:
+def map_definition(definition: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
 
 
@@ -65,7 +70,7 @@ def map_definition(definition: Dict) -> List:
     for k, v in definition.items():
         # convert geometry if shape
         if k == "shape":
-            properties = {"id": "geometry"}
+            properties: Dict[str, Any] = {"id": "geometry"}
             dtype = v["type"]
             if not isinstance(dtype, list):
                 dtype = [dtype]
@@ -98,8 +103,10 @@ def map_definition(definition: Dict) -> List:
     return result
 
 
-class ExtendedGeoDataFrame(gpd.GeoDataFrame):
+class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
     """A GeoPandas GeoDataFrame with extended properties and methods."""
+
+    # ignores subclassing Any: https://github.com/geopandas/geopandas/discussions/2750
 
     _metadata = [
         "required_columns",
@@ -109,10 +116,21 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
 
     def __init__(
         self,
-        validation_schema: Dict,
-        geotype: Literal[list(GEOTYPE_MAPPING.keys())],
+        validation_schema: List[Dict[str, Any]],
+        geotype: Optional[
+            List[
+                Literal[
+                    "LineString",
+                    "MultiLineString",
+                    "Point",
+                    "PointZ",
+                    "Polygon",
+                    "MultiPolygon",
+                ]
+            ]
+        ],
         layer_name: str = "",
-        required_columns: List = [],
+        required_columns: List[str] = [],
         logger=logging,
         *args,
         **kwargs,
@@ -283,7 +301,7 @@ class HyDAMO:
         self,
         version: str = "2.2",
         schemas_path: Path = SCHEMAS_DIR,
-        ignored_layers: List = [
+        ignored_layers: List[str] = [
             "afvoeraanvoergebied",
             "imwa_geoobject",
             "leggerwatersysteem",
@@ -293,7 +311,7 @@ class HyDAMO:
     ):
         self.version = version
         self.schema_json = schemas_path.joinpath(f"HyDAMO_{version}.json")
-        self.layers = []
+        self.layers: List[str] = []
         self.ignored_layers = ignored_layers
 
         self.init_datamodel()
@@ -302,9 +320,9 @@ class HyDAMO:
     def data_layers(self):
         return [layer for layer in self.layers if not getattr(self, layer).empty]
 
-    def init_datamodel(self):
+    def init_datamodel(self) -> None:
         """Initialize DataModel from self.schemas_path."""
-        self.validation_schemas: dict = {}
+        self.validation_schemas: Dict[str, Any] = {}
 
         # read schema as dict
         with open(self.schema_json) as src:
