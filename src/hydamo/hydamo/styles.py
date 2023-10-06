@@ -1,8 +1,9 @@
-from pathlib import Path
-import sqlite3
-import fiona
-from datetime import datetime
 import re
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+
+import fiona
 
 STYLES_DIR = Path(__file__).parent.joinpath("data", "styles")
 
@@ -56,6 +57,7 @@ VALUES (
 );
 """
 
+
 def read_style(style_path: Path) -> str:
     """
     To make style-text sql-compatible, we need to replace single ' to ''.
@@ -78,7 +80,7 @@ def read_style(style_path: Path) -> str:
     style_txt = re.sub(pattern, lambda m: f"''{m.group(1)}''", style_txt)
 
     return style_txt
-    
+
 
 def add_styles_to_geopackage(gpkg_path: Path):
     """
@@ -96,15 +98,14 @@ def add_styles_to_geopackage(gpkg_path: Path):
     """
 
     with sqlite3.connect(gpkg_path) as conn:
-
         # create table
         conn.execute(DROP_TABLE_SQL)
         conn.execute(CREATE_TABLE_SQL)
 
         # add style per layer
         for layer in fiona.listlayers(gpkg_path):
-            style_qml = (STYLES_DIR / f"{layer}.qml")
-            style_sld = (STYLES_DIR / f"{layer}.sld")
+            style_qml = STYLES_DIR / f"{layer}.qml"
+            style_sld = STYLES_DIR / f"{layer}.sld"
 
             # check if style exists
             if style_qml.exists() and style_sld.exists():
@@ -112,10 +113,12 @@ def add_styles_to_geopackage(gpkg_path: Path):
                 update_date_time = f"{datetime.now().isoformat()}Z"
 
                 # push to GeoPackage
-                conn.execute(INSERT_ROW_SQL.format(
-                    layer=layer,
-                    style_qml=read_style(style_qml),
-                    style_sld= read_style(style_sld),
-                    description=description,
-                    update_date_time=update_date_time
-                    ))
+                conn.execute(
+                    INSERT_ROW_SQL.format(
+                        layer=layer,
+                        style_qml=read_style(style_qml),
+                        style_sld=read_style(style_sld),
+                        description=description,
+                        update_date_time=update_date_time,
+                    )
+                )

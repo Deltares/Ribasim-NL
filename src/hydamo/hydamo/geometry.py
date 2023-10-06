@@ -1,15 +1,16 @@
 from itertools import product
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from shapely import affinity
 from shapely.geometry import (
-    MultiLineString,
     LineString,
-    MultiPolygon,
-    Polygon,
+    MultiLineString,
     MultiPoint,
+    MultiPolygon,
     Point,
+    Polygon,
 )
 
 
@@ -70,12 +71,12 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
         # Determine intersection geometries per branch
         geobounds = geometries.bounds.values.T
         for branch in branches.itertuples():
-            selectie = geometries.loc[
+            selection = geometries.loc[
                 possibly_intersecting(geobounds, branch.geometry)
             ].copy()
-            intersecting = selectie.loc[selectie.intersects(branch.geometry).values]
+            intersecting = selection.loc[selection.intersects(branch.geometry).values]
 
-            # For each geometrie, determine offset along branch
+            # For each geometry, determine offset along branch
             for geometry in intersecting.itertuples():
                 # Determine distance of profile line along branch
                 geometries.at[geometry.Index, "branch_id"] = branch.Index
@@ -100,22 +101,29 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
             nearidx = possibly_intersecting(
                 branch_bounds, geometry.geometry, buffer=maxdist
             )
-            selectie = branches.loc[nearidx]
+            selection = branches.loc[nearidx]
 
             if method == "overall":
                 # Determine distances to branches
-                dist = selectie.distance(geometry.geometry)
+                dist = selection.distance(geometry.geometry)
             elif method == "centroid":
                 # Determine distances to branches
-                dist = selectie.distance(geometry.geometry.centroid)
+                dist = selection.distance(geometry.geometry.centroid)
             elif method == "ends":
                 # Since a culvert can cross a channel, it is
                 crds = geometry.geometry.coords[:]
-                dist = selectie["geometry"].apply(lambda x: max(x.distance(Point(*crds[0])),
-                                                                x.distance(Point(*crds[-1])))).astype(float)
+                dist = (
+                    selection["geometry"]
+                    .apply(
+                        lambda x: max(
+                            x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))
+                        )
+                    )
+                    .astype(float)
+                )
                 # dist = (
-                #     selectie.distance(Point(*crds[0]))
-                #     + selectie.distance(Point(*crds[-1]))
+                #     selection.distance(Point(*crds[0]))
+                #     + selection.distance(Point(*crds[-1]))
                 # ) * 0.5
 
             # Determine nearest

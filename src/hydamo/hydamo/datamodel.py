@@ -1,15 +1,17 @@
 """HyDAMO datamodel for ValidatieTool."""
 
-import geopandas as gpd
-import fiona
-from typing import List, Dict, Literal
-import re
 import json
-from shapely.geometry import LineString, MultiLineString, Point, Polygon, MultiPolygon
-import numpy as np
-from pathlib import Path
-import warnings
 import logging
+import re
+import warnings
+from pathlib import Path
+from typing import Dict, List, Literal
+
+import fiona
+import geopandas as gpd
+import numpy as np
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
+
 from hydamo import geometry
 from hydamo.styles import add_styles_to_geopackage
 
@@ -48,7 +50,7 @@ def map_definition(definition: Dict) -> List:
     Parameters
     ----------
     definition : Dict
-        HyDAMO defintion as specified in the HyDAMO JSON specification.
+        HyDAMO definition as specified in the HyDAMO JSON specification.
 
     Returns
     -------
@@ -99,7 +101,11 @@ def map_definition(definition: Dict) -> List:
 class ExtendedGeoDataFrame(gpd.GeoDataFrame):
     """A GeoPandas GeoDataFrame with extended properties and methods."""
 
-    _metadata = ["required_columns", "geotype", "layer_name"] + gpd.GeoDataFrame._metadata
+    _metadata = [
+        "required_columns",
+        "geotype",
+        "layer_name",
+    ] + gpd.GeoDataFrame._metadata
 
     def __init__(
         self,
@@ -111,7 +117,6 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         *args,
         **kwargs,
     ):
-
         # Check type
         required_columns = [i.lower() for i in required_columns]
 
@@ -178,7 +183,15 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         )
         return dict(properties=properties, geometry=geometry)
 
-    def set_data(self, gdf, layer="", index_col=None, check_columns=True, check_geotype=True, extra_attributes={}):
+    def set_data(
+        self,
+        gdf,
+        layer="",
+        index_col=None,
+        check_columns=True,
+        check_geotype=True,
+        extra_attributes={},
+    ):
         """
 
 
@@ -230,9 +243,9 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         # Check geometry types
         if check_geotype:
             self._check_geotype()
-        
+
         # Set extra attribute-values
-        for k,v in extra_attributes.items():
+        for k, v in extra_attributes.items():
             if k not in self.columns:
                 self[k] = v
 
@@ -351,11 +364,16 @@ class HyDAMO:
             DESCRIPTION.
 
         """
-        return getattr(self,layer).set_index("globalid").loc[global_id]
+        return getattr(self, layer).set_index("globalid").loc[global_id]
 
     def set_data(
-        self, gdf, layer, index_col=None, check_columns=True, check_geotype=True,
-        extra_values={}
+        self,
+        gdf,
+        layer,
+        index_col=None,
+        check_columns=True,
+        check_geotype=True,
+        extra_values={},
     ):
         """
 
@@ -385,7 +403,7 @@ class HyDAMO:
             index_col=index_col,
             check_columns=check_columns,
             check_geotype=check_geotype,
-            extra_values={}
+            extra_values={},
         )
 
     def to_geopackage(self, file_path, use_schema=True):
@@ -436,7 +454,7 @@ class HyDAMO:
                     gdf.to_file(file_path, layer=layer, driver="GPKG")
 
         add_styles_to_geopackage(file_path)
-                    
+
     @classmethod
     def from_geopackage(cls, file_path, check_columns=True, check_geotype=True):
         """
@@ -465,6 +483,6 @@ class HyDAMO:
                 hydamo_layer.set_data(
                     gpd.read_file(file_path, layer=layer),
                     check_columns=check_columns,
-                    check_geotype=check_geotype
-                    )
+                    check_geotype=check_geotype,
+                )
         return hydamo

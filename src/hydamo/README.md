@@ -4,7 +4,7 @@ Module to work with the Dutch Hydrological Data Model (HyDAMO). The original cla
 ## Install a copy
 - Get a local clone of this repository.
 - Build an environment as in [environment](./environment.yml).
-- Mak sure your environment is activated
+- Make sure your environment is activated
 - Go to the root of your repository (where you find setup.py) and install the package in edit-mode by:
 
 ```

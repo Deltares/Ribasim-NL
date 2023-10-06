@@ -28,6 +28,10 @@ repos:
     hooks:
       - id: nbstripout
   - repo: https://github.com/crate-ci/typos
-    rev: v1.16.15
+    rev: v1.16.17
     hooks:
       - id: typos
+        # use pass_filenames as a workaround such that
+        # the excluded files in .typos.toml are respected
+        # https://github.com/crate-ci/typos/issues/347
+        pass_filenames: false
