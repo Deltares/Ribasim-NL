@@ -433,7 +433,7 @@ class HyDAMO:
         None.
 
         """
-
+        file_path = Path(file_path)
         for layer in self.layers:
             gdf = getattr(self, layer).copy()
             if not gdf.empty:
@@ -464,8 +464,8 @@ class HyDAMO:
                     if gdf.index.name in gdf.columns:
                         gdf = gdf.reset_index(drop=True).copy()
                     gdf.to_file(file_path, layer=layer, driver="GPKG")
-
-        add_styles_to_geopackage(file_path)
+        if file_path.is_file():
+            add_styles_to_geopackage(file_path)
 
     @classmethod
     def from_geopackage(cls, file_path, check_columns=True, check_geotype=True):
