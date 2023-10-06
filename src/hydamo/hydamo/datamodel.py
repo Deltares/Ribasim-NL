@@ -136,13 +136,11 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         if "geometry" in self.columns:
             self.set_geometry("geometry", inplace=True)
             self.crs = MODEL_CRS
-            if not "geometry" in self.required_columns:
+            if "geometry" not in self.required_columns:
                 self.required_columns += ["geometry"]
 
     def _check_columns(self, gdf):
-        """
-        Check presence of columns in GeoDataFrame
-        """
+        """Check presence of columns in GeoDataFrame"""
         present_columns = gdf.columns.tolist()
         for column in self.required_columns:
             if column not in present_columns:
@@ -155,9 +153,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
                 )
 
     def _check_geotype(self):
-        """
-        Check geometry type
-        """
+        """Check geometry type"""
         if self.geotype:
             if not all(
                 any(isinstance(geo, GEOTYPE_MAPPING[i]) for i in self.geotype)
@@ -181,7 +177,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
             (i["dtype"] for i in self.validation_schema if i["id"] == "geometry"),
             None,
         )
-        return dict(properties=properties, geometry=geometry)
+        return {properties: properties, geometry: geometry}
 
     def set_data(
         self,
@@ -230,7 +226,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
 
         # Copy content
         for col, values in gdf.items():
-            self[col] = values.values
+            self[col] = values.to_numpy()
 
         if index_col is None:
             self.index = gdf.index
@@ -250,9 +246,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
                 self[k] = v
 
     def delete_all(self):
-        """
-        Empty the dataframe
-        """
+        """Empty the dataframe"""
         if not self.empty:
             self.iloc[:, 0] = np.nan
             self.dropna(inplace=True)
@@ -318,7 +312,7 @@ class HyDAMO:
             hydamo_layers = [
                 Path(i["$ref"]).name for i in schema["properties"]["HyDAMO"]["anyOf"]
             ]
-            self.layers = [i for i in hydamo_layers if not i in self.ignored_layers]
+            self.layers = [i for i in hydamo_layers if i not in self.ignored_layers]
 
         for hydamo_layer in self.layers:
             definition = schema["definitions"][hydamo_layer]["properties"]
@@ -458,7 +452,7 @@ class HyDAMO:
     @classmethod
     def from_geopackage(cls, file_path, check_columns=True, check_geotype=True):
         """
-        Initializes HyDAMO class from GeoPackage
+        Initialize HyDAMO class from GeoPackage
 
         Parameters
         ----------

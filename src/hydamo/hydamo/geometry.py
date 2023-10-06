@@ -1,24 +1,14 @@
-from itertools import product
-
-import geopandas as gpd
 import numpy as np
-import pandas as pd
-from shapely import affinity
-from shapely.geometry import (
-    LineString,
-    MultiLineString,
-    MultiPoint,
-    MultiPolygon,
-    Point,
-    Polygon,
-)
+from shapely.geometry import Point
 
 
 def possibly_intersecting(dataframebounds, geometry, buffer=0):
     """
+    Efficiently determine possibly intersecting geometries using a bounding box.
+
     Finding intersecting profiles for each branch is a slow process in case of large datasets
     To speed this up, we first determine which profile intersect a square box around the branch
-    With the selection, the interseting profiles can be determines much faster.
+    With the selection, the intersecting profiles can be determines much faster.
 
     Parameters
     ----------
@@ -39,7 +29,8 @@ def possibly_intersecting(dataframebounds, geometry, buffer=0):
 
 def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
     """
-    Method to determine nearest branch for each geometry.
+    Determine nearest branch for each geometry.
+
     The nearest branch can be found by finding t from both ends (ends) or the nearest branch from the geometry
     as a whole (overall), the centroid (centroid), or intersecting (intersect).
 
@@ -69,17 +60,19 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
 
     if method == "intersecting":
         # Determine intersection geometries per branch
-        geobounds = geometries.bounds.values.T
+        geobounds = geometries.bounds.to_numpy().T
         for branch in branches.itertuples():
             selection = geometries.loc[
                 possibly_intersecting(geobounds, branch.geometry)
             ].copy()
-            intersecting = selection.loc[selection.intersects(branch.geometry).values]
+            intersecting = selection.loc[
+                selection.intersects(branch.geometry).to_numpy()
+            ]
 
             # For each geometry, determine offset along branch
             for geometry in intersecting.itertuples():
                 # Determine distance of profile line along branch
-                geometries.at[geometry.Index, "branch_id"] = branch.Index
+                geometries.loc[geometry.Index, "branch_id"] = branch.Index
 
                 # Calculate offset
                 branchgeo = branch.geometry
@@ -91,10 +84,10 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
                     3,
                 )
                 offset = max(mindist, min(branchgeo.length - mindist, offset))
-                geometries.at[geometry.Index, "branch_offset"] = offset
+                geometries.loc[geometry.Index, "branch_offset"] = offset
 
     else:
-        branch_bounds = branches.bounds.values.T
+        branch_bounds = branches.bounds.to_numpy().T
         # In case of looking for the nearest, it is easier to iteratie over the geometries instead of the branches
         for geometry in geometries.itertuples():
             # Find near branches
@@ -129,17 +122,17 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
             # Determine nearest
             if dist.min() < maxdist:
                 branchidxmin = dist.idxmin()
-                geometries.at[geometry.Index, "branch_id"] = dist.idxmin()
+                geometries.loc[geometry.Index, "branch_id"] = dist.idxmin()
                 if isinstance(geometry.geometry, Point):
                     geo = geometry.geometry
                 else:
                     geo = geometry.geometry.centroid
 
                 # Calculate offset
-                branchgeo = branches.at[branchidxmin, "geometry"]
+                branchgeo = branches.loc[branchidxmin, "geometry"]
                 mindist = min(0.1, branchgeo.length / 2.0)
                 offset = max(
                     mindist,
                     min(branchgeo.length - mindist, round(branchgeo.project(geo), 3)),
                 )
-                geometries.at[geometry.Index, "branch_offset"] = offset
+                geometries.loc[geometry.Index, "branch_offset"] = offset
