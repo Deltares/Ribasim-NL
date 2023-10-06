@@ -2799,6 +2799,76 @@ package:
   license_family: BSD
   size: 185671
   timestamp: 1695554665873
+- name: coverage
+  version: 7.3.2
+  manager: conda
+  platform: linux-64
+  dependencies:
+    libgcc-ng: '>=12'
+    python: '>=3.11,<3.12.0a0'
+    python_abi: 3.11.* *_cp311
+    tomli: '*'
+  url: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.3.2-py311h459d7ec_0.conda
+  hash:
+    md5: 7b3145fed7adc7c63a0e08f6f29f5480
+    sha256: 8b56edd4336e7fc6ff9b73436a3a270cf835f57cf4d0565c6e240c40f1981085
+  optional: false
+  category: main
+  build: py311h459d7ec_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 355132
+  timestamp: 1696281925482
+- name: coverage
+  version: 7.3.2
+  manager: conda
+  platform: osx-64
+  dependencies:
+    python: '>=3.11,<3.12.0a0'
+    python_abi: 3.11.* *_cp311
+    tomli: '*'
+  url: https://conda.anaconda.org/conda-forge/osx-64/coverage-7.3.2-py311h2725bcf_0.conda
+  hash:
+    md5: 0ce651c68a0322a6eacef726025b938a
+    sha256: ada34f95907fe0cd98d4d12e439bd1508363738f8b0fbe88d14cb398f4235af6
+  optional: false
+  category: main
+  build: py311h2725bcf_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 352862
+  timestamp: 1696282084699
+- name: coverage
+  version: 7.3.2
+  manager: conda
+  platform: win-64
+  dependencies:
+    python: '>=3.11,<3.12.0a0'
+    python_abi: 3.11.* *_cp311
+    tomli: '*'
+    ucrt: '>=10.0.20348.0'
+    vc: '>=14.2,<15'
+    vc14_runtime: '>=14.29.30139'
+  url: https://conda.anaconda.org/conda-forge/win-64/coverage-7.3.2-py311ha68e1ae_0.conda
+  hash:
+    md5: 6d0d75c92bdf393a2dd818b7fe6615a0
+    sha256: 1025c5a4da262a05563b7067101dd2fa9ef36b6f9c31e6c1df05db800375e18d
+  optional: false
+  category: main
+  build: py311ha68e1ae_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 372107
+  timestamp: 1696282186892
 - name: cycler
   version: 0.12.0
   manager: conda
@@ -3142,6 +3212,69 @@ package:
   noarch: python
   size: 19262
   timestamp: 1692026296517
+- name: execnet
+  version: 2.0.2
+  manager: conda
+  platform: linux-64
+  dependencies:
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/execnet-2.0.2-pyhd8ed1ab_0.conda
+  hash:
+    md5: 67de0d8241e1060a479e3c37793e26f9
+    sha256: 88ea68a360198af39368beecf057af6b31f0ae38071b2bdb2aa961b6ae5427c0
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36534
+  timestamp: 1688933537234
+- name: execnet
+  version: 2.0.2
+  manager: conda
+  platform: osx-64
+  dependencies:
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/execnet-2.0.2-pyhd8ed1ab_0.conda
+  hash:
+    md5: 67de0d8241e1060a479e3c37793e26f9
+    sha256: 88ea68a360198af39368beecf057af6b31f0ae38071b2bdb2aa961b6ae5427c0
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36534
+  timestamp: 1688933537234
+- name: execnet
+  version: 2.0.2
+  manager: conda
+  platform: win-64
+  dependencies:
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/execnet-2.0.2-pyhd8ed1ab_0.conda
+  hash:
+    md5: 67de0d8241e1060a479e3c37793e26f9
+    sha256: 88ea68a360198af39368beecf057af6b31f0ae38071b2bdb2aa961b6ae5427c0
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36534
+  timestamp: 1688933537234
 - name: executing
   version: 1.2.0
   manager: conda
@@ -11413,6 +11546,82 @@ package:
   noarch: python
   size: 12452
   timestamp: 1600387789153
+- name: mypy
+  version: 1.5.1
+  manager: conda
+  platform: linux-64
+  dependencies:
+    libgcc-ng: '>=12'
+    mypy_extensions: '>=1.0.0'
+    psutil: '>=4.0'
+    python: '>=3.11,<3.12.0a0'
+    python_abi: 3.11.* *_cp311
+    typing_extensions: '>=4.1.0'
+  url: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.5.1-py311h459d7ec_1.conda
+  hash:
+    md5: f905742ceba3a2ffb62f27970267e297
+    sha256: 9f6100c14da70c612eeebd89b7a35f99b5ccb94a117e9a44f5e05739045e25b0
+  optional: false
+  category: main
+  build: py311h459d7ec_1
+  arch: x86_64
+  subdir: linux-64
+  build_number: 1
+  license: MIT
+  license_family: MIT
+  size: 15442785
+  timestamp: 1695442282679
+- name: mypy
+  version: 1.5.1
+  manager: conda
+  platform: osx-64
+  dependencies:
+    mypy_extensions: '>=1.0.0'
+    psutil: '>=4.0'
+    python: '>=3.11,<3.12.0a0'
+    python_abi: 3.11.* *_cp311
+    typing_extensions: '>=4.1.0'
+  url: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.5.1-py311h2725bcf_1.conda
+  hash:
+    md5: f3391c1c3bd85f92b5130f70f32e86cc
+    sha256: b446e7b668a60352940e854a156dabeecef6d693ee0db05490104aab38b27d04
+  optional: false
+  category: main
+  build: py311h2725bcf_1
+  arch: x86_64
+  subdir: osx-64
+  build_number: 1
+  license: MIT
+  license_family: MIT
+  size: 9950575
+  timestamp: 1695442441211
+- name: mypy
+  version: 1.5.1
+  manager: conda
+  platform: win-64
+  dependencies:
+    mypy_extensions: '>=1.0.0'
+    psutil: '>=4.0'
+    python: '>=3.11,<3.12.0a0'
+    python_abi: 3.11.* *_cp311
+    typing_extensions: '>=4.1.0'
+    ucrt: '>=10.0.20348.0'
+    vc: '>=14.2,<15'
+    vc14_runtime: '>=14.29.30139'
+  url: https://conda.anaconda.org/conda-forge/win-64/mypy-1.5.1-py311ha68e1ae_1.conda
+  hash:
+    md5: b64c48d1d0d06fbd8161c9482705e59b
+    sha256: 7b73111972e210a76be0162653e598594d6770750325339b6a0b668ce303a436
+  optional: false
+  category: main
+  build: py311ha68e1ae_1
+  arch: x86_64
+  subdir: win-64
+  build_number: 1
+  license: MIT
+  license_family: MIT
+  size: 7977322
+  timestamp: 1695442297831
 - name: mypy_extensions
   version: 1.0.0
   manager: conda
@@ -14693,6 +14902,153 @@ package:
   noarch: python
   size: 244691
   timestamp: 1694128618921
+- name: pytest-cov
+  version: 4.1.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    coverage: '>=5.2.1'
+    pytest: '>=4.6'
+    python: '>=3.7'
+    toml: '*'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-cov-4.1.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: 06eb685a3a0b146347a58dda979485da
+    sha256: f07d3b44cabbed7843de654c4a6990a08475ce3b708bb735c7da9842614586f2
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 25436
+  timestamp: 1684965001294
+- name: pytest-cov
+  version: 4.1.0
+  manager: conda
+  platform: osx-64
+  dependencies:
+    coverage: '>=5.2.1'
+    pytest: '>=4.6'
+    python: '>=3.7'
+    toml: '*'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-cov-4.1.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: 06eb685a3a0b146347a58dda979485da
+    sha256: f07d3b44cabbed7843de654c4a6990a08475ce3b708bb735c7da9842614586f2
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 25436
+  timestamp: 1684965001294
+- name: pytest-cov
+  version: 4.1.0
+  manager: conda
+  platform: win-64
+  dependencies:
+    coverage: '>=5.2.1'
+    pytest: '>=4.6'
+    python: '>=3.7'
+    toml: '*'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-cov-4.1.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: 06eb685a3a0b146347a58dda979485da
+    sha256: f07d3b44cabbed7843de654c4a6990a08475ce3b708bb735c7da9842614586f2
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 25436
+  timestamp: 1684965001294
+- name: pytest-xdist
+  version: 3.3.1
+  manager: conda
+  platform: linux-64
+  dependencies:
+    execnet: '>=1.1'
+    pytest: '>=6.2.0'
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-xdist-3.3.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 816073bb54ef59f33f0f26c14f88311b
+    sha256: 5df2d0f1e42041476cbdf12b808890d668e7f0272b51f0f3fa7aab84732150b6
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  constrains:
+  - psutil >=3.0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36169
+  timestamp: 1684499962909
+- name: pytest-xdist
+  version: 3.3.1
+  manager: conda
+  platform: osx-64
+  dependencies:
+    execnet: '>=1.1'
+    pytest: '>=6.2.0'
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-xdist-3.3.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 816073bb54ef59f33f0f26c14f88311b
+    sha256: 5df2d0f1e42041476cbdf12b808890d668e7f0272b51f0f3fa7aab84732150b6
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  constrains:
+  - psutil >=3.0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36169
+  timestamp: 1684499962909
+- name: pytest-xdist
+  version: 3.3.1
+  manager: conda
+  platform: win-64
+  dependencies:
+    execnet: '>=1.1'
+    pytest: '>=6.2.0'
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/pytest-xdist-3.3.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 816073bb54ef59f33f0f26c14f88311b
+    sha256: 5df2d0f1e42041476cbdf12b808890d668e7f0272b51f0f3fa7aab84732150b6
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  constrains:
+  - psutil >=3.0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 36169
+  timestamp: 1684499962909
 - name: python
   version: 3.11.6
   manager: conda
@@ -16550,6 +16906,27 @@ package:
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 18433
+  timestamp: 1604308660817
+- name: toml
+  version: 0.10.2
+  manager: conda
+  platform: osx-64
+  dependencies:
+    python: '>=2.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/toml-0.10.2-pyhd8ed1ab_0.tar.bz2
+  hash:
+    md5: f832c45a477c78bebd107098db465095
+    sha256: f0f3d697349d6580e4c2f35ba9ce05c65dc34f9f049e85e45da03800b46139c1
+  optional: false
+  category: main
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
   build_number: 0
   license: MIT
   license_family: MIT

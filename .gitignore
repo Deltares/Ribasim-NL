@@ -9,6 +9,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
+htmlcov/
+coverage.xml
+.coverage
+.coverage.*
 .pytest_cache/
 
 # mypy
