@@ -56,7 +56,7 @@
 	},
 	"definitions":
 	{
-		"admingrenswaterschap" : 
+		"admingrenswaterschap" :
 		{
 			"type": "object",
 			"properties":
@@ -165,7 +165,7 @@
 				}
 			}
 		},
-		"afsluitmiddel" : 
+		"afsluitmiddel" :
 		{
 			"type": "object",
 			"properties":
@@ -407,14 +407,14 @@
 				}
 			}
 		},
-		"afvoeraanvoergebied" : 
+		"afvoeraanvoergebied" :
 		{
 			"type": "object",
 			"properties":
 			{
 			}
 		},
-		"afvoergebiedaanvoergebied" : 
+		"afvoergebiedaanvoergebied" :
 		{
 			"type": "object",
 			"properties":
@@ -586,7 +586,7 @@
 				}
 			}
 		},
-		"aquaduct" : 
+		"aquaduct" :
 		{
 			"type": "object",
 			"properties":
@@ -768,7 +768,7 @@
 				}
 			}
 		},
-		"beheergrenswaterschap" : 
+		"beheergrenswaterschap" :
 		{
 			"type": "object",
 			"properties":
@@ -877,7 +877,7 @@
 				}
 			}
 		},
-		"bijzonderhydraulischobject" : 
+		"bijzonderhydraulischobject" :
 		{
 			"type": "object",
 			"properties":
@@ -996,7 +996,7 @@
 				}
 			}
 		},
-		"bodemval" : 
+		"bodemval" :
 		{
 			"type": "object",
 			"properties":
@@ -1141,7 +1141,7 @@
 				}
 			}
 		},
-		"brug" : 
+		"brug" :
 		{
 			"type": "object",
 			"properties":
@@ -1348,7 +1348,7 @@
 				}
 			}
 		},
-		"doorstroomopening" : 
+		"doorstroomopening" :
 		{
 			"type": "object",
 			"properties":
@@ -1425,7 +1425,7 @@
 				}
 			}
 		},
-		"duikersifonhevel" : 
+		"duikersifonhevel" :
 		{
 			"type": "object",
 			"properties":
@@ -1736,7 +1736,7 @@
 				}
 			}
 		},
-		"gemaal" : 
+		"gemaal" :
 		{
 			"type": "object",
 			"properties":
@@ -1986,7 +1986,7 @@
 				}
 			}
 		},
-		"grondwaterinfolijn" : 
+		"grondwaterinfolijn" :
 		{
 			"type": "object",
 			"properties":
@@ -2098,7 +2098,7 @@
 				}
 			}
 		},
-		"grondwaterinfopunt" : 
+		"grondwaterinfopunt" :
 		{
 			"type": "object",
 			"properties":
@@ -2176,7 +2176,7 @@
 				}
 			}
 		},
-		"grondwaterkoppellijn" : 
+		"grondwaterkoppellijn" :
 		{
 			"type": "object",
 			"properties":
@@ -2288,7 +2288,7 @@
 				}
 			}
 		},
-		"grondwaterkoppelpunt" : 
+		"grondwaterkoppelpunt" :
 		{
 			"type": "object",
 			"properties":
@@ -2400,7 +2400,7 @@
 				}
 			}
 		},
-		"hydrologischerandvoorwaarde" : 
+		"hydrologischerandvoorwaarde" :
 		{
 			"type": "object",
 			"properties":
@@ -2525,7 +2525,7 @@
 				}
 			}
 		},
-		"hydroobject" : 
+		"hydroobject" :
 		{
 			"type": "object",
 			"properties":
@@ -2771,7 +2771,7 @@
 				}
 			}
 		},
-		"hydroobject_normgp" : 
+		"hydroobject_normgp" :
 		{
 			"type": "object",
 			"properties":
@@ -2796,14 +2796,14 @@
 				}
 			}
 		},
-		"imwa_geoobject" : 
+		"imwa_geoobject" :
 		{
 			"type": "object",
 			"properties":
 			{
 			}
 		},
-		"kunstwerkopening" : 
+		"kunstwerkopening" :
 		{
 			"type": "object",
 			"properties":
@@ -2930,7 +2930,7 @@
 				}
 			}
 		},
-		"lateraleknoop" : 
+		"lateraleknoop" :
 		{
 			"type": "object",
 			"properties":
@@ -3042,21 +3042,21 @@
 				}
 			}
 		},
-		"leggerwatersysteem" : 
+		"leggerwatersysteem" :
 		{
 			"type": "object",
 			"properties":
 			{
 			}
 		},
-		"leggerwaterveiligheid" : 
+		"leggerwaterveiligheid" :
 		{
 			"type": "object",
 			"properties":
 			{
 			}
 		},
-		"meetlocatie" : 
+		"meetlocatie" :
 		{
 			"type": "object",
 			"properties":
@@ -3188,7 +3188,7 @@
 				}
 			}
 		},
-		"meetwaardeactiewaarde" : 
+		"meetwaardeactiewaarde" :
 		{
 			"type": "object",
 			"properties":
@@ -3284,7 +3284,7 @@
 				}
 			}
 		},
-		"normgeparamprofiel" : 
+		"normgeparamprofiel" :
 		{
 			"type": "object",
 			"properties":
@@ -3358,7 +3358,7 @@
 				}
 			}
 		},
-		"normgeparamprofielwaarde" : 
+		"normgeparamprofielwaarde" :
 		{
 			"type": "object",
 			"properties":
@@ -3452,7 +3452,7 @@
 				}
 			}
 		},
-		"peilafwijkinggebied" : 
+		"peilafwijkinggebied" :
 		{
 			"type": "object",
 			"properties":
@@ -3582,7 +3582,7 @@
 				}
 			}
 		},
-		"peilbesluitgebied" : 
+		"peilbesluitgebied" :
 		{
 			"type": "object",
 			"properties":
@@ -3693,7 +3693,7 @@
 				}
 			}
 		},
-		"peilgebiedpraktijk" : 
+		"peilgebiedpraktijk" :
 		{
 			"type": "object",
 			"properties":
@@ -3823,7 +3823,7 @@
 				}
 			}
 		},
-		"peilgebiedvigerend" : 
+		"peilgebiedvigerend" :
 		{
 			"type": "object",
 			"properties":
@@ -3948,7 +3948,7 @@
 				}
 			}
 		},
-		"pomp" : 
+		"pomp" :
 		{
 			"type": "object",
 			"properties":
@@ -4072,7 +4072,7 @@
 				}
 			}
 		},
-		"profielgroep" : 
+		"profielgroep" :
 		{
 			"type": "object",
 			"properties":
@@ -4195,7 +4195,7 @@
 				}
 			}
 		},
-		"profiellijn" : 
+		"profiellijn" :
 		{
 			"type": "object",
 			"properties":
@@ -4309,7 +4309,7 @@
 				}
 			}
 		},
-		"profielpunt" : 
+		"profielpunt" :
 		{
 			"type": "object",
 			"properties":
@@ -4417,7 +4417,7 @@
 				}
 			}
 		},
-		"regelmiddel" : 
+		"regelmiddel" :
 		{
 			"type": "object",
 			"properties":
@@ -4626,7 +4626,7 @@
 				}
 			}
 		},
-		"reglementgrenswaterschap" : 
+		"reglementgrenswaterschap" :
 		{
 			"type": "object",
 			"properties":
@@ -4747,7 +4747,7 @@
 				}
 			}
 		},
-		"ruwheidprofiel" : 
+		"ruwheidprofiel" :
 		{
 			"type": "object",
 			"properties":
@@ -4822,7 +4822,7 @@
 				}
 			}
 		},
-		"streefpeil" : 
+		"streefpeil" :
 		{
 			"type": "object",
 			"properties":
@@ -4929,7 +4929,7 @@
 				}
 			}
 		},
-		"sturing" : 
+		"sturing" :
 		{
 			"type": "object",
 			"properties":
@@ -5098,7 +5098,7 @@
 				}
 			}
 		},
-		"stuw" : 
+		"stuw" :
 		{
 			"type": "object",
 			"properties":
@@ -5386,7 +5386,7 @@
 				}
 			}
 		},
-		"vispassage" : 
+		"vispassage" :
 		{
 			"type": "object",
 			"properties":
@@ -5596,7 +5596,7 @@
 				}
 			}
 		},
-		"vispassagevlak" : 
+		"vispassagevlak" :
 		{
 			"type": "object",
 			"properties":
@@ -5659,7 +5659,7 @@
 				}
 			}
 		},
-		"vuilvang" : 
+		"vuilvang" :
 		{
 			"type": "object",
 			"properties":
@@ -5806,14 +5806,14 @@
 				}
 			}
 		},
-		"waterbeheergebied" : 
+		"waterbeheergebied" :
 		{
 			"type": "object",
 			"properties":
 			{
 			}
 		},
-		"zandvang" : 
+		"zandvang" :
 		{
 			"type": "object",
 			"properties":

@@ -1,15 +1,17 @@
 """HyDAMO datamodel for ValidatieTool."""
 
-import geopandas as gpd
-import fiona
-from typing import List, Dict, Literal
-import re
 import json
-from shapely.geometry import LineString, MultiLineString, Point, Polygon, MultiPolygon
-import numpy as np
-from pathlib import Path
-import warnings
 import logging
+import re
+import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional
+
+import fiona
+import geopandas as gpd
+import numpy as np
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
+
 from hydamo import geometry
 from hydamo.styles import add_styles_to_geopackage
 
@@ -38,17 +40,22 @@ DTYPE_MAPPING = {
     "number": "float",
 }
 
-default_properties = {"id": None, "dtype": "str", "required": False, "unique": False}
+default_properties: Dict[str, Any] = {
+    "id": None,
+    "dtype": "str",
+    "required": False,
+    "unique": False,
+}
 
 
-def map_definition(definition: Dict) -> List:
+def map_definition(definition: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
 
 
     Parameters
     ----------
     definition : Dict
-        HyDAMO defintion as specified in the HyDAMO JSON specification.
+        HyDAMO definition as specified in the HyDAMO JSON specification.
 
     Returns
     -------
@@ -63,7 +70,7 @@ def map_definition(definition: Dict) -> List:
     for k, v in definition.items():
         # convert geometry if shape
         if k == "shape":
-            properties = {"id": "geometry"}
+            properties: Dict[str, Any] = {"id": "geometry"}
             dtype = v["type"]
             if not isinstance(dtype, list):
                 dtype = [dtype]
@@ -96,22 +103,38 @@ def map_definition(definition: Dict) -> List:
     return result
 
 
-class ExtendedGeoDataFrame(gpd.GeoDataFrame):
+class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
     """A GeoPandas GeoDataFrame with extended properties and methods."""
 
-    _metadata = ["required_columns", "geotype", "layer_name"] + gpd.GeoDataFrame._metadata
+    # ignores subclassing Any: https://github.com/geopandas/geopandas/discussions/2750
+
+    _metadata = [
+        "required_columns",
+        "geotype",
+        "layer_name",
+    ] + gpd.GeoDataFrame._metadata
 
     def __init__(
         self,
-        validation_schema: Dict,
-        geotype: Literal[list(GEOTYPE_MAPPING.keys())],
+        validation_schema: List[Dict[str, Any]],
+        geotype: Optional[
+            List[
+                Literal[
+                    "LineString",
+                    "MultiLineString",
+                    "Point",
+                    "PointZ",
+                    "Polygon",
+                    "MultiPolygon",
+                ]
+            ]
+        ],
         layer_name: str = "",
-        required_columns: List = [],
+        required_columns: List[str] = [],
         logger=logging,
         *args,
         **kwargs,
     ):
-
         # Check type
         required_columns = [i.lower() for i in required_columns]
 
@@ -131,13 +154,11 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         if "geometry" in self.columns:
             self.set_geometry("geometry", inplace=True)
             self.crs = MODEL_CRS
-            if not "geometry" in self.required_columns:
+            if "geometry" not in self.required_columns:
                 self.required_columns += ["geometry"]
 
     def _check_columns(self, gdf):
-        """
-        Check presence of columns in GeoDataFrame
-        """
+        """Check presence of columns in GeoDataFrame"""
         present_columns = gdf.columns.tolist()
         for column in self.required_columns:
             if column not in present_columns:
@@ -150,9 +171,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
                 )
 
     def _check_geotype(self):
-        """
-        Check geometry type
-        """
+        """Check geometry type"""
         if self.geotype:
             if not all(
                 any(isinstance(geo, GEOTYPE_MAPPING[i]) for i in self.geotype)
@@ -176,9 +195,17 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
             (i["dtype"] for i in self.validation_schema if i["id"] == "geometry"),
             None,
         )
-        return dict(properties=properties, geometry=geometry)
+        return {properties: properties, geometry: geometry}
 
-    def set_data(self, gdf, layer="", index_col=None, check_columns=True, check_geotype=True, extra_attributes={}):
+    def set_data(
+        self,
+        gdf,
+        layer="",
+        index_col=None,
+        check_columns=True,
+        check_geotype=True,
+        extra_attributes={},
+    ):
         """
 
 
@@ -217,7 +244,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
 
         # Copy content
         for col, values in gdf.items():
-            self[col] = values.values
+            self[col] = values.to_numpy()
 
         if index_col is None:
             self.index = gdf.index
@@ -230,16 +257,14 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         # Check geometry types
         if check_geotype:
             self._check_geotype()
-        
+
         # Set extra attribute-values
-        for k,v in extra_attributes.items():
+        for k, v in extra_attributes.items():
             if k not in self.columns:
                 self[k] = v
 
     def delete_all(self):
-        """
-        Empty the dataframe
-        """
+        """Empty the dataframe"""
         if not self.empty:
             self.iloc[:, 0] = np.nan
             self.dropna(inplace=True)
@@ -276,7 +301,7 @@ class HyDAMO:
         self,
         version: str = "2.2",
         schemas_path: Path = SCHEMAS_DIR,
-        ignored_layers: List = [
+        ignored_layers: List[str] = [
             "afvoeraanvoergebied",
             "imwa_geoobject",
             "leggerwatersysteem",
@@ -286,7 +311,7 @@ class HyDAMO:
     ):
         self.version = version
         self.schema_json = schemas_path.joinpath(f"HyDAMO_{version}.json")
-        self.layers = []
+        self.layers: List[str] = []
         self.ignored_layers = ignored_layers
 
         self.init_datamodel()
@@ -295,9 +320,9 @@ class HyDAMO:
     def data_layers(self):
         return [layer for layer in self.layers if not getattr(self, layer).empty]
 
-    def init_datamodel(self):
+    def init_datamodel(self) -> None:
         """Initialize DataModel from self.schemas_path."""
-        self.validation_schemas: dict = {}
+        self.validation_schemas: Dict[str, Any] = {}
 
         # read schema as dict
         with open(self.schema_json) as src:
@@ -305,7 +330,7 @@ class HyDAMO:
             hydamo_layers = [
                 Path(i["$ref"]).name for i in schema["properties"]["HyDAMO"]["anyOf"]
             ]
-            self.layers = [i for i in hydamo_layers if not i in self.ignored_layers]
+            self.layers = [i for i in hydamo_layers if i not in self.ignored_layers]
 
         for hydamo_layer in self.layers:
             definition = schema["definitions"][hydamo_layer]["properties"]
@@ -351,11 +376,16 @@ class HyDAMO:
             DESCRIPTION.
 
         """
-        return getattr(self,layer).set_index("globalid").loc[global_id]
+        return getattr(self, layer).set_index("globalid").loc[global_id]
 
     def set_data(
-        self, gdf, layer, index_col=None, check_columns=True, check_geotype=True,
-        extra_values={}
+        self,
+        gdf,
+        layer,
+        index_col=None,
+        check_columns=True,
+        check_geotype=True,
+        extra_values={},
     ):
         """
 
@@ -385,7 +415,7 @@ class HyDAMO:
             index_col=index_col,
             check_columns=check_columns,
             check_geotype=check_geotype,
-            extra_values={}
+            extra_values={},
         )
 
     def to_geopackage(self, file_path, use_schema=True):
@@ -403,7 +433,7 @@ class HyDAMO:
         None.
 
         """
-
+        file_path = Path(file_path)
         for layer in self.layers:
             gdf = getattr(self, layer).copy()
             if not gdf.empty:
@@ -434,13 +464,13 @@ class HyDAMO:
                     if gdf.index.name in gdf.columns:
                         gdf = gdf.reset_index(drop=True).copy()
                     gdf.to_file(file_path, layer=layer, driver="GPKG")
+        if file_path.is_file():
+            add_styles_to_geopackage(file_path)
 
-        add_styles_to_geopackage(file_path)
-                    
     @classmethod
     def from_geopackage(cls, file_path, check_columns=True, check_geotype=True):
         """
-        Initializes HyDAMO class from GeoPackage
+        Initialize HyDAMO class from GeoPackage
 
         Parameters
         ----------
@@ -465,6 +495,6 @@ class HyDAMO:
                 hydamo_layer.set_data(
                     gpd.read_file(file_path, layer=layer),
                     check_columns=check_columns,
-                    check_geotype=check_geotype
-                    )
+                    check_geotype=check_geotype,
+                )
         return hydamo

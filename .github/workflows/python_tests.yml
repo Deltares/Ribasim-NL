@@ -1,0 +1,39 @@
+name: Python Tests
+on:
+  push:
+    branches: [main]
+    paths-ignore: [".teamcity/**"]
+    tags: ["*"]
+  pull_request:
+  merge_group:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    name: Python ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+        arch:
+          - x86
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.2.1
+        with:
+          pixi-version: "latest"
+          cache: true
+      - name: Prepare pixi
+        run: pixi run install-without-pre-commit
+
+      - name: Run tests
+        run: pixi run test-hydamo
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
