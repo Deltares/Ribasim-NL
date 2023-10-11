@@ -27,7 +27,7 @@ def find_bgt_code(
     Returns
     -------
     dict
-        dictionary with bgt-code of organization in the form {bgt_code: naam}.
+        dictionary with bgt-code of organization in the form {"bgt_code": name}.
 
     """
     global BGT_DF

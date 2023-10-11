@@ -195,7 +195,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
             (i["dtype"] for i in self.validation_schema if i["id"] == "geometry"),
             None,
         )
-        return {properties: properties, geometry: geometry}
+        return {"properties": properties, "geometry": geometry}
 
     def set_data(
         self,
