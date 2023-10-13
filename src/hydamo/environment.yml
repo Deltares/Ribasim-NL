@@ -7,3 +7,4 @@ dependencies:
   - GDAL=3.6.2
   - geopandas=0.12.2
   - pytest
+  - spyder
