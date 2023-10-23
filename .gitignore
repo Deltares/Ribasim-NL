@@ -19,3 +19,6 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# pytest --basetemp
+src/hydamo/tests/temp/

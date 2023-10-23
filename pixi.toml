@@ -31,7 +31,7 @@ lint = { depends_on = [
     "mypy-hydamo",
 ] }
 # Test
-test-hydamo = "pytest --numprocesses=auto src/hydamo/tests"
+test-hydamo = "pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/hydamo/tests"
 test-hydamo-cov = "pytest --numprocesses=auto --cov=hydamo --cov-report=xml src/hydamo/tests"
 tests = { depends_on = [
     "lint",
@@ -61,3 +61,5 @@ pip = "23.2.1.*"
 pre-commit = "3.4.0.*"
 ipykernel = "6.25.2.*"
 mypy = "1.5.1.*"
+requests = "2.31.0.*"
+types-requests = "2.31.0.10.*"
