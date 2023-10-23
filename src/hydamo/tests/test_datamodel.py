@@ -6,7 +6,7 @@ import requests
 import shapely
 
 # basic auth for https://deltares.thegood.cloud/
-RIBASIM_NL_CLOUD_USER = "visser_mn"
+RIBASIM_NL_CLOUD_USER = "nhi_api"
 RIBASIM_NL_CLOUD_PASS = os.getenv("RIBASIM_NL_CLOUD_PASS")
 assert RIBASIM_NL_CLOUD_PASS is not None
 WEBDAV_URL = "https://deltares.thegood.cloud/remote.php/dav"
