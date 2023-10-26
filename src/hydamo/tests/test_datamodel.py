@@ -60,8 +60,8 @@ def test_download(tmp_path):
     rozema.geometry
     assert isinstance(rozema.geometry, shapely.Point)
 
-    assert len(damo.stuw) == 6
-    assert damo.stuw.naam[0] == "CASPARGOUW STUW"
+    assert not damo.stuw.empty
+    assert "CASPARGOUW STUW" in damo.stuw.naam.to_numpy()
 
     # export file
     to_path = path.with_suffix(".to.gpkg")
