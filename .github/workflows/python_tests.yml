@@ -34,6 +34,8 @@ jobs:
 
       - name: Run tests
         run: pixi run test-hydamo
+        env:
+          RIBASIM_NL_CLOUD_PASS: ${{ secrets.RIBASIM_NL_CLOUD_PASS }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
