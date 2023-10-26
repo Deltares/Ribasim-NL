@@ -1,4 +1,4 @@
-﻿naam,bgt_code,wbh_code,type_organisatie
+﻿name,bgt_code,wbh_code,administration_category
 Appingedam,G0003,,gemeente
 Bedum,G0005,,gemeente
 Bellingwedde,G0007,,gemeente
@@ -452,25 +452,15 @@ Zuid-Holland,P0028,69,provincie
 Zeeland,P0029,70,provincie
 Noord-Brabant,P0030,71,provincie
 Limburg,P0031,72,provincie
-Waterschap Groot Salland,W0151,,waterschap
 Waterschap Rijn en IJssel,W0152,7,waterschap
-Waterschap Veluwe,W0153,,waterschap
-Waterschap Vallei & Eem,W0154,,waterschap
 "Waterschap Amstel, Gooi en Vecht",W0155,31,waterschap
-Waterschap Regge en Dinkel,W0201,,waterschap
 Hoogheemraadschap van Delfland,W0372,15,waterschap
-Waterschap Zeeuwse Eilanden,W0524,,waterschap
-Waterschap Zeeuws-Vlaanderen,W0524,,waterschap
 Waterschap De Dommel,W0539,27,waterschap
-Waterschap Roer en Overmaas,W0585,,waterschap
 Waterschap Rivierenland,W0621,9,waterschap
 Hoogheemraadschap van Rijnland,W0616,13,waterschap
 Hoogheemraadschap De Stichtse Rijnlanden,W0636,14,waterschap
-Waterschap Peel en Maasvallei,W0638,,waterschap
 Waterschap Hunze en Aa's,W0646,33,waterschap
 Waterschap Noorderzijlvest,W0647,34,waterschap
-Waterschap Reest en Wieden,W0648,,waterschap
-Waterschap Velt en Vecht,W0649,,waterschap
 Waterschap Zuiderzeeland,W0650,37,waterschap
 Hoogheemraadschap Hollands Noorderkwartier,W0651,12,waterschap
 Waterschap Brabantse Delta,W0652,25,waterschap
@@ -478,7 +468,6 @@ Wetterskip Fryslân,W0653,2,waterschap
 Waterschap Aa en Maas,W0654,38,waterschap
 Waterschap Hollandse Delta,W0655,40,waterschap
 Hoogheemraadschap van Schieland en de Krimpenerwaard,W0656,39,waterschap
-Waterschapsbedrijf Limburg,W0659,,waterschap
 Waterschap Scheldestromen,W0661,42,waterschap
 Waterschap Vallei en Veluwe,W0662,8,waterschap
 Waterschap Vechtstromen,W0663,44,waterschap
