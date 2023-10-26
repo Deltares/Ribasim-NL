@@ -60,7 +60,7 @@ def test_download(tmp_path):
     rozema.geometry
     assert isinstance(rozema.geometry, shapely.Point)
 
-    assert len(damo.stuw) == 1
+    assert len(damo.stuw) == 6
     assert damo.stuw.naam[0] == "CASPARGOUW STUW"
 
     # export file
