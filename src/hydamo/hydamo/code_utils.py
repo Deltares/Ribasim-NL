@@ -8,8 +8,9 @@ from pandas import DataFrame
 CODES_CSV = Path(__file__).parent.joinpath("data", "codes.csv")
 CODES_DF = None
 
-WBH_CODE_TEMPLATE = "NL.WBHCODE.{wbh_code}.{code}"
-BGT_CODE_TEMPLATE = "NL.BGTCODE.{bgt_code}.{code}"
+WBH_CODE_TEMPLATE = "NL.WBHCODE.{wbh_code}.{layer}.{code}"
+BGT_CODE_TEMPLATE = "NL.BGTCODE.{bgt_code}.{layer}.{code}"
+NEN3610_ID_TEMPLATE = "NL.BGTCODE.{bgt_code}.{layer}.{nen3610_id}"
 
 
 def get_codes_df():
@@ -92,7 +93,7 @@ def find_codes(
             return df.to_dict()
 
 
-def generate_model_id(code, wbh_code=None, bgt_code=None, geometry=None):
+def generate_model_id(code, layer, wbh_code=None, bgt_code=None, geometry=None):
     """Generate a model_id from wbh_code or bgt_code and code or x/y coordinate"""
     if code is None:
         if geometry is not None:
@@ -103,6 +104,9 @@ def generate_model_id(code, wbh_code=None, bgt_code=None, geometry=None):
                              Specify 'code' ({code}), you have to specify 'geometry' ({geometry}).
                 """
             )
+
+    if layer is None:
+        raise ValueError(f" Specify 'layer' ({layer}) to generate a model_id")
 
     result = None
     if wbh_code:
