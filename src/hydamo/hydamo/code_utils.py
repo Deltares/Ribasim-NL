@@ -1,6 +1,6 @@
 """Utilities for generating unique codes."""
-# %%
 from pathlib import Path
+from typing import Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -54,7 +54,9 @@ def bgt_to_wbh_code(bgt_code):
 
 
 def find_codes(
-    organization: str, administration_category: str = None, to_dict: bool = True
+    organization: str,
+    administration_category: Union[str, None] = None,
+    to_dict: bool = True,
 ):
     """Find codes associated with an organization"""
     codes_df = get_codes_df()
