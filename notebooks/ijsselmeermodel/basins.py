@@ -1,27 +1,14 @@
 # %%
 import copy
+import os
 from pathlib import Path
 
 import geopandas as gpd
 from geometry_utils import cut_basin
 from shapely.ops import polylabel
 
-DATA_DIR = Path(r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens")
-MODEL_DIR = Path(r"d:\projecten\D2306.LHM_RIBASIM\04.models") / "ijsselmeer"
-
-krw_ids = [
-    "NL92_IJSSELMEER",
-    "NL92_MARKERMEER",
-    "NL92_RANDMEREN_ZUID",
-    "NL92_RANDMEREN_OOST",
-    "NL92_KETELMEER_VOSSEMEER",
-    "NL92_ZWARTEMEER",
-]
-rws_krw_gpkg = DATA_DIR / r"KRW/krw-oppervlaktewaterlichamen-nederland-vlakken.gpkg"
-rws_krw_gdf = gpd.read_file(rws_krw_gpkg).set_index("owmident")
-
-basin_areas = []
-basins = []
+DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
+MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"
 
 
 def add_basin(**kwargs):
@@ -37,6 +24,21 @@ def add_basin(**kwargs):
     kwargs["geometry"] = point
     basins += [kwargs]
 
+
+# %% Toevoegen RWSKRW-lichamen
+krw_ids = [
+    "NL92_IJSSELMEER",
+    "NL92_MARKERMEER",
+    "NL92_RANDMEREN_ZUID",
+    "NL92_RANDMEREN_OOST",
+    "NL92_KETELMEER_VOSSEMEER",
+    "NL92_ZWARTEMEER",
+]
+rws_krw_gpkg = DATA_DIR / r"KRW/krw-oppervlaktewaterlichamen-nederland-vlakken.gpkg"
+rws_krw_gdf = gpd.read_file(rws_krw_gpkg).set_index("owmident")
+
+basin_areas = []
+basins = []
 
 # rws_krw_gdf.loc[krw_ids].explore()
 
@@ -69,8 +71,10 @@ for row in rws_krw_gdf.loc[krw_ids].itertuples():
         add_basin(krw_id=krw_id, geometry=basin_polygon)
 
 
-gpd.GeoDataFrame(basins, crs=28992).to_file("basins.gpkg", layer="basins")
-gpd.GeoDataFrame(basin_areas, crs=28992).to_file("basins.gpkg", layer="basin_areas")
+gpd.GeoDataFrame(basins, crs=28992).to_file(MODEL_DIR / "basins.gpkg", layer="basins")
+gpd.GeoDataFrame(basin_areas, crs=28992).to_file(
+    MODEL_DIR / "basins.gpkg", layer="basin_areas"
+)
 
 
-# %%
+# %% Toevoegen Peilgebieden Zuiderzeeland
