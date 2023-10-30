@@ -1,27 +1,16 @@
 # %%
-import copy
 import os
 from pathlib import Path
 
 import geopandas as gpd
 from geometry_utils import cut_basin
-from shapely.ops import polylabel
 
 DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
 MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"
 
 
 def add_basin(**kwargs):
-    global basin_areas
     global basins
-
-    basin_areas += [copy.copy(kwargs)]
-
-    polygon = kwargs["geometry"]
-    point = polygon.centroid
-    if not point.within(polygon):
-        point = polylabel(polygon)
-    kwargs["geometry"] = point
     basins += [kwargs]
 
 
@@ -37,7 +26,6 @@ krw_ids = [
 rws_krw_gpkg = DATA_DIR / r"KRW/krw-oppervlaktewaterlichamen-nederland-vlakken.gpkg"
 rws_krw_gdf = gpd.read_file(rws_krw_gpkg).set_index("owmident")
 
-basin_areas = []
 basins = []
 
 # rws_krw_gdf.loc[krw_ids].explore()
@@ -71,10 +59,46 @@ for row in rws_krw_gdf.loc[krw_ids].itertuples():
         add_basin(krw_id=krw_id, geometry=basin_polygon)
 
 
-gpd.GeoDataFrame(basins, crs=28992).to_file(MODEL_DIR / "basins.gpkg", layer="basins")
-gpd.GeoDataFrame(basin_areas, crs=28992).to_file(
-    MODEL_DIR / "basins.gpkg", layer="basin_areas"
+# %% N.G. Toevoegen Peilgebieden Zuiderzeeland
+
+gdf = gpd.read_file(DATA_DIR / r"Zuiderzeeland/Oplevering LHM/peilgebieden.gpkg")
+
+# Define your selection criteria
+criteria = (
+    (gdf["GPGIDENT"] == "LVA.01")
+    | (gdf["GPGIDENT"] == "3.01")
+    | (gdf["GPGIDENT"] == "LAGE AFDELING")
+    | (gdf["GPGIDENT"] == "HOGE AFDELING")
 )
 
+# Select the polygons based on the criteria
+sel_peilgebieden_gdf = gdf[criteria]
+# Explode the MultiPolygons into individual Polygons
+# exploded_gdf = sel_peilgebieden_gdf.explode()
 
-# %% Toevoegen Peilgebieden Zuiderzeeland
+
+# Process the selected polygons and add centroids and attributes
+for index, row in sel_peilgebieden_gdf.iterrows():
+    add_basin(**row)
+
+# Also, save the selected polygons to the new GeoPackage
+# "sel_peilgebieden_gdf.to_file(output_geopackage, driver="GPKG")
+
+basins_gdf = gpd.GeoDataFrame(basins, crs=28992)
+basins_gdf.to_file(MODEL_DIR / "basins.gpkg", layer="basins_areas")
+
+# %%  D.T. Aanmaken Ribasim-basins
+
+# %% Toevoegen kunstwerken Ijsselmeer en Zuiderzeeland
+"""
+N.G. opzoeken data
+D.T. toevoegen Ribasim-objecten
+"""
+
+# %% Toevoegen netwerk
+"""
+N.G. netwerk tekenen in QGIS
+D.T. Toevoegen Ribasim-objecten
+"""
+
+# %% Toevoegen randvoorwaarden (D.T.)
