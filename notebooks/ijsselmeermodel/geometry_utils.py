@@ -1,5 +1,5 @@
 """Some misc geometry editing utilities you usually find in QGIS"""
-from typing import get_type_hints
+from typing import Union, get_type_hints
 
 from shapely.geometry import LineString, MultiPolygon, Polygon
 from shapely.ops import polygonize
@@ -15,6 +15,23 @@ def _validate_inputs(function, **kwargs):
                 raise TypeError(
                     f"'{k}' must be of type '{hints[k].__name__}', not {type(v).__name__}"
                 )
+
+
+def sort_basins(basin_polygons: Union[MultiPolygon, list]) -> Union[MultiPolygon, list]:
+    is_multipolygon = isinstance(basin_polygons, MultiPolygon)
+
+    # sorting function
+    def basin_sorter(polygon):
+        return polygon.area
+
+    # make list from basin_polygons
+    if is_multipolygon:
+        basin_polygons = list(basin_polygons.geoms)
+
+    if is_multipolygon:
+        return sorted(basin_polygons, key=basin_sorter)
+    else:
+        return MultiPolygon(sorted(basin_polygons, key=basin_sorter))
 
 
 def cut_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
@@ -34,10 +51,6 @@ def cut_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
     MultiPolygon
         Multipolygon with two polygons
     """
-
-    # sorting function
-    def sorting_key(polygon):
-        return polygon.area
 
     _validate_inputs(cut_basin, polygon=basin_polygon, line=line)
 
@@ -60,4 +73,4 @@ def cut_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
         )
 
     # return sorted basins; smallest go first
-    return MultiPolygon(sorted(keep_polys, key=sorting_key))
+    return MultiPolygon(sort_basins(keep_polys))
