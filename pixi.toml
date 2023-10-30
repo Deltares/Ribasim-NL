@@ -12,13 +12,13 @@ license-file = "LICENSE"
 # Installation
 install-ribasim-python = "pip install --no-deps ribasim==0.4.0"
 install-hydamo = "pip install --no-deps --editable src/hydamo"
-install-hyutils = "pip install --no-deps --editable src/hyutils"
+install-ribasim_nl = "pip install --no-deps --editable src/ribasim_nl"
 install-quartodoc = "pip install quartodoc"
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-ribasim-python",
     "install-hydamo",
-	"install-hyutils",
+	"install-ribasim_nl",
     "install-quartodoc",
 ] }
 install = { depends_on = [

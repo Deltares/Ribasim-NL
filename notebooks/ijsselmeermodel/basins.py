@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 
 import geopandas as gpd
-from hyutils.geometry import cut_basin, drop_z
-from hyutils.geoseries import basins_to_points
+from ribasim_nl.utils.geometry import cut_basin, drop_z
+from ribasim_nl.utils.geoseries import basins_to_points
 
 DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
 MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"

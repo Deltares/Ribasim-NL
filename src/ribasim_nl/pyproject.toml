@@ -3,11 +3,12 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hyutils"
+name = "ribasim_nl"
 description = "functions to work with python classes you typically find in hydro-datasets"
 readme = "README.md"
 authors = [
     { name = "Daniel Tollenaar", email = "daniel@d2hydro.nl" },
+	{ name = "Martijn Visser", email = "martijn.visser@deltares.nl" }
 ]
 license = { text = "MIT" }
 
@@ -24,12 +25,12 @@ tests = ["pytest"]
 zip-safe = true
 
 [tool.setuptools.dynamic]
-version = { attr = "hyutils.__version__" }
+version = { attr = "ribasim_nl.__version__" }
 
 [tool.setuptools.packages.find]
-include = ["hyutils"]
+include = ["ribasim_nl"]
 
 
 [project.urls]
-Documentation = "https://deltares.github.io/Ribasim-NL/HyUtils"
+Documentation = "https://deltares.github.io/Ribasim-NL"
 Source = "https://github.com/Deltares/Ribasim-nl"
