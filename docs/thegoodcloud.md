@@ -30,7 +30,7 @@ except AssertionError:
 An example-file, `my_file.ext` to upload. Please be aware to use a file_name without spaces (`" "`)
 ```
 path = Path("my_file.ext")
-url = f"{BASE_URL}/HyDAMO_geconstrueerd/{to_path.name}"
+url = f"{BASE_URL}/test_files/{path.name}"
 ```
 
 ## Uploading a file
