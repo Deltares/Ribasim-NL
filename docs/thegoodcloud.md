@@ -9,7 +9,8 @@ import requests
 ```
 
 ## global variables
-We define a few global variables, `RIBASIM_NL_CLOUD_PASS` is to be supplied as an os environmnt variable. You need to get one from Deltares first.
+We define a few global variables, `RIBASIM_NL_CLOUD_PASS` is to be supplied as an OOS environment variable.
+You need to get one from Deltares first.
 
 ```
 #
