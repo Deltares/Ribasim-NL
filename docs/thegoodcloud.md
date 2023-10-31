@@ -3,7 +3,7 @@
 ## Modules
 Just `os`, `pathlib`, `requests` are required to get started
 ```
-Import os
+import os
 from pathlib import Path
 import requests
 ```
