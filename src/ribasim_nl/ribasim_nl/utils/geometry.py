@@ -127,7 +127,7 @@ def drop_z(
     if isinstance(geometry, MultiPolygon):
         geometry = MultiPolygon([drop_z(poly) for poly in geometry.geoms])
 
-    if geometry.has_z:
+    elif geometry.has_z:
         # LineString
         if isinstance(geometry, LineString):
             geometry = LineString([(x, y) for x, y, _ in geometry.coords])
