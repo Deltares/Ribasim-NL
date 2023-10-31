@@ -13,7 +13,6 @@ We define a few global variables, `RIBASIM_NL_CLOUD_PASS` is to be supplied as a
 You need to get one from Deltares first.
 
 ```
-#
 RIBASIM_NL_CLOUD_PASS = os.getenv("RIBASIM_NL_CLOUD_PASS")
 RIBASIM_NL_CLOUD_USER = "nhi_api"
 WEBDAV_URL = "https://deltares.thegood.cloud/remote.php/dav"
