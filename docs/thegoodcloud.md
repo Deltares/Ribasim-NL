@@ -1,6 +1,6 @@
 # Connecting The Good Cloud
 
-## modules
+## Modules
 Just `os`, `pathlib`, `requests` are required to get started
 ```
 Import os
