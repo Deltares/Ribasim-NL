@@ -26,7 +26,7 @@ except AssertionError:
     )
 ```
 
-## local-path and remote url
+## Local path and remote URL
 An example-file, `my_file.ext` to upload. Please be aware to use a file_name without spaces (`" "`)
 ```
 path = Path("my_file.ext")
