@@ -22,7 +22,7 @@ try:
     assert RIBASIM_NL_CLOUD_PASS is not None
 except AssertionError:
     raise ValueError(
-        f"Put RIBASIM_NL_CLOUD_PASS in your os environment first."
+        "Put RIBASIM_NL_CLOUD_PASS in your OS environment variables first."
     )
 ```
 
