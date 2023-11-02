@@ -4,6 +4,7 @@ from typing import Union
 
 import pandas as pd
 from pandas import DataFrame
+from shapely.geometry import Point
 
 CODES_CSV = Path(__file__).parent.joinpath("data", "codes.csv")
 CODES_DF = None
@@ -47,18 +48,22 @@ def wbh_code_exists(wbh_code) -> bool:
 
 def bgt_to_wbh_code(bgt_code) -> Union[str, None]:
     """Convert bgt_code to wbh_code if bgt_code exists"""
+    wbh_code = None
     if bgt_code_exists(bgt_code):
         codes_df = get_codes_df()
-        return (
+        wbh_code = (
             codes_df.reset_index(drop=True).set_index("bgt_code").loc[bgt_code].wbh_code
         )
+
+    return wbh_code
 
 
 def find_codes(
     organization: str,
     administration_category: Union[str, None] = None,
     to_dict: bool = True,
-) -> dict:
+) -> Union[dict, DataFrame]:
+    codes = {}
     """Find codes associated with an organization"""
     codes_df = get_codes_df()
 
@@ -88,16 +93,38 @@ def find_codes(
         ]
     if to_dict:
         if isinstance(df, DataFrame):
-            return df.to_dict(orient="records")
+            codes = df.to_dict(orient="records")
         else:
-            return df.to_dict()
+            codes = df.to_dict()
+
+    return codes
+
+
+def code_from_geometry(geometry: Point) -> str:
+    """Generate a code from a geometry x/y location
+
+    Parameters
+    ----------
+    geometry : Point
+        Input shapely.geometry.Point
+
+    Returns
+    -------
+    str
+        output code-string
+    """
+    # make sure we have 1 point even if we haven't
+    point = geometry.centroid
+
+    # return code based on x/y location
+    return f"loc={int(point.x+ 0.5)},{int(point.x + 0.5)}"
 
 
 def generate_model_id(code, layer, wbh_code=None, bgt_code=None, geometry=None) -> str:
     """Generate a model_id from wbh_code or bgt_code and code or x/y coordinate"""
     if code is None:
         if geometry is not None:
-            code = f"loc={int(geometry.x+ 0.5)},{int(geometry.x + 0.5)}"
+            code = code_from_geometry(geometry)
         else:
             raise ValueError(
                 f"""
