@@ -4,7 +4,6 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-import ribasim
 from hydamo import code_utils
 from ribasim_nl.utils.geometry import cut_basin, drop_z
 from ribasim_nl.utils.geoseries import basins_to_points
@@ -16,7 +15,6 @@ DEFAULT_AREA = [0.01, 1000.0]
 DEFAULT_LEVEL = [0.0, 1.0]
 DEFAULT_EVAPORATION = 0
 DEFAULT_PRECIPITATION = 0.002 / 86400
-START_NODE_ID = 1
 basins = []
 
 
@@ -38,16 +36,17 @@ krw_ids = [
 rws_krw_gpkg = DATA_DIR / r"KRW/krw-oppervlaktewaterlichamen-nederland-vlakken.gpkg"
 rws_krw_gdf = gpd.read_file(rws_krw_gpkg).set_index("owmident")
 
-
-start_node_id = 1
-
 # rws_krw_gdf.loc[krw_ids].explore()
 
 krw_cutlines_gdf = gpd.read_file(MODEL_DIR / "model_data.gpkg", layer="krw_cutlines")
 
 
+def strip_code(code):
+    return code.split("_", 1)[-1]
+
+
 def user_id(code, wbh_code, code_postfix=None):
-    code = code.split("_", 1)[-1]
+    code = strip_code(code)
     if code_postfix:
         code = f"{code}_{code_postfix }"
     return code_utils.generate_model_id(code, "basin", wbh_code=wbh_code)
@@ -71,20 +70,24 @@ for row in rws_krw_gdf.loc[krw_ids].itertuples():
                     add_basin(
                         user_id=user_id(code, "80", cut_line.cut_order),
                         geometry=geometry,
-                        krw=True,
+                        rijkswater=strip_code(code),
                     )
                     basin_polygon = basin_multi_polygon.geoms[1]
                 add_basin(
                     user_id=user_id(code, "80", cut_line.cut_order + 1),
                     geometry=basin_polygon,
-                    krw=True,
+                    rijkswater=strip_code(code),
                 )
             else:
                 raise TypeError(
                     f"basin_polygon not of correct type {basin_polygon.geom_type}"
                 )
     else:
-        add_basin(user_id=user_id(code, "80"), geometry=basin_polygon, lsw=True)
+        add_basin(
+            user_id=user_id(code, "80"),
+            geometry=basin_polygon,
+            rijkswater=strip_code(code),
+        )
 
 gdf = gpd.read_file(DATA_DIR / r"Zuiderzeeland/Oplevering LHM/peilgebieden.gpkg")
 
@@ -98,18 +101,20 @@ mask = (
 
 # Process the selected polygons and add centroids and attributes
 for index, row in gdf[mask].iterrows():
-    add_basin(user_id=user_id(row.GPGIDENT, "37"), geometry=row.geometry)
+    add_basin(
+        user_id=user_id(row.GPGIDENT, "37"),
+        peilvak=user_id(row.GPGIDENT, "37"),
+        geometry=row.geometry,
+    )
 
 # Also, save the selected polygons to the new GeoPackage
 # "sel_peilgebieden_gdf.to_file(output_geopackage, driver="GPKG")
 
 
 basins_gdf = gpd.GeoDataFrame(basins, crs=28992)
-basins_gdf["node_id"] = basins_gdf.index + START_NODE_ID
-basins_gdf.to_file(MODEL_DIR / "basins.gpkg", layer="basins_areas")
+basins_gdf.to_file(MODEL_DIR / "model_data.gpkg", layer="basin_area")
 basins_gdf.loc[:, "geometry"] = basins_to_points(basins_gdf["geometry"])
-basins_gdf.to_file(MODEL_DIR / "basins.gpkg", layer="basins")
-
+basins_gdf.to_file(MODEL_DIR / "model_data.gpkg", layer="basin")
 
 ## %% generate profiles
 data = []
@@ -135,6 +140,3 @@ static_df["urban_runoff"] = 0
 ## %%
 profile_df["remarks"] = profile_df["user_id"]
 static_df["remarks"] = static_df["user_id"]
-
-## %%
-basin = ribasim.Basin(profile=profile_df, static=static_df)

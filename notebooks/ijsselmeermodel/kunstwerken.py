@@ -2,75 +2,74 @@
 import os
 from pathlib import Path
 
-import fiona
 import geopandas as gpd
 import pandas as pd
+from hydamo import code_utils
 
 DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
 MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"
+EXCEL_FILE = "uitlaten_inlaten.xlsx"
+BGT_CODES = ["W0650", "P0024"]
 
-# %% kunstwerken Zuiderzeeland
+KUNSTWERKEN_XLSX = Path(DATA_DIR) / EXCEL_FILE
+MODEL_DATA_GPKG = Path(MODEL_DIR) / "model_data.gpkg"
 
+basin_gdf = gpd.read_file(MODEL_DATA_GPKG, layer="basin")
 
-# Inlezen waterschapsgrenzen
-shapefile = DATA_DIR / r"nederland/Waterschapsgrenzen.shp"
-waterschapsgrenzen_gdf = gpd.read_file(shapefile)
-
-# Filter the GeoDataFrame to select the feature with value 'Waterschap Zuiderzeeland'
-selected_waterschap_gdf = waterschapsgrenzen_gdf[
-    waterschapsgrenzen_gdf["waterschap"] == "Waterschap Zuiderzeeland"
-]
-
-output_gpkg = MODEL_DIR / "ZZL_grens.gpkg"
-selected_waterschap_gdf.to_file(output_gpkg, driver="GPKG")
-
-# Path to the GeoPackage file
-gpkg_path = DATA_DIR / r"uitlaten_inlaten.gpkg"
-
-# List available layers in the GeoPackage
-layers = fiona.listlayers(gpkg_path)
-print(layers)
-
-# Select the desired layers
-desired_layers = ["gemaal", "stuw", "sluis"]
-
-# Read the selected layers into GeoDataFrames
-uitlaten_inlaten_gdf = {}
-with fiona.open(gpkg_path, "r") as gpkg:
-    for layer_name in desired_layers:
-        if layer_name in layers:
-            gdf = gpd.read_file(gpkg_path, layer=layer_name)
-            uitlaten_inlaten_gdf[layer_name] = gdf
-
-# Spatial operations
-selected_waterschap_gdf = selected_waterschap_gdf.to_crs(
-    uitlaten_inlaten_gdf[desired_layers[0]].crs
+kunstwerken_df = pd.read_excel(KUNSTWERKEN_XLSX)
+kunstwerken_df = kunstwerken_df.loc[kunstwerken_df.bgt_code.isin(BGT_CODES)]
+kunstwerken_gdf = gpd.GeoDataFrame(
+    kunstwerken_df,
+    geometry=gpd.points_from_xy(x=kunstwerken_df.x, y=kunstwerken_df.y),
+    crs=28992,
 )
 
-# Perform the spatial join for the first layer
-points_within_waterschap_gdf = gpd.sjoin(
-    uitlaten_inlaten_gdf[desired_layers[0]], selected_waterschap_gdf, op="within"
+# %%
+pump_gdf = kunstwerken_gdf[kunstwerken_gdf.dm_type == "uitlaat"][
+    ["dm_capaciteit", "user_id", "peilvak", "rijkswater", "geometry"]
+].copy()
+pump_gdf.rename(
+    columns={"dm_capaciteit": "flow_rate", "peilvak": "id_from", "rijkswater": "id_to"},
+    inplace=True,
+)
+pump_gdf["id_from"] = pump_gdf["id_from"].apply(
+    lambda x: code_utils.generate_model_id(code=x, layer="basin", bgt_code="W0650")
+)
+pump_gdf[pump_gdf.flow_rate.isna()]["flow_rate"] = 0
+pump_gdf.to_file(MODEL_DIR / "model_data.gpkg", layer="pump")
+
+# %%
+outlet_gdf = (
+    kunstwerken_gdf[kunstwerken_gdf.dm_type == "inlaat"][
+        ["dm_capaciteit", "user_id", "peilvak", "rijkswater", "geometry"]
+    ]
+    .copy()
+    .rename(columns={"dm_capaciteit": "flow_rate"})
+)
+outlet_gdf.rename(
+    columns={"dm_capaciteit": "flow_rate", "peilvak": "id_to", "rijkswater": "id_from"},
+    inplace=True,
+)
+outlet_gdf["id_to"] = outlet_gdf["id_to"].apply(
+    lambda x: code_utils.generate_model_id(code=x, layer="basin", bgt_code="W0650")
+)
+outlet_gdf[outlet_gdf.flow_rate.isna()]["flow_rate"] = 0
+outlet_gdf.to_file(MODEL_DIR / "model_data.gpkg", layer="outlet")
+
+# %%
+
+resistance_gdf = gpd.read_file(
+    DATA_DIR.joinpath("ijsselmeergebied", "hydamo.gpkg"), layer="sluis"
 )
 
-# Combine the results from different layers (if needed)
-dfs_to_concat = []
-for layer_name in desired_layers[1:]:
-    result = gpd.sjoin(
-        uitlaten_inlaten_gdf[layer_name], selected_waterschap_gdf, op="within"
-    )
-    dfs_to_concat.append(result)
-
-# Concatenate the DataFrames
-points_within_waterschap_gdf = pd.concat(
-    [points_within_waterschap_gdf] + dfs_to_concat, ignore_index=True
+resistance_gdf.rename(
+    columns={"rijkswater_naar": "id_to", "rijkswater_van": "id_from"}, inplace=True
 )
 
-# Drop the 'OBJECTID' column if it exists
-if "OBJECTID" in points_within_waterschap_gdf:
-    points_within_waterschap_gdf = points_within_waterschap_gdf.drop(
-        columns=["OBJECTID"]
-    )
+resistance_gdf["user_id"] = resistance_gdf["code"].apply(
+    lambda x: code_utils.generate_model_id(code=x, layer="sluis", bgt_code="L0002")
+)
+resistance_gdf["resistance"] = 1000
 
-# Output to a GeoPackage
-output_gpkg = MODEL_DIR / "inlaten_uitlaten_ZZL.gpkg"
-points_within_waterschap_gdf.to_file(output_gpkg, driver="GPKG")
+resistance_gdf.to_file(MODEL_DIR / "model_data.gpkg", layer="resistance")
+# %%
