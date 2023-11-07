@@ -14,7 +14,7 @@ dependencies:
   - matplotlib
   - mypy
   - openpyxl
-  - pandas<2.1.0
+  - pandas
   - pandas-stubs
   - pandera
   - pip
@@ -27,7 +27,7 @@ dependencies:
   - pytest
   - pytest-cov
   - python>=3.9
-  - rastersats
+  - rasterstats
   - ruff
   - shapely>=2.0
   - tomli
