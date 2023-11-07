@@ -20,9 +20,12 @@ def test_generate_model_id():
     # see if we can find Zuid-Holland
     result = code_utils.find_codes("Zuid-Holland")
     assert result["wbh_code"] == code_utils.bgt_to_wbh_code(result["bgt_code"])
-
-    model_id = code_utils.generate_model_id(code="test", bgt_code=result["bgt_code"])
-    assert model_id == "NL.WBHCODE.69.test"
+    code = "KGM001"
+    layer = "gemaal"
+    model_id = code_utils.generate_model_id(
+        code=code, layer=layer, bgt_code=result["bgt_code"]
+    )
+    assert model_id == f"NL.WBHCODE.69.{layer}.{code}"
     assert model_id == code_utils.generate_model_id(
-        code="test", wbh_code=result["wbh_code"]
+        code=code, layer=layer, wbh_code=result["wbh_code"]
     )

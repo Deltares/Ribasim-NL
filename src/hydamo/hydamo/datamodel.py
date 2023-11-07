@@ -468,7 +468,9 @@ class HyDAMO:
             add_styles_to_geopackage(file_path)
 
     @classmethod
-    def from_geopackage(cls, file_path, check_columns=True, check_geotype=True):
+    def from_geopackage(
+        cls, file_path, version="2.2", check_columns=True, check_geotype=True
+    ):
         """
         Initialize HyDAMO class from GeoPackage
 
@@ -488,7 +490,7 @@ class HyDAMO:
             HyDAMO object initialized with content of GeoPackage
 
         """
-        hydamo = cls()
+        hydamo = cls(version=version)
         for layer in fiona.listlayers(file_path):
             if layer in hydamo.layers:
                 hydamo_layer = getattr(hydamo, layer)
