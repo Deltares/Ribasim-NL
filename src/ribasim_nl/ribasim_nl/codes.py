@@ -117,7 +117,7 @@ def code_from_geometry(geometry: Point) -> str:
     point = geometry.centroid
 
     # return code based on x/y location
-    return f"loc={int(point.x+ 0.5)},{int(point.x + 0.5)}"
+    return f"loc={int(point.x+ 0.5)},{int(point.y + 0.5)}"
 
 
 def generate_model_id(code, layer, wbh_code=None, bgt_code=None, geometry=None) -> str:

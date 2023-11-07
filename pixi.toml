@@ -10,13 +10,15 @@ license-file = "LICENSE"
 
 [tasks]
 # Installation
+install-ribasim-python = "pip install --no-deps ribasim==0.4.0"
 install-hydamo = "pip install --no-deps --editable src/hydamo"
 install-ribasim_nl = "pip install --no-deps --editable src/ribasim_nl"
 install-quartodoc = "pip install quartodoc"
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
+    "install-ribasim-python",
     "install-hydamo",
-    "install-ribasim_nl",
+	"install-ribasim_nl",
     "install-quartodoc",
 ] }
 install = { depends_on = [
@@ -32,6 +34,7 @@ lint = { depends_on = [
 ] }
 # Test
 test-hydamo = "pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/hydamo/tests"
+test-ribasim_nl = "pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/ribasim_nl/tests"
 test-hydamo-cov = "pytest --numprocesses=auto --cov=hydamo --cov-report=xml src/hydamo/tests"
 tests = { depends_on = [
     "lint",
@@ -51,10 +54,9 @@ pyarrow = "13.0.0.*"
 pyogrio = "0.6.0.*"
 tomli-w = "1.0.0.*"
 matplotlib = "3.8.0.*"
-ribasim = "0.5.0.*"
-rasterstats = "0.19.0.*"
 # dev
 ruff = "0.0.292.*"
+black = "23.9.1.*"
 pytest = "7.4.2.*"
 pytest-cov = "4.1.0.*"
 pytest-xdist = "3.3.1.*"
