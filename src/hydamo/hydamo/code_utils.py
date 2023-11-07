@@ -1,6 +1,6 @@
 """Utilities for generating unique codes."""
 from pathlib import Path
-from typing import Union
+from typing import Dict, List, Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -62,7 +62,7 @@ def find_codes(
     organization: str,
     administration_category: Union[str, None] = None,
     to_dict: bool = True,
-) -> Union[dict, DataFrame]:
+) -> Union[Dict[str, List[Dict[str, str]]], DataFrame]:
     codes = {}
     """Find codes associated with an organization"""
     codes_df = get_codes_df()
