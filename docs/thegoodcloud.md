@@ -1,17 +1,17 @@
 # Connecting The Good Cloud
 
 ## OS environment variables
-We recommend to set the following os environment variables:
+We recommend to set the following OS environment variables:
 - `RIBASIM_NL_CLOUD_PASS`: password for the cloud, to be requested at Deltares
-- `RIBASIM_DATA_DIR`: directory with your local copy of data in de RIBASM_nl cloud
+- `RIBASIM_NL_DATA_DIR`: directory with your local copy of data in the Ribasim-NL cloud
 
-## Init the cloud
-Import the cloud and initialize it
+## Initialize the cloud
+Import the `Cloud`` and initialize it
 ```
 from ribasim_nl import Cloud
 ```
 
-If you have set os environment variables:
+If you have set OS environment variables:
 ```
 cloud = Cloud()
 ```
@@ -27,7 +27,7 @@ To find available water authorities:
 cloud.water_authorities
 ```
 
-## Download water authority data-sets
+## Download water authority datasets
 ```
 authority = "Rijkswaterstaat"
 
