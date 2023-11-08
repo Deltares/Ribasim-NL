@@ -1,5 +1,5 @@
 """Tests for hydamo.code_utils"""
-from ribasim.utils import codes
+from ribasim_nl import codes
 
 
 def test_init():
