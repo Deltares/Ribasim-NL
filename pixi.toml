@@ -16,7 +16,7 @@ install-quartodoc = "pip install quartodoc"
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-hydamo",
-    "install-ribasim_nl",
+	"install-ribasim_nl",
     "install-quartodoc",
 ] }
 install = { depends_on = [
@@ -32,35 +32,35 @@ lint = { depends_on = [
 ] }
 # Test
 test-hydamo = "pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/hydamo/tests"
+test-ribasim_nl = "pytest --numprocesses=auto --basetemp=src/ribasim_nl/tests/temp src/ribasim_nl/tests"
 test-hydamo-cov = "pytest --numprocesses=auto --cov=hydamo --cov-report=xml src/hydamo/tests"
 tests = { depends_on = [
     "lint",
     "test-hydamo",
+    "test-ribasim_nl",
 ] }
 
 [dependencies]
-python = ">=3.9"
-pandas = "<2.1"
-geopandas = "0.14.0.*"
-fiona = "1.9.4.*"
-tomli = "2.0.1.*"
-shapely = ">=2"
+fiona = "*"
+geopandas = "*"
+ipykernel = "*"
+matplotlib = "*"
+mypy = "*"
+pandas = "*"
+pip = "*"
+pre-commit = "*"
+pyarrow = "*"
 pydantic = "~=1.0"
-pandera = "!=0.16.0"
-pyarrow = "13.0.0.*"
-pyogrio = "0.6.0.*"
-tomli-w = "1.0.0.*"
-matplotlib = "3.8.0.*"
+pyogrio = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+python = ">=3.9"
+rasterstats = "*"
+requests = "*"
 ribasim = "0.5.0.*"
-rasterstats = "0.19.0.*"
-# dev
-ruff = "0.0.292.*"
-pytest = "7.4.2.*"
-pytest-cov = "4.1.0.*"
-pytest-xdist = "3.3.1.*"
-pip = "23.2.1.*"
-pre-commit = "3.4.0.*"
-ipykernel = "6.25.2.*"
-mypy = "1.5.1.*"
-requests = "2.31.0.*"
-types-requests = "2.31.0.10.*"
+ruff = "*"
+shapely = ">=2"
+tomli = "*"
+tomli-w = "*"
+types-requests = "*"

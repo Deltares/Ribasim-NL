@@ -5,7 +5,7 @@ from typing import List, Union, get_type_hints
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import polygonize, polylabel
 
-from ribasim_nl.utils.generic import _validate_inputs
+from ribasim_nl.generic import _validate_inputs
 
 
 def basin_to_point(basin_polygon: Union[Polygon, MultiPolygon]) -> Point:

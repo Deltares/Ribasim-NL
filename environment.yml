@@ -5,8 +5,6 @@ channels:
   - conda-forge
 
 dependencies:
-  - black
-  - black-jupyter
   - build
   - datamodel-code-generator
   - geopandas
@@ -16,7 +14,6 @@ dependencies:
   - openpyxl
   - pandas
   - pandas-stubs
-  - pandera
   - pip
   - pip:
     - quartodoc
