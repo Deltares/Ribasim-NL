@@ -37,6 +37,7 @@ test-hydamo-cov = "pytest --numprocesses=auto --cov=hydamo --cov-report=xml src/
 tests = { depends_on = [
     "lint",
     "test-hydamo",
+    "test-ribasim_nl",
 ] }
 
 [dependencies]
@@ -56,7 +57,6 @@ tomli-w = "1.0.0.*"
 matplotlib = "3.8.0.*"
 # dev
 ruff = "0.0.292.*"
-black = "23.9.1.*"
 pytest = "7.4.2.*"
 pytest-cov = "4.1.0.*"
 pytest-xdist = "3.3.1.*"
