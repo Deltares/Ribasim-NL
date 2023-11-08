@@ -41,6 +41,8 @@ WATER_AUTHORITIES = [
     "Zuiderzeeland",
 ]  # noqa
 
+HIDDEN_DIRS = ["D-HYDRO modeldata"]  # somehow this dir-name still exists :-(
+
 
 def is_dir(item):
     return Path(item).suffix == ""
@@ -86,7 +88,8 @@ class Cloud:
     @property
     def source_data(self) -> List[str]:
         """List of all source_data (directories) in sub-folder 'Basisgegevens`."""
-        return self.dirs("Basisgegevens")
+        url = self.joinurl("Basisgegevens")
+        return self.content(url)
 
     @property
     def auth(self) -> Tuple[str, str]:
@@ -188,10 +191,11 @@ class Cloud:
 
         xml_tree = ElementTree.fromstring(response.text)
         namespaces = {"D": "DAV:"}
+        excluded_content = ["..", Path(url).name] + HIDDEN_DIRS
         content = [
             elem.text
             for elem in xml_tree.findall(".//D:displayname", namespaces=namespaces)
-            if elem.text not in ["..", Path(url).name]  # Exclude the parent directory
+            if elem.text not in excluded_content  # Exclude the parent directory
         ]
 
         return content
@@ -263,6 +267,13 @@ class Cloud:
         self.validate_authority(authority)
 
         url = self.joinurl(authority, "aangeleverd")
+        self.download_content(url, overwrite=overwrite)
+
+    def download_verwerkt(self, authority: str, overwrite: bool = False):
+        """Download all files in folder 'verwerkt'"""
+        self.validate_authority(authority)
+
+        url = self.joinurl(authority, "verwerkt")
         self.download_content(url, overwrite=overwrite)
 
     def download_all(self, authority, overwrite: bool = False):

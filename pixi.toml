@@ -37,6 +37,7 @@ test-hydamo-cov = "pytest --numprocesses=auto --cov=hydamo --cov-report=xml src/
 tests = { depends_on = [
     "lint",
     "test-hydamo",
+	"test-ribasim_nl",
 ] }
 
 [dependencies]
