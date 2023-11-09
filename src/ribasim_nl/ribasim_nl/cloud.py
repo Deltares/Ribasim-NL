@@ -39,7 +39,7 @@ WATER_AUTHORITIES = [
     "Vechtstromen",
     "WetterskipFryslan",
     "Zuiderzeeland",
-]  # noqa
+]
 
 HIDDEN_DIRS = ["D-HYDRO modeldata"]  # somehow this dir-name still exists :-(
 

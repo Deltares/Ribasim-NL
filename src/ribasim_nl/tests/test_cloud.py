@@ -14,7 +14,6 @@ def cloud():
     return CloudStorage(DATA_DIR)
 
 
-@pytest.fixture
 def test_initialize(cloud):
     """Test if cloud still has same structure"""
 
@@ -27,7 +26,6 @@ def test_initialize(cloud):
         assert directory in directories
 
 
-@pytest.fixture
 def test_download(cloud):
     """Check if we can download."""
 
@@ -49,7 +47,6 @@ def test_download(cloud):
         assert local_dir.joinpath(item).exists()
 
 
-@pytest.fixture
 def test_source(cloud):
     # check if sources are not deleted
     ref_sources = ["KRW", "LHM", "LKM", "Top10NL", "documenten"]
