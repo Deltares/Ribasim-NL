@@ -2,7 +2,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from ribasim_nl import Cloud
+from ribasim_nl import CloudStorage
 
 DATA_DIR = Path(__file__).parent.joinpath("data", "cloud")
 if DATA_DIR.exists():
@@ -10,8 +10,8 @@ if DATA_DIR.exists():
 
 
 @pytest.fixture
-def my_cloud():
-    return Cloud(DATA_DIR)
+def cloud():
+    return CloudStorage(DATA_DIR)
 
 
 @pytest.fixture

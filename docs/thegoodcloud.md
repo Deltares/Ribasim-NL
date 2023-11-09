@@ -8,23 +8,23 @@ We recommend to set the following os environment variables:
 ## Init the cloud
 Import the cloud and initialize it
 ```
-from ribasim_nl import Cloud
+from ribasim_nl import CloudStorage
 ```
 
 If you have set os environment variables:
 ```
-cloud = Cloud()
+cloud_store = CloudStorage()
 ```
 
 And else
 ```
-cloud = Cloud(password=password, data_dir=my_data_dir)
+cloud_storage = CloudStorage(password=password, data_dir=my_data_dir)
 ```
 
 ## Find water authorities
 To find available water authorities:
 ```
-cloud.water_authorities
+cloud_storage.water_authorities
 ```
 
 ## Download water authority data-sets
@@ -32,10 +32,10 @@ cloud.water_authorities
 authority = "Rijkswaterstaat"
 
 # to download external data (aangeleverd) only
-cloud.download_aangeleverd(authority)
+cloud_storage.download_aangeleverd(authority)
 
 # to download manipulated data (verwerkt) only
-cloud.download_verwerkt(authority)
+cloud_storage.download_verwerkt(authority)
 
 # to download all
-cloud.download_all(authority)
+cloud_storage.download_all(authority)

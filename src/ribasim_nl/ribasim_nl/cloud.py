@@ -49,7 +49,9 @@ def is_dir(item):
 
 
 @dataclass
-class Cloud:
+class CloudStorage:
+    """Connect a local 'data_dir` to cloud-storage."""
+
     data_dir: Union[str, Path] = RIBASIM_NL_DATA_DIR
     user: str = RIBASIM_NL_CLOUD_USER
     url: List[str] = BASE_URL
