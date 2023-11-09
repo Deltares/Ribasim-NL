@@ -33,7 +33,8 @@ lint = { depends_on = [
 # Test
 test-hydamo = "pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/hydamo/tests"
 test-ribasim_nl = "pytest --numprocesses=auto --basetemp=src/ribasim_nl/tests/temp src/ribasim_nl/tests"
-test-hydamo-cov = "pytest --numprocesses=auto --cov=hydamo --cov-report=xml src/hydamo/tests"
+test-hydamo-cov = "pytest --numprocesses=auto --cov=hydamo --cov-report=xml --cov-report=term-missing src/hydamo/tests"
+test-ribasim_nl-cov = "pytest --numprocesses=auto --cov=ribasim_nl --cov-report=xml --cov-report=term-missing src/ribasim_nl/tests"
 tests = { depends_on = [
     "lint",
     "test-hydamo",

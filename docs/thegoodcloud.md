@@ -1,60 +1,41 @@
 # Connecting The Good Cloud
 
-## Modules
-Just `os`, `pathlib`, `requests` are required to get started
-```
-import os
-from pathlib import Path
-import requests
-```
+## OS environment variables
+We recommend to set the following OS environment variables:
+- `RIBASIM_NL_CLOUD_PASS`: password for the cloud, to be requested at Deltares
+- `RIBASIM_NL_DATA_DIR`: directory with your local copy of data in the Ribasim-NL cloud
 
-## global variables
-We define a few global variables, `RIBASIM_NL_CLOUD_PASS` is to be supplied as an OOS environment variable.
-You need to get one from Deltares first.
-
+## Initialize the cloud
+Import the `Cloud`` and initialize it
 ```
-RIBASIM_NL_CLOUD_PASS = os.getenv("RIBASIM_NL_CLOUD_PASS")
-RIBASIM_NL_CLOUD_USER = "nhi_api"
-WEBDAV_URL = "https://deltares.thegood.cloud/remote.php/dav"
-BASE_URL = f"{WEBDAV_URL}/files/{RIBASIM_NL_CLOUD_USER}/D-HYDRO modeldata"
-
-try:
-    assert RIBASIM_NL_CLOUD_PASS is not None
-except AssertionError:
-    raise ValueError(
-        "Put RIBASIM_NL_CLOUD_PASS in your OS environment variables first."
-    )
+from ribasim_nl import CloudStorage
 ```
 
-## Local path and remote URL
-An example-file, `my_file.ext` to upload. Please be aware to use a file_name without spaces (`" "`)
+If you have set OS environment variables:
 ```
-path = Path("my_file.ext")
-url = f"{BASE_URL}/test_files/{path.name}"
+cloud_store = CloudStorage()
 ```
 
-## Uploading a file
-
-
+And else
 ```
-def upload_file(url, path):
-    with open(path, "rb") as f:
-        r = requests.put(
-            url, data=f, auth=(RIBASIM_NL_CLOUD_USER, RIBASIM_NL_CLOUD_PASS)
-        )
-    r.raise_for_status()
-
-upload_file(url, path)
+cloud_storage = CloudStorage(password=password, data_dir=my_data_dir)
 ```
 
-## Downloading a file
-
+## Find water authorities
+To find available water authorities:
 ```
-def download_file(url, path):
-    r = requests.get(url, auth=(RIBASIM_NL_CLOUD_USER, RIBASIM_NL_CLOUD_PASS))
-    r.raise_for_status()
-    with open(path, "wb") as f:
-        f.write(r.content)
-
-download_file(url, path)
+cloud_storage.water_authorities
 ```
+
+## Download water authority datasets
+```
+authority = "Rijkswaterstaat"
+
+# to download external data (aangeleverd) only
+cloud_storage.download_aangeleverd(authority)
+
+# to download manipulated data (verwerkt) only
+cloud_storage.download_verwerkt(authority)
+
+# to download all
+cloud_storage.download_all(authority)
