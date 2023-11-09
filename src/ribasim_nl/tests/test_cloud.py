@@ -1,17 +1,10 @@
-import shutil
-from pathlib import Path
-
 import pytest
 from ribasim_nl import CloudStorage
 
-DATA_DIR = Path(__file__).parent.joinpath("data", "cloud")
-if DATA_DIR.exists():
-    shutil.rmtree(DATA_DIR)
-
 
 @pytest.fixture
-def cloud():
-    return CloudStorage(DATA_DIR)
+def cloud(tmp_path):
+    return CloudStorage(tmp_path)
 
 
 def test_initialize(cloud):
