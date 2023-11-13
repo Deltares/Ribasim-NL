@@ -1,0 +1,43 @@
+project:
+  type: website
+
+website:
+  title: "Ribasim-NL"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - reference/index.qmd
+      - thegoodcloud.qmd
+    right:
+      - icon: github
+        href: https://github.com/Deltares/Ribasim-NL
+        aria-label: GitHub
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+
+quartodoc:
+  style: pkgdown
+  dir: reference
+  title: API Reference
+  package: null
+  sections:
+    - title: HyDAMO
+      package: hydamo
+      desc: The HyDAMO class represents the HyDAMO data model.
+      contents:
+        - HyDAMO
+        - ExtendedGeoDataFrame
+        - find_nearest_branch
+        - possibly_intersecting
+        - add_styles_to_geopackage
+        - read_style
+    - title: Ribasim-NL
+      package: ribasim_nl
+      desc: Ribasim-NL code.
+      contents:
+        - CloudStorage
