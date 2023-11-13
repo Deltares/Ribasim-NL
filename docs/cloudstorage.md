@@ -21,6 +21,16 @@ And else
 cloud_storage = CloudStorage(password=password, data_dir=my_data_dir)
 ```
 
+## Download sources (basisgegevens)
+Find all sources
+```
+# find all sources, `PBL_watertypenkaart`
+sources = cloud_storage.source_data
+
+# download, `PBL_watertypenkaart`
+cloud.download_basisgegevens(bronnen=["PBL_watertypenkaart"])
+```
+
 ## Find water authorities
 To find available water authorities:
 ```
@@ -39,3 +49,12 @@ cloud_storage.download_verwerkt(authority)
 
 # to download all
 cloud_storage.download_all(authority)
+```
+
+## Upload manipulated data (aangeleverd)
+```
+authority = "Rijkswaterstaat"
+
+# upload local `aangeleverd` directory to cloud-storage
+cloud_storage.upload_aangeleverd(authority, overwrite=True)
+```

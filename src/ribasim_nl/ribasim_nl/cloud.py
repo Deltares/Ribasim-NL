@@ -304,6 +304,26 @@ class CloudStorage:
         url = self.joinurl(authority, "verwerkt")
         self.download_content(url, overwrite=overwrite)
 
+    def download_basisgegevens(self, bronnen: List[str] = [], overwrite=True):
+        """Download sources in the folder 'Basisgegevens'"""
+        source_data = self.source_data
+        if not bronnen:
+            bronnen = source_data
+
+        for bron in bronnen:
+            if bron not in source_data:
+                raise ValueError(f"""{bron} not in {source_data}""")
+            else:
+                url = self.joinurl("Basisgegevens", bron)
+                self.download_content(url, overwrite=overwrite)
+
+    def upload_verwerkt(self, authority: str, overwrite: bool = False):
+        """Upload all files in folder 'verwerkt'"""
+        self.validate_authority(authority)
+
+        dir_path = self.joinpath(authority, "verwerkt")
+        self.upload_content(dir_path, overwrite=overwrite)
+
     def download_all(self, authority, overwrite: bool = False):
         """Download all files for authority."""
         url = self.joinurl(authority)
