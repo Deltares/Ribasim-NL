@@ -130,7 +130,7 @@ class CloudStorage:
             return self.url
 
     def joinpath(self, *args: str):
-        self.data_dir.joinpath(*args)
+        return self.data_dir.joinpath(*args)
 
     def upload_file(self, file_path: Path):
         # get url
