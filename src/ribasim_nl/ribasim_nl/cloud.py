@@ -111,7 +111,7 @@ class CloudStorage:
     def file_url(self, file_path: Union[str, Path]) -> str:
         relative_path = Path(file_path).relative_to(self.data_dir)
 
-        return f"{self.url}/{relative_path}"
+        return f"{self.url}/{relative_path.as_posix()}"
 
     def relative_url(self, file_url: str) -> str:
         return file_url[len(self.url) + 1 :]
@@ -130,7 +130,7 @@ class CloudStorage:
             return self.url
 
     def joinpath(self, *args: str):
-        self.data_dir.joinpath(*args)
+        return self.data_dir.joinpath(*args)
 
     def upload_file(self, file_path: Path):
         # get url
@@ -265,6 +265,31 @@ class CloudStorage:
                     logger.info(f"downloading file {path}")
                     self.download_file(file_url=item_url)
 
+    def upload_content(self, dir_path: Path, overwrite: bool = False):
+        """Upload content of a directory recursively."""
+
+        # get all remote content
+        content = self.content(self.joinurl(self.relative_path(dir_path).as_posix()))
+
+        # get al local directories and files.
+        dirs = [i for i in dir_path.glob("*") if i.is_dir()]
+        files = [i for i in dir_path.glob("*") if i.is_file()]
+
+        # add files
+        for file_path in files:
+            if (file_path.stem not in content) or overwrite:
+                logger.info(f"uploading file {file_path}")
+                self.upload_file(file_path)
+
+        # add dirs and upload their content recursively
+        for path in dirs:
+            if path.stem not in content:
+                remote_path = self.relative_path(path).as_posix()
+                self.create_dir(remote_path)
+                self.upload_content(
+                    dir_path=dir_path.joinpath(path.stem), overwrite=overwrite
+                )
+
     def download_aangeleverd(self, authority: str, overwrite: bool = False):
         """Download all files in folder 'aangeleverd'"""
         self.validate_authority(authority)
@@ -278,6 +303,26 @@ class CloudStorage:
 
         url = self.joinurl(authority, "verwerkt")
         self.download_content(url, overwrite=overwrite)
+
+    def download_basisgegevens(self, bronnen: List[str] = [], overwrite=True):
+        """Download sources in the folder 'Basisgegevens'"""
+        source_data = self.source_data
+        if not bronnen:
+            bronnen = source_data
+
+        for bron in bronnen:
+            if bron not in source_data:
+                raise ValueError(f"""{bron} not in {source_data}""")
+            else:
+                url = self.joinurl("Basisgegevens", bron)
+                self.download_content(url, overwrite=overwrite)
+
+    def upload_verwerkt(self, authority: str, overwrite: bool = False):
+        """Upload all files in folder 'verwerkt'"""
+        self.validate_authority(authority)
+
+        dir_path = self.joinpath(authority, "verwerkt")
+        self.upload_content(dir_path, overwrite=overwrite)
 
     def download_all(self, authority, overwrite: bool = False):
         """Download all files for authority."""
