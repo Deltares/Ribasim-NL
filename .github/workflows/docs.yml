@@ -1,0 +1,39 @@
+name: Docs
+on:
+  push:
+    branches: [main]
+    paths-ignore: [".teamcity/**"]
+  pull_request:
+  merge_group:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  publish:
+    name: Docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.4.0
+        with:
+          pixi-version: "latest"
+      - name: Prepare pixi
+        run: pixi run install-without-pre-commit
+
+      - name: Check Quarto installation and all engines
+        run: pixi run quarto-check
+
+      - name: Render Quarto Project
+        run: pixi run quarto-render
+
+      - name: Publish Quarto Project
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/_site
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

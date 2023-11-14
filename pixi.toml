@@ -12,17 +12,25 @@ license-file = "LICENSE"
 # Installation
 install-hydamo = "pip install --no-deps --editable src/hydamo"
 install-ribasim_nl = "pip install --no-deps --editable src/ribasim_nl"
-install-quartodoc = "pip install quartodoc"
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-hydamo",
-	"install-ribasim_nl",
-    "install-quartodoc",
+    "install-ribasim_nl",
 ] }
 install = { depends_on = [
     "install-without-pre-commit",
     "install-pre-commit",
 ] }
+# Docs
+quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
+quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
+    "quartodoc-build",
+] }
+quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
+quarto-render = { cmd = "export QUARTO_PYTHON=python && quarto render docs --to html --execute", depends_on = [
+    "quartodoc-build",
+] }
+docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
 # Lint
 mypy-hydamo = "mypy --ignore-missing-imports src/hydamo"
 pre-commit = "pre-commit run --all-files"
@@ -45,6 +53,7 @@ tests = { depends_on = [
 fiona = "*"
 geopandas = "*"
 ipykernel = "*"
+jupyterlab = "*"
 matplotlib = "*"
 mypy = "*"
 pandas = "*"
@@ -57,6 +66,8 @@ pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.9"
+quarto = "*"
+quartodoc = "*"
 rasterstats = "*"
 requests = "*"
 ribasim = "0.5.0.*"
