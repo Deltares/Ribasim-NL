@@ -5,8 +5,6 @@ website:
   title: "Ribasim-NL"
   navbar:
     left:
-      - href: index.qmd
-        text: Home
       - reference/index.qmd
       - cloudstorage.qmd
     right:
