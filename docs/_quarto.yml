@@ -8,7 +8,7 @@ website:
       - href: index.qmd
         text: Home
       - reference/index.qmd
-      - thegoodcloud.qmd
+      - cloudstorage.qmd
     right:
       - icon: github
         href: https://github.com/Deltares/Ribasim-NL
