@@ -1,6 +1,6 @@
 from geopandas import GeoSeries
 
-from ribasim_nl.utils.geometry import basin_to_point
+from ribasim_nl.geometry import basin_to_point
 
 
 def basins_to_points(basin_series: GeoSeries) -> GeoSeries:

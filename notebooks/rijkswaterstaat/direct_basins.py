@@ -1,127 +1,109 @@
 # %%
-import os
-from pathlib import Path
-
 import geopandas as gpd
-from hydamo import HyDAMO
-from shapely.geometry import LineString, Point
+from ribasim_nl import CloudStorage
 
-DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
-MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"
-MODEL_DATA_GPKG = Path(MODEL_DIR) / "model_data.gpkg"
+cloud = CloudStorage()
 
-zuiderzeeland_hydamo_gpkg = DATA_DIR.joinpath("Zuiderzeeland", "overig", "hydamo.gpkg")
-
-hydamo = HyDAMO.from_geopackage(file_path=zuiderzeeland_hydamo_gpkg, version="2.2.1")
 
 # %% Create file with direction basins
 # Load GeoPackage files with explicit geometry column name
-polygons = gpd.read_file(
-    DATA_DIR / "Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg", geom_col="geometry"
+
+poly_column = "owmident"
+line_column = "Name"
+
+poly_gdf = gpd.read_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "krw_basins_vlakken.gpkg")
 )
-lines = gpd.read_file(
-    DATA_DIR / "nederland/lsm3-hydamo_withinKRW.gpkg", geom_col="geometry"
+
+lines_gdf = gpd.read_file(
+    cloud.joinpath("Basisgegevens", "lsm3-j18_5v6", "shapes", "network_Branches.shp")
 )
+lines_gdf.set_crs(28992, inplace=True)
 
-# Add a temporary column to polygons for later identification
-polygons["temp_id"] = range(len(polygons))
+# %%
+data = []
+# poly_row = poly_gdf.set_index("owmident").loc["NL94_1"]
+# poly_ident = "NL94_1"
+for poly_row in poly_gdf.itertuples():
+    poly_ident = getattr(poly_row, poly_column)
 
-# Initialize lists to store attributes
-polygon_attributes = []
-owmident_attributes = []
-
-# Iterate through each line to check for intersection with the outer boundary of polygons
-for line_index, line in lines.iterrows():
-    line_geometry = line["geometry"]
-
-    # Check for intersection with the outer boundary of polygons
-    intersected_polygons = polygons[
-        polygons["geometry"].boundary.intersects(line_geometry)
+    ## select intersecting lines
+    intersecting_lines_gdf = lines_gdf.iloc[
+        lines_gdf.sindex.intersection(poly_row.geometry.bounds)
+    ]
+    intersecting_lines_gdf = intersecting_lines_gdf[
+        intersecting_lines_gdf["geometry"].intersects(poly_row.geometry.boundary)
     ]
 
-    # Extract attributes from intersected polygons
-    for _, intersected_polygon in intersected_polygons.iterrows():
-        polygon_id = intersected_polygon["temp_id"]
+    def find_intersecting_basins(line):
+        intersecting_poly_gdf = poly_gdf.iloc[poly_gdf.sindex.intersection(line.bounds)]
+        intersecting_poly_gdf = intersecting_poly_gdf[
+            intersecting_poly_gdf["geometry"].intersects(line)
+        ]
+        return intersecting_poly_gdf[poly_column]
 
-        # Check if start and end points are within the polygon
-        start_point_inside = intersected_polygon["geometry"].contains(
-            Point(line_geometry.xy[0][0], line_geometry.xy[1][0])
-        )
-        end_point_inside = intersected_polygon["geometry"].contains(
-            Point(line_geometry.xy[0][-1], line_geometry.xy[1][-1])
-        )
+    def find_ident(point):
+        # filter by spatial index
+        containing_poly_gdf = poly_gdf.iloc[poly_gdf.sindex.intersection(point.bounds)]
 
-        # Store polygon owmident for both start and end points
-        start_polygon_owmident = (
-            polygons.loc[polygon_id, "owmident"] if start_point_inside else None
-        )
-        end_polygon_owmident = (
-            polygons.loc[polygon_id, "owmident"] if end_point_inside else None
-        )
+        # filter by contain and take first row
+        containing_poly_gdf = containing_poly_gdf[
+            containing_poly_gdf["geometry"].contains(point)
+        ]
 
-        # Create a LineString object from the start and end points
-        line_geometry = LineString(
-            [
-                (line_geometry.xy[0][0], line_geometry.xy[1][0]),
-                (line_geometry.xy[0][-1], line_geometry.xy[1][-1]),
-            ]
-        )
+        if containing_poly_gdf.empty:
+            return None
+        elif len(containing_poly_gdf) == 1:
+            return getattr(containing_poly_gdf.iloc[0], poly_column)
+        else:
+            print(containing_poly_gdf)
 
-        # Store attributes for both start and end points
-        owmident_attributes.append(
-            {
-                "wl_naam": line["naam"],
-                "geometry": line_geometry,
-                "start_polygon_owmident": start_polygon_owmident,
-                "end_polygon_owmident": end_polygon_owmident,
-            }
-        )
+    # line_row = intersecting_lines_gdf.loc[75]
+    for line_row in intersecting_lines_gdf.itertuples():
+        us_point, ds_point = line_row.geometry.boundary.geoms
 
-# Convert the lists to GeoDataFrames
-owmident_gdf = gpd.GeoDataFrame(
-    owmident_attributes, geometry="geometry", crs=polygons.crs
+        us_ident = find_ident(us_point)
+        ds_ident = find_ident(ds_point)
+
+        if ((us_ident is not None) and (ds_ident is not None)) and (
+            us_ident != ds_ident
+        ):
+            line_ident = getattr(line_row, line_column)
+
+            if poly_ident not in [us_ident, ds_ident]:
+                data += [
+                    {
+                        "line_ident": line_ident,
+                        "us_basin": us_ident,
+                        "ds_basin": poly_ident,
+                        "geometry": line_row.geometry,
+                    },
+                    {
+                        "line_ident": line_ident,
+                        "us_basin": poly_ident,
+                        "ds_basin": ds_ident,
+                        "geometry": line_row.geometry,
+                    },
+                ]
+            elif len(find_intersecting_basins(line_row.geometry)) == 2:
+                data += [
+                    {
+                        "line_ident": line_ident,
+                        "us_basin": us_ident,
+                        "ds_basin": ds_ident,
+                        "geometry": line_row.geometry,
+                    }
+                ]
+            else:
+                print(f"we miss a case {line_ident}")
+
+poly_directions_gdf = gpd.GeoDataFrame(data, crs=28992)
+
+poly_directions_gdf.drop_duplicates(
+    ["us_basin", "ds_basin"], keep="first", inplace=True
 )
-
-# Filter rows where start_polygon_owmident is not equal to end_polygon_owmident
-filtered_gdf = owmident_gdf[
-    owmident_gdf["start_polygon_owmident"] != owmident_gdf["end_polygon_owmident"]
-]
-
-
-# Define a custom aggregation function to fill missing values
-def fill_missing_values(group):
-    result = group.copy()
-    result["start_polygon_owmident"] = group["start_polygon_owmident"].fillna(
-        group["start_polygon_owmident"].shift(-1)
-    )
-    result["end_polygon_owmident"] = group["end_polygon_owmident"].fillna(
-        group["end_polygon_owmident"].shift(-1)
-    )
-    return result.iloc[0]
-
-
-# Group by 'wl_naam' and apply the custom aggregation function
-result_gdf = (
-    filtered_gdf.groupby("wl_naam").apply(fill_missing_values).reset_index(drop=True)
+poly_directions_gdf.to_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "krw_basins_verbindingen.gpkg")
 )
-combined_gdf = result_gdf.dropna(
-    subset=["start_polygon_owmident", "end_polygon_owmident"]
-)
-
-# Identify rows to drop based on matching 'start_polygon_owmident' and 'end_polygon_owmident'
-rows_to_drop = combined_gdf[
-    (
-        combined_gdf.duplicated(
-            subset=["start_polygon_owmident", "end_polygon_owmident"], keep="first"
-        )
-    )
-].index
-
-# Drop the identified rows
-filtered_gdf_dropped = combined_gdf.drop(rows_to_drop)
-
-# Save the result to a new GeoPackage
-output_gpkg_path = DATA_DIR / "output_filtered_dropped.gpkg"
-filtered_gdf_dropped.to_file(output_gpkg_path, driver="GPKG")
 
 # %%
