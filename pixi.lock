@@ -1,3 +1,4 @@
+version: 2
 metadata:
   content_hash:
     linux-64: e90c2ee71ad70fc0a1c8302029533a7d1498f2bffcd0eaa8d2934700e775dc1d
@@ -18816,7 +18817,7 @@ package:
   timestamp: 1691275738213
 - platform: linux-64
   name: quartodoc
-  version: 0.6.5
+  version: 0.6.6
   category: main
   manager: conda
   dependencies:
@@ -18832,22 +18833,21 @@ package:
   - tabulate >=0.9.0
   - typing-extensions >=4.4.0
   - watchdog >=3.0.0
-  url: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.6.5-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.6.6-pyhd8ed1ab_0.conda
   hash:
-    md5: b6a31dcfbb44a796bf9a3d938af29cf8
-    sha256: 07d2a6273f01e97744ca78f1bf52d5fa7a534fe81239d341cbe51d5d7c7f0f9d
+    md5: 1eaa52c457eaae45459a45ee3f3fde98
+    sha256: f7fddcb986f515530e05eeb687b485a8c0565b6163da77f2ad4d117f82687052
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: linux-64
   build_number: 0
   license: MIT
-  license_family: MIT
   noarch: python
-  size: 57836
-  timestamp: 1697861921173
+  size: 58091
+  timestamp: 1700237790215
 - platform: osx-64
   name: quartodoc
-  version: 0.6.5
+  version: 0.6.6
   category: main
   manager: conda
   dependencies:
@@ -18863,22 +18863,21 @@ package:
   - tabulate >=0.9.0
   - typing-extensions >=4.4.0
   - watchdog >=3.0.0
-  url: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.6.5-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.6.6-pyhd8ed1ab_0.conda
   hash:
-    md5: b6a31dcfbb44a796bf9a3d938af29cf8
-    sha256: 07d2a6273f01e97744ca78f1bf52d5fa7a534fe81239d341cbe51d5d7c7f0f9d
+    md5: 1eaa52c457eaae45459a45ee3f3fde98
+    sha256: f7fddcb986f515530e05eeb687b485a8c0565b6163da77f2ad4d117f82687052
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: osx-64
   build_number: 0
   license: MIT
-  license_family: MIT
   noarch: python
-  size: 57836
-  timestamp: 1697861921173
+  size: 58091
+  timestamp: 1700237790215
 - platform: win-64
   name: quartodoc
-  version: 0.6.5
+  version: 0.6.6
   category: main
   manager: conda
   dependencies:
@@ -18894,19 +18893,18 @@ package:
   - tabulate >=0.9.0
   - typing-extensions >=4.4.0
   - watchdog >=3.0.0
-  url: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.6.5-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.6.6-pyhd8ed1ab_0.conda
   hash:
-    md5: b6a31dcfbb44a796bf9a3d938af29cf8
-    sha256: 07d2a6273f01e97744ca78f1bf52d5fa7a534fe81239d341cbe51d5d7c7f0f9d
+    md5: 1eaa52c457eaae45459a45ee3f3fde98
+    sha256: f7fddcb986f515530e05eeb687b485a8c0565b6163da77f2ad4d117f82687052
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: win-64
   build_number: 0
   license: MIT
-  license_family: MIT
   noarch: python
-  size: 57836
-  timestamp: 1697861921173
+  size: 58091
+  timestamp: 1700237790215
 - platform: linux-64
   name: rasterio
   version: 1.3.9
@@ -23825,4 +23823,3 @@ package:
   license_family: BSD
   size: 343428
   timestamp: 1693151615801
-version: 1
