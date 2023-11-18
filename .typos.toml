@@ -1,2 +1,0 @@
-[files]
-extend-exclude = ["*.csv", "*.json", "*.ipynb", "cloud.py"]
