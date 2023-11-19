@@ -61,3 +61,11 @@ authority = "Rijkswaterstaat"
 # upload local `aangeleverd` directory to cloud-storage
 cloud_storage.upload_aangeleverd(authority, overwrite=True)
 ```
+
+## Upload models
+```
+authority = "Rijkswaterstaat"
+cloud_storage.uploaded_models(authority) # to see which models have been uploaded
+
+cloud_storage.upload_model(authority, model="ijsselmeer") # to upload a new version of the `ijsselmeermodel`.
+```
