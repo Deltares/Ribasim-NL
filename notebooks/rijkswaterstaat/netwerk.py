@@ -1,7 +1,7 @@
 # %%
 import geopandas as gpd
 from ribasim_nl import CloudStorage
-from ribasim_nl.geodataframe import join_by_poly_overlay, split_basins
+from ribasim_nl.geodataframe import direct_basins, join_by_poly_overlay, split_basins
 
 cloud = CloudStorage()
 
@@ -53,4 +53,32 @@ rws_krw_line_gdf = join_by_poly_overlay(
 
 rws_krw_line_gdf.to_file(rws_krw_lines)
 
-# %%
+# %% direct basins
+
+basin_ident = "owmident"
+link_ident = "Name"
+
+basins_gdf = gpd.read_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "krw_basins_vlakken.gpkg")
+)
+
+network_gdf = gpd.read_file(
+    cloud.joinpath("Basisgegevens", "lsm3-j18_5v6", "shapes", "network_Branches.shp")
+)
+network_gdf.set_crs(28992, inplace=True)
+drop_duplicates = True
+
+poly_directions_gdf = direct_basins(basins_gdf, network_gdf, basin_ident, link_ident)
+
+
+poly_directions_gdf.to_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "krw_basins_verbindingen.gpkg")
+)
+
+# %% snap nodes
+
+# %% build graph
+
+# %% build_network
+
+# %% A(h)

@@ -1,4 +1,3 @@
-# %%
 """Functions to apply on a shapely.geometry"""
 from typing import List, Union, get_type_hints
 
