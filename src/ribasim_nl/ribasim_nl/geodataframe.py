@@ -1,5 +1,5 @@
 """All functions resulting in a geopandas.GeoDataFrame"""
-from typing import Literal, Union
+from typing import Literal
 
 import geopandas as gpd
 import pandas as pd
@@ -11,7 +11,7 @@ from ribasim_nl.geometry import split_basin
 def join_by_poly_overlay(
     gdf: GeoDataFrame,
     join_poly_gdf: GeoDataFrame,
-    select_by: Union[Literal["poly_area"], None] = None,
+    select_by: Literal["poly_area"] | None = None,
 ) -> GeoDataFrame:
     """Join attributes from join_polygon_gdf to gdf.
 
