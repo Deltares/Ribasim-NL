@@ -120,6 +120,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#find-water-authorities" id="toc-find-water-authorities" class="nav-link" data-scroll-target="#find-water-authorities">Find water authorities</a></li>
   <li><a href="#download-water-authority-datasets" id="toc-download-water-authority-datasets" class="nav-link" data-scroll-target="#download-water-authority-datasets">Download water authority datasets</a></li>
   <li><a href="#upload-manipulated-data-aangeleverd" id="toc-upload-manipulated-data-aangeleverd" class="nav-link" data-scroll-target="#upload-manipulated-data-aangeleverd">Upload manipulated data (aangeleverd)</a></li>
+  <li><a href="#upload-models" id="toc-upload-models" class="nav-link" data-scroll-target="#upload-models">Upload models</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -190,6 +191,13 @@ cloud_storage.download_all(authority)</code></pre>
 <pre><code>authority = "Rijkswaterstaat"
 # upload local `aangeleverd` directory to cloud-storage
 cloud_storage.upload_aangeleverd(authority, overwrite=True)</code></pre>
+</section>
+<section id="upload-models" class="level2">
+<h2 class="anchored" data-anchor-id="upload-models">Upload models</h2>
+<pre><code>authority = "Rijkswaterstaat"
+cloud_storage.uploaded_models(authority) # to see which models have been uploaded
+
+cloud_storage.upload_model(authority, model="ijsselmeer") # to upload a new version of the `ijsselmeermodel`.</code></pre>
 
 
 </section>

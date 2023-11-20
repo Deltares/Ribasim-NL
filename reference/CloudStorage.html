@@ -159,7 +159,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.CloudStorage.download_content" id="toc-ribasim_nl.CloudStorage.download_content" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.download_content">download_content</a></li>
   <li><a href="#ribasim_nl.CloudStorage.download_verwerkt" id="toc-ribasim_nl.CloudStorage.download_verwerkt" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.download_verwerkt">download_verwerkt</a></li>
   <li><a href="#ribasim_nl.CloudStorage.upload_content" id="toc-ribasim_nl.CloudStorage.upload_content" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.upload_content">upload_content</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.upload_model" id="toc-ribasim_nl.CloudStorage.upload_model" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.upload_model">upload_model</a></li>
   <li><a href="#ribasim_nl.CloudStorage.upload_verwerkt" id="toc-ribasim_nl.CloudStorage.upload_verwerkt" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.upload_verwerkt">upload_verwerkt</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.uploaded_models" id="toc-ribasim_nl.CloudStorage.uploaded_models" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.uploaded_models">uploaded_models</a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -242,8 +244,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Upload content of a directory recursively.</td>
 </tr>
 <tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.upload_model">upload_model</a></td>
+<td>Upload a model to a water authority</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim_nl.CloudStorage.upload_verwerkt">upload_verwerkt</a></td>
 <td>Upload all files in folder ‘verwerkt’</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.uploaded_models">uploaded_models</a></td>
+<td>Get all model versions uploaded for an authority</td>
 </tr>
 </tbody>
 </table>
@@ -339,10 +349,70 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p><code>CloudStorage.upload_content(dir_path, overwrite=False)</code></p>
 <p>Upload content of a directory recursively.</p>
 </section>
+<section id="ribasim_nl.CloudStorage.upload_model" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.upload_model">upload_model</h3>
+<p><code>CloudStorage.upload_model(authority, model)</code></p>
+<p>Upload a model to a water authority</p>
+<section id="parameters" class="level4">
+<h4 class="anchored" data-anchor-id="parameters">Parameters</h4>
+<table class="table">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 10%">
+<col style="width: 55%">
+<col style="width: 16%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>authority</code></td>
+<td>str</td>
+<td>Water authority to upload a model for</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>model</code></td>
+<td>str</td>
+<td>name of the model (directory) to upload</td>
+<td><em>required</em></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="raises" class="level4">
+<h4 class="anchored" data-anchor-id="raises">Raises</h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ValueError</td>
+<td>If model does not exist locally</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
 <section id="ribasim_nl.CloudStorage.upload_verwerkt" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.upload_verwerkt">upload_verwerkt</h3>
 <p><code>CloudStorage.upload_verwerkt(authority, overwrite=False)</code></p>
 <p>Upload all files in folder ‘verwerkt’</p>
+</section>
+<section id="ribasim_nl.CloudStorage.uploaded_models" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.uploaded_models">uploaded_models</h3>
+<p><code>CloudStorage.uploaded_models(authority)</code></p>
+<p>Get all model versions uploaded for an authority</p>
 
 
 </section>
