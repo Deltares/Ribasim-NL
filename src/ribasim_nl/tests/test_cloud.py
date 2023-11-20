@@ -52,4 +52,4 @@ def test_source(cloud):
 def test_models(cloud):
     # check if we can find uploaded models
     models = cloud.uploaded_models("Rijkswaterstaat")
-    assert any((i.model == "ijsselmeer" for i in models))
+    assert any((i.model == "ijsselmeer" for i in models))  # noqa: UP034
