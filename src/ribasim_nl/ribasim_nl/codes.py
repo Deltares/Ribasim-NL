@@ -1,6 +1,5 @@
 """Utilities for generating unique codes."""
 from pathlib import Path
-from typing import Dict, List, Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -46,7 +45,7 @@ def wbh_code_exists(wbh_code) -> bool:
     return wbh_code in codes_df.wbh_code.to_numpy()
 
 
-def bgt_to_wbh_code(bgt_code) -> Union[str, None]:
+def bgt_to_wbh_code(bgt_code) -> str | None:
     """Convert bgt_code to wbh_code if bgt_code exists"""
     wbh_code = None
     if bgt_code_exists(bgt_code):
@@ -60,9 +59,9 @@ def bgt_to_wbh_code(bgt_code) -> Union[str, None]:
 
 def find_codes(
     organization: str,
-    administration_category: Union[str, None] = None,
+    administration_category: str | None = None,
     to_dict: bool = True,
-) -> Union[Dict[str, List[Dict[str, str]]], DataFrame]:
+) -> dict[str, list[dict[str, str]]] | DataFrame:
     codes = {}
     """Find codes associated with an organization"""
     codes_df = get_codes_df()

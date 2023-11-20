@@ -3,7 +3,6 @@ import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Tuple, Union
 from xml.etree import ElementTree
 
 import requests
@@ -53,9 +52,9 @@ def is_dir(item):
 class CloudStorage:
     """Connect a local 'data_dir` to cloud-storage."""
 
-    data_dir: Union[str, Path] = RIBASIM_NL_DATA_DIR
+    data_dir: str | Path = RIBASIM_NL_DATA_DIR
     user: str = RIBASIM_NL_CLOUD_USER
-    url: List[str] = BASE_URL
+    url: list[str] = BASE_URL
     password: str = field(repr=False, default=RIBASIM_NL_CLOUD_PASS)
 
     def __post_init__(self):
@@ -89,18 +88,18 @@ class CloudStorage:
             logger.info(f"{self.data_dir} is created")
 
     @property
-    def source_data(self) -> List[str]:
+    def source_data(self) -> list[str]:
         """List of all source_data (directories) in sub-folder 'Basisgegevens`."""
         url = self.joinurl("Basisgegevens")
         return self.content(url)
 
     @property
-    def auth(self) -> Tuple[str, str]:
+    def auth(self) -> tuple[str, str]:
         """Auth tuple for requests"""
         return (self.user, self.password)
 
     @property
-    def water_authorities(self) -> List[str]:
+    def water_authorities(self) -> list[str]:
         """List of all water authorities (directories)"""
         return WATER_AUTHORITIES
 
@@ -108,7 +107,7 @@ class CloudStorage:
         if authority not in self.water_authorities:
             raise ValueError(f"""'{authority}' not in {self.water_authorities}""")
 
-    def file_url(self, file_path: Union[str, Path]) -> str:
+    def file_url(self, file_path: str | Path) -> str:
         relative_path = Path(file_path).relative_to(self.data_dir)
 
         return f"{self.url}/{relative_path.as_posix()}"
@@ -120,7 +119,7 @@ class CloudStorage:
         relative_url = self.relative_url(file_url)
         return self.data_dir.joinpath(relative_url)
 
-    def relative_path(self, file_path: Union[str, Path]):
+    def relative_path(self, file_path: str | Path):
         return Path(file_path).relative_to(self.data_dir)
 
     def joinurl(self, *args: str):
@@ -156,7 +155,7 @@ class CloudStorage:
         with open(file_path, "wb") as f:
             f.write(r.content)
 
-    def content(self, url) -> Union[List[str], None]:
+    def content(self, url) -> list[str] | None:
         """List all content in a directory
 
         User can specify a path to the directory with additional arguments.
@@ -171,7 +170,7 @@ class CloudStorage:
 
         Returns
         -------
-        List[str]
+        list[str]
             List of all content directories in a specified path
         """
 
@@ -203,7 +202,7 @@ class CloudStorage:
 
         return content
 
-    def dirs(self, *args) -> List[str]:
+    def dirs(self, *args) -> list[str]:
         """List sub-directories in a directory
 
         User can specify a path to the directory with additional arguments.
@@ -218,7 +217,7 @@ class CloudStorage:
 
         Returns
         -------
-        List[str]
+        list[str]
             List of directories in a specified path
         """
 
@@ -304,7 +303,7 @@ class CloudStorage:
         url = self.joinurl(authority, "verwerkt")
         self.download_content(url, overwrite=overwrite)
 
-    def download_basisgegevens(self, bronnen: List[str] = [], overwrite=True):
+    def download_basisgegevens(self, bronnen: list[str] = [], overwrite=True):
         """Download sources in the folder 'Basisgegevens'"""
         source_data = self.source_data
         if not bronnen:

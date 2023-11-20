@@ -5,7 +5,7 @@ import logging
 import re
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 import fiona
 import geopandas as gpd
@@ -40,7 +40,7 @@ DTYPE_MAPPING = {
     "number": "float",
 }
 
-default_properties: Dict[str, Any] = {
+default_properties: dict[str, Any] = {
     "id": None,
     "dtype": "str",
     "required": False,
@@ -48,18 +48,18 @@ default_properties: Dict[str, Any] = {
 }
 
 
-def map_definition(definition: Dict[str, Any]) -> List[Dict[str, Any]]:
+def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
     """
 
 
     Parameters
     ----------
-    definition : Dict
+    definition : dict[str, Any]
         HyDAMO definition as specified in the HyDAMO JSON specification.
 
     Returns
     -------
-    List
+    list[dict[str, Any]]
         Validation schema for the HyDAMO class.
 
     """
@@ -70,7 +70,7 @@ def map_definition(definition: Dict[str, Any]) -> List[Dict[str, Any]]:
     for k, v in definition.items():
         # convert geometry if shape
         if k == "shape":
-            properties: Dict[str, Any] = {"id": "geometry"}
+            properties: dict[str, Any] = {"id": "geometry"}
             dtype = v["type"]
             if not isinstance(dtype, list):
                 dtype = [dtype]
@@ -116,21 +116,20 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
 
     def __init__(
         self,
-        validation_schema: List[Dict[str, Any]],
-        geotype: Optional[
-            List[
-                Literal[
-                    "LineString",
-                    "MultiLineString",
-                    "Point",
-                    "PointZ",
-                    "Polygon",
-                    "MultiPolygon",
-                ]
+        validation_schema: list[dict[str, Any]],
+        geotype: list[
+            Literal[
+                "LineString",
+                "MultiLineString",
+                "Point",
+                "PointZ",
+                "Polygon",
+                "MultiPolygon",
             ]
-        ],
+        ]
+        | None,
         layer_name: str = "",
-        required_columns: List[str] = [],
+        required_columns: list[str] = [],
         logger=logging,
         *args,
         **kwargs,
@@ -144,7 +143,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
         # else:
         kwargs["columns"] = required_columns
 
-        super(ExtendedGeoDataFrame, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.validation_schema = validation_schema
         self.required_columns = required_columns
@@ -301,7 +300,7 @@ class HyDAMO:
         self,
         version: str = "2.2",
         schemas_path: Path = SCHEMAS_DIR,
-        ignored_layers: List[str] = [
+        ignored_layers: list[str] = [
             "afvoeraanvoergebied",
             "imwa_geoobject",
             "leggerwatersysteem",
@@ -311,7 +310,7 @@ class HyDAMO:
     ):
         self.version = version
         self.schema_json = schemas_path.joinpath(f"HyDAMO_{version}.json")
-        self.layers: List[str] = []
+        self.layers: list[str] = []
         self.ignored_layers = ignored_layers
 
         self.init_datamodel()
@@ -322,7 +321,7 @@ class HyDAMO:
 
     def init_datamodel(self) -> None:
         """Initialize DataModel from self.schemas_path."""
-        self.validation_schemas: Dict[str, Any] = {}
+        self.validation_schemas: dict[str, Any] = {}
 
         # read schema as dict
         with open(self.schema_json) as src:
