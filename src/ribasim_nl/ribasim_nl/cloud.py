@@ -1,7 +1,10 @@
+# %%
 import logging
 import os
+import re
 import shutil
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -46,6 +49,14 @@ HIDDEN_DIRS = ["D-HYDRO modeldata"]  # somehow this dir-name still exists :-(
 def is_dir(item):
     """Check if path suggests a directory (even if it doesn't exist yet)"""
     return Path(item).suffix == ""
+
+
+@dataclass
+class ModelVersion:
+    model: str
+    year: int
+    month: int
+    revision: int
 
 
 @dataclass
@@ -327,3 +338,80 @@ class CloudStorage:
         """Download all files for authority."""
         url = self.joinurl(authority)
         self.download_content(url, overwrite=overwrite)
+
+    def uploaded_models(self, authority):
+        """Get all model versions uploaded for an authority"""
+
+        # function to strip version from a models dir
+        def strip_version(dir: str):
+            pattern = r"^(.*)_([\d]+)_([\d]+)_([\d]+)$"
+            match = re.match(pattern, dir)
+            return ModelVersion(
+                match.group(1),
+                int(match.group(2)),
+                int(match.group(3)),
+                int(match.group(4)),
+            )
+
+        # get uploaded_models
+        models_url = self.joinurl(authority, "modellen")
+        uploaded_models = self.content(models_url)
+
+        return [strip_version(i) for i in uploaded_models]
+
+    def upload_model(self, authority: str, model: str):
+        """Upload a model to a water authority
+
+        Parameters
+        ----------
+        authority : str
+            Water authority to upload a model for
+        model : str
+            name of the model (directory) to upload
+
+        Raises
+        ------
+        ValueError
+            If model does not exist locally
+        """
+
+        # get today, so we can later derive a version
+        today = date.today()
+
+        # check if model-directory exists locally
+        model_dir = self.joinpath(authority, "modellen", model)
+
+        if not model_dir.exists():
+            raise ValueError(f"""model at '{model_dir}' does not exis.""")
+
+        # check previously uploaded models to get a revision number
+        uploaded_models = self.uploaded_models(authority=authority)
+        monthly_revisions = [
+            i.revision
+            for i in uploaded_models
+            if (i.model == model)
+            and (i.year == today.year)
+            and (i.month == today.month)
+        ]
+
+        if monthly_revisions:
+            revision = max(monthly_revisions) + 1
+        else:
+            revision = 0
+
+        # create local local copy with the correct revion number
+        model_version_dir = model_dir.parent.joinpath(
+            f"{model}_{today.year}_{today.month}_{revision}"
+        )
+        model_version_dir.mkdir()
+
+        # copy model content to version dir
+        for file in model_dir.glob("*"):
+            dst_file = model_version_dir / file.name
+            dst_file.write_bytes(file.read_bytes())
+
+        # upload content to remote
+        self.create_dir(authority, "modellen", model_version_dir.name)
+        self.upload_content(model_version_dir)
+
+        return ModelVersion(model, today.year, today.month, revision)

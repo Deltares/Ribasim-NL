@@ -1,4 +1,3 @@
-# %%
 """Functions to apply on a shapely.geometry"""
 from typing import get_type_hints
 
@@ -63,8 +62,8 @@ def sort_basins(basin_polygons: MultiPolygon | list[Polygon]) -> MultiPolygon | 
         return sorted(basin_polygons, key=basin_sorter)
 
 
-def cut_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
-    """Cut a polygon with a line into two polygons.
+def split_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
+    """Split a polygon with a line into two polygons.
 
     Credits to https://kuanbutts.com/2020/07/07/subdivide-polygon-with-linestring/
 
@@ -81,7 +80,7 @@ def cut_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
         Multipolygon with two polygons
     """
 
-    _validate_inputs(cut_basin, polygon=basin_polygon, line=line)
+    _validate_inputs(split_basin, polygon=basin_polygon, line=line)
 
     unioned = basin_polygon.boundary.union(line)
 
