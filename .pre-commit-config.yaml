@@ -25,7 +25,3 @@ repos:
     rev: 0.6.1
     hooks:
       - id: nbstripout
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.16.21
-    hooks:
-      - id: typos

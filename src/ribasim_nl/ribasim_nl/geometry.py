@@ -1,5 +1,5 @@
 """Functions to apply on a shapely.geometry"""
-from typing import List, Union, get_type_hints
+from typing import get_type_hints
 
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import polygonize, polylabel
@@ -7,12 +7,12 @@ from shapely.ops import polygonize, polylabel
 from ribasim_nl.generic import _validate_inputs
 
 
-def basin_to_point(basin_polygon: Union[Polygon, MultiPolygon]) -> Point:
+def basin_to_point(basin_polygon: Polygon | MultiPolygon) -> Point:
     """Return a representative point for the basin; centroid if it is within (Multi)Polygon or polylabel if not.
 
     Parameters
     ----------
-    basin_polygon : Union[Polygon, MultiPolygon]
+    basin_polygon : Polygon | MultiPolygon
         (Multi)Polygon to get representative point for
 
     Returns
@@ -33,19 +33,17 @@ def basin_to_point(basin_polygon: Union[Polygon, MultiPolygon]) -> Point:
     return point
 
 
-def sort_basins(
-    basin_polygons: Union[MultiPolygon, List[Polygon]]
-) -> Union[MultiPolygon, list]:
+def sort_basins(basin_polygons: MultiPolygon | list[Polygon]) -> MultiPolygon | list:
     """Sort basins in a MultiPolygon or list of Polygons on .area in ascending order (small to large).
 
     Parameters
     ----------
-    basin_polygons : Union[MultiPolygon, list]
+    basin_polygons : MultiPolygon | list[Polygon]
         MultiPolygon or list of polygons to be sorted
 
     Returns
     -------
-    Union[MultiPolygon, list]
+    MultiPolygon | list
         MultiPolygon with sorted polygons
     """
     is_multipolygon = isinstance(basin_polygons, MultiPolygon)
@@ -107,18 +105,18 @@ def split_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
 
 
 def drop_z(
-    geometry: Union[LineString, MultiPolygon, Point, Polygon]
-) -> Union[Point, Polygon, MultiPolygon]:
+    geometry: LineString | MultiPolygon | Point | Polygon
+) -> Point | Polygon | MultiPolygon:
     """Drop the z-coordinate of a geometry if it has.
 
     Parameters
     ----------
-    geometry : Union[LineString, MultiPolygon, Point, Polygon]
+    geometry : LineString | MultiPolygon | Point | Polygon
         Input geometry
 
     Returns
     -------
-    Union[Point, Polygon, MultiPolygon]
+    Point | Polygon | MultiPolygon
         Output geometry
     """
 
