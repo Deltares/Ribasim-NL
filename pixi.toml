@@ -11,11 +11,13 @@ license-file = "LICENSE"
 [tasks]
 # Installation
 install-hydamo = "pip install --no-deps --editable src/hydamo"
+install-peilbeheerst = "pip install --no-deps --editable scripts/peilbeheerst"
 install-ribasim_nl = "pip install --no-deps --editable src/ribasim_nl"
 install-pre-commit = "pre-commit install"
 install-without-pre-commit = { depends_on = [
     "install-hydamo",
     "install-ribasim_nl",
+    "install-peilbeheerst"
 ] }
 install = { depends_on = [
     "install-without-pre-commit",
