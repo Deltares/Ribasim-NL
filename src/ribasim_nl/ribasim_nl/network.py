@@ -78,7 +78,9 @@ class Network:
             self._graph = Graph()
 
             # add nodes to graph
-            for row in self.nodes.itertuples():
+            for row in (
+                self.nodes.itertuples()
+            ):  # TODO: use self._graph.add_nodes_from may be even faster
                 self._graph.add_node(row.Index, geometry=row.geometry)
 
             for row in self._links_gdf.itertuples():
