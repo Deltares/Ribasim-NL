@@ -1,5 +1,6 @@
 import pytest
 from ribasim_nl import CloudStorage
+from ribasim_nl.cloud import WATER_AUTHORITIES  # noqa: F401
 
 
 @pytest.fixture
@@ -14,15 +15,17 @@ def test_initialize(cloud):
 
     # check if we have the correct directories
     directories = cloud.dirs(cloud.url)
-    assert len(directories) == 23
+    assert len(directories) == 24  # RWS, water authorities + pytest directory
     for directory in cloud.water_authorities + ["Basisgegevens"]:
         assert directory in directories
 
 
 def test_download(cloud):
     """Check if we can download."""
+    global WATER_AUTHORITIES
 
-    authority = "Rijkswaterstaat"
+    authority = "pytest"
+    WATER_AUTHORITIES += [authority]
     local_dir = cloud.data_dir.joinpath(authority, "aangeleverd")
     remote_url = cloud.joinurl(authority, "aangeleverd")
 

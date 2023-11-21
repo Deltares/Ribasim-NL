@@ -1,4 +1,3 @@
-# %%
 import geopandas as gpd
 from ribasim_nl import Network
 from shapely.geometry import LineString

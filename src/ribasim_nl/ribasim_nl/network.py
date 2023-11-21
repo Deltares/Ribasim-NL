@@ -78,12 +78,11 @@ class Network:
             self._graph = Graph()
 
             # add nodes to graph
-            for row in (
-                self.nodes.itertuples()
-            ):  # TODO: use self._graph.add_nodes_from may be even faster
+            for row in self.nodes.itertuples():  # TODO: use feeding self.nodes as dict using self._graph.add_nodes_from may be faster
                 self._graph.add_node(row.Index, geometry=row.geometry)
 
-            for row in self._links_gdf.itertuples():
+            # TODO: if we can pre-select and fix lines with issues (gaps/intersecting lines) we can
+            for row in self.links.itertuples():
                 # select nodes of interest
                 if self.tolerance:
                     bounds = box(*row.geometry.bounds).buffer(self.tolerance).bounds
