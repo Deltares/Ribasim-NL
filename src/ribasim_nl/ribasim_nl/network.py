@@ -4,15 +4,18 @@ from pathlib import Path
 from geopandas import GeoDataFrame, GeoSeries
 from networkx import Graph
 from shapely.geometry import LineString, box
-
-"""
-TODO: split line where node touches edge
-"""
+from shapely.ops import snap, split
 
 
 @dataclass
 class Network:
     """Create a network from a GeoDataFrame with lines.
+
+    When creating nodes and links the following fixes aremade:
+    - All nodes are snapped/dissolved within tolerance if set
+    - Lines shorter than tolerance are dissolved into one nodes
+    - Gaps between lines, within tolerance, are filled
+    - If link-segments intersect nodes, these segments are split
 
     Attributes
     ----------
@@ -50,7 +53,7 @@ class Network:
             #  4. convert to points taking the centroid
             if self.tolerance is not None:
                 geoseries = (
-                    GeoSeries([geoseries.buffer(self.tolerance).unary_union()])
+                    GeoSeries([geoseries.buffer(self.tolerance / 2).unary_union()])
                     .explode(index_parts=False)
                     .reset_index(drop=True)
                     .centroid
@@ -64,43 +67,28 @@ class Network:
         return self._nodes_gdf
 
     @property
+    def snap_tolerance(self):
+        if self.tolerance:
+            return self.tolerance
+        else:
+            return 0.01
+
+    @property
     def links(self) -> GeoDataFrame:
         if self._links_gdf is None:
-            self._links_gdf = GeoDataFrame(
-                self.lines_gdf["geometry"], crs=self.lines_gdf.crs
-            )
-            _ = self.graph  # trigger links by creating a graph
+            _ = self.graph
         return self._links_gdf
 
     @property
     def graph(self) -> Graph:
         if self._graph is None:
-            self._graph = Graph()
+            links_data = []
 
-            # add nodes to graph
-            for row in self.nodes.itertuples():  # TODO: use feeding self.nodes as dict using self._graph.add_nodes_from may be faster
-                self._graph.add_node(row.Index, geometry=row.geometry)
-
-            # TODO: if we can pre-select and fix lines with issues (gaps/intersecting lines) we can
-            for row in self.links.itertuples():
-                # select nodes of interest
-                if self.tolerance:
-                    bounds = box(*row.geometry.bounds).buffer(self.tolerance).bounds
-                else:
-                    bounds = row.geometry.bounds
-                nodes_select = self.nodes.iloc[self.nodes.sindex.intersection(bounds)]
-                # get closest nodes
-                point_from, point_to = row.geometry.boundary.geoms
-                node_from = nodes_select.distance(point_from).sort_values().index[0]
-                node_to = nodes_select.distance(point_to).sort_values().index[0]
-
-                # get geometry and (potentially) fix it if we use tolerance
-                geometry = row.geometry
-                # place first and last point if we have set tolerance
-
+            # place first and last point if we have set tolerance
+            def add_link(
+                node_from, point_from, node_to, point_to, geometry, links_data
+            ):
                 if self.tolerance is not None:
-                    point_from = nodes_select.loc[node_from].geometry
-                    point_to = nodes_select.loc[node_to].geometry
                     geometry = LineString(
                         [(point_from.x, point_from.y)]
                         + geometry.coords[1:-1]
@@ -111,17 +99,83 @@ class Network:
                 self._graph.add_edge(
                     node_from,
                     node_to,
-                    index=row.Index,
-                    length=row.geometry.length,
+                    length=geometry.length,
                     geometry=geometry,
                 )
 
                 # add node_from, node_to to links
-                self._links_gdf.loc[row.Index, ["node_from", "node_to", "geometry"]] = (
-                    node_from,
-                    node_to,
-                    geometry,
+                links_data += [
+                    {"node_from": node_from, "node_to": node_to, "geometry": geometry}
+                ]
+
+            self._graph = Graph()
+
+            # add nodes to graph
+            for row in self.nodes.itertuples():  # TODO: use feeding self.nodes as dict using self._graph.add_nodes_from may be faster
+                self._graph.add_node(row.Index, geometry=row.geometry)
+
+            for row in self.lines_gdf.itertuples():
+                geometry = row.geometry
+
+                # select nodes of interest
+                if self.tolerance:
+                    bounds = box(*geometry.bounds).buffer(self.tolerance).bounds
+                else:
+                    bounds = row.geometry.bounds
+                nodes_select = self.nodes.iloc[self.nodes.sindex.intersection(bounds)]
+                if self.tolerance is None:
+                    nodes_select = nodes_select[nodes_select.distance(geometry) == 0]
+                else:
+                    nodes_select = nodes_select[
+                        nodes_select.distance(geometry) <= self.tolerance
+                    ]
+
+                # Only one node. Skip edge. The geometry.length < self.tolerance, so start/end nodes have been dissolved
+                if len(nodes_select) == 1:
+                    continue
+
+                # More than one node. We order selected nodes by distance from start_node
+                nodes_select["distance"] = nodes_select.distance(
+                    geometry.boundary.geoms[0]
                 )
+                nodes_select.sort_values("distance", inplace=True)
+
+                # More than one node. We select start_node and point-geometry
+                node_from = nodes_select.index[0]
+                point_from = nodes_select.loc[node_from].geometry
+
+                # More than two nodes. Line should be split into parts. We create one extra edge for every extra node
+                if len(nodes_select) > 2:
+                    for node in nodes_select[1:-1].itertuples():
+                        node_to = node.Index
+                        point_to = nodes_select.loc[node_to].geometry
+                        edge_geometry, geometry = split(
+                            snap(geometry, point_to, self.snap_tolerance), point_to
+                        ).geoms
+                        add_link(
+                            node_from,
+                            point_from,
+                            node_to,
+                            point_to,
+                            edge_geometry,
+                            links_data,
+                        )
+                        node_from = node_to
+                        point_from = point_to
+
+                # More than one node. We finish the (last) edge
+                node_to = nodes_select.index[-1]
+                point_to = nodes_select.loc[node_to].geometry
+                add_link(
+                    node_from,
+                    point_from,
+                    node_to,
+                    point_to,
+                    geometry,
+                    links_data,
+                )
+
+            self._links_gdf = GeoDataFrame(links_data, crs=self.lines_gdf.crs)
         return self._graph
 
     def reset(self):
