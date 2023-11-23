@@ -148,8 +148,8 @@ class Network:
                     continue
 
                 # More than one node. We order selected nodes by distance from start_node
-                nodes_select["distance"] = nodes_select.distance(
-                    geometry.boundary.geoms[0]
+                nodes_select["distance"] = nodes_select.geometry.apply(
+                    lambda x: geometry.project(x)
                 )
                 nodes_select.sort_values("distance", inplace=True)
 
