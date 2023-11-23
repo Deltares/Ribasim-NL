@@ -6,6 +6,8 @@ from networkx import Graph
 from shapely.geometry import LineString, box
 from shapely.ops import snap, split
 
+GEOMETRIES_ALLOWED = ["LineString", "MultiLineString"]
+
 
 @dataclass
 class Network:
@@ -20,7 +22,7 @@ class Network:
     Attributes
     ----------
     lines_gdf : GeoDataFrame
-        GeoDataFrame with lines
+        GeoDataFrame with LineStrings
 
     Methods
     -------
@@ -40,6 +42,17 @@ class Network:
     _graph: Graph | None = None
     _nodes_gdf: GeoDataFrame | None = None
     _links_gdf: GeoDataFrame | None = None
+
+    def __post_init__(self):
+        # check if lines_gdf only contains allowed geometries
+        geom_types = self.lines_gdf.geom_type.unique()
+        if not all(i in GEOMETRIES_ALLOWED for i in geom_types):
+            raise ValueError(
+                f"Only geom_types {GEOMETRIES_ALLOWED} are allowed. Got {geom_types}"
+            )
+        # explode to LineString
+        elif "MultiLineString" in geom_types:
+            self.lines_gdf = self.lines_gdf.explode(index_parts=False)
 
     @property
     def nodes(self) -> GeoDataFrame:
