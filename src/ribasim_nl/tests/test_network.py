@@ -23,7 +23,7 @@ def test_network(tmp_path):
     assert output_file.exists()
 
 
-def test_gap_in_network(tmp_path):
+def test_gap_in_network():
     lines_gdf = gpd.GeoDataFrame(
         geometry=gpd.GeoSeries(
             [
@@ -49,7 +49,7 @@ def test_gap_in_network(tmp_path):
     assert all(i in ["geometry", "node_from", "node_to"] for i in network.links.columns)
 
 
-def test_link_within_tolerance(tmp_path):
+def test_link_within_tolerance():
     lines_gdf = gpd.GeoDataFrame(
         geometry=gpd.GeoSeries(
             [
@@ -75,7 +75,7 @@ def test_link_within_tolerance(tmp_path):
     assert len(network.nodes) == len(network.graph.nodes) == 5
 
 
-def test_split_intersecting_links(tmp_path):
+def test_split_intersecting_links():
     lines_gdf = gpd.GeoDataFrame(
         geometry=gpd.GeoSeries(
             [
