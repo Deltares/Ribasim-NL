@@ -108,19 +108,31 @@ attribute_values = [
     "NL94_11",
     "Haringvliet-oost",
 ]
-filtered_krw_basins_gdf = krw_basins_gdf[
+
+attribute_values_extra = [
+    "NL92_MARKERMEER",
+    "NL92_IJSSELMEER",
+]
+filtered_vaarwegen_basins_gdf = krw_basins_gdf[
     krw_basins_gdf["owmident"].isin(attribute_values)
+]
+filtered_osm_basins_gdf = krw_basins_gdf[
+    ~krw_basins_gdf["owmident"].isin(attribute_values)
 ]
 
 
 # Clip GeoDataFrames to the extent of krw_basins_gdf
 print("clip rivers")
-river_osm_gdf_clipped = gpd.clip(river_osm_gdf, krw_basins_gdf.geometry.unary_union)
+river_osm_gdf_clipped = gpd.clip(
+    river_osm_gdf, filtered_osm_basins_gdf.geometry.unary_union
+)
 print("clip canals")
-canal_osm_gdf_clipped = gpd.clip(canal_osm_gdf, krw_basins_gdf.geometry.unary_union)
+canal_osm_gdf_clipped = gpd.clip(
+    canal_osm_gdf, filtered_osm_basins_gdf.geometry.unary_union
+)
 print("clip vaarwegen")
 vaarwegen_gdf_clipped = gpd.clip(
-    vaarwegen_gdf, filtered_krw_basins_gdf.geometry.unary_union
+    vaarwegen_gdf, filtered_vaarwegen_basins_gdf.geometry.unary_union
 )
 
 # Concatenate GeoDataFrames
