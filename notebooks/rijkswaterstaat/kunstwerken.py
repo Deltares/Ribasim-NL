@@ -88,6 +88,7 @@ river_osm_gdf = gpd.read_file(
     cloud.joinpath("OSM", "aangeleverd", "waterway_river_the_netherlands.gpkg")
 )
 
+
 print("read canals")
 canal_osm_gdf = gpd.read_file(
     cloud.joinpath("OSM", "aangeleverd", "waterway_canals_the_netherlands.gpkg")
@@ -103,53 +104,63 @@ attribute_values = [
     "NL89_westsde",
     "NL89_oostsde",
     "NL89_zoommedt",
-    "NL89_volkerak",
     "NL89_grevlemr",
+    "NL89_veersmr",
     "NL94_11",
     "Haringvliet-oost",
+    "NL89_volkerak",
 ]
 
 attribute_values_extra = [
     "NL92_MARKERMEER",
     "NL92_IJSSELMEER",
 ]
+
+all_attribute_values = attribute_values + attribute_values_extra
+
 filtered_vaarwegen_basins_gdf = krw_basins_gdf[
     krw_basins_gdf["owmident"].isin(attribute_values)
 ]
 filtered_osm_basins_gdf = krw_basins_gdf[
-    ~krw_basins_gdf["owmident"].isin(attribute_values)
+    ~krw_basins_gdf["owmident"].isin(all_attribute_values)
 ]
 
+# %%Intersect the rivers with union basins
 
-# Clip GeoDataFrames to the extent of krw_basins_gdf
-print("clip rivers")
-river_osm_gdf_clipped = gpd.clip(
-    river_osm_gdf, filtered_osm_basins_gdf.geometry.unary_union
-)
-print("clip canals")
-canal_osm_gdf_clipped = gpd.clip(
-    canal_osm_gdf, filtered_osm_basins_gdf.geometry.unary_union
-)
+
+print("river clip")
+river_basin_gdf = river_osm_gdf.loc[
+    river_osm_gdf.intersects(filtered_osm_basins_gdf.unary_union)
+]
+print("canal clip")
+canal_basin_gdf = canal_osm_gdf.loc[
+    canal_osm_gdf.intersects(filtered_osm_basins_gdf.unary_union)
+]
+
 print("clip vaarwegen")
-vaarwegen_gdf_clipped = gpd.clip(
-    vaarwegen_gdf, filtered_vaarwegen_basins_gdf.geometry.unary_union
+vaarwegen_gdf_clipped = gpd.overlay(
+    vaarwegen_gdf, filtered_vaarwegen_basins_gdf, how="intersection"
 )
+
+# %%Get the original lines from river_osm_gdf that intersect with the result
 
 # Concatenate GeoDataFrames
 print("merge")
 network_osm_gdf = pd.concat(
-    [river_osm_gdf_clipped, canal_osm_gdf_clipped, vaarwegen_gdf_clipped],
+    [river_basin_gdf, canal_basin_gdf, vaarwegen_gdf_clipped],
     ignore_index=True,
 )
 print("write merge")
 network_osm_gdf.to_file(cloud.joinpath("OSM", "verwerkt", "network_osm.gpkg"))
 # %% Write the merged GeoDataFrame to a new GeoPackage file
 
-print("read network")
-network_osm_gdf = gpd.read_file(cloud.joinpath("OSM", "verwerkt", "network_osm.gpkg"))
+# print("read network")
+# network_osm_gdf = gpd.read_file(cloud.joinpath("OSM", "verwerkt", "network_osm.gpkg"))
 
 print("create network")
-network = Network(network_osm_gdf)
+network = Network(network_osm_gdf, tolerance=10)
 
 print("write network")
 network.to_file(cloud.joinpath("OSM", "verwerkt", "network.gpkg"))
+
+# %%
