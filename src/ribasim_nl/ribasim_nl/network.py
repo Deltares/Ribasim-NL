@@ -4,7 +4,7 @@ from pathlib import Path
 
 import geopandas as gpd
 from geopandas import GeoDataFrame, GeoSeries
-from networkx import DiGraph
+from networkx import DiGraph, Graph
 from shapely.geometry import LineString, box
 from shapely.ops import snap, split
 
@@ -32,9 +32,9 @@ class Network:
     tolerance : float | None
         tolerance for snapping nodes and filling gaps. Defaults to None
     name_col: str
-        column in lines_gdf to preserve as 'name' column in network-links. Defaults to None
+        column in lines_gdf to preserve as 'name' column in network-links. Defaults to 'name'
     id_col: str
-        column in lines_gdf to preserve as 'id' column in network-links. Defaults to None
+        column in lines_gdf to preserve as 'id' column in network-links. Defaults to 'id'
 
     Methods
     -------
@@ -52,11 +52,12 @@ class Network:
     """
 
     lines_gdf: GeoDataFrame
-    name_col: str | None = None
-    id_col: str | None = None
+    name_col: str | None = "name"
+    id_col: str | None = "id"
     tolerance: float | None = None
 
     _graph: DiGraph | None = field(default=None, repr=False)
+    _graph_undirected: Graph | None = field(default=None, repr=False)
 
     def __post_init__(self):
         self.validate_inputs()
@@ -87,6 +88,25 @@ class Network:
         """Instantiate class from a lines_gpkg"""
         lines_gdf = gpd.read_file(gpkg_file, layer=layer)
         return cls(lines_gdf, **kwargs)
+
+    @classmethod
+    def from_network_gpkg(cls, gpkg_file: str | Path, **kwargs):
+        """Instantiate class from a network gpkg"""
+        nodes_gdf = gpd.read_file(gpkg_file, layer="nodes", engine="pyogrio").set_index(
+            "node_id"
+        )
+        links_gdf = gpd.read_file(gpkg_file, layer="links", engine="pyogrio").set_index(
+            ["node_from", "node_to"]
+        )
+        graph = DiGraph()
+        graph.add_nodes_from(nodes_gdf.to_dict(orient="index").items())
+        graph.add_edges_from(
+            [(k[0], k[1], v) for k, v in links_gdf.to_dict(orient="index").items()]
+        )
+
+        result = cls(links_gdf, **kwargs)
+        result.set_graph(graph)
+        return result
 
     @property
     def snap_tolerance(self):
@@ -121,6 +141,12 @@ class Network:
         )
         gdf.index.name = "node_id"
         return gdf
+
+    @property
+    def graph_undirected(self) -> Graph:
+        if self._graph_undirected is None:
+            self._graph_undirected = Graph(self.graph)
+        return self._graph_undirected
 
     @property
     def graph(self) -> DiGraph:
@@ -226,6 +252,10 @@ class Network:
     def reset(self):
         self._graph = None
 
+    def set_graph(self, graph: DiGraph):
+        """Set graph directly"""
+        self._graph = graph
+
     def get_nodes(self) -> GeoDataFrame:
         """Get nodes from lines_gdf
 
@@ -282,7 +312,7 @@ class Network:
             )
 
         # write nodes and links
-        self.nodes.to_file(path, layer="nodes")
-        self.links.to_file(path, layer="links")
+        self.nodes.to_file(path, layer="nodes", engine="pyogrio")
+        self.links.to_file(path, layer="links", engine="pyogrio")
         # add styles
         add_styles_to_geopackage(path)

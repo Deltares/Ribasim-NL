@@ -185,6 +185,6 @@ print("create network")
 network = Network(network_lines_gdf, tolerance=10, id_col="id", name_col="name")
 
 print("write network")
-network.to_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+network.to_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk_2.gpkg"))
 
 # %%

@@ -4,8 +4,10 @@ from typing import Literal
 import geopandas as gpd
 import pandas as pd
 from geopandas import GeoDataFrame
+from shapely.geometry import MultiPolygon
+from shapely.ops import polylabel
 
-from ribasim_nl.geometry import split_basin
+from ribasim_nl.geometry import sort_basins, split_basin
 
 
 def join_by_poly_overlay(
@@ -90,7 +92,7 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
         ## filter polygons with two intersection-points only
         poly_select_gdf = poly_select_gdf[
             poly_select_gdf.geometry.boundary.intersection(line.geometry).apply(
-                lambda x: False if x.geom_type == "Point" else len(x.geoms) == 2
+                lambda x: not x.geom_type == "Point"
             )
         ]
 
@@ -100,7 +102,7 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
                 f"no intersect for {line}. Please make sure it is extended outside the basin on two sides"
             )
         else:
-            ## we create 2 new fatures in data
+            ## we create new features
             data = []
             for basin in poly_select_gdf.itertuples():
                 kwargs = basin._asdict()
@@ -241,3 +243,75 @@ def direct_basins(
         )
 
     return poly_directions_gdf
+
+
+# %%
+def basins_to_points(basins_gdf, network, mask=None, buffer=None):
+    data = []
+    if network is not None:
+        links_gdf = network.links
+
+        def select_links(geometry):
+            idx = links_gdf.sindex.intersection(geometry.bounds)
+            links_select_gdf = links_gdf.iloc[idx]
+            links_select_gdf = links_select_gdf[links_select_gdf.within(geometry)]
+            return links_select_gdf
+
+    for row in basins_gdf.itertuples():
+        # get basin_polygon and centroid
+        basin_polygon = row.geometry
+        point = basin_polygon.centroid
+        node_id = None
+
+        # get links within basin_polygon
+        if network is not None:
+            # we prefer to find selected links within mask
+            if mask is not None:
+                masked_basin_polygon = basin_polygon.intersection(mask)
+                links_select_gdf = select_links(masked_basin_polygon)
+
+            # if not we try to find links within polygon
+            if links_select_gdf.empty:
+                links_select_gdf = select_links(basin_polygon)
+
+            # if still not we try to find links within polygon applying a buffer
+            if links_select_gdf.empty and (buffer is not None):
+                links_select_gdf = select_links(basin_polygon.buffer(buffer))
+
+            # if we selected links, we snap to closest node
+            if not links_select_gdf.empty:
+                # get link maximum length
+                link = links_select_gdf.loc[
+                    links_select_gdf.geometry.length.sort_values(ascending=False).index[
+                        0
+                    ]
+                ]
+
+                # get distance to upstream and downstream point in the link
+                us_point, ds_point = link.geometry.boundary.geoms
+                us_dist, ds_dist = (i.distance(point) for i in [us_point, ds_point])
+
+                # choose closest point as basin point
+                if us_dist < ds_dist:
+                    node_id = getattr(link, "node_from")
+                    point = us_point
+                else:
+                    node_id = getattr(link, "node_to")
+                    point = ds_point
+
+        # if we don't snap on network, we make sure point is within polygon
+        elif not point.within(basin_polygon):
+            # polylabel only works on polygons; we use largest polygon if input is MultiPolygon
+            if isinstance(basin_polygon, MultiPolygon):
+                basin_polygon = sort_basins(list(basin_polygon.geoms))[-1]
+            point = polylabel(basin_polygon)
+
+        attributes = {i: getattr(row, i) for i in basins_gdf.columns}
+        attributes["geometry"] = point
+        attributes["node_id"] = node_id
+        data += [attributes]
+
+    return gpd.GeoDataFrame(data, crs=basins_gdf.crs)
+
+
+# %%
