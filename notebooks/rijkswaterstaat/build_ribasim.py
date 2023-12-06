@@ -11,7 +11,7 @@ from shapely.geometry import LineString
 # %% import network
 cloud = CloudStorage()
 network = Network.from_network_gpkg(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg")
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk_2.gpkg")
 )
 network_nodes_gdf = network.nodes
 PRECIPITATION = 0.005 / 86400  # m/s
@@ -267,11 +267,16 @@ for node_from in basin_gdf.unique_id:
                 resistance_data += add_resistance(nodes_select, path)
                 data += add_edges(nodes_select, path, links)
             # case we have multiple nodes on node_from poly boundary, we find the closest to node_to
-            elif node_to in basin_poly_gdf.index:
-                geometry = basin_poly_gdf.loc[node_to].geometry
-                nodes_select = nodes_select.loc[
-                    [nodes_select.distance(geometry).sort_values().index[0]]
-                ]
+            else:
+                if node_to in basin_poly_gdf.index:
+                    geometry = basin_poly_gdf.loc[node_to].geometry
+                elif node_to in level_boundary_gdf.unique_id.to_list():
+                    geometry = (
+                        level_boundary_gdf.set_index("unique_id").loc[node_to].geometry
+                    )
+                    nodes_select = nodes_select.loc[
+                        [nodes_select.distance(geometry).sort_values().index[0]]
+                    ]
                 resistance_data += add_resistance(nodes_select, path)
                 data += add_edges(nodes_select, path, links)
 
@@ -310,15 +315,28 @@ basin_static_df["infiltration"] = 0.0
 basin_static_df["precipitation"] = PRECIPITATION
 basin_static_df["urban_runoff"] = 0.0
 
+
 print("create profile")
-basin_profile_df = pd.DataFrame(
-    data=[
-        [node, area, level]
-        for node in basin_static_df["node_id"]
-        for area, level in list(zip(AREA, LEVEL))
-    ],
-    columns=["node_id", "area", "level"],
-)
+
+if False:
+    basin_profile_df = pd.read_csv(
+        cloud.joinpath(
+            "Rijkswaterstaat", "verwerkt", "krw_basins_vlakken_level_area.csv"
+        )
+    )
+    basin_profile_df["node_id"] = basin_profile_df["id"].apply(
+        lambda x: basin_gdf.set_index("basin_id").loc[x].node_id
+    )
+    basin_profile_df = basin_profile_df[["node_id", "level", "area"]].drop_duplicates()
+else:
+    basin_profile_df = pd.DataFrame(
+        data=[
+            [node, area, level]
+            for node in basin_static_df["node_id"]
+            for area, level in list(zip(AREA, LEVEL))
+        ],
+        columns=["node_id", "area", "level"],
+    )
 
 print("add ribasim basin")
 basin = ribasim.Basin(profile=basin_profile_df, static=basin_static_df)
@@ -371,7 +389,7 @@ model = ribasim.Model(
     endtime="2021-01-01 00:00:00",
 )
 # %%
-print("write ribasim mdoel")
+print("write ribasim model")
 ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "rijkswateren")
 model.write(ribasim_model_dir)
 
