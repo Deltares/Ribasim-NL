@@ -124,8 +124,10 @@ edge = ribasim.Edge(static=edge_gdf)
 
 # %%
 model = ribasim.Model(
-    node=node,
-    edge=edge,
+    network=ribasim.Network(
+        node=node,
+        edge=edge,
+    ),
     basin=basin,
     outlet=outlet,
     level_boundary=level_boundary,
