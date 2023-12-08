@@ -19451,12 +19451,13 @@ package:
   timestamp: 1598024297745
 - platform: linux-64
   name: ribasim
-  version: 0.6.0
+  version: 0.6.1
   category: main
   manager: conda
   dependencies:
   - geopandas
   - matplotlib-base
+  - numpy
   - pandas
   - pandera !=0.16.0
   - pyarrow
@@ -19466,27 +19467,27 @@ package:
   - shapely >=2.0
   - tomli
   - tomli-w
-  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.0-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.1-pyhd8ed1ab_0.conda
   hash:
-    md5: 289bed229355e56c63b3560f10713056
-    sha256: 40ff77c91e9fd7683aa7491f7d7af4e41279a6e9e5c5c5987047c605319812c8
+    md5: c6f7cda724cd5b63a3293d80e8cfba6d
+    sha256: e6dd3f375fc914dc6d657d46463fcbac3f01570d9f904cde3b8cfdcadd98efb6
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: linux-64
   build_number: 0
   license: MIT
-  license_family: MIT
   noarch: python
-  size: 23518
-  timestamp: 1701128167996
+  size: 23898
+  timestamp: 1702048238025
 - platform: osx-64
   name: ribasim
-  version: 0.6.0
+  version: 0.6.1
   category: main
   manager: conda
   dependencies:
   - geopandas
   - matplotlib-base
+  - numpy
   - pandas
   - pandera !=0.16.0
   - pyarrow
@@ -19496,27 +19497,27 @@ package:
   - shapely >=2.0
   - tomli
   - tomli-w
-  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.0-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.1-pyhd8ed1ab_0.conda
   hash:
-    md5: 289bed229355e56c63b3560f10713056
-    sha256: 40ff77c91e9fd7683aa7491f7d7af4e41279a6e9e5c5c5987047c605319812c8
+    md5: c6f7cda724cd5b63a3293d80e8cfba6d
+    sha256: e6dd3f375fc914dc6d657d46463fcbac3f01570d9f904cde3b8cfdcadd98efb6
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: osx-64
   build_number: 0
   license: MIT
-  license_family: MIT
   noarch: python
-  size: 23518
-  timestamp: 1701128167996
+  size: 23898
+  timestamp: 1702048238025
 - platform: win-64
   name: ribasim
-  version: 0.6.0
+  version: 0.6.1
   category: main
   manager: conda
   dependencies:
   - geopandas
   - matplotlib-base
+  - numpy
   - pandas
   - pandera !=0.16.0
   - pyarrow
@@ -19526,19 +19527,18 @@ package:
   - shapely >=2.0
   - tomli
   - tomli-w
-  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.0-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.1-pyhd8ed1ab_0.conda
   hash:
-    md5: 289bed229355e56c63b3560f10713056
-    sha256: 40ff77c91e9fd7683aa7491f7d7af4e41279a6e9e5c5c5987047c605319812c8
+    md5: c6f7cda724cd5b63a3293d80e8cfba6d
+    sha256: e6dd3f375fc914dc6d657d46463fcbac3f01570d9f904cde3b8cfdcadd98efb6
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: win-64
   build_number: 0
   license: MIT
-  license_family: MIT
   noarch: python
-  size: 23518
-  timestamp: 1701128167996
+  size: 23898
+  timestamp: 1702048238025
 - platform: linux-64
   name: rpds-py
   version: 0.13.2
