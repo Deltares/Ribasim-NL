@@ -52,8 +52,8 @@ class Network:
     """
 
     lines_gdf: GeoDataFrame
-    name_col: str | None = "name"
-    id_col: str | None = "id"
+    name_col: str | None = None
+    id_col: str | None = None
     tolerance: float | None = None
 
     _graph: DiGraph | None = field(default=None, repr=False)

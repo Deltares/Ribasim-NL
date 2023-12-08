@@ -1,13 +1,15 @@
 # %%
+import math
 from pathlib import Path
 
+import geopandas as gpd
 import numpy as np
 import rasterio
 from osgeo import gdal
 from pandas import DataFrame
 from rasterio import features  # noqa:F401
 from rasterio.windows import from_bounds
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Polygon
 
 DEFAULT_PERCENTILES = [
     0.01,
@@ -67,7 +69,7 @@ def build_vrt(raster_dir: Path):
     vrt_ds = None
 
 
-def level_area(
+def sample_level_area(
     raster_path: Path, polygon: Polygon, ident=None, percentiles=DEFAULT_PERCENTILES
 ) -> DataFrame:
     # Define the window coordinates (left, right, top, bottom)
@@ -81,6 +83,8 @@ def level_area(
         scales = src.scales
         dx, dy = src.res
         cell_area = dx * dy
+
+        # get actual value if data is scaled
         if scales[0] != 1:
             window_data = np.where(
                 window_data == profile["nodata"],
@@ -113,4 +117,62 @@ def level_area(
     return df
 
 
-# %%
+def line_to_samples(
+    line: LineString, sample_dist: float, crs=28992
+) -> gpd.GeoDataFrame:
+    """Convert line to samples
+
+    Parameters
+    ----------
+    line : LineString
+        Input line
+    sample_dist : float
+        minimal distance along line
+    crs : int, optional
+        output projection, by default 28992
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        GeoDataFrame with Point geometry and distance along the line
+    """
+    nbr_points = math.ceil(line.length / sample_dist)
+    gdf = gpd.GeoDataFrame(
+        geometry=[
+            line.interpolate(i / float(nbr_points - 1), normalized=True)
+            for i in range(nbr_points)
+        ],
+        crs=crs,
+    )
+    gdf["distance"] = gdf.geometry.apply(lambda x: line.project(x))
+    return gdf
+
+
+def sample_elevation_distance(raster_path: Path, line: LineString) -> gpd.GeoDataFrame:
+    """Sample values over an elevation raster using a line
+
+    Parameters
+    ----------
+    raster_path : Path
+        Path to raster
+    line : LineString
+        LineString to sample at raster-resolution
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        GeoDataFrame with Point-geometry, distance along the line and elevation value
+    """
+
+    with rasterio.open(raster_path) as src:
+        sample_dist = abs(src.res[0])
+        gdf = line_to_samples(line, sample_dist)
+        coords = zip(gdf["geometry"].x, gdf["geometry"].y)
+        gdf["elevation"] = [i[0] for i in src.sample(coords)]
+
+        gdf = gdf[gdf.elevation != src.nodata]
+        # get actual value if data is scaled
+        if src.scales[0] != 1:
+            gdf["elevation"] = gdf["elevation"] * src.scales[0]
+
+    return gdf

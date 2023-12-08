@@ -13,19 +13,16 @@ from geocube.rasterize import rasterize_points_griddata
 from rasterio.enums import Resampling
 from rasterio.transform import from_origin
 from rasterio.windows import from_bounds
-from shapely.geometry import box
+from shapely.geometry import MultiPolygon, box
 
 out_dir = Path(
     r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\verwerkt\bathymetrie"
 )
 out_dir.mkdir(exist_ok=True)
 baseline_file = Path(
-    r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\baseline-nl_land-j23_6-v1\bathymetrie.gpkg"
-)
-layer = "bedlevel_points"
-baseline_file = Path(
     r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\baseline-nl_land-j23_6-v1\baseline.gdb"
 )
+layer = "bedlevel_points"
 
 krw_poly_gpkg = Path(
     r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Basisgegevens\KRW\krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg"
@@ -89,7 +86,7 @@ with rasterio.open(
 
         bounds = (xmin, ymin, xmax, ymax)
         area_poly = box(*bounds)
-        print("clip mask")
+        print("select water-mask geometries")
         water_geometries_select = water_geometries[
             water_geometries.intersects(area_poly)
         ]
@@ -102,11 +99,14 @@ with rasterio.open(
                 engine="pyogrio",
                 bbox=area_poly_buffer.bounds,
             )
-            gdf = gdf.loc[(gdf.ELEVATION > -60) & (gdf.ELEVATION < 5)]
+            gdf = gdf.loc[(gdf.ELEVATION > -60) & (gdf.ELEVATION < 50)]
 
             if not gdf.empty:
+                # we drop duplicated points within the same meter
                 print("drop duplicates")
-                gdf.drop_duplicates(["geometry"], inplace=True)
+                gdf["x"] = gdf.geometry.x.astype(int)
+                gdf["y"] = gdf.geometry.y.astype(int)
+                gdf.drop_duplicates(["x", "y"], inplace=True)
 
                 print("make cube")
                 cube = make_geocube(
@@ -114,7 +114,7 @@ with rasterio.open(
                     measurements=["ELEVATION"],
                     resolution=(res, -res),
                     rasterize_function=partial(
-                        rasterize_points_griddata, method="cubic"
+                        rasterize_points_griddata, method="linear"
                     ),
                     interpolate_na_method="nearest",
                 )
@@ -128,7 +128,18 @@ with rasterio.open(
                 mask = water_geometries_select.geometry.unary_union.intersection(
                     area_poly
                 )
-                cube = cube.rio.clip([mask])
+                convex_hull = gdf.unary_union.convex_hull
+                if isinstance(mask, MultiPolygon):
+                    mask = [
+                        i.intersection(convex_hull)
+                        for i in mask.geoms
+                        if i.intersects(convex_hull)
+                    ]
+
+                else:  # is one polygon
+                    mask = [mask.intersection(convex_hull)]
+
+                cube = cube.rio.clip(mask)
 
                 if cube.ELEVATION.size > 0:
                     print("add to tiff")
@@ -141,10 +152,8 @@ with rasterio.open(
             else:
                 print("no samples within boundary")
         else:
-            print("no water within bounds")
+            print("no water-mask within bounds")
 
     dst.build_overviews([5, 20], Resampling.average)
     dst.update_tags(ns="rio_overview", resampling="average")
     dst.scales = (0.01,)
-
-# %%

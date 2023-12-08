@@ -11,7 +11,7 @@ from shapely.geometry import LineString
 # %% import network
 cloud = CloudStorage()
 network = Network.from_network_gpkg(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk_2.gpkg")
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg")
 )
 network_nodes_gdf = network.nodes
 PRECIPITATION = 0.005 / 86400  # m/s
@@ -68,7 +68,7 @@ basin_poly_gdf = gpd.read_file(
     engine="pyogrio",
 )
 
-# mask to vaarwegen, exclude for lakes
+# %%mask to vaarwegen, exclude for lakes
 print("create mask")
 vaarwegen_mask = (
     gpd.read_file(
@@ -92,6 +92,7 @@ print("generate basin nodes")
 basin_gdf = basins_to_points(basin_poly_gdf, network, mask, buffer=5)
 basin_gdf["type"] = "Basin"
 basin_gdf.rename(columns={"node_id": "unique_id"}, inplace=True)
+
 
 # %% do edges
 
@@ -172,6 +173,54 @@ for row in basin_ids.itertuples():
 data = []
 edges_passed = []
 
+# %% add kunstwerken
+structures_gdf = gpd.read_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerken_select_legger.gpkg")
+)
+codes = ["RL2.KW.-.891,430"]
+
+structures = []
+for row in structures_gdf[structures_gdf.beheerobjectcode.isin(codes)].itertuples():
+    node_id = network_nodes_gdf.distance(row.geometry).sort_values().index[0]
+    neighbors = list(network.graph_undirected.neighbors(node_id))
+    ds_node = list(network.graph.neighbors(node_id))[0]
+    ds_basin = (
+        basin_poly_gdf[basin_poly_gdf.contains(network_nodes_gdf.loc[ds_node].geometry)]
+        .iloc[0]
+        .unique_id
+    )
+    us_node = [i for i in neighbors if i != ds_node][0]
+    us_basin = (
+        basin_poly_gdf[basin_poly_gdf.contains(network_nodes_gdf.loc[us_node].geometry)]
+        .iloc[0]
+        .unique_id
+    )
+    structures += [
+        {
+            "name": row.objectnaam,
+            "code": row.beheerobjectcode,
+            "node_id": node_id,
+            "ds_node_id": ds_node,
+            "ds_basin_id": ds_basin,
+            "us_node_id": us_node,
+            "us_basin_id": us_basin,
+        }
+    ]
+
+structures += [
+    {
+        "name": "ijssel",
+        "code": "",
+        "node_id": 4088,
+        "ds_node_id": 4094,
+        "us_node_id": 4087,
+        "ds_basin_id": 4423,
+        "us_basin_id": 4087,
+    }
+]
+
+structures_df = pd.DataFrame(structures)
+
 # %% add boundary-edges
 for node_from in flow_boundary_gdf.unique_id:
     path = find_paths(node_from, basin_gdf.unique_id, network, one_to_one=True)[0]
@@ -217,68 +266,113 @@ resistance_data = []
 basin_poly_gdf.set_index("unique_id", inplace=True)
 nodes_to = basin_gdf.unique_id.to_list() + level_boundary_gdf.unique_id.to_list()
 for node_from in basin_gdf.unique_id:
-    paths = find_paths(node_from, nodes_to, network)
-    if len(paths) == 0:
-        print(f"no path found for {node_from}, please fix network!")
-        continue
+    # handle structures
+    if node_from in structures_df.us_basin_id.to_numpy():
+        for row in structures_df[structures_df.us_basin_id == node_from].itertuples():
+            # add resistance
+            unique_id = f"{row.node_id}_{row.us_basin_id}_{row.ds_basin_id}"
+            resistance_data += [
+                {
+                    "unique_id": unique_id,
+                    "geometry": network_nodes_gdf.loc[row.node_id].geometry,
+                    "type": "LinearResistance",
+                }
+            ]
+            # add edge from
+            # path = find_paths(node_from, row.node_id, network)[0]
+
+            path = nx.shortest_path(
+                network.graph, node_from, row.node_id, weight="length"
+            )
+
+            geometry = path_to_geometry(path, links)
+            data += [
+                {
+                    "unique_id_from": row.us_basin_id,
+                    "unique_id_to": unique_id,
+                    "geometry": geometry,
+                },
+            ]
+            # add edge to
+            path = nx.shortest_path(
+                network.graph, row.node_id, row.ds_basin_id, weight="length"
+            )
+            geometry = path_to_geometry(path, links)
+            data += [
+                {
+                    "unique_id_from": unique_id,
+                    "unique_id_to": row.ds_basin_id,
+                    "geometry": geometry,
+                },
+            ]
+
     else:
-        for path in paths:
-            node_to = path[-1]
+        paths = find_paths(node_from, nodes_to, network)
+        if len(paths) == 0:
+            print(f"no path found for {node_from}, please fix network!")
+            continue
+        else:
+            for path in paths:
+                node_to = path[-1]
 
-            # check if edge hasn't been passed in reversed direction
-            if (node_to, node_from) in edges_passed:
-                continue
-            else:
-                edges_passed += [(node_from, node_to)]
+                # check if edge hasn't been passed in reversed direction
+                if (node_to, node_from) in edges_passed:
+                    continue
+                else:
+                    edges_passed += [(node_from, node_to)]
 
-            nodes_select = nodes.loc[path[1:-1]]
+                nodes_select = nodes.loc[path[1:-1]]
 
-            # if there are no extra nodes between node_from and node_to, we can't add a flow node
-            if nodes_select.empty:
-                raise Exception(f"no extra nodes between {node_from} and {path[-1]}")
-
-            # else, we check if the two basins are adjacent, all nodes should either be node_from, or node_to.
-            # If not, we don't have a valid path and we continue
-            elif (
-                not nodes_select[nodes_select.unique_id.notna()]
-                .unique_id.isin([node_from, node_to])
-                .all()
-            ):
-                continue
-
-            elif len(nodes_select) == 1:
-                resistance_data += add_resistance(nodes_select, path)
-                data += add_edges(nodes_select, path, links)
-                continue
-            # case we have multiple nodes, we try to find the one on the node_from poly boundary
-            else:
-                nodes_select = nodes_select[
-                    nodes_select.geometry.buffer(5).intersects(
-                        basin_poly_gdf.loc[node_from].geometry.boundary
+                # if there are no extra nodes between node_from and node_to, we can't add a flow node
+                if nodes_select.empty:
+                    raise Exception(
+                        f"no extra nodes between {node_from} and {path[-1]}"
                     )
-                ]
-            if nodes_select.empty:
-                print(
-                    f"no extra nodes on poly boundary of between {node_from}, please fix network!"
-                )
-                continue
 
-            elif len(nodes_select) == 1:
-                resistance_data += add_resistance(nodes_select, path)
-                data += add_edges(nodes_select, path, links)
-            # case we have multiple nodes on node_from poly boundary, we find the closest to node_to
-            else:
-                if node_to in basin_poly_gdf.index:
-                    geometry = basin_poly_gdf.loc[node_to].geometry
-                elif node_to in level_boundary_gdf.unique_id.to_list():
-                    geometry = (
-                        level_boundary_gdf.set_index("unique_id").loc[node_to].geometry
-                    )
-                    nodes_select = nodes_select.loc[
-                        [nodes_select.distance(geometry).sort_values().index[0]]
+                # else, we check if the two basins are adjacent, all nodes should either be node_from, or node_to.
+                # If not, we don't have a valid path and we continue
+                elif (
+                    not nodes_select[nodes_select.unique_id.notna()]
+                    .unique_id.isin([node_from, node_to])
+                    .all()
+                ):
+                    continue
+
+                elif len(nodes_select) == 1:
+                    resistance_data += add_resistance(nodes_select, path)
+                    data += add_edges(nodes_select, path, links)
+                    continue
+                # case we have multiple nodes, we try to find the one on the node_from poly boundary
+                else:
+                    nodes_select = nodes_select[
+                        nodes_select.geometry.buffer(5).intersects(
+                            basin_poly_gdf.loc[node_from].geometry.boundary
+                        )
                     ]
-                resistance_data += add_resistance(nodes_select, path)
-                data += add_edges(nodes_select, path, links)
+                if nodes_select.empty:
+                    print(
+                        f"no extra nodes on poly boundary of between {node_from}, please fix network!"
+                    )
+                    continue
+
+                elif len(nodes_select) == 1:
+                    resistance_data += add_resistance(nodes_select, path)
+                    data += add_edges(nodes_select, path, links)
+                # case we have multiple nodes on node_from poly boundary, we find the closest to node_to
+                else:
+                    if node_to in basin_poly_gdf.index:
+                        geometry = basin_poly_gdf.loc[node_to].geometry
+                    elif node_to in level_boundary_gdf.unique_id.to_list():
+                        geometry = (
+                            level_boundary_gdf.set_index("unique_id")
+                            .loc[node_to]
+                            .geometry
+                        )
+                        nodes_select = nodes_select.loc[
+                            [nodes_select.distance(geometry).sort_values().index[0]]
+                        ]
+                    resistance_data += add_resistance(nodes_select, path)
+                    data += add_edges(nodes_select, path, links)
 
 
 resistance_gdf = gpd.GeoDataFrame(resistance_data, crs=network.lines_gdf.crs)
