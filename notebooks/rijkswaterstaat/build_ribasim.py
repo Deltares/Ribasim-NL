@@ -486,5 +486,3 @@ model = ribasim.Model(
 print("write ribasim model")
 ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "rijkswateren")
 model.write(ribasim_model_dir)
-
-# %%
