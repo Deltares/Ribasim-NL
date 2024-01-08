@@ -10,5 +10,6 @@
         "editor.codeActionsOnSave": {
             "source.fixAll": "explicit"
         }
-    }
+    },
+    "julia.environmentPath": "d:\\repositories\\Ribasim-NL"
 }
