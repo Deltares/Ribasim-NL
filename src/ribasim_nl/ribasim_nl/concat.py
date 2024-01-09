@@ -49,7 +49,7 @@ def concat(filepaths: list, attributes: dict | None = None) -> Model:
         filepath = filepaths[idx]
         add_model = Model.read(filepath)
 
-        model = add_attributes(model, idx)
+        add_model = add_attributes(add_model, idx)
         model.merge_model(add_model)
 
     # update node_id column if exists
