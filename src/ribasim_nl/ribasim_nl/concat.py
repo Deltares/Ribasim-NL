@@ -1,9 +1,7 @@
-from pathlib import Path
-
 from ribasim import Model
 
 
-def concat(filepaths: list(Path), attributes: dict | None = None) -> Model:
+def concat(filepaths: list, attributes: dict | None = None) -> Model:
     """Concat existing models to one Ribasim-model
 
     Parameters
@@ -13,7 +11,7 @@ def concat(filepaths: list(Path), attributes: dict | None = None) -> Model:
     attributes: dict
         Dictionary with attributes (key) and their values as list. Length of values should
         match the length of filepaths as every item in list is assigned as a constant value
-        to the ribasim.Model.node.df.
+        to the ribasim.Model.network.node and ribasim.Model.network.edge.
 
     Returns
     -------
@@ -25,6 +23,7 @@ def concat(filepaths: list(Path), attributes: dict | None = None) -> Model:
         if attributes is not None:
             for k in attributes.keys():
                 model.network.node.df[k] = attributes[k][idx]
+                model.network.edge.df[k] = attributes[k][idx]
         return model
 
     # check if attributes match length of list
