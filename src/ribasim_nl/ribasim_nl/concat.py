@@ -1,0 +1,63 @@
+from pathlib import Path
+
+from ribasim import Model
+
+
+def concat(filepaths: list(Path), attributes: dict | None = None) -> Model:
+    """Concat existing models to one Ribasim-model
+
+    Parameters
+    ----------
+    filepaths : List[Path]
+        List of Paths to toml-files. Models will be merged first-to-last
+    attributes: dict
+        Dictionary with attributes (key) and their values as list. Length of values should
+        match the length of filepaths as every item in list is assigned as a constant value
+        to the ribasim.Model.node.df.
+
+    Returns
+    -------
+    Model
+        Resulting Ribasim-model
+    """
+
+    def add_attributes(model, idx):
+        if attributes is not None:
+            for k in attributes.keys():
+                model.network.node.df[k] = attributes[k][idx]
+        return model
+
+    # check if attributes match length of list
+    if attributes is not None:
+        for k, v in attributes.items():
+            if not isinstance(v, list):
+                raise TypeError(
+                    f"value of attribute '{k}' is not a list but '{type(v)}'"
+                )
+
+            if len(v) != len(filepaths):
+                raise ValueError(
+                    f"length of attribute-list '{k}', not equal to length of filepaths: {len(v)} != {len(filepaths)}"
+                )
+
+    # read first model to merge the rest into
+    filepath = filepaths[0]
+    model = Model.read(filepath)
+    model = add_attributes(model, 0)
+
+    # merge other models into model
+    for idx in range(1, len(filepaths)):
+        filepath = filepaths[idx]
+        add_model = Model.read(filepath)
+
+        model = add_attributes(model, idx)
+        model.merge_model(add_model)
+
+    # update node_id column if exists
+    if "node_id" in model.network.node.df.columns:
+        model.network.node.df["node_id"] = model.network.node.df.index
+
+    # fix edge-fid if exists
+    model.network.edge.df.reset_index(inplace=True, drop=True)
+
+    return model
