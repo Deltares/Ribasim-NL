@@ -42,7 +42,6 @@ def concat(filepaths: list, attributes: dict | None = None) -> Model:
     # read first model to merge the rest into
     filepath = filepaths[0]
     model = Model.read(filepath)
-    model = add_attributes(model, 0)
 
     # merge other models into model
     for idx in range(1, len(filepaths)):
