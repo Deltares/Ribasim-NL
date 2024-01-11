@@ -22,8 +22,14 @@ def concat(filepaths: list, attributes: dict | None = None) -> Model:
     def add_attributes(model, idx):
         if attributes is not None:
             for k in attributes.keys():
-                model.network.node.df[f"meta_{k}"] = attributes[k][idx]
-                model.network.edge.df[f"meta_{k}"] = attributes[k][idx]
+                # for now we have to make sure every attribute startswith meta_
+                if not k.startswith("meta_"):
+                    column = f"meta_{k}"
+                else:
+                    column = k
+
+                model.network.node.df[column] = attributes[k][idx]
+                model.network.edge.df[column] = attributes[k][idx]
         return model
 
     # check if attributes match length of list
