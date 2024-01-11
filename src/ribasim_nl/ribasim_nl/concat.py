@@ -22,8 +22,8 @@ def concat(filepaths: list, attributes: dict | None = None) -> Model:
     def add_attributes(model, idx):
         if attributes is not None:
             for k in attributes.keys():
-                model.network.node.df[k] = attributes[k][idx]
-                model.network.edge.df[k] = attributes[k][idx]
+                model.network.node.df[f"meta_{k}"] = attributes[k][idx]
+                model.network.edge.df[f"meta_{k}"] = attributes[k][idx]
         return model
 
     # check if attributes match length of list
@@ -42,11 +42,13 @@ def concat(filepaths: list, attributes: dict | None = None) -> Model:
     # read first model to merge the rest into
     filepath = filepaths[0]
     model = Model.read(filepath)
+    model = add_attributes(model, 0)
 
     # merge other models into model
     for idx in range(1, len(filepaths)):
         filepath = filepaths[idx]
         add_model = Model.read(filepath)
+        model = add_attributes(model, idx)
         model.smart_merge(add_model)
 
     return model
