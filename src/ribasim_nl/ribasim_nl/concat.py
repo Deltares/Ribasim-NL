@@ -48,15 +48,6 @@ def concat(filepaths: list, attributes: dict | None = None) -> Model:
     for idx in range(1, len(filepaths)):
         filepath = filepaths[idx]
         add_model = Model.read(filepath)
-
-        add_model = add_attributes(add_model, idx)
-        model.merge_model(add_model)
-
-    # update node_id column if exists
-    if "node_id" in model.network.node.df.columns:
-        model.network.node.df["node_id"] = model.network.node.df.index
-
-    # fix edge-fid if exists
-    model.network.edge.df.reset_index(inplace=True, drop=True)
+        model.smart_merge(add_model)
 
     return model
