@@ -28,12 +28,6 @@ fairway_osm_gdf = gpd.read_file(
     engine="pyogrio",
 )
 
-print("read osm waterway_yes: veerse meer")
-waterway_osm_gdf = gpd.read_file(
-    cloud.joinpath("basisgegevens", "OSM", "waterway_yes_the_netherlands.gpkg"),
-    engine="pyogrio",
-)
-
 print("read osm river")
 river_osm_gdf = gpd.read_file(
     cloud.joinpath("basisgegevens", "OSM", "waterway_river_the_netherlands.gpkg"),
@@ -42,7 +36,7 @@ river_osm_gdf = gpd.read_file(
 
 print("read osm canals")
 canal_osm_gdf = gpd.read_file(
-    cloud.joinpath("basisgegevens", "OSM", "waterway_canals_the_netherlands.gpkg"),
+    cloud.joinpath("basisgegevens", "OSM", "waterway_canal_the_netherlands.gpkg"),
     engine="pyogrio",
 )
 
@@ -74,8 +68,14 @@ ijsselmeer_basins = [
     "NL92_MARKERMEER",
     "NL92_IJSSELMEER",
 ]
-
-rijks_waterlichamen = ["Maximakanaal"]
+# KRW dekt sommige kunstwerken niet geheel waardoor rijks_waterlichamen zijn toegevoegd
+rijks_waterlichamen = [
+    "Maximakanaal",
+    "Kanaal Wessem-Nederweert",
+    "Noordzeekanaal",
+    "Buiten-IJ",
+    "Buitenhaven van IJmuiden",
+]
 
 exclude_osm_basins = ijsselmeer_basins
 
@@ -90,12 +90,16 @@ osm_basins_mask = (
     .unary_union
 )
 
-
 rws_opp_poly_mask = rws_opp_poly_gdf[
     rws_opp_poly_gdf.waterlichaam.isin(rijks_waterlichamen)
 ].unary_union
 
 osm_mask = osm_basins_mask.union(rws_opp_poly_mask)
+rws_opp_poly_mask_gdf = gpd.GeoDataFrame(geometry=[rws_opp_poly_mask])
+osm_basins_mask_gdf = gpd.GeoDataFrame(geometry=[osm_basins_mask])
+
+# Create a GeoDataFrame from the union result
+osm_mask_gdf = gpd.GeoDataFrame(geometry=[osm_mask])
 
 
 # %% Overlay lines with krw-basins
@@ -117,18 +121,11 @@ fairway_osm_basin_gdf = gpd.overlay(
     fairway_osm_gdf, filtered_osm_basins_gdf, how="union"
 )
 
-print("canal osm fairway overlay")
-waterway_osm_gdf = waterway_osm_gdf[waterway_osm_gdf.intersects(osm_mask)]
-waterway_osm_basin_gdf = gpd.overlay(
-    fairway_osm_gdf, filtered_osm_basins_gdf, how="union"
-)
-
 
 # %% Samenvoegen tot 1 lijnenbestand
 river_osm_basin_gdf.rename(columns={"osm_id": "id"}, inplace=True)
 canal_osm_basin_gdf.rename(columns={"osm_id": "id"}, inplace=True)
 fairway_osm_basin_gdf.rename(columns={"osm_id": "id"}, inplace=True)
-waterway_osm_basin_gdf.rename(columns={"osm_id": "id"}, inplace=True)
 extra_basin_gdf.rename(columns={"naam": "name"}, inplace=True)
 # Concatenate GeoDataFrames
 print("concat")
@@ -136,9 +133,7 @@ network_lines_gdf = pd.concat(
     [
         river_osm_basin_gdf,
         canal_osm_basin_gdf,
-        # vaarwegen_basin_gdf,
         fairway_osm_basin_gdf,
-        waterway_osm_basin_gdf,
     ],
     ignore_index=True,
 )
