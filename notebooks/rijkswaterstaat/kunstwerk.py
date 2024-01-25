@@ -144,12 +144,30 @@ additional_points = pd.concat(
         primaire_kwk_add_gdf,
         nis_hws_gdf[
             nis_hws_gdf["complex_code"].isin(
-                ["49D-400", "44D-002", "58C-001", "45B-352", "33F-001", "21G-350"]
+                [
+                    "49D-400",
+                    "44D-002",
+                    "58C-001",
+                    "45B-352",
+                    "33F-001",
+                    "21G-350",
+                    "58D-001",
+                    "51F-001",
+                ]
             )
         ],
         nis_hwvn_gdf[
             nis_hwvn_gdf["complex_code"].isin(
-                ["49D-400", "44D-002", "58C-001", "45B-352", "33F-001", "21G-350"]
+                [
+                    "49D-400",
+                    "44D-002",
+                    "58C-001",
+                    "45B-352",
+                    "33F-001",
+                    "21G-350",
+                    "58D-001",
+                    "51F-001",
+                ]
             )
         ],
         baseline_kwk_add_gdf,
