@@ -10,6 +10,7 @@ import numpy as np
 import rasterio
 from geocube.api.core import make_geocube
 from geocube.rasterize import rasterize_points_griddata
+from rasterio import features, merge  # noqa: F401
 from rasterio.enums import Resampling
 from rasterio.transform import from_origin
 from rasterio.windows import from_bounds
@@ -27,24 +28,45 @@ layer = "bedlevel_points"
 krw_poly_gpkg = Path(
     r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Basisgegevens\KRW\krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg"
 )
+
+bathymetrie_nl = Path(
+    r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\aangeleverd\bathymetrie"
+)
+
 res = 5
 tile_size = 10000
+bounds = (0, 300000, 320000, 660000)
+nodata = -9999
 
 # %%
-# print("read krw waterlichamen")
-# krw_poly = gpd.read_file(krw_poly_gpkg, engine="pyogrio")
 
-# print("read TOP10NL-waterdelen")
-# water_poly_gdf = gpd.read_file(
-#     r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Basisgegevens\Top10NL\top10nl_Compleet.gpkg",
-#     engine="pyogrio",
-#     layer="top10nl_waterdeel_vlak",
-# )
+datasets = [rasterio.open(i) for i in bathymetrie_nl.glob("*NAP.tif")]
 
-# print("create overlay")
-# water_geometries = gpd.overlay(water_poly_gdf, krw_poly, how="intersection")
+data, transform = rasterio.merge.merge(
+    datasets, bounds=bounds, res=(res, res), nodata=nodata
+)
 
-# water_geometries.to_file(out_dir / "water-mask.gpkg", engine="pyogrio")
+data = np.where(data != nodata, data * 100, nodata).astype("int16")
+
+profile = {
+    "driver": "GTiff",
+    "dtype": "int16",
+    "nodata": nodata,
+    "width": data.shape[2],
+    "height": data.shape[1],
+    "count": 1,
+    "crs": 28992,
+    "transform": transform,
+    "blockxsize": 256,
+    "blockysize": 256,
+    "compress": "deflate",
+}
+
+with rasterio.open(out_dir / "bathymetrie-nl.tif", mode="w", **profile) as dst:
+    dst.write(data)
+    dst.build_overviews([5, 20], Resampling.average)
+    dst.update_tags(ns="rio_overview", resampling="average")
+    dst.scales = (0.01,)
 
 
 # %%
@@ -157,3 +179,61 @@ with rasterio.open(
     dst.build_overviews([5, 20], Resampling.average)
     dst.update_tags(ns="rio_overview", resampling="average")
     dst.scales = (0.01,)
+
+# %%
+
+# read bathymetrie-nl and its spatial characteristics
+with rasterio.open(out_dir / "bathymetrie-nl.tif") as src:
+    bathymetry_nl_data = src.read(1)
+    bathymetry_nl_data = np.where(
+        bathymetry_nl_data == src.nodata, nodata, bathymetry_nl_data
+    )
+    bounds = src.bounds
+    transform = src.transform
+    profile = src.profile
+    scales = src.scales
+
+
+with rasterio.open(out_dir / "bedlevel_points_-20000_300000_320000_660000.tif") as src:
+    window = from_bounds(*bounds, src.transform)
+    baseline_data = src.read(1, window=window)
+    baseline_data = np.where(baseline_data == src.nodata, nodata, baseline_data)
+
+
+# data = baseline_data
+
+shapes = (i.geometry for i in water_geometries.itertuples() if i.baseline)
+
+baseline_mask = rasterio.features.rasterize(
+    shapes,
+    out_shape=bathymetry_nl_data.shape,
+    transform=transform,
+    fill=0,
+    default_value=1,
+    all_touched=True,
+    dtype="int8",
+).astype(bool)
+
+data = np.where(baseline_mask, baseline_data, bathymetry_nl_data)
+
+profile = {
+    "driver": "GTiff",
+    "dtype": "int16",
+    "nodata": nodata,
+    "width": data.shape[1],
+    "height": data.shape[0],
+    "count": 1,
+    "crs": 28992,
+    "transform": transform,
+    "blockxsize": 256,
+    "blockysize": 256,
+    "compress": "deflate",
+}
+
+with rasterio.open(out_dir / "bathymetrie-merged.tif", mode="w", **profile) as dst:
+    dst.write(data, 1)
+    dst.build_overviews([5, 20], Resampling.average)
+    dst.update_tags(ns="rio_overview", resampling="average")
+    dst.scales = (0.01,)
+
+# %%
