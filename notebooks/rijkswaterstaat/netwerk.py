@@ -176,4 +176,12 @@ network = Network(network_lines_gdf, tolerance=1, id_col="id", name_col="name")
 print("write network")
 network.to_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
 
+print("write to hydamo")
+lines = network.links
+lines.rename(columns={"name": "naam"}, inplace=True)
+lines.to_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg"),
+    layer="hydroobject",
+    engine="pyogrio",
+)
 # %%
