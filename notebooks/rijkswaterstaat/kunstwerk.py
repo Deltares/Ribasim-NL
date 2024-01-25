@@ -123,6 +123,7 @@ baseline_kwk_add_gdf.loc[:, ["geometry"]] = baseline_kwk_add_gdf.centroid
 baseline_kwk_add_gdf["kw_naam"] = baseline_kwk_add_gdf["NAME"].apply(name_from_baseline)
 baseline_kwk_add_gdf["bron"] = "baseline"
 baseline_kwk_add_gdf["complex_naam"] = baseline_kwk_add_gdf["kw_naam"]
+baseline_kwk_add_gdf["kw_code"] = baseline_kwk_add_gdf["NAME"]
 
 # %%
 
