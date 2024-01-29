@@ -1,8 +1,9 @@
 # %%
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 from ribasim_nl import CloudStorage, Network
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import snap, split
 
 cloud = CloudStorage()
@@ -170,8 +171,60 @@ network_lines_gdf = pd.concat(
 
 # %% wegschrijven als netwerk
 
-print("create network")
-network = Network(network_lines_gdf, tolerance=1, id_col="id", name_col="name")
+
+def subdivide_line(line, max_length):
+    total_length = line.length
+
+    num_segments = int(np.ceil(total_length / max_length))
+
+    if num_segments == 1:
+        return [line]
+
+    segments = []
+    for i in range(num_segments):
+        start_frac = i / num_segments
+        end_frac = (i + 1) / num_segments
+        start_point = line.interpolate(start_frac, normalized=True)
+        start_dist = line.project(start_point)
+        end_point = line.interpolate(end_frac, normalized=True)
+        end_dist = line.project(end_point)
+
+        points = (
+            [start_point]
+            + [
+                Point(i)
+                for i in line.coords
+                if (line.project(Point(i)) > start_dist)
+                and (line.project(Point(i)) < end_dist)
+            ]
+            + [end_point]
+        )
+        segment = LineString(points)
+        segments.append(segment)
+
+    return segments
+
+
+def subdivide_geodataframe(gdf, max_length):
+    data = []
+
+    for row in gdf.explode().itertuples():
+        row_dict = row._asdict()
+        row_dict.pop("geometry")
+        lines = subdivide_line(row.geometry, max_length)
+        data += [{**row_dict, "geometry": line} for line in lines]
+
+    return gpd.GeoDataFrame(data=data, crs=gdf.crs)
+
+
+# Assuming network_lines_gdf is defined somewhere before this point
+network_lines_gdf = network_lines_gdf[
+    ~network_lines_gdf["name"].isin(["Geul", "Derde Diem"])
+]  # brute verwijdering wegens sifon onder Julianakanaal
+gdf_subdivided = subdivide_geodataframe(network_lines_gdf, max_length=450)
+
+# %%
+network = Network(gdf_subdivided, tolerance=1, id_col="id", name_col="name")
 
 print("write network")
 network.to_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))

@@ -93,7 +93,7 @@ filtered_nearest_points = filtered_points[
 
 # Remove specific values
 filtered_nearest_points = filtered_nearest_points[
-    ~filtered_nearest_points["complex_code"].isin(["40D-350", "48H-353"])
+    ~filtered_nearest_points["complex_code"].isin(["40D-350", "48H-353", "42D-001"])
 ]
 filtered_nearest_points = filtered_nearest_points.drop(["index_right"], axis=1)
 
@@ -114,6 +114,7 @@ baseline_kwk_add_gdf = baseline_kunstwerken_gdf[
     baseline_kunstwerken_gdf["NAME"].isin(
         [
             "DM_68.30_R_US_Reevespuisluis",
+            "OS_SK_Oosterscheldekering39_Geul-van-Roggenplaat",
             "KR_C_HK_Kadoelen",
         ]
     )

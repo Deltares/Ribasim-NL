@@ -1,12 +1,15 @@
+# %%
 import logging
+from collections import Counter
 from dataclasses import dataclass, field
 from itertools import chain, product
 from pathlib import Path
 
 import geopandas as gpd
+import networkx as nx
 import pandas as pd
 from geopandas import GeoDataFrame, GeoSeries
-from networkx import DiGraph, Graph, shortest_path
+from networkx import DiGraph, Graph, NetworkXNoPath, shortest_path, traversal
 from shapely.geometry import LineString, Point, box
 from shapely.ops import snap, split
 
@@ -15,6 +18,14 @@ from ribasim_nl.styles import add_styles_to_geopackage
 logger = logging.getLogger(__name__)
 
 GEOMETRIES_ALLOWED = ["LineString", "MultiLineString"]
+
+
+def stop_iter(first_value, second_value):
+    # stop iteration if neither value is None and values are unequal
+    if all((pd.notna(first_value), pd.notna(second_value))):
+        return first_value != second_value
+    else:
+        return False
 
 
 @dataclass
@@ -256,12 +267,139 @@ class Network:
             geometry=geometry,
         )
 
+    def overlay(self, gdf):
+        cols = ["node_id"] + [i for i in gdf.columns if i != "geometry"]
+        gdf_overlay = gpd.overlay(self.nodes.reset_index(), gdf, how="intersection")[
+            cols
+        ]
+        gdf_overlay = gdf_overlay[~gdf_overlay.duplicated(subset="node_id")]
+
+        for row in gdf_overlay.itertuples():
+            attrs = {
+                k: v for k, v in row._asdict().items() if k not in ["Index", "node_id"]
+            }
+            for k, v in attrs.items():
+                self._graph.nodes[row.node_id][k] = v
+
+        self._graph_undirected = None
+
+    def upstream_nodes(self, node_id):
+        return [
+            n
+            for n in traversal.bfs_tree(self._graph, node_id, reverse=True)
+            if n != node_id
+        ]
+
+    def downstream_nodes(self, node_id):
+        return [n for n in traversal.bfs_tree(self._graph, node_id) if n != node_id]
+
+    def has_upstream_nodes(self, node_id):
+        return len(self.upstream_nodes(node_id)) > 0
+
+    def has_downstream_nodes(self, node_id):
+        return len(self.downstream_nodes(node_id)) > 0
+
+    def find_upstream(self, node_id, attribute, max_iters=10):
+        upstream_nodes = self.upstream_nodes(node_id)
+        max_iters = min(max_iters, len(upstream_nodes))
+        value = None
+        for idx in range(max_iters):
+            node = self._graph.nodes[upstream_nodes[idx]]
+            if attribute in node.keys():
+                if pd.notna(node[attribute]):
+                    value = node[attribute]
+                    break
+        return value
+
+    def find_downstream(self, node_id, attribute, max_iters=10):
+        downstream_nodes = self.downstream_nodes(node_id)
+        max_iters = min(max_iters, len(downstream_nodes))
+        value = None
+        for idx in range(max_iters):
+            node = self._graph.nodes[downstream_nodes[idx]]
+            if attribute in node.keys():
+                if pd.notna(node[attribute]):
+                    value = node[attribute]
+                    break
+        return value
+
+    def get_downstream(self, node_id, attribute, max_iters=5):
+        downstream_nodes = self.downstream_nodes(node_id)
+
+        # get max_iters, as we search downstream, our list should be even and double max_iters
+        nbr_nodes = len(downstream_nodes)
+        if nbr_nodes % 2 == 1:
+            nbr_nodes -= 1
+        max_iters = min(nbr_nodes, max_iters * 2)
+
+        first_value = None
+        second_value = None
+
+        for idx in range(0, max_iters, 2):
+            first_node = self._graph.nodes[downstream_nodes[idx]]
+            second_node = self._graph.nodes[downstream_nodes[idx + 1]]
+
+            if attribute in first_node.keys():
+                if pd.notna(first_node[attribute]):
+                    first_value = first_node[attribute]
+                if stop_iter(first_value, second_value):
+                    break
+
+            if attribute in second_node.keys():
+                if pd.notna(pd.notna(second_node[attribute])):
+                    second_value = second_node[attribute]
+                if stop_iter(first_value, second_value):
+                    break
+
+        return first_value, second_value
+
+    def get_upstream_downstream(self, node_id, attribute, max_iters=5, max_length=2000):
+        # determine upstream and downstream nodes
+        upstream_nodes = self.upstream_nodes(node_id)
+        downstream_nodes = self.downstream_nodes(node_id)
+
+        max_iters = min(max_iters, len(upstream_nodes), len(downstream_nodes))
+
+        upstream_value = None
+        downstream_value = None
+
+        for idx in range(max_iters):
+            if (
+                nx.shortest_path_length(
+                    self.graph,
+                    upstream_nodes[idx],
+                    downstream_nodes[idx],
+                    weight="length",
+                )
+                > max_length
+            ):
+                break
+            us_node = self._graph.nodes[upstream_nodes[idx]]
+            ds_node = self._graph.nodes[downstream_nodes[idx]]
+
+            if attribute in us_node.keys():
+                if pd.notna(us_node[attribute]):
+                    upstream_value = us_node[attribute]
+                if stop_iter(upstream_value, downstream_value):
+                    break
+
+            if attribute in ds_node.keys():
+                if pd.notna(pd.notna(ds_node[attribute])):
+                    downstream_value = ds_node[attribute]
+                if stop_iter(upstream_value, downstream_value):
+                    break
+
+        if upstream_value == downstream_value:
+            return None, None
+        else:
+            return upstream_value, downstream_value
+
     def move_node(
         self,
         point: Point,
         max_distance: float,
         allign_distance: float,
-        node_types=["connection"],
+        node_types=["connection", "upstream_boundary", "downstream_boundary"],
     ):
         """Move network nodes and edges to new location
 
@@ -370,13 +508,12 @@ class Network:
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
-            self.move_node(point, max_distance=max_distance, allign_distance=100)
-            return True
+            return self.move_node(point, max_distance=max_distance, allign_distance=100)
         else:
             logger.warning(
                 f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
             )
-            return False
+            return None
 
     def reset(self):
         self._graph = None
@@ -387,9 +524,17 @@ class Network:
 
     def get_path(self, node_from, node_to, directed=True):
         if directed:
-            return shortest_path(self.graph, node_from, node_to)
+            try:
+                return shortest_path(self.graph, node_from, node_to, weight="length")
+            except NetworkXNoPath:
+                print(f"found path undirected between {node_from} and {node_to}")
+                return shortest_path(
+                    self.graph_undirected, node_from, node_to, weight="length"
+                )
         else:
-            return shortest_path(self.graph_undirected, node_from, node_to)
+            return shortest_path(
+                self.graph_undirected, node_from, node_to, weight="length"
+            )
 
     def get_links(self, node_from, node_to, directed=True):
         path = self.get_path(node_from, node_to, directed)
@@ -406,13 +551,24 @@ class Network:
         gdf = gdf.reset_index().drop_duplicates(["node_from", "node_to"]).reset_index()
         return gdf
 
-    def subset_nodes(self, nodes_from, nodes_to, inclusive=True, directed=True):
+    def subset_nodes(
+        self, nodes_from, nodes_to, inclusive=True, directed=True, duplicated_nodes=True
+    ):
+        def find_duplicates(lst, counts):
+            counter = Counter(lst)
+            duplicates = [item for item, count in counter.items() if count == counts]
+            return duplicates
+
         paths = [
-            self.get_path(node_from, node_to)
+            self.get_path(node_from, node_to, directed)
             for node_from, node_to in product(nodes_from, nodes_to)
         ]
 
-        node_ids = list(set(chain(*paths)))
+        node_ids = list(chain(*paths))
+        if duplicated_nodes:
+            node_ids = find_duplicates(node_ids, len(paths))
+        else:
+            node_ids = list(set(chain(*paths)))
         if not inclusive:
             exclude_nodes = nodes_from + nodes_to
             node_ids = [i for i in node_ids if i not in exclude_nodes]
@@ -520,3 +676,6 @@ class Network:
         self.links.to_file(path, layer="links", engine="pyogrio")
         # add styles
         add_styles_to_geopackage(path)
+
+
+# %%

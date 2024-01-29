@@ -4073,6 +4073,66 @@ package:
   size: 3430198
   timestamp: 1693244283213
 - platform: linux-64
+  name: et_xmlfile
+  version: 1.1.0
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.6
+  url: https://conda.anaconda.org/conda-forge/noarch/et_xmlfile-1.1.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: a2f2138597905eaa72e561d8efb42cf3
+    sha256: 0c7bb50e1382615a660468dc531b8b17c5b91b88a02ed131c8e3cc63db507ce2
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 10602
+  timestamp: 1674664251571
+- platform: osx-64
+  name: et_xmlfile
+  version: 1.1.0
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.6
+  url: https://conda.anaconda.org/conda-forge/noarch/et_xmlfile-1.1.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: a2f2138597905eaa72e561d8efb42cf3
+    sha256: 0c7bb50e1382615a660468dc531b8b17c5b91b88a02ed131c8e3cc63db507ce2
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 10602
+  timestamp: 1674664251571
+- platform: win-64
+  name: et_xmlfile
+  version: 1.1.0
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.6
+  url: https://conda.anaconda.org/conda-forge/noarch/et_xmlfile-1.1.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: a2f2138597905eaa72e561d8efb42cf3
+    sha256: 0c7bb50e1382615a660468dc531b8b17c5b91b88a02ed131c8e3cc63db507ce2
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 10602
+  timestamp: 1674664251571
+- platform: linux-64
   name: exceptiongroup
   version: 1.2.0
   category: main
@@ -15161,6 +15221,73 @@ package:
   license_family: BSD
   size: 236847
   timestamp: 1694708878963
+- platform: linux-64
+  name: openpyxl
+  version: 3.1.2
+  category: main
+  manager: conda
+  dependencies:
+  - et_xmlfile
+  - libgcc-ng >=12
+  - python >=3.12.0rc3,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  url: https://conda.anaconda.org/conda-forge/linux-64/openpyxl-3.1.2-py312h98912ed_1.conda
+  hash:
+    md5: 7f4e257ea4714e9166a93b733b26c2da
+    sha256: e0c61ee0f467aa2ee93315f0612d86a1b62551572d4a38cb69fcde8b81d73d14
+  build: py312h98912ed_1
+  arch: x86_64
+  subdir: linux-64
+  build_number: 1
+  license: MIT
+  license_family: MIT
+  size: 694521
+  timestamp: 1695464937608
+- platform: osx-64
+  name: openpyxl
+  version: 3.1.2
+  category: main
+  manager: conda
+  dependencies:
+  - et_xmlfile
+  - python >=3.12.0rc3,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  url: https://conda.anaconda.org/conda-forge/osx-64/openpyxl-3.1.2-py312h104f124_1.conda
+  hash:
+    md5: 37d146e56f7725d3865b72fe2d389484
+    sha256: cd8bf57b42fe405f1849f840f3ef0d818e1c070466e26cdd9e569236bf30d65d
+  build: py312h104f124_1
+  arch: x86_64
+  subdir: osx-64
+  build_number: 1
+  license: MIT
+  license_family: MIT
+  size: 656343
+  timestamp: 1695465049261
+- platform: win-64
+  name: openpyxl
+  version: 3.1.2
+  category: main
+  manager: conda
+  dependencies:
+  - et_xmlfile
+  - python >=3.12.0rc3,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  - ucrt >=10.0.20348.0
+  - vc >=14.2,<15
+  - vc14_runtime >=14.29.30139
+  url: https://conda.anaconda.org/conda-forge/win-64/openpyxl-3.1.2-py312he70551f_1.conda
+  hash:
+    md5: 62d8cadbe4cad81bfe3088168c434b14
+    sha256: 4a766f6f23e76ad2fb76233d3f23b533309b99b9823127179ba98eaa8e60ae58
+  build: py312he70551f_1
+  arch: x86_64
+  subdir: win-64
+  build_number: 1
+  license: MIT
+  license_family: MIT
+  size: 629289
+  timestamp: 1695465331584
 - platform: linux-64
   name: openssl
   version: 3.2.0
