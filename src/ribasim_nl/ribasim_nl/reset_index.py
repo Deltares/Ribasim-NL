@@ -41,6 +41,8 @@ def reset_index(model: Model, node_start=1):
         model.terminal.static.df,
         model.flow_boundary.static.df,
         model.level_boundary.static.df,
+        model.fractional_flow.static.df,
+        model.tabulated_rating_curve.static.df,
     ]:
         if df is not None:
             df.loc[:, ["node_id"]] = df["node_id"].apply(lambda x: index.loc[x])

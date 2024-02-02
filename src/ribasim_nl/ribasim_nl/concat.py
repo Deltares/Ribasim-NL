@@ -1,5 +1,7 @@
 from ribasim import Model
 
+from ribasim_nl import reset_index
+
 
 def concat(filepaths: list, attributes: dict | None = None) -> Model:
     """Concat existing models to one Ribasim-model
@@ -48,13 +50,15 @@ def concat(filepaths: list, attributes: dict | None = None) -> Model:
     # read first model to merge the rest into
     filepath = filepaths[0]
     model = Model.read(filepath)
+    model = reset_index(model)
     model = add_attributes(model, 0)
+    # start_index = model.network.node.df.index.max() + 1
 
     # merge other models into model
     for idx in range(1, len(filepaths)):
         filepath = filepaths[idx]
-        add_model = Model.read(filepath)
+        # add_model = reset_index(Model.read(filepath), start_index)
         model = add_attributes(model, idx)
-        model.smart_merge(add_model)
+        # model = merge_models(model, add_model)
 
     return model

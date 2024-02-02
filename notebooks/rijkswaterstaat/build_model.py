@@ -3,6 +3,12 @@ import geopandas as gpd
 import pandas as pd
 import ribasim
 from ribasim_nl import CloudStorage, Network, reset_index
+from ribasim_nl.rating_curve import read_rating_curve
+from ribasim_nl.verdeelsleutels import (
+    read_verdeelsleutel,
+    verdeelsleutel_to_control,
+    verdeelsleutel_to_fractions,
+)
 
 cloud = CloudStorage()
 node_list = []
@@ -43,7 +49,24 @@ level_area_df = pd.read_csv(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "krw_basins_vlakken_level_area.csv")
 )
 
-# % define nodes and links
+rating_curves_gdf = gpd.read_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "rating_curves.gpkg"),
+    engine="pyogrio",
+    fid_as_index=True,
+)
+
+verdeelsleutel_gdf = gpd.read_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "verdeelsleutel.gpkg"),
+    engine="pyogrio",
+    fid_as_index=True,
+)
+
+verdeelsleutel_df = read_verdeelsleutel(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "verdeelsleutel_driel.xlsx")
+)
+
+
+# %% define nodes and links
 nodes_gdf = network.nodes
 links_gdf = network.links
 network_union_lines = links_gdf.unary_union
@@ -53,6 +76,12 @@ basin_admin = {
     i: {"nodes_from": [], "nodes_to": [], "neighbors": []} for i in basin_poly_gdf.index
 }
 
+
+for row in rating_curves_gdf.itertuples():
+    basin_id = basin_poly_gdf[basin_poly_gdf.contains(row.geometry)].index[0]
+    basin_admin[basin_id]["rating_curve"] = row.curve_id
+
+# %%
 boundary_gdf["node_id"] = boundary_gdf["geometry"].apply(
     lambda x: network.move_node(
         x,
@@ -209,6 +238,7 @@ for kwk in kwk_select_gdf.itertuples():
 
 # %%
 for basin in basin_poly_gdf.itertuples():
+    # for basin in basin_poly_gdf.loc[[23, 42, 46, 93, 94]].itertuples():
     print(basin.owmnaam)
     boundary_nodes = network.nodes[
         network.nodes.distance(basin.geometry.boundary) < 0.01
@@ -219,17 +249,6 @@ for basin in basin_poly_gdf.itertuples():
     boundary_nodes["upstream"] = [i[0] for i in us_ds]
     boundary_nodes["downstream"] = [i[1] for i in us_ds]
     boundary_nodes = boundary_nodes.dropna(subset=["upstream", "downstream"], how="any")
-    # boundary_nodes.drop_duplicates(["upstream", "downstream"], inplace=True)
-    # drop duplicated nodes by max upstream/downstream nodes
-    # mask = boundary_nodes["upstream"] != basin.Index
-    # boundary_nodes.loc[mask, ["count"]] = [
-    #     len(network.upstream_nodes(i)) for i in boundary_nodes[mask].index
-    # ]
-
-    # mask = boundary_nodes["downstream"] != basin.Index
-    # boundary_nodes.loc[mask, ["count"]] = [
-    #     len(network.downstream_nodes(i)) for i in boundary_nodes[mask].index
-    # ]
     boundary_nodes.loc[:, ["count"]] = [
         len(network.upstream_nodes(i)) + len(network.downstream_nodes(i))
         for i in boundary_nodes.index
@@ -240,19 +259,46 @@ for basin in basin_poly_gdf.itertuples():
         boundary_nodes["upstream"] + boundary_nodes["downstream"]
     )
     boundary_nodes.drop_duplicates("sum", inplace=True)
-    kwk_connected = basin_admin[basin.Index]["neighbors"]
-    boundary_nodes = boundary_nodes[~boundary_nodes["upstream"].isin(kwk_connected)]
-    boundary_nodes = boundary_nodes[~boundary_nodes["downstream"].isin(kwk_connected)]
+    connected = basin_admin[basin.Index]["neighbors"]
+    boundary_nodes = boundary_nodes[~boundary_nodes["upstream"].isin(connected)]
+    boundary_nodes = boundary_nodes[~boundary_nodes["downstream"].isin(connected)]
 
     for node in boundary_nodes.itertuples():
-        node_list += [
-            {
-                "type": "ManningResistance",
-                "is_structure": False,
-                "node_id": node.Index,
-                "geometry": network.nodes.at[node.Index, "geometry"],
-            }
-        ]
+        neighbor = next(
+            i for i in [node.upstream, node.downstream] if not i == basin.Index
+        )
+        if basin.Index not in basin_admin[neighbor]["neighbors"]:
+            ds_node = node.upstream == basin.Index
+            node_type = "ManningResistance"
+
+            # in case basin has rating curve we use FractionalFlow
+            if ds_node and ("rating_curve" in basin_admin[basin.Index].keys()):
+                node_type = "FractionalFlow"
+            # in us_case basin has rating curve we use FractionalFlow
+            elif (not ds_node) and ("rating_curve" in basin_admin[neighbor].keys()):
+                node_type = "FractionalFlow"
+
+            if node_type == "FractionalFlow":
+                code = verdeelsleutel_gdf.at[
+                    verdeelsleutel_gdf.distance(
+                        network.nodes.at[node.Index, "geometry"]
+                    )
+                    .sort_values()
+                    .index[0],
+                    "fractie",
+                ]
+            else:
+                code = None
+
+            node_list += [
+                {
+                    "type": node_type,
+                    "is_structure": False,
+                    "node_id": node.Index,
+                    "code_waterbeheerder": code,
+                    "geometry": network.nodes.at[node.Index, "geometry"],
+                }
+            ]
         if node.upstream != basin.Index:
             basin_admin[basin.Index]["nodes_from"] += [node.Index]
             basin_admin[basin.Index]["neighbors"] += [node.upstream]
@@ -301,6 +347,37 @@ for basin in basin_poly_gdf.itertuples():
         }
     ]
 
+    # add rating-curve and extra edge
+    if "rating_curve" in basin_admin[basin.Index].keys():
+        rc_node_id = next(
+            i for i in network.downstream_nodes(basin_node_id) if i in gdf.index
+        )
+        node_list += [
+            {
+                "type": "TabulatedRatingCurve",
+                "is_structure": False,
+                "waterbeheerder": "Rijkswaterstaat",
+                "code_waterbeheerder": basin_admin[basin.Index]["rating_curve"],
+                "name": basin_admin[basin.Index]["rating_curve"],
+                "node_id": rc_node_id,
+                "basin_id": basin.Index,
+                "geometry": network.nodes.at[rc_node_id, "geometry"],
+            }
+        ]
+        edge_list += [
+            {
+                "from_node_id": basin_node_id,
+                "to_node_id": rc_node_id,
+                "name": basin.owmnaam,
+                "krw_id": basin.owmident,
+                "edge_type": "flow",
+                "geometry": network.get_line(basin_node_id, rc_node_id, directed=True),
+            }
+        ]
+        from_id = rc_node_id
+    else:
+        from_id = basin_node_id
+
     for node_from in nodes_from:
         edge_list += [
             {
@@ -316,12 +393,12 @@ for basin in basin_poly_gdf.itertuples():
     for node_to in nodes_to:
         edge_list += [
             {
-                "from_node_id": basin_node_id,
+                "from_node_id": from_id,
                 "to_node_id": node_to,
                 "name": basin.owmnaam,
                 "krw_id": basin.owmident,
                 "edge_type": "flow",
-                "geometry": network.get_line(basin_node_id, node_to, directed=False),
+                "geometry": network.get_line(from_id, node_to, directed=False),
             }
         ]
 # %% finish boundaries
@@ -421,7 +498,7 @@ node.df.index.name = "fid"
 edge = ribasim.Edge(df=gpd.GeoDataFrame(edge_list, crs=28992))
 network = ribasim.Network(node=node, edge=edge)
 
-# %% define Basin
+# % define Basin
 static_df = node.df[node.df["type"] == "Basin"][["node_id", "basin_id"]].set_index(
     "basin_id"
 )
@@ -441,7 +518,7 @@ state_df.loc[:, ["level"]] = state_df["level"].apply(lambda x: max(x + 1, 0))
 
 basin = ribasim.Basin(profile=profile_df, static=static_df, state=state_df)
 
-# %% define Resistance
+# % define Resistance
 node.df.loc[node.df["type"] == "Outlet", ["type", "value"]] = (
     "LinearResistance",
     1000,
@@ -451,21 +528,30 @@ resistance_df = node.df[node.df["type"] == "LinearResistance"][["node_id", "valu
 resistance_df.rename(columns={"value": "resistance"}, inplace=True)
 linear_resistance = ribasim.LinearResistance(static=resistance_df)
 
-# %% define Pump
+# % define Pump
 pump_df = node.df[node.df["type"] == "Pump"][["node_id", "value"]]
 pump_df.rename(columns={"value": "flow_rate"}, inplace=True)
 pump = ribasim.Pump(static=pump_df)
 
-# %% define Outlet
-# terminal_df = node.df[node.df["type"] == "Outlet"][["node_id"]]
-# # outlet_df.rename(columns={"value": "flow_rate"}, inplace=True)
-# terminal = ribasim.Terminal(static=terminal_df)
-# node.df.loc[node.df["type"] == "Outlet", ["type", "resistance"]] = (
-#     "LinearResistance",
-#     1000,
-# )
+# % define fraction
+node_index = node.df[node.df["type"] == "FractionalFlow"][
+    ["code_waterbeheerder", "node_id"]
+].set_index("code_waterbeheerder")["node_id"]
 
-# %% define Manning
+fractional_flow_df = verdeelsleutel_to_fractions(verdeelsleutel_df, node_index)
+fractional_flow = ribasim.FractionalFlow(static=fractional_flow_df)
+
+# %
+node_index = node.df[node.df["type"] == "TabulatedRatingCurve"][
+    ["code_waterbeheerder", "node_id"]
+].set_index("code_waterbeheerder")["node_id"]
+tabulated_rating_curve_df = read_rating_curve(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "rating_curves.xlsx"),
+    node_index,
+)
+tabulated_rating_curve = ribasim.TabulatedRatingCurve(static=tabulated_rating_curve_df)
+
+# % define Manning
 manning_df = node.df[node.df["type"] == "ManningResistance"][["node_id"]]
 manning_df["length"] = 10000
 manning_df["manning_n"] = 0.04
@@ -474,17 +560,18 @@ manning_df["profile_slope"] = 1
 
 manning_resistance = ribasim.ManningResistance(static=manning_df)
 
-# %% define FlowBoundary
+# % define FlowBoundary
 flow_boundary_df = node.df[node.df["type"] == "FlowBoundary"][["node_id", "value"]]
 flow_boundary_df.rename(columns={"value": "flow_rate"}, inplace=True)
 flow_boundary = ribasim.FlowBoundary(static=flow_boundary_df)
 
-# %% define LevelBoundary
+# % define LevelBoundary
 level_boundary_df = node.df[node.df["type"] == "LevelBoundary"][["node_id", "value"]]
 level_boundary_df.rename(columns={"value": "level"}, inplace=True)
 level_boundary = ribasim.LevelBoundary(static=level_boundary_df)
 
-# %% write model
+
+# % write model
 model = ribasim.Model(
     network=network,
     basin=basin,
@@ -492,15 +579,16 @@ model = ribasim.Model(
     level_boundary=level_boundary,
     linear_resistance=linear_resistance,
     manning_resistance=manning_resistance,
+    tabulated_rating_curve=tabulated_rating_curve,
+    fractional_flow=fractional_flow,
     pump=pump,
     # terminal=terminal,
     starttime="2020-01-01 00:00:00",
     endtime="2021-01-01 00:00:00",
 )
-print("write ribasim model")
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml")
+model = reset_index(model)
 
-# %% verwijderen Nijkerkersluis
+# % verwijderen Nijkerkersluis
 
 model.network.node.df = model.network.node.df[~(model.network.node.df["node_id"] == 14)]
 model.network.edge.df = model.network.edge.df[
@@ -512,10 +600,28 @@ model.network.edge.df = model.network.edge.df[
 model.linear_resistance.static.df = model.linear_resistance.static.df[
     ~(model.linear_resistance.static.df["node_id"] == 14)
 ]
-
-
-# %%
 model = reset_index(model)
+
+
+# %% add control
+model = verdeelsleutel_to_control(
+    verdeelsleutel_df,
+    model,
+    name="Driel",
+    code_waterbeheerder="Driel",
+    waterbeheerder="Rijkswaterstaat",
+)
+
+
+# %%%
+model.solver.algorithm = "RK4"
+model.solver.adaptive = False
+model.solver.dt = 10.0
+model.solver.saveat = 360
+
+
+print("write ribasim model")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml")
 model.write(ribasim_toml)
 
 # %%
