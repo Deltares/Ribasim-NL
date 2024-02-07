@@ -4,6 +4,7 @@
 # 2. We selecteren de kunstwerken die binnen het KRW lichamen vallen
 # 3. Daarnaast voegen we extra kunstwerken  die niet in de nis voorkomen maar wel noodzakelijk zijn voor modellering hoofdwatersysteem.
 # Deze extra kunstwereken komen uit: baseline.gdb ; layer = "stuctures" en uit de lrws-legger:kunstwerken_primaire_waterkeringen)
+# Ook voegen we drinkwateronttrekkingen toe
 
 import geopandas as gpd
 import pandas as pd
@@ -12,6 +13,7 @@ from ribasim_nl import CloudStorage
 cloud = CloudStorage()
 
 
+# %%
 def photo_url(code):
     if code in kwk_media.index:
         return kwk_media.at[code, "photo_url"]  # noqa: PD008
@@ -19,7 +21,6 @@ def photo_url(code):
         return r"https://www.hydrobase.nl/static/icons/photo_placeholder.png"
 
 
-# File paths
 krw_lichaam = cloud.joinpath(
     "Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg"
 )
@@ -35,6 +36,8 @@ primaire_kunstwerken = cloud.joinpath(
     "Rijkswaterstaat", "aangeleverd", "kunstwerken_primaire_waterkeringen.gpkg"
 )
 
+drinkwater = cloud.joinpath("drinkwaterbedrijven", "drinkwater_inlets.gpkg")
+
 # load media
 kwk_media = pd.read_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "kwk_media.csv"))
 kwk_media.set_index("code", inplace=True)
@@ -49,7 +52,7 @@ kwk_media.set_index("code", inplace=True)
     gpd.read_file(file)
     for file in [krw_lichaam, nis_hws, nis_hwvn, primaire_kunstwerken]
 )
-
+drinkwater_gdf = gpd.read_file(drinkwater, layer="inlet__netherlands")
 baseline_kunstwerken_gdf = gpd.read_file(baseline, layer="structure_lines")
 
 # Spatial joins
@@ -81,7 +84,7 @@ filtered_points = selected_points[
 ].copy()
 
 # Calculate nearest distance
-filtered_points["nearest_distance"] = [
+filtered_points.loc[:, ["nearest_distance"]] = [
     filtered_point["geometry"].distance(baseline_in_model.unary_union)
     for _, filtered_point in filtered_points.iterrows()
 ]
@@ -97,10 +100,8 @@ filtered_nearest_points = filtered_nearest_points[
 ]
 filtered_nearest_points = filtered_nearest_points.drop(["index_right"], axis=1)
 
-# Additional points
 
-
-# %%
+# Additional structures from Baseline, primaire waterkeringen and NIS and drinking water inlets
 def name_from_baseline(string):
     last_underscore_index = string.rfind("_")
     if last_underscore_index != -1:
@@ -121,25 +122,33 @@ baseline_kwk_add_gdf = baseline_kunstwerken_gdf[
 ]
 
 baseline_kwk_add_gdf.loc[:, ["geometry"]] = baseline_kwk_add_gdf.centroid
-baseline_kwk_add_gdf["kw_naam"] = baseline_kwk_add_gdf["NAME"].apply(name_from_baseline)
-baseline_kwk_add_gdf["bron"] = "baseline"
-baseline_kwk_add_gdf["complex_naam"] = baseline_kwk_add_gdf["kw_naam"]
-baseline_kwk_add_gdf["kw_code"] = baseline_kwk_add_gdf["NAME"]
-
-# %%
+baseline_kwk_add_gdf.loc[:, ["kw_naam"]] = baseline_kwk_add_gdf["NAME"].apply(
+    name_from_baseline
+)
+baseline_kwk_add_gdf.loc[:, ["bron"]] = "baseline"
+baseline_kwk_add_gdf.loc[:, ["complex_naam"]] = baseline_kwk_add_gdf["kw_naam"]
+baseline_kwk_add_gdf.loc[:, ["kw_code"]] = baseline_kwk_add_gdf["NAME"]
 
 primaire_kwk_add_gdf = primaire_kunstwerken_gdf[
-    primaire_kunstwerken_gdf["kd_code1"].isin(
-        ["KD.32.gm.015", "KD.v2.ks.001", "KD.44.gm.001"]
-    )
+    primaire_kunstwerken_gdf["kd_code1"].isin(["KD.32.gm.015", "KD.44.gm.001"])
 ]
 
 primaire_kwk_add_gdf.rename(
     columns={"kd_code1": "kw_code", "kd_naam": "kw_naam", "naam_compl": "complex_naam"},
     inplace=True,
 )
-
-primaire_kwk_add_gdf["bron"] = "kunsterken primaire waterkeringen"
+# %%
+# Add drinking water inlets (OSM)
+primaire_kwk_add_gdf.loc[:, ["bron"]] = "kunsterken primaire waterkeringen"
+drinkwater_gdf.loc[:, ["bron"]] = "OSM"
+drinkwater_gdf.rename(
+    columns={
+        "osm_id": "kw_code",
+        "name": "kw_naam",
+        "operator": "beheerder",
+    },
+    inplace=True,
+)
 
 additional_points = pd.concat(
     [
@@ -173,14 +182,13 @@ additional_points = pd.concat(
             )
         ],
         baseline_kwk_add_gdf,
+        drinkwater_gdf,
     ]
 )
 
-
-add_baseline = gpd.sjoin_nearest(
-    baseline_kunstwerken_gdf, filtered_nearest_points, how="inner", max_distance=1000
-)
-
+# add_baseline = gpd.sjoin_nearest(
+#    baseline_kunstwerken_gdf, filtered_nearest_points, how="inner", max_distance=1000
+# )
 
 # Concatenate additional points
 final_filtered_points = pd.concat([filtered_nearest_points, additional_points])
@@ -199,7 +207,9 @@ final_filtered_points.loc[:, ["photo_url"]] = final_filtered_points["code"].appl
 
 # Save results to GeoPackage files
 output_file = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
-final_filtered_points.to_file(output_file, layer="kunstwerken", driver="GPKG")
+final_filtered_points.to_file(
+    output_file, layer="kunstwerken", driver="GPKG", engine="pyogrio"
+)
 
 
 # %%
