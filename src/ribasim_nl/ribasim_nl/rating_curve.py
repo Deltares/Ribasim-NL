@@ -18,7 +18,7 @@ def read_rating_curve(file_path: Path, node_index: Series) -> DataFrame:
             df["node_id"] = node_index.loc[sheet_name]
             dfs += [df]
 
-    return pd.concat(dfs)[["node_id", "level", "discharge", "code_waterbeheerder"]]
+    return pd.concat(dfs)[["node_id", "level", "flow_rate", "code_waterbeheerder"]]
 
 
 # %%

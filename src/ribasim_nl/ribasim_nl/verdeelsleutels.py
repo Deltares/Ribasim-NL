@@ -1,12 +1,12 @@
 # %%
 from pathlib import Path
 
-import geopandas as gpd
 import pandas as pd
 import ribasim
 from openpyxl import load_workbook
 from pandas import DataFrame, Series
-from shapely.geometry import LineString
+
+from ribasim_nl.model import add_control_node_to_network
 
 
 def read_verdeelsleutel(file_path: Path) -> DataFrame:
@@ -44,7 +44,12 @@ def verdeelsleutel_to_fractions(
 
 
 def verdeelsleutel_to_control(
-    verdeelsleutel_df, model, name=None, code_waterbeheerder=None, waterbeheerder=None
+    verdeelsleutel_df,
+    model,
+    name=None,
+    offset_node_id=None,
+    code_waterbeheerder=None,
+    waterbeheerder=None,
 ):
     keys = verdeelsleutel_df.locatie_bovenstrooms.unique()
     frac_nodes = []
@@ -55,12 +60,11 @@ def verdeelsleutel_to_control(
     else:
         listen_feature_id = (
             model.network.node.df[
-                model.network.node.df["code_waterbeheerder"] == keys[0]
+                model.network.node.df["meta_code_waterbeheerder"] == keys[0]
             ]
             .iloc[0]
-            .node_id
+            .meta_node_id
         )
-        node_id = model.network.node.df.node_id.max() + 1
 
     # get frac-nodes
     for (loc1, loc2), df in verdeelsleutel_df.groupby(
@@ -70,54 +74,29 @@ def verdeelsleutel_to_control(
             model.network.node.df[
                 (model.network.node.df["type"] == "FractionalFlow")
                 & (
-                    model.network.node.df["code_waterbeheerder"].str.lower()
+                    model.network.node.df["meta_code_waterbeheerder"].str.lower()
                     == i.lower()
                 )
             ]
             .iloc[0]
-            .node_id
+            .meta_node_id
             for i in [loc1, loc2]
         ]
 
-    # update nodes
-    node_geometry = model.network.node.df[
-        model.network.node.df.node_id.isin(frac_nodes + [listen_feature_id])
-    ].unary_union.centroid
-
-    ctrl_node = {
-        "type": "DiscreteControl",
-        "node_id": node_id,
-        "waterbeheerder": waterbeheerder,
-        "code_waterbeheerder": code_waterbeheerder,
-        "name": name,
-        "geometry": node_geometry,
-    }
-
-    model.network.node.df.loc[node_id] = ctrl_node
-    model.network.node.df.crs = 28992
-
-    # update edges
-    edge_gdf = gpd.GeoDataFrame(
-        [
-            {
-                "from_node_id": node_id,
-                "to_node_id": i,
-                "edge_type": "control",
-                "geometry": LineString(
-                    (node_geometry, model.network.node.df.at[i, "geometry"])
-                ),
-            }
-            for i in frac_nodes
-        ]
+    ctrl_node_id = add_control_node_to_network(
+        model.network,
+        frac_nodes,
+        offset=100,
+        offset_node_id=offset_node_id,
+        meta_code_waterbeheerder=code_waterbeheerder,
+        meta_waterbeheerder=waterbeheerder,
     )
-
-    model.network.edge.df = pd.concat([model.network.edge.df, edge_gdf])
 
     # add descrete control
     condition_df = df[["ondergrens_waarde", "beschrijving"]].rename(
-        columns={"ondergrens_waarde": "greater_than", "beschrijving": "remark"}
+        columns={"ondergrens_waarde": "greater_than", "beschrijving": "remarks"}
     )
-    condition_df["node_id"] = node_id
+    condition_df["node_id"] = ctrl_node_id
     condition_df["listen_feature_id"] = listen_feature_id
     condition_df["variable"] = "flow_rate"
 
@@ -125,7 +104,7 @@ def verdeelsleutel_to_control(
     logic_df["truth_state"] = [
         "".join(["T"] * i + ["F"] * len(df))[0 : len(df)] for i in range(len(df))
     ]
-    logic_df["node_id"] = node_id
+    logic_df["node_id"] = ctrl_node_id
     model.discrete_control = ribasim.DiscreteControl(
         logic=logic_df, condition=condition_df
     )

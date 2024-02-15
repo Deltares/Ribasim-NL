@@ -6,7 +6,6 @@ from ribasim_nl import CloudStorage, Network, reset_index
 from ribasim_nl.rating_curve import read_rating_curve
 from ribasim_nl.verdeelsleutels import (
     read_verdeelsleutel,
-    verdeelsleutel_to_control,
     verdeelsleutel_to_fractions,
 )
 
@@ -171,7 +170,9 @@ for kwk in kwk_select_gdf.itertuples():
             if downstream is not None:
                 basin_admin[upstream]["neighbors"] += [downstream]
         else:
-            raise ValueError(f"{kwk.naam} heeft problemen")
+            raise ValueError(
+                f"Kan geen boven en benedenstroomse knoop vindern voor {kwk.naam}"
+            )
         if downstream is not None:
             basin_admin[downstream]["nodes_from"] += [node_id]
             if upstream is not None:
@@ -492,14 +493,16 @@ gpd.GeoDataFrame(edge_list, crs=28992).to_file(
 )  # %%
 
 # %% define Network
-node = ribasim.Node(df=gpd.GeoDataFrame(node_list, crs=28992).drop_duplicates())
-node.df.set_index("node_id", drop=False, inplace=True)
+node_df = gpd.GeoDataFrame(node_list, crs=28992).drop_duplicates()
+node = ribasim.Node(df=node_df)
+node.df.set_index("meta_node_id", drop=False, inplace=True)
 node.df.index.name = "fid"
-edge = ribasim.Edge(df=gpd.GeoDataFrame(edge_list, crs=28992))
+edge_df = gpd.GeoDataFrame(edge_list, crs=28992)
+edge = ribasim.Edge(df=edge_df)
 network = ribasim.Network(node=node, edge=edge)
 
-# % define Basin
-static_df = node.df[node.df["type"] == "Basin"][["node_id", "basin_id"]].set_index(
+# %% define Basin
+static_df = node_df[node_df["type"] == "Basin"][["node_id", "basin_id"]].set_index(
     "basin_id"
 )
 level_area_df.drop_duplicates(["level", "area", "id"], inplace=True)
@@ -519,22 +522,28 @@ state_df.loc[:, ["level"]] = state_df["level"].apply(lambda x: max(x + 1, 0))
 basin = ribasim.Basin(profile=profile_df, static=static_df, state=state_df)
 
 # % define Resistance
-node.df.loc[node.df["type"] == "Outlet", ["type", "value"]] = (
-    "LinearResistance",
-    1000,
-)  # FIXME: Nijkerkersluis als goede type meenemen
+# node_df.loc[node_df["type"] == "Outlet", ["type", "value"]] = (
+#     "LinearResistance",
+#     1000,
+# )  # FIXME: Nijkerkersluis als goede type meenemen
 
-resistance_df = node.df[node.df["type"] == "LinearResistance"][["node_id", "value"]]
+resistance_df = node_df[node_df["type"] == "LinearResistance"][["node_id", "value"]]
 resistance_df.rename(columns={"value": "resistance"}, inplace=True)
 linear_resistance = ribasim.LinearResistance(static=resistance_df)
 
 # % define Pump
-pump_df = node.df[node.df["type"] == "Pump"][["node_id", "value"]]
+pump_df = node_df[node_df["type"] == "Pump"][["node_id", "value"]]
 pump_df.rename(columns={"value": "flow_rate"}, inplace=True)
 pump = ribasim.Pump(static=pump_df)
 
+
+# % define Outlet
+outlet_df = node_df[node_df["type"] == "Outlet"][["node_id", "value"]]
+outlet_df.rename(columns={"value": "flow_rate"}, inplace=True)
+outlet = ribasim.Outlet(static=outlet_df)
+
 # % define fraction
-node_index = node.df[node.df["type"] == "FractionalFlow"][
+node_index = node_df[node_df["type"] == "FractionalFlow"][
     ["code_waterbeheerder", "node_id"]
 ].set_index("code_waterbeheerder")["node_id"]
 
@@ -542,7 +551,7 @@ fractional_flow_df = verdeelsleutel_to_fractions(verdeelsleutel_df, node_index)
 fractional_flow = ribasim.FractionalFlow(static=fractional_flow_df)
 
 # %
-node_index = node.df[node.df["type"] == "TabulatedRatingCurve"][
+node_index = node_df[node_df["type"] == "TabulatedRatingCurve"][
     ["code_waterbeheerder", "node_id"]
 ].set_index("code_waterbeheerder")["node_id"]
 tabulated_rating_curve_df = read_rating_curve(
@@ -552,7 +561,7 @@ tabulated_rating_curve_df = read_rating_curve(
 tabulated_rating_curve = ribasim.TabulatedRatingCurve(static=tabulated_rating_curve_df)
 
 # % define Manning
-manning_df = node.df[node.df["type"] == "ManningResistance"][["node_id"]]
+manning_df = node_df[node_df["type"] == "ManningResistance"][["node_id"]]
 manning_df["length"] = 10000
 manning_df["manning_n"] = 0.04
 manning_df["profile_width"] = 10000
@@ -561,12 +570,12 @@ manning_df["profile_slope"] = 1
 manning_resistance = ribasim.ManningResistance(static=manning_df)
 
 # % define FlowBoundary
-flow_boundary_df = node.df[node.df["type"] == "FlowBoundary"][["node_id", "value"]]
+flow_boundary_df = node_df[node_df["type"] == "FlowBoundary"][["node_id", "value"]]
 flow_boundary_df.rename(columns={"value": "flow_rate"}, inplace=True)
 flow_boundary = ribasim.FlowBoundary(static=flow_boundary_df)
 
 # % define LevelBoundary
-level_boundary_df = node.df[node.df["type"] == "LevelBoundary"][["node_id", "value"]]
+level_boundary_df = node_df[node_df["type"] == "LevelBoundary"][["node_id", "value"]]
 level_boundary_df.rename(columns={"value": "level"}, inplace=True)
 level_boundary = ribasim.LevelBoundary(static=level_boundary_df)
 
@@ -582,35 +591,46 @@ model = ribasim.Model(
     tabulated_rating_curve=tabulated_rating_curve,
     fractional_flow=fractional_flow,
     pump=pump,
+    outlet=outlet,
     # terminal=terminal,
     starttime="2020-01-01 00:00:00",
     endtime="2021-01-01 00:00:00",
 )
+
+# %%
 model = reset_index(model)
 
-# % verwijderen Nijkerkersluis
+# %% verwijderen Nijkerkersluis
 
-model.network.node.df = model.network.node.df[~(model.network.node.df["node_id"] == 14)]
-model.network.edge.df = model.network.edge.df[
-    ~(model.network.edge.df["from_node_id"] == 14)
-]
-model.network.edge.df = model.network.edge.df[
-    ~(model.network.edge.df["to_node_id"] == 14)
-]
-model.linear_resistance.static.df = model.linear_resistance.static.df[
-    ~(model.linear_resistance.static.df["node_id"] == 14)
-]
-model = reset_index(model)
+nijkerk_idx = model.network.node.df[
+    model.network.node.df["meta_code_waterbeheerder"] == "32E-001-04"
+].index
 
+# model.network.node.df = model.network.node.df[
+#     ~(model.network.node.df["meta_node_id"].isin(nijkerk_idx))
+# ]
 
-# %% add control
-model = verdeelsleutel_to_control(
-    verdeelsleutel_df,
-    model,
-    name="Driel",
-    code_waterbeheerder="Driel",
-    waterbeheerder="Rijkswaterstaat",
-)
+# model.network.edge.df = model.network.edge.df[
+#     ~(model.network.edge.df["from_node_id"].isin(nijkerk_idx))
+# ]
+
+# model.network.edge.df = model.network.edge.df[
+#     ~(model.network.edge.df["to_node_id"].isin(nijkerk_idx))
+# ]
+
+# model.linear_resistance.static.df = model.linear_resistance.static.df[
+#     ~model.linear_resistance.static.df["node_id"].isin(nijkerk_idx)
+# ]
+
+# model = reset_index(model)
+
+model.linear_resistance.static.df.loc[
+    model.linear_resistance.static.df["node_id"].isin(nijkerk_idx), ["active"]
+] = False
+
+model.linear_resistance.static.df.loc[
+    ~model.linear_resistance.static.df["node_id"].isin(nijkerk_idx), ["active"]
+] = True
 
 
 # %%%
@@ -619,9 +639,9 @@ model.solver.adaptive = False
 model.solver.dt = 10.0
 model.solver.saveat = 360
 
-
+# %%
 print("write ribasim model")
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_network", "hws.toml")
 model.write(ribasim_toml)
 
 # %%

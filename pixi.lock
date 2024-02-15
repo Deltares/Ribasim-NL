@@ -19865,7 +19865,7 @@ package:
   timestamp: 1598024297745
 - platform: linux-64
   name: ribasim
-  version: 0.6.1
+  version: 0.7.0
   category: main
   manager: conda
   dependencies:
@@ -19881,21 +19881,22 @@ package:
   - shapely >=2.0
   - tomli
   - tomli-w
-  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.1-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.7.0-pyhd8ed1ab_0.conda
   hash:
-    md5: c6f7cda724cd5b63a3293d80e8cfba6d
-    sha256: e6dd3f375fc914dc6d657d46463fcbac3f01570d9f904cde3b8cfdcadd98efb6
+    md5: 852993160e0975307bbc7c935afe4e83
+    sha256: 7a8a4abb58d10c2d32d5ea961ebe4aa56f8a455aabfcd7d60b3146a53ecf0cea
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: linux-64
   build_number: 0
   license: MIT
+  license_family: MIT
   noarch: python
-  size: 23898
-  timestamp: 1702048238025
+  size: 23721
+  timestamp: 1707142009641
 - platform: osx-64
   name: ribasim
-  version: 0.6.1
+  version: 0.7.0
   category: main
   manager: conda
   dependencies:
@@ -19911,21 +19912,22 @@ package:
   - shapely >=2.0
   - tomli
   - tomli-w
-  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.1-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.7.0-pyhd8ed1ab_0.conda
   hash:
-    md5: c6f7cda724cd5b63a3293d80e8cfba6d
-    sha256: e6dd3f375fc914dc6d657d46463fcbac3f01570d9f904cde3b8cfdcadd98efb6
+    md5: 852993160e0975307bbc7c935afe4e83
+    sha256: 7a8a4abb58d10c2d32d5ea961ebe4aa56f8a455aabfcd7d60b3146a53ecf0cea
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: osx-64
   build_number: 0
   license: MIT
+  license_family: MIT
   noarch: python
-  size: 23898
-  timestamp: 1702048238025
+  size: 23721
+  timestamp: 1707142009641
 - platform: win-64
   name: ribasim
-  version: 0.6.1
+  version: 0.7.0
   category: main
   manager: conda
   dependencies:
@@ -19941,18 +19943,19 @@ package:
   - shapely >=2.0
   - tomli
   - tomli-w
-  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.6.1-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-0.7.0-pyhd8ed1ab_0.conda
   hash:
-    md5: c6f7cda724cd5b63a3293d80e8cfba6d
-    sha256: e6dd3f375fc914dc6d657d46463fcbac3f01570d9f904cde3b8cfdcadd98efb6
+    md5: 852993160e0975307bbc7c935afe4e83
+    sha256: 7a8a4abb58d10c2d32d5ea961ebe4aa56f8a455aabfcd7d60b3146a53ecf0cea
   build: pyhd8ed1ab_0
   arch: x86_64
   subdir: win-64
   build_number: 0
   license: MIT
+  license_family: MIT
   noarch: python
-  size: 23898
-  timestamp: 1702048238025
+  size: 23721
+  timestamp: 1707142009641
 - platform: linux-64
   name: rioxarray
   version: 0.15.0

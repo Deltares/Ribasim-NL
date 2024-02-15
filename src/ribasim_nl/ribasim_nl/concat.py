@@ -1,64 +1,77 @@
+import pandas as pd
+import ribasim
 from ribasim import Model
 
 from ribasim_nl import reset_index
+from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.model import CLASS_TABLES, get_table
 
 
-def concat(filepaths: list, attributes: dict | None = None) -> Model:
+def concat(models: list[Model]) -> Model:
     """Concat existing models to one Ribasim-model
 
     Parameters
     ----------
-    filepaths : List[Path]
-        List of Paths to toml-files. Models will be merged first-to-last
-    attributes: dict
-        Dictionary with attributes (key) and their values as list. Length of values should
-        match the length of filepaths as every item in list is assigned as a constant value
-        to the ribasim.Model.network.node and ribasim.Model.network.edge.
+    models : list[Model]
+        List with ribasim.Model
 
     Returns
     -------
     Model
-        Resulting Ribasim-model
+        concatenated ribasim.Model
     """
 
-    def add_attributes(model, idx):
-        if attributes is not None:
-            for k in attributes.keys():
-                # for now we have to make sure every attribute startswith meta_
-                if not k.startswith("meta_"):
-                    column = f"meta_{k}"
-                else:
-                    column = k
+    # models will be concatenated to first model.
+    model = reset_index(models[0])
+    # determine node_start of next model
+    node_start = model.network.node.df.index.max() + 1
+    # concat all other models into model
 
-                model.network.node.df[column] = attributes[k][idx]
-                model.network.edge.df[column] = attributes[k][idx]
-        return model
+    for merge_model in models[1:]:
+        # reset index
+        merge_model = reset_index(merge_model, node_start)
 
-    # check if attributes match length of list
-    if attributes is not None:
-        for k, v in attributes.items():
-            if not isinstance(v, list):
-                raise TypeError(
-                    f"value of attribute '{k}' is not a list but '{type(v)}'"
-                )
+        # determine node_start of next model
+        node_start = model.network.node.df.index.max() + 1
 
-            if len(v) != len(filepaths):
-                raise ValueError(
-                    f"length of attribute-list '{k}', not equal to length of filepaths: {len(v)} != {len(filepaths)}"
-                )
+        # merge network
+        model.network.node = ribasim.Node(
+            df=pd.concat([model.network.node.df, merge_model.network.node.df])
+        )
+        model.network.edge = ribasim.Edge(
+            df=pd.concat(
+                [model.network.edge.df, merge_model.network.edge.df], ignore_index=True
+            ).reset_index()
+        )
 
-    # read first model to merge the rest into
-    filepath = filepaths[0]
-    model = Model.read(filepath)
-    model = reset_index(model)
-    model = add_attributes(model, 0)
-    # start_index = model.network.node.df.index.max() + 1
+        # merge all non-spatial tables
+        for class_name, attrs in CLASS_TABLES.items():
+            # convert class-name to model attribute
+            class_attr = pascal_to_snake_case(class_name)
 
-    # merge other models into model
-    for idx in range(1, len(filepaths)):
-        filepath = filepaths[idx]
-        # add_model = reset_index(Model.read(filepath), start_index)
-        model = add_attributes(model, idx)
-        # model = merge_models(model, add_model)
+            # read all tables and temporary store them in a dict
+            tables = {}
+            for attr in attrs:
+                # table string
+                table = f"{class_attr}.{attr}.df"
+
+                # see if there is a table to concatenate
+                merge_model_df = get_table(merge_model, table)
+                model_df = get_table(model, table)
+
+                if merge_model_df is not None:
+                    if model_df is not None:
+                        # make sure we concat both df's into the correct ribasim-object
+                        df = pd.concat([model_df, merge_model_df], ignore_index=True)
+                    else:
+                        df = merge_model_df
+                    tables[attr] = df
+                elif model_df is not None:
+                    tables[attr] = model_df
+
+            # now we gently update the Ribasim class with new tables
+            if tables:
+                table_class = getattr(ribasim, class_name)
+                setattr(model, class_attr, table_class(**tables))
 
     return model
