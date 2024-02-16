@@ -1,5 +1,6 @@
 # %%
 import sqlite3
+from datetime import datetime
 
 import pandas as pd
 import ribasim
@@ -8,6 +9,14 @@ from ribasim_nl.concat import concat
 
 # %%
 cloud = CloudStorage()
+readme = f"""# Model voor het Landelijk Hydrologisch Model
+
+Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+Ribasim-Python versie: {ribasim.__version__}
+Getest (u kunt simuleren): Nee
+
+** Samengevoegde modellen (beheerder: modelnaam (versie)**
+"""
 
 
 def fix_rating_curve(database_path):
@@ -57,12 +66,77 @@ models = [
         "model": "hws",
         "find_toml": False,
         "update": False,
+        "zoom_level": 0,
+    },
+    {
+        "authority": "AmstelGooienVecht",
+        "model": "AmstelGooienVecht_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "Delfland",
+        "model": "Delfland_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "HollandseDelta",
+        "model": "HollandseDelta_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
     },
     {
         "authority": "HollandsNoorderkwartier",
         "model": "HollandsNoorderkwartier_poldermodel",
         "find_toml": True,
         "update": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "Rijnland",
+        "model": "Rijnland_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "Rivierenland",
+        "model": "Rivierenland_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "Scheldestromen",
+        "model": "Scheldestromen_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "SchielandendeKrimpenerwaard",
+        "model": "SchielandendeKrimpenerwaard_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "WetterskipFryslan",
+        "model": "WetterskipFryslan_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "Zuiderzeeland",
+        "model": "Zuiderzeeland_poldermodel",
+        "find_toml": True,
+        "update": True,
+        "zoom_level": 3,
     },
 ]
 
@@ -120,16 +194,25 @@ for idx, model in enumerate(models):
         model_path.parent.joinpath("updated").write_text("true")
 
     # read model
-    model = ribasim.Model.read(model_path)
+    ribasim_model = ribasim.Model.read(model_path)
+    ribasim_model.network.node.df.loc[:, "meta_zoom_level"] = model["zoom_level"]
+    ribasim_model.network.edge.df.loc[:, "meta_zoom_level"] = model["zoom_level"]
     if idx == 0:
-        lhm_model = model
+        lhm_model = ribasim_model
+    else:
         cols = [i for i in lhm_model.network.edge.df.columns if i != "meta_index"]
         lhm_model.network.edge.df = lhm_model.network.edge.df[cols]
-    else:
-        lhm_model = concat([lhm_model, model])
+        ribasim_model.network.node.df.loc[:, "meta_waterbeheerder"] = model["authority"]
+        ribasim_model.network.edge.df.loc[:, "meta_waterbeheerder"] = model["authority"]
+        lhm_model = concat([lhm_model, ribasim_model])
+
+    readme += f"""
+**{model["authority"]}**: {model["model"]} ({model_version.version})"""
 
 # %%
 print("write lhm model")
 ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm", "lhm.toml")
 lhm_model.write(ribasim_toml)
+cloud.joinpath("Rijkswaterstaat", "modellen", "lhm", "readme.md").write_text(readme)
 # %%
+cloud.upload_model("Rijkswaterstaat", model="lhm")
