@@ -221,13 +221,8 @@ def subdivide_geodataframe(gdf, max_length):
 network_lines_gdf = network_lines_gdf[
     ~network_lines_gdf["name"].isin(["Geul", "Derde Diem"])
 ]  # brute verwijdering wegens sifon onder Julianakanaal
-gdf_subdivided = subdivide_geodataframe(network_lines_gdf, max_length=450)
 
-# %%
-network = Network(gdf_subdivided, tolerance=1, id_col="id", name_col="name")
-
-print("write network")
-network.to_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+network = Network(network_lines_gdf, tolerance=1, id_col="id", name_col="name")
 
 print("write to hydamo")
 lines = network.links
@@ -237,4 +232,12 @@ lines.to_file(
     layer="hydroobject",
     engine="pyogrio",
 )
+
+
+gdf_subdivided = subdivide_geodataframe(network_lines_gdf, max_length=450)
+
 # %%
+network = Network(gdf_subdivided, tolerance=1, id_col="id", name_col="name")
+
+print("write network")
+network.to_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
