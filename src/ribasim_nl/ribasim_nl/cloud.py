@@ -1,4 +1,3 @@
-# %%
 import logging
 import os
 import re
@@ -57,6 +56,14 @@ class ModelVersion:
     year: int
     month: int
     revision: int
+
+    @property
+    def version(self):
+        return f"{self.year}.{self.month}.{self.revision}"
+
+    @property
+    def path_string(self):
+        return f"{self.model}_{self.year}_{self.month}_{self.revision}"
 
 
 @dataclass
