@@ -113,7 +113,7 @@ def add_control_node_to_network(
     network.node.df.loc[ctrl_node_id] = ctrl_node
     network.node.df.crs = 28992
 
-    # ad edge(s) to the network
+    # add edge(s) to the network
     ctrl_edge_gdf = gpd.GeoDataFrame(
         [
             {
