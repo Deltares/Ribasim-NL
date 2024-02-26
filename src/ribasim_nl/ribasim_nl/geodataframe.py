@@ -4,9 +4,10 @@ from typing import Literal
 import geopandas as gpd
 import pandas as pd
 from geopandas import GeoDataFrame
-from shapely.geometry import MultiPolygon
+from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import polylabel
 
+from ribasim_nl import Network
 from ribasim_nl.geometry import sort_basins, split_basin
 
 
@@ -245,7 +246,30 @@ def direct_basins(
     return poly_directions_gdf
 
 
-def basins_to_points(basins_gdf, network, mask=None, buffer=None):
+def basins_to_points(
+    basins_gdf: GeoDataFrame,
+    network: Network,
+    mask: Polygon | None = None,
+    buffer: int | None = None,
+) -> GeoDataFrame:
+    """Get points within a basin
+
+    Parameters
+    ----------
+    basins_gdf : GeoDataFrame
+        GeoDataFrame with Polygon basins
+    network : Network
+        Ribasim-NL network to snap points on
+    mask : Polygon, optional
+        Optional mask to clip basin, by default None
+    buffer : int, optional
+        Buffer to apply on basin in case no point is found, by default None
+
+    Returns
+    -------
+    GeoDataFrame
+        Points within basin on network
+    """
     data = []
     if network is not None:
         links_gdf = network.links
@@ -311,6 +335,3 @@ def basins_to_points(basins_gdf, network, mask=None, buffer=None):
         data += [attributes]
 
     return gpd.GeoDataFrame(data, crs=basins_gdf.crs)
-
-
-# %%
