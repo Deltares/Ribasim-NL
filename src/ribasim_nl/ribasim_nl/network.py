@@ -675,6 +675,3 @@ class Network:
         self.links.to_file(path, layer="links", engine="pyogrio")
         # add styles
         add_styles_to_geopackage(path)
-
-
-# %%
