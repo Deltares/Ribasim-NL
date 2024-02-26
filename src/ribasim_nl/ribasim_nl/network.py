@@ -1,4 +1,3 @@
-# %%
 import logging
 from collections import Counter
 from dataclasses import dataclass, field
@@ -250,6 +249,7 @@ class Network:
         id=None,
         name=None,
     ):
+        """Add a link (edge) to the network"""
         if self.tolerance is not None:
             geometry = LineString(
                 [(point_from.x, point_from.y)]
@@ -398,7 +398,7 @@ class Network:
         self,
         point: Point,
         max_distance: float,
-        allign_distance: float,
+        align_distance: float,
         node_types=["connection", "upstream_boundary", "downstream_boundary"],
     ):
         """Move network nodes and edges to new location
@@ -409,8 +409,8 @@ class Network:
             Point to move node to
         max_distance : float
             Max distance to find closes node
-        allign_distance : float
-            Distance over edge, from node, where vertices will be removed to allign adjacent edges with Point
+        align_distance : float
+            Distance over edge, from node, where vertices will be removed to align adjacent edges with Point
         """
         # take links and nodes as gdf
         nodes_gdf = self.nodes
@@ -440,7 +440,7 @@ class Network:
                 for coord in list(
                     self.graph.edges[(edge.node_from, edge.node_to)]["geometry"].coords
                 )[1:-1]:
-                    if geometry.project(Point(coord)) > allign_distance:
+                    if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from original geometry
@@ -463,7 +463,7 @@ class Network:
                 for coord in list(
                     self.graph.edges[(edge.node_from, edge.node_to)]["geometry"].coords
                 )[1:-1]:
-                    if geometry.project(Point(coord)) > allign_distance:
+                    if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from point
@@ -479,7 +479,7 @@ class Network:
             )
             return None
 
-    def add_node(self, point: Point, max_distance: float, allign_distance: float):
+    def add_node(self, point: Point, max_distance: float, align_distance: float):
         # set _graph undirected to None
         self._graph_undirected = None
 
@@ -508,7 +508,7 @@ class Network:
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
-            return self.move_node(point, max_distance=max_distance, allign_distance=100)
+            return self.move_node(point, max_distance=max_distance, align_distance=100)
         else:
             logger.warning(
                 f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
@@ -676,6 +676,3 @@ class Network:
         self.links.to_file(path, layer="links", engine="pyogrio")
         # add styles
         add_styles_to_geopackage(path)
-
-
-# %%

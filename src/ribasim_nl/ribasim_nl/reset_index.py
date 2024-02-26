@@ -1,4 +1,3 @@
-# %%
 import pandas as pd
 from ribasim import Model
 
@@ -45,6 +44,3 @@ def reset_index(model: Model, node_start=1):
                 df.loc[:, ["node_id"]] = df["node_id"].apply(lambda x: index.loc[x])
 
     return model
-
-
-# %%

@@ -1,4 +1,3 @@
-# %%
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +18,3 @@ def read_rating_curve(file_path: Path, node_index: Series) -> DataFrame:
             dfs += [df]
 
     return pd.concat(dfs)[["node_id", "level", "flow_rate", "code_waterbeheerder"]]
-
-
-# %%

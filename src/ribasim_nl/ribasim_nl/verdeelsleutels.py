@@ -1,4 +1,3 @@
-# %%
 from pathlib import Path
 
 import pandas as pd
@@ -110,6 +109,3 @@ def verdeelsleutel_to_control(
     )
 
     return model
-
-
-# %%
