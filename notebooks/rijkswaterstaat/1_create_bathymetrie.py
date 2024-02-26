@@ -2,7 +2,6 @@
 import itertools
 import math
 from functools import partial
-from pathlib import Path
 
 import fiona
 import geopandas as gpd
@@ -14,24 +13,24 @@ from rasterio import features, merge  # noqa: F401
 from rasterio.enums import Resampling
 from rasterio.transform import from_origin
 from rasterio.windows import from_bounds
+from ribasim_nl import CloudStorage
 from shapely.geometry import MultiPolygon, box
 
-out_dir = Path(
-    r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\verwerkt\bathymetrie"
-)
+cloud = CloudStorage()
+
+
+out_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "bathymetrie")
 out_dir.mkdir(exist_ok=True)
-baseline_file = Path(
-    r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\baseline-nl_land-j23_6-v1\baseline.gdb"
-)
+baseline_file = cloud.joinpath(
+    "baseline-nl_land-j23_6-v1", "baseline.gdb"
+)  # dit bestand is read-only voor D2HYDRO ivm verwerkersovereenkomst
 layer = "bedlevel_points"
 
-krw_poly_gpkg = Path(
-    r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Basisgegevens\KRW\krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg"
+krw_poly_gpkg = cloud.joinpath(
+    "Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg"
 )
 
-bathymetrie_nl = Path(
-    r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\aangeleverd\bathymetrie"
-)
+bathymetrie_nl = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "bathymetrie")
 
 res = 5
 tile_size = 10000
@@ -235,5 +234,3 @@ with rasterio.open(out_dir / "bathymetrie-merged.tif", mode="w", **profile) as d
     dst.build_overviews([5, 20], Resampling.average)
     dst.update_tags(ns="rio_overview", resampling="average")
     dst.scales = (0.01,)
-
-# %%
