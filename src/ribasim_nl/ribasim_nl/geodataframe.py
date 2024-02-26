@@ -245,7 +245,6 @@ def direct_basins(
     return poly_directions_gdf
 
 
-# %%
 def basins_to_points(basins_gdf, network, mask=None, buffer=None):
     data = []
     if network is not None:
