@@ -46,7 +46,6 @@ def verdeelsleutel_to_fractions(
 def verdeelsleutel_to_control(
     verdeelsleutel_df,
     model,
-    name=None,
     offset_node_id=None,
     code_waterbeheerder=None,
     waterbeheerder=None,
