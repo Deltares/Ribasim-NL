@@ -1,0 +1,9 @@
+hydroobject,crossing_type,peilgebieden,peilgebied_from,peilgebied_to,streefpeil_from,streefpeil_to,stuw,gemaal,flip,match_group,match_stacked,match_composite,match_group_unique,in_use,geom_x,geom_y
+line_1,-10,poly_1,poly_1,,1.0,,,,,1,1,False,True,True,2.0,0.5
+line_1,-10,poly_2,,poly_2,,2.0,,,,2,1,False,True,True,3.0,0.5
+"line_2,line_3",-10,poly_1,poly_1,,1.0,,,,,3,1,False,True,True,2.0,0.7
+"line_2,line_3",-10,poly_2,,poly_2,,2.0,,,,4,1,False,True,True,3.0,0.7
+"line_4,line_5",-10,poly_1,poly_1,,1.0,,,,,5,1,False,True,True,2.0,0.9
+"line_4,line_5,line_6",-10,poly_2,poly_2,,2.0,,,,,6,1,False,True,True,3.0,0.9
+line_7,-10,poly_1,,poly_1,,1.0,,,,7,1,False,True,True,2.0,1.5
+line_7,-10,poly_2,poly_2,,2.0,,,,,8,1,False,True,True,3.0,1.5
