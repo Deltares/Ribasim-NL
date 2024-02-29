@@ -1321,13 +1321,17 @@ class ParseCrossings:
             line_geom = line_groups[groupid]
 
             replace_crossing_candidates = group[group.in_use].copy()
-            
+
             replace_stuw = None
             if "stuw" in dfs.columns:
-                replace_stuw = ",".join(replace_crossing_candidates.stuw.dropna().unique())
+                replace_stuw = ",".join(
+                    replace_crossing_candidates.stuw.dropna().unique()
+                )
             replace_gemaal = None
             if "gemaal" in dfs.columns:
-                replace_gemaal = ",".join(replace_crossing_candidates.gemaal.dropna().unique())
+                replace_gemaal = ",".join(
+                    replace_crossing_candidates.gemaal.dropna().unique()
+                )
 
             replace_crossing_vec = []
             if len(replace_crossing_candidates) == 0:
@@ -1379,8 +1383,8 @@ class ParseCrossings:
                             ]
                             if len(matches) > 0:
                                 replace_crossing = replace_crossing_candidates.loc[
-                                        matches.index[0], :
-                                    ].copy()
+                                    matches.index[0], :
+                                ].copy()
                                 if replace_gemaal is not None:
                                     replace_crossing["gemaal"] = replace_gemaal
                                     replace_gemaal = None
@@ -1704,13 +1708,14 @@ class ParseCrossings:
             # Only add the new structure to the crossing(s) if the new
             # structure is closer by than the old structure.
             crossing = dfs.geometry.at[lbl]
-            old_struct_id = dfs.at[lbl, structurelayer]
-            old_struct = df_structures.geometry.at[old_struct_id]
-            if old_struct.distance(crossing) > structure_geom.distance(crossing):
+            old_struct_ids = dfs.at[lbl, structurelayer].split(",")
+            old_structs = df_structures.geometry.loc[old_struct_ids]
+            if old_structs.distance(crossing).min() > structure_geom.distance(crossing):
                 self.log.info(
                     f"Replacing {structurelayer} at {crossing} with '{structure_id}'"
                 )
-                orphaned_structures.append((old_struct_id, old_struct))
+                for old_struct_id, old_struct in zip(old_struct_ids, old_structs):
+                    orphaned_structures.append((old_struct_id, old_struct))
                 dfs.loc[df_stacked.index, structurelayer] = structure_id
 
         return dfs, orphaned_structures
