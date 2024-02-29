@@ -1,5 +1,4 @@
 import pathlib
-from typing import Dict, List, Optional, Tuple, Union
 
 import geopandas as gpd
 import networkx
@@ -10,10 +9,10 @@ import pandas as pd
 class AggregateCrossings:
     def __init__(
         self,
-        agg_pg_path: Union[pathlib.Path, str],
-        crossings_path: Union[pathlib.Path, str],
+        agg_pg_path: pathlib.Path | str,
+        crossings_path: pathlib.Path | str,
         crossings_layer: str,
-        agg_pg_layer: Optional[str] = None,
+        agg_pg_layer: str | None = None,
         agg_pg_col: str = "aggr_class",
         filter_bool_col: str = "agg1_used",
         joker_area: float = 6.25e4,
@@ -34,7 +33,7 @@ class AggregateCrossings:
 
     def aggregate_crossings(
         self,
-    ) -> Tuple[gpd.GeoDataFrame, List, networkx.DiGraph, Dict[str, Tuple[float, float]]]:
+    ) -> tuple[gpd.GeoDataFrame, list, networkx.DiGraph, dict[str, tuple[float, float]]]:
         G, pos = self.make_graph()
         nodegroups, cat_per_node = self.find_nodegroups(G)
         nodegroups_merged = self.merge_nodegroups(nodegroups, cat_per_node)
@@ -47,7 +46,7 @@ class AggregateCrossings:
                 if node.startswith("None_"):
                     continue
 
-                if not pd.isnull(peilgebieden.at[node, "agg2"]):
+                if not pd.isna(peilgebieden.at[node, "agg2"]):
                     print(f"ERROR: duplicaat peilgebied {node}")
                     break
 
@@ -56,19 +55,19 @@ class AggregateCrossings:
         # Geef peilgebieden die niet in een groep zijn ook een (uniek) groepid.
         i = len(nodegroups_merged)
         for row in peilgebieden.itertuples():
-            if pd.isnull(row.agg2):
+            if pd.isna(row.agg2):
                 peilgebieden.at[row.Index, "agg2"] = i
                 i += 1
 
         return peilgebieden, nodegroups_merged, G, pos
 
-    def make_graph(self) -> Tuple[Dict[str, Tuple[float, float]], networkx.DiGraph]:
+    def make_graph(self) -> tuple[dict[str, tuple[float, float]], networkx.DiGraph]:
         G = networkx.DiGraph()
         nodes = np.unique(
             np.hstack(
                 [
-                    self.dfc.peilgebied_from.dropna().values,
-                    self.dfc.peilgebied_to.dropna().values,
+                    self.dfc.peilgebied_from.dropna().to_numpy(),
+                    self.dfc.peilgebied_to.dropna().to_numpy(),
                 ]
             )
         )
@@ -76,7 +75,7 @@ class AggregateCrossings:
         edges = []
         pos = {}
         for i, row in enumerate(df_edges.itertuples()):
-            if pd.isnull(row.peilgebied_from):
+            if pd.isna(row.peilgebied_from):
                 nodename = f"None_{i}"
                 df_edges.at[row.Index, "peilgebied_from"] = nodename
                 pos[nodename] = (row.geometry.x, row.geometry.y)
@@ -84,7 +83,7 @@ class AggregateCrossings:
                 geom = self.peilgebieden.geometry.at[row.peilgebied_from].centroid
                 pos[row.peilgebied_from] = (geom.x, geom.y)
 
-            if pd.isnull(row.peilgebied_to):
+            if pd.isna(row.peilgebied_to):
                 nodename = f"None_{i}"
                 df_edges.at[row.Index, "peilgebied_to"] = nodename
                 pos[nodename] = (row.geometry.x, row.geometry.y)
@@ -107,7 +106,7 @@ class AggregateCrossings:
 
         return G, pos
 
-    def find_nodegroups(self, G: networkx.DiGraph) -> Tuple[List, Dict]:
+    def find_nodegroups(self, G: networkx.DiGraph) -> tuple[list, dict]:
         if self.debug:
             agg_unique = self.agg_peilgebieden[self.agg_col].unique()
             print(f"Uniek aantal {self.agg_col}: {len(agg_unique)}")
@@ -119,7 +118,7 @@ class AggregateCrossings:
             cat_area[idx] = row.geometry.area
 
         # References to outgoing nodes (adjacency list) en incoming nodes.
-        G_adj = {k: v for k, v in G.adjacency()}
+        G_adj = dict(G.adjacency())
         G_inc = {k: [] for k in G_adj}
         for k, v in G_adj.items():
             for vi in v.keys():
@@ -208,7 +207,7 @@ class AggregateCrossings:
                 new_group += add_nodes
 
             # Maak categorie in groep consistent
-            cats = list(set([visited_nodes[n] for n in new_group]))
+            cats = {visited_nodes[n] for n in new_group}
             cats = [c for c in cats if c is not None]
             if len(cats) == 0:
                 # Groep met alleen None, laat deze zo
@@ -231,7 +230,7 @@ class AggregateCrossings:
 
         return nodegroups, visited_nodes
 
-    def merge_nodegroups(self, nodegroups: List, cat_per_node: Dict) -> List:
+    def merge_nodegroups(self, nodegroups: list, cat_per_node: dict) -> list:
         # Bekijk of de groep van nodes enige overlap heeft met een bestaande groep.
         # Zo ja, voeg dan de groep van nodes bij deze bestaande groep.
         cross_group = pd.DataFrame(index=np.unique(np.hstack(nodegroups)), columns=range(len(nodegroups)))
@@ -241,12 +240,12 @@ class AggregateCrossings:
 
         nodes_per_group = {}
         for group in cross_group.columns:
-            cg_idx = cross_group[group].values
+            cg_idx = cross_group[group].to_numpy()
             nodes_per_group[group] = cross_group.index[cg_idx].tolist()
 
         groups_per_node = {}
         for node, row in cross_group.iterrows():
-            groups_per_node[node] = cross_group.columns[row.values].tolist()
+            groups_per_node[node] = cross_group.columns[row.to_numpy()].tolist()
 
         visited_groups = []
         visited_nodes = []
