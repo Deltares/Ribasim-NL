@@ -1540,7 +1540,8 @@ class ParseCrossings:
         df_stacked = df_filter.iloc[idx_close, :].copy()
 
         # Add the structure to the crossing(s) which are closest.
-        if pd.isna(dfs.at[lbl, structurelayer]):
+        cur_structids = dfs.at[lbl, structurelayer]
+        if pd.isna(cur_structids) or cur_structids == "":
             dfs.loc[df_stacked.index, structurelayer] = structure_id
         else:
             # Only add the new structure to the crossing(s) if the new
