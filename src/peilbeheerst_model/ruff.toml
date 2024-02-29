@@ -5,9 +5,7 @@ fixable = ["I"]
 extend-include = ["*.ipynb"]
 exclude = ["scripts/*"]
 target-version = "py310"
+line-length = 120
 
 [pydocstyle]
 convention = "numpy"
-
-[tool.ruff]
-line-length = 120

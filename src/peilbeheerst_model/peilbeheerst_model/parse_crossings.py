@@ -87,24 +87,18 @@ class ParseCrossings:
         self.disable_progress = disable_progress
 
         # read all layers of geopackage
-        self.df_gpkg = {
-            L: gpd.read_file(gpkg_path, layer=L) for L in fiona.listlayers(gpkg_path)
-        }
+        self.df_gpkg = {L: gpd.read_file(gpkg_path, layer=L) for L in fiona.listlayers(gpkg_path)}
 
         # Validate globalids
         for layername, df_layer in self.df_gpkg.items():
             if "globalid" not in df_layer.columns:
                 continue
             if df_layer.globalid.str.contains(self.list_sep).any():
-                raise ValueError(
-                    f"{layername}: contains the reserved character '{self.list_sep}'"
-                )
+                raise ValueError(f"{layername}: contains the reserved character '{self.list_sep}'")
 
         if "peilgebied_cat" not in self.df_gpkg["peilgebied"].columns:
             self.df_gpkg["peilgebied"]["peilgebied_cat"] = 0
-        self.peilgebied_cat_lookup = (
-            self.df_gpkg["peilgebied"].set_index("globalid").peilgebied_cat.copy()
-        )
+        self.peilgebied_cat_lookup = self.df_gpkg["peilgebied"].set_index("globalid").peilgebied_cat.copy()
 
         logger_name = f"{__name__.split('.')[0]}_{pathlib.Path(gpkg_path).stem}"
         self.log = logging.getLogger(logger_name)
@@ -114,9 +108,7 @@ class ParseCrossings:
         if logfile is not None:
             handlers.append(logging.FileHandler(pathlib.Path(logfile), "w"))
         for handler in handlers:
-            formatter = logging.Formatter(
-                "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
             handler.setFormatter(formatter)
             self.log.addHandler(handler)
         self.log.setLevel(logging.DEBUG)
@@ -184,9 +176,7 @@ class ParseCrossings:
             disable=self.disable_progress,
         ):
             buffpoint = row_endpoint.geometry.buffer(self.almost_zero)
-            idx_peilgebieden = df_peil_boundary.sindex.query(
-                buffpoint, predicate="intersects"
-            )
+            idx_peilgebieden = df_peil_boundary.sindex.query(buffpoint, predicate="intersects")
             df_subset = df_peil_boundary.iloc[idx_peilgebieden, :].copy()
             if len(df_subset) > 0:
                 k = (row_endpoint.geometry.x, row_endpoint.geometry.y)
@@ -320,9 +310,7 @@ class ParseCrossings:
         df_peilgebieden, df_peil_boundary = self.parse_peilgebieden()
 
         # Determine endpoints
-        df_linesingle, df_endpoints = self.extend_linestrings(
-            df_linesingle, df_peil_boundary
-        )
+        df_linesingle, df_endpoints = self.extend_linestrings(df_linesingle, df_peil_boundary)
 
         # Find crossings of the lines with the peilgebieden.
         crossings = {}
@@ -333,21 +321,15 @@ class ParseCrossings:
             disable=self.disable_progress,
         ):
             # Find the intersection of the current line with the peilgebieden.
-            idx_peilgebieden = df_peil_boundary.sindex.query(
-                row_line.geometry, predicate="intersects"
-            )
+            idx_peilgebieden = df_peil_boundary.sindex.query(row_line.geometry, predicate="intersects")
 
             # If no areas intersect, continue with the following line.
             if len(idx_peilgebieden) == 0:
                 continue
 
             # Add peilgebieden which completely contain the current line.
-            idx_peilgebieden2 = df_peilgebieden.sindex.query(
-                row_line.geometry, predicate="within"
-            )
-            idx_peilgebieden2 = list(
-                set(idx_peilgebieden2).difference(set(idx_peilgebieden))
-            )
+            idx_peilgebieden2 = df_peilgebieden.sindex.query(row_line.geometry, predicate="within")
+            idx_peilgebieden2 = list(set(idx_peilgebieden2).difference(set(idx_peilgebieden)))
             idx_within = df_peilgebieden.index[idx_peilgebieden2].to_numpy()
 
             # Find crossings with the current line.
@@ -355,15 +337,11 @@ class ParseCrossings:
             df_points["geometry"] = df_points.intersection(row_line.geometry)
 
             # Subset of polygons of the intersecting areas.
-            df_subsetpeil_poly = df_peilgebieden.loc[
-                np.hstack([df_points.index.to_numpy(), idx_within]), :
-            ].copy()
+            df_subsetpeil_poly = df_peilgebieden.loc[np.hstack([df_points.index.to_numpy(), idx_within]), :].copy()
 
             # Explode to single parts and remove empty or non-point geometries.
             df_points = df_points.explode(ignore_index=False, index_parts=True)
-            df_points = df_points[
-                (~df_points.is_empty) & (df_points.geometry.geom_type == "Point")
-            ].copy()
+            df_points = df_points[(~df_points.is_empty) & (df_points.geometry.geom_type == "Point")].copy()
 
             if len(df_subsetpeil_poly) == 0:
                 # No areas intersect, continue with the following line.
@@ -395,12 +373,8 @@ class ParseCrossings:
 
         # Add waterlevels, structures and correct water flow based on these.
         dfc = self.add_waterlevels_to_crossings(dfc)
-        dfc = self.find_structures_at_crossings(
-            dfc, df_linesingle, df_endpoints, "stuw"
-        )
-        dfc = self.find_structures_at_crossings(
-            dfc, df_linesingle, df_endpoints, "gemaal"
-        )
+        dfc = self.find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "stuw")
+        dfc = self.find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "gemaal")
         dfc = self.correct_water_flow(dfc)
 
         # If needed, check for multiple stacked/grouped crossings which can be
@@ -422,18 +396,14 @@ class ParseCrossings:
                 return dfc
         else:
             # Filter the crossings with another layer with overlapping lines
-            df_filter, dfs = self.filter_crossings_with_layer(
-                dfc, df_peilgebieden, filterlayer, write_debug
-            )
+            df_filter, dfs = self.filter_crossings_with_layer(dfc, df_peilgebieden, filterlayer, write_debug)
             dfs = self.correct_structures(dfs, df_linesingle, df_endpoints, "stuw")
             dfs = self.correct_structures(dfs, df_linesingle, df_endpoints, "gemaal")
             dfs = self.correct_water_flow(dfs)
             return dfc, df_filter, dfs
 
     @pydantic.validate_call(config={"strict": True})
-    def _classify_from_to_peilgebieden(
-        self, pfrom: str | None, pto: str | None
-    ) -> tuple[int, str]:
+    def _classify_from_to_peilgebieden(self, pfrom: str | None, pto: str | None) -> tuple[int, str]:
         """_summary_
 
         Parameters
@@ -498,9 +468,7 @@ class ParseCrossings:
         return df_single
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def find_connections(
-        self, line_index: tuple, df_endpoints: gpd.GeoDataFrame
-    ) -> gpd.GeoSeries:
+    def find_connections(self, line_index: tuple, df_endpoints: gpd.GeoDataFrame) -> gpd.GeoSeries:
         """_summary_
 
         Parameters
@@ -518,9 +486,7 @@ class ParseCrossings:
         endpoints_line = df_endpoints.geometry.loc[line_index]
         if not isinstance(endpoints_line, MultiPoint):
             endpoints_line = endpoints_line.to_numpy()[0]
-        pot_conn = df_endpoints.geometry.iloc[
-            df_endpoints.sindex.query(endpoints_line, predicate="intersects")
-        ].copy()
+        pot_conn = df_endpoints.geometry.iloc[df_endpoints.sindex.query(endpoints_line, predicate="intersects")].copy()
 
         return pot_conn
 
@@ -558,10 +524,7 @@ class ParseCrossings:
             temp = gpd.GeoSeries([line]).explode(index_parts=False, ignore_index=True)
             line = None
             for geom in temp.to_numpy():
-                if (
-                    geom.intersects(point_buffer)
-                    and df_peilgebied.intersects(geom).all()
-                ):
+                if geom.intersects(point_buffer) and df_peilgebied.intersects(geom).all():
                     line = geom
                     break
             if line is None:
@@ -611,9 +574,7 @@ class ParseCrossings:
 
         # Try and merge any connecting lines to a single, valid LineString
         if ring_buffer.intersects(endpoints_line):
-            crossing_lines = df_linesingle.loc[
-                pot_conn.intersects(ring_buffer).index.to_numpy()
-            ].copy()
+            crossing_lines = df_linesingle.loc[pot_conn.intersects(ring_buffer).index.to_numpy()].copy()
             add_crossing_lines = crossing_lines.geometry.tolist()
             line_ids = self.list_sep.join(sorted(crossing_lines.globalid.tolist()))
             if len(add_crossing_lines) > 0:
@@ -662,9 +623,7 @@ class ParseCrossings:
 
         # Find the line(s) on which the current crossing lies and the directly
         # connected lines.
-        idx, idx_conn = self._find_closest_lines(
-            geom, self.almost_equal, df_linesingle, df_endpoints, n_recurse=1
-        )
+        idx, idx_conn = self._find_closest_lines(geom, self.almost_equal, df_linesingle, df_endpoints, n_recurse=1)
         if len(idx_conn) == 0:
             self.log.warning(f"Crossing {geom} is not on or near a line, ignoring...")
             return None
@@ -683,11 +642,7 @@ class ParseCrossings:
 
         if line_conn.is_closed:
             check = df_line_conn.boundary.intersection(df_line.unary_union)
-            check = check[
-                ~check.index.isin(df_line.index)
-                & (check.geom_type == "MultiPoint")
-                & (~check.is_empty)
-            ]
+            check = check[~check.index.isin(df_line.index) & (check.geom_type == "MultiPoint") & (~check.is_empty)]
             if len(check) > 0:
                 # Remove line(s) which might lead to a closed line.
                 df_line_conn = df_line_conn[~df_line_conn.index.isin(check.index)]
@@ -751,9 +706,7 @@ class ParseCrossings:
             # This can still result in a single LineString if the point happens
             # to coincide with an endpoint of the line. Enforce MultiLineString
             # in that case.
-            line = merged_crossing_line.intersection(
-                ring_buffer.difference(point_buffer)
-            )
+            line = merged_crossing_line.intersection(ring_buffer.difference(point_buffer))
             if line.geom_type == "LineString":
                 line = MultiLineString([line])
 
@@ -766,19 +719,10 @@ class ParseCrossings:
             if line.geom_type == "MultiLineString":
                 for subline in line.geoms:
                     if subline.geom_type == "LineString":
-                        idxmatches = df_peilgebied[
-                            df_peilgebied.intersects(subline)
-                        ].index.tolist()
-                        test_bound = df_peilgebied.geometry.loc[
-                            idxmatches
-                        ].boundary.intersection(subline)
-                        test_bound = test_bound[
-                            (~test_bound.is_empty)
-                            & (test_bound.geom_type == "LineString")
-                        ]
-                        test_bound = test_bound[
-                            test_bound.geom_equals(subline).to_numpy()
-                        ].index.tolist()
+                        idxmatches = df_peilgebied[df_peilgebied.intersects(subline)].index.tolist()
+                        test_bound = df_peilgebied.geometry.loc[idxmatches].boundary.intersection(subline)
+                        test_bound = test_bound[(~test_bound.is_empty) & (test_bound.geom_type == "LineString")]
+                        test_bound = test_bound[test_bound.geom_equals(subline).to_numpy()].index.tolist()
                         if len(test_bound) > 0:
                             idxmatches = sorted(set(idxmatches).difference(test_bound))
                         matches = df_peilgebied.globalid.loc[idxmatches].tolist()
@@ -872,9 +816,7 @@ class ParseCrossings:
             line_id = row[dfs.columns.get_loc(crossing_layer) + 1]
 
             point_buffer1 = row.geometry.buffer(self.allowed_distance)
-            group = dfs.iloc[
-                dfs.sindex.query(point_buffer1, predicate="intersects"), :
-            ].copy()
+            group = dfs.iloc[dfs.sindex.query(point_buffer1, predicate="intersects"), :].copy()
             group = group[group.match_group == 0].copy()
 
             # Continue with the next iteration if we have no matches
@@ -893,9 +835,7 @@ class ParseCrossings:
             if not reduce:
                 # Weird bug that buffer almost_equal does not equal distance almost_equal
                 line_buf = line_geom.buffer(10 * self.almost_equal)
-                group = dfs.iloc[
-                    dfs.sindex.query(line_buf, predicate="intersects"), :
-                ].copy()
+                group = dfs.iloc[dfs.sindex.query(line_buf, predicate="intersects"), :].copy()
                 group = group[group.match_group == 0].copy()
 
             # Reduce points to those which are on the matched line(s)
@@ -924,9 +864,7 @@ class ParseCrossings:
                             match_group_unique = False
                         dfs.loc[subgroup.index, "match_group"] = groupid
                         dfs.loc[subgroup.index, "match_stacked"] = len(group)
-                        dfs.loc[
-                            subgroup.index, "match_group_unique"
-                        ] = match_group_unique
+                        dfs.loc[subgroup.index, "match_group_unique"] = match_group_unique
                         dfs.loc[in_use, "in_use"] = True
                         line_groups[groupid] = line_geom
                     groupid += 1
@@ -944,9 +882,7 @@ class ParseCrossings:
                             keep_in_group.append(True)
                         else:
                             rdist = line_geom.project(r.geometry)
-                            dfo["dist"] = [
-                                line_geom.project(d) - rdist for d in dfo.geometry
-                            ]
+                            dfo["dist"] = [line_geom.project(d) - rdist for d in dfo.geometry]
                             if (
                                 len(dfo[dfo.globalid == r.peilgebied_to]) == 0
                                 or len(dfo[dfo.globalid == r.peilgebied_from]) == 0
@@ -958,16 +894,8 @@ class ParseCrossings:
                                 direction.append(np.nan)
                                 keep_in_group.append(False)
                             else:
-                                lto = (
-                                    dfo[dfo.globalid == r.peilgebied_to]
-                                    .dist.abs()
-                                    .idxmin()
-                                )
-                                lfrom = (
-                                    dfo[dfo.globalid == r.peilgebied_from]
-                                    .dist.abs()
-                                    .idxmin()
-                                )
+                                lto = dfo[dfo.globalid == r.peilgebied_to].dist.abs().idxmin()
+                                lfrom = dfo[dfo.globalid == r.peilgebied_from].dist.abs().idxmin()
                                 direction.append(dfo.dist.at[lto] - dfo.dist.at[lfrom])
                                 keep_in_group.append(True)
 
@@ -992,19 +920,13 @@ class ParseCrossings:
                             and (uniq_dir == -1).any()
                             and (uniq_dir == 1).any()
                             and not np.isnan(uniq_dir).any()
-                            and (
-                                len(group.peilgebied_from.unique()) == 1
-                                or len(group.peilgebied_to.unique()) == 1
-                            )
+                            and (len(group.peilgebied_from.unique()) == 1 or len(group.peilgebied_to.unique()) == 1)
                         ):
                             # Set status of group
                             dfs.loc[group.index, "match_group"] = groupid
                             dfs.loc[group.index, "match_stacked"] = len(group)
                             dfs.loc[group.index, "match_group_unique"] = True
-                            if (
-                                len(group.peilgebied_from.unique()) == 1
-                                and len(group.peilgebied_to.unique()) == 1
-                            ):
+                            if len(group.peilgebied_from.unique()) == 1 and len(group.peilgebied_to.unique()) == 1:
                                 pass
                             else:
                                 if len(group.peilgebied_from.unique()) == 1:
@@ -1046,64 +968,36 @@ class ParseCrossings:
                             line_geom = line_geom.reverse()
                         group["dist_along"] = np.nan
                         for subrow in group.itertuples():
-                            group.at[subrow.Index, "dist_along"] = line_geom.project(
-                                subrow.geometry
-                            )
+                            group.at[subrow.Index, "dist_along"] = line_geom.project(subrow.geometry)
                             if subrow.crossing_type.startswith("-1"):
                                 # Special case: correct the flow order of crossing_type=1.
                                 # Assume that drawing order is determined by the line_geom.
                                 # This is why the line_geo was reversed earlier.
                                 rdist = line_geom.project(subrow.geometry)
-                                dfo["dist"] = [
-                                    line_geom.project(d) - rdist for d in dfo.geometry
-                                ]
+                                dfo["dist"] = [line_geom.project(d) - rdist for d in dfo.geometry]
                                 if pd.isna(subrow.peilgebied_from):
-                                    lto = (
-                                        dfo[dfo.globalid == subrow.peilgebied_to]
-                                        .dist.abs()
-                                        .idxmin()
-                                    )
+                                    lto = dfo[dfo.globalid == subrow.peilgebied_to].dist.abs().idxmin()
                                     if dfo.dist.at[lto] < 0:
-                                        group.at[
-                                            subrow.Index, "peilgebied_from"
-                                        ] = subrow.peilgebied_to
+                                        group.at[subrow.Index, "peilgebied_from"] = subrow.peilgebied_to
                                         group.at[subrow.Index, "peilgebied_to"] = None
-                                        group.at[
-                                            subrow.Index, "streefpeil_from"
-                                        ] = subrow.streefpeil_to
+                                        group.at[subrow.Index, "streefpeil_from"] = subrow.streefpeil_to
                                         group.at[subrow.Index, "streefpeil_to"] = None
                                 elif pd.isna(subrow.peilgebied_to):
-                                    lfrom = (
-                                        dfo[dfo.globalid == subrow.peilgebied_from]
-                                        .dist.abs()
-                                        .idxmin()
-                                    )
+                                    lfrom = dfo[dfo.globalid == subrow.peilgebied_from].dist.abs().idxmin()
                                     if dfo.dist.at[lfrom] > 0:
                                         group.at[subrow.Index, "peilgebied_from"] = None
-                                        group.at[
-                                            subrow.Index, "peilgebied_to"
-                                        ] = subrow.peilgebied_from
+                                        group.at[subrow.Index, "peilgebied_to"] = subrow.peilgebied_from
                                         group.at[subrow.Index, "streefpeil_from"] = None
-                                        group.at[
-                                            subrow.Index, "streefpeil_to"
-                                        ] = subrow.streefpeil_from
+                                        group.at[subrow.Index, "streefpeil_to"] = subrow.streefpeil_from
                                 else:
-                                    raise ValueError(
-                                        f"{subrow.peilgebied_from=}, {subrow.peilgebied_to}"
-                                    )
+                                    raise ValueError(f"{subrow.peilgebied_from=}, {subrow.peilgebied_to}")
 
                         group = group.sort_values("dist_along")
-                        pfrom = group.peilgebied_from[
-                            group.dist_along == group.dist_along.min()
-                        ].unique()
-                        pto = group.peilgebied_to[
-                            group.dist_along == group.dist_along.max()
-                        ].unique()
+                        pfrom = group.peilgebied_from[group.dist_along == group.dist_along.min()].unique()
+                        pto = group.peilgebied_to[group.dist_along == group.dist_along.max()].unique()
                         match_group_unique = True
                         if len(pfrom) != 1 or len(pto) != 1:
-                            self.log.warning(
-                                f"No unique point for point group '{groupid}' on line '{line_id}'"
-                            )
+                            self.log.warning(f"No unique point for point group '{groupid}' on line '{line_id}'")
                             match_group_unique = False
                         pfrom = pfrom[0]
                         pto = pto[0]
@@ -1132,12 +1026,8 @@ class ParseCrossings:
                                 new_row["crossing_type"] = type_areas
                                 new_row["peilgebied_from"] = pfrom
                                 new_row["peilgebied_to"] = pto
-                                new_row["streefpeil_from"] = group.streefpeil_from[
-                                    check_from
-                                ].iat[0]
-                                new_row["streefpeil_to"] = group.streefpeil_to[
-                                    check_to
-                                ].iat[0]
+                                new_row["streefpeil_from"] = group.streefpeil_from[check_from].iat[0]
+                                new_row["streefpeil_to"] = group.streefpeil_to[check_to].iat[0]
                                 new_row["match_group"] = groupid
                                 new_row["match_stacked"] = len(group)
                                 new_row["match_composite"] = True
@@ -1161,9 +1051,7 @@ class ParseCrossings:
         return dfs, line_groups
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def _find_closest_HWS_BZM(
-        self, crossing: Point, df_HWS_BZM: gpd.GeoDataFrame
-    ) -> str | None:
+    def _find_closest_HWS_BZM(self, crossing: Point, df_HWS_BZM: gpd.GeoDataFrame) -> str | None:
         """_summary_
 
         Parameters
@@ -1203,12 +1091,7 @@ class ParseCrossings:
             _description_
         """
         # Reference to water levels of streefpeil table.
-        strfpl = (
-            self.df_gpkg["streefpeil"]
-            .copy()
-            .set_index("globalid", inplace=False)
-            .waterhoogte
-        )
+        strfpl = self.df_gpkg["streefpeil"].copy().set_index("globalid", inplace=False).waterhoogte
 
         # Reference to HWS_BZM polygons
         df_HWS_BZM = self.df_gpkg["peilgebied"].copy()
@@ -1232,9 +1115,7 @@ class ParseCrossings:
             if pd.isna(row.peilgebied_from):
                 lbl_HWS_BZM = self._find_closest_HWS_BZM(row.geometry, df_HWS_BZM)
                 if lbl_HWS_BZM is not None:
-                    type_areas, str_areas = self._classify_from_to_peilgebieden(
-                        lbl_HWS_BZM, row.peilgebied_to
-                    )
+                    type_areas, str_areas = self._classify_from_to_peilgebieden(lbl_HWS_BZM, row.peilgebied_to)
                     if lbl_HWS_BZM in strfpl:
                         dfs.at[row.Index, "streefpeil_from"] = strfpl.at[lbl_HWS_BZM]
                     dfs.at[row.Index, "crossing_type"] = type_areas
@@ -1245,9 +1126,7 @@ class ParseCrossings:
             if pd.isna(row.peilgebied_to):
                 lbl_HWS_BZM = self._find_closest_HWS_BZM(row.geometry, df_HWS_BZM)
                 if lbl_HWS_BZM is not None:
-                    type_areas, str_areas = self._classify_from_to_peilgebieden(
-                        row.peilgebied_from, lbl_HWS_BZM
-                    )
+                    type_areas, str_areas = self._classify_from_to_peilgebieden(row.peilgebied_from, lbl_HWS_BZM)
                     if lbl_HWS_BZM in strfpl:
                         dfs.at[row.Index, "streefpeil_from"] = strfpl.at[lbl_HWS_BZM]
                     dfs.at[row.Index, "crossing_type"] = type_areas
@@ -1314,9 +1193,7 @@ class ParseCrossings:
             disable=self.disable_progress,
         ):
             if groupid == 0:
-                raise ValueError(
-                    f"Found crossings which have not been grouped {group=}"
-                )
+                raise ValueError(f"Found crossings which have not been grouped {group=}")
 
             line_geom = line_groups[groupid]
 
@@ -1324,14 +1201,10 @@ class ParseCrossings:
 
             replace_stuw = None
             if "stuw" in dfs.columns:
-                replace_stuw = ",".join(
-                    replace_crossing_candidates.stuw.dropna().unique()
-                )
+                replace_stuw = ",".join(replace_crossing_candidates.stuw.dropna().unique())
             replace_gemaal = None
             if "gemaal" in dfs.columns:
-                replace_gemaal = ",".join(
-                    replace_crossing_candidates.gemaal.dropna().unique()
-                )
+                replace_gemaal = ",".join(replace_crossing_candidates.gemaal.dropna().unique())
 
             replace_crossing_vec = []
             if len(replace_crossing_candidates) == 0:
@@ -1339,17 +1212,10 @@ class ParseCrossings:
             elif len(replace_crossing_candidates) == 1:
                 replace_crossing_vec.append(replace_crossing_candidates.iloc[0,].copy())
             else:
-                if (
-                    line_geom.geom_type == "LineString"
-                    or line_geom.geom_type == "MultiLineString"
-                ):
-                    for x0, x1 in itertools.combinations(
-                        list(line_geom.boundary.geoms), 2
-                    ):
+                if line_geom.geom_type == "LineString" or line_geom.geom_type == "MultiLineString":
+                    for x0, x1 in itertools.combinations(list(line_geom.boundary.geoms), 2):
                         subbound = MultiPoint([x0, x1])
-                        subpg = df_peilgebieden.sindex.query(
-                            subbound, predicate="intersects"
-                        )
+                        subpg = df_peilgebieden.sindex.query(subbound, predicate="intersects")
                         subpg = df_peilgebieden.iloc[subpg, :].copy()
 
                         p0 = subpg.index[subpg.intersects(x0)].tolist()
@@ -1375,16 +1241,10 @@ class ParseCrossings:
                         if p0 == p1:
                             replace_crossing_vec.append(None)
                         else:
-                            type_areas, str_areas = self._classify_from_to_peilgebieden(
-                                p0, p1
-                            )
-                            matches = replace_crossing_candidates[
-                                replace_crossing_candidates.peilgebieden == str_areas
-                            ]
+                            type_areas, str_areas = self._classify_from_to_peilgebieden(p0, p1)
+                            matches = replace_crossing_candidates[replace_crossing_candidates.peilgebieden == str_areas]
                             if len(matches) > 0:
-                                replace_crossing = replace_crossing_candidates.loc[
-                                    matches.index[0], :
-                                ].copy()
+                                replace_crossing = replace_crossing_candidates.loc[matches.index[0], :].copy()
                                 if replace_gemaal is not None:
                                     replace_crossing["gemaal"] = replace_gemaal
                                     replace_gemaal = None
@@ -1393,9 +1253,7 @@ class ParseCrossings:
                                     replace_gemaal = None
                                 replace_crossing_vec.append(replace_crossing)
                             else:
-                                replace_crossing = replace_crossing_candidates.iloc[
-                                    0, :
-                                ].copy()
+                                replace_crossing = replace_crossing_candidates.iloc[0, :].copy()
                                 replace_crossing["peilgebieden"] = str_areas
                                 replace_crossing["crossing_type"] = type_areas
                                 replace_crossing["peilgebied_from"] = p0
@@ -1446,9 +1304,7 @@ class ParseCrossings:
                         dfs.at[c_exists[0], "in_use"] = True
                     elif len(matching_crossings) > 0:
                         new_row = matching_crossings.iloc[0, :].copy()
-                        type_areas, str_areas = self._classify_from_to_peilgebieden(
-                            pfrom, pto
-                        )
+                        type_areas, str_areas = self._classify_from_to_peilgebieden(pfrom, pto)
                         new_row["crossing_type"] = type_areas
                         new_row["peilgebieden"] = str_areas
                         new_row["peilgebied_from"] = pfrom
@@ -1536,9 +1392,7 @@ class ParseCrossings:
                     structure.globalid,
                     structurelayer,
                 )
-            df_sub_structures = pd.DataFrame(
-                orphaned_structures, columns=["globalid", "geometry"]
-            )
+            df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
 
         return dfs
 
@@ -1581,9 +1435,7 @@ class ParseCrossings:
         """
         # Find the line object nearest to the PoI
         if filter is None:
-            idx = df_linesingle.sindex.query(
-                poi.buffer(max_dist), predicate="intersects"
-            )
+            idx = df_linesingle.sindex.query(poi.buffer(max_dist), predicate="intersects")
         elif filter == "nearest":
             idx = df_linesingle.sindex.nearest(poi, max_distance=max_dist)[1, :]
         else:
@@ -1597,20 +1449,12 @@ class ParseCrossings:
         idx_conn = idx.copy()
         for _ in range(n_recurse):
             # Check for line ends ending on the current line
-            line_buffer = df_linesingle.geometry.iloc[idx_conn].buffer(
-                self.almost_equal
-            )
-            idx_conn_new1 = df_endpoints.sindex.query(
-                line_buffer, predicate="intersects"
-            )[1, :]
+            line_buffer = df_linesingle.geometry.iloc[idx_conn].buffer(self.almost_equal)
+            idx_conn_new1 = df_endpoints.sindex.query(line_buffer, predicate="intersects")[1, :]
 
             # Check for the current line ends ending on other lines
-            point_buffer = df_endpoints.geometry.iloc[idx_conn].buffer(
-                self.almost_equal
-            )
-            idx_conn_new2 = df_linesingle.sindex.query(
-                point_buffer, predicate="intersects"
-            )[1, :]
+            point_buffer = df_endpoints.geometry.iloc[idx_conn].buffer(self.almost_equal)
+            idx_conn_new2 = df_linesingle.sindex.query(point_buffer, predicate="intersects")[1, :]
 
             # Combine potential new additions
             idx_conn_new = np.hstack([idx_conn_new1, idx_conn_new2])
@@ -1676,9 +1520,7 @@ class ParseCrossings:
             filter="nearest",
         )
         if len(idxs) == 0:
-            self.log.warning(
-                f"{structurelayer} '{structure_id}' has no line object nearby"
-            )
+            self.log.warning(f"{structurelayer} '{structure_id}' has no line object nearby")
             return dfs, orphaned_structures
 
         # Find closest point on nearest line(s)
@@ -1686,13 +1528,9 @@ class ParseCrossings:
         buff_line = df_line_geom.buffer(self.almost_equal)
         idx = df_filter.sindex.query(buff_line, predicate="intersects")
         df_close = df_filter.iloc[np.unique(idx[1, :]), :].copy()
-        idx = df_close.sindex.nearest(
-            structure_geom, max_distance=self.search_radius_structure
-        )[1, :]
+        idx = df_close.sindex.nearest(structure_geom, max_distance=self.search_radius_structure)[1, :]
         if len(idx) == 0:
-            self.log.warning(
-                f"{structurelayer} '{structure_id}' has no crossings nearby"
-            )
+            self.log.warning(f"{structurelayer} '{structure_id}' has no crossings nearby")
             return dfs, orphaned_structures
         lbl = df_close.index[idx[0]]
 
@@ -1711,9 +1549,7 @@ class ParseCrossings:
             old_struct_ids = dfs.at[lbl, structurelayer].split(",")
             old_structs = df_structures.geometry.loc[old_struct_ids]
             if old_structs.distance(crossing).min() > structure_geom.distance(crossing):
-                self.log.info(
-                    f"Replacing {structurelayer} at {crossing} with '{structure_id}'"
-                )
+                self.log.info(f"Replacing {structurelayer} at {crossing} with '{structure_id}'")
                 for old_struct_id, old_struct in zip(old_struct_ids, old_structs):
                     orphaned_structures.append((old_struct_id, old_struct))
                 dfs.loc[df_stacked.index, structurelayer] = structure_id
@@ -1743,9 +1579,7 @@ class ParseCrossings:
                 for sid in structure_id.split(","):
                     orphaned_structures.append((sid, df_structures.geometry.at[sid]))
 
-        df_sub_structures = pd.DataFrame(
-            orphaned_structures, columns=["globalid", "geometry"]
-        )
+        df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
         while len(df_sub_structures) > 0:
             orphaned_structures = []
             for structure in tqdm.tqdm(
@@ -1765,9 +1599,7 @@ class ParseCrossings:
                     structure.globalid,
                     structurelayer,
                 )
-            df_sub_structures = pd.DataFrame(
-                orphaned_structures, columns=["globalid", "geometry"]
-            )
+            df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
 
         return dfs
 
@@ -1865,9 +1697,7 @@ class ParseCrossings:
                 add_rows.append(add_row)
 
         if len(add_rows) > 0:
-            dfs = pd.concat(
-                [dfs, gpd.GeoDataFrame(add_rows, crs=dfs.crs)], ignore_index=False
-            ).sort_index()
+            dfs = pd.concat([dfs, gpd.GeoDataFrame(add_rows, crs=dfs.crs)], ignore_index=False).sort_index()
             dfs = dfs.reset_index(drop=True)
 
         return dfs
@@ -1921,9 +1751,7 @@ class ParseCrossings:
             dfs.loc[group.index, "agg1_used"] = False
             lbl_choice = group.distance(peilgebieden.geometry.at[pto]).idxmin()
             if "stuw" in dfs_filter.columns:
-                dfs.at[lbl_choice, "stuw"] = ",".join(
-                    dfs.stuw.loc[group.index].dropna().unique()
-                )
+                dfs.at[lbl_choice, "stuw"] = ",".join(dfs.stuw.loc[group.index].dropna().unique())
             dfs.at[lbl_choice, "agg1_used"] = True
 
         return dfs
