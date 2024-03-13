@@ -27,6 +27,7 @@ def reset_index(model: Model, node_start=1):
         )
         model.network.node.df.index.name = "fid"
         model.network.node.df.drop(columns=["fid"], inplace=True)
+        model.network.node.df.loc[:, "node_id"] = model.network.node.df.index
 
         # renumber edges
         model.network.edge.df.loc[:, ["from_node_id"]] = model.network.edge.df[

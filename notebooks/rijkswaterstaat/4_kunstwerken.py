@@ -29,6 +29,8 @@ nis_hws = cloud.joinpath(
     "Rijkswaterstaat", "aangeleverd", "NIS", "nis_all_kunstwerken_hws_2019.gpkg"
 )
 baseline = cloud.joinpath("baseline-nl_land-j23_6-v1", "baseline.gdb")
+osm = cloud.joinpath("basisgegevens", "osm", "osm_scheeresluis.gpkg")
+
 nis_hwvn = cloud.joinpath(
     "Rijkswaterstaat", "aangeleverd", "NIS", "nis_alle_kunstwerken_hwvn_2019.gpkg"
 )
@@ -54,6 +56,7 @@ kwk_media.set_index("code", inplace=True)
 )
 drinkwater_gdf = gpd.read_file(drinkwater, layer="inlet__netherlands")
 baseline_kunstwerken_gdf = gpd.read_file(baseline, layer="structure_lines")
+osm_kunstwerken_gdf = gpd.read_file(osm)
 
 # Spatial joins
 baseline_in_model = gpd.sjoin_nearest(
@@ -96,7 +99,7 @@ filtered_nearest_points = filtered_points[
 
 # Remove specific values
 filtered_nearest_points = filtered_nearest_points[
-    ~filtered_nearest_points["complex_code"].isin(["40D-350", "48H-353", "42D-001"])
+    ~filtered_nearest_points["complex_code"].isin(["40D-350", "42D-001"])
 ]
 filtered_nearest_points = filtered_nearest_points.drop(["index_right"], axis=1)
 
@@ -117,9 +120,15 @@ baseline_kwk_add_gdf = baseline_kunstwerken_gdf[
             "DM_68.30_R_US_Reevespuisluis",
             "OS_SK_Oosterscheldekering39_Geul-van-Roggenplaat",
             "KR_C_HK_Kadoelen",
+            "CK_1017.96_L_SS_Rozenburgsesluis",
         ]
     )
 ]
+
+osm_kunstwerken_gdf.loc[:, ["geometry"]] = osm_kunstwerken_gdf.centroid
+osm_kunstwerken_gdf.rename(
+    columns={"osm_id": "kw_code", "name": "kw_naam"}, inplace=True
+)
 
 baseline_kwk_add_gdf.loc[:, ["geometry"]] = baseline_kwk_add_gdf.centroid
 baseline_kwk_add_gdf.loc[:, ["kw_naam"]] = baseline_kwk_add_gdf["NAME"].apply(
@@ -183,6 +192,7 @@ additional_points = pd.concat(
         ],
         baseline_kwk_add_gdf,
         drinkwater_gdf,
+        osm_kunstwerken_gdf,
     ]
 )
 

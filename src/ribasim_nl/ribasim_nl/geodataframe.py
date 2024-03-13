@@ -115,9 +115,14 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
             data = []
             for basin in poly_select_gdf.itertuples():
                 kwargs = basin._asdict()
-                for geom in split_basin(basin.geometry, line.geometry).geoms:
-                    kwargs["geometry"] = geom
-                    data += [{**kwargs}]
+                try:
+                    for geom in split_basin(basin.geometry, line.geometry).geoms:
+                        kwargs["geometry"] = geom
+                        data += [{**kwargs}]
+                except ValueError as e:
+                    raise ValueError(
+                        f"Basin with index {basin.Index} can not be cut by line with index {line.Index} raising Exception: {e}"
+                    )
 
         ## we update basins_gdf with new polygons
         basins_gdf = basins_gdf[~basins_gdf.index.isin(poly_select_gdf.index)]

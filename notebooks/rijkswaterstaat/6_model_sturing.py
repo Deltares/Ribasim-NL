@@ -28,7 +28,7 @@ offset_node_id = model.network.node.df[
 model = verdeelsleutel_to_control(
     verdeelsleutel_df,
     model,
-    name=name,
+    #    name=name,
     code_waterbeheerder=code_waterbeheerder,
     offset_node_id=offset_node_id,
     waterbeheerder="Rijkswaterstaat",

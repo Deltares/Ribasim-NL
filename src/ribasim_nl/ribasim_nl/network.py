@@ -479,7 +479,7 @@ class Network:
             )
             return None
 
-    def add_node(self, point: Point, max_distance: float, align_distance: float):
+    def add_node(self, point: Point, max_distance: float):
         # set _graph undirected to None
         self._graph_undirected = None
 
@@ -522,22 +522,22 @@ class Network:
         """Set graph directly"""
         self._graph = graph
 
-    def get_path(self, node_from, node_to, directed=True):
+    def get_path(self, node_from, node_to, directed=True, weight="length"):
         if directed:
             try:
-                return shortest_path(self.graph, node_from, node_to, weight="length")
+                return shortest_path(self.graph, node_from, node_to, weight=weight)
             except NetworkXNoPath:
-                print(f"found path undirected between {node_from} and {node_to}")
+                print(f"search path undirected between {node_from} and {node_to}")
                 return shortest_path(
-                    self.graph_undirected, node_from, node_to, weight="length"
+                    self.graph_undirected, node_from, node_to, weight=weight
                 )
         else:
             return shortest_path(
-                self.graph_undirected, node_from, node_to, weight="length"
+                self.graph_undirected, node_from, node_to, weight=weight
             )
 
-    def get_links(self, node_from, node_to, directed=True):
-        path = self.get_path(node_from, node_to, directed)
+    def get_links(self, node_from, node_to, directed=True, weight="length"):
+        path = self.get_path(node_from, node_to, directed, weight)
         edges_on_path = list(zip(path[:-1], path[1:]))
         return self.links.set_index(["node_from", "node_to"]).loc[edges_on_path]
 
@@ -552,7 +552,13 @@ class Network:
         return gdf
 
     def subset_nodes(
-        self, nodes_from, nodes_to, inclusive=True, directed=True, duplicated_nodes=True
+        self,
+        nodes_from,
+        nodes_to,
+        inclusive=True,
+        directed=True,
+        duplicated_nodes=True,
+        weight="length",
     ):
         def find_duplicates(lst, counts):
             counter = Counter(lst)
@@ -560,7 +566,7 @@ class Network:
             return duplicates
 
         paths = [
-            self.get_path(node_from, node_to, directed)
+            self.get_path(node_from, node_to, directed, weight)
             for node_from, node_to in product(nodes_from, nodes_to)
         ]
 
@@ -612,8 +618,21 @@ class Network:
             coords += self._get_coordinates(node_from, node_to)
         return LineString(coords)
 
-    def get_line(self, node_from, node_to, directed=True):
-        path = self.get_path(node_from, node_to, directed)
+    def add_weight(self, attribute, value, weight_value=1000000):
+        nodes = self.nodes[self.nodes[attribute] == value].index
+        links = self.links.set_index(["node_from", "node_to"], drop=False)[
+            ["node_from", "node_to", "length"]
+        ]
+        mask = ~(links.node_from.isin(nodes) & links.node_to.isin(nodes))
+        weight = links.length
+        weight.loc[mask] = weight[mask] * weight_value
+        weight_values = weight.to_dict()
+        nx.set_edge_attributes(self._graph, weight_values, "weight")
+
+        self._graph_undirected = None
+
+    def get_line(self, node_from, node_to, directed=True, weight="length"):
+        path = self.get_path(node_from, node_to, directed, weight)
         return self.path_to_line(path)
 
     def get_nodes(self) -> GeoDataFrame:

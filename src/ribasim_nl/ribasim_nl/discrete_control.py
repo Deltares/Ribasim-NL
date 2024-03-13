@@ -16,7 +16,7 @@ def condition(
     df.loc[:, ["node_id"]] = node_id
     df.loc[:, ["listen_feature_id"]] = listen_feature_id
     df.loc[:, ["variable"]] = variable
-    df.loc[:, ["remarks"]] = control_state(name, len(df))
+    df.loc[:, ["meta_beschrijving"]] = control_state(name, len(df))
     return df
 
 
