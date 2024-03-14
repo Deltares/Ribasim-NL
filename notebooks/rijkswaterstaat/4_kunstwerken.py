@@ -100,7 +100,7 @@ primaire_kunstwerken = cloud.joinpath(
     "Rijkswaterstaat", "aangeleverd", "kunstwerken_primaire_waterkeringen.gpkg"
 )
 
-drinkwater = cloud.joinpath("drinkwaterbedrijven", "drinkwater_inlets.gpkg")
+onttrekkingen = cloud.joinpath("Onttrekkingen", "onttrekkingen.gpkg")
 
 # media Excel
 kwk_media = pd.read_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "kwk_media.csv"))
@@ -111,7 +111,8 @@ nis_hws_gdf = gpd.read_file(nis_hws)
 nis_hwvn_gdf = gpd.read_file(nis_hwvn)
 krw_lichaam_gdf = gpd.read_file(krw_lichaam)
 primaire_kunstwerken_gdf = gpd.read_file(primaire_kunstwerken)
-drinkwater_gdf = gpd.read_file(drinkwater, layer="inlet__netherlands")
+drinkwater_gdf = gpd.read_file(onttrekkingen, layer="Drinkwater_oppervlaktewater")
+energie_gdf = gpd.read_file(onttrekkingen, layer="Energie")
 baseline_kunstwerken_gdf = gpd.read_file(baseline, layer="structure_lines")
 osm_kunstwerken_gdf = gpd.read_file(osm)
 
@@ -200,7 +201,7 @@ baseline_kwk_add_gdf = baseline_kwk_add_gdf[
 
 # kunstwerken uit OSM
 osm_kunstwerken_gdf.loc[:, ["geometry"]] = osm_kunstwerken_gdf.centroid
-osm_kunstwerken_gdf.rename(columns={"name": "naam"}, inplace=True)
+osm_kunstwerken_gdf.rename(columns={"name": "naam", "osm_id": "code"}, inplace=True)
 
 osm_kunstwerken_gdf.loc[:, ["complex_naam"]] = osm_kunstwerken_gdf["naam"]
 
@@ -239,22 +240,17 @@ primaire_kwk_add_gdf = primaire_kwk_add_gdf[
 ]
 
 
-# %% Toevoegen drinkwater innamepunten
-# Toevoegen drinkwater innamepunten
-drinkwater_gdf.rename(
-    columns={
-        "name": "naam",
-        "operator": "beheerder",
-        "discharge": "productie",
-        "information": "referentie",
-    },
-    inplace=True,
-)
+# %% Toevoegen onttrekkingen
+# Toevoegen onttrekkingen
 
-drinkwater_gdf.loc[:, ["bron", "sector", "soort"]] = "OSM", "drinkwater", "Inlaat"
-drinkwater_gdf.loc[:, "naam"] = drinkwater_gdf.naam.apply(name_from_intake_tag)
-drinkwater_gdf.loc[:, "complex_naam"] = drinkwater_gdf["naam"]
+# drinkwater
+
+# drinkwater_gdf.loc[:, ["bron", "sector", "soort"]] = "OSM", "drinkwater", "Inlaat"
+# drinkwater_gdf.loc[:, "naam"] = drinkwater_gdf.naam.apply(name_from_intake_tag)
+# drinkwater_gdf.loc[:, "complex_naam"] = drinkwater_gdf["naam"]
 drinkwater_gdf = drinkwater_gdf[[i for i in COLUMNS if i in drinkwater_gdf.columns]]
+energie_gdf = energie_gdf[[i for i in COLUMNS if i in energie_gdf.columns]]
+energie_gdf.loc[:, ["sector"]] = energie_gdf.sector.str.lower()
 
 
 # Concatenate additional points
@@ -265,6 +261,7 @@ kunstwerken_gdf = pd.concat(
         osm_kunstwerken_gdf,
         primaire_kwk_add_gdf,
         drinkwater_gdf,
+        energie_gdf,
     ]
 )
 

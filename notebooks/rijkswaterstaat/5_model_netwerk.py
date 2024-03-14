@@ -104,7 +104,7 @@ def get_structure_codes(structures_gdf, complex_codes, line_string):
         structures_gdf.complex_code.isin(complex_codes)
     ].groupby("complex_code"):
         gdf_select = gdf[
-            gdf.kw_soort.isin(
+            gdf.soort.isin(
                 [
                     "Stuwen",
                     "Spuisluizen",
@@ -115,7 +115,7 @@ def get_structure_codes(structures_gdf, complex_codes, line_string):
             )
         ]
         if gdf_select.empty:
-            gdf_select = gdf[gdf.kw_soort == "Schutsluizen"]
+            gdf_select = gdf[gdf.soort == "Schutsluizen"]
             if gdf_select.empty:
                 raise Exception(f"kan geen kunstwerk vinden voor {complex_code}")
         structure_codes += [
@@ -585,12 +585,6 @@ basin = ribasim.Basin(
     profile=profile_df, static=static_df, state=state_df, area=area_df
 )
 
-# % define Resistance
-# node_df.loc[node_df["type"] == "Outlet", ["type", "value"]] = (
-#     "LinearResistance",
-#     1000,
-# )  # FIXME: Nijkerkersluis als goede type meenemen
-
 resistance_df = node_df[node_df["type"] == "LinearResistance"][["node_id", "value"]]
 resistance_df.rename(columns={"value": "resistance"}, inplace=True)
 linear_resistance = ribasim.LinearResistance(static=resistance_df)
@@ -668,29 +662,11 @@ model = ribasim.Model(
 #
 model = reset_index(model)
 
-#  verwijderen Nijkerkersluis
-
+#  Nijkerkersluis naar inactive
 nijkerk_idx = model.network.node.df[
     model.network.node.df["meta_code_waterbeheerder"] == "32E-001-04"
 ].index
 
-# model.network.node.df = model.network.node.df[
-#     ~(model.network.node.df["meta_node_id"].isin(nijkerk_idx))
-# ]
-
-# model.network.edge.df = model.network.edge.df[
-#     ~(model.network.edge.df["from_node_id"].isin(nijkerk_idx))
-# ]
-
-# model.network.edge.df = model.network.edge.df[
-#     ~(model.network.edge.df["to_node_id"].isin(nijkerk_idx))
-# ]
-
-# model.linear_resistance.static.df = model.linear_resistance.static.df[
-#     ~model.linear_resistance.static.df["node_id"].isin(nijkerk_idx)
-# ]
-
-# model = reset_index(model)
 
 model.linear_resistance.static.df.loc[
     model.linear_resistance.static.df["node_id"].isin(nijkerk_idx), ["active"]

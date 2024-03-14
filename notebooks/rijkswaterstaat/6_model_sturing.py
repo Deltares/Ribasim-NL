@@ -260,7 +260,7 @@ node_ids = model.network.node.df[
 ].index
 
 condition = model.outlet.static.df.node_id == node_ids[0]
-model.outlet.static.df.loc[condition, ["min_flow_rate", "max_flow_rate"]] = 0, 10
+model.outlet.static.df.loc[condition, ["min_flow_rate", "max_flow_rate"]] = 2.5, 10
 
 gdf = model.network.edge.df[model.network.edge.df.from_node_id == node_ids[0]]
 gdf = gdf[gdf.to_node_type == "Basin"]
@@ -296,5 +296,5 @@ pid_df = pd.DataFrame(pids)
 model.pid_control = ribasim.PidControl(static=pid_df)
 
 # %% wegschrijven model
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_sturing", "hws.toml")
 model.write(ribasim_toml)
