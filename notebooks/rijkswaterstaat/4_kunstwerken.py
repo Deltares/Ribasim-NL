@@ -12,15 +12,77 @@ from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 
+COLUMNS = [
+    "code",
+    "naam",
+    "complex_code",
+    "complex_naam",
+    "beheerder",
+    "soort",
+    "sector",
+    "bron",
+    "capaciteit",
+    "productie",
+    "referentie",
+    "photo_url",
+    "geometry",
+]
 
-# %%
+ADD_BASELINE = [
+    "DM_68.30_R_US_Reevespuisluis",
+    "OS_SK_Oosterscheldekering39_Geul-van-Roggenplaat",
+    "KR_C_HK_Kadoelen",
+    "CK_1017.96_L_SS_Rozenburgsesluis",
+]
+
+REMOVE_NIS = ["40D-350", "42D-001"]
+
+ADD_NIS = [
+    "49D-400",
+    "44D-002",
+    "58C-001",
+    "45B-352",
+    "33F-001",
+    "21G-350",
+    "58D-001",
+    "51F-001",
+]
+
+
+ADD_PRIMAIRE_KERINGEN = ["KD.32.gm.015", "KD.44.gm.001"]
+
+# %% functies
+
+
+# functies
 def photo_url(code):
+    """Add photo url from Excel"""
     if code in kwk_media.index:
         return kwk_media.at[code, "photo_url"]  # noqa: PD008
     else:
         return r"https://www.hydrobase.nl/static/icons/photo_placeholder.png"
 
 
+def name_from_baseline(string):
+    """Strip name from baseline"""
+    last_underscore_index = string.rfind("_")
+    if last_underscore_index != -1:
+        last_underscore_index += 1
+        return string[last_underscore_index:]
+    else:
+        return string
+
+
+def name_from_intake_tag(string):
+    """Strip name from an OSM intake tag"""
+    return string[string.find("(") + 1 : -1]
+
+
+# %% Inlezen bestanden
+
+# Inlezen bestanden
+
+# paden naar bestanden
 krw_lichaam = cloud.joinpath(
     "Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg"
 )
@@ -40,25 +102,22 @@ primaire_kunstwerken = cloud.joinpath(
 
 drinkwater = cloud.joinpath("drinkwaterbedrijven", "drinkwater_inlets.gpkg")
 
-# load media
+# media Excel
 kwk_media = pd.read_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "kwk_media.csv"))
 kwk_media.set_index("code", inplace=True)
 
-# Load GeoDataFrames
-(
-    krw_lichaam_gdf,
-    nis_hws_gdf,
-    nis_hwvn_gdf,
-    primaire_kunstwerken_gdf,
-) = (
-    gpd.read_file(file)
-    for file in [krw_lichaam, nis_hws, nis_hwvn, primaire_kunstwerken]
-)
+# geoDataFrames
+nis_hws_gdf = gpd.read_file(nis_hws)
+nis_hwvn_gdf = gpd.read_file(nis_hwvn)
+krw_lichaam_gdf = gpd.read_file(krw_lichaam)
+primaire_kunstwerken_gdf = gpd.read_file(primaire_kunstwerken)
 drinkwater_gdf = gpd.read_file(drinkwater, layer="inlet__netherlands")
 baseline_kunstwerken_gdf = gpd.read_file(baseline, layer="structure_lines")
 osm_kunstwerken_gdf = gpd.read_file(osm)
 
-# Spatial joins
+# %% Locaties uit NIS
+
+# Samenstellen locaties uit NIS
 baseline_in_model = gpd.sjoin_nearest(
     baseline_kunstwerken_gdf, krw_lichaam_gdf, how="inner", max_distance=50
 )
@@ -69,8 +128,8 @@ selected_hwvn_points = gpd.sjoin_nearest(
     nis_hwvn_gdf, krw_lichaam_gdf, how="inner", max_distance=20
 )
 
-# Combine selected points
-selected_points = pd.concat([selected_hws_points, selected_hwvn_points])
+# combineren nis_kunstwerken en filteren op soort
+nis_points_gdf = pd.concat([selected_hws_points, selected_hwvn_points])
 
 # Filter points
 desired_kw_soort = [
@@ -82,144 +141,138 @@ desired_kw_soort = [
     "Waterreguleringswerken",
     "Schutsluizen",
 ]
-filtered_points = selected_points[
-    selected_points["kw_soort"].isin(desired_kw_soort)
-].copy()
+nis_points_gdf = nis_points_gdf[nis_points_gdf["kw_soort"].isin(desired_kw_soort)]
 
-# Calculate nearest distance
-filtered_points.loc[:, ["nearest_distance"]] = [
+# Remove all nis_points that are far from baseline
+nis_points_gdf.loc[:, ["nearest_distance"]] = [
     filtered_point["geometry"].distance(baseline_in_model.unary_union)
-    for _, filtered_point in filtered_points.iterrows()
+    for _, filtered_point in nis_points_gdf.iterrows()
 ]
-
-# Filter points based on distance
-filtered_nearest_points = filtered_points[
-    filtered_points["nearest_distance"] < 500
-].copy()
+nis_points_gdf = nis_points_gdf[nis_points_gdf["nearest_distance"] < 500]
 
 # Remove specific values
-filtered_nearest_points = filtered_nearest_points[
-    ~filtered_nearest_points["complex_code"].isin(["40D-350", "42D-001"])
+filtered_nearest_points = nis_points_gdf[
+    ~nis_points_gdf["complex_code"].isin(REMOVE_NIS)
 ]
-filtered_nearest_points = filtered_nearest_points.drop(["index_right"], axis=1)
+nis_points_gdf = nis_points_gdf.drop(["index_right"], axis=1)
 
-
-# Additional structures from Baseline, primaire waterkeringen and NIS and drinking water inlets
-def name_from_baseline(string):
-    last_underscore_index = string.rfind("_")
-    if last_underscore_index != -1:
-        last_underscore_index += 1
-        return string[last_underscore_index:]
-    else:
-        return string
-
-
-baseline_kwk_add_gdf = baseline_kunstwerken_gdf[
-    baseline_kunstwerken_gdf["NAME"].isin(
-        [
-            "DM_68.30_R_US_Reevespuisluis",
-            "OS_SK_Oosterscheldekering39_Geul-van-Roggenplaat",
-            "KR_C_HK_Kadoelen",
-            "CK_1017.96_L_SS_Rozenburgsesluis",
-        ]
-    )
-]
-
-osm_kunstwerken_gdf.loc[:, ["geometry"]] = osm_kunstwerken_gdf.centroid
-osm_kunstwerken_gdf.rename(
-    columns={"osm_id": "kw_code", "name": "kw_naam"}, inplace=True
+nis_points_gdf = pd.concat(
+    [
+        nis_points_gdf,
+        nis_hws_gdf[nis_hws_gdf["complex_code"].isin(ADD_NIS)],
+        nis_hwvn_gdf[nis_hwvn_gdf["complex_code"].isin(ADD_NIS)],
+    ]
 )
+nis_points_gdf.rename(
+    columns={"kw_naam": "naam", "kw_code": "code", "kw_soort": "soort"}, inplace=True
+)
+nis_points_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
+    "Rijkswaterstaat",
+    "water",
+    "NIS",
+)
+nis_points_gdf = nis_points_gdf[[i for i in COLUMNS if i in nis_points_gdf.columns]]
 
+# %% Locaties uit Baseline
+
+# kunstwerken uit BaseLine
+baseline_kwk_add_gdf = baseline_kunstwerken_gdf[
+    baseline_kunstwerken_gdf["NAME"].isin(ADD_BASELINE)
+]
 baseline_kwk_add_gdf.loc[:, ["geometry"]] = baseline_kwk_add_gdf.centroid
-baseline_kwk_add_gdf.loc[:, ["kw_naam"]] = baseline_kwk_add_gdf["NAME"].apply(
+baseline_kwk_add_gdf.loc[:, ["naam"]] = baseline_kwk_add_gdf["NAME"].apply(
     name_from_baseline
 )
-baseline_kwk_add_gdf.loc[:, ["bron"]] = "baseline"
-baseline_kwk_add_gdf.loc[:, ["complex_naam"]] = baseline_kwk_add_gdf["kw_naam"]
-baseline_kwk_add_gdf.loc[:, ["kw_code"]] = baseline_kwk_add_gdf["NAME"]
+baseline_kwk_add_gdf.loc[:, ["complex_naam"]] = baseline_kwk_add_gdf["naam"]
+baseline_kwk_add_gdf.loc[:, ["code"]] = baseline_kwk_add_gdf["NAME"]
 
-primaire_kwk_add_gdf = primaire_kunstwerken_gdf[
-    primaire_kunstwerken_gdf["kd_code1"].isin(["KD.32.gm.015", "KD.44.gm.001"])
+baseline_kwk_add_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
+    "Rijkswaterstaat",
+    "water",
+    "baseline",
+)
+
+baseline_kwk_add_gdf = baseline_kwk_add_gdf[
+    [i for i in COLUMNS if i in baseline_kwk_add_gdf.columns]
 ]
 
+# %% Kunstwerken uit OSM
+
+# kunstwerken uit OSM
+osm_kunstwerken_gdf.loc[:, ["geometry"]] = osm_kunstwerken_gdf.centroid
+osm_kunstwerken_gdf.rename(columns={"name": "naam"}, inplace=True)
+
+osm_kunstwerken_gdf.loc[:, ["complex_naam"]] = osm_kunstwerken_gdf["naam"]
+
+osm_kunstwerken_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
+    "Rijkswaterstaat",
+    "water",
+    "OSM",
+)
+
+osm_kunstwerken_gdf = osm_kunstwerken_gdf[
+    [i for i in COLUMNS if i in osm_kunstwerken_gdf.columns]
+]
+
+
+# %% Primaire keringen
+
+# RWS primaire keringen
+primaire_kwk_add_gdf = primaire_kunstwerken_gdf[
+    primaire_kunstwerken_gdf["kd_code1"].isin(ADD_PRIMAIRE_KERINGEN)
+]
+
+# alles hernoemen naar juiste kolomnamen
 primaire_kwk_add_gdf.rename(
-    columns={"kd_code1": "kw_code", "kd_naam": "kw_naam", "naam_compl": "complex_naam"},
+    columns={"kd_code1": "code", "kd_naam": "naam", "naam_compl": "complex_naam"},
     inplace=True,
 )
-# %%
-# Add drinking water inlets (OSM)
-primaire_kwk_add_gdf.loc[:, ["bron"]] = "kunsterken primaire waterkeringen"
-drinkwater_gdf.loc[:, ["bron"]] = "OSM"
+
+primaire_kwk_add_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
+    "Rijkswaterstaat",
+    "water",
+    "kunsterken primaire waterkeringen",
+)
+
+primaire_kwk_add_gdf = primaire_kwk_add_gdf[
+    [i for i in COLUMNS if i in primaire_kwk_add_gdf.columns]
+]
+
+
+# %% Toevoegen drinkwater innamepunten
+# Toevoegen drinkwater innamepunten
 drinkwater_gdf.rename(
     columns={
-        "osm_id": "kw_code",
-        "name": "kw_naam",
+        "name": "naam",
         "operator": "beheerder",
+        "discharge": "productie",
+        "information": "referentie",
     },
     inplace=True,
 )
 
-additional_points = pd.concat(
+drinkwater_gdf.loc[:, ["bron", "sector", "soort"]] = "OSM", "drinkwater", "Inlaat"
+drinkwater_gdf.loc[:, "naam"] = drinkwater_gdf.naam.apply(name_from_intake_tag)
+drinkwater_gdf.loc[:, "complex_naam"] = drinkwater_gdf["naam"]
+drinkwater_gdf = drinkwater_gdf[[i for i in COLUMNS if i in drinkwater_gdf.columns]]
+
+
+# Concatenate additional points
+kunstwerken_gdf = pd.concat(
     [
-        primaire_kwk_add_gdf,
-        nis_hws_gdf[
-            nis_hws_gdf["complex_code"].isin(
-                [
-                    "49D-400",
-                    "44D-002",
-                    "58C-001",
-                    "45B-352",
-                    "33F-001",
-                    "21G-350",
-                    "58D-001",
-                    "51F-001",
-                ]
-            )
-        ],
-        nis_hwvn_gdf[
-            nis_hwvn_gdf["complex_code"].isin(
-                [
-                    "49D-400",
-                    "44D-002",
-                    "58C-001",
-                    "45B-352",
-                    "33F-001",
-                    "21G-350",
-                    "58D-001",
-                    "51F-001",
-                ]
-            )
-        ],
+        nis_points_gdf,
         baseline_kwk_add_gdf,
-        drinkwater_gdf,
         osm_kunstwerken_gdf,
+        primaire_kwk_add_gdf,
+        drinkwater_gdf,
     ]
 )
 
-# add_baseline = gpd.sjoin_nearest(
-#    baseline_kunstwerken_gdf, filtered_nearest_points, how="inner", max_distance=1000
-# )
-
-# Concatenate additional points
-final_filtered_points = pd.concat([filtered_nearest_points, additional_points])
-
-final_filtered_points.rename(
-    columns={"kw_naam": "naam", "kw_code": "code"}, inplace=True
-)
-
-final_filtered_points.loc[final_filtered_points["bron"].isna(), ["bron"]] = "NIS"
-# Add the lines from baseline_in_model to final_filtered_points
-
 # add photo_url
-final_filtered_points.loc[:, ["photo_url"]] = final_filtered_points["code"].apply(
-    photo_url
-)
+kunstwerken_gdf.loc[:, ["photo_url"]] = kunstwerken_gdf["code"].apply(photo_url)
 
 # Save results to GeoPackage files
 output_file = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
-final_filtered_points.to_file(
+kunstwerken_gdf.to_file(
     output_file, layer="kunstwerken", driver="GPKG", engine="pyogrio"
 )
-
-
-# %%
