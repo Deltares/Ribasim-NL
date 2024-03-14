@@ -559,6 +559,7 @@ class Network:
         directed=True,
         duplicated_nodes=True,
         weight="length",
+        ignore_links=[],
     ):
         def find_duplicates(lst, counts):
             counter = Counter(lst)
@@ -568,6 +569,7 @@ class Network:
         paths = [
             self.get_path(node_from, node_to, directed, weight)
             for node_from, node_to in product(nodes_from, nodes_to)
+            if (node_from, node_to) not in ignore_links
         ]
 
         node_ids = list(chain(*paths))

@@ -154,6 +154,10 @@ structure_codes += get_structure_codes(
 
 # % itereer over kunstwerken
 kwk_select_gdf = structures_gdf[structures_gdf.code.isin(structure_codes)]
+condition = kwk_select_gdf.complex_code.duplicated(keep=False)
+condition = condition | kwk_select_gdf.complex_naam.isna()
+kwk_select_gdf.loc[condition, ["model_naam"]] = kwk_select_gdf[condition].naam
+kwk_select_gdf.loc[~condition, ["model_naam"]] = kwk_select_gdf[~condition].complex_naam
 
 for kwk in kwk_select_gdf.itertuples():
     # get network_node_id
@@ -238,17 +242,29 @@ for kwk in kwk_select_gdf.itertuples():
             "is_structure": True,
             "code_waterbeheerder": kwk.code,
             "waterbeheerder": "Rijkswaterstaat",
-            "name": kwk.naam,
+            "name": kwk.model_naam,
             "node_id": node_id,
             "geometry": network.nodes.at[node_id, "geometry"],
         }
     ]
-
+    kwk_select_gdf.loc[kwk.Index, ["node_id", "upstream", "downstream"]] = (
+        node_id,
+        upstream,
+        downstream,
+    )
+# ignore edges with "circular structures combinations"
+ignore_links = []
+for kwk in kwk_select_gdf.itertuples():
+    condition = kwk_select_gdf["upstream"] == kwk.downstream
+    condition = condition & (kwk_select_gdf["downstream"] == kwk.upstream)
+    df = kwk_select_gdf[condition]
+    for row in df.itertuples():
+        ignore_links += [(row.node_id, kwk.node_id)]
 
 # %% netwerk opbouwen per basin
 # netwerk opbouwen per basin
-# for basin in basin_poly_gdf.itertuples():
 for basin in basin_poly_gdf.itertuples():
+    # for basin in basin_poly_gdf.loc[[55, 70]].itertuples():
     print(f"{basin.Index} {basin.naam}")
     # get upstream an downstream basin boundary nodes
     boundary_nodes = network.nodes[
@@ -332,6 +348,7 @@ for basin in basin_poly_gdf.itertuples():
             duplicated_nodes=True,
             directed=True,
             inclusive=False,
+            ignore_links=ignore_links,
         )
         if gdf.empty:
             gdf = network.subset_nodes(
@@ -340,6 +357,7 @@ for basin in basin_poly_gdf.itertuples():
                 duplicated_nodes=True,
                 directed=False,
                 inclusive=False,
+                ignore_links=ignore_links,
             )
     elif (len(nodes_from) > 0) or (len(nodes_to) > 0):
         gdf = network.nodes[network.nodes.basin_id == basin.Index]
@@ -547,7 +565,7 @@ area_df = node_df[node_df["type"] == "Basin"][["basin_id", "node_id"]]
 area_df.loc[:, "geometry"] = area_df.basin_id.apply(
     lambda x: basin_poly_gdf.at[x, "geometry"]
 )
-area_df = area_df[["node_id", "geometry"]]
+area_df = gpd.GeoDataFrame(area_df[["node_id", "geometry"]], crs=28992)
 
 level_area_df.drop_duplicates(["level", "area", "id"], inplace=True)
 profile_df = level_area_df[level_area_df["id"].isin(static_df.index)]

@@ -1,3 +1,5 @@
+from typing import Literal
+
 import geopandas as gpd
 import pandas as pd
 import ribasim
@@ -51,6 +53,7 @@ def add_control_node_to_network(
     offset=100,
     offset_node_id: int | None = None,
     ctrl_node_geom: tuple | None = None,
+    ctrl_type: Literal["DiscreteControl", "PidControl"] = "DiscreteControl",
     **kwargs,
 ) -> int:
     """Add a control node and control edge to a ribasim.Network
@@ -104,7 +107,7 @@ def add_control_node_to_network(
     # ad the ctrl-node to the network
     ctrl_node_id = network.node.df.index.max() + 1
     ctrl_node = {
-        "node_type": "DiscreteControl",
+        "node_type": ctrl_type,
         "node_id": ctrl_node_id,
         "geometry": ctrl_node_geom,
         **kwargs,
