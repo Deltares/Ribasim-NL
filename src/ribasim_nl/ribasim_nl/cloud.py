@@ -366,7 +366,7 @@ class CloudStorage:
 
         return [strip_version(i) for i in uploaded_models]
 
-    def upload_model(self, authority: str, model: str):
+    def upload_model(self, authority: str, model: str, include_results=False):
         """Upload a model to a water authority
 
         Parameters
@@ -375,6 +375,8 @@ class CloudStorage:
             Water authority to upload a model for
         model : str
             name of the model (directory) to upload
+        include_results: bool, optional
+            to include results dir in upload; yes/no = True/False. defaults to False.
 
         Raises
         ------
@@ -406,18 +408,30 @@ class CloudStorage:
         else:
             revision = 0
 
-        # create local local copy with the correct revion number
+        # create local version_directory
         model_version_dir = model_dir.parent.joinpath(
             f"{model}_{today.year}_{today.month}_{revision}"
         )
+        if model_version_dir.exists():
+            shutil.rmtree(model_version_dir)
         model_version_dir.mkdir()
 
         # copy model content to version dir
-        for file in model_dir.glob("*"):
-            dst_file = model_version_dir / file.name
-            dst_file.write_bytes(file.read_bytes())
+        for file in model_dir.glob("*.*"):
+            out_file = model_version_dir / file.name
+            out_file.write_bytes(file.read_bytes())
 
-        # upload content to remote
+        # if results, copy too
+        if include_results and (model_dir.joinpath("results").exists()):
+            files = list(model_dir.joinpath("results").glob("*.*"))
+            if files:
+                results_dir = model_version_dir.joinpath("results")
+                results_dir.mkdir()
+                for file in files:
+                    out_file = results_dir / file.name
+                    out_file.write_bytes(file.read_bytes())
+
+        # create dir in CloudStorage and upload content
         self.create_dir(authority, "modellen", model_version_dir.name)
         self.upload_content(model_version_dir)
 
