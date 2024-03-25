@@ -110,3 +110,65 @@ static_df = node_df[node_df.node_type == "Outlet"][["node_id"]]
 static_df.loc[:, ["flow_rate"]] = DEFAULT_FLOW_RATE
 
 outlet = ribasim.Outlet(static=static_df)
+
+# %% define ribasim manning resistance
+static_df = node_df[node_df.node_type == "ManningResistance"][["node_id"]]
+static_df.loc[:, ["length"]] = DEFAULT_MANNING["length"]
+static_df.loc[:, ["manning_n"]] = DEFAULT_MANNING["manning_n"]
+static_df.loc[:, ["profile_width"]] = DEFAULT_MANNING["profile_width"]
+static_df.loc[:, ["profile_slope"]] = DEFAULT_MANNING["profile_slope"]
+
+manning_resistance = ribasim.ManningResistance(static=static_df)
+
+# %% define ribasim linear resistance
+static_df = node_df[node_df.node_type == "LinearResistance"][["node_id"]]
+static_df.loc[:, ["resistance"]] = DEFAULT_RESISTANCE
+
+linear_resistance = ribasim.LinearResistance(static=static_df)
+
+
+# %% define ribasim tabulated reatingcurve
+static_df = pd.concat(
+    [
+        pd.DataFrame(
+            {
+                "node_id": [i] * len(DEFAULT_RATING_CURVE["level"]),
+                **DEFAULT_RATING_CURVE,
+            }
+        )
+        for i in node_df[node_df.node_type == "TabulatedRatingCurve"].node_id
+    ],
+    ignore_index=True,
+)
+
+tabulated_rating_curve = ribasim.TabulatedRatingCurve(static=static_df)
+
+# %% define ribasim flow boundary
+static_df = node_df[node_df.node_type == "FlowBoundary"][["node_id"]]
+static_df.loc[:, ["flow_rate"]] = DEFAULT_FLOW_RATE
+
+flow_boundary = ribasim.FlowBoundary(static=static_df)
+
+# %% define ribasim level boundary
+static_df = node_df[node_df.node_type == "LevelBoundary"][["node_id"]]
+static_df.loc[:, ["level"]] = DEFAULT_LEVEL
+
+level_boundary = ribasim.LevelBoundary(static=static_df)
+
+# %% write model
+model = ribasim.Model(
+    network=network,
+    basin=basin,
+    flow_boundary=flow_boundary,
+    level_boundary=level_boundary,
+    linear_resistance=linear_resistance,
+    manning_resistance=manning_resistance,
+    tabulated_rating_curve=tabulated_rating_curve,
+    pump=pump,
+    outlet=outlet,
+    starttime="2020-01-01 00:00:00",
+    endtime="2021-01-01 00:00:00",
+)
+
+ribasim_toml = cloud.joinpath(waterschap, "modellen", "ribasim_model", "model.toml")
+model.write(ribasim_toml)
