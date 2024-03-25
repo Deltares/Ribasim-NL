@@ -680,7 +680,7 @@ model.linear_resistance.static.df.loc[
 #
 model.solver.algorithm = "RK4"
 model.solver.dt = 10.0
-model.solver.saveat = 360
+model.solver.saveat = 3600
 
 # %% wegschrijven model
 # wegschrijven model

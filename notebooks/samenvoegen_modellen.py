@@ -12,7 +12,7 @@ cloud = CloudStorage()
 readme = f"""# Model voor het Landelijk Hydrologisch Model
 
 Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Ribasim-Python versie: {ribasim.__version__}
+Ribasim versie: {ribasim.__version__}
 Getest (u kunt simuleren): Nee
 
 ** Samengevoegde modellen (beheerder: modelnaam (versie)**
@@ -72,70 +72,70 @@ models = [
         "authority": "AmstelGooienVecht",
         "model": "AmstelGooienVecht_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "Delfland",
         "model": "Delfland_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "HollandseDelta",
         "model": "HollandseDelta_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "HollandsNoorderkwartier",
         "model": "HollandsNoorderkwartier_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "Rijnland",
         "model": "Rijnland_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "Rivierenland",
         "model": "Rivierenland_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "Scheldestromen",
         "model": "Scheldestromen_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "SchielandendeKrimpenerwaard",
         "model": "SchielandendeKrimpenerwaard_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "WetterskipFryslan",
         "model": "WetterskipFryslan_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
     {
         "authority": "Zuiderzeeland",
         "model": "Zuiderzeeland_poldermodel",
         "find_toml": True,
-        "update": True,
+        "update": False,
         "zoom_level": 3,
     },
 ]
