@@ -18,9 +18,14 @@ class ParseCrossings:
     def __init__(
         self,
         gpkg_path: pathlib.Path | str,
+        output_path: pathlib.Path | str | None = None,
         allowed_distance: float = 0.5,
         search_radius_structure: float = 60.0,
         search_radius_HWS_BZM: float = 30.0,
+        agg_peilgebieden_path: pathlib.Path | str | None = None,
+        agg_peilgebieden_layer: str | None = None,
+        agg_peilgebieden_column: str | None = None,
+        agg_areas_threshold: float = 0.8,
         move_distance: float = 1e-3,
         almost_equal: float = 1e-6,
         almost_zero: float = 1e-8,
@@ -35,12 +40,22 @@ class ParseCrossings:
         ----------
         gpkg_path : pathlib.Path | str
             _description_
+        output_path : pathlib.Path | str | None, optional
+            _description_, by default None
         allowed_distance : float, optional
             _description_, by default 0.5
         search_radius_structure : float, optional
             _description_, by default 60.0
         search_radius_HWS_BZM : float, optional
             _description_, by default 30.0
+        agg_peilgebieden_path : pathlib.Path | str | None, optional
+            _description_, by default None
+        agg_peilgebieden_layer : str | None, optional
+            _description_, by default None
+        agg_peilgebieden_column : str | None, optional
+            _description_, by default None
+        agg_areas_threshold : float, optional
+            _description_, by default 0.8
         move_distance : float, optional
             _description_, by default 1e-3
         almost_equal : float, optional
@@ -58,6 +73,10 @@ class ParseCrossings:
 
         Raises
         ------
+        ValueError
+            _description_
+        ValueError
+            _description_
         ValueError
             _description_
         """
@@ -96,10 +115,26 @@ class ParseCrossings:
             if df_layer.globalid.str.contains(self.list_sep).any():
                 raise ValueError(f"{layername}: contains the reserved character '{self.list_sep}'")
 
+        # Enforce category for peilgebied
         if "peilgebied_cat" not in self.df_gpkg["peilgebied"].columns:
             self.df_gpkg["peilgebied"]["peilgebied_cat"] = 0
         self.peilgebied_cat_lookup = self.df_gpkg["peilgebied"].set_index("globalid").peilgebied_cat.copy()
 
+        # Aggregate areas
+        self.agg_peilgebieden = None
+        if agg_peilgebieden_path is not None:
+            self.agg_peilgebieden = gpd.read_file(agg_peilgebieden_path, layer=agg_peilgebieden_layer)
+            if agg_peilgebieden_column is None:
+                raise ValueError("Aggregation file defined, but aggregation column is not defined")
+            if not self.agg_peilgebieden[agg_peilgebieden_column].is_unique:
+                raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
+        self.agg_peilgebieden_column = agg_peilgebieden_column
+        self.agg_areas_threshold = agg_areas_threshold
+
+        # Output path
+        self.output_path = output_path
+
+        # logger settings
         logger_name = f"{__name__.split('.')[0]}_{pathlib.Path(gpkg_path).stem}"
         self.log = logging.getLogger(logger_name)
         handlers = [logging.NullHandler()]
@@ -115,7 +150,7 @@ class ParseCrossings:
 
     @staticmethod
     @pydantic.validate_call(config={"strict": True})
-    def polar(x1: float, x2: float, y1: float, y2: float) -> tuple[float, float]:
+    def _polar(x1: float, x2: float, y1: float, y2: float) -> tuple[float, float]:
         """_summary_
 
         Parameters
@@ -140,7 +175,7 @@ class ParseCrossings:
         return sina, cosa
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def extend_linestrings(
+    def _extend_linestrings(
         self, df_linesingle: gpd.GeoDataFrame, df_peil_boundary: gpd.GeoDataFrame
     ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
         """_summary_
@@ -200,7 +235,7 @@ class ParseCrossings:
                     i1, i2 = -2, -1
                 x1, x2 = geom[i1, 0], geom[i2, 0]
                 y1, y2 = geom[i1, 1], geom[i2, 1]
-                sina, cosa = self.polar(x1, x2, y1, y2)
+                sina, cosa = self._polar(x1, x2, y1, y2)
                 xlen, ylen = x2 - x1, y2 - y1
                 alen = math.sqrt(xlen**2 + ylen**2) + self.move_distance
                 xnew = x1 - alen * sina
@@ -235,7 +270,7 @@ class ParseCrossings:
         return df_linesingle, df_endpoints
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def parse_peilgebieden(self) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    def _parse_peilgebieden(self) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
         """_summary_
 
         Returns
@@ -266,6 +301,7 @@ class ParseCrossings:
         self,
         layer: str,
         group_stacked: bool = True,
+        agg_links: bool = True,
         filterlayer: str | None = None,
         reduce: bool = True,
         return_lines: bool = False,
@@ -278,6 +314,8 @@ class ParseCrossings:
         layer : str
             _description_
         group_stacked : bool, optional
+            _description_, by default True
+        agg_links : bool, optional
             _description_, by default True
         filterlayer : str | None, optional
             _description_, by default None
@@ -307,10 +345,10 @@ class ParseCrossings:
         df_linesingle = self._get_layer_as_singleparts(layer, id_as_index=False)
 
         # Parse peilgebeiden
-        df_peilgebieden, df_peil_boundary = self.parse_peilgebieden()
+        df_peilgebieden, df_peil_boundary = self._parse_peilgebieden()
 
         # Determine endpoints
-        df_linesingle, df_endpoints = self.extend_linestrings(df_linesingle, df_peil_boundary)
+        df_linesingle, df_endpoints = self._extend_linestrings(df_linesingle, df_peil_boundary)
 
         # Find crossings of the lines with the peilgebieden.
         crossings = {}
@@ -349,7 +387,7 @@ class ParseCrossings:
             else:
                 # At least 1 peilgebied match: Determine potential crossing
                 # with these peilgebieden.
-                crossings = self.add_potential_crossing(
+                crossings = self._add_potential_crossing(
                     crossings,
                     row_line.Index,
                     df_endpoints,
@@ -372,35 +410,69 @@ class ParseCrossings:
         dfc = gpd.GeoDataFrame(dfc, geometry="geometry", crs="epsg:28992")
 
         # Add waterlevels, structures and correct water flow based on these.
-        dfc = self.add_waterlevels_to_crossings(dfc)
-        dfc = self.find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "stuw")
-        dfc = self.find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "gemaal")
-        dfc = self.correct_water_flow(dfc)
+        dfc = self._add_waterlevels_to_crossings(dfc)
+        dfc = self._find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "stuw")
+        dfc = self._find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "gemaal")
+        dfc = self._correct_water_flow(dfc)
 
         # If needed, check for multiple stacked/grouped crossings which can be
         # reduced to a single crossing or no crossing at all.
         line_groups = None
         if group_stacked:
-            dfc, line_groups = self.find_stacked_crossings(
+            dfc, line_groups = self._find_stacked_crossings(
                 layer, dfc, df_linesingle, df_endpoints, df_peilgebieden, reduce
             )
-            dfc = self.correct_water_flow(dfc)
+            dfc = self._correct_water_flow(dfc)
 
         if filterlayer is None:
             # return the found crossings.
-            dfc = self.correct_structures(dfc, df_linesingle, df_endpoints, "stuw")
-            dfc = self.correct_structures(dfc, df_linesingle, df_endpoints, "gemaal")
+            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "stuw")
+            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "gemaal")
+            dfc = self._correct_water_flow(dfc)
+            dfc = self._add_double_links(dfc)
+            dfc = self._aggregate_identical_links(dfc, agg_links)
+            dfc = self._aggregate_areas(dfc, agg_links)
             if return_lines:
                 return dfc, line_groups
             else:
                 return dfc
         else:
             # Filter the crossings with another layer with overlapping lines
-            df_filter, dfs = self.filter_crossings_with_layer(dfc, df_peilgebieden, filterlayer, write_debug)
-            dfs = self.correct_structures(dfs, df_linesingle, df_endpoints, "stuw")
-            dfs = self.correct_structures(dfs, df_linesingle, df_endpoints, "gemaal")
-            dfs = self.correct_water_flow(dfs)
+            df_filter, dfs = self._filter_crossings_with_layer(dfc, df_peilgebieden, filterlayer, write_debug)
+            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "stuw")
+            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "gemaal")
+            dfs = self._correct_water_flow(dfs)
+            dfs = self._add_double_links(dfs)
+            dfs = self._aggregate_identical_links(dfs, agg_links)
+            dfs = self._aggregate_areas(dfs, agg_links)
             return dfc, df_filter, dfs
+
+    @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
+    def write_crossings(
+        self,
+        df_hydro: gpd.GeoDataFrame,
+        filterlayer: str | None,
+        df_filter: gpd.GeoDataFrame | None,
+        df_hydro_filter: gpd.GeoDataFrame | None,
+    ) -> None:
+        output_path = pathlib.Path(self.output_path)
+        if not output_path.parent.exists():
+            output_path.parent.mkdir(parents=True)
+
+        # Write the input files (some with minor modifications)
+        for layer, df in self.df_gpkg.items():
+            df.to_file(output_path, layer=layer)
+
+        # Write aggregation areas (if they exist)
+        if self.agg_peilgebieden is not None:
+            self.agg_peilgebieden.to_file(output_path, layer="aggregation_areas")
+
+        # Write supplied output files
+        df_hydro.to_file(output_path, layer="crossings_hydroobject")
+        if df_filter is not None:
+            df_filter.to_file(output_path, layer=f"crossings_{filterlayer}")
+        if df_hydro_filter is not None:
+            df_hydro_filter.to_file(output_path, layer="crossings_hydroobject_filtered")
 
     @pydantic.validate_call(config={"strict": True})
     def _classify_from_to_peilgebieden(self, pfrom: str | None, pto: str | None) -> tuple[int, str]:
@@ -468,7 +540,7 @@ class ParseCrossings:
         return df_single
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def find_connections(self, line_index: tuple, df_endpoints: gpd.GeoDataFrame) -> gpd.GeoSeries:
+    def _find_connections(self, line_index: tuple, df_endpoints: gpd.GeoDataFrame) -> gpd.GeoSeries:
         """_summary_
 
         Parameters
@@ -491,7 +563,7 @@ class ParseCrossings:
         return pot_conn
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def enforce_linestring(
+    def _enforce_linestring(
         self,
         line: LineString | MultiLineString,
         point: Point,
@@ -536,7 +608,7 @@ class ParseCrossings:
         return line
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def make_merged_line(
+    def _make_merged_line(
         self,
         crossing: Point,
         line_index: tuple,
@@ -587,12 +659,12 @@ class ParseCrossings:
             line = crossing_line.intersection(ring_buffer)
 
         # Try and merge the MultiLineString to a single LineString
-        line = self.enforce_linestring(line, crossing, point_buffer, df_peilgebied)
+        line = self._enforce_linestring(line, crossing, point_buffer, df_peilgebied)
 
         return line, line_ids
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def make_merged_line_stacked(
+    def _make_merged_line_stacked(
         self,
         point_buffer1: Polygon,
         geom: Point,
@@ -653,7 +725,7 @@ class ParseCrossings:
         return line_conn
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def add_potential_crossing(
+    def _add_potential_crossing(
         self,
         crossings: dict,
         line_index: tuple,
@@ -684,12 +756,12 @@ class ParseCrossings:
         dict[tuple[str | None, str | None, float, float], Point]
             _description_
         """
-        pot_conn = self.find_connections(line_index, df_endpoints)
+        pot_conn = self._find_connections(line_index, df_endpoints)
 
         # crossings = {}
         for crossing in crossing_points.geometry:
             # Find crossing line with potentially added connections
-            merged_crossing_line, merged_ids = self.make_merged_line(
+            merged_crossing_line, merged_ids = self._make_merged_line(
                 crossing,
                 line_index,
                 df_endpoints,
@@ -754,7 +826,7 @@ class ParseCrossings:
         return crossings
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def find_stacked_crossings(
+    def _find_stacked_crossings(
         self,
         crossing_layer: str,
         dfc: gpd.GeoDataFrame,
@@ -824,7 +896,7 @@ class ParseCrossings:
                 continue
 
             # Try and make a merged line for the stacked points
-            line_geom = self.make_merged_line_stacked(
+            line_geom = self._make_merged_line_stacked(
                 point_buffer1,
                 row.geometry,
                 df_linesingle,
@@ -1077,7 +1149,7 @@ class ParseCrossings:
         return lbl_HWS_BZM
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def add_waterlevels_to_crossings(self, dfc: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    def _add_waterlevels_to_crossings(self, dfc: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         """_summary_
 
         Parameters
@@ -1137,7 +1209,11 @@ class ParseCrossings:
         return dfs
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def filter_crossings_with_layer(
+    def _make_structure_string(self, structure_list: npt.NDArray | list) -> str:
+        return self.list_sep.join(map(str, structure_list))
+
+    @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
+    def _filter_crossings_with_layer(
         self,
         dfc: gpd.GeoDataFrame,
         df_peilgebieden: gpd.GeoDataFrame,
@@ -1201,10 +1277,10 @@ class ParseCrossings:
 
             replace_stuw = None
             if "stuw" in dfs.columns:
-                replace_stuw = ",".join(replace_crossing_candidates.stuw.dropna().unique())
+                replace_stuw = self._make_structure_string(replace_crossing_candidates.stuw.dropna().unique())
             replace_gemaal = None
             if "gemaal" in dfs.columns:
-                replace_gemaal = ",".join(replace_crossing_candidates.gemaal.dropna().unique())
+                replace_gemaal = self._make_structure_string(replace_crossing_candidates.gemaal.dropna().unique())
 
             replace_crossing_vec = []
             if len(replace_crossing_candidates) == 0:
@@ -1330,7 +1406,7 @@ class ParseCrossings:
         return df_filter, dfs
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def find_structures_at_crossings(
+    def _find_structures_at_crossings(
         self,
         dfc: gpd.GeoDataFrame,
         df_linesingle: gpd.GeoDataFrame,
@@ -1541,13 +1617,16 @@ class ParseCrossings:
 
         # Add the structure to the crossing(s) which are closest.
         cur_structids = dfs.at[lbl, structurelayer]
-        if pd.isna(cur_structids) or cur_structids == "":
+        if cur_structids == "":
+            cur_structids = None
+        if pd.isna(cur_structids):
             dfs.loc[df_stacked.index, structurelayer] = structure_id
         else:
             # Only add the new structure to the crossing(s) if the new
             # structure is closer by than the old structure.
             crossing = dfs.geometry.at[lbl]
-            old_struct_ids = dfs.at[lbl, structurelayer].split(",")
+            old_struct_ids = dfs.at[lbl, structurelayer].split(self.list_sep)
+            old_struct_ids = [sid for sid in old_struct_ids if sid != ""]
             old_structs = df_structures.geometry.loc[old_struct_ids]
             if old_structs.distance(crossing).min() > structure_geom.distance(crossing):
                 self.log.info(f"Replacing {structurelayer} at {crossing} with '{structure_id}'")
@@ -1558,7 +1637,7 @@ class ParseCrossings:
         return dfs, orphaned_structures
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def correct_structures(
+    def _correct_structures(
         self,
         dfc: gpd.GeoDataFrame,
         df_linesingle: gpd.GeoDataFrame,
@@ -1577,7 +1656,7 @@ class ParseCrossings:
         orphaned_structures = []
         for structure_id, group in dfs.groupby(structurelayer, sort=False):
             if not group.in_use.any():
-                for sid in structure_id.split(","):
+                for sid in structure_id.split(self.list_sep):
                     orphaned_structures.append((sid, df_structures.geometry.at[sid]))
 
         df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
@@ -1602,10 +1681,13 @@ class ParseCrossings:
                 )
             df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
 
+        # Fix empty strings
+        dfs.loc[dfs[structurelayer] == "", structurelayer] = None
+
         return dfs
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def correct_water_flow(self, dfc: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    def _correct_water_flow(self, dfc: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         """_summary_
 
         Parameters
@@ -1665,7 +1747,7 @@ class ParseCrossings:
         return dfs
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def add_double_links(self, dfc: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    def _add_double_links(self, dfc: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         """_summary_
 
         Parameters
@@ -1704,12 +1786,28 @@ class ParseCrossings:
         return dfs
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def aggregate_identical_links(self, dfc: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    def _extend_groupvars(self, dfc: gpd.GeoDataFrame, base_groupvars: list[str]) -> list[str]:
+        groupvars = base_groupvars.copy()
+
+        if "gemaal" in dfc.columns:
+            groupvars.append("gemaal")
+
+        if "stuw" in dfc.columns:
+            # Aggregate multiple objects of type stuw to a single stuw.
+            dfc.loc[~pd.isna(dfc.stuw), "stuw"] = "stuw"
+            groupvars.append("stuw")
+
+        return groupvars
+
+    @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
+    def _aggregate_identical_links(self, dfc: gpd.GeoDataFrame, agg_links: bool) -> gpd.GeoDataFrame:
         """_summary_
 
         Parameters
         ----------
         dfc : gpd.GeoDataFrame
+            _description_
+        agg_links : bool
             _description_
 
         Returns
@@ -1717,42 +1815,158 @@ class ParseCrossings:
         gpd.GeoDataFrame
             _description_
         """
+
+        group_col = "agg_links_group"
+        old_use_col = "in_use"
+        new_use_col = "agg_links_in_use"
+
         dfs = dfc.copy()
-        if "agg1_group" not in dfs.columns:
-            dfs.insert(len(dfs.columns) - 1, "agg1_group", None)
-        if "agg1_used" not in dfs.columns:
-            dfs.insert(len(dfs.columns) - 1, "agg1_used", True)
-        dfs["agg1_group"] = None
-        dfs["agg1_used"] = dfs.in_use.copy()
+        if group_col not in dfs.columns:
+            dfs.insert(len(dfs.columns) - 1, group_col, None)
+        if new_use_col not in dfs.columns:
+            dfs.insert(len(dfs.columns) - 1, new_use_col, True)
+        dfs[group_col] = None
+        dfs[new_use_col] = dfs[old_use_col].copy()
 
-        peilgebieden = self.df_gpkg["peilgebied"].copy()
-        peilgebieden = peilgebieden[peilgebieden.peilgebied_cat == 0].copy()
-        peilgebieden["geometry"] = peilgebieden.centroid
-        peilgebieden = peilgebieden.set_index("globalid")
+        if agg_links:
+            peilgebieden = self.df_gpkg["peilgebied"].copy()
+            peilgebieden = peilgebieden[peilgebieden.peilgebied_cat == 0].copy()
+            peilgebieden["geometry"] = peilgebieden.centroid
+            peilgebieden = peilgebieden.set_index("globalid")
 
-        dfs_filter = dfs[dfs.in_use & (dfs.crossing_type == "00")].copy()
+            dfs_filter = dfs[dfs[old_use_col] & (dfs.crossing_type == "00")].copy()
+            basegroup = ["peilgebied_from", "peilgebied_to"]
+            groupvars = self._extend_groupvars(dfs_filter, basegroup)
 
-        groupvars = ["peilgebied_from", "peilgebied_to"]
-        if "gemaal" in dfs_filter.columns:
-            groupvars.append("gemaal")
+            for gvars, group in tqdm.tqdm(
+                dfs_filter.groupby(groupvars, dropna=False, sort=False),
+                desc="Aggregate links between peilgebieden",
+                disable=self.disable_progress,
+            ):
+                pfrom, pto = gvars[0], gvars[1]
+                if pd.isna(pfrom) or pd.isna(pto):
+                    raise ValueError(f"One or both values in {basegroup} are NaN")
 
-        if "stuw" in dfs_filter.columns:
-            # Aggregate multiple objects of type stuw to a single stuw.
-            dfs_filter.loc[~pd.isna(dfs_filter.stuw), "stuw"] = "stuw"
-            groupvars.append("stuw")
-
-        for gvars, group in tqdm.tqdm(
-            dfs_filter.groupby(groupvars, dropna=False, sort=False),
-            desc="Aggregate to single unique links",
-            disable=self.disable_progress,
-        ):
-            pto = gvars[1]
-            agg1_group = self.list_sep.join(map(str, gvars))
-            dfs.loc[group.index, "agg1_group"] = agg1_group
-            dfs.loc[group.index, "agg1_used"] = False
-            lbl_choice = group.distance(peilgebieden.geometry.at[pto]).idxmin()
-            if "stuw" in dfs_filter.columns:
-                dfs.at[lbl_choice, "stuw"] = ",".join(dfs.stuw.loc[group.index].dropna().unique())
-            dfs.at[lbl_choice, "agg1_used"] = True
+                agg_links_group = self.list_sep.join(map(str, gvars))
+                dfs.loc[group.index, group_col] = agg_links_group
+                dfs.loc[group.index, new_use_col] = False
+                lbl_choice = group.distance(peilgebieden.geometry.at[pto]).idxmin()
+                if "stuw" in dfs_filter.columns:
+                    struct_str = self._make_structure_string(dfs.stuw.loc[group.index].dropna().unique())
+                    if struct_str == "":
+                        struct_str = None
+                    dfs.at[lbl_choice, "stuw"] = struct_str
+                dfs.at[lbl_choice, new_use_col] = True
 
         return dfs
+
+    @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
+    def _aggregate_areas(self, dfc: gpd.GeoDataFrame, agg_links: bool) -> gpd.GeoDataFrame:
+        """_summary_
+
+        Parameters
+        ----------
+        dfc : gpd.GeoDataFrame
+            _description_
+        agg_links : bool
+            _description_
+
+        Returns
+        -------
+        gpd.GeoDataFrame
+            _description_
+        """
+        col_agg_from = "agg_area_from"
+        col_agg_to = "agg_area_to"
+        col_agg_group = "agg_areas_group"
+        old_use_col = "agg_links_in_use"
+        new_use_col = "agg_areas_in_use"
+
+        dfs = dfc.copy()
+        if col_agg_from not in dfs.columns:
+            dfs.insert(len(dfs.columns) - 1, col_agg_from, None)
+        if col_agg_to not in dfs.columns:
+            dfs.insert(len(dfs.columns) - 1, col_agg_to, True)
+        if col_agg_group not in dfs.columns:
+            dfs.insert(len(dfs.columns) - 1, col_agg_group, None)
+        if new_use_col not in dfs.columns:
+            dfs.insert(len(dfs.columns) - 1, new_use_col, True)
+        dfs[col_agg_from] = None
+        dfs[col_agg_to] = None
+        dfs[col_agg_group] = None
+        dfs[new_use_col] = dfs[old_use_col].copy()
+
+        self.df_gpkg["peilgebied"]["agg_area"] = None
+        if self.agg_peilgebieden is None:
+            return dfs
+        else:
+            for row in tqdm.tqdm(
+                self.df_gpkg["peilgebied"].itertuples(),
+                desc="Assign aggregate areas",
+                total=len(self.df_gpkg["peilgebied"]),
+                disable=self.disable_progress,
+            ):
+                # Only peilgebeiden
+                if row.peilgebied_cat != 0:
+                    continue
+
+                # Determine overlapping aggregate areas
+                idx = self.agg_peilgebieden.sindex.query(row.geometry, predicate="intersects")
+                df_agg = self.agg_peilgebieden.iloc[idx, :].copy()
+                df_agg["geometry"] = df_agg.intersection(row.geometry)
+                df_agg["overlap"] = df_agg.geometry.area / row.geometry.area
+
+                # Assign an aggreation area only if the sum of overlaps exceeds
+                # the pre-defined threshold.
+                if df_agg["overlap"].sum() >= self.agg_areas_threshold:
+                    agg_id = df_agg.at[df_agg.overlap.idxmax(), self.agg_peilgebieden_column]
+                    self.df_gpkg["peilgebied"].at[row.Index, "agg_area"] = agg_id
+
+            # Assign aggregate areas to crossings
+            agg_lookup = self.df_gpkg["peilgebied"][["globalid", "agg_area"]].set_index("globalid").agg_area
+            sel_from = ~pd.isna(dfs.peilgebied_from)
+            sel_peilgebied_from = dfs.peilgebied_from.loc[sel_from].to_numpy()
+            dfs.loc[sel_from, col_agg_from] = agg_lookup.loc[sel_peilgebied_from].to_numpy()
+            sel_to = ~pd.isna(dfs.peilgebied_to)
+            sel_peilgebied_to = dfs.peilgebied_to.loc[sel_to].to_numpy()
+            dfs.loc[sel_to, col_agg_to] = agg_lookup.loc[sel_peilgebied_to].to_numpy()
+
+            # Aggregate crossings with an identical agg_area 'from' and 'to'
+            for (agg_from, agg_to), group in tqdm.tqdm(
+                dfs.groupby([col_agg_from, col_agg_to], dropna=False),
+                desc="Disable crossings in aggregation areas",
+                disable=self.disable_progress,
+            ):
+                if pd.isna(agg_from) or pd.isna(agg_to) or agg_from != agg_to:
+                    continue
+                dfs.loc[group.index, col_agg_group] = agg_from
+                dfs.loc[group.index, new_use_col] = False
+
+            # Aggregate links between aggregate areas
+            if agg_links:
+                # Determine grouping variables
+                dfs_filter = dfs[dfs[new_use_col]].copy()
+                groupvars = self._extend_groupvars(dfs_filter, [col_agg_from, col_agg_to])
+
+                for gvars, group in tqdm.tqdm(
+                    dfs_filter.groupby(groupvars, dropna=False, sort=False),
+                    desc="Aggregate links between aggregate areas",
+                    disable=self.disable_progress,
+                ):
+                    # Only aggregate links with differing, non-nan from and to.
+                    agg_from, agg_to = gvars[0], gvars[1]
+                    if pd.isna(agg_from) or pd.isna(agg_to) or agg_from == agg_to:
+                        continue
+
+                    agg_areas_links_group = self.list_sep.join(map(str, gvars))
+                    dfs.loc[group.index, col_agg_group] = agg_areas_links_group
+                    dfs.loc[group.index, new_use_col] = False
+                    lbl_choice = group.index[0]
+                    if "stuw" in dfs_filter.columns:
+                        struct_str = self._make_structure_string(dfs.stuw.loc[group.index].dropna().unique())
+                        if struct_str == "":
+                            struct_str = None
+                        dfs.at[lbl_choice, "stuw"] = struct_str
+                    dfs.at[lbl_choice, new_use_col] = True
+
+            return dfs
