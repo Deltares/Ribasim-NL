@@ -7,14 +7,14 @@ import pytest
 from peilbeheerst_model import ParseCrossings
 
 
-def _compare_testdata(test_path, check_path, group_stacked=True, filterlayer=None):
+def _compare_testdata(test_path, check_path, group_stacked=True, agg_links=False, filterlayer=None):
     assert test_path.exists()
     assert check_path.exists()
 
     # Find the crossings
     cross = ParseCrossings(test_path, disable_progress=True)
     res = cross.find_crossings_with_peilgebieden(
-        "hydroobject", group_stacked=group_stacked, filterlayer=filterlayer
+        "hydroobject", group_stacked=group_stacked, filterlayer=filterlayer, agg_links=agg_links
     )
     if filterlayer is None:
         df_crossings = res
@@ -36,25 +36,25 @@ def _compare_testdata(test_path, check_path, group_stacked=True, filterlayer=Non
     check_output = check_output.fillna(pd.NA).drop(columns="match_group")
 
     # Assert if the data is the same
-    assert test_output.equals(check_output)
+    assert test_output[check_output.columns].equals(check_output)
 
 @pytest.mark.parametrize("gpkg_path", list(map(str, pathlib.Path("tests/data").glob("nofilter_*.gpkg"))))
 def test_stacked_nofilter(gpkg_path):
     test_path = pathlib.Path(gpkg_path)
     check_path = test_path.parent.joinpath(f"output_{test_path.stem}.csv")
-    _compare_testdata(test_path, check_path, group_stacked=True, filterlayer=None)
+    _compare_testdata(test_path, check_path, group_stacked=True, agg_links=False, filterlayer=None)
 
 @pytest.mark.parametrize("gpkg_path", list(map(str, pathlib.Path("tests/data").glob("nofilter_*.gpkg"))))
 def test_stacked_emptyfilter(gpkg_path):
     test_path = pathlib.Path(gpkg_path)
     check_path = test_path.parent.joinpath(f"output_{test_path.stem}.csv")
-    _compare_testdata(test_path, check_path, group_stacked=True, filterlayer="duikersifonhevel")
+    _compare_testdata(test_path, check_path, group_stacked=True, agg_links=False, filterlayer="duikersifonhevel")
 
 @pytest.mark.parametrize("gpkg_path", list(map(str, pathlib.Path("tests/data").glob("withfilter_*.gpkg"))))
 def test_stacked_withfilter(gpkg_path):
     test_path = pathlib.Path(gpkg_path)
     check_path = test_path.parent.joinpath(f"output_{test_path.stem}.csv")
-    _compare_testdata(test_path, check_path, group_stacked=True, filterlayer="duikersifonhevel")
+    _compare_testdata(test_path, check_path, group_stacked=True, agg_links=False, filterlayer="duikersifonhevel")
 
 # TODO: test structures?
 
