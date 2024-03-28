@@ -700,7 +700,7 @@ class ParseCrossings:
             nrec = 1
         idx, idx_conn = self._find_closest_lines(geom, self.almost_equal, df_linesingle, df_endpoints, n_recurse=nrec)
         if len(idx_conn) == 0:
-            self.log.warning(f"Crossing {geom} is not on or near a line, ignoring...")
+            self.log.error(f"Crossing {geom} is not on or near a line, ignoring...")
             return None
 
         df_line = df_linesingle.iloc[idx, :].copy()
@@ -906,6 +906,11 @@ class ParseCrossings:
                 df_endpoints,
                 reduce=reduce,
             )
+
+            # @TODO this only happens if the crossing could not be located on
+            # a line. Unexpected?
+            if line_geom is None:
+                continue
 
             if not reduce:
                 # Weird bug that buffer almost_equal does not equal distance almost_equal
