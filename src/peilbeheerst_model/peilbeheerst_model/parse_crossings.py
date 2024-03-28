@@ -1830,11 +1830,11 @@ class ParseCrossings:
 
         if agg_links:
             peilgebieden = self.df_gpkg["peilgebied"].copy()
-            peilgebieden = peilgebieden[peilgebieden.peilgebied_cat == 0].copy()
+            # peilgebieden = peilgebieden[peilgebieden.peilgebied_cat == 0].copy()
             peilgebieden["geometry"] = peilgebieden.centroid
             peilgebieden = peilgebieden.set_index("globalid")
 
-            dfs_filter = dfs[dfs[old_use_col] & (dfs.crossing_type == "00")].copy()
+            dfs_filter = dfs[dfs[old_use_col] & dfs.crossing_type.isin(["00", "01", "02"])].copy()
             basegroup = ["peilgebied_from", "peilgebied_to"]
             groupvars = self._extend_groupvars(dfs_filter, basegroup)
 
@@ -1891,9 +1891,12 @@ class ParseCrossings:
             dfs.insert(len(dfs.columns) - 1, col_agg_group, None)
         if new_use_col not in dfs.columns:
             dfs.insert(len(dfs.columns) - 1, new_use_col, True)
-        dfs[col_agg_from] = None
-        dfs[col_agg_to] = None
-        dfs[col_agg_group] = None
+        dfs[col_agg_from] = dfs.peilgebied_from.copy()
+        dfs[col_agg_to] = dfs.peilgebied_to.copy()
+        dfs[col_agg_group] = dfs.agg_links_group.copy()
+        # dfs[col_agg_from] = None
+        # dfs[col_agg_to] = None
+        # dfs[col_agg_group] = None
         dfs[new_use_col] = dfs[old_use_col].copy()
 
         self.df_gpkg["peilgebied"]["agg_area"] = None
