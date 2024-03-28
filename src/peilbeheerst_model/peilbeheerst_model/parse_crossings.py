@@ -1853,7 +1853,8 @@ class ParseCrossings:
             ):
                 pfrom, pto = gvars[0], gvars[1]
                 if pd.isna(pfrom) or pd.isna(pto):
-                    raise ValueError(f"One or both values in {basegroup} are NaN")
+                    self.log.error(f"One or both values in {dict(zip(basegroup, [pfrom, pto]))} are NaN, skipping link aggregation")
+                    continue
 
                 agg_links_group = self.list_sep.join(map(str, gvars))
                 dfs.loc[group.index, group_col] = agg_links_group
