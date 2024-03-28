@@ -695,7 +695,10 @@ class ParseCrossings:
 
         # Find the line(s) on which the current crossing lies and the directly
         # connected lines.
-        idx, idx_conn = self._find_closest_lines(geom, self.almost_equal, df_linesingle, df_endpoints, n_recurse=1)
+        nrec = 10
+        if reduce:
+            nrec = 1
+        idx, idx_conn = self._find_closest_lines(geom, self.almost_equal, df_linesingle, df_endpoints, n_recurse=nrec)
         if len(idx_conn) == 0:
             self.log.warning(f"Crossing {geom} is not on or near a line, ignoring...")
             return None
@@ -1592,7 +1595,7 @@ class ParseCrossings:
             self.search_radius_structure,
             df_linesingle,
             df_endpoints,
-            n_recurse=5,
+            n_recurse=10,
             filter="nearest",
         )
         if len(idxs) == 0:
