@@ -475,7 +475,7 @@ class ParseCrossings:
             df_hydro_filter.to_file(output_path, layer="crossings_hydroobject_filtered")
 
     @pydantic.validate_call(config={"strict": True})
-    def _classify_from_to_peilgebieden(self, pfrom: str | None, pto: str | None) -> tuple[int, str]:
+    def _classify_from_to_peilgebieden(self, pfrom: str | None, pto: str | None) -> tuple[str, str]:
         """_summary_
 
         Parameters
