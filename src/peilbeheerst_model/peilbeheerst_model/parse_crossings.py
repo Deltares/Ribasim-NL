@@ -907,31 +907,38 @@ class ParseCrossings:
                 reduce=reduce,
             )
 
-            # @TODO this only happens if the crossing could not be located on
-            # a line. Unexpected?
-            if line_geom is None:
-                continue
+            # @TODO line_geom can be None. This only happens if the crossing
+            # could not be located on a line. Unexpected?
+            if line_geom is not None:
+                if not reduce:
+                    # Weird bug that buffer almost_equal does not equal distance almost_equal
+                    line_buf = line_geom.buffer(10 * self.almost_equal)
+                    group = dfs.iloc[dfs.sindex.query(line_buf, predicate="intersects"), :].copy()
+                    group = group[group.match_group == 0].copy()
 
-            if not reduce:
-                # Weird bug that buffer almost_equal does not equal distance almost_equal
-                line_buf = line_geom.buffer(10 * self.almost_equal)
-                group = dfs.iloc[dfs.sindex.query(line_buf, predicate="intersects"), :].copy()
-                group = group[group.match_group == 0].copy()
-
-            # Reduce points to those which are on the matched line(s)
-            group = group[group.distance(line_geom) <= self.almost_equal].copy()
+                # Reduce points to those which are on the matched line(s)
+                group = group[group.distance(line_geom) <= self.almost_equal].copy()
 
             if len(group) == 0:
                 continue
             elif len(group) == 1:
-                dfs.loc[group.index, "match_group"] = groupid
-                dfs.loc[group.index, "match_stacked"] = len(group)
-                dfs.loc[group.index, "match_group_unique"] = True
-                dfs.loc[group.index, "in_use"] = True
-                line_groups[groupid] = line_geom
-                groupid += 1
+                if line_geom is None:
+                    # @TODO line_geom can be None. This only happens if the
+                    # crossing could not be located on a line. Unexpected?
+                    dfs.loc[group.index, "in_use"] = False
+                else:
+                    dfs.loc[group.index, "match_group"] = groupid
+                    dfs.loc[group.index, "match_stacked"] = len(group)
+                    dfs.loc[group.index, "match_group_unique"] = True
+                    dfs.loc[group.index, "in_use"] = True
+                    line_groups[groupid] = line_geom
+                    groupid += 1
             else:
-                if line_geom.geom_type == "MultiLineString":
+                if line_geom is None:
+                    # @TODO line_geom can be None. This only happens if the
+                    # crossing could not be located on a line. Unexpected?
+                    dfs.loc[group.index, "in_use"] = False
+                elif line_geom.geom_type == "MultiLineString":
                     for (pfrom, pto), subgroup in group.groupby(
                         ["peilgebied_from", "peilgebied_to"], dropna=False, sort=False
                     ):
@@ -1853,7 +1860,9 @@ class ParseCrossings:
             ):
                 pfrom, pto = gvars[0], gvars[1]
                 if pd.isna(pfrom) or pd.isna(pto):
-                    self.log.error(f"One or both values in {dict(zip(basegroup, [pfrom, pto]))} are NaN, skipping link aggregation")
+                    self.log.error(
+                        f"One or both values in {dict(zip(basegroup, [pfrom, pto]))} are NaN, skipping link aggregation"
+                    )
                     continue
 
                 agg_links_group = self.list_sep.join(map(str, gvars))
