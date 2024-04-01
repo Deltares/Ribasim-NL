@@ -389,7 +389,6 @@ class ParseCrossings:
                 # with these peilgebieden.
                 crossings = self._add_potential_crossing(
                     crossings,
-                    row_line.Index,
                     df_endpoints,
                     df_linesingle,
                     df_points,
@@ -544,28 +543,7 @@ class ParseCrossings:
 
         return df_single
 
-    @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def _find_connections(self, line_index: tuple, df_endpoints: gpd.GeoDataFrame) -> gpd.GeoSeries:
-        """_summary_
 
-        Parameters
-        ----------
-        line_index : tuple
-            _description_
-        df_endpoints : gpd.GeoDataFrame
-            _description_
-
-        Returns
-        -------
-        gpd.GeoSeries
-            _description_
-        """
-        endpoints_line = df_endpoints.geometry.loc[line_index]
-        if not isinstance(endpoints_line, MultiPoint):
-            endpoints_line = endpoints_line.to_numpy()[0]
-        pot_conn = df_endpoints.geometry.iloc[df_endpoints.sindex.query(endpoints_line, predicate="intersects")].copy()
-
-        return pot_conn
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
     def _enforce_linestring(
@@ -616,10 +594,8 @@ class ParseCrossings:
     def _make_merged_line(
         self,
         crossing: Point,
-        line_index: tuple,
         df_endpoints: gpd.GeoDataFrame,
         df_linesingle: gpd.GeoDataFrame,
-        pot_conn: gpd.GeoSeries,
         df_peilgebied: gpd.GeoDataFrame,
     ) -> tuple[LineString, str]:
         """_summary_
@@ -628,13 +604,9 @@ class ParseCrossings:
         ----------
         crossing : Point
             _description_
-        line_index : tuple
-            _description_
         df_endpoints : gpd.GeoDataFrame
             _description_
         df_linesingle : gpd.GeoDataFrame
-            _description_
-        pot_conn : gpd.GeoSeries
             _description_
         df_peilgebied : gpd.GeoDataFrame
             _description_
@@ -644,24 +616,20 @@ class ParseCrossings:
         tuple[LineString, str]
             _description_
         """
-        crossing_line = df_linesingle.geometry.at[line_index]
-        endpoints_line = df_endpoints.geometry.loc[line_index]
         ring_buffer = crossing.buffer(self.allowed_distance)
         point_buffer = crossing.buffer(self.almost_equal)
 
-        # Try and merge any connecting lines to a single, valid LineString
-        if ring_buffer.intersects(endpoints_line):
-            crossing_lines = df_linesingle.loc[pot_conn.intersects(ring_buffer).index.to_numpy()].copy()
-            add_crossing_lines = crossing_lines.geometry.tolist()
-            line_ids = self.list_sep.join(sorted(crossing_lines.globalid.tolist()))
-            if len(add_crossing_lines) > 0:
-                add_crossing_lines.append(crossing_line)
-                line = MultiLineString(add_crossing_lines).intersection(ring_buffer)
-            else:
-                line = crossing_line.intersection(ring_buffer)
-        else:
-            line_ids = df_linesingle.globalid.at[line_index]
-            line = crossing_line.intersection(ring_buffer)
+        _, idx_conn = self._find_closest_lines(crossing, self.almost_equal, df_linesingle, df_endpoints, n_recurse=1)
+        if len(idx_conn) == 0:
+            self.log.error(f"Crossing {crossing} is not on or near a line, ignoring...")
+            return None, None
+
+        df_conn = df_linesingle.iloc[idx_conn].copy()
+        df_conn = df_conn[df_conn.intersects(ring_buffer)].copy()
+        df_conn["geometry"] = df_conn.intersection(ring_buffer)
+        df_conn = df_conn[df_conn.geom_type == "LineString"].copy()
+        line = MultiLineString(df_conn.intersection(ring_buffer).tolist())
+        line_ids = self.list_sep.join(sorted(df_conn.globalid.tolist()))
 
         # Try and merge the MultiLineString to a single LineString
         line = self._enforce_linestring(line, crossing, point_buffer, df_peilgebied)
@@ -705,7 +673,7 @@ class ParseCrossings:
             nrec = 1
         idx, idx_conn = self._find_closest_lines(geom, self.almost_equal, df_linesingle, df_endpoints, n_recurse=nrec)
         if len(idx_conn) == 0:
-            self.log.error(f"Crossing {geom} is not on or near a line, ignoring...")
+            self.log.error(f"Stacked crossing {geom} is not on or near a line, ignoring...")
             return None
 
         df_line = df_linesingle.iloc[idx, :].copy()
@@ -736,7 +704,6 @@ class ParseCrossings:
     def _add_potential_crossing(
         self,
         crossings: dict,
-        line_index: tuple,
         df_endpoints: gpd.GeoDataFrame,
         df_linesingle: gpd.GeoDataFrame,
         crossing_points: gpd.GeoDataFrame,
@@ -747,8 +714,6 @@ class ParseCrossings:
         Parameters
         ----------
         crossings : dict
-            _description_
-        line_index : tuple
             _description_
         df_endpoints : gpd.GeoDataFrame
             _description_
@@ -764,19 +729,18 @@ class ParseCrossings:
         dict[tuple[str | None, str | None, float, float], Point]
             _description_
         """
-        pot_conn = self._find_connections(line_index, df_endpoints)
 
-        # crossings = {}
         for crossing in crossing_points.geometry:
             # Find crossing line with potentially added connections
             merged_crossing_line, merged_ids = self._make_merged_line(
                 crossing,
-                line_index,
                 df_endpoints,
                 df_linesingle,
-                pot_conn,
                 df_peilgebied,
             )
+
+            if merged_crossing_line is None:
+                continue
 
             # Find intersection with buffered point, excluding the point itself.
             ring_buffer = crossing.buffer(self.allowed_distance)
