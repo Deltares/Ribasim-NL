@@ -28,6 +28,7 @@ class ParseCrossings:
         agg_areas_threshold: float = 0.8,
         move_distance: float = 1e-3,
         almost_equal: float = 1e-6,
+        line_tol: float = 1e-3,
         almost_zero: float = 1e-8,
         list_sep: str = ",",
         disable_progress: bool = False,
@@ -60,6 +61,8 @@ class ParseCrossings:
             _description_, by default 1e-3
         almost_equal : float, optional
             _description_, by default 1e-6
+        line_tol : float, optional
+            _description_, by default 1e-3
         almost_zero : float, optional
             _description_, by default 1e-8
         list_sep : str, optional
@@ -95,6 +98,9 @@ class ParseCrossings:
 
         # Radius to exclude a point itself from a buffer search.
         self.almost_equal = almost_equal
+
+        # Distance to consider two lines as connected
+        self.line_tol = line_tol
 
         # Distance to consider a line on a boundary
         self.almost_zero = almost_zero
@@ -541,9 +547,50 @@ class ParseCrossings:
         df_single["geometry"] = df_single.make_valid()
         df_single = df_single[~df_single.is_empty].copy()
 
+        change_idx, change_geom = [], []
+        for row in tqdm.tqdm(
+            df_single.itertuples(),
+            desc=f"  - Snap geometries in '{layername}'",
+            total=len(df_single),
+            disable=self.disable_progress,
+        ):
+            ps = row.geometry.boundary.geoms
+            if len(ps) != 2:
+                continue
+            p0, p1 = ps
+
+            p0_changed, p1_changed = False, False
+            idx0 = df_single.sindex.query(p0.buffer(self.line_tol), predicate="intersects")
+            if len(idx0) > 0:
+                dist0 = df_single.iloc[idx0].distance(p0)
+                if (dist0 > self.almost_zero).any():
+                    snap_lbl0 = dist0[dist0 > self.almost_zero].idxmin()
+                    geom = df_single.geometry.at[snap_lbl0]
+                    p0 = geom.interpolate(geom.project(p0))
+                    p0_changed = True
+
+            idx1 = df_single.sindex.query(p1.buffer(self.line_tol), predicate="intersects")
+            if len(idx1) > 0:
+                dist1 = df_single.iloc[idx1].distance(p1)
+                if (dist1 > self.almost_zero).any():
+                    snap_lbl1 = dist1[dist1 > self.almost_zero].idxmin()
+                    geom = df_single.geometry.at[snap_lbl1]
+                    p1 = geom.interpolate(geom.project(p1))
+                    p1_changed = True
+
+            if p0_changed or p1_changed:
+                coords = list(row.geometry.coords)
+                if p0_changed:
+                    coords = list(p0.coords) + coords
+                if p1_changed:
+                    coords = coords + list(p1.coords)
+                change_idx.append(row.Index)
+                change_geom.append(LineString(coords))
+
+        if len(change_idx) > 0:
+            df_single.loc[change_idx, "geometry"] = change_geom
+
         return df_single
-
-
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
     def _enforce_linestring(
@@ -1509,11 +1556,11 @@ class ParseCrossings:
         idx_conn = idx.copy()
         for _ in range(n_recurse):
             # Check for line ends ending on the current line
-            line_buffer = df_linesingle.geometry.iloc[idx_conn].buffer(self.almost_equal)
+            line_buffer = df_linesingle.geometry.iloc[idx_conn].buffer(self.almost_zero)
             idx_conn_new1 = df_endpoints.sindex.query(line_buffer, predicate="intersects")[1, :]
 
             # Check for the current line ends ending on other lines
-            point_buffer = df_endpoints.geometry.iloc[idx_conn].buffer(self.almost_equal)
+            point_buffer = df_endpoints.geometry.iloc[idx_conn].buffer(self.almost_zero)
             idx_conn_new2 = df_linesingle.sindex.query(point_buffer, predicate="intersects")[1, :]
 
             # Combine potential new additions
