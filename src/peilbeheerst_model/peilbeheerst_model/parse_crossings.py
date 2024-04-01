@@ -10,7 +10,7 @@ import numpy.typing as npt
 import pandas as pd
 import pydantic
 import shapely.ops
-import tqdm
+import tqdm.auto as tqdm
 from shapely.geometry import LineString, MultiLineString, MultiPoint, Point, Polygon
 
 
@@ -524,11 +524,16 @@ class ParseCrossings:
         ------
         ValueError
             _description_
+        ValueError
+            _description_
         """
         df_single = self.df_gpkg[layername].copy()
 
         if pd.isna(df_single.globalid).any():
             raise ValueError(f"One or more globalids of '{layername}' are null")
+
+        if df_single.globalid.duplicated().any():
+            raise ValueError(f"One or more globalids of '{layername}' are not unique")
 
         if id_as_index:
             df_single = df_single.set_index("globalid", inplace=False)
