@@ -550,7 +550,7 @@ class ParseCrossings:
         change_idx, change_geom = [], []
         for row in tqdm.tqdm(
             df_single.itertuples(),
-            desc=f"  - Snap geometries in '{layername}'",
+            desc=f"Snap geometries in '{layername}'",
             total=len(df_single),
             disable=self.disable_progress,
         ):
