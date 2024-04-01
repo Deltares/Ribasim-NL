@@ -1,6 +1,6 @@
-hydroobject,crossing_type,peilgebieden,peilgebied_from,peilgebied_to,streefpeil_from,streefpeil_to,stuw,gemaal,flip,match_group,match_stacked,match_composite,match_group_unique,in_use,geom_x,geom_y
-line_1,-10,poly_1,poly_1,,1.0,,,,,1,1,False,True,True,2.0,0.5
-"line_2,line_3",-10,poly_1,,poly_1,,1.0,,,,2,1,True,True,True,2.26666667,0.7
-line_4,-10,poly_1,,poly_1,,1.0,,,,4,1,True,True,True,2.53333333,0.9
-line_7,00,"poly_1,poly_2",poly_2,poly_1,2.0,1.0,,,,6,1,False,True,True,0.66666667,1.5
-line_7,-10,poly_2,,poly_2,,2.0,,,,7,1,False,True,True,3.33333333,1.5
+hydroobject,crossing_type,peilgebieden,peilgebied_from,peilgebied_to,streefpeil_from,streefpeil_to,stuw,gemaal,flip,match_group,match_stacked,match_composite,match_group_unique,in_use,agg_links_group,agg_links_in_use,agg_area_from,agg_area_to,agg_areas_group,agg_areas_in_use,geom_x,geom_y
+line_1,-10,poly_1,poly_1,,1.0,,,,,1,1,False,True,True,,True,poly_1,,,True,2.0,0.5
+"line_2,line_3",-10,poly_1,,poly_1,,1.0,,,,2,1,True,True,True,,True,,poly_1,,True,2.26666667,0.7
+line_4,-10,poly_1,,poly_1,,1.0,,,,4,1,True,True,True,,True,,poly_1,,True,2.53333333,0.9
+line_7,00,"poly_1,poly_2",poly_2,poly_1,2.0,1.0,,,,6,1,False,True,True,"poly_2,poly_1,nan,nan",True,poly_2,poly_1,"poly_2,poly_1,nan,nan",True,0.66666667,1.5
+line_7,-10,poly_2,,poly_2,,2.0,,,,7,1,False,True,True,,True,,poly_2,,True,3.33333333,1.5
