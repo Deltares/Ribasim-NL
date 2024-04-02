@@ -1992,6 +1992,93 @@ package:
   size: 50069
   timestamp: 1693657396550
 - platform: linux-64
+  name: bokeh
+  version: 3.4.0
+  category: main
+  manager: conda
+  dependencies:
+  - contourpy >=1.2
+  - jinja2 >=2.9
+  - numpy >=1.16
+  - packaging >=16.8
+  - pandas >=1.2
+  - pillow >=7.1.0
+  - python >=3.9
+  - pyyaml >=3.10
+  - tornado >=6.2
+  - xyzservices >=2021.09.1
+  url: https://conda.anaconda.org/conda-forge/noarch/bokeh-3.4.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: eebbbfdb7eb885ddc751c790c3d0ad64
+    sha256: a980687100456202425af0936185ef95c53309044e271daa60d2eeb009410f73
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: BSD-3-Clause
+  license_family: BSD
+  noarch: python
+  size: 4997504
+  timestamp: 1710486159794
+- platform: osx-64
+  name: bokeh
+  version: 3.4.0
+  category: main
+  manager: conda
+  dependencies:
+  - contourpy >=1.2
+  - jinja2 >=2.9
+  - numpy >=1.16
+  - packaging >=16.8
+  - pandas >=1.2
+  - pillow >=7.1.0
+  - python >=3.9
+  - pyyaml >=3.10
+  - tornado >=6.2
+  - xyzservices >=2021.09.1
+  url: https://conda.anaconda.org/conda-forge/noarch/bokeh-3.4.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: eebbbfdb7eb885ddc751c790c3d0ad64
+    sha256: a980687100456202425af0936185ef95c53309044e271daa60d2eeb009410f73
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: BSD-3-Clause
+  license_family: BSD
+  noarch: python
+  size: 4997504
+  timestamp: 1710486159794
+- platform: win-64
+  name: bokeh
+  version: 3.4.0
+  category: main
+  manager: conda
+  dependencies:
+  - contourpy >=1.2
+  - jinja2 >=2.9
+  - numpy >=1.16
+  - packaging >=16.8
+  - pandas >=1.2
+  - pillow >=7.1.0
+  - python >=3.9
+  - pyyaml >=3.10
+  - tornado >=6.2
+  - xyzservices >=2021.09.1
+  url: https://conda.anaconda.org/conda-forge/noarch/bokeh-3.4.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: eebbbfdb7eb885ddc751c790c3d0ad64
+    sha256: a980687100456202425af0936185ef95c53309044e271daa60d2eeb009410f73
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: BSD-3-Clause
+  license_family: BSD
+  noarch: python
+  size: 4997504
+  timestamp: 1710486159794
+- platform: linux-64
   name: branca
   version: 0.7.0
   category: main

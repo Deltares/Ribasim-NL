@@ -50,6 +50,7 @@ tests = { depends_on = [
 ] }
 
 [dependencies]
+bokeh = ">=3.0"
 fiona = "*"
 geocube = "*"
 geopandas = "*"
