@@ -414,10 +414,14 @@ class ParseCrossings:
         # Create dataframe of (potential) crossings
         dfc = gpd.GeoDataFrame(dfc, geometry="geometry", crs="epsg:28992")
 
+        with_ends = False
+        if layer == "duikersifonhevel":
+            with_ends = True
+
         # Add waterlevels, structures and correct water flow based on these.
         dfc = self._add_waterlevels_to_crossings(dfc)
-        dfc = self._find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "stuw")
-        dfc = self._find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "gemaal")
+        dfc = self._find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "stuw", with_ends)
+        dfc = self._find_structures_at_crossings(dfc, df_linesingle, df_endpoints, "gemaal", with_ends)
         dfc = self._correct_water_flow(dfc)
 
         # If needed, check for multiple stacked/grouped crossings which can be
@@ -431,8 +435,8 @@ class ParseCrossings:
 
         if filterlayer is None:
             # return the found crossings.
-            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "stuw")
-            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "gemaal")
+            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "stuw", with_ends)
+            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "gemaal", with_ends)
             dfc = self._correct_water_flow(dfc)
             dfc = self._add_double_links(dfc)
             dfc = self._aggregate_identical_links(dfc, agg_links)
@@ -444,8 +448,8 @@ class ParseCrossings:
         else:
             # Filter the crossings with another layer with overlapping lines
             df_filter, dfs = self._filter_crossings_with_layer(dfc, df_peilgebieden, filterlayer, write_debug)
-            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "stuw")
-            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "gemaal")
+            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "stuw", with_ends)
+            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "gemaal", with_ends)
             dfs = self._correct_water_flow(dfs)
             dfs = self._add_double_links(dfs)
             dfs = self._aggregate_identical_links(dfs, agg_links)
@@ -1449,6 +1453,7 @@ class ParseCrossings:
         df_linesingle: gpd.GeoDataFrame,
         df_endpoints: gpd.GeoDataFrame,
         structurelayer: str,
+        with_ends: bool,
     ) -> gpd.GeoDataFrame:
         """_summary_
 
@@ -1461,6 +1466,8 @@ class ParseCrossings:
         df_endpoints : gpd.GeoDataFrame
             _description_
         structurelayer : str
+            _description_
+        with_ends : bool
             _description_
 
         Returns
@@ -1504,6 +1511,7 @@ class ParseCrossings:
                     structure.geometry,
                     structure.globalid,
                     structurelayer,
+                    with_ends,
                 )
             df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
 
@@ -1633,6 +1641,7 @@ class ParseCrossings:
         structure_geom: Point,
         structure_id: str,
         structurelayer: str,
+        with_ends: bool,
     ) -> tuple[gpd.GeoDataFrame, list]:
         """_summary_
 
@@ -1656,6 +1665,8 @@ class ParseCrossings:
             _description_
         structurelayer : str
             _description_
+        with_ends : bool
+            _description_
 
         Returns
         -------
@@ -1676,11 +1687,18 @@ class ParseCrossings:
             self.log.warning(f"{structurelayer} '{structure_id}' has no line object nearby")
             return dfs, orphaned_structures
 
-        # Find closest point on nearest line(s)
-        df_line_geom = df_linesingle.iloc[idxs, :].copy()
+        # Find closest points on nearest line(s)
+        df_line_geom = df_linesingle.iloc[idxs, :].reset_index(drop=True)
         buff_line = df_line_geom.buffer(self.almost_equal)
         idx = df_filter.sindex.query(buff_line, predicate="intersects")
         df_close = df_filter.iloc[np.unique(idx[1, :]), :].copy()
+
+        # Optionally include endpoints from the line object
+        if with_ends and len(df_close) > 0:
+            line_ends = self._find_line_ends(MultiLineString(df_line_geom.geometry.tolist()))
+            df_close["geometry"] = df_close.apply(lambda r: MultiPoint([r.geometry] + line_ends), axis=1)
+
+        # Find the closest point
         idx = df_close.sindex.nearest(structure_geom, max_distance=self.search_radius_structure)[1, :]
         if len(idx) == 0:
             self.log.warning(f"{structurelayer} '{structure_id}' has no crossings nearby")
@@ -1720,7 +1738,28 @@ class ParseCrossings:
         df_linesingle: gpd.GeoDataFrame,
         df_endpoints: gpd.GeoDataFrame,
         structurelayer: str,
+        with_ends: bool,
     ) -> gpd.GeoDataFrame:
+        """_summary_
+
+        Parameters
+        ----------
+        dfc : gpd.GeoDataFrame
+            _description_
+        df_linesingle : gpd.GeoDataFrame
+            _description_
+        df_endpoints : gpd.GeoDataFrame
+            _description_
+        structurelayer : str
+            _description_
+        with_ends : bool
+            _description_
+
+        Returns
+        -------
+        gpd.GeoDataFrame
+            _description_
+        """
         # Reference to the structure GeoDataFrame.
         df_structures = self.df_gpkg[structurelayer].copy()
         df_structures = df_structures.set_index("globalid")
@@ -1755,6 +1794,7 @@ class ParseCrossings:
                     structure.geometry,
                     structure.globalid,
                     structurelayer,
+                    with_ends,
                 )
             df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
 
