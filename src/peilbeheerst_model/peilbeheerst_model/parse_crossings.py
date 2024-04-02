@@ -1315,14 +1315,16 @@ class ParseCrossings:
                 replace_crossing_vec.append(replace_crossing_candidates.iloc[0,].copy())
             else:
                 if line_geom.geom_type == "LineString" or line_geom.geom_type == "MultiLineString":
-                    for x0, x1 in itertools.combinations(list(line_geom.boundary.geoms), 2):
                     replace_stuw = None
                     if "stuw" in dfs.columns:
                         replace_stuw = self._make_structure_string(replace_crossing_candidates.stuw.dropna().unique())
                     replace_gemaal = None
                     if "gemaal" in dfs.columns:
-                        replace_gemaal = self._make_structure_string(replace_crossing_candidates.gemaal.dropna().unique())
+                        replace_gemaal = self._make_structure_string(
+                            replace_crossing_candidates.gemaal.dropna().unique()
+                        )
 
+                    for x0, x1 in itertools.combinations(self._find_line_ends(line_geom), 2):
                         subbound = MultiPoint([x0, x1])
                         subpg = df_peilgebieden.sindex.query(subbound, predicate="intersects")
                         subpg = df_peilgebieden.iloc[subpg, :].copy()
@@ -1434,7 +1436,9 @@ class ParseCrossings:
         if len(add_crossings) > 0:
             add_crossings = gpd.GeoDataFrame(add_crossings, crs=dfs.crs)
             dfs = pd.concat([dfs, add_crossings], ignore_index=False, sort=False)
-            dfs = dfs.sort_index().reset_index(drop=True)
+
+        dfs = dfs.drop_duplicates(keep="first")
+        dfs = dfs.sort_index().reset_index(drop=True)
 
         return df_filter, dfs
 
@@ -1576,6 +1580,46 @@ class ParseCrossings:
             idx_conn = np.unique(idx_conn_new)
 
         return idx, idx_conn
+
+    @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
+    def _find_line_ends(self, geom: MultiLineString | LineString) -> list:
+        """_summary_
+
+        Parameters
+        ----------
+        geom : MultiLineString | LineString
+            _description_
+
+        Returns
+        -------
+        list
+            _description_
+
+        Raises
+        ------
+        TypeError
+            _description_
+        """
+        if geom.geom_type == "LineString":
+            line_ends = list(geom.boundary.geoms)
+        elif geom.geom_type == "MultiLineString":
+            df_line_geom = gpd.GeoSeries([geom]).explode(index_parts=False, ignore_index=True)
+            line_ends = df_line_geom.copy()
+            line_ends.update(line_ends.boundary)
+            line_ends = line_ends.explode(index_parts=True)
+            keep_ends = []
+            for i, (idx, geom) in enumerate(line_ends.items()):
+                edx = line_ends.sindex.query(geom.buffer(self.almost_zero), predicate="intersects")
+                edx = edx[edx != i]
+                if len(edx) == 0:
+                    min_dist = df_line_geom.iloc[df_line_geom.index != idx[0]].distance(geom).min()
+                    if min_dist > self.almost_zero:
+                        keep_ends.append(i)
+            line_ends = line_ends.iloc[keep_ends].tolist()
+        else:
+            raise TypeError(f"{geom.geom_type=}")
+
+        return line_ends
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
     def _assign_structure(
