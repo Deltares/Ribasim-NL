@@ -1302,25 +1302,27 @@ class ParseCrossings:
             if groupid == 0:
                 raise ValueError(f"Found crossings which have not been grouped {group=}")
 
+            # Merged line geometry for this group
             line_geom = line_groups[groupid]
 
+            # Relevant crossings for this group
             replace_crossing_candidates = group[group.in_use].copy()
-
-            replace_stuw = None
-            if "stuw" in dfs.columns:
-                replace_stuw = self._make_structure_string(replace_crossing_candidates.stuw.dropna().unique())
-            replace_gemaal = None
-            if "gemaal" in dfs.columns:
-                replace_gemaal = self._make_structure_string(replace_crossing_candidates.gemaal.dropna().unique())
 
             replace_crossing_vec = []
             if len(replace_crossing_candidates) == 0:
-                replace_crossing_vec.append(None)
+                pass
             elif len(replace_crossing_candidates) == 1:
                 replace_crossing_vec.append(replace_crossing_candidates.iloc[0,].copy())
             else:
                 if line_geom.geom_type == "LineString" or line_geom.geom_type == "MultiLineString":
                     for x0, x1 in itertools.combinations(list(line_geom.boundary.geoms), 2):
+                    replace_stuw = None
+                    if "stuw" in dfs.columns:
+                        replace_stuw = self._make_structure_string(replace_crossing_candidates.stuw.dropna().unique())
+                    replace_gemaal = None
+                    if "gemaal" in dfs.columns:
+                        replace_gemaal = self._make_structure_string(replace_crossing_candidates.gemaal.dropna().unique())
+
                         subbound = MultiPoint([x0, x1])
                         subpg = df_peilgebieden.sindex.query(subbound, predicate="intersects")
                         subpg = df_peilgebieden.iloc[subpg, :].copy()
@@ -1346,19 +1348,12 @@ class ParseCrossings:
                             p1 = subpg.globalid.at[p1[0]]
 
                         if p0 == p1:
-                            replace_crossing_vec.append(None)
+                            pass
                         else:
                             type_areas, str_areas = self._classify_from_to_peilgebieden(p0, p1)
                             matches = replace_crossing_candidates[replace_crossing_candidates.peilgebieden == str_areas]
                             if len(matches) > 0:
                                 replace_crossing = replace_crossing_candidates.loc[matches.index[0], :].copy()
-                                if replace_gemaal is not None:
-                                    replace_crossing["gemaal"] = replace_gemaal
-                                    replace_gemaal = None
-                                if replace_stuw is not None:
-                                    replace_crossing["stuw"] = replace_stuw
-                                    replace_gemaal = None
-                                replace_crossing_vec.append(replace_crossing)
                             else:
                                 replace_crossing = replace_crossing_candidates.iloc[0, :].copy()
                                 replace_crossing["peilgebieden"] = str_areas
@@ -1369,15 +1364,16 @@ class ParseCrossings:
                                 replace_crossing["streefpeil_to"] = None
                                 replace_crossing["match_composite"] = True
                                 replace_crossing["match_group_unique"] = True
-                                replace_crossing["flip"] = None
                                 replace_crossing["in_use"] = True
-                                if replace_gemaal is not None:
-                                    replace_crossing["gemaal"] = replace_gemaal
-                                    replace_gemaal = None
-                                if replace_stuw is not None:
-                                    replace_crossing["stuw"] = replace_stuw
-                                    replace_gemaal = None
-                                replace_crossing_vec.append(replace_crossing)
+
+                            replace_crossing["flip"] = None
+                            if "gemaal" in dfs.columns:
+                                replace_crossing["gemaal"] = replace_gemaal
+                                # replace_gemaal = None
+                            if "stuw" in dfs.columns:
+                                replace_crossing["stuw"] = replace_stuw
+                                # replace_stuw = None
+                            replace_crossing_vec.append(replace_crossing)
                 else:
                     raise TypeError(f"{line_geom=}")
 
@@ -1401,33 +1397,39 @@ class ParseCrossings:
             # Check and see if the replacement crossing already exists in the
             # matching crossings
             for replace_crossing in replace_crossing_vec:
-                if replace_crossing is not None:
-                    pfrom = replace_crossing.peilgebied_from
-                    pto = replace_crossing.peilgebied_to
-                    check_from = matching_crossings.peilgebied_from == pfrom
-                    check_to = matching_crossings.peilgebied_to == pto
-                    c_exists = matching_crossings.index[check_from & check_to]
-                    if len(c_exists) > 0:
-                        dfs.at[c_exists[0], "in_use"] = True
-                    elif len(matching_crossings) > 0:
-                        new_row = matching_crossings.iloc[0, :].copy()
-                        type_areas, str_areas = self._classify_from_to_peilgebieden(pfrom, pto)
-                        new_row["crossing_type"] = type_areas
-                        new_row["peilgebieden"] = str_areas
-                        new_row["peilgebied_from"] = pfrom
-                        new_row["peilgebied_to"] = pto
-                        new_row["streefpeil_from"] = replace_crossing.streefpeil_from
-                        new_row["streefpeil_to"] = replace_crossing.streefpeil_to
-                        new_row["match_composite"] = True
-                        new_row["match_group_unique"] = True
-                        new_row["in_use"] = True
-                        new_row["flip"] = None
-                        if "gemaal" in dfs.columns:
-                            new_row["gemaal"] = replace_crossing.gemaal
-                        if "stuw" in dfs.columns:
-                            new_row["stuw"] = replace_crossing.stuw
-                        new_row["geometry"] = replace_crossing.geometry
-                        add_crossings.append(new_row)
+                pfrom = replace_crossing.peilgebied_from
+                pto = replace_crossing.peilgebied_to
+                check_from = matching_crossings.peilgebied_from == pfrom
+                check_to = matching_crossings.peilgebied_to == pto
+                check_exists = check_from & check_to
+                if "stuw" in dfs.columns:
+                    check_stuw = matching_crossings.stuw == replace_crossing.stuw
+                    check_exists = check_exists & check_stuw
+                if "gemaal" in dfs.columns:
+                    check_gemaal = matching_crossings.gemaal == replace_crossing.gemaal
+                    check_exists = check_exists & check_gemaal
+                c_exists = matching_crossings.index[check_exists]
+                if len(c_exists) > 0:
+                    dfs.at[c_exists[0], "in_use"] = True
+                elif len(matching_crossings) > 0:
+                    new_row = matching_crossings.iloc[0, :].copy()
+                    type_areas, str_areas = self._classify_from_to_peilgebieden(pfrom, pto)
+                    new_row["crossing_type"] = type_areas
+                    new_row["peilgebieden"] = str_areas
+                    new_row["peilgebied_from"] = pfrom
+                    new_row["peilgebied_to"] = pto
+                    new_row["streefpeil_from"] = replace_crossing.streefpeil_from
+                    new_row["streefpeil_to"] = replace_crossing.streefpeil_to
+                    new_row["match_composite"] = True
+                    new_row["match_group_unique"] = True
+                    new_row["in_use"] = True
+                    new_row["flip"] = None
+                    if "gemaal" in dfs.columns:
+                        new_row["gemaal"] = replace_crossing.gemaal
+                    if "stuw" in dfs.columns:
+                        new_row["stuw"] = replace_crossing.stuw
+                    new_row["geometry"] = replace_crossing.geometry
+                    add_crossings.append(new_row)
 
         if len(add_crossings) > 0:
             add_crossings = gpd.GeoDataFrame(add_crossings, crs=dfs.crs)
@@ -1584,7 +1586,7 @@ class ParseCrossings:
         df_linesingle: gpd.GeoDataFrame,
         df_endpoints: gpd.GeoDataFrame,
         df_structures: gpd.GeoDataFrame,
-        structure_geom: shapely.geometry.Point,
+        structure_geom: Point,
         structure_id: str,
         structurelayer: str,
     ) -> tuple[gpd.GeoDataFrame, list]:
@@ -1592,9 +1594,9 @@ class ParseCrossings:
 
         Parameters
         ----------
-        orphaned_structures : list
-            _description_
         dfs : gpd.GeoDataFrame
+            _description_
+        orphaned_structures : list
             _description_
         df_filter : gpd.GeoDataFrame
             _description_
@@ -1604,7 +1606,7 @@ class ParseCrossings:
             _description_
         df_structures : gpd.GeoDataFrame
             _description_
-        structure_geom : shapely.geometry.Point
+        structure_geom : Point
             _description_
         structure_id : str
             _description_
@@ -1613,7 +1615,7 @@ class ParseCrossings:
 
         Returns
         -------
-        tuple
+        tuple[gpd.GeoDataFrame, list]
             _description_
         """
 
