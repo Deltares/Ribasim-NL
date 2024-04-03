@@ -1888,11 +1888,12 @@ class ParseCrossings:
         ):
             if not pd.isna(row.stuw) and not pd.isna(row.gemaal):
                 add_row = dfs.loc[row.Index, :].copy()
-                # Keer peilen en peilgebieden om
+                # Reverse peilgebieden and streefpeilen, remove gemaal.
                 add_row.at["peilgebied_from"] = row.peilgebied_to
                 add_row.at["peilgebied_to"] = row.peilgebied_from
                 add_row.at["streefpeil_from"] = row.streefpeil_to
                 add_row.at["streefpeil_to"] = row.streefpeil_from
+                add_row.at["gemaal"] = None
                 add_row.at["flip"] = "dubbel_link"
                 add_rows.append(add_row)
 
