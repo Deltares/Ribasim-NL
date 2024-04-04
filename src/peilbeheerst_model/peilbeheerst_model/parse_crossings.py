@@ -1245,8 +1245,32 @@ class ParseCrossings:
         return dfs
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def _make_structure_string(self, structure_list: npt.NDArray | list) -> str:
-        return self.list_sep.join(map(str, structure_list))
+    def _make_structure_string(self, structure_list: pd.Series) -> str:
+        """_summary_
+
+        Parameters
+        ----------
+        structure_list : pd.Series
+            _description_
+
+        Returns
+        -------
+        str
+            _description_
+        """
+        # Join into a single string first. Cells may or may not contain
+        # multiple ids in string format. This pandas function also drops NA
+        # values.
+        struct_str = structure_list.str.cat(sep=self.list_sep, na_rep=None)
+
+        # Split again by separator and find unique values by using set(). This
+        # also sorts the list.
+        struct_set = set(struct_str.split(self.list_sep))
+
+        # Join into a single string again.
+        struct_str = self.list_sep.join(struct_set)
+
+        return struct_str
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
     def _filter_crossings_with_layer(
@@ -1322,12 +1346,10 @@ class ParseCrossings:
                 if line_geom.geom_type == "LineString" or line_geom.geom_type == "MultiLineString":
                     replace_stuw = None
                     if "stuw" in dfs.columns:
-                        replace_stuw = self._make_structure_string(replace_crossing_candidates.stuw.dropna().unique())
+                        replace_stuw = self._make_structure_string(replace_crossing_candidates.stuw)
                     replace_gemaal = None
                     if "gemaal" in dfs.columns:
-                        replace_gemaal = self._make_structure_string(
-                            replace_crossing_candidates.gemaal.dropna().unique()
-                        )
+                        replace_gemaal = self._make_structure_string(replace_crossing_candidates.gemaal)
 
                     for x0, x1 in itertools.combinations(self._find_line_ends(line_geom), 2):
                         subbound = MultiPoint([x0, x1])
@@ -1974,7 +1996,7 @@ class ParseCrossings:
                 dfs.loc[group.index, new_use_col] = False
                 lbl_choice = group.distance(peilgebieden.geometry.at[pto]).idxmin()
                 if "stuw" in dfs_filter.columns:
-                    struct_str = self._make_structure_string(dfs.stuw.loc[group.index].dropna().unique())
+                    struct_str = self._make_structure_string(dfs.stuw.loc[group.index])
                     if struct_str == "":
                         struct_str = None
                     dfs.at[lbl_choice, "stuw"] = struct_str
@@ -2088,7 +2110,7 @@ class ParseCrossings:
                     dfs.loc[group.index, new_use_col] = False
                     lbl_choice = group.index[0]
                     if "stuw" in dfs_filter.columns:
-                        struct_str = self._make_structure_string(dfs.stuw.loc[group.index].dropna().unique())
+                        struct_str = self._make_structure_string(dfs.stuw.loc[group.index])
                         if struct_str == "":
                             struct_str = None
                         dfs.at[lbl_choice, "stuw"] = struct_str
