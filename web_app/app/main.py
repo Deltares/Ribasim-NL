@@ -95,7 +95,8 @@ def update_map_values(attr, old, new):
 
     # slice results
     df_results_select = basin_results_df[
-        basin_results_df["time"] == date_time_slider.value_as_datetime
+        basin_results_df["time"]
+        == date_time_slider.value_as_datetime.date().isoformat()
     ].set_index("node_id")[variable]
 
     # update locations source
@@ -104,8 +105,8 @@ def update_map_values(attr, old, new):
     ).to_list()
 
     # update map_fig_variable_range
-    map_fig_variable_range.start = math.floor(df_results_select.min())
-    map_fig_variable_range.end = math.ceil(df_results_select.max())
+    map_fig_variable_range.start = 0
+    map_fig_variable_range.end = 100
     map_fig_variable_range.title = f"{variable} range"
 
     # update color bar title
@@ -122,7 +123,9 @@ def update_cm(attr, old, new):
 
 
 # read model
-toml_file = Path(next(i for i in sys.argv if i.lower().endswith(".toml")))
+toml_file = next((i for i in sys.argv if i.lower().endswith(".toml")), None)
+if toml_file is None:
+    toml_file = r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\modellen\hws\hws.toml"
 model = ribasim.Model.read(toml_file)
 results_dir = model.filepath.parent / model.results_dir
 
@@ -135,12 +138,13 @@ basin_variable_columns = [
 actives = [basin_variable_columns.index(INIT_VARIABLE)]
 
 # prepare nodes
-nodes_df = model.network.node.df
+# nodes_df = model.network.node.df
+nodes_df = model.node_table().df
 nodes_df["x"] = nodes_df.geometry.x
 nodes_df["y"] = nodes_df.geometry.y
 
 # map fig
-map_fig = make_map(bounds=model.network.node.df.total_bounds)
+map_fig = make_map(bounds=nodes_df.total_bounds)
 df_select = nodes_df[nodes_df["node_type"] == "Basin"][["x", "y", "name", "node_id"]]
 
 locations_source = ColumnDataSource(df_select)
@@ -189,6 +193,7 @@ time_fig.xaxis.major_label_orientation = math.pi / 4
 time_line = Span(
     location=model.starttime, dimension="height", line_color="red", line_width=3
 )
+
 time_fig.add_layout(time_line)
 
 
@@ -200,9 +205,10 @@ date_time_slider = DatetimeSlider(
     end=pytz.utc.localize(model.endtime),
     value=pytz.utc.localize(model.starttime),
     step=model.solver.saveat * 1000,
-    format="%Y-%m-%d %H:%M:%S %Z",
+    # format="%Y-%m-%d %H:%M:%S %Z",
 )
-date_time_slider.widget.on_change("value", move_time_line)
+date_time_slider.widget.js_link("value", time_line, "location")
+# date_time_slider.widget.on_change("value", move_time_line)
 date_time_slider.widget.on_change("value_throttled", update_map_values)
 
 # controls: map fig variables

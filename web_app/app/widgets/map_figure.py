@@ -64,7 +64,12 @@ def make_map(
 
     # set tools
     map_hover = HoverTool(
-        tooltips=[("name:", "@name"), ("node id:", "@node_id"), ("value:", "@value")]
+        tooltips=[
+            ("name", "@name"),
+            ("node id", "@node_id"),
+            ("diepte 1", "@value"),
+            ("diepte 2", "@value"),
+        ]
     )
 
     map_hover.visible = False
