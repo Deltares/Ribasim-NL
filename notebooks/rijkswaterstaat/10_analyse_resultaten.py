@@ -64,39 +64,49 @@ is_inflow = basin_edge_df.flow_rate > 0
 # flows: calculate Vin
 basin_inflow_df = basin_edge_df.loc[is_inflow]
 basin_inflow_df.set_index(["node_id", "time"], inplace=True)
-inflow_rate = basin_inflow_df.groupby(["node_id", "time"]).flow_rate.sum()
-balance_error_df.loc[inflow_rate.index, ["inflow_rate"]] = inflow_rate
+inflow = basin_inflow_df.groupby(["node_id", "time"]).flow_rate.sum()
+balance_error_df.loc[inflow.index, ["inflow"]] = inflow
 
 # flows: calculate Vout
 basin_outflow_df = basin_edge_df.loc[~is_inflow]
 basin_outflow_df.set_index(["node_id", "time"], inplace=True)
-outflow_rate = -basin_outflow_df.groupby(["node_id", "time"]).flow_rate.sum()
-balance_error_df.loc[outflow_rate.index, ["outflow_rate"]] = outflow_rate
+outflow = -basin_outflow_df.groupby(["node_id", "time"]).flow_rate.sum()
+balance_error_df.loc[outflow.index, ["outflow"]] = outflow
 
+# %%
 # calculate delta-storage
 for node_id, df in basin_results_df.groupby("node_id"):
-    df.set_index(["node_id", "time"], inplace=True)
-    storage_change_rate = df["storage"] - df["storage"].shift(1)
-    balance_error_df.loc[storage_change_rate.index, ["dS[m3]"]] = storage_change_rate
+    df.sort_values(by="time", inplace=True)
+    df.set_index(["node_id", "time"], inplace=True, drop=False)
+    delta_time = df["time"].diff(1).shift(-1).dt.total_seconds()
+    storage_change = df["storage"].diff(1).shift(-1) / delta_time
+    balance_error_df.loc[storage_change.index, ["storage_change"]] = storage_change
 
-# calculate balance Error
+# calculate balance Error: inflow + precipitation + drainage - evaporation - infiltration - outflow - storage_change
 balance_error_df.loc[:, ["balance_error"]] = (
-    balance_error_df["inflow_rate]"]
-    - balance_error_df["outflow_rate"]
-    - balance_error_df["storage_change_rate"]
+    balance_error_df["inflow"]
+    + balance_error_df["precipitation"]
+    + balance_error_df["drainage"]
+    - balance_error_df["evaporation"]
+    - balance_error_df["infiltration"]
+    - balance_error_df["outflow"]
+    - balance_error_df["storage_change"]
 )
-positive = balance_error_df["inflow_rate"] > balance_error_df["outflow_rate"]
+
+# possible positive error (if error not 0): inflow is larger than outflow
+positive = balance_error_df["inflow"] > balance_error_df["outflow"]
+
+# if positive error, we devide the error by the outflow (x% too much inflow compared to outflow, or x% too little outflow compared to outflow)
 balance_error_df.loc[positive, ["relative_balance_error"]] = (
-    balance_error_df[positive]["balance_error"]
-    / balance_error_df[positive]["outflow_rate"]
+    balance_error_df[positive]["balance_error"] / balance_error_df[positive]["outflow"]
 ) * 100
 
+# if negative error, we devide the error by the inflow (x% too much outflow compared to outflow, or x% too little inflow compared to outflow)
 balance_error_df.loc[~positive, ["relative_balance_error"]] = (
-    -(
-        balance_error_df[~positive]["balance_error"]
-        / balance_error_df[~positive]["inflow_rate"]
-    )
-    * 100
-)
+    balance_error_df[~positive]["balance_error"] / balance_error_df[~positive]["inflow"]
+) * 100
 
+balance_error_df.reset_index(inplace=True)
 balance_error_df.to_feather(basin_arrow)
+
+# %%
