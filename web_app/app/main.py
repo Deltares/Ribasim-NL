@@ -34,7 +34,7 @@ except ImportError:
 
 pd.options.mode.chained_assignment = None
 
-INIT_VARIABLE = "Vout[m3]"
+INIT_VARIABLE = "outflow"
 
 
 def get_colors():
@@ -101,7 +101,7 @@ def update_map_values(attr, old, new):
 
     # update locations source
     locations_source.data["value"] = df_select.node_id.apply(
-        lambda x: df_results_select.at[x]
+        lambda x: abs(df_results_select.at[x])
     ).to_list()
 
     # update map_fig_variable_range

@@ -65,12 +65,14 @@ is_inflow = basin_edge_df.flow_rate > 0
 basin_inflow_df = basin_edge_df.loc[is_inflow]
 basin_inflow_df.set_index(["node_id", "time"], inplace=True)
 inflow = basin_inflow_df.groupby(["node_id", "time"]).flow_rate.sum()
+balance_error_df.loc[balance_error_df["inflow"].isna(), "inflow"] = 0
 balance_error_df.loc[inflow.index, ["inflow"]] = inflow
 
 # flows: calculate Vout
 basin_outflow_df = basin_edge_df.loc[~is_inflow]
 basin_outflow_df.set_index(["node_id", "time"], inplace=True)
 outflow = -basin_outflow_df.groupby(["node_id", "time"]).flow_rate.sum()
+balance_error_df.loc[balance_error_df["outflow"].isna(), "outflow"] = 0
 balance_error_df.loc[outflow.index, ["outflow"]] = outflow
 
 # %%
@@ -83,7 +85,7 @@ for node_id, df in basin_results_df.groupby("node_id"):
     balance_error_df.loc[storage_change.index, ["storage_change"]] = storage_change
 
 # calculate balance Error: inflow + precipitation + drainage - evaporation - infiltration - outflow - storage_change
-balance_error_df.loc[:, ["balance_error"]] = (
+balance_error_df.loc[:, "balance_error"] = (
     balance_error_df["inflow"]
     + balance_error_df["precipitation"]
     + balance_error_df["drainage"]
@@ -96,7 +98,7 @@ balance_error_df.loc[:, ["balance_error"]] = (
 # possible positive error (if error not 0): inflow is larger than outflow
 positive = balance_error_df["inflow"] > balance_error_df["outflow"]
 
-# if positive error, we devide the error by the outflow (x% too much inflow compared to outflow, or x% too little outflow compared to outflow)
+# if positive error, we devide the error by the outflow (x% too much inflow compared to outflow, or x% too little outflow compared to inflow)
 balance_error_df.loc[positive, ["relative_balance_error"]] = (
     balance_error_df[positive]["balance_error"] / balance_error_df[positive]["outflow"]
 ) * 100
