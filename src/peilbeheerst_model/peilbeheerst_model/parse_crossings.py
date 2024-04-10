@@ -22,7 +22,6 @@ class ParseCrossings:
         allowed_distance: float = 0.5,
         search_radius_structure: float = 60.0,
         search_radius_HWS_BZM: float = 30.0,
-        agg_peilgebieden_path: pathlib.Path | str | None = None,
         agg_peilgebieden_layer: str | None = None,
         agg_peilgebieden_column: str | None = None,
         agg_areas_threshold: float = 0.8,
@@ -49,8 +48,6 @@ class ParseCrossings:
             _description_, by default 60.0
         search_radius_HWS_BZM : float, optional
             _description_, by default 30.0
-        agg_peilgebieden_path : pathlib.Path | str | None, optional
-            _description_, by default None
         agg_peilgebieden_layer : str | None, optional
             _description_, by default None
         agg_peilgebieden_column : str | None, optional
@@ -127,15 +124,14 @@ class ParseCrossings:
         self.peilgebied_cat_lookup = self.df_gpkg["peilgebied"].set_index("globalid").peilgebied_cat.copy()
 
         # Aggregate areas
-        self.agg_peilgebieden = None
-        if agg_peilgebieden_path is not None:
-            self.agg_peilgebieden = gpd.read_file(agg_peilgebieden_path, layer=agg_peilgebieden_layer)
-            if agg_peilgebieden_column is None:
-                raise ValueError("Aggregation file defined, but aggregation column is not defined")
-            if not self.agg_peilgebieden[agg_peilgebieden_column].is_unique:
-                raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
-        self.agg_peilgebieden_column = agg_peilgebieden_column
         self.agg_areas_threshold = agg_areas_threshold
+        self.agg_peilgebieden_layer = agg_peilgebieden_layer
+        self.agg_peilgebieden_column = agg_peilgebieden_column
+        if self.agg_peilgebieden_layer is not None:
+            if self.agg_peilgebieden_column is None:
+                raise ValueError("Aggregation layer is defined, but aggregation column is not defined")
+            if not self.df_gpkg[self.agg_peilgebieden_layer][self.agg_peilgebieden_column].is_unique:
+                raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
 
         # Output path
         self.output_path = output_path
@@ -471,10 +467,6 @@ class ParseCrossings:
         # Write the input files (some with minor modifications)
         for layer, df in self.df_gpkg.items():
             df.to_file(output_path, layer=layer)
-
-        # Write aggregation areas (if they exist)
-        if self.agg_peilgebieden is not None:
-            self.agg_peilgebieden.to_file(output_path, layer="aggregation_areas")
 
         # Write supplied output files
         df_hydro.to_file(output_path, layer="crossings_hydroobject")
@@ -1548,7 +1540,7 @@ class ParseCrossings:
         df_linesingle: gpd.GeoDataFrame,
         df_endpoints: gpd.GeoDataFrame,
         n_recurse=1,
-        filter: None | str = None,
+        filter_type: str | None = None,
     ) -> tuple[npt.NDArray, npt.NDArray]:
         """_summary_
 
@@ -1564,7 +1556,7 @@ class ParseCrossings:
             _description_
         n_recurse : int, optional
             _description_, by default 1
-        filter : None | str, optional
+        filter_type : str | None, optional
             _description_, by default None
 
         Returns
@@ -1577,13 +1569,14 @@ class ParseCrossings:
         ValueError
             _description_
         """
-        # Find the line object nearest to the PoI
-        if filter is None:
+        if filter_type is None:
+            # Find all line objects near to the PoI
             idx = df_linesingle.sindex.query(poi.buffer(max_dist), predicate="intersects")
-        elif filter == "nearest":
+        elif filter_type == "nearest":
+            # Find the line object nearest to the PoI
             idx = df_linesingle.sindex.nearest(poi, max_distance=max_dist)[1, :]
         else:
-            raise ValueError(f"Unknown filter argument ({filter=})")
+            raise ValueError(f"Unknown filter_type argument ({filter_type=})")
 
         # Return early if we did not find any lines
         if len(idx) == 0:
@@ -1704,7 +1697,7 @@ class ParseCrossings:
             df_linesingle,
             df_endpoints,
             n_recurse=10,
-            filter="nearest",
+            filter_type="nearest",
         )
         if len(idxs) == 0:
             self.log.warning(f"{structurelayer} '{structure_id}' has no line object nearby")
@@ -2038,13 +2031,14 @@ class ParseCrossings:
         dfs[col_agg_from] = dfs.peilgebied_from.copy()
         dfs[col_agg_to] = dfs.peilgebied_to.copy()
         dfs[col_agg_group] = dfs.agg_links_group.copy()
-        # dfs[col_agg_from] = None
-        # dfs[col_agg_to] = None
-        # dfs[col_agg_group] = None
         dfs[new_use_col] = dfs[old_use_col].copy()
 
+        agg_peilgebieden = None
+        if self.agg_peilgebieden_layer is not None:
+            agg_peilgebieden = self.df_gpkg[self.agg_peilgebieden_layer].copy()
+
         self.df_gpkg["peilgebied"]["agg_area"] = None
-        if self.agg_peilgebieden is None:
+        if agg_peilgebieden is None:
             return dfs
         else:
             for row in tqdm.tqdm(
@@ -2058,8 +2052,8 @@ class ParseCrossings:
                     continue
 
                 # Determine overlapping aggregate areas
-                idx = self.agg_peilgebieden.sindex.query(row.geometry, predicate="intersects")
-                df_agg = self.agg_peilgebieden.iloc[idx, :].copy()
+                idx = agg_peilgebieden.sindex.query(row.geometry, predicate="intersects")
+                df_agg = agg_peilgebieden.iloc[idx, :].copy()
                 df_agg["geometry"] = df_agg.intersection(row.geometry)
                 df_agg["overlap"] = df_agg.geometry.area / row.geometry.area
 
