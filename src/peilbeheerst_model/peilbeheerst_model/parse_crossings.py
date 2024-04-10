@@ -2047,8 +2047,8 @@ class ParseCrossings:
                 total=len(self.df_gpkg["peilgebied"]),
                 disable=self.disable_progress,
             ):
-                # Only peilgebeiden
-                if row.peilgebied_cat != 0:
+                # Only category 0 and 1
+                if row.peilgebied_cat not in [0, 1]:
                     continue
 
                 # Determine overlapping aggregate areas
