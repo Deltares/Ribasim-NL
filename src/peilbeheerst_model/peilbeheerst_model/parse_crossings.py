@@ -288,6 +288,7 @@ class ParseCrossings:
         # Force valid peilgebieden with buffer=0 and remove empty geometries.
         df_peilgebieden = self.df_gpkg["peilgebied"].copy()
         df_peilgebieden["geometry"] = df_peilgebieden.buffer(0)
+        df_peilgebieden["geometry"] = df_peilgebieden.geometry.apply(shapely.force_2d)
         df_peilgebieden = df_peilgebieden[~df_peilgebieden.is_empty].copy()
         if pd.isna(df_peilgebieden.globalid).any():
             raise ValueError("One or more globalids of 'peilgebied' are null")
@@ -541,6 +542,7 @@ class ParseCrossings:
 
         df_single = df_single.explode(ignore_index=False, index_parts=True)
         df_single["geometry"] = df_single.make_valid()
+        df_single["geometry"] = df_single.geometry.apply(shapely.force_2d)
         df_single = df_single[~df_single.is_empty].copy()
 
         change_idx, change_geom = [], []
