@@ -675,6 +675,7 @@ class ParseCrossings:
         df_conn = df_conn.explode(index_parts=False)
         df_conn = df_conn[df_conn.geom_type == "LineString"].copy()
         line = MultiLineString(df_conn.geometry.tolist())
+        line = line.intersection(ring_buffer)
         line_ids = self.list_sep.join(sorted(df_conn.globalid.unique()))
 
         # Try and merge the MultiLineString to a single LineString
