@@ -34,7 +34,7 @@ except ImportError:
 
 pd.options.mode.chained_assignment = None
 
-INIT_VARIABLE = "outflow"
+INIT_VARIABLE = "outflow_rate"
 
 
 def get_colors():

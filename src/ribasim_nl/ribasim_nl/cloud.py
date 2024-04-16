@@ -418,8 +418,9 @@ class CloudStorage:
 
         # copy model content to version dir
         for file in model_dir.glob("*.*"):
-            out_file = model_version_dir / file.name
-            out_file.write_bytes(file.read_bytes())
+            if file.suffix not in ["", ".mypy_cache", ".tmp", ".bak"]:
+                out_file = model_version_dir / file.name
+                out_file.write_bytes(file.read_bytes())
 
         # if results, copy too
         if include_results and (model_dir.joinpath("results").exists()):

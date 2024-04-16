@@ -60,10 +60,12 @@ matplotlib = "*"
 mypy = "*"
 openpyxl = "*"
 pandas = "*"
+pandas-stubs = "*"
+pandera = "*"
 pip = "*"
 pre-commit = "*"
 pyarrow = "*"
-pydantic = ">=2.0"
+pydantic = ">=2"
 pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
@@ -73,7 +75,7 @@ quarto = "*"
 quartodoc = "*"
 rasterstats = "*"
 requests = "*"
-#ribasim = "==2024.3.0"
+ribasim = "==2024.4.0"
 ruff = "*"
 shapely = ">=2"
 tomli = "*"
@@ -82,5 +84,5 @@ types-requests = "*"
 
 [pypi-dependencies]
 hydamo = { path = "src/hydamo", editable = true}
-ribasim = { path = "../Ribasim/python/ribasim", editable = true}
+#ribasim = { path = "../Ribasim/python/ribasim", editable = true}
 ribasim_nl = { path = "src/ribasim_nl", editable = true}
