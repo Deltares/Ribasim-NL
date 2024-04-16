@@ -432,12 +432,16 @@ class ParseCrossings:
 
         if filterlayer is None:
             # return the found crossings.
-            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "stuw", with_ends)
-            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "gemaal", with_ends)
+            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "stuw", with_ends, "in_use")
+            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "gemaal", with_ends, "in_use")
             dfc = self._correct_water_flow(dfc)
-            dfc = self._add_double_links(dfc)
+            dfc = self._add_double_links(dfc, "in_use")
             dfc = self._aggregate_identical_links(dfc, agg_links)
             dfc = self._aggregate_areas(dfc, agg_links)
+            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "stuw", with_ends, "agg_areas_in_use")
+            dfc = self._correct_structures(dfc, df_linesingle, df_endpoints, "gemaal", with_ends, "agg_areas_in_use")
+            dfc = self._correct_water_flow(dfc)
+            dfc = self._add_double_links(dfc, "agg_areas_in_use")
             if return_lines:
                 return dfc, line_groups
             else:
@@ -445,12 +449,16 @@ class ParseCrossings:
         else:
             # Filter the crossings with another layer with overlapping lines
             df_filter, dfs = self._filter_crossings_with_layer(dfc, df_peilgebieden, filterlayer, write_debug)
-            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "stuw", with_ends)
-            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "gemaal", with_ends)
+            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "stuw", with_ends, "in_use")
+            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "gemaal", with_ends, "in_use")
             dfs = self._correct_water_flow(dfs)
-            dfs = self._add_double_links(dfs)
+            dfs = self._add_double_links(dfs, "in_use")
             dfs = self._aggregate_identical_links(dfs, agg_links)
             dfs = self._aggregate_areas(dfs, agg_links)
+            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "stuw", with_ends, "agg_areas_in_use")
+            dfs = self._correct_structures(dfs, df_linesingle, df_endpoints, "gemaal", with_ends, "agg_areas_in_use")
+            dfs = self._correct_water_flow(dfs)
+            dfs = self._add_double_links(dfs, "agg_areas_in_use")
             return dfc, df_filter, dfs
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
@@ -1073,7 +1081,7 @@ class ParseCrossings:
                         for subrow in group.itertuples():
                             group.at[subrow.Index, "dist_along"] = line_geom.project(subrow.geometry)
                             if subrow.crossing_type.startswith("-1"):
-                                # Special case: correct the flow order of crossing_type=1.
+                                # Special case: correct the flow order of crossing_type=-1.
                                 # Assume that drawing order is determined by the line_geom.
                                 # This is why the line_geo was reversed earlier.
                                 rdist = line_geom.project(subrow.geometry)
@@ -1304,8 +1312,9 @@ class ParseCrossings:
             dfc.to_file(write_debug, layer="crossings")
             df_peilgebieden.to_file(write_debug, layer="peilgebieden")
 
+        filter_col = "in_use"
         dfs = dfc.copy()
-        dfs_valid = dfs[dfs.in_use].copy()
+        dfs_valid = dfs[dfs[filter_col]].copy()
 
         # Determine crossings for the filter layer
         df_filter, line_groups = self.find_crossings_with_peilgebieden(
@@ -1330,7 +1339,7 @@ class ParseCrossings:
             line_geom = line_groups[groupid]
 
             # Relevant crossings for this group
-            replace_crossing_candidates = group[group.in_use].copy()
+            replace_crossing_candidates = group[group[filter_col]].copy()
 
             replace_crossing_vec = []
             if len(replace_crossing_candidates) == 0:
@@ -1503,8 +1512,9 @@ class ParseCrossings:
         dfs[structurelayer] = None
 
         # Only look at crossing that are going to be used
-        if "in_use" in dfs.columns:
-            df_filter = dfs[dfs.in_use].copy()
+        filter_col = "in_use"
+        if filter_col in dfs.columns:
+            df_filter = dfs[dfs[filter_col]].copy()
         else:
             df_filter = dfs.copy()
 
@@ -1758,6 +1768,7 @@ class ParseCrossings:
         df_endpoints: gpd.GeoDataFrame,
         structurelayer: str,
         with_ends: bool,
+        filter_col: str,
     ) -> gpd.GeoDataFrame:
         """_summary_
 
@@ -1773,6 +1784,8 @@ class ParseCrossings:
             _description_
         with_ends : bool
             _description_
+        filter_col : str
+            _description_
 
         Returns
         -------
@@ -1785,16 +1798,17 @@ class ParseCrossings:
 
         # Copy crossings and valid crossings.
         dfs = dfc.copy()
-        df_filter = dfs[dfs.in_use].copy()
+        df_filter = dfs[dfs[filter_col]].copy()
 
         # Find previously assigned structures that are now unassigned.
         orphaned_structures = []
         for structure_id, group in dfs.groupby(structurelayer, sort=False):
-            if not group.in_use.any():
+            if not group[filter_col].any():
                 for sid in structure_id.split(self.list_sep):
                     orphaned_structures.append((sid, df_structures.geometry.at[sid]))
 
         df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
+        df_sub_structures = df_sub_structures.drop_duplicates(subset="globalid")
         while len(df_sub_structures) > 0:
             orphaned_structures = []
             for structure in tqdm.tqdm(
@@ -1883,12 +1897,14 @@ class ParseCrossings:
         return dfs
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def _add_double_links(self, dfc: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    def _add_double_links(self, dfc: gpd.GeoDataFrame, filter_col: str) -> gpd.GeoDataFrame:
         """_summary_
 
         Parameters
         ----------
         dfc : gpd.GeoDataFrame
+            _description_
+        filter_col : str
             _description_
 
         Returns
@@ -1897,28 +1913,31 @@ class ParseCrossings:
             _description_
         """
         dfs = dfc.copy()
+        dfs_filter = dfs[dfs[filter_col]].copy()
 
-        add_rows = []
         for row in tqdm.tqdm(
-            dfs.itertuples(),
-            total=len(dfs),
+            dfs_filter.itertuples(),
+            total=len(dfs_filter),
             desc="Add double links for crossings with 'stuw' and 'gemaal'",
             disable=self.disable_progress,
         ):
             if not pd.isna(row.stuw) and not pd.isna(row.gemaal):
-                add_row = dfs.loc[row.Index, :].copy()
-                # Reverse peilgebieden and streefpeilen, remove gemaal.
-                add_row.at["peilgebied_from"] = row.peilgebied_to
-                add_row.at["peilgebied_to"] = row.peilgebied_from
-                add_row.at["streefpeil_from"] = row.streefpeil_to
-                add_row.at["streefpeil_to"] = row.streefpeil_from
-                add_row.at["gemaal"] = None
-                add_row.at["flip"] = "dubbel_link"
-                add_rows.append(add_row)
-
-        if len(add_rows) > 0:
-            dfs = pd.concat([dfs, gpd.GeoDataFrame(add_rows, crs=dfs.crs)], ignore_index=False).sort_index()
-            dfs = dfs.reset_index(drop=True)
+                pfrom = row.peilgebied_to
+                pto = row.peilgebied_from
+                sfrom = row.streefpeil_to
+                sto = row.streefpeil_from
+                # Check if the double link already exists
+                if not ((dfs.peilgebied_from == pfrom) & (dfs.peilgebied_to == pto)).any():
+                    add_row = dfs.loc[row.Index, :].copy()
+                    # Reverse peilgebieden and streefpeilen, remove gemaal.
+                    add_row.at["peilgebied_from"] = pfrom
+                    add_row.at["peilgebied_to"] = pto
+                    add_row.at["streefpeil_from"] = sfrom
+                    add_row.at["streefpeil_to"] = sto
+                    add_row.at["gemaal"] = None
+                    add_row.at["flip"] = "dubbel_link"
+                    dfs = pd.concat([dfs, gpd.GeoDataFrame([add_row], crs=dfs.crs)], ignore_index=False)
+                    dfs = dfs.sort_index().reset_index(drop=True)
 
         return dfs
 
