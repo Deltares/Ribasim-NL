@@ -84,5 +84,4 @@ types-requests = "*"
 
 [pypi-dependencies]
 hydamo = { path = "src/hydamo", editable = true}
-#ribasim = { path = "../Ribasim/python/ribasim", editable = true}
 ribasim_nl = { path = "src/ribasim_nl", editable = true}
