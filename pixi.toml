@@ -10,17 +10,7 @@ license-file = "LICENSE"
 
 [tasks]
 # Installation
-install-hydamo = "pip install --no-deps --editable src/hydamo"
-install-ribasim_nl = "pip install --no-deps --editable src/ribasim_nl"
-install-pre-commit = "pre-commit install"
-install-without-pre-commit = { depends_on = [
-    "install-hydamo",
-    "install-ribasim_nl",
-] }
-install = { depends_on = [
-    "install-without-pre-commit",
-    "install-pre-commit",
-] }
+install = "pre-commit install"
 # Docs
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
 quarto-preview = { cmd = "export QUARTO_PYTHON=python && quarto preview docs", depends_on = [
