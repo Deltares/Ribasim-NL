@@ -1,7 +1,7 @@
 import pandas as pd
 from ribasim import Model
 
-from ribasim_nl.model import TABLES, get_table
+from ribasim_nl.case_conversions import pascal_to_snake_case
 
 
 def reset_index(model: Model, node_start=1):
@@ -39,9 +39,13 @@ def reset_index(model: Model, node_start=1):
         ].apply(lambda x: index.loc[x])
 
         # renumber tables
-        for table in TABLES:
-            df = get_table(model, table)
-            if df is not None:
-                df.loc[:, ["node_id"]] = df["node_id"].apply(lambda x: index.loc[x])
+        for node_type in model.network.node.df.node_type.unique():
+            ribasim_node = getattr(model, pascal_to_snake_case(node_type))
+            for attr in ribasim_node.model_fields.keys():
+                table = getattr(ribasim_node, attr)
+                if table.df is not None:
+                    table.df.loc[:, "node_id"] = table.df["node_id"].apply(
+                        lambda x: index.loc[x]
+                    )
 
     return model
