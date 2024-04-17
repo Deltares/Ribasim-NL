@@ -125,7 +125,7 @@ def update_cm(attr, old, new):
 # read model
 toml_file = next((i for i in sys.argv if i.lower().endswith(".toml")), None)
 if toml_file is None:
-    toml_file = r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\modellen\hws\hws.toml"
+    toml_file = r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\modellen\hws_2024_4_1\hws.toml"
 model = ribasim.Model.read(toml_file)
 results_dir = model.filepath.parent / model.results_dir
 
@@ -135,11 +135,18 @@ basin_results_df.reset_index(inplace=True)
 basin_variable_columns = [
     i for i in basin_results_df.columns if i not in ["time", "node_id"]
 ]
-actives = [basin_variable_columns.index(INIT_VARIABLE)]
+if INIT_VARIABLE in basin_variable_columns:
+    actives = [basin_variable_columns.index(INIT_VARIABLE)]
+else:
+    actives = [0]
 
 # prepare nodes
 # nodes_df = model.network.node.df
-nodes_df = model.node_table().df
+# support older versions
+if hasattr(model, "network"):
+    nodes_df = model.network.node.df
+else:
+    nodes_df = model.node_table().df
 nodes_df["x"] = nodes_df.geometry.x
 nodes_df["y"] = nodes_df.geometry.y
 
