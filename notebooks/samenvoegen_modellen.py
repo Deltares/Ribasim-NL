@@ -177,7 +177,7 @@ for idx, model in enumerate(models):
             if i.model == model["model"]
         ]
         if model_versions:
-            model_version = sorted(model_versions, key=lambda x: x.version)[-1]
+            model_version = sorted(model_versions, key=lambda x: x.sorter)[-1]
         else:
             raise ValueError(f"No models with name {model["model"]} in the cloud")
 

@@ -65,6 +65,10 @@ class ModelVersion:
     def path_string(self):
         return f"{self.model}_{self.year}_{self.month}_{self.revision}"
 
+    @property
+    def sorter(self):
+        return f"{self.year}.{str(self.month).zfill(2)}.{str(self.revision).zfill(3)}"
+
 
 @dataclass
 class CloudStorage:
