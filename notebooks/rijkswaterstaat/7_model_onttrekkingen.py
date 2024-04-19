@@ -1,7 +1,7 @@
 # %%
 import geopandas as gpd
-import pandas as pd
 import ribasim
+from ribasim.nodes import user_demand
 from ribasim_nl import CloudStorage, Network
 from shapely.geometry import LineString
 
@@ -10,7 +10,9 @@ cloud = CloudStorage()
 MAX_DISTANCE = 50
 TOLERANCE = 0.1
 
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_sturing", "hws.toml")
+ribasim_toml = cloud.joinpath(
+    "Rijkswaterstaat", "modellen", "hws_sturing_upgraded", "hws.toml"
+)
 model = ribasim.Model.read(ribasim_toml)
 
 hydamo = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
@@ -31,9 +33,9 @@ nodes_df = nodes_df.sjoin(basin_area_gdf, how="left")
 # %%
 
 nodes = []
-edges = []
+lines = []
 user_static = []
-node_id = model.network.node.df.node_id.max() + 1
+node_id = model.node_table().df.node_id.max() + 1
 
 for row in kunstwerken_gdf[kunstwerken_gdf.soort == "inlaat"].itertuples():
     print(f"{row.naam}")
@@ -57,7 +59,7 @@ for row in kunstwerken_gdf[kunstwerken_gdf.soort == "inlaat"].itertuples():
         )
     else:
         basin_id = model.basin.area.df.at[distance_to_model_df.index[0], "node_id"]
-        basin_node = model.network.node.df.loc[basin_id]
+        basin_node = model.basin[basin_id]
 
         # ophalen van de line
         network_from_id = network.move_node(
@@ -78,6 +80,7 @@ for row in kunstwerken_gdf[kunstwerken_gdf.soort == "inlaat"].itertuples():
         if not nodes_df.at[network_to_id, "geometry"].equals(row.geometry):
             line = LineString(list(line.coords) + list(row.geometry.coords))
 
+        lines += [line]
         min_level = (
             model.basin.state.df.set_index("node_id").at[basin_id, "level"] + 0.1
         )
@@ -93,30 +96,9 @@ for row in kunstwerken_gdf[kunstwerken_gdf.soort == "inlaat"].itertuples():
             }
         ]
 
-        edges += [
-            {
-                "from_node_id": basin_id,
-                "from_node_type": "Basin",
-                "to_node_id": node_id,
-                "to_node_type": "UserDemand",
-                "edge_type": "flow",
-                "geometry": line,
-                "meta_watervraag": "aanvoer",
-            },
-            {
-                "from_node_id": node_id,
-                "from_node_type": "UserDemand",
-                "to_node_id": basin_id,
-                "to_node_type": "Basin",
-                "edge_type": "flow",
-                "geometry": line.reverse(),
-                "meta_watervraag": "afvoer",
-            },
-        ]
-
         user_static += [
             {
-                "node_id": node_id,
+                "basin_id": basin_id,
                 "demand": demand,
                 "return_factor": return_factor,
                 "min_level": min_level,
@@ -128,19 +110,24 @@ for row in kunstwerken_gdf[kunstwerken_gdf.soort == "inlaat"].itertuples():
         node_id += 1
 
 # %% toevoegen aan model
-node_df = gpd.GeoDataFrame(nodes, crs=28992)
-node_df.set_index("node_id", drop=False, inplace=True)
-edge_df = gpd.GeoDataFrame(edges, crs=28992)
-user_df = pd.DataFrame(user_static)
+for line, node, static in zip(lines, nodes, user_static):
+    kwargs = {k: [v] for k, v in static.items() if k != "basin_id"}
+    model.user_demand.add(ribasim.Node(**node), [user_demand.Static(**kwargs)])
 
-model.network.node = ribasim.Node(df=pd.concat([model.network.node.df, node_df]))
+    model.edge.add(
+        model.basin[static["basin_id"]],
+        model.user_demand[node["node_id"]],
+        geometry=line,
+    )
+    model.edge.add(
+        model.user_demand[node["node_id"]],
+        model.basin[static["basin_id"]],
+        geometry=line.reverse(),
+    )
 
-model.network.edge = ribasim.Edge(
-    df=pd.concat([model.network.edge.df, edge_df], ignore_index=True)
-)
-
-model.user_demand = ribasim.UserDemand(static=user_df)
 
 # %% wegschrijven model
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_prefix", "hws.toml")
 model.write(ribasim_toml)
+
+# %%
