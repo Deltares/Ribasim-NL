@@ -344,7 +344,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/requests-2.31.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3339-validator-0.1.4-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3986-validator-0.1.1-pyh9f0ad1d_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/noarch/ribasim-2024.4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-13.7.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rioxarray-0.15.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rpds-py-0.18.0-py312h4b3b743_0.conda
@@ -428,6 +427,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.17.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.2.13-hd590300_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.5-hfc55251_0.conda
+      - pypi: ../ribasim/python/ribasim
       - pypi: src/hydamo
       - pypi: src/ribasim_nl
       osx-64:
@@ -732,7 +732,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/requests-2.31.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3339-validator-0.1.4-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3986-validator-0.1.1-pyh9f0ad1d_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/noarch/ribasim-2024.4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-13.7.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rioxarray-0.15.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/rpds-py-0.18.0-py312h1b0e595_0.conda
@@ -797,6 +796,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.17.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-1.2.13-h8a1eda9_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.5-h829000d_0.conda
+      - pypi: ../ribasim/python/ribasim
       - pypi: src/hydamo
       - pypi: src/ribasim_nl
       win-64:
@@ -1102,7 +1102,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/requests-2.31.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3339-validator-0.1.4-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3986-validator-0.1.1-pyh9f0ad1d_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/noarch/ribasim-2024.4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-13.7.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rioxarray-0.15.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/rpds-py-0.18.0-py312hfccd98a_0.conda
@@ -1174,6 +1173,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.17.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.2.13-hcfcfb64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.5-h12be248_0.conda
+      - pypi: ../ribasim/python/ribasim
       - pypi: src/hydamo
       - pypi: src/ribasim_nl
 packages:
@@ -13860,34 +13860,29 @@ packages:
   - pkg:pypi/rfc3986-validator
   size: 7818
   timestamp: 1598024297745
-- kind: conda
+- kind: pypi
   name: ribasim
-  version: 2024.4.0
-  build: pyhd8ed1ab_0
-  subdir: noarch
-  noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/ribasim-2024.4.0-pyhd8ed1ab_0.conda
-  sha256: 67bc481d3f1316557ed648de42d306520bb79d082831918c3f9a01065a9b800b
-  md5: 86866ceecd23b28aa0bfe8fafa41ebd9
-  depends:
+  version: 2024.6.1
+  path: ../ribasim/python/ribasim
+  sha256: d56436e1f00be7894efb23f669c0c58af4d6aa42eeb1956903f6b984fb551b39
+  requires_dist:
   - geopandas
-  - matplotlib-base
+  - matplotlib
   - numpy
   - pandas
   - pandera !=0.16.0
   - pyarrow
   - pydantic ~=2.0
   - pyogrio
-  - python >=3.10
   - shapely >=2.0
   - tomli
   - tomli-w
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/ribasim
-  size: 23607
-  timestamp: 1710158868395
+  - pytest ; extra == 'tests'
+  - pytest-cov ; extra == 'tests'
+  - pytest-xdist ; extra == 'tests'
+  - ribasim-testmodels ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
 - kind: pypi
   name: ribasim-nl
   version: 0.0.1

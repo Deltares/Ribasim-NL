@@ -65,7 +65,7 @@ quarto = "*"
 quartodoc = "*"
 rasterstats = "*"
 requests = "*"
-ribasim = "==2024.4.0"
+#ribasim = "==2024.4.0"
 ruff = "*"
 shapely = ">=2"
 tomli = "*"
@@ -75,3 +75,4 @@ types-requests = "*"
 [pypi-dependencies]
 hydamo = { path = "src/hydamo", editable = true}
 ribasim_nl = { path = "src/ribasim_nl", editable = true}
+ribasim = { path = "../ribasim/python/ribasim", editable = true}
