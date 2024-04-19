@@ -61,7 +61,7 @@ def verdeelsleutel_to_control(
                 model.network.node.df["meta_code_waterbeheerder"] == keys[0]
             ]
             .iloc[0]
-            .meta_node_id
+            .node_id
         )
 
     # get frac-nodes
@@ -70,14 +70,14 @@ def verdeelsleutel_to_control(
     ):
         frac_nodes += [
             model.network.node.df[
-                (model.network.node.df["type"] == "FractionalFlow")
+                (model.network.node.df["node_type"] == "FractionalFlow")
                 & (
                     model.network.node.df["meta_code_waterbeheerder"].str.lower()
                     == i.lower()
                 )
             ]
             .iloc[0]
-            .meta_node_id
+            .node_id
             for i in [loc1, loc2]
         ]
 
@@ -92,7 +92,10 @@ def verdeelsleutel_to_control(
 
     # add descrete control
     condition_df = df[["ondergrens_waarde", "beschrijving"]].rename(
-        columns={"ondergrens_waarde": "greater_than", "beschrijving": "remarks"}
+        columns={
+            "ondergrens_waarde": "greater_than",
+            "beschrijving": "meta_beschrijving",
+        }
     )
     condition_df["node_id"] = ctrl_node_id
     condition_df["listen_feature_id"] = listen_feature_id

@@ -47,9 +47,17 @@ def join_by_poly_overlay(
 
     # join to left
     if select_by == "poly_area":
+        # select only largest areas
         overlay_gdf["poly_area"] = overlay_gdf.geometry.area
         overlay_gdf.sort_values(by="poly_area", inplace=True)
         overlay_gdf.drop_duplicates(subset="_left_index", keep="last", inplace=True)
+        # add geometries that did not have an overlay
+        if len(gdf) != len(overlay_gdf):
+            overlay_gdf = pd.concat(
+                [overlay_gdf, gdf[~gdf.index.isin(overlay_gdf["_left_index"])]]
+            )
+
+        # clean columns and index
         overlay_gdf.sort_values(by="_left_index", inplace=True)
         overlay_gdf.index = gdf.index
         overlay_gdf = overlay_gdf[columns]
@@ -107,9 +115,14 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
             data = []
             for basin in poly_select_gdf.itertuples():
                 kwargs = basin._asdict()
-                for geom in split_basin(basin.geometry, line.geometry).geoms:
-                    kwargs["geometry"] = geom
-                    data += [{**kwargs}]
+                try:
+                    for geom in split_basin(basin.geometry, line.geometry).geoms:
+                        kwargs["geometry"] = geom
+                        data += [{**kwargs}]
+                except ValueError as e:
+                    raise ValueError(
+                        f"Basin with index {basin.Index} can not be cut by line with index {line.Index} raising Exception: {e}"
+                    )
 
         ## we update basins_gdf with new polygons
         basins_gdf = basins_gdf[~basins_gdf.index.isin(poly_select_gdf.index)]

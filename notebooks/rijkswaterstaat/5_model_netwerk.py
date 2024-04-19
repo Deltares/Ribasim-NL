@@ -35,7 +35,8 @@ structures_gdf = gpd.read_file(
 )
 
 basin_poly_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "krw_basins_vlakken.gpkg"),
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg"),
+    layer="ribasim_basins",
     engine="pyogrio",
     fid_as_index=True,
 )
@@ -43,9 +44,11 @@ basin_poly_gdf = gpd.read_file(
 structures_df = pd.read_excel(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerk_complexen.xlsx")
 )
+structures_df = structures_df[structures_df.in_model]
+structures_df["code"] = structures_df["code"].astype(str)
 
 level_area_df = pd.read_csv(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "krw_basins_vlakken_level_area.csv")
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_level_area.csv")
 )
 
 rating_curves_gdf = gpd.read_file(
@@ -65,27 +68,30 @@ verdeelsleutel_df = read_verdeelsleutel(
 )
 
 
-# %% define nodes and links
+# %% inlezen netwerk nodes en links
+# define nodes and links
 nodes_gdf = network.nodes
 links_gdf = network.links
 network_union_lines = links_gdf.unary_union
 network.overlay(basin_poly_gdf[["basin_id", "geometry"]])
 
-basin_admin = {
+basin_admin: dict[str, list] = {
     i: {"nodes_from": [], "nodes_to": [], "neighbors": []} for i in basin_poly_gdf.index
 }
 
-
+# %% toevoegen reating-curves aan basin-admin
+# toevoegen reating-curves aan basin-admin
 for row in rating_curves_gdf.itertuples():
     basin_id = basin_poly_gdf[basin_poly_gdf.contains(row.geometry)].index[0]
     basin_admin[basin_id]["rating_curve"] = row.curve_id
 
-# %%
+# %% definieren boundaries
+# definieren boundaries
 boundary_gdf["node_id"] = boundary_gdf["geometry"].apply(
     lambda x: network.move_node(
         x,
         max_distance=10,
-        allign_distance=10,
+        align_distance=10,
         node_types=["downstream_boundary", "connection", "upstream_boundary"],
     )
 )
@@ -98,7 +104,7 @@ def get_structure_codes(structures_gdf, complex_codes, line_string):
         structures_gdf.complex_code.isin(complex_codes)
     ].groupby("complex_code"):
         gdf_select = gdf[
-            gdf.kw_soort.isin(
+            gdf.soort.isin(
                 [
                     "Stuwen",
                     "Spuisluizen",
@@ -109,7 +115,7 @@ def get_structure_codes(structures_gdf, complex_codes, line_string):
             )
         ]
         if gdf_select.empty:
-            gdf_select = gdf[gdf.kw_soort == "Schutsluizen"]
+            gdf_select = gdf[gdf.soort == "Schutsluizen"]
             if gdf_select.empty:
                 raise Exception(f"kan geen kunstwerk vinden voor {complex_code}")
         structure_codes += [
@@ -129,7 +135,9 @@ def get_type_and_value(code, structures_gdf, structures_df):
     return row.ribasim_type, row.ribasim_waarde
 
 
-# %% make lijst met kunstwerk-codes
+# %% kunstwerken toekennen aan basins
+# kunstwerken toekennen aan basins
+# maak lijst met kunstwerk-codes
 structure_codes = structures_df[structures_df.code.isin(structures_gdf.code)][
     "code"
 ].to_list()
@@ -146,17 +154,21 @@ structure_codes += get_structure_codes(
 
 # % itereer over kunstwerken
 kwk_select_gdf = structures_gdf[structures_gdf.code.isin(structure_codes)]
+condition = kwk_select_gdf.complex_code.duplicated(keep=False)
+condition = condition | kwk_select_gdf.complex_naam.isna()
+kwk_select_gdf.loc[condition, ["model_naam"]] = kwk_select_gdf[condition].naam
+kwk_select_gdf.loc[~condition, ["model_naam"]] = kwk_select_gdf[~condition].complex_naam
 
 for kwk in kwk_select_gdf.itertuples():
     # get network_node_id
     node_id = network.move_node(
         kwk.geometry,
         max_distance=150,
-        allign_distance=100,
+        align_distance=100,
         node_types=["connection", "upstream_boundary"],
     )
     if node_id is None:
-        node_id = network.add_node(kwk.geometry, max_distance=150, allign_distance=100)
+        node_id = network.add_node(kwk.geometry, max_distance=150)
 
     # add to node_list
     node_type, node_value = get_type_and_value(kwk.code, structures_gdf, structures_df)
@@ -171,7 +183,7 @@ for kwk in kwk_select_gdf.itertuples():
                 basin_admin[upstream]["neighbors"] += [downstream]
         else:
             raise ValueError(
-                f"Kan geen boven en benedenstroomse knoop vindern voor {kwk.naam}"
+                f"Kan geen boven en benedenstroomse knoop vinden voor {kwk.naam}"
             )
         if downstream is not None:
             basin_admin[downstream]["nodes_from"] += [node_id]
@@ -230,22 +242,37 @@ for kwk in kwk_select_gdf.itertuples():
             "is_structure": True,
             "code_waterbeheerder": kwk.code,
             "waterbeheerder": "Rijkswaterstaat",
-            "name": kwk.naam,
+            "name": kwk.model_naam,
             "node_id": node_id,
             "geometry": network.nodes.at[node_id, "geometry"],
         }
     ]
+    kwk_select_gdf.loc[kwk.Index, ["node_id", "upstream", "downstream"]] = (
+        node_id,
+        upstream,
+        downstream,
+    )
+# ignore edges with "circular structures combinations"
+ignore_links = []
+for kwk in kwk_select_gdf.itertuples():
+    condition = kwk_select_gdf["upstream"] == kwk.downstream
+    condition = condition & (kwk_select_gdf["downstream"] == kwk.upstream)
+    df = kwk_select_gdf[condition]
+    for row in df.itertuples():
+        ignore_links += [(row.node_id, kwk.node_id)]
 
-
-# %%
+# %% netwerk opbouwen per basin
+# netwerk opbouwen per basin
 for basin in basin_poly_gdf.itertuples():
-    # for basin in basin_poly_gdf.loc[[23, 42, 46, 93, 94]].itertuples():
-    print(basin.owmnaam)
+    # for basin in basin_poly_gdf.loc[[55, 70]].itertuples():
+    print(f"{basin.Index} {basin.naam}")
+    # get upstream an downstream basin boundary nodes
     boundary_nodes = network.nodes[
         network.nodes.distance(basin.geometry.boundary) < 0.01
     ]
     us_ds = [
-        network.get_upstream_downstream(i, "basin_id") for i in boundary_nodes.index
+        network.get_upstream_downstream(i, "basin_id", max_iters=3, max_length=1000)
+        for i in boundary_nodes.index
     ]
     boundary_nodes["upstream"] = [i[0] for i in us_ds]
     boundary_nodes["downstream"] = [i[1] for i in us_ds]
@@ -264,6 +291,7 @@ for basin in basin_poly_gdf.itertuples():
     boundary_nodes = boundary_nodes[~boundary_nodes["upstream"].isin(connected)]
     boundary_nodes = boundary_nodes[~boundary_nodes["downstream"].isin(connected)]
 
+    # add boundary nodes
     for node in boundary_nodes.itertuples():
         neighbor = next(
             i for i in [node.upstream, node.downstream] if not i == basin.Index
@@ -312,6 +340,7 @@ for basin in basin_poly_gdf.itertuples():
     nodes_from = basin_admin[basin.Index]["nodes_from"]
     nodes_to = basin_admin[basin.Index]["nodes_to"]
 
+    # add basin-node
     if (len(nodes_from) > 0) and (len(nodes_to) > 0):
         gdf = network.subset_nodes(
             nodes_from,
@@ -319,6 +348,7 @@ for basin in basin_poly_gdf.itertuples():
             duplicated_nodes=True,
             directed=True,
             inclusive=False,
+            ignore_links=ignore_links,
         )
         if gdf.empty:
             gdf = network.subset_nodes(
@@ -327,6 +357,7 @@ for basin in basin_poly_gdf.itertuples():
                 duplicated_nodes=True,
                 directed=False,
                 inclusive=False,
+                ignore_links=ignore_links,
             )
     elif (len(nodes_from) > 0) or (len(nodes_to) > 0):
         gdf = network.nodes[network.nodes.basin_id == basin.Index]
@@ -339,9 +370,8 @@ for basin in basin_poly_gdf.itertuples():
         {
             "type": "Basin",
             "is_structure": False,
-            "code_waterbeheerder": basin.owmident,
             "waterbeheerder": "Rijkswaterstaat",
-            "name": basin.owmnaam,
+            "name": basin.naam,
             "node_id": basin_node_id,
             "basin_id": basin.Index,
             "geometry": network.nodes.at[basin_node_id, "geometry"],
@@ -369,8 +399,7 @@ for basin in basin_poly_gdf.itertuples():
             {
                 "from_node_id": basin_node_id,
                 "to_node_id": rc_node_id,
-                "name": basin.owmnaam,
-                "krw_id": basin.owmident,
+                "name": basin.naam,
                 "edge_type": "flow",
                 "geometry": network.get_line(basin_node_id, rc_node_id, directed=True),
             }
@@ -379,30 +408,37 @@ for basin in basin_poly_gdf.itertuples():
     else:
         from_id = basin_node_id
 
+    # add edge to basin
+    network.add_weight("basin_id", basin.basin_id)
     for node_from in nodes_from:
         edge_list += [
             {
                 "from_node_id": node_from,
                 "to_node_id": basin_node_id,
-                "name": basin.owmnaam,
-                "krw_id": basin.owmident,
+                "name": basin.naam,
                 "edge_type": "flow",
-                "geometry": network.get_line(node_from, basin_node_id, directed=False),
+                "geometry": network.get_line(
+                    node_from, basin_node_id, directed=False, weight="weight"
+                ),
             }
         ]
 
+    # add from basin to edge
     for node_to in nodes_to:
         edge_list += [
             {
                 "from_node_id": from_id,
                 "to_node_id": node_to,
-                "name": basin.owmnaam,
-                "krw_id": basin.owmident,
+                "name": basin.naam,
                 "edge_type": "flow",
-                "geometry": network.get_line(from_id, node_to, directed=False),
+                "geometry": network.get_line(
+                    from_id, node_to, directed=False, weight="weight"
+                ),
             }
         ]
-# %% finish boundaries
+# %% afronden boundaries
+# afronden boundaries
+
 for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertuples():
     if boundary.type == "FlowBoundary":
         basin_id = network.find_downstream(boundary.node_id, "basin_id")
@@ -411,8 +447,7 @@ for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertu
             {
                 "from_node_id": boundary.node_id,
                 "to_node_id": basin_admin[basin_id]["node_id"],
-                "name": basin_poly_gdf.loc[basin_id].owmnaam,
-                "krw_id": basin_poly_gdf.loc[basin_id].owmident,
+                "name": basin_poly_gdf.loc[basin_id].naam,
                 "edge_type": "flow",
                 "geometry": network.get_line(
                     boundary.node_id, basin_admin[basin_id]["node_id"], directed=True
@@ -421,7 +456,7 @@ for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertu
         ]
         basin_admin[basin_id]["nodes_from"] += [boundary.node_id]
     else:
-        basin_id = network.find_upstream(boundary.node_id, "basin_id")
+        basin_id = network.find_upstream(boundary.node_id, "basin_id", max_iters=50)
         basin_node_id = basin_admin[basin_id]["node_id"]
 
         gdf = network.nodes[network.nodes["basin_id"] == basin_id]
@@ -448,8 +483,7 @@ for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertu
             {
                 "from_node_id": basin_node_id,
                 "to_node_id": manning_node_id,
-                "name": basin_poly_gdf.loc[basin_id].owmnaam,
-                "krw_id": basin_poly_gdf.loc[basin_id].owmident,
+                "name": basin_poly_gdf.loc[basin_id].naam,
                 "edge_type": "flow",
                 "geometry": network.get_line(
                     basin_node_id, manning_node_id, directed=True
@@ -458,8 +492,7 @@ for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertu
             {
                 "from_node_id": manning_node_id,
                 "to_node_id": boundary.node_id,
-                "name": basin_poly_gdf.loc[basin_id].owmnaam,
-                "krw_id": basin_poly_gdf.loc[basin_id].owmident,
+                "name": basin_poly_gdf.loc[basin_id].naam,
                 "edge_type": "flow",
                 "geometry": network.get_line(
                     manning_node_id, boundary.node_id, directed=True
@@ -482,7 +515,8 @@ for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertu
         }
     ]
 
-# %%
+# %% opslaan interim-netwerk
+# opslaan interim-netwerk
 gpd.GeoDataFrame(node_list, crs=28992).to_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "ribasim_intermediate.gpkg"),
     layer="Node",
@@ -492,19 +526,47 @@ gpd.GeoDataFrame(edge_list, crs=28992).to_file(
     layer="Edge",
 )  # %%
 
-# %% define Network
+# %% conversie naar ribasim
+# conversie naar ribasim
 node_df = gpd.GeoDataFrame(node_list, crs=28992).drop_duplicates()
-node = ribasim.Node(df=node_df)
-node.df.set_index("meta_node_id", drop=False, inplace=True)
-node.df.index.name = "fid"
+node_df.set_index("node_id", drop=False, inplace=True)
+node_df.index.name = "fid"
+node = ribasim.Node(
+    df=node_df[
+        ["node_id", "name", "type", "waterbeheerder", "code_waterbeheerder", "geometry"]
+    ].rename(
+        columns={
+            "type": "node_type",
+            "code_waterbeheerder": "meta_code_waterbeheerder",
+            "waterbeheerder": "meta_waterbeheerder",
+        }
+    )
+)
+
 edge_df = gpd.GeoDataFrame(edge_list, crs=28992)
+edge_df.loc[:, "from_node_type"] = edge_df.from_node_id.apply(
+    lambda x: node_df.at[x, "type"]
+)
+
+edge_df.loc[:, "to_node_type"] = edge_df.to_node_id.apply(
+    lambda x: node_df.at[x, "type"]
+)
+
 edge = ribasim.Edge(df=edge_df)
 network = ribasim.Network(node=node, edge=edge)
 
-# %% define Basin
+# define Basin
 static_df = node_df[node_df["type"] == "Basin"][["node_id", "basin_id"]].set_index(
     "basin_id"
 )
+
+# Area
+area_df = node_df[node_df["type"] == "Basin"][["basin_id", "node_id"]]
+area_df.loc[:, "geometry"] = area_df.basin_id.apply(
+    lambda x: basin_poly_gdf.at[x, "geometry"]
+)
+area_df = gpd.GeoDataFrame(area_df[["node_id", "geometry"]], crs=28992)
+
 level_area_df.drop_duplicates(["level", "area", "id"], inplace=True)
 profile_df = level_area_df[level_area_df["id"].isin(static_df.index)]
 profile_df["node_id"] = profile_df["id"].apply(lambda x: static_df.at[x, "node_id"])
@@ -519,13 +581,9 @@ static_df["urban_runoff"] = 0
 state_df = profile_df.groupby("node_id").min()["level"].reset_index()
 state_df.loc[:, ["level"]] = state_df["level"].apply(lambda x: max(x + 1, 0))
 
-basin = ribasim.Basin(profile=profile_df, static=static_df, state=state_df)
-
-# % define Resistance
-# node_df.loc[node_df["type"] == "Outlet", ["type", "value"]] = (
-#     "LinearResistance",
-#     1000,
-# )  # FIXME: Nijkerkersluis als goede type meenemen
+basin = ribasim.Basin(
+    profile=profile_df, static=static_df, state=state_df, area=area_df
+)
 
 resistance_df = node_df[node_df["type"] == "LinearResistance"][["node_id", "value"]]
 resistance_df.rename(columns={"value": "resistance"}, inplace=True)
@@ -558,7 +616,11 @@ tabulated_rating_curve_df = read_rating_curve(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "rating_curves.xlsx"),
     node_index,
 )
-tabulated_rating_curve = ribasim.TabulatedRatingCurve(static=tabulated_rating_curve_df)
+tabulated_rating_curve = ribasim.TabulatedRatingCurve(
+    static=tabulated_rating_curve_df.rename(
+        columns={"code_waterbeheerder": "meta_code_waterbeheerder"}
+    )
+)
 
 # % define Manning
 manning_df = node_df[node_df["type"] == "ManningResistance"][["node_id"]]
@@ -597,32 +659,14 @@ model = ribasim.Model(
     endtime="2021-01-01 00:00:00",
 )
 
-# %%
+#
 model = reset_index(model)
 
-# %% verwijderen Nijkerkersluis
-
+#  Nijkerkersluis naar inactive
 nijkerk_idx = model.network.node.df[
     model.network.node.df["meta_code_waterbeheerder"] == "32E-001-04"
 ].index
 
-# model.network.node.df = model.network.node.df[
-#     ~(model.network.node.df["meta_node_id"].isin(nijkerk_idx))
-# ]
-
-# model.network.edge.df = model.network.edge.df[
-#     ~(model.network.edge.df["from_node_id"].isin(nijkerk_idx))
-# ]
-
-# model.network.edge.df = model.network.edge.df[
-#     ~(model.network.edge.df["to_node_id"].isin(nijkerk_idx))
-# ]
-
-# model.linear_resistance.static.df = model.linear_resistance.static.df[
-#     ~model.linear_resistance.static.df["node_id"].isin(nijkerk_idx)
-# ]
-
-# model = reset_index(model)
 
 model.linear_resistance.static.df.loc[
     model.linear_resistance.static.df["node_id"].isin(nijkerk_idx), ["active"]
@@ -633,13 +677,13 @@ model.linear_resistance.static.df.loc[
 ] = True
 
 
-# %%%
+#
 model.solver.algorithm = "RK4"
-model.solver.adaptive = False
 model.solver.dt = 10.0
-model.solver.saveat = 360
+model.solver.saveat = 3600
 
-# %%
+# %% wegschrijven model
+# wegschrijven model
 print("write ribasim model")
 ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_network", "hws.toml")
 model.write(ribasim_toml)

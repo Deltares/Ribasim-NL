@@ -1,3 +1,5 @@
+from typing import Literal
+
 import geopandas as gpd
 import pandas as pd
 import ribasim
@@ -8,7 +10,7 @@ from ribasim_nl.case_conversions import pascal_to_snake_case
 
 # TODO: get this from ribasim somehow
 CLASS_TABLES = {
-    "Basin": ["static", "profile", "state"],
+    "Basin": ["static", "profile", "state", "area"],
     "LinearResistance": ["static"],
     "ManningResistance": ["static"],
     "Pump": ["static"],
@@ -51,6 +53,7 @@ def add_control_node_to_network(
     offset=100,
     offset_node_id: int | None = None,
     ctrl_node_geom: tuple | None = None,
+    ctrl_type: Literal["DiscreteControl", "PidControl"] = "DiscreteControl",
     **kwargs,
 ) -> int:
     """Add a control node and control edge to a ribasim.Network
@@ -104,8 +107,8 @@ def add_control_node_to_network(
     # ad the ctrl-node to the network
     ctrl_node_id = network.node.df.index.max() + 1
     ctrl_node = {
-        "type": "DiscreteControl",
-        "meta_node_id": ctrl_node_id,
+        "node_type": ctrl_type,
+        "node_id": ctrl_node_id,
         "geometry": ctrl_node_geom,
         **kwargs,
     }
@@ -138,5 +141,5 @@ def update_table(table, new_table):
     node_ids = new_table.node_id.unique()
     table = table[~table.node_id.isin(node_ids)]
     table = pd.concat([table, new_table])
-    table.reset_index(inplace=True)
+    table.reset_index(inplace=True, drop=True)
     return table
