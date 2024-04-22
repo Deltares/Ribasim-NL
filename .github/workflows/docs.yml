@@ -32,10 +32,6 @@ jobs:
           manifest-path: Ribasim/pixi.toml
           pixi-version: "latest"
 
-      - name: Prepare pixi
-        working-directory: Ribasim-NL
-        run: pixi run install-ci
-
       - name: Check Quarto installation and all engines
         working-directory: Ribasim-NL
         run: pixi run quarto-check
