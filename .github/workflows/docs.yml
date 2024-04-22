@@ -33,15 +33,15 @@ jobs:
           pixi-version: "latest"
 
       - name: Prepare pixi
-        working-directory: Ribasim
+        working-directory: Ribasim-NL
         run: pixi run install-ci
 
       - name: Check Quarto installation and all engines
-        working-directory: Ribasim
+        working-directory: Ribasim-NL
         run: pixi run quarto-check
 
       - name: Render Quarto Project
-        working-directory: Ribasim
+        working-directory: Ribasim-NL
         run: pixi run quarto-render
 
       - name: Publish Quarto Project
@@ -49,6 +49,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: Ribasim/docs/_site
+          publish_dir: Ribasim-NL/docs/_site
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
