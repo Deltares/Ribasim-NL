@@ -501,30 +501,36 @@ class CrossingsToRibasim:
                                      right = temp_crossings,
                                      left_on = ['to_coord', 'from'],
                                      right_on = ['to_centroid_geometry', 'node_id_y'],
-                                     how = 'left')       
-
+                                     how = 'left')    
+            
             edges_with_correct_SP.drop_duplicates(subset=['from', 'to'], inplace = True)
             edges_with_incorrect_SP.drop_duplicates(subset=['from', 'to'], inplace = True)
             
-            # print(edges_with_correct_SP.loc[edges_with_correct_SP.node_id_y == 830, 'shortest_path'].iloc[-1])
             edges_with_correct_SP.reset_index(drop=True, inplace=True)
             edges_with_incorrect_SP.reset_index(drop=True, inplace=True)
 
-            #add the shortest paths to the edges
+            #add the shortest paths columns to the edges
             edges.rename(columns={'line_geom':'line_geom_oud'}, inplace=True)
             edges['line_geom'] = np.nan
-
+     
             edges_temp_incorrect = pd.merge(edges, edges_with_incorrect_SP, how='left', on=['from', 'to'], suffixes=('', '_incorrect_SP'))
             edges.loc[edges_temp_incorrect['shortest_path'].notnull(), 'line_geom'] = edges_temp_incorrect['shortest_path']
             edges_temp_correct = pd.merge(edges, edges_with_correct_SP, how='left', on=['from', 'to'], suffixes=('', '_correct_SP'))
-            edges.loc[edges_temp_correct['shortest_path'].notnull(), 'line_geom'] = edges_temp_correct['shortest_path']
+            edges.loc[edges_temp_correct['shortest_path'].notnull(), 'line_geom'] = edges_temp_correct['shortest_path']            
             
-            #hier edges omdraaien van de pumps
-            
-            edges.line_geom = edges.line_geom.fillna(edges.line_geom_oud)
-            
-            edges['line_geom'] = edges['line_geom'].astype(str).apply(loads)
+            #the direction of the edges are correct on administrative level, but not yet on geometric level. Revert the lines. 
+            reverse_gemaal = crossings.copy() #create copy of the crossings
+            reverse_gemaal = reverse_gemaal.loc[reverse_gemaal.peilgebied_to_original.isin(boezem_globalids)] #select the rows which are a crossing with the boezem
+            reverse_gemaal = reverse_gemaal.loc[~reverse_gemaal.gemaal.isna()] #select the crossings on the boezem with a gemaal
+            reverse_gemaal = reverse_gemaal.node_id.unique() #select the crossings where the lines should be reverted. Revert after changing the string to a geometry object
 
+            #fill the line geoms with the previous geoms if no shortest path is found
+            edges.line_geom = edges.line_geom.fillna(edges.line_geom_oud)
+            edges['line_geom'] = edges['line_geom'].astype(str).apply(loads) #change string to geometry object
+            
+            #revert the geometry objects on the found locations which should be reverted
+            edges['line_geom'] = edges.apply(lambda row: LineString(row['line_geom'].coords[::-1]) if row['from'] in reverse_gemaal else row['line_geom'], axis=1) 
+        
         return edges
 
 
