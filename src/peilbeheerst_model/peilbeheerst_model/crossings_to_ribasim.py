@@ -465,16 +465,13 @@ class CrossingsToRibasim:
 
 
 
-    def embed_boezems(self, edges, post_processed_data, crossings): #worden nog een honderd tal niet goed verbonden
+    def embed_boezems(self, edges, post_processed_data, crossings): 
 
         if self.model_characteristics['path_boezem'] is not None:
             boezems = gpd.read_file(self.model_characteristics['path_boezem']).set_crs(crs='EPSG:28992')
-
             boezem_globalids = post_processed_data['peilgebied'].loc[post_processed_data['peilgebied'].peilgebied_cat == 1, 'globalid'].drop_duplicates()
-            # boezems = boezems.loc[boezems.crossing_type == '01']
 
             #Correct order #######################################
-            # print('{9D6168E7-2AA2-461B-9DE9-58C91DC7012C},{E3D8E5CC-97AA-4941-AB60-0FFD34CDEDB2}' in boezems.hydroobject.unique().tolist())
             boezems_df_correct_order = boezems.loc[boezems.peilgebied_from.isin(boezem_globalids)]
             
             #retrieve starting point coordinates
@@ -483,9 +480,6 @@ class CrossingsToRibasim:
                                       left_on = ['hydroobject','peilgebied_from'],
                                       right_on = ['hydroobject','peilgebied_from_original'],
                                       how = 'left')
-            print('Correct order (hydroobject) = ')
-            display(boezems_df_correct_order.loc[boezems_df_correct_order.hydroobject == '{9D6168E7-2AA2-461B-9DE9-58C91DC7012C},{E3D8E5CC-97AA-4941-AB60-0FFD34CDEDB2}'])
-            display(temp_crossings.loc[temp_crossings.node_id_y == 247])
             
             edges_with_correct_SP = pd.merge(left = edges,
                                      right = temp_crossings,
@@ -495,26 +489,19 @@ class CrossingsToRibasim:
 
             #INCORRECT order #######################################
             boezems_df_incorrect_order = boezems.loc[boezems.peilgebied_to.isin(boezem_globalids)]
-            # print(boezems_df_incorrect_order)
-            #retrieve starting point coordinates
+
+                        #retrieve starting point coordinates
             temp_crossings = pd.merge(left=boezems_df_incorrect_order,
                                       right = crossings,
                                       left_on = ['hydroobject','peilgebied_to'],
                                       right_on = ['hydroobject','peilgebied_to_original'],
                                       how = 'left')
-            print('incorrect order = ')
-            display(temp_crossings.loc[temp_crossings.node_id_x == 247])
-            display(temp_crossings.loc[temp_crossings.node_id_y == 247])
-            # temp_crossings = temp_crossings[['peilgebied_to_x', 'to_centroid_geometry', 'shortest_path']] #behapbaar houden
+
             edges_with_incorrect_SP = pd.merge(left = edges,
                                      right = temp_crossings,
                                      left_on = ['to_coord', 'from'],
                                      right_on = ['to_centroid_geometry', 'node_id_y'],
                                      how = 'left')       
-
-            print('test 247 =')
-            display(edges_with_correct_SP.loc[edges_with_correct_SP['from'] == 247])
-            display(edges_with_incorrect_SP.loc[edges_with_incorrect_SP['from'] == 247])
 
             edges_with_correct_SP.drop_duplicates(subset=['from', 'to'], inplace = True)
             edges_with_incorrect_SP.drop_duplicates(subset=['from', 'to'], inplace = True)
@@ -524,7 +511,6 @@ class CrossingsToRibasim:
             edges_with_incorrect_SP.reset_index(drop=True, inplace=True)
 
             #add the shortest paths to the edges
-            # display(edges)
             edges.rename(columns={'line_geom':'line_geom_oud'}, inplace=True)
             edges['line_geom'] = np.nan
 
@@ -532,34 +518,19 @@ class CrossingsToRibasim:
             edges.loc[edges_temp_incorrect['shortest_path'].notnull(), 'line_geom'] = edges_temp_incorrect['shortest_path']
             edges_temp_correct = pd.merge(edges, edges_with_correct_SP, how='left', on=['from', 'to'], suffixes=('', '_correct_SP'))
             edges.loc[edges_temp_correct['shortest_path'].notnull(), 'line_geom'] = edges_temp_correct['shortest_path']
+            
+            #hier edges omdraaien van de pumps
+            
             edges.line_geom = edges.line_geom.fillna(edges.line_geom_oud)
             
             edges['line_geom'] = edges['line_geom'].astype(str).apply(loads)
-            # gpd.GeoDataFrame(edges, geometry='line_geom').plot()
-            # display(edges)
-            return edges
+
+        return edges
 
 
 
             
-            # boezems['shortest_path'] = boezems['shortest_path'].apply(loads)
-            # boezems['start_point_SP'] = boezems['shortest_path'].apply(lambda x: Point(x.coords[0]))
-            
-            # #convert coordinates to strings
-            # edges['from_coord_str'] = edges['from_coord'].apply(lambda x: str(x))
-            # edges['to_coord_str'] = edges['to_coord'].apply(lambda x: str(x))
-            # boezems['start_point_str'] = boezems['start_point_SP'].apply(lambda x: str(x))
-            
-            # # Now you can attempt vectorized comparisons since these are now string columns
-            # from_matches = edges['from_coord_str'].isin(boezems['start_point_str'])
-            # to_matches = edges['to_coord_str'].isin(boezems['start_point_str'])
-            
-            # # Combine the boolean masks with an OR condition
-            # matches = from_matches | to_matches
-            
-            # # Filter the DataFrame
-            # boezem_edges = edges[matches]
-            # gpd.GeoDataFrame(boezem_edges, geometry = 'line_geom').plot()
+
 
     def important(self, edges, post_processed_data, crossings):
 
@@ -609,7 +580,7 @@ class CrossingsToRibasim:
             edges_with_incorrect_SP.reset_index(drop=True, inplace=True)
 
             #add the shortest paths to the edges
-            display(edges)
+            # display(edges)
             edges.rename(columns={'line_geom':'line_geom_oud'}, inplace=True)
             edges['line_geom'] = np.nan
 
