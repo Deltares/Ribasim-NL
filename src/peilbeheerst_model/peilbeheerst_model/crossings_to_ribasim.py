@@ -460,6 +460,9 @@ class CrossingsToRibasim:
         nodes = nodes.sort_values(by='node_id')
         nodes = nodes.reset_index(drop=True)
         nodes.index +=1 
+
+        #replace the TRC's for ManningResistances if the streefpeil of two peilgebieden are the same
+        
         
         return nodes, edges
 
@@ -524,13 +527,32 @@ class CrossingsToRibasim:
             reverse_gemaal = reverse_gemaal.loc[~reverse_gemaal.gemaal.isna()] #select the crossings on the boezem with a gemaal
             reverse_gemaal = reverse_gemaal.node_id.unique() #select the crossings where the lines should be reverted. Revert after changing the string to a geometry object
 
+            #add a column if a shortest path is found 
+            edges['bool_SP'] = edges['line_geom']
+            edges['bool_SP'].loc[edges['bool_SP'].isna()] = False
+            edges['bool_SP'].loc[edges['bool_SP']!=False] = True
+            
             #fill the line geoms with the previous geoms if no shortest path is found
             edges.line_geom = edges.line_geom.fillna(edges.line_geom_oud)
             edges['line_geom'] = edges['line_geom'].astype(str).apply(loads) #change string to geometry object
-            
-            #revert the geometry objects on the found locations which should be reverted
-            edges['line_geom'] = edges.apply(lambda row: LineString(row['line_geom'].coords[::-1]) if row['from'] in reverse_gemaal else row['line_geom'], axis=1) 
-        
+
+
+            check_SP = edges.loc[edges.bool_SP == True].copy()
+            check_SP['start_SP'] = check_SP['line_geom'].apply(lambda geom: Point(geom.coords[0]))
+            check_SP['end_SP'] = check_SP['line_geom'].apply(lambda geom: Point(geom.coords[-1]))
+
+            #define distances, both the logical ones (start_from and end_to) as well as the unlogical ones
+            check_SP['distance_start_from'] = check_SP.apply(lambda row: row['start_SP'].distance(row['from_coord']), axis=1)
+            check_SP['distance_end_to'] = check_SP.apply(lambda row: row['end_SP'].distance(row['to_coord']), axis=1)
+            check_SP['distance_start_to'] = check_SP.apply(lambda row: row['start_SP'].distance(row['to_coord']), axis=1)
+            check_SP['distance_end_from'] = check_SP.apply(lambda row: row['end_SP'].distance(row['from_coord']), axis=1)
+
+            check_SP['line_geom'] = check_SP.apply(lambda row: LineString(list(row['line_geom'].coords)[::-1])
+                                                   if (row['distance_start_from'] + row['distance_end_to'] > row['distance_start_to'] + row['distance_end_from'])
+                                                   else row['line_geom'],
+                                                   axis=1)
+            edges.update(check_SP)
+
         return edges
 
 
