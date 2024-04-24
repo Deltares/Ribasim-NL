@@ -8,7 +8,7 @@ cloud = CloudStorage()
 
 MAX_PROFILE_LENGTH = 50000
 
-ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws")
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_prefix")
 ribasim_toml = ribasim_model_dir / "hws.toml"
 model = ribasim.Model.read(ribasim_toml)
 
@@ -32,8 +32,8 @@ def clip_profile(line, point, poly):
 
 
 manning_lines = []
-manning_nodes_df = model.network.node.df[
-    model.network.node.df["node_type"] == "ManningResistance"
+manning_nodes_df = model.node_table().df[
+    model.node_table().df["node_type"] == "ManningResistance"
 ]
 
 
@@ -41,12 +41,8 @@ manning_nodes_df = model.network.node.df[
 
 for row in manning_nodes_df.itertuples():
     # get edge_to (ending at manning node) and edge_from (starting at manning node)
-    edge_to = model.network.edge.df[
-        model.network.edge.df["to_node_id"] == row.node_id
-    ].iloc[0]
-    edge_from = model.network.edge.df[
-        model.network.edge.df["from_node_id"] == row.node_id
-    ].iloc[0]
+    edge_to = model.edge.df[model.edge.df["to_node_id"] == row.node_id].iloc[0]
+    edge_from = model.edge.df[model.edge.df["from_node_id"] == row.node_id].iloc[0]
 
     # length = sum of both lengths
     length = edge_to.geometry.length + edge_from.geometry.length
@@ -70,7 +66,7 @@ for row in manning_nodes_df.itertuples():
     profile_width = profile_line.length
 
     model.manning_resistance.static.df.loc[
-        model.manning_resistance.static.df.node_id == row.Index,
+        model.manning_resistance.static.df.node_id == row.node_id,
         ["length", "profile_width"],
     ] = length, profile_width
 
@@ -81,7 +77,8 @@ model.write(ribasim_toml)
 manning_lines_gdf = gpd.GeoDataFrame(manning_lines, crs=28992)
 
 manning_lines_gdf.to_file(
-    ribasim_model_dir / "database.gpkg",
-    layer="ManningResistance / line",
+    ribasim_model_dir / "manning_profile.gpkg",
     engine="pyogrio",
 )
+
+# %%
