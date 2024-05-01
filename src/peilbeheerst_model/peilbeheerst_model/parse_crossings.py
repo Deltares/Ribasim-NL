@@ -1948,10 +1948,11 @@ class ParseCrossings:
         if "gemaal" in dfc.columns:
             groupvars.append("gemaal")
 
-        if "stuw" in dfc.columns:
-            # Aggregate multiple objects of type stuw to a single stuw.
-            dfc.loc[~pd.isna(dfc.stuw), "stuw"] = "stuw"
-            groupvars.append("stuw")
+        # Objects 'stuw' are (for now) not needed as separate crossings
+        # if "stuw" in dfc.columns:
+        #     # Aggregate multiple objects of type stuw to a single stuw.
+        #     dfc.loc[~pd.isna(dfc.stuw), "stuw"] = "stuw"
+        #     groupvars.append("stuw")
 
         return groupvars
 
