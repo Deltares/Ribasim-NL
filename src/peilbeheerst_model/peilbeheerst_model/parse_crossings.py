@@ -1915,8 +1915,8 @@ class ParseCrossings:
         dfs = dfc.copy()
         dfs_filter = dfs[dfs[filter_col]].copy()
 
-        for row in tqdm.tqdm(
-            dfs_filter.itertuples(),
+        for _, row in tqdm.tqdm(
+            dfs_filter.iterrows(),
             total=len(dfs_filter),
             desc="Add double links for crossings with 'stuw' and 'gemaal'",
             disable=self.disable_progress,
@@ -1928,7 +1928,7 @@ class ParseCrossings:
                 sto = row.streefpeil_from
                 # Check if the double link already exists
                 if not ((dfs.peilgebied_from == pfrom) & (dfs.peilgebied_to == pto)).any():
-                    add_row = dfs.loc[row.Index, :].copy()
+                    add_row = row.copy()
                     # Reverse peilgebieden and streefpeilen, remove gemaal.
                     add_row.at["peilgebied_from"] = pfrom
                     add_row.at["peilgebied_to"] = pto
