@@ -334,6 +334,14 @@ class ParseCrossings:
         gpd.GeoDataFrame
             _description_
         """
+
+        # Check uniqueness of globalid
+        for lyr in ["peilgebied", layer, filterlayer]:
+            if lyr is None:
+                continue
+            if not self.df_gpkg[lyr].globalid.is_unique:
+                raise ValueError(f"The globalid of '{lyr}' contains duplicates")
+
         dfc = {
             layer: [],
             "crossing_type": [],
