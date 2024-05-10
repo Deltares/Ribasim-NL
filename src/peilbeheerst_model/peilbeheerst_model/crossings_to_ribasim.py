@@ -41,7 +41,7 @@ class CrossingsToRibasim:
     #         self.model_characteristics['modeltype'] = modeltype
 
     def read_gpkg_layers(
-        self, variables=["hydroobject", "gemaal", "stuw", "peilgebied", "streefpeil"], print_var=False, data=None
+        self, variables=["hydroobject", "gemaal", "stuw", "peilgebied", "streefpeil", 'duikersifonhevel'], print_var=False, data=None
     ):
         """Read specified layers from a GeoPackage file and store them in the object.
 
@@ -49,7 +49,7 @@ class CrossingsToRibasim:
         ----------
         variables : list, optional
             List of layer names to be read from the GeoPackage, by default
-            ["hydroobject", "gemaal", "stuw", "peilgebied", "streefpeil", "aggregation_area"]
+            ["hydroobject", "gemaal", "stuw", "peilgebied", "streefpeil", "aggregation_area", 'duikersifonhevel']
         print_var : bool, optional
             Flag to print each layer name when reading, by default False
         data : _type_, optional
@@ -83,14 +83,14 @@ class CrossingsToRibasim:
         post_processed_data = self.read_gpkg_layers(data=None)  # add data, based on delivered data
 
         # Load in the crossings data, and apply filtering
-        crossings = gpd.read_file(
-            self.model_characteristics["path_crossings"], layer=self.model_characteristics["crossings_layer"]
-        )
+        crossings = gpd.read_file(self.model_characteristics["path_crossings"], layer=self.model_characteristics["crossings_layer"])
 
         if self.model_characteristics["in_use"]:
             crossings = crossings[crossings.in_use == True].reset_index(drop=True)  # only use the crossings in use
+            
         if self.model_characteristics["agg_links_in_use"]:
             crossings = crossings[crossings.agg_links_in_use == True].reset_index(drop=True)  # only use the crossings in use
+            
         if self.model_characteristics["agg_areas_in_use"]:
             crossings = crossings[crossings.agg_areas_in_use == True].reset_index(drop=True)  # only use the crossings in use
 
@@ -148,19 +148,10 @@ class CrossingsToRibasim:
             post_processed_data["peilgebied"] = pd.concat([post_processed_data["aggregation_areas"][['code', 'globalid', 'geometry']], post_processed_data["peilgebied"][['code', 'globalid', 'peilgebied_cat', 'geometry']]])
             post_processed_data["peilgebied"] = gpd.GeoDataFrame(post_processed_data["peilgebied"], geometry = 'geometry')
 
-            if self.model_characteristics['waterschap'] != 'Delfland':
-                print('Warning: a data specific algorithm has been made for Delfland. This will be changed later. See line below with CODE and globalid')
-
-            
         
         post_processed_data["peilgebied"]["centroid_geometry"] = post_processed_data[
             "peilgebied"
         ].representative_point()
-
-        # import matplotlib.pyplot as plt
-        # fig, ax = plt.subplots()
-        # post_processed_data["peilgebied"].plot(ax=ax)
-        # post_processed_data["peilgebied"]["centroid_geometry"].plot(ax=ax, color='red')
 
         from_centroid_geometry = crossings.merge(
             post_processed_data["peilgebied"],
@@ -375,22 +366,50 @@ class CrossingsToRibasim:
             ]  # the '~' makes sure only zero's are selected (peilgebied to peilgebied crossings)
 
         elif self.model_characteristics["modeltype"] == "boezemmodel":
-            TRC = crossings[
-                ~crossings["crossing_type"].astype(str).str.contains("-10|2")
-            ]  # the '~' makes sure only zero's are selected (peilgebied to peilgebied crossings)
-            boundary = crossings[
-                crossings["crossing_type"].astype(str).str.contains("-10|2")
-            ]
+            # TRC = crossings[
+            #     ~crossings["crossing_type"].astype(str).str.contains("-10|2")
+            # ]  # the '~' makes sure only zero's are selected (peilgebied to peilgebied crossings)
+            # boundary = crossings[
+            #     crossings["crossing_type"].astype(str).str.contains("-10|2")
+            # ]
+
+            TRC = crossings[crossings['peilgebied_from'].notna() & crossings['peilgebied_to'].notna()]
+            boundary = crossings[~(crossings['peilgebied_from'].notna() & crossings['peilgebied_to'].notna())]
 
         else:
             raise ValueError("Invalid 'modeltype'. Please use 'poldermodel' or 'boezemmodel'.")
-        
+
+        #seperate the ManningResistances from the TRC by checking if the streefpeilen are the same       
         boundary = boundary.reset_index(drop=True) #can be deleted later, 20240403
         FB = boundary.loc[boundary.from_polygon_geometry.isna()] #flow boundaries let water flow into the model
         # terminals = boundary.loc[boundary.to_polygon_geometry.isna()] #terminals let water flow out of the model
         TRC_terminals = boundary.loc[~boundary.from_polygon_geometry.isna()] #terminals let water flow out of the model. they can not be connected to a basin, so create TRC's first. Connect a Terminal to it afterwards.
         FB = FB.reset_index(drop=True) #can be deleted later, 20240403
         TRC_terminals = TRC_terminals.reset_index(drop=True) #can be deleted later, 20240403
+
+        
+        # stop
+        # Define the MR
+        # Select MR based on similar streefpeil
+        MR = TRC.loc[TRC.streefpeil_from == TRC.streefpeil_to]
+        
+        # Drop MR node in case of peilgebied_cat -1
+        MR = MR[~MR["crossing_type"].astype(str).str.contains("-1")]
+        
+        # Make sure peilgebied_from is active
+        MR = MR.loc[~MR["peilgebied_from"].isna()]
+        MR = MR.loc[~MR["peilgebied_to"].isna()]
+        
+        # Drop MR nodes from TRC nodes
+        mask = TRC['node_id'].isin(MR['node_id'])
+        TRC = TRC[~mask]
+        
+        # Create MR dataframe
+        nodes_MR = pd.DataFrame()
+        nodes_MR["node_id"] = MR["node_id"]
+        nodes_MR["type"] = "ManningResistance"
+        nodes_MR["geometry"] = MR["geometry"]
+        nodes_MR.drop_duplicates(subset="node_id").reset_index(drop=True)
 
         # define the TRC
         # TRC = crossings.loc[(crossings.peilgebied_from != -999) & (crossings.peilgebied_to != -999)]
@@ -417,15 +436,16 @@ class CrossingsToRibasim:
 
         # combine
         # nodes = pd.concat([nodes_basins, nodes_TRC, nodes_FB])
-        nodes = pd.concat([nodes_basins, nodes_TRC, nodes_FB, nodes_TRC_ter])
+        nodes = pd.concat([nodes_basins, nodes_MR, nodes_TRC, nodes_FB, nodes_TRC_ter])
         nodes = nodes.reset_index(drop=True)
         nodes.index = nodes.node_id.to_numpy()
-
 
         # embed the pumps
         pump_nodes = crossings.dropna(subset="gemaal").node_id.to_numpy()
         # nodes.loc[nodes.node_id.isin(pump_nodes) & nodes['type'].isna(), "type"] = "Pump" 
         nodes.loc[nodes.node_id.isin(pump_nodes), "type"] = "Pump" #stond eerst als de regel hierboven. Heb niet meer scherp waarom de nodes['type'] leeg MOET zijn; zo ver ik weet wordt die altijd ingevuld met een waarden (zie hierboven). Voor nu even weggehaald.
+
+
         
         if len(nodes_TRC_ter) > 0:
             #first, properly embed the Terminals in the nodes
@@ -433,7 +453,7 @@ class CrossingsToRibasim:
             nodes_ter = pd.DataFrame()
             nodes_ter["node_id"] = np.arange(nodes_max, nodes_max + len(nodes_TRC_ter))
             nodes_ter["type"] = "Terminal" 
-            nodes_ter['geometry'] = [Point(point.x - 1, point.y) for point in TRC_terminals["geometry"]] #move one meter to the left to place the terminal. Use the original points
+            nodes_ter['geometry'] = [Point(point.x + 1, point.y) for point in TRC_terminals["geometry"]] #move one meter to the right to place the Terminal. Use the original points
             # nodes_ter['geometry'] = gpd.GeoSeries(nodes_ter['geometry'])
             nodes_ter = gpd.GeoDataFrame(nodes_ter)
             # nodes_ter["geometry"] = TRC_terminals["geometry"] #copy paste the geometry points of the TRC which go to the terminal
@@ -459,13 +479,50 @@ class CrossingsToRibasim:
 
         nodes = nodes.sort_values(by='node_id')
         nodes = nodes.reset_index(drop=True)
+
+
+
+        
+        #add the level boundaries, on the locations where a pump is located at a boundary
+        nodes_pump_LB = crossings.dropna(subset="gemaal") #select all gemalen
+        nodes_pump_LB = nodes_pump_LB.loc[nodes_pump_LB.peilgebied_from.isna()]
+        # display(nodes_pump_LB)
+
+        #repeat same procedure as the implementation of the Terminals, for the Level Boundaries
+        if len(nodes_pump_LB) > 0:
+            #first, properly embed the Terminals in the nodes
+            nodes_max = max(nodes.node_id) + 1 #add +1 as we need to add new nodes
+            nodes_LB = pd.DataFrame()
+            nodes_LB["node_id"] = np.arange(nodes_max, nodes_max + len(nodes_pump_LB))
+            nodes_LB["type"] = "LevelBoundary" 
+            nodes_LB['geometry'] = [Point(point.x - 1, point.y) for point in nodes_pump_LB["geometry"]] #move one meter to the left to place the terminal. Use the original points
+            # nodes_LB['geometry'] = gpd.GeoSeries(nodes_LB['geometry'])
+            nodes_LB = gpd.GeoDataFrame(nodes_LB)
+            # nodes_LB["geometry"] = nodes_pump_LB["geometry"] #copy paste the geometry points of the TRC which go to the terminal
+            nodes_LB = nodes_LB.drop_duplicates(subset="node_id")
+
+            #second, properly embed the Terminals in the edges. Fill in the entire df for completion purposes 
+            edges_LB = pd.DataFrame()
+            edges_LB['to'] = nodes_pump_LB.node_id
+            edges_LB['from'] = nodes_LB.node_id.values
+            edges_LB['to_coord'] = nodes_pump_LB["geometry"]
+            edges_LB['from_coord'] = nodes_LB['geometry'].values
+            edges_LB['from_x'] = nodes_pump_LB["geometry"].x.values
+            edges_LB['from_y'] = nodes_pump_LB["geometry"].y.values
+            edges_LB['to_x'] = nodes_LB["geometry"].x
+            edges_LB['to_y'] = nodes_LB['geometry'].y
+
+            edges_LB['line_geom'] = edges_LB.apply(lambda row: LineString([row["from_coord"], row["to_coord"]]), axis=1)
+            edges_LB.reset_index(drop=True,inplace=True)
+            
+            #append the nodes and the edges to the main df
+            nodes = pd.concat([nodes, nodes_LB]).reset_index(drop=True)
+            edges = pd.concat([edges, edges_LB]).reset_index(drop=True)
+
+        
         nodes.index +=1 
 
-        #replace the TRC's for ManningResistances if the streefpeil of two peilgebieden are the same
-        
-        
         return nodes, edges
-
 
 
     def embed_boezems(self, edges, post_processed_data, crossings): 
@@ -541,6 +598,7 @@ class CrossingsToRibasim:
             check_SP['start_SP'] = check_SP['line_geom'].apply(lambda geom: Point(geom.coords[0]))
             check_SP['end_SP'] = check_SP['line_geom'].apply(lambda geom: Point(geom.coords[-1]))
 
+            # display(check_SP)
             #define distances, both the logical ones (start_from and end_to) as well as the unlogical ones
             check_SP['distance_start_from'] = check_SP.apply(lambda row: row['start_SP'].distance(row['from_coord']), axis=1)
             check_SP['distance_end_to'] = check_SP.apply(lambda row: row['end_SP'].distance(row['to_coord']), axis=1)
@@ -775,7 +833,7 @@ class RibasimNetwork:
         """
         level_boundary = ribasim.LevelBoundary(
             static=pd.DataFrame(
-                data={"node_id": self.nodes.loc[self.nodes["type"] == "LevelBoundary"]["node_id"], "level": 999.9}
+                data={"node_id": self.nodes.loc[self.nodes["type"] == "LevelBoundary"]["node_id"], "level": 0}
             )
         )
         return level_boundary
@@ -813,11 +871,17 @@ class RibasimNetwork:
         _type_
             _description_
         """
+        # print(self.nodes.loc[self.nodes["type"] == "ManningResistance"]["node_id"])
         manning_resistance = ribasim.ManningResistance(
             static=pd.DataFrame(
-                data={"node_id": [], "length": [], "manning_n": [], "profile_width": [], "profile_slope": []}
+                data={"node_id": self.nodes.loc[self.nodes["type"] == "ManningResistance"]["node_id"].reset_index(drop=True),
+                      "length": 5,
+                      "manning_n": 0.02,
+                      "profile_width": 1,
+                      "profile_slope": 1}
             )
         )
+        
         return manning_resistance
 
     def fractional_flow(self):
@@ -971,9 +1035,9 @@ class RibasimNetwork:
             terminal=terminal,
             starttime=self.model_characteristics["starttime"],
             endtime=self.model_characteristics["endtime"],
-            # level_boundary=level_boundary,
+            level_boundary=level_boundary,
             #                               linear_resistance=linear_resistance,
-            #                               manning_resistance=manning_resistance,
+                                          manning_resistance=manning_resistance,
             #                               fractional_flow=fractional_flow,
             #                               outlet=outlet,
             #                               discrete_control=discrete_control,
@@ -997,63 +1061,101 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        # Create a dictionary to store all the checks
         checks = {}
-
+        
+        
+        
         # prevent having multiple geometries columns
-        self.nodes = self.nodes[["node_id", "type", "geometry"]]
-
+        nodes = self.nodes[["node_id", "type", "geometry"]]
+        
+        
+        
         ##### identify the sinks #####
         unique_first = np.unique(self.edges["from"].astype(int))  # Get the unique nodes from the first column
         unique_second = np.unique(self.edges["to"].astype(int))  # Get the unique integers from the second column
-        peilgebied_to_sink = (
-            np.setdiff1d(unique_second, unique_first) + 1
-        )  # = the basins which are assumed to be Terminals. Plus one due to indexing
-
-        sinks = self.nodes.loc[self.nodes.node_id.isin(peilgebied_to_sink)]
-        sinks = sinks.loc[sinks["type"] != "LevelBoundary"]
-        sinks = sinks.loc[sinks["type"] != "FlowBoundary"]
-        sinks = sinks.loc[sinks["type"] != "Pump"]
-        sinks = sinks.loc[sinks["type"] != "TabulatedRatingCurve"]
+        peilgebied_to_sink = (np.setdiff1d(unique_second, unique_first) + 1)  # = the basins which are assumed to be Terminals. Plus one due to indexing
+        
+        sinks = nodes.loc[nodes.node_id.isin(peilgebied_to_sink)]
+        sinks = sinks.loc[sinks['type'] == 'Basin']
         sinks = gpd.GeoDataFrame(sinks, geometry="geometry")
+        
+        peilgebied_to_source = (np.setdiff1d(unique_first, unique_second))  # = the basins which are assumed to be sources
+        sources = nodes.loc[nodes.node_id.isin(peilgebied_to_source)]
+        sources = sources.loc[sources['type'] == 'Basin']
+        sources = gpd.GeoDataFrame(sources, geometry="geometry")
+        
         checks["sinks"] = sinks
-
+        checks["sources"] = sources
+        
+        
         ##### identify basins without connections #####
         actual_ptp = crossings
         pg_from_to = pd.concat([actual_ptp.peilgebied_from, actual_ptp.peilgebied_to])  # .to_numpy().astype(int)
-        pg_from_to = pd.to_numeric(
-            pg_from_to, errors="coerce"
-        )  # handle NaNs, while converting all string values to integers
-
-        basins_without_connection = self.nodes[~self.nodes.node_id.isin(pg_from_to)]
+        pg_from_to = pd.to_numeric(pg_from_to, errors="coerce")  # handle NaNs, while converting all string values to integers
+        
+        basins_without_connection = nodes[~nodes.node_id.isin(pg_from_to)]
         basins_without_connection = basins_without_connection.loc[basins_without_connection["type"] == "Basin"]
         basins_without_connection = gpd.GeoDataFrame(basins_without_connection, geometry="geometry")
         checks["basins_without_connection"] = basins_without_connection
-
+        
         ##### identify uncoupled pumps #####
         # Create an additional column to identify which gemalen are used. Default is set to False. Load in the original gdf without any filters
-        routing_for_gemaal = gpd.read_file(
-            self.model_characteristics["path_crossings"], layer="crossings_hydroobject_filtered"
-        )  # all crossings, no filtering on in_use or agg1_used
+        routing_for_gemaal = gpd.read_file(self.model_characteristics["path_crossings"], layer="crossings_hydroobject_filtered")  # all crossings, no filtering on in_use or agg1_used
         post_processed_data["gemaal"]["in_use"] = False  # add column
-
+        
         # Identify the unused pumps. Set to true if the globalid of a pump occurs in the crossing table
         gemaal_used = routing_for_gemaal.dropna(subset="gemaal").gemaal  # extract the global id's
-        post_processed_data["gemaal"].loc[post_processed_data["gemaal"].globalid.isin(gemaal_used), "in_use"] = (
-            True  # swtich in_use from False to True
-        )
+        post_processed_data["gemaal"].loc[post_processed_data["gemaal"].globalid.isin(gemaal_used), "in_use"] = (True)
         checks["gemaal_in_use_True_False"] = post_processed_data["gemaal"]
-
-        ##### collect the hydroobjects and peilgebieden #####
+        
+        ##### collect the peilgebieden #####
         pg_st = post_processed_data["peilgebied"].merge(  # pg_st = peilgebied with streefpeil
-            post_processed_data["streefpeil"],
-            left_on="globalid",
-            right_on="globalid",
-            suffixes=("", "_streefpeil"),
-        )[["waterhoogte", "code", "geometry"]]
+                post_processed_data["streefpeil"],
+                left_on="globalid",
+                right_on="globalid",
+                suffixes=("", "_streefpeil"),
+            )[["waterhoogte", "code", 'globalid', "geometry"]]
         checks["peilgebied_met_streefpeil"] = pg_st
-        checks["hydroobjecten"] = post_processed_data["hydroobject"]
 
+        
+        
+        RHWS_NHWS = post_processed_data['peilgebied'].loc[post_processed_data['peilgebied'].peilgebied_cat != 0, 'globalid'].unique()
+        
+        #peilgebieden which afwater on the boezem / NHWS
+        afwateren_RHWS_NHWS = crossings.loc[crossings.peilgebied_to_original.isin(RHWS_NHWS) | pd.isna(crossings['peilgebied_to_original'])] #also select Nones
+        afwateren_RHWS_NHWS = afwateren_RHWS_NHWS.loc[afwateren_RHWS_NHWS.crossing_type.str.contains('01|-10|02|-20')].reset_index(drop=True) #only select regular peilgebieden
+        try:
+            afwateren_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(afwateren_RHWS_NHWS.agg_area_from)]
+        except Exception:
+            print("Warning: no afwaterende peilgebieden found in checks['peilgebied_met_afwatering_op_hoofdwatersysteem']")
+            afwateren_RHWS_NHWS = gpd.GeoDataFrame()
+            afwateren_RHWS_NHWS['geometry'] = None
+            
+        checks['peilgebied_met_afwatering_op_hoofdwatersysteem'] = afwateren_RHWS_NHWS#[['code', 'globalid', 'geometry', 'peilgebied_cat']]
+        
+        #peilgebieden which inlaat water from the boezem / NHWS
+        inlaten_RHWS_NHWS = crossings.loc[crossings.peilgebied_from_original.isin(RHWS_NHWS) | pd.isna(crossings['peilgebied_to_original'])] #also select Nones
+        inlaten_RHWS_NHWS = inlaten_RHWS_NHWS.loc[inlaten_RHWS_NHWS.crossing_type.str.contains('01|-10|02|-20')].reset_index(drop=True) #only select regular peilgebieden
+        # inlaten_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(inlaten_RHWS_NHWS.agg_area_to)]
+        try:
+            inlaten_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(inlaten_RHWS_NHWS.agg_area_to)]
+        except Exception:
+            print("Warning: no inlatende peilgebieden found in checks['peilgebied_met_inlaat_van_hoofdwatersysteem']")
+            inlaten_RHWS_NHWS = gpd.GeoDataFrame()
+            inlaten_RHWS_NHWS['geometry'] = None
+            
+        checks['peilgebied_met_inlaat_van_hoofdwatersysteem'] = inlaten_RHWS_NHWS#[['code', 'globalid', 'geometry', 'peilgebied_cat']]
+
+        #peilgebieden which are the boezem
+        checks['boezem'] = post_processed_data['peilgebied'].loc[post_processed_data['peilgebied'].peilgebied_cat > 0][['code', 'globalid', 'geometry', 'peilgebied_cat']]
+        
+        #also store the crossings. Change geometry type to string for the unnused geometry columns
+        checks['HKV_internal_crossings'] = crossings.copy()
+        checks['HKV_internal_crossings'] = checks['HKV_internal_crossings'].drop(columns=['from_centroid_geometry', 'to_centroid_geometry', 'from_polygon_geometry', 'to_polygon_geometry'])
+        
+        checks["duikersifonhevel"] = post_processed_data["duikersifonhevel"]
+        checks["hydroobjecten"] = post_processed_data["hydroobject"]
+        
         return checks
 
     def store_data(data, output_path):
@@ -1120,12 +1222,7 @@ class RibasimNetwork:
                     path,
                     "modellen",
                     self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    self.model_characteristics["waterschap"]
-                    + "_"
-                    + self.model_characteristics["modelname"]
-                    + "_"
-                    + self.model_characteristics["modeltype"]
-                    + "_checks",
+                    "database_checks",
                 ),
             )
 
@@ -1163,12 +1260,7 @@ class RibasimNetwork:
                 data=checks,
                 output_path=str(
                     P_path
-                    + self.model_characteristics["waterschap"]
-                    + "_"
-                    + self.model_characteristics["modelname"]
-                    + "_"
-                    + self.model_characteristics["modeltype"]
-                    + "_checks"
+                    + "visualisation_checks"
                 ),
             )
 
@@ -1176,18 +1268,14 @@ class RibasimNetwork:
         if self.model_characteristics["write_symbology"]:
             # dont change the paths below!
             checks_symbology_path = (
-                r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_Ribasimmodel.qlr"
+                # r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_Ribasimmodel.qlr"
+                r"../../../../Data_overig/QGIS_qlr/visualisation_Ribasim.qlr"
             )
             checks_symbology_path_new = os.path.join(
                 path,
                 "modellen",
                 self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                self.model_characteristics["waterschap"]
-                + "_"
-                + self.model_characteristics["modelname"]
-                + "_"
-                + self.model_characteristics["modeltype"]
-                + "_Ribasim.qlr",
+                "visualisation_Ribasim.qlr",
             )
 
             # dummy string, required to replace string in the file
@@ -1202,12 +1290,12 @@ class RibasimNetwork:
             with open(checks_symbology_path_new, encoding="utf-8") as file:
                 qlr_contents = file.read()
 
-            # change paths in the .qlr file
-            qlr_contents = qlr_contents.replace(checks_path_old, checks_path_new)
+            # # change paths in the .qlr file
+            # qlr_contents = qlr_contents.replace(checks_path_old, checks_path_new)
 
-            # write updated file
-            with open(checks_symbology_path_new, "w", encoding="utf-8") as file:
-                file.write(qlr_contents)
+            # # write updated file
+            # with open(checks_symbology_path_new, "w", encoding="utf-8") as file:
+            #     file.write(qlr_contents)
 
             if self.model_characteristics["write_Pdrive"]:
                 # write Ribasim model to the P drive
@@ -1234,29 +1322,21 @@ class RibasimNetwork:
                     src=checks_symbology_path_new,
                     dst=os.path.join(
                         P_path,
-                        self.model_characteristics["waterschap"]
-                        + "_"
-                        + self.model_characteristics["modelname"]
-                        + "_"
-                        + self.model_characteristics["modeltype"]
-                        + "_Ribasim.qlr",
+                        "visualisation_Ribasim.qlr",
                     ),
                 )
 
         ##### copy symbology for the CHECKS data #####
         if self.model_characteristics["write_symbology"]:
             # dont change the paths below!
-            checks_symbology_path = r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_checks.qlr"
+            # checks_symbology_path = r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_checks.qlr"
+            checks_symbology_path = r"../../../../Data_overig/QGIS_qlr/visualisation_checks.qlr"
+
             checks_symbology_path_new = os.path.join(
                 path,
                 "modellen",
                 self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                self.model_characteristics["waterschap"]
-                + "_"
-                + self.model_characteristics["modelname"]
-                + "_"
-                + self.model_characteristics["modeltype"]
-                + "_checks.qlr",
+                "visualisation_checks.qlr",
             )
 
             # dummy string, required to replace string in the file
@@ -1272,11 +1352,11 @@ class RibasimNetwork:
                 qlr_contents = file.read()
 
             # change paths in the .qlr file
-            qlr_contents = qlr_contents.replace(checks_path_old, checks_path_new)
+            # qlr_contents = qlr_contents.replace(checks_path_old, checks_path_new)
 
-            # write updated file
-            with open(checks_symbology_path_new, "w", encoding="utf-8") as file:
-                file.write(qlr_contents)
+            # # write updated file
+            # with open(checks_symbology_path_new, "w", encoding="utf-8") as file:
+            #     file.write(qlr_contents)
 
             if self.model_characteristics["write_Pdrive"]:
                 # write Ribasim model to the P drive
@@ -1303,12 +1383,7 @@ class RibasimNetwork:
                     src=checks_symbology_path_new,
                     dst=os.path.join(
                         P_path,
-                        self.model_characteristics["waterschap"]
-                        + "_"
-                        + self.model_characteristics["modelname"]
-                        + "_"
-                        + self.model_characteristics["modeltype"]
-                        + "_Ribasim.qlr",
+                        "visualisation_Ribasim.qlr",
                     ),
                 )
 
