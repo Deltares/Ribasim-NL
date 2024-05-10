@@ -1158,6 +1158,17 @@ class RibasimNetwork:
         
         return checks
 
+
+    def add_meta_data(self, model, checks):
+        model.network.node.df['meta_peilgebied_cat'] = np.nan
+        model.network.node.df.loc[model.network.node.df.node_type == 'Basin', 'meta_peilgebied_cat'] = 0 #set only the basins to regular peilgebieden
+        
+        basin_nodes = model.network.node.df.loc[model.network.node.df['node_type'] == 'Basin'] #select all basins
+        points_within = gpd.sjoin(basin_nodes, checks['boezem'], how='inner', predicate='within') #find the basins which are within a peilgebied (found in the checks)
+        model.network.node.df.meta_peilgebied_cat.loc[points_within.index] = 1 #set these basins to become peilgebied_cat == 1
+
+        return model
+        
     def store_data(data, output_path):
         """_summary_
 
