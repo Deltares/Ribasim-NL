@@ -27,3 +27,6 @@ src/peilbeheerst_model/*.ipynb
 src/peilbeheerst_model/*.code-workspace
 src/peilbeheerst_model/.vscode
 
+src/peilbeheerst_model/*.jpeg
+src/peilbeheerst_model/*.gpkg
+src/peilbeheerst_model/tests_results
