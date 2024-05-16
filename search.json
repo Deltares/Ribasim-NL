@@ -1,61 +1,5 @@
 [
   {
-    "objectID": "reference/add_styles_to_geopackage.html",
-    "href": "reference/add_styles_to_geopackage.html",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "add_styles_to_geopackage(gpkg_path)\nAdd styles to a HyDAMO GeoPackage\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\npathlib.Path\nPath to HyDAMO GeoPackage\nrequired\n\n\n\n\n\n\n\n\n\nType\nDescription\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/add_styles_to_geopackage.html#parameters",
-    "href": "reference/add_styles_to_geopackage.html#parameters",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\npathlib.Path\nPath to HyDAMO GeoPackage\nrequired"
-  },
-  {
-    "objectID": "reference/add_styles_to_geopackage.html#returns",
-    "href": "reference/add_styles_to_geopackage.html#returns",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "Type\nDescription\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/possibly_intersecting.html",
-    "href": "reference/possibly_intersecting.html",
-    "title": "possibly_intersecting",
-    "section": "",
-    "text": "possibly_intersecting(dataframebounds, geometry, buffer=0)\nEfficiently determine possibly intersecting geometries using a bounding box.\nFinding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.numpy.array\n\nrequired\n\n\ngeometry\nshapely.shapely.geometry.shapely.geometry.Polygon\n\nrequired"
-  },
-  {
-    "objectID": "reference/possibly_intersecting.html#parameters",
-    "href": "reference/possibly_intersecting.html#parameters",
-    "title": "possibly_intersecting",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.numpy.array\n\nrequired\n\n\ngeometry\nshapely.shapely.geometry.shapely.geometry.Polygon\n\nrequired"
-  },
-  {
-    "objectID": "reference/HyDAMO.html",
-    "href": "reference/HyDAMO.html",
-    "title": "HyDAMO",
-    "section": "",
-    "text": "HyDAMO\nHyDAMO(self, version='2.2', schemas_path=SCHEMAS_DIR, ignored_layers=['afvoeraanvoergebied', 'imwa_geoobject', 'leggerwatersysteem', 'leggerwaterveiligheid', 'waterbeheergebied'])\nDefinition of the HyDAMO datamodel."
-  },
-  {
-    "objectID": "reference/ExtendedGeoDataFrame.html",
-    "href": "reference/ExtendedGeoDataFrame.html",
-    "title": "ExtendedGeoDataFrame",
-    "section": "",
-    "text": "ExtendedGeoDataFrame\nExtendedGeoDataFrame(self, validation_schema, geotype, layer_name='', required_columns=[], logger=logging, *args, **kwargs)\nA GeoPandas GeoDataFrame with extended properties and methods."
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Ribasim-NL",
-    "section": "",
-    "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
-  },
-  {
     "objectID": "cloudstorage.html",
     "href": "cloudstorage.html",
     "title": "Cloud storage",
@@ -112,25 +56,39 @@
     "text": "authority = \"Rijkswaterstaat\"\ncloud_storage.uploaded_models(authority) # to see which models have been uploaded\n\ncloud_storage.upload_model(authority, model=\"ijsselmeer\") # to upload a new version of the `ijsselmeermodel`."
   },
   {
-    "objectID": "reference/find_nearest_branch.html",
-    "href": "reference/find_nearest_branch.html",
-    "title": "find_nearest_branch",
+    "objectID": "reference/possibly_intersecting.html",
+    "href": "reference/possibly_intersecting.html",
+    "title": "possibly_intersecting",
     "section": "",
-    "text": "find_nearest_branch(branches, geometries, method='overall', maxdist=5)\nDetermine nearest branch for each geometry.\nThe nearest branch can be found by finding t from both ends (ends) or the nearest branch from the geometry as a whole (overall), the centroid (centroid), or intersecting (intersect).\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.geopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.geopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5\n\n\nminoffset\nint or float\nMinimum offset from the end of the corresponding branch in case of method=equal\nrequired"
+    "text": "possibly_intersecting(dataframebounds, geometry, buffer=0)\nEfficiently determine possibly intersecting geometries using a bounding box.\nFinding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.numpy.array\n\nrequired\n\n\ngeometry\nshapely.shapely.geometry.shapely.geometry.Polygon\n\nrequired"
   },
   {
-    "objectID": "reference/find_nearest_branch.html#parameters",
-    "href": "reference/find_nearest_branch.html#parameters",
-    "title": "find_nearest_branch",
+    "objectID": "reference/possibly_intersecting.html#parameters",
+    "href": "reference/possibly_intersecting.html#parameters",
+    "title": "possibly_intersecting",
     "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.geopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.geopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5\n\n\nminoffset\nint or float\nMinimum offset from the end of the corresponding branch in case of method=equal\nrequired"
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.numpy.array\n\nrequired\n\n\ngeometry\nshapely.shapely.geometry.shapely.geometry.Polygon\n\nrequired"
   },
   {
-    "objectID": "reference/CloudStorage.html",
-    "href": "reference/CloudStorage.html",
-    "title": "CloudStorage",
+    "objectID": "reference/add_styles_to_geopackage.html",
+    "href": "reference/add_styles_to_geopackage.html",
+    "title": "add_styles_to_geopackage",
     "section": "",
-    "text": "CloudStorage\nCloudStorage(self, data_dir=RIBASIM_NL_DATA_DIR, user=RIBASIM_NL_CLOUD_USER, url=BASE_URL, password=RIBASIM_NL_CLOUD_PASS)\nConnect a local ’data_dir` to cloud-storage."
+    "text": "add_styles_to_geopackage(gpkg_path)\nAdd styles to a HyDAMO GeoPackage\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\npathlib.Path\nPath to HyDAMO GeoPackage\nrequired\n\n\n\n\n\n\n\n\n\nType\nDescription\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/add_styles_to_geopackage.html#parameters",
+    "href": "reference/add_styles_to_geopackage.html#parameters",
+    "title": "add_styles_to_geopackage",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\npathlib.Path\nPath to HyDAMO GeoPackage\nrequired"
+  },
+  {
+    "objectID": "reference/add_styles_to_geopackage.html#returns",
+    "href": "reference/add_styles_to_geopackage.html#returns",
+    "title": "add_styles_to_geopackage",
+    "section": "",
+    "text": "Type\nDescription\n\n\n\n\nNone."
   },
   {
     "objectID": "reference/read_style.html",
@@ -154,6 +112,34 @@
     "text": "Type\nDescription\n\n\n\n\nstr\nstyle-string for SQL"
   },
   {
+    "objectID": "reference/HyDAMO.html",
+    "href": "reference/HyDAMO.html",
+    "title": "HyDAMO",
+    "section": "",
+    "text": "HyDAMO\nHyDAMO(self, version='2.2', schemas_path=SCHEMAS_DIR, ignored_layers=['afvoeraanvoergebied', 'imwa_geoobject', 'leggerwatersysteem', 'leggerwaterveiligheid', 'waterbeheergebied'])\nDefinition of the HyDAMO datamodel."
+  },
+  {
+    "objectID": "reference/find_nearest_branch.html",
+    "href": "reference/find_nearest_branch.html",
+    "title": "find_nearest_branch",
+    "section": "",
+    "text": "find_nearest_branch(branches, geometries, method='overall', maxdist=5)\nDetermine nearest branch for each geometry.\nThe nearest branch can be found by finding t from both ends (ends) or the nearest branch from the geometry as a whole (overall), the centroid (centroid), or intersecting (intersect).\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.geopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.geopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5\n\n\nminoffset\nint or float\nMinimum offset from the end of the corresponding branch in case of method=equal\nrequired"
+  },
+  {
+    "objectID": "reference/find_nearest_branch.html#parameters",
+    "href": "reference/find_nearest_branch.html#parameters",
+    "title": "find_nearest_branch",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.geopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.geopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5\n\n\nminoffset\nint or float\nMinimum offset from the end of the corresponding branch in case of method=equal\nrequired"
+  },
+  {
+    "objectID": "reference/CloudStorage.html",
+    "href": "reference/CloudStorage.html",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "CloudStorage\nCloudStorage(self, data_dir=RIBASIM_NL_DATA_DIR, user=RIBASIM_NL_CLOUD_USER, url=BASE_URL, password=RIBASIM_NL_CLOUD_PASS)\nConnect a local ’data_dir` to cloud-storage."
+  },
+  {
     "objectID": "reference/index.html",
     "href": "reference/index.html",
     "title": "API Reference",
@@ -173,5 +159,19 @@
     "title": "API Reference",
     "section": "",
     "text": "Ribasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
+  },
+  {
+    "objectID": "reference/ExtendedGeoDataFrame.html",
+    "href": "reference/ExtendedGeoDataFrame.html",
+    "title": "ExtendedGeoDataFrame",
+    "section": "",
+    "text": "ExtendedGeoDataFrame\nExtendedGeoDataFrame(self, validation_schema, geotype, layer_name='', required_columns=[], logger=logging, *args, **kwargs)\nA GeoPandas GeoDataFrame with extended properties and methods."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Ribasim-NL",
+    "section": "",
+    "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
   }
 ]
