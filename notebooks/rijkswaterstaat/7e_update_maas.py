@@ -48,6 +48,7 @@ def change_node_type(model, node_id, node_type, data):
 # Grave: 2.7 m NAP (legger RWS)
 # Lith: 2.5 m NAP (legger RWS)
 
+
 # Linne
 model = change_node_type(
     model,
@@ -73,5 +74,108 @@ model = change_node_type(
     ],
 )
 
+# Belfeld
+model = change_node_type(
+    model,
+    node_id=31,
+    node_type="TabulatedRatingCurve",
+    data=[
+        tabulated_rating_curve.Static(
+            level=[8.4, 14.10, 14.3, 17.15, 18.15],
+            flow_rate=[0.0, 10, 1250, 2600, 3862],
+        )
+    ],
+)
+
+
+# Sambeek
+model = change_node_type(
+    model,
+    node_id=28,
+    node_type="TabulatedRatingCurve",
+    data=[
+        tabulated_rating_curve.Static(
+            level=[5.8, 11, 11.2, 12.65, 13.65], flow_rate=[0.0, 10, 1250, 2600, 3862]
+        )
+    ],
+)
+
+# Grave
+model = change_node_type(
+    model,
+    node_id=26,
+    node_type="TabulatedRatingCurve",
+    data=[
+        tabulated_rating_curve.Static(
+            level=[2.7, 7.55, 8.2, 9.35, 10.10], flow_rate=[0.0, 10, 1250, 2600, 3862]
+        )
+    ],
+)
+
+# Lith
+model = change_node_type(
+    model,
+    node_id=25,
+    node_type="TabulatedRatingCurve",
+    data=[
+        tabulated_rating_curve.Static(
+            level=[2.5, 4.55, 5.1, 5.2, 6.60], flow_rate=[0.0, 10, 1250, 2600, 3862]
+        )
+    ],
+)
+
+# Hagestein
+model = change_node_type(
+    model,
+    node_id=17,
+    node_type="TabulatedRatingCurve",
+    data=[
+        tabulated_rating_curve.Static(
+            level=[-4.5, 2, 3.2, 3.4, 4.05, 5.6, 6],
+            flow_rate=[0, 20.5, 754, 928, 1517, 2420, 3373],
+        )
+    ],
+)
+# Amerongen
+model = change_node_type(
+    model,
+    node_id=18,
+    node_type="TabulatedRatingCurve",
+    data=[
+        tabulated_rating_curve.Static(
+            level=[-2, 4.5, 6.15, 6.2, 7.15, 8.25, 9],
+            flow_rate=[0, 20.5, 754, 928, 1517, 2420, 3373],
+        )
+    ],
+)
+
+# Pr Bernhardsluis: nrl_2017_rapport_handelingsperspectieven_stuwen_nederrijn-lek.pdf+ inphographic:watersystemen-ark-nzk.pdf
+model = change_node_type(
+    model,
+    node_id=37,
+    node_type="TabulatedRatingCurve",
+    data=[
+        tabulated_rating_curve.Static(
+            level=[-2.3, 3, 3.2, 10.2], flow_rate=[0, 30, 0, 0]
+        )
+    ],
+)
+
+# Eefde
+model = change_node_type(
+    model,
+    node_id=49,
+    node_type="TabulatedRatingCurve",
+    data=[
+        tabulated_rating_curve.Static(
+            level=[0, 9.85, 9.975, 10.10, 10.3, 10.42, 10.8],
+            flow_rate=[0, 0, 10, 50, 75, 100, 200],
+        )
+    ],
+)
+
+
 # %%
 model.write(ribasim_toml)
+
+# %%
