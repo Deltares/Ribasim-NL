@@ -382,11 +382,27 @@ class CrossingsToRibasim:
         #seperate the ManningResistances from the TRC by checking if the streefpeilen are the same       
         boundary = boundary.reset_index(drop=True) #can be deleted later, 20240403
         FB = boundary.loc[boundary.from_polygon_geometry.isna()] #flow boundaries let water flow into the model
-        # terminals = boundary.loc[boundary.to_polygon_geometry.isna()] #terminals let water flow out of the model
         TRC_terminals = boundary.loc[~boundary.from_polygon_geometry.isna()] #terminals let water flow out of the model. they can not be connected to a basin, so create TRC's first. Connect a Terminal to it afterwards.
+
+
+        ###########################
+        # display(FB)
+        # display(boundary.loc[boundary.peilgebied_from.isna()])
+        FB = boundary.loc[boundary.peilgebied_from.isna()] #flow boundaries let water flow into the model
+        TRC_terminals = boundary.loc[~boundary.peilgebied_from.isna()]
+        ###########################
+        
+        # terminals = boundary.loc[boundary.to_polygon_geometry.isna()] #terminals let water flow out of the model
         FB = FB.reset_index(drop=True) #can be deleted later, 20240403
         TRC_terminals = TRC_terminals.reset_index(drop=True) #can be deleted later, 20240403
+        
+        # print('FB = ')
+        # display(FB)
+        # print()
+        # print('TRC_ter = ')
+        # display(TRC_terminals)
 
+        # display(TRC_terminals.loc[~TRC_terminals.peilgebied_to.isna()])
         
         # stop
         # Define the MR
@@ -614,74 +630,6 @@ class CrossingsToRibasim:
         return edges
 
 
-
-            
-
-
-    def important(self, edges, post_processed_data, crossings):
-
-        if self.model_characteristics['path_boezem'] is not None:
-            boezems = gpd.read_file(self.model_characteristics['path_boezem']).set_crs(crs='EPSG:28992')
-
-            boezem_globalids = post_processed_data['peilgebied'].loc[post_processed_data['peilgebied'].peilgebied_cat == 1, 'globalid'].drop_duplicates()
-            boezems = boezems.loc[boezems.crossing_type == '01']
-
-            #Correct order #######################################
-            boezems_df_correct_order = boezems.loc[boezems.peilgebied_from.isin(boezem_globalids)]
-
-            #retrieve starting point coordinates
-            temp_crossings = pd.merge(left=boezems_df_correct_order,
-                                      right = crossings,
-                                      left_on = ['hydroobject','peilgebied_from'],
-                                      right_on = ['hydroobject','peilgebied_from_original'],
-                                      how = 'left')
-
-            edges_with_correct_SP = pd.merge(left = edges,
-                                     right = temp_crossings,
-                                     left_on = ['from_coord', 'to'],
-                                     right_on = ['from_centroid_geometry', 'node_id_y'],
-                                     how = 'left')
-
-            #INCORRECT order #######################################
-            boezems_df_incorrect_order = boezems.loc[boezems.peilgebied_to.isin(boezem_globalids)]
-
-            #retrieve starting point coordinates
-            temp_crossings = pd.merge(left=boezems_df_incorrect_order,
-                                      right = crossings,
-                                      left_on = ['hydroobject','peilgebied_to'],
-                                      right_on = ['hydroobject','peilgebied_to_original'],
-                                      how = 'left')
-            # temp_crossings = temp_crossings[['peilgebied_to_x', 'to_centroid_geometry', 'shortest_path']] #behapbaar houden
-            edges_with_incorrect_SP = pd.merge(left = edges,
-                                     right = temp_crossings,
-                                     left_on = ['to_coord', 'from'],
-                                     right_on = ['to_centroid_geometry', 'node_id_y'],
-                                     how = 'left')       
-
-            edges_with_correct_SP.drop_duplicates(subset=['from', 'to'], inplace = True)
-            edges_with_incorrect_SP.drop_duplicates(subset=['from', 'to'], inplace = True)
-            
-            # print(edges_with_correct_SP.loc[edges_with_correct_SP.node_id_y == 830, 'shortest_path'].iloc[-1])
-            edges_with_correct_SP.reset_index(drop=True, inplace=True)
-            edges_with_incorrect_SP.reset_index(drop=True, inplace=True)
-
-            #add the shortest paths to the edges
-            # display(edges)
-            edges.rename(columns={'line_geom':'line_geom_oud'}, inplace=True)
-            edges['line_geom'] = np.nan
-
-            edges_temp_incorrect = pd.merge(edges, edges_with_incorrect_SP, how='left', on=['from', 'to'], suffixes=('', '_incorrect_SP'))
-            edges.loc[edges_temp_incorrect['shortest_path'].notnull(), 'line_geom'] = edges_temp_incorrect['shortest_path']
-            edges_temp_correct = pd.merge(edges, edges_with_correct_SP, how='left', on=['from', 'to'], suffixes=('', '_correct_SP'))
-            edges.loc[edges_temp_correct['shortest_path'].notnull(), 'line_geom'] = edges_temp_correct['shortest_path']
-            edges.line_geom = edges.line_geom.fillna(edges.line_geom_oud)
-            
-            edges['line_geom'] = edges['line_geom'].astype(str).apply(loads)
-            # gpd.GeoDataFrame(edges, geometry='line_geom').plot()
-            # display(edges)
-            stop
-            return edges
-
 #####################################################################################################
 #####################################################################################################
 #####################################################################################################
@@ -706,25 +654,25 @@ class RibasimNetwork:
         self.model_characteristics = model_characteristics
 
 
-    def node(self):
-        """_summary_
+    # def node(self):
+    #     """_summary_
 
-        Returns
-        -------
-        _type_
-            _description_
-        """
+    #     Returns
+    #     -------
+    #     _type_
+    #         _description_
+    #     """
+    #     display(self.nodes)
+    #     node = ribasim.Node(
+    #         df=gpd.GeoDataFrame(
+    #             data={"node_type": self.nodes["type"]},
+    #             index=pd.Index(self.nodes["node_id"], name="fid"),
+    #             geometry=self.nodes.geometry,
+    #             crs="EPSG:28992",
+    #         )
+    #     )
 
-        node = ribasim.Node(
-            df=gpd.GeoDataFrame(
-                data={"node_type": self.nodes["type"]},
-                index=pd.Index(self.nodes.node_id, name="fid"),
-                geometry=self.nodes.geometry,
-                crs="EPSG:28992",
-            )
-        )
-
-        return node
+    #     return node
 
     def edge(self):
         """_summary_
@@ -734,13 +682,33 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        edge = ribasim.Edge(
-            df=gpd.GeoDataFrame(
-                data={"from_node_id": self.edges["from"], "to_node_id": self.edges["to"], "edge_type": "flow"},
-                geometry=self.edges["line_geom"],
-                crs="EPSG:28992",
-            )
-        )
+
+        edge = gpd.GeoDataFrame()
+
+        #fix the from nodes
+        from_node_type = pd.merge(left= self.edges,
+                                  right = self.nodes,
+                                  left_on = 'from',
+                                  right_on = 'node_id')['type'].values
+        
+        edge['from_node_id'] = self.edges["from"] #from node ids
+        edge['from_node_type'] = from_node_type
+
+        #fix the to nodes
+        to_node_type = pd.merge(left= self.edges,
+                                  right = self.nodes,
+                                  left_on = 'to',
+                                  right_on = 'node_id')['type'].values
+        
+        edge['to_node_id'] = self.edges["to"] #to node ids
+        edge['to_node_type'] = to_node_type
+
+        #fill in the other columns
+        edge['edge_type'] = 'flow'
+        edge['name'] = None
+        edge['subnetwork_id'] = None
+        edge['geometry'] = self.edges['line_geom']
+            
         return edge
 
     def basin(self):
@@ -751,31 +719,46 @@ class RibasimNetwork:
         _type_
             _description_
         """
+        # display(self.nodes.loc[self.nodes["type"] == "Basin"])
+        basin_nodes = self.nodes.loc[self.nodes["type"] == "Basin"][['node_id', 'streefpeil', 'geometry', 'basins_area_geom']]
+        basin_nodes = basin_nodes.reset_index(drop=True)
+
+        basin_node = pd.DataFrame()
+        basin_node['node_id'] = basin_nodes['node_id']
+        basin_node['node_type'] = 'Basin'
+        basin_node['name'] = np.nan
+        basin_node['subnetwork_id'] = np.nan
+        basin_node['geometry'] = basin_nodes['geometry']
+        
         basins_area = self.nodes.loc[self.nodes["type"] == "Basin"]
         basins_area = basins_area[["node_id", "streefpeil", "basins_area_geom"]]
-        #         basins_area = basins_area[['node_id', 'basins_area_geom']]
         basins_area.rename(columns={"basins_area_geom": "geom"}, inplace=True)
-        # basin = ribasim.Basin(
-        #     profile=pd.DataFrame(
-        #         data={"node_id": self.nodes["node_id"].loc[self.nodes["type"] == "Basin"], "area": 0.1, "level": 0.1}
-        #     ),
-        #     area=gpd.GeoDataFrame(
-        #         data={"node_id": basins_area.node_id, "geometry": basins_area.geom, "meta_peil": basins_area.streefpeil}
-        #     ).set_crs("EPSG:28992"),
-        # )
-        profile_zero = pd.DataFrame(data={"node_id": self.nodes["node_id"].loc[self.nodes["type"] == "Basin"], "area": 0.1, "level": 0.1})
+
+        profile_zero = pd.DataFrame(data={"node_id": self.nodes["node_id"].loc[self.nodes["type"] == "Basin"], "area": 0.1, "level": -9.999})
         profile_one = pd.DataFrame(data={"node_id": self.nodes["node_id"].loc[self.nodes["type"] == "Basin"], "area": 3000, "level": 3})
-        profile = pd.concat([profile_zero, profile_one])
+        basin_profile = pd.concat([profile_zero, profile_one])
+
+        basin_state = pd.DataFrame() #take the streefpeil as initial conditions
+        basin_state['node_id'] = basins_area['node_id']
+        basin_state['level'] = basins_area['streefpeil']
+        basin_state.loc[basin_state['level'] == 'Onbekend streefpeil', 'level'] = 9.999 #insert initial water level of 9.999 if the streefpeil is unknown
+
+        basin_static = pd.DataFrame()
+        basin_static['node_id'] = basin_nodes['node_id']
+        basin_static['drainage'] = 0
+        basin_static['potential_evaporation'] = 0
+        basin_static['infiltration'] = 0
+        basin_static['precipitation'] = 0
+        basin_static['urban_runoff'] = 0
+
+        # display(basin_nodes)
+        basin_area = basin_nodes[['node_id', 'streefpeil', 'basins_area_geom']]
+        basin_area['geometry'] = basin_area['basins_area_geom']
+        basin_area['meta_streefpeil'] = basin_area['streefpeil']
+        basin_area = basin_area[['node_id', 'meta_streefpeil', 'geometry']]
         
-        basin = ribasim.Basin(
-            profile=profile,
-            area=gpd.GeoDataFrame(
-                data={"node_id": basins_area.node_id, "geometry": basins_area.geom, "meta_peil": basins_area.streefpeil}
-            ).set_crs("EPSG:28992"),
-        )
+        return basin_node, basin_profile, basin_static, basin_state, basin_area
 
-
-        return basin
 
     def tabulated_rating_curve(self):
         """_summary_
@@ -785,14 +768,17 @@ class RibasimNetwork:
         _type_
             _description_
         """
+        TRC_nodes = self.nodes.loc[self.nodes["type"] == "TabulatedRatingCurve"][['node_id', 'geometry']]
+        TRC_nodes = TRC_nodes.reset_index(drop=True)
+        
         # dummy data to construct the rating curves
         Qh1 = pd.DataFrame()
-        Qh1["node_id"] = self.nodes.node_id.loc[self.nodes["type"] == "TabulatedRatingCurve"].reset_index(drop=True)
+        Qh1["node_id"] = TRC_nodes['node_id']
         Qh1["level"] = 0.0
         Qh1["flow_rate"] = 0.0
 
         Qh2 = pd.DataFrame()
-        Qh2["node_id"] = self.nodes.node_id.loc[self.nodes["type"] == "TabulatedRatingCurve"].reset_index(drop=True)
+        Qh2["node_id"] = TRC_nodes['node_id']
         Qh2["level"] = 1.0
         Qh2["flow_rate"] = 1.0
 
@@ -800,15 +786,24 @@ class RibasimNetwork:
         Qh = Qh.sort_values(by=["node_id", "level"]).reset_index(drop=True)
         Qh.index += 1
 
-        #         rating_curve = ribasim.TabulatedRatingCurve(static=pd.DataFrame(data={"node_id": Qh.node_id,
-        #                                                                               "level": Qh.level,
-        #                                                                               "flow_rate": Qh.flow_rate}))
-
-        rating_curve = ribasim.TabulatedRatingCurve(
-            static=pd.DataFrame(data={"node_id": Qh.node_id, "level": Qh.level, "flow_rate": Qh.flow_rate})
-        )
-
-        return rating_curve
+        rating_curve_node = pd.DataFrame()
+        rating_curve_node['node_id'] = TRC_nodes['node_id']
+        rating_curve_node['node_type'] = 'TabulatedRatingCurve'
+        rating_curve_node['name'] = np.nan
+        rating_curve_node['subnetwork_id'] = np.nan
+        rating_curve_node['geometry'] = TRC_nodes['geometry']
+        # rating_curve_node = rating_curve_node.reset_index(drop=True)
+        
+        rating_curve_static = pd.DataFrame()
+        rating_curve_static['node_id'] = Qh['node_id']
+        rating_curve_static['control_state'] = np.nan
+        rating_curve_static['level'] = Qh['level']
+        rating_curve_static['flow_rate'] = Qh['flow_rate']
+        rating_curve_static['control_state'] = np.nan
+        # rating_curve_static = rating_curve_static.reset_index(drop=True)
+        
+        
+        return rating_curve_node, rating_curve_static
 
     def pump(self):
         """_summary_
@@ -818,10 +813,25 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        pump_nodes = self.nodes.loc[self.nodes["type"] == "Pump"].node_id.to_numpy()
-
-        pump = ribasim.Pump(static=pd.DataFrame(data={"node_id": pump_nodes, "flow_rate": 0.5 / 3600}))
-        return pump
+        pump_nodes = self.nodes.loc[self.nodes["type"] == "Pump"][['node_id', 'geometry']]#.node_id.to_numpy()
+        pump_nodes = pump_nodes.reset_index(drop=True)
+        
+        pump_node = pd.DataFrame()
+        pump_node['node_id'] = pump_nodes['node_id']
+        pump_node['node_type'] = 'Pump'
+        pump_node['name'] = np.nan
+        pump_node['subnetwork_id'] = np.nan
+        pump_node['geometry'] = pump_nodes['geometry']
+        
+        pump_static = pd.DataFrame()
+        pump_static['node_id'] = pump_nodes['node_id']
+        pump_static['active'] = np.nan
+        pump_static['flow_rate'] = 0
+        pump_static['min_flow_rate'] = np.nan
+        pump_static['max_flow_rate'] = np.nan
+        pump_static['control_state'] = np.nan
+        
+        return pump_node, pump_static
 
     def level_boundary(self):
         """_summary_
@@ -831,12 +841,22 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        level_boundary = ribasim.LevelBoundary(
-            static=pd.DataFrame(
-                data={"node_id": self.nodes.loc[self.nodes["type"] == "LevelBoundary"]["node_id"], "level": 0}
-            )
-        )
-        return level_boundary
+        level_boundary_nodes = self.nodes.loc[self.nodes["type"] == "LevelBoundary"][['node_id', 'geometry']]#.node_id.to_numpy()
+        level_boundary_nodes = level_boundary_nodes.reset_index(drop=True)
+
+        level_boundary_node = pd.DataFrame()
+        level_boundary_node['node_id'] = level_boundary_nodes['node_id']
+        level_boundary_node['node_type'] = 'LevelBoundary'
+        level_boundary_node['name'] = np.nan
+        level_boundary_node['subnetwork_id'] = np.nan
+        level_boundary_node['geometry'] = level_boundary_nodes['geometry']
+
+        level_boundary_static = pd.DataFrame()
+        level_boundary_static['node_id'] = level_boundary_nodes['node_id']
+        level_boundary_static['active'] = np.nan
+        level_boundary_static['level'] = 0
+        
+        return level_boundary_node, level_boundary_static
 
     def flow_boundary(self):
         """_summary_
@@ -846,11 +866,24 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        flow_boundary = ribasim.FlowBoundary(
-            static=pd.DataFrame(
-                                data={"node_id": self.nodes.loc[self.nodes["type"] == "FlowBoundary"]["node_id"], 
-                                      "flow_rate": 0}))
-        return flow_boundary
+
+        flow_boundary_nodes = self.nodes.loc[self.nodes["type"] == "FlowBoundary"][['node_id', 'geometry']]#.node_id.to_numpy()
+        flow_boundary_nodes = flow_boundary_nodes.reset_index(drop=True)
+
+        flow_boundary_node = pd.DataFrame()
+        flow_boundary_node['node_id'] = flow_boundary_nodes['node_id']
+        flow_boundary_node['node_type'] = 'FlowBoundary'
+        flow_boundary_node['name'] = np.nan
+        flow_boundary_node['subnetwork_id'] = np.nan
+        flow_boundary_node['geometry'] = flow_boundary_nodes['geometry']
+
+        flow_boundary_static = pd.DataFrame()
+        flow_boundary_static['node_id'] = flow_boundary_nodes['node_id']
+        flow_boundary_static['active'] = np.nan
+        flow_boundary_static['flow_rate'] = 0
+        
+        return flow_boundary_node, flow_boundary_static
+        
 
     def linear_resistance(self):
         """_summary_
@@ -861,6 +894,7 @@ class RibasimNetwork:
             _description_
         """
         linear_resistance = ribasim.LinearResistance(static=pd.DataFrame(data={"node_id": [], "resistance": []}))
+
         return linear_resistance
 
     def manning_resistance(self):
@@ -871,18 +905,26 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        # print(self.nodes.loc[self.nodes["type"] == "ManningResistance"]["node_id"])
-        manning_resistance = ribasim.ManningResistance(
-            static=pd.DataFrame(
-                data={"node_id": self.nodes.loc[self.nodes["type"] == "ManningResistance"]["node_id"].reset_index(drop=True),
-                      "length": 5,
-                      "manning_n": 0.02,
-                      "profile_width": 1,
-                      "profile_slope": 1}
-            )
-        )
+        manning_resistance_nodes = self.nodes.loc[self.nodes["type"] == "ManningResistance"][['node_id', 'geometry']]
+        manning_resistance_nodes = manning_resistance_nodes.reset_index(drop=True)
+
+        manning_resistance_node = pd.DataFrame()
+        manning_resistance_node['node_id'] = manning_resistance_nodes['node_id']
+        manning_resistance_node['node_type'] = 'ManningResistance'
+        manning_resistance_node['name'] = np.nan
+        manning_resistance_node['subnetwork_id'] = np.nan
+        manning_resistance_node['geometry'] = manning_resistance_nodes['geometry']
+
+        manning_resistance_static = pd.DataFrame()
+        manning_resistance_static['node_id'] = manning_resistance_nodes['node_id']
+        manning_resistance_static['active'] = np.nan
+        manning_resistance_static['length'] = 1000
+        manning_resistance_static['manning_n'] = 0.02
+        manning_resistance_static['profile_width'] = 2
+        manning_resistance_static['profile_slope'] = 3
+                
         
-        return manning_resistance
+        return manning_resistance_node, manning_resistance_static
 
     def fractional_flow(self):
         """_summary_
@@ -903,9 +945,18 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": self.nodes.loc[self.nodes["type"] == "Terminal"]["node_id"]}))
-
-        return terminal
+        # terminal = ribasim.Terminal(static=pd.DataFrame(data={"node_id": self.nodes.loc[self.nodes["type"] == "Terminal"]["node_id"]}))
+        terminal_nodes = self.nodes.loc[self.nodes["type"] == "Terminal"][['node_id', 'geometry']]
+        terminal_nodes = terminal_nodes.reset_index(drop=True)
+        
+        terminal_node = pd.DataFrame()
+        terminal_node['node_id'] = terminal_nodes['node_id']
+        terminal_node['node_type'] = 'Terminal'
+        terminal_node['name'] = np.nan
+        terminal_node['subnetwork_id'] = np.nan
+        terminal_node['geometry'] = terminal_nodes['geometry']
+        
+        return terminal_node
 
     def outlet(self):
         """_summary_
@@ -1159,13 +1210,57 @@ class RibasimNetwork:
         return checks
 
 
-    def add_meta_data(self, model, checks):
-        model.network.node.df['meta_peilgebied_cat'] = np.nan
-        model.network.node.df.loc[model.network.node.df.node_type == 'Basin', 'meta_peilgebied_cat'] = 0 #set only the basins to regular peilgebieden
+    def add_meta_data(self, model, checks, post_processed_data, crossings):
+        # ### insert meta_data of the peilgebied_category ###
+        model.basin.state.df['meta_peilgebied_cat'] = 0 # set initially all basins to be a regular peilgebied (= peilgebied_cat 0) 
+        # # model.basin.state.df.loc[model.basin.state.df.node_type == 'Basin', 'meta_peilgebied_cat'] = 0 #set only the basins to regular peilgebieden
+
         
-        basin_nodes = model.network.node.df.loc[model.network.node.df['node_type'] == 'Basin'] #select all basins
+        basin_nodes = model.basin.state.df.copy()#.loc[model.basin.state.df['node_type'] == 'Basin'] #select all basins
+        model.basin.node.df.index +=1
+        basin_nodes['geometry'] = model.basin.node.df.geometry #add geometry column
+        basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry='geometry') #convert from pd go gpd
+        
         points_within = gpd.sjoin(basin_nodes, checks['boezem'], how='inner', predicate='within') #find the basins which are within a peilgebied (found in the checks)
-        model.network.node.df.meta_peilgebied_cat.loc[points_within.index] = 1 #set these basins to become peilgebied_cat == 1
+        model.basin.state.df.meta_peilgebied_cat.loc[points_within.index] = 1 #set these basins to become peilgebied_cat == 1
+
+        
+        ### insert meta_data of the gemaal type ###
+        crossings_pump = crossings.loc[~crossings.gemaal.isna()][['node_id', 'gemaal', 'geometry']]
+        coupled_crossings_pump = pd.merge(left = crossings_pump,
+                                          right = post_processed_data['gemaal'][['globalid', 'func_afvoer', 'func_aanvoer', 'func_circulatie']],
+                                          left_on = 'gemaal',
+                                          right_on = 'globalid')
+
+        pump_function = pd.merge(left = coupled_crossings_pump,
+                                 right = model.pump.node.df,
+                                 on = 'geometry',
+                                 suffixes = ('', '_duplicate'))[['node_id', 'func_afvoer', 'func_aanvoer', 'func_circulatie']]
+        # display(pump_function)
+        coupled_pump_function = pd.merge(left = model.pump.static.df,
+                                        right = pump_function,
+                                        left_on = 'node_id',
+                                        right_on = 'node_id')
+
+        
+        #add the coupled_pump_function column per column to the model.pump.static.df
+        func_afvoer = pd.merge(left = model.pump.static.df,
+                               right = coupled_pump_function,
+                               on = 'node_id',
+                               how = 'left')['func_afvoer']
+        func_aanvoer = pd.merge(left = model.pump.static.df,
+                               right = coupled_pump_function,
+                               on = 'node_id',
+                               how = 'left')['func_aanvoer']
+
+        func_circulatie = pd.merge(left = model.pump.static.df,
+                               right = coupled_pump_function,
+                               on = 'node_id',
+                               how = 'left')['func_circulatie']
+
+        model.pump.static.df['meta_func_afvoer'] = func_afvoer
+        model.pump.static.df['meta_func_aanvoer'] = func_aanvoer
+        model.pump.static.df['meta_func_circulatie'] = func_circulatie
 
         return model
         
