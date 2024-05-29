@@ -67,12 +67,13 @@ types-requests = "*"
 [feature.common.pypi-dependencies]
 hydamo = { path = "src/hydamo", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
+bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 
 [feature.dev.pypi-dependencies]
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 
 [feature.prod.dependencies]
-ribasim = "==2024.4.0"
+ribasim = "==2024.8.0"
 
 [environments]
 default = { features = ["common", "prod"] }

@@ -1,22 +1,17 @@
 # %%
 import shutil
-from pathlib import Path
 
 import pandas as pd
 import ribasim
+from ribasim_nl import CloudStorage
+from ribasim_nl.results import basin_results
 
-# from ribasim_nl import CloudStorage
+cloud = CloudStorage()
 
-# cloud = CloudStorage()
-
-pd.options.mode.chained_assignment = None
 
 # %%
 # Inlezen ribasim model
-# ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws")
-ribasim_model_dir = Path(
-    r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\modellen\hws_2024_4_1"
-)
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_2024_4_4")
 ribasim_toml = ribasim_model_dir / "hws.toml"
 model = ribasim.Model.read(ribasim_toml)
 
@@ -31,6 +26,7 @@ else:
 
 dt = model.solver.saveat
 
+basin_results_df = basin_results(model)
 
 # %%
 # read results
