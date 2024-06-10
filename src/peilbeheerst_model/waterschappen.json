@@ -9,7 +9,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -26,7 +26,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -43,7 +43,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -60,7 +60,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
 
         },
         "find_crossings_with_peilgebieden": {
@@ -78,7 +78,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -95,7 +95,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -112,7 +112,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -129,7 +129,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -146,7 +146,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -163,7 +163,7 @@
             "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
-            "krw_min_overlap": 0.1
+            "krw_min_overlap": 0.025
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",

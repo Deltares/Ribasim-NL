@@ -385,6 +385,7 @@ class ParseCrossings:
             for layername in fiona.listlayers(krw_path):
                 df = gpd.read_file(krw_path, layer=layername)
                 df = ParseCrossings._make_valid_2dgeom(df)
+                df = df.explode(ignore_index=True)
                 df.insert(0, "krwlayer", layername)
 
                 # Limit to those geometries that intersect with the bounding
@@ -393,11 +394,11 @@ class ParseCrossings:
                 df = df.iloc[idxs, :].copy()
 
                 # Buffer linestrings
-                ls_geom = (df.geom_type == "LineString") | (df.geom_type == "MultiLineString")
+                ls_geom = df.geom_type == "LineString"
                 df.loc[ls_geom, "geometry"] = df.loc[ls_geom, "geometry"].buffer(0.5)
 
-                # Only keep (multi-) polygons
-                df = df[(df.geom_type == "Polygon") | (df.geom_type == "MultiPolygon")].copy()
+                # Only keep polygons
+                df = df[df.geom_type == "Polygon"].copy()
 
                 df_krw.append(df)
             df_krw = pd.concat(df_krw, ignore_index=True)
@@ -407,11 +408,13 @@ class ParseCrossings:
                 # Determine overlapping aggregate areas
                 idxs = df_krw.sindex.query(row.geometry, predicate="intersects")
                 matches = df_krw.geometry.iloc[idxs].intersection(row.geometry)
-                matches = matches.area / row.geometry.area
+                matches = matches.area / df_krw.geometry.iloc[idxs].area
                 matches = matches[matches >= krw_min_overlap]
                 if len(matches) > 0:
-                    dfp.at[idx, pgb_krw_id] = krw_sep.join(df_krw.loc[matches.index, krw_column_id].tolist())
-                    dfp.at[idx, pgb_krw_name] = krw_sep.join(df_krw.loc[matches.index, krw_column_name].tolist())
+                    df = df_krw.loc[matches.index, [krw_column_id, krw_column_name]].copy()
+                    df = df.drop_duplicates(subset=[krw_column_id, krw_column_name])
+                    dfp.at[idx, pgb_krw_id] = krw_sep.join(df[krw_column_id].tolist())
+                    dfp.at[idx, pgb_krw_name] = krw_sep.join(df[krw_column_name].tolist())
 
         return dfp
 
