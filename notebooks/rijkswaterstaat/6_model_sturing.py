@@ -113,7 +113,7 @@ ribasim_toml = cloud.joinpath(
 )
 kwk_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerken")
 
-kwk_xlsx = kwk_dir.joinpath("kunstwerken-27-5-2024.xlsx")
+kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 
 # %%Inlezen
 all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
