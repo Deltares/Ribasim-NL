@@ -25,6 +25,10 @@ class ParseCrossings:
         agg_peilgebieden_layer: str | None = None,
         agg_peilgebieden_column: str | None = None,
         agg_areas_threshold: float = 0.8,
+        krw_path: pathlib.Path | str | None = None,
+        krw_column_id: str | None = None,
+        krw_column_name: str | None = None,
+        krw_min_overlap: float = 0.1,
         move_distance: float = 1e-3,
         almost_equal: float = 1e-6,
         line_tol: float = 1e-3,
@@ -54,6 +58,14 @@ class ParseCrossings:
             _description_, by default None
         agg_areas_threshold : float, optional
             _description_, by default 0.8
+        krw_path : pathlib.Path | str | None, optional
+            _description_, by default None
+        krw_column_id : str | None, optional
+            _description_, by default None
+        krw_column_name : str | None, optional
+            _description_, by default None
+        krw_min_overlap : float, optional
+            _description_, by default 0.1
         move_distance : float, optional
             _description_, by default 1e-3
         almost_equal : float, optional
@@ -132,6 +144,12 @@ class ParseCrossings:
                 raise ValueError("Aggregation layer is defined, but aggregation column is not defined")
             if not self.df_gpkg[self.agg_peilgebieden_layer][self.agg_peilgebieden_column].is_unique:
                 raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
+
+        # KRW
+        self.krw_path = krw_path
+        self.krw_column_id = krw_column_id
+        self.krw_column_name = krw_column_name
+        self.krw_min_overlap = krw_min_overlap
 
         # Output path
         self.output_path = output_path
@@ -271,6 +289,15 @@ class ParseCrossings:
 
         return df_linesingle, df_endpoints
 
+    @staticmethod
+    @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
+    def _make_valid_2dgeom(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        gdf["geometry"] = gdf.make_valid()
+        gdf["geometry"] = gdf.geometry.apply(shapely.force_2d)
+        gdf = gdf[~gdf.is_empty].copy()
+
+        return gdf
+
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
     def _parse_peilgebieden(self) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
         """_summary_
@@ -287,17 +314,106 @@ class ParseCrossings:
         """
         # Force valid peilgebieden with buffer=0 and remove empty geometries.
         df_peilgebieden = self.df_gpkg["peilgebied"].copy()
-        df_peilgebieden["geometry"] = df_peilgebieden.buffer(0)
-        df_peilgebieden["geometry"] = df_peilgebieden.geometry.apply(shapely.force_2d)
-        df_peilgebieden = df_peilgebieden[~df_peilgebieden.is_empty].copy()
+        df_peilgebieden = self._make_valid_2dgeom(df_peilgebieden)
         if pd.isna(df_peilgebieden.globalid).any():
             raise ValueError("One or more globalids of 'peilgebied' are null")
+
+        # Add the KRW bodies
+        df_peilgebieden = self.add_krw_to_peilgebieden(
+            df_peilgebieden,
+            self.krw_path,
+            self.krw_column_id,
+            self.krw_column_name,
+            self.krw_min_overlap,
+            self.list_sep,
+        )
 
         # Determine the boundaries of the peilgebieden.
         df_peil_boundary = df_peilgebieden.copy()
         df_peil_boundary["geometry"] = df_peil_boundary.geometry.boundary
 
         return df_peilgebieden, df_peil_boundary
+
+    @staticmethod
+    @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
+    def add_krw_to_peilgebieden(
+        df_peilgebieden: gpd.GeoDataFrame,
+        krw_path: pathlib.Path | str | None,
+        krw_column_id: str | None,
+        krw_column_name: str | None,
+        krw_min_overlap: float,
+        krw_sep: str,
+    ) -> gpd.GeoDataFrame:
+        """_summary_
+
+        Parameters
+        ----------
+        df_peilgebieden : gpd.GeoDataFrame
+            _description_
+        krw_path : pathlib.Path | str | None
+            _description_
+        krw_column_id : str | None
+            _description_
+        krw_column_name : str | None
+            _description_
+        krw_min_overlap : float
+            _description_
+
+        Returns
+        -------
+        gpd.GeoDataFrame
+            _description_
+        """
+
+        # Add columns to peilgebieden dataframe
+        pgb_krw_id = "owmident"
+        pgb_krw_name = "owmnaam"
+        dfp = df_peilgebieden.copy()
+        if pgb_krw_id not in dfp.columns:
+            dfp.insert(len(dfp.columns) - 1, pgb_krw_id, None)
+        if pgb_krw_name not in dfp.columns:
+            dfp.insert(len(dfp.columns) - 1, pgb_krw_name, None)
+
+        # Reset values for krw columns in peilgebieden dataframe
+        dfp[pgb_krw_id] = None
+        dfp[pgb_krw_name] = None
+
+        if not (krw_path is None or krw_column_id is None or krw_column_name is None):
+            # Determine all krw polygons
+            bbox = shapely.geometry.box(*dfp.geometry.total_bounds)
+            df_krw = []
+            for layername in fiona.listlayers(krw_path):
+                df = gpd.read_file(krw_path, layer=layername)
+                df = ParseCrossings._make_valid_2dgeom(df)
+                df.insert(0, "krwlayer", layername)
+
+                # Limit to those geometries that intersect with the bounding
+                # box of tthe peilgebieden dataframe.
+                idxs = df.sindex.query(bbox, predicate="intersects")
+                df = df.iloc[idxs, :].copy()
+
+                # Buffer linestrings
+                ls_geom = (df.geom_type == "LineString") | (df.geom_type == "MultiLineString")
+                df.loc[ls_geom, "geometry"] = df.loc[ls_geom, "geometry"].buffer(0.5)
+
+                # Only keep (multi-) polygons
+                df = df[(df.geom_type == "Polygon") | (df.geom_type == "MultiPolygon")].copy()
+
+                df_krw.append(df)
+            df_krw = pd.concat(df_krw, ignore_index=True)
+
+            # Assign krw ids
+            for idx, row in dfp.iterrows():
+                # Determine overlapping aggregate areas
+                idxs = df_krw.sindex.query(row.geometry, predicate="intersects")
+                matches = df_krw.geometry.iloc[idxs].intersection(row.geometry)
+                matches = matches.area / row.geometry.area
+                matches = matches[matches >= krw_min_overlap]
+                if len(matches) > 0:
+                    dfp.at[idx, pgb_krw_id] = krw_sep.join(df_krw.loc[matches.index, krw_column_id].tolist())
+                    dfp.at[idx, pgb_krw_name] = krw_sep.join(df_krw.loc[matches.index, krw_column_name].tolist())
+
+        return dfp
 
     @pydantic.validate_call(config={"strict": True})
     def find_crossings_with_peilgebieden(
@@ -557,9 +673,7 @@ class ParseCrossings:
             df_single = df_single.set_index("globalid", inplace=False)
 
         df_single = df_single.explode(ignore_index=False, index_parts=True)
-        df_single["geometry"] = df_single.make_valid()
-        df_single["geometry"] = df_single.geometry.apply(shapely.force_2d)
-        df_single = df_single[~df_single.is_empty].copy()
+        df_single = self._make_valid_2dgeom(df_single)
 
         change_idx, change_geom = [], []
         for row in tqdm.tqdm(

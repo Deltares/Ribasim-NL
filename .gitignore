@@ -30,3 +30,7 @@ src/peilbeheerst_model/.vscode
 src/peilbeheerst_model/*.jpeg
 src/peilbeheerst_model/*.gpkg
 src/peilbeheerst_model/tests_results
+/src/peilbeheerst_model/Output_zdrive
+/src/peilbeheerst_model/Rekenend_Model_Test
+/src/peilbeheerst_model/vervallen
+

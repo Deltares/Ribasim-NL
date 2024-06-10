@@ -5,7 +5,11 @@
             "output_path": "../../../../Data_crossings/HHNK/hhnk_crossings_v26.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -18,7 +22,11 @@
             "output_path": "../../../../Data_crossings/Delfland/delfland_crossings_v08.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -31,7 +39,11 @@
             "output_path": "../../../../Data_crossings/Hollandse_Delta/hd_crossings_v06.gpkg",
             "search_radius_structure": 300,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -44,7 +56,12 @@
             "output_path": "../../../../Data_crossings/AmstelGooienVecht/agv_crossings_v05.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
+
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -57,7 +74,11 @@
             "output_path": "../../../../Data_crossings/HHSK/hhsk_crossings_v04.gpkg",
             "search_radius_structure": 300,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -70,7 +91,11 @@
             "output_path": "../../../../Data_crossings/Rijnland/rijnland_crossings_v04.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -83,7 +108,11 @@
             "output_path": "../../../../Data_crossings/Scheldestromen/scheldestromen_crossings_v02.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -96,7 +125,11 @@
             "output_path": "../../../../Data_crossings/Wetterskip/wetterskip_crossings_v06.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -109,7 +142,11 @@
             "output_path": "../../../../Data_crossings/WSRL/wsrl_crossings_v06.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
@@ -122,7 +159,11 @@
             "output_path": "../../../../Data_crossings/Zuiderzeeland/zzl_crossings_v05.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
-            "agg_peilgebieden_column": "code"
+            "agg_peilgebieden_column": "code",
+            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_column_id": "owmident",
+            "krw_column_name": "owmnaam",
+            "krw_min_overlap": 0.1
         },
         "find_crossings_with_peilgebieden": {
             "filterlayer": "duikersifonhevel",
