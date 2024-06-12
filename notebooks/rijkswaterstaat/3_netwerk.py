@@ -18,19 +18,24 @@ basins_gdf = gpd.read_file(
 
 print("read osm fairway")
 fairway_osm_gdf = gpd.read_file(
-    cloud.joinpath("basisgegevens", "OSM", "waterway_fairway_the_netherlands.gpkg"),
+    cloud.joinpath(
+        "basisgegevens",
+        "OSM",
+        "Nederland_Belgie",
+        "waterway_fairway.gpkg",
+    ),
     engine="pyogrio",
 )
 
 print("read osm river")
 river_osm_gdf = gpd.read_file(
-    cloud.joinpath("basisgegevens", "OSM", "waterway_river_the_netherlands.gpkg"),
+    cloud.joinpath("basisgegevens", "OSM", "Nederland_Belgie", "waterway_river.gpkg"),
     engine="pyogrio",
 )
 
 print("read osm canals")
 canal_osm_gdf = gpd.read_file(
-    cloud.joinpath("basisgegevens", "OSM", "waterway_canal_the_netherlands.gpkg"),
+    cloud.joinpath("basisgegevens", "OSM", "Nederland_Belgie", "waterway_canal.gpkg"),
     engine="pyogrio",
 )
 
@@ -85,7 +90,9 @@ for row in osm_basins_gdf.itertuples():
 network_lines_gdf = pd.concat(data, ignore_index=True)
 network_lines_gdf.drop_duplicates("original_index", inplace=True)
 
-network_lines_gdf.to_file("osm_select.gpkg", engine="pyogrio")
+network_lines_gdf[["name", "osm_id", "geometry"]].to_file(
+    "osm_select.gpkg", engine="pyogrio"
+)
 
 # %%
 print("osm lijnen samenvoegen met extra lijnen")
@@ -181,3 +188,5 @@ print("write network")
 gdf_subdivided = subdivide_geodataframe(network_lines_gdf, max_length=450)
 network = Network(gdf_subdivided, tolerance=1, id_col="id", name_col="name")
 network.to_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+
+# %%

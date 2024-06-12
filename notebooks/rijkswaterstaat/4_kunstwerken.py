@@ -38,14 +38,28 @@ ADD_BASELINE = [
 REMOVE_NIS = ["40D-350", "42D-001"]
 
 ADD_NIS = [
-    "49D-400",
-    "44D-002",
-    "58C-001",
-    "45B-352",
-    "33F-001",
     "21G-350",
-    "58D-001",
+    "33F-001",
+    "44D-002",
+    "44G-350",
+    "45B-352",
+    "45D-358",
+    "45G-350",
+    "45G-352",
+    "49D-400",
+    "50F-350",
+    "51A-002",
+    "51E-001",
     "51F-001",
+    "51H-003",
+    "51H-004",
+    "51H-357",
+    "57F-001",
+    "58A-001",
+    "58C-001",
+    "58D-001",
+    "34E-001",
+    "34F-001",
 ]
 
 
@@ -91,7 +105,15 @@ nis_hws = cloud.joinpath(
     "Rijkswaterstaat", "aangeleverd", "NIS", "nis_all_kunstwerken_hws_2019.gpkg"
 )
 baseline = cloud.joinpath("baseline-nl_land-j23_6-v1", "baseline.gdb")
-osm = cloud.joinpath("basisgegevens", "osm", "osm_scheeresluis.gpkg")
+osm_scheeresluis = cloud.joinpath(
+    "basisgegevens", "osm", "Nederland_Belgie", "osm_scheeresluis.gpkg"
+)
+osm_sluizen_belgie = cloud.joinpath(
+    "basisgegevens", "osm", "Nederland_Belgie", "lock_belgium.gpkg"
+)
+osm_stuwen_belgie = cloud.joinpath(
+    "basisgegevens", "osm", "Nederland_Belgie", "waterway_weir_belgium.gpkg"
+)
 
 nis_hwvn = cloud.joinpath(
     "Rijkswaterstaat", "aangeleverd", "NIS", "nis_alle_kunstwerken_hwvn_2019.gpkg"
@@ -114,7 +136,14 @@ primaire_kunstwerken_gdf = gpd.read_file(primaire_kunstwerken)
 drinkwater_gdf = gpd.read_file(onttrekkingen, layer="Drinkwater_oppervlaktewater")
 energie_gdf = gpd.read_file(onttrekkingen, layer="Energie")
 baseline_kunstwerken_gdf = gpd.read_file(baseline, layer="structure_lines")
-osm_kunstwerken_gdf = gpd.read_file(osm)
+osm_scheeresluis_gdf = gpd.read_file(osm_scheeresluis)
+osm_sluizen_belgie_gdf = gpd.read_file(osm_sluizen_belgie)
+osm_stuwen_belgie_gdf = gpd.read_file(osm_stuwen_belgie)
+
+osm_kunstwerken_gdf = pd.concat(
+    [osm_scheeresluis_gdf, osm_sluizen_belgie_gdf, osm_stuwen_belgie_gdf],
+    ignore_index=True,
+)
 
 # %% Locaties uit NIS
 
@@ -273,3 +302,5 @@ output_file = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
 kunstwerken_gdf.to_file(
     output_file, layer="kunstwerken", driver="GPKG", engine="pyogrio"
 )
+
+# %%

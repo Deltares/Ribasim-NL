@@ -39,11 +39,19 @@ add_basins_gdf = gpd.read_file(
     basins_user_data_gpkg, layer="add_basins", engine="pyogrio", fid_as_index=True
 )
 
+
+osm_basins_gdf = gpd.read_file(
+    cloud.joinpath("Rijkswaterstaat", "Verwerkt", "oppervlaktewater_belgie.gpkg"),
+    engine="pyogrio",
+    fid_as_index=True,
+)
+
 # %%
 print("dissolve")
 
 add_basins_gdf.loc[:, ["categorie"]] = "nationaal hoofdwater"
-watervlak_diss_gdf = pd.concat([watervlak_diss_gdf, add_basins_gdf])
+osm_basins_gdf.loc[:, ["categorie"]] = "nationaal hoofdwater"
+watervlak_diss_gdf = pd.concat([watervlak_diss_gdf, osm_basins_gdf, add_basins_gdf])
 
 data = {"naam": [], "geometry": []}
 for name, df in watervlak_diss_gdf[
@@ -95,7 +103,7 @@ basins_gdf.to_file(basins_gpkg, layer="merged_basins", engine="pyogrio")
 
 # %%
 min_area = 350000
-ignore_basins = ["Noordervaart"]
+ignore_basins = ["Noordervaart", "Kanaal Briegden - Neerharen", "Zuid-Willemsvaart"]
 large_basins_mask = basins_gdf.area > min_area
 large_basins_mask = large_basins_mask | basins_gdf.naam.isin(ignore_basins)
 large_basins_gdf = basins_gdf[large_basins_mask]
@@ -154,13 +162,49 @@ raster_path = cloud.joinpath(
     "Rijkswaterstaat", "verwerkt", "bathymetrie", "bathymetrie-merged.tif"
 )
 
+elevation_basins_gdf = gpd.read_file(
+    basins_user_data_gpkg, layer="hoogtes", engine="pyogrio", fid_as_index=True
+)
+
+elevation_basins_gdf = elevation_basins_gdf.dropna()
 dfs = []
 for row in basins_gdf.itertuples():
+    invert_area = row.geometry.area
     try:
-        dfs += [sample_level_area(raster_path, row.geometry, ident=row.basin_id)]
-    except IndexError:  # handle missing bathymetry (need new!)
-        print(f"WARNING: default profile at {row.basin_id}, check data.")
-        df = DEFAULT_PROFILE.copy()
+        df = sample_level_area(raster_path, row.geometry, ident=row.basin_id)
+        # if we don't cover 55% we better use an elevation point
+        if df.area.max() < invert_area * 0.55:
+            print(f"{df.area.max()}")
+            raise IndexError("area is too small")
+        elif df.area.max() < invert_area:
+            # we make sure we extend our profile to the polygon area
+            df.loc[df.index.max() + 1] = {
+                "area": invert_area,
+                "level": df.level.max() + 0.1,
+            }
+        dfs += [df]
+    except:  # handle missing bathymetry (need new!)
+        elevation_df = elevation_basins_gdf[elevation_basins_gdf.within(row.geometry)]
+        if not elevation_df.empty:
+            print(f"WARNING: profile elevation points for {row.basin_id}")
+            invert_level = elevation_df.streefpeil.max()
+            bottom_level = elevation_df.bodemhoogte.min()
+            if bottom_level > invert_level:
+                raise ValueError(
+                    f"bottom_level > invert_level: {bottom_level} > {invert_level}"
+                )
+            bottom_area = row.geometry.buffer(-((invert_level - bottom_level) * 2)).area
+
+            df = pd.DataFrame(
+                data={
+                    "area": [bottom_area, invert_area],
+                    "level": [bottom_level, invert_level],
+                }
+            )
+        else:
+            print(f"WARNING: default-profile for for {row.basin_id}. Check data!")
+            df = DEFAULT_PROFILE.copy()
+
         df["id"] = row.basin_id
         dfs += [df]
 
