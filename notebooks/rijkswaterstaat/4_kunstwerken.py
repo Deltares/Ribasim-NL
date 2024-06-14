@@ -60,8 +60,10 @@ ADD_NIS = [
     "57H-001",
     "58A-001",
     "58A-002",
-    "58A-351" "58C-001",
-    "58C-002" "58D-001",
+    "58A-351",
+    "58C-001",
+    "58C-002",
+    "58D-001",
     "60A-001",
 ]
 
@@ -137,7 +139,7 @@ nis_hwvn_gdf = gpd.read_file(nis_hwvn)
 krw_lichaam_gdf = gpd.read_file(krw_lichaam)
 primaire_kunstwerken_gdf = gpd.read_file(primaire_kunstwerken)
 drinkwater_gdf = gpd.read_file(onttrekkingen, layer="Drinkwater_oppervlaktewater")
-energie_gdf = gpd.read_file(onttrekkingen, layer="Energie")
+energie_gdf = gpd.read_file(onttrekkingen, layer="Energiecentrales-inlaat")
 baseline_kunstwerken_gdf = gpd.read_file(baseline, layer="structure_lines")
 osm_scheeresluis_gdf = gpd.read_file(osm_scheeresluis)
 osm_sluizen_belgie_gdf = gpd.read_file(osm_sluizen_belgie)
