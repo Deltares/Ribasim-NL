@@ -1,11 +1,10 @@
 from pathlib import Path
 from typing import Literal
 
-import geopandas as gpd
 import pandas as pd
 from pydantic import BaseModel
-from ribasim import EdgeTable, Model, Node
-from shapely.geometry import LineString, Point
+from ribasim import Model, Node
+from shapely.geometry import Point
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 

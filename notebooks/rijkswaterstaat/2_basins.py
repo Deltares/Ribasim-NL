@@ -51,7 +51,9 @@ print("dissolve")
 
 add_basins_gdf.loc[:, ["categorie"]] = "nationaal hoofdwater"
 osm_basins_gdf.loc[:, ["categorie"]] = "nationaal hoofdwater"
-watervlak_diss_gdf = pd.concat([watervlak_diss_gdf, osm_basins_gdf, add_basins_gdf])
+watervlak_diss_gdf = pd.concat(
+    [watervlak_diss_gdf, osm_basins_gdf, add_basins_gdf], ignore_index=True
+)
 
 data = {"naam": [], "geometry": []}
 for name, df in watervlak_diss_gdf[
@@ -103,7 +105,15 @@ basins_gdf.to_file(basins_gpkg, layer="merged_basins", engine="pyogrio")
 
 # %%
 min_area = 350000
-ignore_basins = ["Noordervaart", "Kanaal Briegden - Neerharen", "Zuid-Willemsvaart"]
+ignore_basins = [
+    "Noordervaart",
+    "Kanaal Briegden - Neerharen",
+    "Zuid-Willemsvaart",
+    "Twentekanaal (Kanaal Zutphen-Enschede)",
+    "Wilhelminakanaal",
+    "Máximakanaal",
+    "Julianakanaal",
+]
 large_basins_mask = basins_gdf.area > min_area
 large_basins_mask = large_basins_mask | basins_gdf.naam.isin(ignore_basins)
 large_basins_gdf = basins_gdf[large_basins_mask]
@@ -152,6 +162,7 @@ basins_gdf.loc[:, ["geometry"]] = basins_gdf.geometry.apply(
 
 # remove "internal boundaries"
 basins_gdf.loc[:, ["geometry"]] = basins_gdf.buffer(0.1).buffer(-0.1)
+basins_gdf = basins_gdf[basins_gdf.geometry.area > 1]
 # # re-index and add basin_id
 basins_gdf.reset_index(inplace=True, drop=True)
 basins_gdf.loc[:, ["basin_id"]] = basins_gdf.index + 1
