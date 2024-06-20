@@ -28,7 +28,7 @@ warnings.filterwarnings(
 
 cloud = CloudStorage()
 
-UPDATE_KWK_DATA = False
+UPDATE_KWK_DATA = True
 
 
 # %% functies
@@ -165,7 +165,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 if node_type == "TabulatedRatingCurve":
                     data = [read_rating_curve(kwk_df)]
                 elif node_type == "Outlet":
-                    data = [read_outlet(kwk_df, naam=kwk.naam)]
+                    data = [read_outlet(kwk_df, name=kwk.naam)]
                 elif node_type == "Pump":
                     data = [read_pump(kwk_properties)]
                 else:
