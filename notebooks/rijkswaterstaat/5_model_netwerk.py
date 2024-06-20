@@ -29,7 +29,18 @@ warnings.filterwarnings(
 )
 
 KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03"]
-VERDEELSLEUTELS = ["Monsin", "Lobith"]
+VERDEELSLEUTELS = ["Lobith", "Monsin"]
+RVW_IJSSELMEER = ["KOBU", "OEBU"]
+KWK_MONSIN = [
+    "Stuw Monsin",
+    "Sluis Monsin",
+    "Sluis Ternaaien3",
+    "Gemaal Ternaaien4",
+    "Sluis Bosscherveld",
+    "Keersluis Limmel",
+    "Stuw Borgharen",
+    "Sluis 18 Boscholt",
+]
 # %% functies
 boundary_node_ids = []
 
@@ -81,12 +92,13 @@ def read_flow_kwargs(kwk_properties, include_crest_level=False):
     mapper = {
         "Capaciteit (m3/s)": "flow_rate",
         "minimale capaciteit (m3/s)": "min_flow_rate",
-        "maximale capaciteit (m3/s)": "max_flow_rate",
     }
     if include_crest_level:
-        mapper["Kruinhoogte (m +NAP)"] = "min_crest_level"
+        mapper["Streefpeil (m +NAP)"] = "min_crest_level"
 
     kwargs = kwk_properties.rename(mapper).to_dict()
+    if "flow_rate" in kwargs.keys():
+        kwargs["max_flow_rate"] = kwargs["flow_rate"]
     kwargs = {
         k: [v]
         for k, v in kwargs.items()
@@ -184,6 +196,9 @@ kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 verdeelsleutels_xlsx = kwk_dir.joinpath("verdeelsleutels.xlsx")
 kwks_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
 
+if "Monsin" in VERDEELSLEUTELS:
+    kwks_df.loc[kwks_df.naam.isin(KWK_MONSIN), "in_model"] = False
+
 kwks_df.loc[:, "code"] = kwks_df["code"].astype(str)
 # kwks_df = kwks_df[kwks_df.in_model]
 
@@ -224,6 +239,24 @@ model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
 # Toevoegen Boundaries
 # We voegen de boundaries toe aan het netwerk
 
+level_ijsselmeer_df = pd.read_excel(
+    kwk_dir / "IJsselmeer-Markermeer.xlsx", sheet_name="IJsselmeer", skiprows=4
+)
+level_ijsselmeer_df.index = [i.day_of_year for i in level_ijsselmeer_df.datum]
+
+
+def get_level(timestamp, level_ijsselmeer_df):
+    return level_ijsselmeer_df.at[
+        level_ijsselmeer_df.index[
+            level_ijsselmeer_df.index <= timestamp.dayofyear
+        ].max(),
+        "level",
+    ]
+
+
+time = pd.date_range(model.starttime, model.endtime).to_list()
+level = [get_level(i, level_ijsselmeer_df) for i in time]
+
 for row in boundary_gdf.itertuples():
     # uitlezen dichtsbijzijnde netwerk-knoop
     node_id = nodes_gdf.distance(row.geometry).idxmin()
@@ -247,16 +280,18 @@ for row in boundary_gdf.itertuples():
         basin_poly_gdf.loc[basin_id, "nodes_from"].append(node_id)
     elif row.type == "LevelBoundary":
         table = model.level_boundary
-        table.add(
-            Node(node_id, point, name=name), [level_boundary.Static(level=[row.level])]
-        )
+        if row.meetlocatie_code in RVW_IJSSELMEER:
+            data = [level_boundary.Time(level=level, time=time)]
+        else:
+            data = [level_boundary.Static(level=[row.level])]
+        table.add(Node(node_id, point, name=name), data)
     elif row.type == "Terminal":
         table = model.terminal
         table.add(Node(node_id, point, name=name))
 
     # toevoegen meta_code
     table.node.df.loc[table.node.df.node_id == node_id, "meta_meetlocatie_code"] = (
-        row.code
+        row.meetlocatie_code
     )
 
 # %% kunsterken toevoegen
@@ -320,7 +355,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         if node_type == "TabulatedRatingCurve":
             data = [read_rating_curve(kwk_df)]
         elif node_type == "Outlet":
-            data = [read_outlet(kwk_df)]
+            data = [read_outlet(kwk_df, name=row.naam)]
         elif node_type == "Pump":
             data = [read_pump(kwk_properties)]
         else:
@@ -329,6 +364,11 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         # toevoegen van de knoop aan het netwerk
         node_table = getattr(model, pascal_to_snake_case(node_type))
         node_table.add(node, data)
+
+        # toevoegen meta_code
+        node_table.node.df.loc[
+            node_table.node.df.node_id == node_id, "meta_code_waterbeheerder"
+        ] = row.code
 
         # zoeken naar aangrenzende basins
         us_basin_id, ds_basin_id = network.get_upstream_downstream(
@@ -402,7 +442,9 @@ for verdeelsleutel in VERDEELSLEUTELS:
 
     # control node toevoegen
     node = Node(
-        verdeelsleutel_node_id, verdeelsleutel_gdf.at[verdeelsleutel, "geometry"]
+        verdeelsleutel_node_id,
+        verdeelsleutel_gdf.at[verdeelsleutel, "geometry"],
+        name=f"Verdeelsleutel {verdeelsleutel}",
     )
     flow_rate = verdeelsleutel_df[
         verdeelsleutel_df.Eigenschap.to_list().index("afvoer bovenstrooms") + 1 :
@@ -590,11 +632,11 @@ for verdeelsleutel in VERDEELSLEUTELS:
                 name=basin_poly_gdf.at[basin_id, "naam"],
             )
 
-            # toevoegen edge tussen verdeelsleutel en fractie
+            # toevoegen edge tussen control-node en fractie
             model.edge.add(
                 verdeelsleutel_node,
                 model.fractional_flow[node_id],
-                name=name,
+                name=properties[ds_basin],
             )
 
             # bijhouden basin-connecties
@@ -608,6 +650,8 @@ for verdeelsleutel in VERDEELSLEUTELS:
 
 # %% basins
 # for row in basin_poly_gdf[basin_poly_gdf.index == 1].itertuples():
+
+profile_geometries = []
 for row in basin_poly_gdf.itertuples():
     # row = next(i for i in basin_poly_gdf.itertuples() if i.Index == 1)
     print(f"{row.Index} {row.naam}")
@@ -650,7 +694,11 @@ for row in basin_poly_gdf.itertuples():
     # overige basin_boundary_nodes voorzien van een ManningResistance
     for bbn_row in basin_boundary_nodes.reset_index().itertuples():
         node = Node(bbn_row.node_id, bbn_row.geometry)
-        poly = basin_poly_gdf.loc[[bbn_row.upstream, bbn_row.downstream]].unary_union
+        poly = (
+            basin_poly_gdf.loc[[bbn_row.upstream, bbn_row.downstream]]
+            .buffer(1)
+            .unary_union.buffer(-1)
+        )
         line = LineString(
             [
                 network.nodes.at[bbn_row.node_id, "geometry"],
@@ -663,6 +711,7 @@ for row in basin_poly_gdf.itertuples():
         geometry = clip_profile(
             get_profile(line, bbn_row.geometry, 50000), bbn_row.geometry, poly
         )
+        profile_geometries += [{"node_id": bbn_row.node_id, "geometry": geometry}]
 
         data = [
             manning_resistance.Static(
@@ -711,7 +760,9 @@ for row in basin_poly_gdf.itertuples():
     gdf = gdf[gdf["basin_id"] == row.Index]
 
     basin_node_id = gdf.distance(row.geometry.centroid).idxmin()
-    basin_node = Node(basin_node_id, network.nodes.at[basin_node_id, "geometry"])
+    basin_node = Node(
+        basin_node_id, network.nodes.at[basin_node_id, "geometry"], name=row.naam
+    )
     basin_poly_gdf.loc[row.Index, "node_id"] = basin_node_id
     level = basin_profile_df.loc[row.Index].level.to_list()
     area = basin_profile_df.loc[row.Index].area.to_list()
@@ -724,11 +775,11 @@ for row in basin_poly_gdf.itertuples():
             drainage=[0.0],
             potential_evaporation=[0.0],
             infiltration=[0.0],
-            precipitation=[5.0],
+            precipitation=[0.0],
             urban_runoff=[0.0],
         ),
         basin.State(
-            level=[max(min(level) + 1, 0)]
+            level=[max(max(level), 0)]
         ),  # meter waterdiepte, maar minimaal dan NAP
         basin.Area(geometry=[basin_poly_gdf.at[row.Index, "geometry"]]),
     ]
@@ -805,7 +856,12 @@ for row in model.manning_resistance.static.df.itertuples():
 
 # %%wegschrijven model
 print("write ribasim model")
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_20240614", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_netwerk", "hws.toml")
 model.write(ribasim_toml)
+database_gpkg = ribasim_toml.with_name("database.gpkg")
+
+gpd.GeoDataFrame(profile_geometries, crs=28992).to_file(
+    database_gpkg, layer="ManningResistance / profile"
+)
 
 # %%

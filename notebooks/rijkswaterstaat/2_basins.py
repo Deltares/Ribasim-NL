@@ -8,6 +8,7 @@ from shapely.geometry import MultiLineString, MultiPolygon, Polygon
 
 cloud = CloudStorage()
 
+# %%
 
 DEFAULT_PROFILE = pd.DataFrame(
     data={
@@ -187,7 +188,7 @@ for row in basins_gdf.itertuples():
         if df.area.max() < invert_area * 0.55:
             print(f"{df.area.max()}")
             raise IndexError("area is too small")
-        elif df.area.max() < invert_area:
+        elif df.area.max() < invert_area * 0.95:
             # we make sure we extend our profile to the polygon area
             df.loc[df.index.max() + 1] = {
                 "area": invert_area,

@@ -28,7 +28,10 @@ warnings.filterwarnings(
 
 cloud = CloudStorage()
 
+UPDATE_KWK_DATA = False
 
+
+# %% functies
 def read_rating_curve(kwk_df):
     qh_df = kwk_df.loc[kwk_df.Eigenschap.to_list().index("Q(h) relatie") + 2 :][
         ["Eigenschap", "Waarde"]
@@ -44,23 +47,28 @@ def read_qq_curve(kwk_df):
 
 
 def read_kwk_properties(kwk_df):
-    return (
+    properties = (
         kwk_df[0:12][["Eigenschap", "Waarde"]]
         .dropna()
         .set_index("Eigenschap")["Waarde"]
     )
+
+    if "Kunstwerkcode" in properties.keys():
+        properties["Kunstwerkcode"] = str(properties["Kunstwerkcode"])
+    return properties
 
 
 def read_flow_kwargs(kwk_properties, include_crest_level=False):
     mapper = {
         "Capaciteit (m3/s)": "flow_rate",
         "minimale capaciteit (m3/s)": "min_flow_rate",
-        "maximale capaciteit (m3/s)": "max_flow_rate",
     }
     if include_crest_level:
-        mapper["Kruinhoogte (m +NAP)"] = "min_crest_level"
+        mapper["Streefpeil (m +NAP)"] = "min_crest_level"
 
     kwargs = kwk_properties.rename(mapper).to_dict()
+    if "flow_rate" in kwargs.keys():
+        kwargs["max_flow_rate"] = kwargs["flow_rate"]
     kwargs = {
         k: [v]
         for k, v in kwargs.items()
@@ -70,13 +78,13 @@ def read_flow_kwargs(kwk_properties, include_crest_level=False):
     return kwargs
 
 
-def read_outlet(kwk_df):
+def read_outlet(kwk_df, name=None):
     if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
         qq_properties = read_qq_curve(kwk_df)
         outlet_df = dc.node_table(
             values=qq_properties["flow_rate"].to_list(),
             variable="flow_rate",
-            name=kwk.naam,
+            name=name,
             node_id=node_id,
         )
         return outlet.Static(
@@ -108,22 +116,18 @@ def read_pid(control_properties, control_basin_id):
 
 
 # %% Paden
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_2024_4_4", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_netwerk", "hws.toml")
 kwk_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerken")
 kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 
 # %%Inlezen
 all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
+all_kwk_df.loc[:, "code"] = all_kwk_df["code"].astype(str)
 model = Model.read(ribasim_toml)
 
 # %% Itereren over kunstwerken
 
 all_kwk_df = all_kwk_df[all_kwk_df.in_model]
-# all_kwk_df = all_kwk_df[all_kwk_df.gebied.isin(["Maas"])]
-# all_kwk_df = all_kwk_df[all_kwk_df.gebied.isin(["Zuid-westelijke delta"])]
-
-# all_kwk_df = all_kwk_df[all_kwk_df.gebied.isin(["ARK-IJ-NZK"])]
-# gebied, kwks_df = next(i for i in all_kwk_df.groupby(by="gebied") if i[0] == "Maas")
 for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
     # get sheet-names
     file_name = kwk_dir / f"{gebied}.xlsx"
@@ -142,11 +146,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
             kwk_df = pd.read_excel(file_name, sheet_name=kwk.naam)
 
             # get properties
-            kwk_properties = (
-                kwk_df[0:12][["Eigenschap", "Waarde"]]
-                .dropna()
-                .set_index("Eigenschap")["Waarde"]
-            )
+            kwk_properties = read_kwk_properties(kwk_df)
 
             # check if code-value is the same in both Excels
             if kwk_properties["Kunstwerkcode"] != kwk.code:
@@ -159,24 +159,25 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"])
             )
 
-            # prepare static-data for updating node
-            node_type = kwk_properties["Ribasim type"]
-            if node_type == "TabulatedRatingCurve":
-                data = [read_rating_curve(kwk_df)]
-            elif node_type == "Outlet":
-                data = [read_outlet(kwk_df)]
-            elif node_type == "Pump":
-                data = [read_pump(kwk_properties)]
-            else:
-                raise ValueError(f"node-type {node_type} not yet implemented")
+            if UPDATE_KWK_DATA:
+                # prepare static-data for updating node
+                node_type = kwk_properties["Ribasim type"]
+                if node_type == "TabulatedRatingCurve":
+                    data = [read_rating_curve(kwk_df)]
+                elif node_type == "Outlet":
+                    data = [read_outlet(kwk_df, naam=kwk.naam)]
+                elif node_type == "Pump":
+                    data = [read_pump(kwk_properties)]
+                else:
+                    raise ValueError(f"node-type {node_type} not yet implemented")
 
-            # update model
-            model.update_node(
-                node_id=node_id,
-                node_type=node_type,
-                data=data,
-                node_properties={"name": kwk.naam},
-            )
+                # update model
+                model.update_node(
+                    node_id=node_id,
+                    node_type=node_type,
+                    data=data,
+                    node_properties={"name": kwk.naam},
+                )
 
             # check if structure has pid control
             if "PidControl" in kwk_df["Eigenschap"].to_numpy():
@@ -210,7 +211,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 qq_properties = read_qq_curve(kwk_df)
 
                 listen_node_id = model.find_node_id(
-                    meta_code_waterbeheerder=str(kwk_properties["Meetlocatiecode"])
+                    meta_meetlocatie_code=str(kwk_properties["Meetlocatiecode"])
                 )
 
                 condition_df = dc.condition(
@@ -259,12 +260,8 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 ribasim_toml = cloud.joinpath(
     "Rijkswaterstaat",
     "modellen",
-    "hws_2024_4_4",
-    "cases",
-    "updated_sturing",
+    "hws_sturing",
     "hws.toml",
 )
 
 model.write(ribasim_toml)
-
-# %%

@@ -9,7 +9,7 @@ from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_sturing", "hws.toml")
 model = Model.read(ribasim_toml)
 
 df = pd.read_excel(
@@ -46,28 +46,53 @@ eijsden_series = eijsden_series.resample("D").mean()
 eijsden_series = eijsden_series[eijsden_series.notna()]
 eijsden_series.name = "flow_rate"
 
+# %% Monsin series
+df = pd.read_excel(
+    cloud.joinpath("Basisgegevens", "metingen", "RWsOS-IWP_debieten_2023_2024.xlsx"),
+    sheet_name="Maas",
+    skiprows=5,
+    index_col=0,
+)
+
+monsin_series = df["Monsin"]
+
+# interpolate missings
+monsin_series.interpolate(inplace=True)
+
+monsin_series = monsin_series.resample("D").mean()
+
+# resample to daily values
+monsin_series = monsin_series.resample("D").mean()
+monsin_series = monsin_series[monsin_series.notna()]
+monsin_series.name = "flow_rate"
+
 # %% set FlowBoundary / Time
 
-lobith_node_id = model.flow_boundary.node.df.set_index("name").at["Lobith", "node_id"]
-eijsden_node_id = model.flow_boundary.node.df.set_index("name").at[
-    "Eijsden grens", "node_id"
+# get node ids
+lobith_node_id = model.flow_boundary.node.df.set_index("meta_meetlocatie_code").at[
+    "LOBH", "node_id"
+]
+monsin_node_id = model.flow_boundary.node.df.set_index("meta_meetlocatie_code").at[
+    "MONS", "node_id"
 ]
 
+# set flow boundary timeseries
 lobith_df = pd.DataFrame(lobith_series).reset_index()
 lobith_df.loc[:, "node_id"] = lobith_node_id
 
-eijsden_df = pd.DataFrame(eijsden_series).reset_index()
-eijsden_df.loc[:, "node_id"] = eijsden_node_id
+monsin_df = pd.DataFrame(eijsden_series).reset_index()
+monsin_df.loc[:, "node_id"] = monsin_node_id
 
-bc_time_df = pd.concat([lobith_df, eijsden_df])
+bc_time_df = pd.concat([lobith_df, monsin_df])
 
 model.flow_boundary.time = flow_boundary.Time(**bc_time_df.to_dict(orient="list"))
 
 model.starttime = max(eijsden_series.index.min(), lobith_series.index.min())
 model.endtime = min(eijsden_series.index.max(), lobith_series.index.max())
 
+# remove fixed values from static
 model.flow_boundary.static.df = model.flow_boundary.static.df[
-    ~model.flow_boundary.static.df.node_id.isin([lobith_node_id, eijsden_node_id])
+    ~model.flow_boundary.static.df.node_id.isin([lobith_node_id, monsin_node_id])
 ]
 
 
@@ -75,7 +100,7 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
 
 node_ids = (
     model.node_table()
-    .df[model.node_table().df["meta_code_waterbeheerder"].isin(["KOBU", "OEBU"])]
+    .df[model.node_table().df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])]
     .node_id.to_numpy()
 )
 
@@ -158,4 +183,7 @@ model.level_boundary.time.df = level_df
 
 
 # %%
+ribasim_toml = cloud.joinpath(
+    "Rijkswaterstaat", "modellen", "hws_transient", "hws.toml"
+)
 model.write(ribasim_toml)
