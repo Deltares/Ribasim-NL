@@ -103,13 +103,20 @@ def read_pump(kwk_properties):
 
 
 def read_pid(control_properties, control_basin_id):
+    if control_properties["Controle benedenstrooms"]:
+        p = 500000
+        i = 1e-07
+    else:
+        p = -500000
+        i = -1e-07
+
     return [
         pid_control.Static(
             listen_node_id=[control_basin_id],
             target=[control_properties["Streefpeil (m+NAP)"]],
             listen_node_type="Basin",
-            proportional=[-50000],
-            integral=[-1e-07],
+            proportional=[p],
+            integral=[i],
             derivative=[0.0],
         )
     ]

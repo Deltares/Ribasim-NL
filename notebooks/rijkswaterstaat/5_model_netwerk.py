@@ -11,7 +11,6 @@ from ribasim.nodes import (
     flow_boundary,
     fractional_flow,
     level_boundary,
-    linear_resistance,
     manning_resistance,
     outlet,
     pid_control,
@@ -814,6 +813,9 @@ for row in basin_poly_gdf.itertuples():
 for boundary_node_id in model.level_boundary.node.df[
     ~model.level_boundary.node.df.node_id.isin(boundary_node_ids)
 ].node_id.to_list():
+    level = model.level_boundary.static.df.set_index("node_id").at[
+        boundary_node_id, "level"
+    ]
     us_basin_id = network.find_upstream(boundary_node_id, "basin_id", max_iters=50)
 
     basin_node_id = int(basin_poly_gdf.at[us_basin_id, "node_id"])
@@ -822,19 +824,20 @@ for boundary_node_id in model.level_boundary.node.df[
         .distance(basin_poly_gdf.at[us_basin_id, "geometry"].boundary)
         .idxmin()
     )
-    model.linear_resistance.add(
+    # toevoegen outlet met oneindig capaciteit en een crest_level op boundary level
+    model.outlet.add(
         Node(node_id, network.nodes.at[node_id, "geometry"]),
-        [linear_resistance.Static(resistance=[0.005])],
+        [outlet.Static(flow_rate=[99999], min_crest_level=[level])],
     )
 
     model.edge.add(
         model.basin[basin_node_id],
-        model.linear_resistance[node_id],
+        model.outlet[node_id],
         geometry=network.get_line(basin_node_id, node_id),
     )
 
     model.edge.add(
-        model.linear_resistance[node_id],
+        model.outlet[node_id],
         model.level_boundary[boundary_node_id],
         geometry=network.get_line(node_id, boundary_node_id),
     )
