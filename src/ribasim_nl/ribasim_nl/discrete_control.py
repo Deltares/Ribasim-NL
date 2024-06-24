@@ -28,7 +28,8 @@ def logic(
     df = DataFrame(
         {
             "truth_state": [
-                "".join(["T"] * i + ["F"] * length)[0:length] for i in range(length)
+                "".join(["T"] * i + ["F"] * length)[0:length]
+                for i in range(1, length + 1)
             ]
         }
     )
