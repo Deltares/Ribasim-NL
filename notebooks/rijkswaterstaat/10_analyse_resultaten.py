@@ -17,7 +17,7 @@ CONFIG = {
 }
 
 # Inlezen ribasim model
-ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws")
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_transient")
 plots_dir = ribasim_model_dir / "plots"
 ribasim_toml = ribasim_model_dir / "hws.toml"
 model = ribasim.Model.read(ribasim_toml)
