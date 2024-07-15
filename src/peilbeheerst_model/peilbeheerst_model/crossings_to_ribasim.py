@@ -1,6 +1,6 @@
 import os
 import shutil
-
+import itertools
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -8,6 +8,8 @@ import ribasim
 from ribasim_nl import CloudStorage
 from shapely.geometry import Point, LineString
 from shapely.wkt import loads
+from bokeh.palettes import Category10
+from ribasim_nl import CloudStorage
 
 
 class CrossingsToRibasim:
@@ -85,13 +87,13 @@ class CrossingsToRibasim:
         # Load in the crossings data, and apply filtering
         crossings = gpd.read_file(self.model_characteristics["path_crossings"], layer=self.model_characteristics["crossings_layer"])
 
-        if self.model_characteristics["in_use"]:
+        if self.model_characteristics["in_use"] == True:
             crossings = crossings[crossings.in_use == True].reset_index(drop=True)  # only use the crossings in use
             
-        if self.model_characteristics["agg_links_in_use"]:
+        if self.model_characteristics["agg_links_in_use"] == True:
             crossings = crossings[crossings.agg_links_in_use == True].reset_index(drop=True)  # only use the crossings in use
             
-        if self.model_characteristics["agg_areas_in_use"]:
+        if self.model_characteristics["agg_areas_in_use"] == True:
             crossings = crossings[crossings.agg_areas_in_use == True].reset_index(drop=True)  # only use the crossings in use
 
         crossings["geometry"] = gpd.GeoSeries(
@@ -104,6 +106,8 @@ class CrossingsToRibasim:
             aggregation_areas = None
         post_processed_data['aggregation_areas'] = aggregation_areas
 
+        # display(crossings)
+        # stop
         return post_processed_data, crossings
 
     
@@ -209,14 +213,14 @@ class CrossingsToRibasim:
             _description_
         """
         # identify globalids which contain letters
-        letters_from = crossings[crossings["peilgebied_from"].str.contains("[a-zA-Z]", na=False)]
-        letters_to = crossings[crossings["peilgebied_to"].str.contains("[a-zA-Z]", na=False)]
+        letters_from = crossings[crossings["peilgebied_from"].str.contains("[a-zA-Z_]", na=False)]
+        letters_to = crossings[crossings["peilgebied_to"].str.contains("[a-zA-Z_]", na=False)]
         letters_df = pd.concat([letters_from["peilgebied_from"], letters_to["peilgebied_to"]])
         letters_df = letters_df.unique()
 
         # identify globalids which contain numbers / any other symbols
-        numbers_from = crossings[~crossings["peilgebied_from"].str.contains("[a-zA-Z]", na=False)]
-        numbers_to = crossings[~crossings["peilgebied_to"].str.contains("[a-zA-Z]", na=False)]
+        numbers_from = crossings[~crossings["peilgebied_from"].str.contains("[a-zA-Z_]", na=False)]
+        numbers_to = crossings[~crossings["peilgebied_to"].str.contains("[a-zA-Z_]", na=False)]
         numbers_df = pd.concat([numbers_from["peilgebied_from"], numbers_to["peilgebied_to"]])
         numbers_df = numbers_df.unique()
 
@@ -239,6 +243,10 @@ class CrossingsToRibasim:
         # retrieve max node id, avoid problems with Nones
         basin_from_max = [value for value in crossings.peilgebied_from.to_numpy() if value is not None]
         basin_to_max = [value for value in crossings.peilgebied_to.to_numpy() if value is not None]
+
+        # basin_from_max = [int(x) for x in basin_from_max]
+        # basin_to_max = [int(x) for x in basin_to_max]
+        
         basin_max = max(max(basin_from_max), max(basin_to_max))
 
         crossings = crossings.reset_index(drop=True)
@@ -301,24 +309,19 @@ class CrossingsToRibasim:
         edges = edges.reset_index(drop=True)
 
         # change the 'Point Z' to a regular 'Point' geometry.
-        # print(edges["from_coord"].x)
         edges['from_x'] = edges['from_coord'].apply(lambda geom: geom.x)
         edges['from_y'] = edges['from_coord'].apply(lambda geom: geom.y)
         
         edges['to_x'] = edges['to_coord'].apply(lambda geom: geom.x)
         edges['to_y'] = edges['to_coord'].apply(lambda geom: geom.y)
         
-        edges["from_coord"] = gpd.GeoSeries(
-            gpd.points_from_xy(x=edges['from_x'], y=edges['from_y'])
-        )
-        edges["to_coord"] = gpd.GeoSeries(
-            gpd.points_from_xy(x=edges['to_x'], y=edges['to_y'])
-        )
+        edges["from_coord"] = gpd.GeoSeries(gpd.points_from_xy(x=edges['from_x'], y=edges['from_y']))
+        edges["to_coord"] = gpd.GeoSeries(gpd.points_from_xy(x=edges['to_x'], y=edges['to_y']))
+        
         # create the LineStrings (=edges), based on the df with coordinates
         edges["line_geom"] = edges.apply(lambda row: LineString([row["from_coord"], row["to_coord"]]), axis=1)
 
-        # edges = edges.dropna(subset=['from', 'to'])
-
+        
         return edges
 
     def create_nodes(self, crossings, edges):
@@ -542,11 +545,38 @@ class CrossingsToRibasim:
 
 
     def embed_boezems(self, edges, post_processed_data, crossings): 
+        def discard_duplicate_boezems(boezems):
+            temp_boezems = boezems.dropna(subset=['shortest_path']).copy()
 
+            # Perform the operations on the temporary DataFrame
+            temp_boezems['shortest_path'] = temp_boezems['shortest_path'].astype(str).apply(loads)
+            temp_boezems['first_geom_coordinate'] = temp_boezems['shortest_path'].apply(lambda geom: Point(geom.coords[0]))
+            temp_boezems['last_geom_coordinate'] = temp_boezems['shortest_path'].apply(lambda geom: Point(geom.coords[-1]))
+            
+            temp_boezems['distance_first_from'] = temp_boezems.apply(lambda row: row['first_geom_coordinate'].distance(row['from_coord']), axis=1)
+            temp_boezems['distance_last_to'] = temp_boezems.apply(lambda row: row['last_geom_coordinate'].distance(row['to_coord']), axis=1)
+            temp_boezems['correct_distance'] = temp_boezems['distance_first_from'] + temp_boezems['distance_last_to']
+        
+            temp_boezems['distance_first_to'] = temp_boezems.apply(lambda row: row['first_geom_coordinate'].distance(row['to_coord']), axis=1)
+            temp_boezems['distance_last_from'] = temp_boezems.apply(lambda row: row['last_geom_coordinate'].distance(row['from_coord']), axis=1)
+            temp_boezems['incorrect_distance'] = temp_boezems['distance_first_from'] + temp_boezems['distance_last_to']
+        
+            temp_boezems['shortest_distance'] = temp_boezems[['correct_distance', 'incorrect_distance']].min(axis=1)
+            temp_boezems.sort_values(by='shortest_distance', inplace=True)
+            temp_boezems.drop_duplicates(subset=['from', 'to'], keep='first', inplace=True)
+            temp_boezems.reset_index(drop=True, inplace=True)
+            # Merge the temporary DataFrame back into the original DataFrame
+            boezems.update(temp_boezems)
+
+            return boezems
+            
         if self.model_characteristics['path_boezem'] is not None:
             boezems = gpd.read_file(self.model_characteristics['path_boezem']).set_crs(crs='EPSG:28992')
             boezem_globalids = post_processed_data['peilgebied'].loc[post_processed_data['peilgebied'].peilgebied_cat == 1, 'globalid'].drop_duplicates()
 
+            # hydroobject = '{a20599ac-ac03-410a-8719-0f5329c64d5b}'
+            hydroobject = '{ea981cb2-ab98-4bde-b31a-34f159f0d681}'
+            # display(boezems.loc[boezems.hydroobject == hydroobject])
             #Correct order #######################################
             boezems_df_correct_order = boezems.loc[boezems.peilgebied_from.isin(boezem_globalids)]
             
@@ -562,11 +592,13 @@ class CrossingsToRibasim:
                                      left_on = ['from_coord', 'to'],
                                      right_on = ['from_centroid_geometry', 'node_id_y'],
                                      how = 'left')
-
+            
+            edges_with_correct_SP = discard_duplicate_boezems(edges_with_correct_SP)
+            
             #INCORRECT order #######################################
             boezems_df_incorrect_order = boezems.loc[boezems.peilgebied_to.isin(boezem_globalids)]
 
-                        #retrieve starting point coordinates
+            #retrieve starting point coordinates
             temp_crossings = pd.merge(left=boezems_df_incorrect_order,
                                       right = crossings,
                                       left_on = ['hydroobject','peilgebied_to'],
@@ -578,7 +610,9 @@ class CrossingsToRibasim:
                                      left_on = ['to_coord', 'from'],
                                      right_on = ['to_centroid_geometry', 'node_id_y'],
                                      how = 'left')    
-            
+            edges_with_incorrect_SP = discard_duplicate_boezems(edges_with_incorrect_SP)
+
+
             edges_with_correct_SP.drop_duplicates(subset=['from', 'to'], inplace = True)
             edges_with_incorrect_SP.drop_duplicates(subset=['from', 'to'], inplace = True)
             
@@ -593,6 +627,10 @@ class CrossingsToRibasim:
             edges.loc[edges_temp_incorrect['shortest_path'].notnull(), 'line_geom'] = edges_temp_incorrect['shortest_path']
             edges_temp_correct = pd.merge(edges, edges_with_correct_SP, how='left', on=['from', 'to'], suffixes=('', '_correct_SP'))
             edges.loc[edges_temp_correct['shortest_path'].notnull(), 'line_geom'] = edges_temp_correct['shortest_path']            
+
+            # showcase = edges.loc[edges['to'] == 452]
+            # showcase['line_geom'] = showcase['line_geom'].astype(str).apply(loads) #change string to geometry object
+            # gpd.GeoDataFrame(showcase, geometry = 'line_geom').plot()
             
             #the direction of the edges are correct on administrative level, but not yet on geometric level. Revert the lines. 
             reverse_gemaal = crossings.copy() #create copy of the crossings
@@ -629,6 +667,95 @@ class CrossingsToRibasim:
 
         return edges
 
+    def change_edge(self, edges, from_node_id_to_change, to_node_id_to_change, from_node_id_geom, to_node_id_geom):
+        #find the geometries to use
+        geometry_of_interest = edges.loc[(edges['from'] == from_node_id_geom) & (edges['to'] == to_node_id_geom), 'line_geom']
+
+        #replace the found geometry
+        edges.loc[(edges['from'] == from_node_id_to_change) & (edges['to'] == to_node_id_to_change), 'line_geom'] = geometry_of_interest
+
+        return edges
+        
+    def change_boezems_manually(self, edges):
+        if self.model_characteristics['waterschap'] == 'HollandsNoorderkwartier':
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=455, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=456, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=475, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=476, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=574, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=575, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=582, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=584, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=641, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=642, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=851, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=854, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=957, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=959, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=1061, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=1065, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=1198, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=1201, 
+                                     to_node_id_geom=5)
+            
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=1295, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=1299, 
+                                     to_node_id_geom=5)
+
+            edges = self.change_edge(edges, 
+                                     from_node_id_to_change=1513, 
+                                     to_node_id_to_change=5, 
+                                     from_node_id_geom=1516, 
+                                     to_node_id_geom=5)
+            
+
+        return edges
+        
+
+
+
+            # edges = self.change_edge(edges, 
+            #                          from_node_id_to_change=, 
+            #                          to_node_id_to_change=, 
+            #                          from_node_id_geom=, 
+            #                          to_node_id_geom=)
 
 #####################################################################################################
 #####################################################################################################
@@ -958,7 +1085,7 @@ class RibasimNetwork:
         
         return terminal_node
 
-    def outlet(self):
+    def outlet(self, model):
         """_summary_
 
         Returns
@@ -966,6 +1093,8 @@ class RibasimNetwork:
         _type_
             _description_
         """
+
+        
         outlet = ribasim.Outlet(static=pd.DataFrame(data={"node_id": [], "flow_rate": []}))
         return outlet
 
@@ -1099,7 +1228,7 @@ class RibasimNetwork:
 
         return model
 
-    def check(self, post_processed_data, crossings):
+    def check(self, model, post_processed_data, crossings):
         """_summary_
 
         Parameters
@@ -1170,32 +1299,32 @@ class RibasimNetwork:
 
         
         
-        RHWS_NHWS = post_processed_data['peilgebied'].loc[post_processed_data['peilgebied'].peilgebied_cat != 0, 'globalid'].unique()
+        # RHWS_NHWS = post_processed_data['peilgebied'].loc[post_processed_data['peilgebied'].peilgebied_cat != 0, 'globalid'].unique()
         
-        #peilgebieden which afwater on the boezem / NHWS
-        afwateren_RHWS_NHWS = crossings.loc[crossings.peilgebied_to_original.isin(RHWS_NHWS) | pd.isna(crossings['peilgebied_to_original'])] #also select Nones
-        afwateren_RHWS_NHWS = afwateren_RHWS_NHWS.loc[afwateren_RHWS_NHWS.crossing_type.str.contains('01|-10|02|-20')].reset_index(drop=True) #only select regular peilgebieden
-        try:
-            afwateren_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(afwateren_RHWS_NHWS.agg_area_from)]
-        except Exception:
-            print("Warning: no afwaterende peilgebieden found in checks['peilgebied_met_afwatering_op_hoofdwatersysteem']")
-            afwateren_RHWS_NHWS = gpd.GeoDataFrame()
-            afwateren_RHWS_NHWS['geometry'] = None
+        # #peilgebieden which afwater on the boezem / NHWS
+        # afwateren_RHWS_NHWS = crossings.loc[crossings.peilgebied_to_original.isin(RHWS_NHWS) | pd.isna(crossings['peilgebied_to_original'])] #also select Nones
+        # afwateren_RHWS_NHWS = afwateren_RHWS_NHWS.loc[afwateren_RHWS_NHWS.crossing_type.str.contains('01|-10|02|-20')].reset_index(drop=True) #only select regular peilgebieden
+        # try:
+        #     afwateren_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(afwateren_RHWS_NHWS.agg_area_from)]
+        # except Exception:
+        #     print("Warning: no afwaterende peilgebieden found in checks['peilgebied_met_afwatering_op_hoofdwatersysteem']")
+        #     afwateren_RHWS_NHWS = gpd.GeoDataFrame()
+        #     afwateren_RHWS_NHWS['geometry'] = None
             
-        checks['peilgebied_met_afwatering_op_hoofdwatersysteem'] = afwateren_RHWS_NHWS#[['code', 'globalid', 'geometry', 'peilgebied_cat']]
+        # checks['peilgebied_met_afwatering_op_hoofdwatersysteem'] = afwateren_RHWS_NHWS#[['code', 'globalid', 'geometry', 'peilgebied_cat']]
         
-        #peilgebieden which inlaat water from the boezem / NHWS
-        inlaten_RHWS_NHWS = crossings.loc[crossings.peilgebied_from_original.isin(RHWS_NHWS) | pd.isna(crossings['peilgebied_to_original'])] #also select Nones
-        inlaten_RHWS_NHWS = inlaten_RHWS_NHWS.loc[inlaten_RHWS_NHWS.crossing_type.str.contains('01|-10|02|-20')].reset_index(drop=True) #only select regular peilgebieden
-        # inlaten_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(inlaten_RHWS_NHWS.agg_area_to)]
-        try:
-            inlaten_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(inlaten_RHWS_NHWS.agg_area_to)]
-        except Exception:
-            print("Warning: no inlatende peilgebieden found in checks['peilgebied_met_inlaat_van_hoofdwatersysteem']")
-            inlaten_RHWS_NHWS = gpd.GeoDataFrame()
-            inlaten_RHWS_NHWS['geometry'] = None
+        # #peilgebieden which inlaat water from the boezem / NHWS
+        # inlaten_RHWS_NHWS = crossings.loc[crossings.peilgebied_from_original.isin(RHWS_NHWS) | pd.isna(crossings['peilgebied_to_original'])] #also select Nones
+        # inlaten_RHWS_NHWS = inlaten_RHWS_NHWS.loc[inlaten_RHWS_NHWS.crossing_type.str.contains('01|-10|02|-20')].reset_index(drop=True) #only select regular peilgebieden
+        # # inlaten_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(inlaten_RHWS_NHWS.agg_area_to)]
+        # try:
+        #     inlaten_RHWS_NHWS = post_processed_data['aggregation_areas'].loc[post_processed_data['aggregation_areas'].globalid.isin(inlaten_RHWS_NHWS.agg_area_to)]
+        # except Exception:
+        #     print("Warning: no inlatende peilgebieden found in checks['peilgebied_met_inlaat_van_hoofdwatersysteem']")
+        #     inlaten_RHWS_NHWS = gpd.GeoDataFrame()
+        #     inlaten_RHWS_NHWS['geometry'] = None
             
-        checks['peilgebied_met_inlaat_van_hoofdwatersysteem'] = inlaten_RHWS_NHWS#[['code', 'globalid', 'geometry', 'peilgebied_cat']]
+        # checks['peilgebied_met_inlaat_van_hoofdwatersysteem'] = inlaten_RHWS_NHWS#[['code', 'globalid', 'geometry', 'peilgebied_cat']]
 
         #peilgebieden which are the boezem
         checks['boezem'] = post_processed_data['peilgebied'].loc[post_processed_data['peilgebied'].peilgebied_cat > 0][['code', 'globalid', 'geometry', 'peilgebied_cat']]
@@ -1206,14 +1335,160 @@ class RibasimNetwork:
         
         checks["duikersifonhevel"] = post_processed_data["duikersifonhevel"]
         checks["hydroobjecten"] = post_processed_data["hydroobject"]
+
+
+        
+        #nodes which are 
+        # 	  1. Inlaat
+        #     2. Uitlaat stuw
+        #     3. Uitlaat gemaal
+        #     4. Verbindingen tussen boezems
+        #     5. Verbindingen met buitenwater
+        # CHECKS INLAAT UITLAAT WEGHALEN
+
+        basin_nodes = model.basin.state.df.copy()#.loc[model.basin.state.df['node_type'] == 'Basin'] #select all basins
+        model.basin.node.df.index +=1
+        basin_nodes['geometry'] = model.basin.node.df.geometry #add geometry column
+        basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry='geometry') #convert from pd go gpd
+        
+        points_within = gpd.sjoin(basin_nodes, checks['boezem'], how='inner', predicate='within') #find the basins which are within a peilgebied (found in the checks)
+        boezem_nodes = model.basin.state.df.node_id.loc[points_within.index]
+
+        # display(boezem_nodes)
+        #the boezem nodes have been identified. Now determine the five different categories.
+
+        #determine from and to boezem nodes
+        nodes_from_boezem = model.edge.df.loc[model.edge.df.from_node_id.isin(boezem_nodes)] #select ALL NODES which originate FROM the boezem
+        nodes_to_boezem = model.edge.df.loc[model.edge.df.to_node_id.isin(boezem_nodes)] #select ALL NODES which go TO the boezem
+        
+
+
+        #inlaten_TRC
+        inlaten_TRC = nodes_from_boezem.loc[(nodes_from_boezem.to_node_type == 'TabulatedRatingCurve') | (nodes_from_boezem.to_node_type == 'Outlet')]
+        inlaten_TRC = inlaten_TRC['to_node_id']
+        inlaten_TRC = model.tabulated_rating_curve.node.df.loc[model.tabulated_rating_curve.node.df.node_id.isin(inlaten_TRC)]
+        
+        #add the outlets if this code is already ran before
+        if model.outlet.node.df is not None:
+            inlaten_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(inlaten_TRC)]
+            inlaten_TRC = pd.concat([inlaten_TRC, inlaten_outlet])
+            
+        inlaten_TRC['meta_type_verbinding'] = 'Inlaat'
+
+        #inlaten_gemalen
+        inlaten_gemalen = nodes_from_boezem.loc[nodes_from_boezem.to_node_type == 'Pump']
+        inlaten_gemalen = inlaten_gemalen['to_node_id']
+        inlaten_gemalen = model.pump.node.df.loc[model.pump.node.df.node_id.isin(inlaten_gemalen)]
+        inlaten_gemalen['meta_type_verbinding'] = 'Inlaat'
+
+        #inlaten_flowboundary
+        inlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.from_node_type == 'FlowBoundary']
+        inlaten_flowboundary = inlaten_flowboundary['from_node_id']
+        inlaten_flowboundary = model.flow_boundary.node.df.loc[model.flow_boundary.node.df.node_id.isin(inlaten_flowboundary)]
+        inlaten_flowboundary['meta_type_verbinding'] = 'Inlaat boundary'
+
+        
+        #uitlaten_TRC
+        uitlaten_TRC = nodes_to_boezem.loc[(nodes_to_boezem.from_node_type == 'TabulatedRatingCurve') | (nodes_to_boezem.from_node_type == 'Outlet')]
+        uitlaten_TRC = uitlaten_TRC['from_node_id']
+        uitlaten_TRC = model.tabulated_rating_curve.node.df.loc[model.tabulated_rating_curve.node.df.node_id.isin(uitlaten_TRC)]
+
+        #uitlaten_gemalen
+        uitlaten_gemalen = nodes_to_boezem.loc[nodes_to_boezem.from_node_type == 'Pump']
+        uitlaten_gemalen = uitlaten_gemalen['from_node_id']
+        uitlaten_gemalen = model.pump.node.df.loc[model.pump.node.df.node_id.isin(uitlaten_gemalen)]
+        uitlaten_gemalen['meta_type_verbinding'] = 'Uitlaat'
+
+        #add the outlets if this code is already ran before
+        if model.outlet.node.df is not None:
+            uitlaten_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(uitlaten_TRC)]
+            uitlaten_TRC = pd.concat([uitlaten_TRC, uitlaten_outlet])
+            
+        uitlaten_TRC['meta_type_verbinding'] = 'Uitlaat'
+
+        #uitlaten_flowboundary
+        uitlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.from_node_type == 'FlowBoundary']
+        uitlaten_flowboundary = uitlaten_flowboundary['from_node_id']
+        uitlaten_flowboundary = model.flow_boundary.node.df.loc[model.flow_boundary.node.df.node_id.isin(uitlaten_flowboundary)]
+        uitlaten_flowboundary['meta_type_verbinding'] = 'Inlaat boundary'
+        
+
+        
+        inlaten_uitlaten = pd.concat([inlaten_TRC, inlaten_gemalen, inlaten_flowboundary, uitlaten_TRC, uitlaten_gemalen, uitlaten_flowboundary])
+
+        
+        verbinding_boezems1 = nodes_from_boezem.loc[nodes_from_boezem.to_node_type == 'ManningResistance'] #retrieve the nodes from the boezems in both ways (this line: from)
+        verbinding_boezems2 = nodes_to_boezem.loc[nodes_to_boezem.to_node_type == 'ManningResistance'] #retrieve the nodes from the boezems in both ways (this line: to)
+        verbinding_boezems = gpd.GeoDataFrame(pd.concat([verbinding_boezems1, verbinding_boezems2]).drop_duplicates(subset = ['from_node_id', 'to_node_id']).reset_index(drop=True), geometry = 'geometry')
+
+        #repeat for the boezems which are connected with the buitenwater. 
+        # this has to be done for the FlowBoundary, LevelBoundary and Terminal
+        # for both from_boezem as well as to_boezem
+
+        # the difference here is that the boundary nodes are not 'connecting nodes'
+        # we first need to identify the connecting nodes, such as TRC and pumps, which originate from the boundaries
+        # after that has been done, these nodes should be filtered based on whether they are connected with the nodes_from/to_boezem
+        # BCN = Boundary Connection Nodes
+        condition_BCN_to_pump = (nodes_from_boezem.to_node_type == 'Pump')
+        condition_BCN_to_TRC = (nodes_from_boezem.to_node_type == 'TabulatedRatingCurve')
+        condition_BCN_to_outlet = (nodes_from_boezem.to_node_type == 'Outlet')
+        condition_BCN_from_pump = (nodes_to_boezem.from_node_type == 'Pump')
+        condition_BCN_from_TRC = (nodes_to_boezem.from_node_type == 'TabulatedRatingCurve')
+        condition_BCN_from_outlet = (nodes_to_boezem.from_node_type == 'Outlet')
+        
+
+        BCN_from = nodes_from_boezem.loc[condition_BCN_to_pump | condition_BCN_to_TRC | condition_BCN_to_outlet] #retrieve the BCN from the boezems in both ways (this line: from)
+        BCN_to = nodes_to_boezem.loc[condition_BCN_from_pump | condition_BCN_from_TRC | condition_BCN_from_outlet] #retrieve the BCN to the boezems in both ways (this line: to)
+
+        # BCN_FROM
+        #collect the nodes in from_node_id (step 1), and insert them again in the to_node_id (step 2) 
+        #By doing so, a filter can be applied on the FROM_node_id with the boundary nodes (step 3).
+        BCN_from = BCN_from.to_node_id #step 1
+        BCN_from = model.edge.df.loc[model.edge.df.from_node_id.isin(BCN_from)] #step 2
+        BCN_from = BCN_from.loc[(BCN_from.to_node_type == 'FlowBoundary') | (BCN_from.to_node_type == 'LevelBoundary') | (BCN_from.to_node_type == 'Terminal')]
+
+        #look the node ids up in each table. 
+        BCN_from_TRC = model.tabulated_rating_curve.node.df.loc[model.tabulated_rating_curve.node.df.node_id.isin(BCN_from.from_node_id)]
+        BCN_from_pump = model.pump.node.df.loc[model.pump.node.df.node_id.isin(BCN_from.from_node_id)]
+
+        if model.outlet.node.df is not None:
+            BCN_from_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(BCN_from)]
+            BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump, BCN_from_outlet])
+        else:
+            BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump])
+        BCN_from['meta_type_verbinding'] = 'Uitlaat boundary'
+
+        # BCN_TO
+        #collect the nodes in from_node_id (step 1), and insert them again in the to_node_id (step 2) 
+        #By doing so, a filter can be applied on the FROM_node_id with the boundary nodes (step 3).
+        BCN_to = BCN_to.from_node_id #step 1
+        BCN_to = model.edge.df.loc[model.edge.df.to_node_id.isin(BCN_to)] #step 2
+        BCN_to = BCN_to.loc[(BCN_to.from_node_type == 'FlowBoundary') | (BCN_to.from_node_type == 'LevelBoundary') | (BCN_to.from_node_type == 'Terminal')]
+        BCN_to['meta_type_verbinding'] = 'Inlaat boundary'
+
+        #look the node ids up in each table. 
+        BCN_to_TRC = model.tabulated_rating_curve.node.df.loc[model.tabulated_rating_curve.node.df.node_id.isin(BCN_to.to_node_id)]
+        BCN_to_pump = model.pump.node.df.loc[model.pump.node.df.node_id.isin(BCN_to.to_node_id)]
+        
+        if model.outlet.node.df is not None:
+            BCN_to_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(BCN_to)]
+            BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump, BCN_to_outlet])
+        else:
+            BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump])
+        BCN_to['meta_type_verbinding'] = 'Inlaat boundary'
+
+        inlaten_uitlaten = pd.concat([inlaten_uitlaten, BCN_from, BCN_to])
+        inlaten_uitlaten = inlaten_uitlaten.reset_index(drop=True)
+        inlaten_uitlaten = gpd.GeoDataFrame(inlaten_uitlaten, geometry = 'geometry', crs='EPSG:28992')
+        checks['inlaten_uitlaten_boezems'] = inlaten_uitlaten
         
         return checks
 
 
     def add_meta_data(self, model, checks, post_processed_data, crossings):
         # ### insert meta_data of the peilgebied_category ###
-        model.basin.state.df['meta_peilgebied_cat'] = 0 # set initially all basins to be a regular peilgebied (= peilgebied_cat 0) 
-        # # model.basin.state.df.loc[model.basin.state.df.node_type == 'Basin', 'meta_peilgebied_cat'] = 0 #set only the basins to regular peilgebieden
+        model.basin.state.df['meta_categorie'] = 'doorgaand' # set initially all basins to be a regular peilgebied (= peilgebied_cat 0, or 'bergend') 
+        # # model.basin.state.df.loc[model.basin.state.df.node_type == 'Basin', 'meta_categorie'] = 0 #set only the basins to regular peilgebieden
 
         
         basin_nodes = model.basin.state.df.copy()#.loc[model.basin.state.df['node_type'] == 'Basin'] #select all basins
@@ -1222,7 +1497,7 @@ class RibasimNetwork:
         basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry='geometry') #convert from pd go gpd
         
         points_within = gpd.sjoin(basin_nodes, checks['boezem'], how='inner', predicate='within') #find the basins which are within a peilgebied (found in the checks)
-        model.basin.state.df.meta_peilgebied_cat.loc[points_within.index] = 1 #set these basins to become peilgebied_cat == 1
+        model.basin.state.df.meta_categorie.loc[points_within.index] = 'hoofdwater' #set these basins to become peilgebied_cat == 1, or 'doorgaand'
 
         
         ### insert meta_data of the gemaal type ###
@@ -1261,6 +1536,52 @@ class RibasimNetwork:
         model.pump.static.df['meta_func_afvoer'] = func_afvoer
         model.pump.static.df['meta_func_aanvoer'] = func_aanvoer
         model.pump.static.df['meta_func_circulatie'] = func_circulatie
+
+        ### add the peilgebied_cat flag to the edges as well ###
+        #first assign all edges to become 'bergend'. Adjust the boezem edges later.
+        model.edge.df['meta_categorie'] = 'doorgaand'
+
+        #find the basins which are boezems
+        nodeids_boezem = model.basin.state.df.loc[model.basin.state.df.meta_categorie == 'hoofdwater', 'node_id']
+        model.edge.df.loc[(model.edge.df.from_node_id.isin(nodeids_boezem)) | (model.edge.df.to_node_id.isin(nodeids_boezem)), 'meta_categorie'] = 'hoofdwater'
+        
+        ### add a random color to the basins ###
+        color_cycle = itertools.cycle(Category10[10])
+        color_list = []
+        for _ in range(len(model.basin.area.df)):
+            color_list.append(next(color_cycle))
+        
+        # Add the color_list as a new column to the DataFrame
+        model.basin.area.df['meta_color'] = color_list
+
+
+
+
+        ########################################################################
+        #add meta data whether some nodes are connected with a boezem. 
+        #This is important as i.e. these TRC's will be converted to Outlets 
+        #merge each table with a part of the checks['inlaten_uitlaten'] dataframe
+
+        #TabulatedRatingCurve
+        model.tabulated_rating_curve.static.df = pd.merge(left = model.tabulated_rating_curve.static.df,
+                                                          right = checks['inlaten_uitlaten_boezems'][['node_id', 'meta_type_verbinding']],
+                                                          left_on = ['node_id'],
+                                                          right_on = ['node_id'],
+                                                          how = 'left')
+
+        #Pump
+        model.pump.static.df = pd.merge(left = model.pump.static.df,
+                                        right = checks['inlaten_uitlaten_boezems'][['node_id', 'meta_type_verbinding']],
+                                        left_on = ['node_id'],
+                                        right_on = ['node_id'],
+                                        how = 'left')
+
+        #FlowBoundary
+        model.flow_boundary.static.df = pd.merge(left = model.flow_boundary.static.df,
+                                                 right = checks['inlaten_uitlaten_boezems'][['node_id', 'meta_type_verbinding']],
+                                                 left_on = ['node_id'],
+                                                 right_on = ['node_id'],
+                                                 how = 'left')
 
         return model
         
