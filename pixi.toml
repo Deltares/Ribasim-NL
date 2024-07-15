@@ -24,10 +24,7 @@ docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
 # Lint
 mypy-hydamo = "mypy --ignore-missing-imports src/hydamo"
 pre-commit = "pre-commit run --all-files"
-lint = { depends_on = [
-    "pre-commit",
-    "mypy-hydamo",
-] }
+lint = { depends_on = ["pre-commit", "mypy-hydamo"] }
 # Test
 test-hydamo = "pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/hydamo/tests"
 test-ribasim_nl = "pytest --numprocesses=auto --basetemp=src/ribasim_nl/tests/temp src/ribasim_nl/tests"
@@ -41,7 +38,7 @@ tests = { depends_on = [
     "test-ribasim_nl",
 ] }
 
-[dependencies]
+[feature.common.dependencies]
 bokeh = ">=3.0"
 fiona = "*"
 geocube = "*"
@@ -67,13 +64,22 @@ quarto = "*"
 quartodoc = "*"
 rasterstats = "*"
 requests = "*"
-ribasim = "==2024.4.0"
 ruff = "*"
 shapely = ">=2"
 tomli = "*"
 tomli-w = "*"
 types-requests = "*"
 
-[pypi-dependencies]
-hydamo = { path = "src/hydamo", editable = true}
-ribasim_nl = { path = "src/ribasim_nl", editable = true}
+[feature.common.pypi-dependencies]
+hydamo = { path = "src/hydamo", editable = true }
+ribasim_nl = { path = "src/ribasim_nl", editable = true }
+
+[feature.dev.pypi-dependencies]
+ribasim = { path = "../Ribasim/python/ribasim", editable = true }
+
+[feature.prod.dependencies]
+ribasim = "==2024.4.0"
+
+[environments]
+default = { features = ["common", "prod"] }
+dev = { features = ["common", "dev"] }
