@@ -4,7 +4,9 @@ from typing import Literal
 import pandas as pd
 from pydantic import BaseModel
 from ribasim import Model, Node
+from ribasim.geometry.edge import NodeData
 from shapely.geometry import Point
+from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 
@@ -204,3 +206,29 @@ class Model(Model):
         # add edges
         for _to_node_id in to_node_id:
             self.edge.add(table[node_id], self.get_node(_to_node_id))
+
+    def find_closest_basin(
+        self, geometry: BaseGeometry, max_distance: float | None
+    ) -> NodeData:
+        """Find the closest basin_node."""
+
+        # only works when basin area are defined
+        if self.basin.area.df is None:
+            raise ValueError("No basin.area table defined for model")
+
+        # get distance of geometry to basin / area
+        distance_to_model_df = self.basin.area.df.distance(geometry)
+
+        # get basin node-id
+        basin_node_id = self.basin.area.df.at[distance_to_model_df.idxmin(), "node_id"]
+
+        # check if distance isn't too large
+        if max_distance is not None:
+            if distance_to_model_df.min() > max_distance:
+                raise (
+                    Exception(
+                        f"Closest basin {basin_node_id} further than {max_distance} from geometry: {distance_to_model_df.min()}"
+                    )
+                )
+
+        return self.basin[basin_node_id]

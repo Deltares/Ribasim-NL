@@ -73,7 +73,7 @@ bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 
 [feature.prod.dependencies]
-ribasim = "==2024.8.0"
+ribasim = "==2024.9.0"
 
 [environments]
 default = { features = ["common", "prod"] }
