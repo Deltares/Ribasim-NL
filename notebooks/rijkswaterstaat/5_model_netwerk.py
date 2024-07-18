@@ -460,7 +460,9 @@ for verdeelsleutel in VERDEELSLEUTELS:
             variable=["flow_rate"],
         ),
         discrete_control.Condition(
-            compound_variable_id=1, greater_than=control_flow_rate
+            compound_variable_id=1,
+            greater_than=control_flow_rate,
+            meta_control_state=control_state,
         ),
         discrete_control.Logic(
             truth_state=truth_state,

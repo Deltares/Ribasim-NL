@@ -9,7 +9,7 @@ from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_sturing", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_demand", "hws.toml")
 model = Model.read(ribasim_toml)
 
 df = pd.read_excel(
