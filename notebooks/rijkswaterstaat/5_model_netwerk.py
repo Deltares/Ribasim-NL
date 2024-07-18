@@ -30,16 +30,8 @@ warnings.filterwarnings(
 KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03"]
 VERDEELSLEUTELS = ["Lobith", "Monsin"]
 RVW_IJSSELMEER = ["KOBU", "OEBU"]
-KWK_MONSIN = [
-    "Stuw Monsin",
-    "Sluis Monsin",
-    "Sluis Ternaaien3",
-    "Gemaal Ternaaien4",
-    "Sluis Bosscherveld",
-    "Keersluis Limmel",
-    "Stuw Borgharen",
-    "Sluis 18 Boscholt",
-]
+AS_PUMP = ["Gemaal Ternaaien4"]
+
 # %% functies
 boundary_node_ids = []
 
@@ -73,6 +65,11 @@ def read_qq_curve(kwk_df):
     return kwk_df.loc[kwk_df.Eigenschap.to_list().index("QQ relatie") + 2 :][
         ["Eigenschap", "Waarde"]
     ].rename(columns={"Eigenschap": "condition_flow_rate", "Waarde": "flow_rate"})
+
+
+def read_qhq(verdeling_df):
+    df = verdeling_df.loc[verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :]
+    df.columns = ["control_flow_rate", "min_crest_level", "flow_rate_1", "flow_rate_2"]
 
 
 def read_kwk_properties(kwk_df):
@@ -202,8 +199,6 @@ kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 verdeelsleutels_xlsx = kwk_dir.joinpath("verdeelsleutels.xlsx")
 kwks_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
 
-if "Monsin" in VERDEELSLEUTELS:
-    kwks_df.loc[kwks_df.naam.isin(KWK_MONSIN), "in_model"] = False
 
 kwks_df.loc[:, "code"] = kwks_df["code"].astype(str)
 # kwks_df = kwks_df[kwks_df.in_model]
@@ -344,7 +339,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
             raise ValueError("kunstwerk ligt te ver bij netwerk vandaan")
 
         # definieer de node
-        node = Node(node_id, point, name=row.naam)
+        node = Node(node_id, point, name=row.naam, meta_code_waterbeheerder=row.code)
 
         # haal alle eigenschappen op
         kwk_df = pd.read_excel(file_name, sheet_name=row.naam)
@@ -370,11 +365,6 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         # toevoegen van de knoop aan het netwerk
         node_table = getattr(model, pascal_to_snake_case(node_type))
         node_table.add(node, data)
-
-        # toevoegen meta_code
-        node_table.node.df.loc[
-            node_table.node.df.node_id == node_id, "meta_code_waterbeheerder"
-        ] = row.code
 
         # zoeken naar aangrenzende basins
         us_basin_id, ds_basin_id = network.get_upstream_downstream(
@@ -421,44 +411,40 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
             "downstream": ds_basin_id,
         }
 
-# # # ignore edges with "circular structures combinations"
-ignore_links = []
-kwk_topology = pd.DataFrame.from_dict(kwk_topology, orient="index")
-for kwk in kwk_topology.itertuples():
-    condition = kwk_topology["upstream"] == kwk.downstream
-    condition = condition & (kwk_topology["downstream"] == kwk.upstream)
-    df = kwk_topology[condition]
-    for row in df.itertuples():
-        ignore_links += [(row.node_id, kwk.node_id)]
-
 # %% verdeelsleutels toevoegen
 
-workbook = openpyxl.open(verdeelsleutels_xlsx)
-sheet_names = workbook.sheetnames
-workbook.close()
-
+outlets_gdf = gpd.read_file(
+    cloud.joinpath("Rijkswaterstaat", "verwerkt", "outlets.gpkg")
+)
 verdeelsleutel_node_id = 1000001
 # itereren per verdelsleutel
 for verdeelsleutel in VERDEELSLEUTELS:
     print(f"verdeelsleutel: {verdeelsleutel}")
 
-    # eigenschappen ophalen
-    verdeelsleutel_df = pd.read_excel(verdeelsleutels_xlsx, sheet_name=verdeelsleutel)
+    verdeelsleutel_df = pd.read_excel(
+        verdeelsleutels_xlsx, sheet_name=f"Verdeelsleutel {verdeelsleutel}"
+    )
+
     verdeelsleutel_properties = read_kwk_properties(verdeelsleutel_df)
 
-    # control node toevoegen
-    node = Node(
+    # add control node
+    control_node = Node(
         verdeelsleutel_node_id,
         verdeelsleutel_gdf.at[verdeelsleutel, "geometry"],
         name=f"Verdeelsleutel {verdeelsleutel}",
     )
-    flow_rate = verdeelsleutel_df[
-        verdeelsleutel_df.Eigenschap.to_list().index("afvoer bovenstrooms") + 1 :
-    ].Eigenschap.to_list()
-    control_state = [f"{verdeelsleutel}_{idx+1:03d}" for idx in range(len(flow_rate))]
+
+    control_flow_rate = verdeelsleutel_df.loc[
+        verdeelsleutel_df.Eigenschap.to_list().index("Q") + 2 :
+    ]["Eigenschap"].to_list()
+
+    control_state = [
+        f"{verdeelsleutel}_{idx+1:03d}" for idx in range(len(control_flow_rate))
+    ]
+
     truth_state = [
-        "".join(["T"] * i + ["F"] * len(flow_rate))[0 : len(flow_rate)]
-        for i in range(len(flow_rate))
+        "".join(["T"] * i + ["F"] * len(control_flow_rate))[0 : len(control_flow_rate)]
+        for i in range(len(control_flow_rate))
     ]
 
     listen_node_id = (
@@ -473,186 +459,153 @@ for verdeelsleutel in VERDEELSLEUTELS:
             listen_node_type=[model.get_node_type(listen_node_id)],
             variable=["flow_rate"],
         ),
-        discrete_control.Condition(compound_variable_id=1, greater_than=flow_rate),
+        discrete_control.Condition(
+            compound_variable_id=1, greater_than=control_flow_rate
+        ),
         discrete_control.Logic(
             truth_state=truth_state,
             control_state=control_state,
         ),
     ]
 
-    model.discrete_control.add(node, data)
+    model.discrete_control.add(control_node, data)
 
     verdeelsleutel_node = model.discrete_control[verdeelsleutel_node_id]
     verdeelsleutel_node_id += 1
 
-    # verdeelpunten zoeken
-    verdeelpunten = [
-        verdeelsleutel_properties[f"verdeelpunt {i}"]
-        for i in range(1, 10)
-        if f"verdeelpunt {i}" in verdeelsleutel_properties.keys()
-    ]
-
-    for verdeelpunt in verdeelpunten:
-        print(f" verdeelpunt: {verdeelpunt}")
-
-        # ophalen eigenschappen
-        verdeling_df = pd.read_excel(verdeelsleutels_xlsx, verdeelpunt)
-        properties = read_kwk_properties(verdeling_df)
-
-        # bepaling basin_id (let op, dit is niet de netwerk node-id)
-        basin_id = basin_poly_gdf.distance(
-            verdeelpunten_gdf[verdeelpunten_gdf.verdeelsleutel == verdeelsleutel][
-                "geometry"
-            ].loc[verdeelpunt]
-        ).idxmin()
-
-        # verdeelpunt node aanmaken
-        verdeelpunt_node_id = network.move_node(
-            verdeelpunten_gdf.at[verdeelpunt, "geometry"],
-            max_distance=200,
-            align_distance=100,
-        )
-
-        node = Node(
-            verdeelpunt_node_id,
-            network.nodes.at[verdeelpunt_node_id, "geometry"],
-            name=verdeelpunt,
-        )
-
-        # verdeelpunt data aanmaken en node toevoegen
-        verdeelpunt_df = pd.read_excel(
-            verdeelsleutels_xlsx, properties["waterlichaam bovenstrooms"]
-        )
-        outlet_properties = read_kwk_properties(verdeelpunt_df)
-
-        node_type = outlet_properties["Ribasim type"]
-        if node_type == "TabulatedRatingCurve":
-            data = [read_rating_curve(verdeelpunt_df)]
-            model.tabulated_rating_curve.add(node, data)
-            verdeelpunt_node = model.tabulated_rating_curve[verdeelpunt_node_id]
-        elif node_type == "Outlet":
-            data = [read_outlet(verdeelpunt_df)]
-            model.outlet.add(node, data)
-            verdeelpunt_node = model.outlet[verdeelpunt_node_id]
-
-        # zoeken naar netwerk nodes op de basin edge, zodat we daar fracties kunnen leggen
-        basin_boundary_nodes = network.nodes[
-            network.nodes.distance(basin_poly_gdf.at[basin_id, "geometry"].boundary)
-            < 0.01
+    # add all verdelingen as Outlets
+    for verdeling in [
+        verdeelsleutel_properties[i]
+        for i in verdeelsleutel_properties.keys()
+        if i.startswith("Verdeling")
+    ]:
+        print(f"verdeling: {verdeling}")
+        verdeling_df = pd.read_excel(verdeelsleutels_xlsx, sheet_name=verdeling)
+        verdeling_properties = read_kwk_properties(verdeling_df)
+        waterlichamen = [
+            i for i in verdeling_properties.keys() if i.startswith("waterlichaam")
         ]
-        basin_boundary_nodes = basin_boundary_nodes[
-            basin_boundary_nodes["type"] == "connection"
-        ].index.to_list()
+        qhq_df = verdeling_df.loc[
+            verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :
+        ].iloc[:, : len(waterlichamen) + 2]
+        qhq_df.columns = ["control_flow_rate", "min_crest_level"] + waterlichamen
 
-        # voorbereiden fracties
-        columns = verdeling_df.loc[
-            verdeling_df.Eigenschap.to_list().index("Verdeelsleutel") + 1
-        ].to_list()
+        min_crest_level = qhq_df.min_crest_level.to_list()
 
-        nan_idx = next((idx for idx, i in enumerate(columns) if pd.isna(i)), None)
+        for waterlichaam in waterlichamen:
+            index = waterlichaam[-1]
+            if f"kunstwerk {index}" in verdeling_properties.keys():
+                name = verdeling_properties[f"kunstwerk {index}"]
+                kwk = kwks_df.set_index("naam").loc[name]
+                code_waterbeheerder = kwk.code
+                point = kwks_gdf.set_index("code").at[kwk.code, "geometry"]
+            elif f"outlet_naam {index}" in verdeling_properties.keys():
+                name = verdeling_properties[f"outlet_naam {index}"]
+                point = outlets_gdf.set_index("kunstwerkcode").at[name, "geometry"]
+                code_waterbeheerder = None
 
-        fracties_df = verdeling_df.loc[
-            verdeling_df.Eigenschap.to_list().index("Verdeelsleutel") + 2 :
-        ]
+            # add outlet node
+            node_id = network.move_node(
+                point,
+                max_distance=200,
+                align_distance=100,
+            )
 
-        if nan_idx:
-            fracties_df = fracties_df.iloc[:, :nan_idx]
-            fracties_df.columns = columns[:nan_idx]
-        else:
-            fracties_df.columns = columns
-
-        # toevoegen en verbinden benedenstroomse fracties
-        for ds_basin_num in [
-            i for i in range(1, 10) if f"waterlichaam {i}" in properties.keys()
-        ]:
-            ds_basin = f"waterlichaam {ds_basin_num}"
-
-            print(f"  fractie: {properties[ds_basin]}")
-
-            if f"kunstwerk {ds_basin_num}" in properties.keys():
-                kwk_naam = properties[f"kunstwerk {ds_basin_num}"]
-                kwk_code = kwks_df.set_index("naam").at[kwk_naam, "code"]
-                node_id = network.add_node(
-                    kwks_gdf.set_index("code").at[kwk_code, "geometry"],
-                    max_distance=30,
-                )
-                ds_basin_id = next(
-                    i
-                    for i in network.get_upstream_downstream(
-                        node_id, "basin_id", max_iters=10
-                    )
-                    if i != basin_id
-                )
-
-            else:
-                basin_ids = basin_poly_gdf[
-                    basin_poly_gdf.naam == properties[ds_basin]
-                ].index.to_list()
-
-                basin_ids = [i for i in basin_ids if i != basin_id]
-
-                # zoeken benedenstroomse knoop
-                node_id, ds_basin_id = next(
-                    (
-                        (i, network.find_downstream(i, "basin_id", max_iters=10))
-                        for i in basin_boundary_nodes
-                        if network.find_downstream(i, "basin_id", max_iters=10)
-                        in basin_ids
-                    ),
-                    (None, None),
-                )
-                if node_id is None:
-                    raise ValueError(
-                        f"{properties["waterlichaam bovenstrooms"]} ligt niet bovenstrooms van {properties[ds_basins]} in dit netwerk"
-                    )
-
-            # aanmaken node
-            if f"kunstwerk {ds_basin_num}" in properties.keys():
-                name = kwk_naam
-            else:
-                name = properties[ds_basin]
             node = Node(
                 node_id,
-                network.nodes.at[node_id, "geometry"],
+                point,
                 name=name,
+                meta_code_waterbeheerder=code_waterbeheerder,
             )
 
-            # inlezen fractie
-            fracties = fracties_df[f"fractie benedenstrooms {ds_basin_num}"].to_list()
-
-            # toevoegen knoop aan model
-            model.fractional_flow.add(
-                node,
-                [
-                    fractional_flow.Static(
-                        fraction=fracties, control_state=control_state
-                    )
-                ],
-            )
-
-            # toevoegen edge tussen verdeelpunt en fractie
-            model.edge.add(
-                verdeelpunt_node,
-                model.fractional_flow[node_id],
-                geometry=network.get_line(verdeelpunt_node_id, node_id),
-                name=basin_poly_gdf.at[basin_id, "naam"],
-            )
+            if name in AS_PUMP:
+                model.pump.add(
+                    node,
+                    [
+                        pump.Static(
+                            flow_rate=qhq_df[waterlichaam].to_list(),
+                            control_state=control_state,
+                        )
+                    ],
+                )
+                node = model.pump[node_id]
+            else:
+                model.outlet.add(
+                    node,
+                    [
+                        outlet.Static(
+                            flow_rate=qhq_df[waterlichaam].to_list(),
+                            min_crest_level=min_crest_level,
+                            control_state=control_state,
+                        )
+                    ],
+                )
+                node = model.outlet[node_id]
 
             # toevoegen edge tussen control-node en fractie
             model.edge.add(
                 verdeelsleutel_node,
-                model.fractional_flow[node_id],
-                name=properties[ds_basin],
+                node,
+                name=verdeling_properties[waterlichaam],
             )
 
+            # zoeken naar aangrenzende basins
+            us_basin_id, ds_basin_id = network.get_upstream_downstream(
+                node_id, "basin_id", max_iters=4
+            )
+
+            # soms modelleren we een gemaal bij een sluis en moeten we de tekenrichting omdraaien
+            if code_waterbeheerder in KWK_INVERSE_FLOW_DIRECTION:
+                us_basin_id, ds_basin_id = ds_basin_id, us_basin_id
+
+            if us_basin_id is None:
+                print(" FOUT: de basins zijn hier niet goed geknipt!")
+                continue
             # bijhouden basin-connecties
-            basin_poly_gdf.loc[ds_basin_id, "nodes_from"].append(node_id)
-            basin_poly_gdf.loc[basin_id, "nodes_to"].append(verdeelpunt_node_id)
+            basin_poly_gdf.loc[us_basin_id, "nodes_to"].append(node_id)
 
-            # bijhouden buur-basins
-            basin_poly_gdf.loc[ds_basin_id, "neighbor_basins"].append(basin_id)
-            basin_poly_gdf.loc[basin_id, "neighbor_basins"].append(ds_basin_id)
+            if ds_basin_id is None:
+                print("  verbinden naar dichtsbijzijnde LevelBoundary of Terminal")
+                dfs = (
+                    getattr(model, i).node.df for i in ["level_boundary", "terminal"]
+                )
+                dfs = (i.set_index("node_id") for i in dfs if i is not None)
+                df = pd.concat(list(dfs))
+                boundary = df.loc[df.distance(point).idxmin()]
+                boundary_node_id = boundary.name
+                boundary_node_ids += [boundary_node_id]
+                edge_geom = network.get_line(node_id, boundary_node_id)
+                model.edge.add(
+                    model.outlet[node_id],
+                    getattr(model, pascal_to_snake_case(boundary.node_type))[
+                        boundary_node_id
+                    ],
+                    geometry=edge_geom,
+                )
+            else:
+                # bijhouden basin-connecties
+                basin_poly_gdf.loc[ds_basin_id, "nodes_from"].append(node_id)
 
+                # bijhouden buur-basins
+                basin_poly_gdf.loc[ds_basin_id, "neighbor_basins"].append(us_basin_id)
+                basin_poly_gdf.loc[us_basin_id, "neighbor_basins"].append(ds_basin_id)
+
+            kwk_topology[row.code] = {
+                "node_id": node_id,
+                "upstream": us_basin_id,
+                "downstream": ds_basin_id,
+            }
+
+
+# %% ignore edges with "circular structures combinations"
+ignore_links = []
+kwk_topology = pd.DataFrame.from_dict(kwk_topology, orient="index")
+for kwk in kwk_topology.itertuples():
+    condition = kwk_topology["upstream"] == kwk.downstream
+    condition = condition & (kwk_topology["downstream"] == kwk.upstream)
+    df = kwk_topology[condition]
+    for row in df.itertuples():
+        ignore_links += [(row.node_id, kwk.node_id)]
 
 # %% basins
 # for row in basin_poly_gdf[basin_poly_gdf.index == 1].itertuples():

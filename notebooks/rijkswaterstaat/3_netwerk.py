@@ -90,9 +90,6 @@ for row in osm_basins_gdf.itertuples():
 network_lines_gdf = pd.concat(data, ignore_index=True)
 network_lines_gdf.drop_duplicates("original_index", inplace=True)
 
-network_lines_gdf[["name", "osm_id", "geometry"]].to_file(
-    "osm_select.gpkg", engine="pyogrio"
-)
 
 # %%
 print("osm lijnen samenvoegen met extra lijnen")
