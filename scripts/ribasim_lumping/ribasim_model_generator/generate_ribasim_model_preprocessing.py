@@ -1,18 +1,18 @@
-import scipy
-import pandas as pd
-import numpy as np
-import geopandas as gpd
 import math
-from typing import Dict, Tuple
+
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+import scipy
 
 
 def generate_ribasim_types_for_all_split_nodes(
         boundaries: gpd.GeoDataFrame, 
         split_nodes: gpd.GeoDataFrame, 
         basins: gpd.GeoDataFrame, 
-        split_node_type_conversion: Dict, 
-        split_node_id_conversion: Dict,
-    ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
+        split_node_type_conversion: dict, 
+        split_node_id_conversion: dict,
+    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """"
     Generate Ribasim Types for all split nodes
     """
@@ -41,14 +41,13 @@ def generate_ribasim_types_for_all_split_nodes(
         "culvert":"ManningResistance",
         "manual": "ManningResistance",
         "orifice": "TabulatedRatingCurve",
-        "boundary_connection": "ManningResistance"
     }
-    if isinstance(split_node_type_conversion, Dict):
+    if isinstance(split_node_type_conversion, dict):
         for key, value in split_node_type_conversion.items():
             split_nodes_conversion[key] = value
     split_nodes["ribasim_type"] = split_nodes["split_type"].replace(split_nodes_conversion)
 
-    if isinstance(split_node_id_conversion, Dict):
+    if isinstance(split_node_id_conversion, dict):
         for key, value in split_node_id_conversion.items():
             if len(split_nodes[split_nodes["split_node_id"] == key]) == 0:
                 print(f"   * split_node type conversion id={key} (type={value}) does not exist")
