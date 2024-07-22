@@ -1,11 +1,17 @@
-from typing import List, Dict, Any, Union, Optional, Tuple
-import numpy as np
-import pandas as pd
 import geopandas as gpd
 import networkx as nx
+import numpy as np
+import pandas as pd
+from shapely.geometry import (
+    GeometryCollection,
+    LineString,
+    MultiPolygon,
+    Point,
+    Polygon,
+)
 from shapely.ops import linemerge
-from shapely.geometry import Point, LineString, Polygon, MultiPolygon, GeometryCollection
-from ..utils.remove_holes_from_polygons import remove_holes_from_polygons
+
+from ..utils.general_functions import remove_holes_from_polygons
 
 
 def create_graph_based_on_nodes_edges(
@@ -14,11 +20,10 @@ def create_graph_based_on_nodes_edges(
         directional_graph: bool = True,
         add_edge_length_as_weight: bool = False,
         print_logmessage: bool = True,
-    ) -> Union[nx.Graph, nx.DiGraph]:
+    ) -> nx.Graph | nx.DiGraph:
     """
     create networkx graph based on geographic nodes and edges.
     default a directional graph.
-    TODO: maybe a faster implementation possible
     """
     if directional_graph:
         graph = nx.DiGraph()
@@ -44,7 +49,7 @@ def split_graph_based_on_split_nodes(
         graph: nx.DiGraph, 
         split_nodes: gpd.GeoDataFrame, 
         edges: gpd.GeoDataFrame
-    ) -> Tuple[nx.DiGraph, gpd.GeoDataFrame]:
+    ) -> tuple[nx.DiGraph, gpd.GeoDataFrame]:
     """
     Split networkx graph at split_edge or split_node. It removes the original edges(s)/node(s) which are the same as split_edge and
     split_node and inserts new edges and nodes such that the graph becomes disconnected at the split point. After this edges don't
@@ -129,11 +134,8 @@ def add_basin_code_from_network_to_nodes_and_edges(
         nodes: gpd.GeoDataFrame,
         edges: gpd.GeoDataFrame,
         split_nodes: gpd.GeoDataFrame,
-    ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """
-    add basin (subgraph) code to nodes and edges
-    """
-
+    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """Add basin (subgraph) code to nodes and edges"""
     edges, nodes, split_nodes = edges.copy(), nodes.copy(), split_nodes.copy()  # copy to make sure gdf variable is not linked
     subgraphs = list(nx.weakly_connected_components(graph))
     if nodes is None or edges is None:
@@ -161,9 +163,7 @@ def check_if_split_node_is_used(
         nodes: gpd.GeoDataFrame, 
         edges: gpd.GeoDataFrame,
     ) -> gpd.GeoDataFrame:
-    """
-    check whether split_nodes are used, split_nodes and split_edges
-    """
+    """Check whether split_nodes are used, split_nodes and split_edges"""
 
     split_nodes = split_nodes.copy()  # copy to make sure gdf variable is not linked
     split_nodes["status"] = True
@@ -200,11 +200,11 @@ def check_if_split_node_is_used(
     return split_nodes
 
 
-def create_basin_areas_based_on_drainage_unit_areas(
+def create_basin_areas_based_on_drainage_areas(
         edges: gpd.GeoDataFrame, 
         areas: gpd.GeoDataFrame,
         laterals: gpd.GeoDataFrame = None,
-    ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     find areas with spatial join on edges. add subgraph code to areas
     and combine all areas with certain subgraph code into one basin
@@ -213,7 +213,7 @@ def create_basin_areas_based_on_drainage_unit_areas(
     if areas is None:
         return None, None
     else:
-        areas = areas[["area_code", "geometry"]].copy()
+        areas = areas[["code", "area", "geometry"]].copy()
     if edges is None:
         areas["basin"] = -1
         return areas, None
@@ -221,14 +221,17 @@ def create_basin_areas_based_on_drainage_unit_areas(
         edges = edges.copy()
 
     def get_area_code_for_lateral(laterals, areas):
-        selected_areas = areas[[laterals.find(area) != -1 for area in areas["area_code"]]]
+        selected_areas = areas[[laterals.find(area) != -1 for area in areas["code"]]]
         if len(selected_areas)==0:
             return None
         else:
-            return selected_areas["area_code"].values[0]
+            return selected_areas["code"].values[0]
 
     def get_basin_code_from_lateral(area_code, laterals_join):
-        basins = list(laterals_join["basin"][(laterals_join["area_code_included"]==area_code)&(laterals_join["basin"].isna()==False)].values)
+        basins = list(laterals_join["basin"][
+            (laterals_join["area_code_included"]==area_code) & 
+            (laterals_join["basin"].isna()==False)
+        ].values)
         if len(basins) == 0:
             return -1
         else:
@@ -243,13 +246,12 @@ def create_basin_areas_based_on_drainage_unit_areas(
             how="left",
         ).drop(columns=["index_right"])
         laterals_join["basin"] = laterals_join["basin"].fillna(-1).astype(int)
-        areas["basin"] = areas.apply(lambda x: get_basin_code_from_lateral(x["area_code"], laterals_join), axis = 1)
+        areas["basin"] = areas.apply(lambda x: get_basin_code_from_lateral(x["code"], laterals_join), axis = 1)
         basin_areas = areas.dissolve(by="basin").explode().reset_index().drop(columns=["level_1"])
 
     else:
         edges_sel = edges.loc[edges["basin"] != -1].copy()
         # fix invalid area geometries
-        areas["area"] = areas.index
         areas_orig = areas.copy()
         areas.geometry = areas.make_valid()
         # due to make_valid() GeometryCollections can be generated. Only take the (multi)polygon from those collections
@@ -284,7 +286,8 @@ def create_basin_areas_based_on_drainage_unit_areas(
         areas.geometry = areas.make_valid()  # dissolve can fail because of incorrect geoms. fix those first
         basin_areas = areas.dissolve(by="basin").reset_index().drop(columns=["area"])
 
-    basin_areas["basin"] = basin_areas["basin"].astype(int)
+    areas["basin"] = areas["basin"].fillna(-1).astype(int)
+    basin_areas["basin"] = basin_areas["basin"].fillna(-1).astype(int)
     basin_areas["area_ha"] = basin_areas.geometry.area / 10000.0
     basin_areas["color_no"] = basin_areas.basin % 50
     print(
@@ -374,10 +377,12 @@ def create_basins_based_on_subgraphs_and_nodes(
     return basins
 
 
-def check_if_nodes_edges_within_basin_areas(nodes, edges, basin_areas):
-    """
-    check whether nodes assigned to a basin are also within the polygon assigned to that basin
-    """
+def check_if_nodes_edges_within_basin_areas(
+    nodes: gpd.GeoDataFrame,
+    edges: gpd.GeoDataFrame,
+    basin_areas: gpd.GeoDataFrame
+) -> tuple[gpd.GeoDataFrame]:
+    """Check whether nodes assigned to a basin are also within the polygon assigned to that basin"""
     
     edges, nodes, basin_areas = edges.copy(), nodes.copy(), basin_areas.copy()  # copy to make sure gdf variable is not linked
     if basin_areas is None:
@@ -413,10 +418,7 @@ def create_basin_connections(
         crs: int = 28992,
         option_edges_hydroobjects: bool = False,
     ) -> gpd.GeoDataFrame:
-    """
-    create basin connections
-    """
-    
+    """Create basin connections"""    
     conn = split_nodes.rename(columns={"geometry": "geom_split_node"})
  
     # check if split_node is used (split_type) or is a hard cut
@@ -551,7 +553,7 @@ def create_basin_connections(
         basin_connections['geometry_from_edges'] = _basin_connections['geometry_from_edges']
 
     print(f" - create connections between Basins and split locations ({len(basin_connections)}x)")
-    return basin_connections
+    return basin_connections.drop_duplicates(keep="first")
 
 
 def create_boundary_connections(
@@ -560,10 +562,8 @@ def create_boundary_connections(
         edges: gpd.GeoDataFrame,
         basins: gpd.GeoDataFrame,
         split_nodes: gpd.GeoDataFrame
-    ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """
-    create boundary-basin connections
-    """
+    ) -> tuple[gpd.GeoDataFrame]:
+    """Create boundary-basin connections"""
     print(f" - create Ribasim-Edges between Boundaries and Basins")
     split_nodes = split_nodes[
         (split_nodes["split_type"] != "no_split") & 
@@ -656,7 +656,14 @@ def create_boundary_connections(
     return boundaries_conn, split_nodes, basins
 
 
-def remove_basins_from_boundary(boun_conn, basin_conn, basin, nodes, edges):
+def remove_basins_from_boundary(
+    boun_conn: gpd.GeoDataFrame, 
+    basin_conn: gpd.GeoDataFrame, 
+    basin: gpd.GeoDataFrame, 
+    nodes: gpd.GeoDataFrame, 
+    edges: gpd.GeoDataFrame, 
+) -> tuple[gpd.GeoDataFrame]:
+    """Remove basins between boundary and first split_node"""
     boun_conn_basins = boun_conn.merge(
         basin_conn[["basin", "split_node", "geom_split_node"]],
         how="left",
@@ -751,10 +758,8 @@ def regenerate_node_ids(
         nodes: gpd.GeoDataFrame,
         edges: gpd.GeoDataFrame,
         areas: gpd.GeoDataFrame,
-    ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """
-    Regenerate ribasim node-id for nodes and edges
-    """
+    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """Regenerate ribasim node-id for nodes and edges"""
     boundaries, split_nodes, basins, basin_connections = boundaries.copy(), split_nodes.copy(), basins.copy(), basin_connections.copy()
     boundary_connections, basin_areas, nodes, edges, areas = boundary_connections.copy(), basin_areas.copy(), nodes.copy(), edges.copy(), areas.copy()
 
@@ -821,27 +826,37 @@ def regenerate_node_ids(
         basin_connections[["from_node_id", "to_node_id"]], 
         boundary_connections[["from_node_id", "to_node_id"]]
     ])
-    split_nodes = gpd.GeoDataFrame(split_nodes.merge(
-        connections.set_index("to_node_id"), 
-        how="left", 
-        left_on="split_node_node_id", 
-        right_index=True
-    ), geometry="geometry", crs=split_nodes.crs)
-    split_nodes = gpd.GeoDataFrame(split_nodes.merge(
-        connections.set_index("from_node_id"), 
-        how="left", 
-        left_on="split_node_node_id", 
-        right_index=True
-    ), geometry="geometry", crs=split_nodes.crs)
+    split_nodes = gpd.GeoDataFrame(
+        split_nodes.merge(
+            connections.set_index("to_node_id"), 
+            how="left", 
+            left_on="split_node_node_id", 
+            right_index=True
+        ), 
+        geometry="geometry", 
+        crs=split_nodes.crs
+        )
+    split_nodes = gpd.GeoDataFrame(
+        split_nodes.merge(
+            connections.set_index("from_node_id"), 
+            how="left", 
+            left_on="split_node_node_id", 
+            right_index=True
+        ), 
+        geometry="geometry", 
+        crs=split_nodes.crs
+    )
 
     # the above actions can result in duplicate entries in tables. only keep one records of those duplicates
-    boundaries = boundaries.loc[~boundaries.duplicated()].copy()
-    split_nodes = split_nodes.loc[~split_nodes.duplicated()].copy()
-    basins = basins.loc[~basins.duplicated()].copy()
-    basin_areas = basin_areas.loc[~basin_areas.duplicated()].copy()
-    nodes = nodes.loc[~nodes.duplicated()].copy()
-    edges = edges.loc[~edges.duplicated()].copy()
-    areas = areas.loc[~areas.duplicated()].copy()
+    boundaries = boundaries.drop_duplicates(keep="first")
+    split_nodes = split_nodes.drop_duplicates(keep="first")
+    basins = basins.drop_duplicates(keep="first")
+    basin_areas = basin_areas.drop_duplicates(keep="first")
+    nodes = nodes.drop_duplicates(keep="first")
+    edges = edges.drop_duplicates(keep="first")
+    areas = areas.drop_duplicates(keep="first")
+    basin_connections = basin_connections.drop_duplicates(keep="first")
+    boundary_connections = boundary_connections.drop_duplicates(keep="first")
 
     return boundaries, split_nodes, basins, basin_areas, nodes, edges, areas, basin_connections, boundary_connections
 
@@ -851,9 +866,7 @@ def check_basins_connected_to_basin_areas(
         basin_areas: gpd.GeoDataFrame,
         boundary_connections: gpd.GeoDataFrame,
     ):
-    """
-     Check if basin locations are connected with a basin area (ignoring basins generated for boundary connections)
-    """
+    """Check if basin locations are connected with a basin area (ignoring basins generated for boundary connections)"""
     print(' - check if basins are connected to a basin area (ignoring basins generated for boundary connections)')
     _basins = basins.loc[~np.isin(basins['basin'].values, boundary_connections['basin'].values)]
     _basins = _basins.loc[~np.isin(_basins['basin'].values, basin_areas['basin'].values)]
@@ -873,7 +886,7 @@ def remove_isolated_basins_and_update_administration(
         boundary_connections: gpd.GeoDataFrame,
         edges: gpd.GeoDataFrame,
         nodes: gpd.GeoDataFrame,
-    ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Remove isolated basins (including 1-on-1 connected basin areas) based on basin and boundary connections.
     Update the basin administration in basin areas, areas, edges and nodes
@@ -929,8 +942,9 @@ def generate_ribasim_network_using_split_nodes(
         remove_holes_min_area: float = 10.0,
         crs: int = 28992,
         option_edges_hydroobjects: bool = False,
-    ) -> Dict:
-    """create basins (nodes) and basin_areas (large polygons) and connections (edges)
+    ) -> dict:
+    """
+    Create basins (nodes) and basin_areas (large polygons) and connections (edges)
     based on nodes, edges, split_nodes and areas (discharge units).
     This function calls all other functions
     """
@@ -963,13 +977,13 @@ def generate_ribasim_network_using_split_nodes(
         edges=edges
     )
     if use_laterals_for_basin_area:
-        areas, basin_areas = create_basin_areas_based_on_drainage_unit_areas(
+        areas, basin_areas = create_basin_areas_based_on_drainage_areas(
             edges=edges, 
             areas=areas,
             laterals=laterals
         )
     else:
-        areas, basin_areas = create_basin_areas_based_on_drainage_unit_areas(
+        areas, basin_areas = create_basin_areas_based_on_drainage_areas(
             edges=edges, 
             areas=areas
         )

@@ -1,8 +1,9 @@
+import datetime
+import random
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-import random
-import datetime
 
 
 def generate_basin_profile_table(
@@ -114,7 +115,7 @@ def generate_basin_time_table_laterals_areas_data(basins, areas, laterals_areas_
     basin_node_ids = basins.basin_node_id.values
 
     for basin_node_id in basin_node_ids:
-        areas_basin = list(areas[areas['basin_node_id'] == basin_node_id]['area_code'].unique())
+        areas_basin = list(areas[areas['basin_node_id'] == basin_node_id]['code'].unique())
         timeseries_basin = laterals_areas_data[areas_basin].sum(axis=1).to_frame().rename(columns={0: 'Netto_flux'}).reset_index()
         
         timeseries_basin["drainage"] = timeseries_basin["Netto_flux"][timeseries_basin["Netto_flux"]>0]
