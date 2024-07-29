@@ -27,7 +27,7 @@ def read_gpkg_layers(gpkg_path, variables, engine="fiona", print_var=False):
 
     data = {}
     for variable in variables:
-        if print_var == True:
+        if print_var:
             print(variable)
         data_temp = gpd.read_file(gpkg_path, layer=variable, engine=engine)
         data[variable] = data_temp
@@ -255,7 +255,7 @@ def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_perc
 #     peilgebied = overlapping_updated.append(intersection, ignore_index=True) #add the removed difference, but now only the intersected part of pg_afwijking
 
 
-#     if check == True:
+#     if check:
 #         peilgebied_praktijk.to_file('Checks/Rivierenland/peilgebied_praktijk.gpkg', driver='GPKG')
 #         peilgebied_afwijking.to_file('Checks/Rivierenland/peilgebied_afwijking.gpkg', driver='GPKG')
 
@@ -304,7 +304,7 @@ def burn_in_peilgebieden(base_layer, overlay_layer, plot=True):
 
     burned_base_layer = burned_base_layer.drop_duplicates(subset="globalid", keep="last")
 
-    if plot == True:
+    if plot:
         fig, ax = plt.subplots()
         base_layer.plot(ax=ax, color="cornflowerblue")
         overlay_layer.plot(ax=ax, color="blue")
