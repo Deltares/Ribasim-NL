@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import pandas as pd
-import ribasim
 from openpyxl import load_workbook
 from pandas import DataFrame, Series
+from ribasim.nodes import discrete_control
 
 from ribasim_nl.model import add_control_node_to_network
 
@@ -56,10 +56,9 @@ def verdeelsleutel_to_control(
             f"number of keys in verdeelsleutel != 1: {verdeelsleutel_df.locatie_bovenstrooms.unique()}"
         )
     else:
-        listen_feature_id = (
-            model.network.node.df[
-                model.network.node.df["meta_code_waterbeheerder"] == keys[0]
-            ]
+        listen_node_id = (
+            model.node_table()
+            .df[model.node_table().df["meta_code_waterbeheerder"] == keys[0]]
             .iloc[0]
             .node_id
         )
@@ -69,10 +68,11 @@ def verdeelsleutel_to_control(
         ["locatie_benedenstrooms_1", "locatie_benedenstrooms_2"]
     ):
         frac_nodes += [
-            model.network.node.df[
-                (model.network.node.df["node_type"] == "FractionalFlow")
+            model.node_table()
+            .df[
+                (model.node_table().df["node_type"] == "FractionalFlow")
                 & (
-                    model.network.node.df["meta_code_waterbeheerder"].str.lower()
+                    model.node_table().df["meta_code_waterbeheerder"].str.lower()
                     == i.lower()
                 )
             ]
@@ -81,8 +81,8 @@ def verdeelsleutel_to_control(
             for i in [loc1, loc2]
         ]
 
-    ctrl_node_id = add_control_node_to_network(
-        model.network,
+    ctrl_node = add_control_node_to_network(
+        model,
         frac_nodes,
         offset=100,
         offset_node_id=offset_node_id,
@@ -97,17 +97,39 @@ def verdeelsleutel_to_control(
             "beschrijving": "meta_beschrijving",
         }
     )
-    condition_df["node_id"] = ctrl_node_id
-    condition_df["listen_feature_id"] = listen_feature_id
+    condition_df["node_id"] = ctrl_node.node_id
+    condition_df["listen_node_id"] = listen_node_id
     condition_df["variable"] = "flow_rate"
 
     logic_df = df[["beschrijving"]].rename(columns={"beschrijving": "control_state"})
     logic_df["truth_state"] = [
         "".join(["T"] * i + ["F"] * len(df))[0 : len(df)] for i in range(len(df))
     ]
-    logic_df["node_id"] = ctrl_node_id
-    model.discrete_control = ribasim.DiscreteControl(
-        logic=logic_df, condition=condition_df
+    logic_df["node_id"] = ctrl_node.node_id
+
+    listen_node_type = (
+        model.node_table().df.set_index("node_id").at[listen_node_id, "node_type"]
     )
+    model.discrete_control.add(
+        ctrl_node,
+        [
+            discrete_control.Condition(
+                listen_node_id=listen_node_id,
+                listen_node_type=listen_node_type,
+                variable="flow_rate",
+                greater_than=condition_df["greater_than"].to_list(),
+            ),
+            discrete_control.Logic(
+                truth_state=logic_df.truth_state.to_list(),
+                control_state=logic_df.control_state.to_list(),
+            ),
+        ],
+    )
+
+    for frac_node_id in frac_nodes:
+        model.edge.add(
+            model.discrete_control[ctrl_node.node_id],
+            model.fractional_flow[frac_node_id],
+        )
 
     return model

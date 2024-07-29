@@ -1,300 +1,274 @@
 # %%
-from datetime import datetime
+import warnings
 
+import openpyxl
 import pandas as pd
-import ribasim
-from ribasim_nl import CloudStorage, discrete_control
-from ribasim_nl.model import add_control_node_to_network, update_table
-from ribasim_nl.verdeelsleutels import read_verdeelsleutel, verdeelsleutel_to_control
+from ribasim.nodes import (
+    discrete_control,
+    outlet,
+    pid_control,
+    pump,
+    tabulated_rating_curve,
+)
+from ribasim_nl import CloudStorage, Model
+from ribasim_nl import discrete_control as dc
+
+warnings.filterwarnings(
+    action="ignore",
+    module="geopandas",
+    message="CRS not set for some of the concatenation inputs.",
+)
+
+warnings.filterwarnings(
+    action="ignore",
+    module="openpyxl",
+    message="Data Validation extension is not supported and will be removed",
+)
+
 
 cloud = CloudStorage()
-waterbeheerder = "Rijkswaterstaat"
 
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_network", "hws.toml")
-model = ribasim.Model.read(ribasim_toml)
-
-verdeelsleutel_df = read_verdeelsleutel(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "verdeelsleutel_driel.xlsx")
-)
-
-# %% toevoegen Driel
-# Driel toevoegen met een control op Fractional Nodes
-name = "Driel"
-code_waterbeheerder = "40A-004-02"
-
-offset_node_id = model.network.node.df[
-    model.network.node.df["meta_code_waterbeheerder"] == code_waterbeheerder
-].index[0]
-model = verdeelsleutel_to_control(
-    verdeelsleutel_df,
-    model,
-    code_waterbeheerder=code_waterbeheerder,
-    offset_node_id=offset_node_id,
-    waterbeheerder="Rijkswaterstaat",
-)
-
-# %% add Haringvliet
-# Haringvliet toevoegen met control op outlet
-name = "Haringvlietsluizen"
-code_waterbeheerder = "37C-350-09"
-flow_rate_haringvliet = [0, 0, 50, 50, 400, 2500, 3800, 5200, 6800, 8000, 9000]
-flow_rate_lobith = [0, 1100, 1100, 1700, 2000, 4000, 6000, 8000, 10000, 12000, 15000]
-
-node_ids = model.network.node.df[
-    model.network.node.df["meta_code_waterbeheerder"] == code_waterbeheerder
-].index
+UPDATE_KWK_DATA = True
 
 
-ctrl_node_id = add_control_node_to_network(
-    model.network,
-    node_ids,
-    ctrl_node_geom=(62430, 427430),
-    meta_waterbeheerder="Rijkswaterstaat",
-    name=name,
-    meta_code_waterbeheerder=name,
-)
+# %% functies
+def read_rating_curve(kwk_df):
+    qh_df = kwk_df.loc[kwk_df.Eigenschap.to_list().index("Q(h) relatie") + 2 :][
+        ["Eigenschap", "Waarde"]
+    ].rename(columns={"Eigenschap": "level", "Waarde": "flow_rate"})
+    qh_df.dropna(inplace=True)
+    return tabulated_rating_curve.Static(**qh_df.to_dict(orient="list"))
 
-listen_feature_id = model.network.node.df[
-    model.network.node.df["meta_code_waterbeheerder"] == "LOBH"
-].index[0]
 
-condition_df = discrete_control.condition(
-    values=flow_rate_lobith,
-    node_id=ctrl_node_id,
-    listen_feature_id=listen_feature_id,
-    name=name,
-)
+def read_qq_curve(kwk_df):
+    return kwk_df.loc[kwk_df.Eigenschap.to_list().index("QQ relatie") + 2 :][
+        ["Eigenschap", "Waarde"]
+    ].rename(columns={"Eigenschap": "condition_flow_rate", "Waarde": "flow_rate"})
 
-model.discrete_control.condition.df = update_table(
-    model.discrete_control.condition.df, condition_df
-)
 
-logic_df = discrete_control.logic(
-    node_id=ctrl_node_id,
-    length=len(flow_rate_haringvliet),
-    name=name,
-)
+def read_kwk_properties(kwk_df):
+    properties = (
+        kwk_df[0:12][["Eigenschap", "Waarde"]]
+        .dropna()
+        .set_index("Eigenschap")["Waarde"]
+    )
 
-model.discrete_control.logic.df = update_table(
-    model.discrete_control.logic.df, ribasim.DiscreteControl(logic=logic_df).logic.df
-)
+    if "Kunstwerkcode" in properties.keys():
+        properties["Kunstwerkcode"] = str(properties["Kunstwerkcode"])
+    return properties
 
-outlet_df = discrete_control.node_table(
-    values=flow_rate_lobith, variable="flow_rate", name=name, node_id=node_ids[0]
-)
 
-model.outlet.static.df = update_table(
-    model.outlet.static.df, ribasim.Outlet(static=outlet_df).static.df
-)
-
-# %% toevoegen IJsselmeer
-
-# toevoegen peil IJsselmeer door opgave peil waddenzee
-node_ids = model.network.node.df[
-    model.network.node.df["meta_code_waterbeheerder"].isin(["KOBU", "OEBU"])
-].index
-
-time = pd.date_range(model.starttime, model.endtime)
-
-day_of_year = [
-    "01-01",
-    "03-01",
-    "03-11",
-    "03-21",
-    "04-01",
-    "04-10",
-    "04-15",
-    "08-11",
-    "08-21",
-    "08-31",
-    "09-11",
-    "09-15",
-    "09-21",
-    "10-01",
-    "10-11",
-    "10-21",
-    "10-31",
-    "12-31",
-]
-
-level = [
-    -0.4,
-    -0.2,
-    -0.1,
-    -0.1,
-    -0.15,
-    -0.15,
-    -0.15,
-    -0.15,
-    -0.2,
-    -0.25,
-    -0.28,
-    -0.3,
-    -0.32,
-    -0.35,
-    -0.4,
-    -0.4,
-    -0.4,
-    -0.4,
-]
-level_cycle_df = pd.DataFrame(
-    {
-        "dayofyear": [
-            datetime.strptime(i, "%m-%d").timetuple().tm_yday for i in day_of_year
-        ],
-        "level": level,
+def read_flow_kwargs(kwk_properties, include_crest_level=False):
+    mapper = {
+        "Capaciteit (m3/s)": "flow_rate",
+        "minimale capaciteit (m3/s)": "min_flow_rate",
     }
-).set_index("dayofyear")
+    if include_crest_level:
+        mapper["Streefpeil (m +NAP)"] = "min_crest_level"
+
+    kwargs = kwk_properties.rename(mapper).to_dict()
+    if "flow_rate" in kwargs.keys():
+        kwargs["max_flow_rate"] = kwargs["flow_rate"]
+    kwargs = {
+        k: [v]
+        for k, v in kwargs.items()
+        if k in ["flow_rate", "min_flow_rate", "max_flow_rate", "min_crest_level"]
+    }
+    # kwargs["flow_rate"] = [kwk_properties["Capaciteit (m3/s)"]]
+    return kwargs
 
 
-def get_level(timestamp, level_cycle_df):
-    return level_cycle_df.at[
-        level_cycle_df.index[level_cycle_df.index <= timestamp.dayofyear].max(), "level"
+def read_outlet(kwk_df, name=None):
+    if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
+        qq_properties = read_qq_curve(kwk_df)
+        outlet_df = dc.node_table(
+            values=qq_properties["flow_rate"].to_list(),
+            variable="flow_rate",
+            name=name,
+            node_id=node_id,
+        )
+        return outlet.Static(
+            flow_rate=outlet_df.flow_rate.to_list(),
+            control_state=outlet_df.control_state.to_list(),
+        )
+    else:
+        return outlet.Static(
+            **read_flow_kwargs(read_kwk_properties(kwk_df), include_crest_level=True)
+        )
+
+
+def read_pump(kwk_properties):
+    kwargs = read_flow_kwargs(kwk_properties)
+    return pump.Static(**kwargs)
+
+
+def read_pid(control_properties, control_basin_id):
+    if control_properties["Controle benedenstrooms"]:
+        p = 500000
+        i = 1e-07
+    else:
+        p = -500000
+        i = -1e-07
+
+    return [
+        pid_control.Static(
+            listen_node_id=[control_basin_id],
+            target=[control_properties["Streefpeil (m+NAP)"]],
+            listen_node_type="Basin",
+            proportional=[p],
+            integral=[i],
+            derivative=[0.0],
+        )
     ]
 
 
-time = pd.date_range(model.starttime, model.endtime)
-level_df = pd.DataFrame(
-    {"time": time, "level": [get_level(i, level_cycle_df) for i in time]}
+# %% Paden
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_netwerk", "hws.toml")
+kwk_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerken")
+kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
+
+# %%Inlezen
+all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
+all_kwk_df.loc[:, "code"] = all_kwk_df["code"].astype(str)
+model = Model.read(ribasim_toml)
+
+# %% Itereren over kunstwerken
+
+all_kwk_df = all_kwk_df[all_kwk_df.in_model]
+for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
+    # get sheet-names
+    file_name = kwk_dir / f"{gebied}.xlsx"
+    workbook = openpyxl.open(file_name)
+    sheet_names = workbook.sheetnames
+    workbook.close()
+
+    # kwk = next(i for i in kwks_df.itertuples() if i.naam == "Pr. Bernhardsluis")
+    for kwk in kwks_df.itertuples():
+        print(f"updating {kwk.naam}")
+        # check if naam column exists as sheet in xlsx and read sheet
+        try:
+            if kwk.naam not in sheet_names:
+                raise ValueError(f"{kwk.naam} not a sheet in {file_name}")
+
+            kwk_df = pd.read_excel(file_name, sheet_name=kwk.naam)
+
+            # get properties
+            kwk_properties = read_kwk_properties(kwk_df)
+
+            # check if code-value is the same in both Excels
+            if kwk_properties["Kunstwerkcode"] != kwk.code:
+                raise ValueError(
+                    f"code for {kwk.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties["Kunstwerkcode"]} != {kwk.code}"
+                )
+
+            # find existing node_id in model
+            node_id = model.find_node_id(
+                meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"])
+            )
+
+            if UPDATE_KWK_DATA:
+                # prepare static-data for updating node
+                node_type = kwk_properties["Ribasim type"]
+                if node_type == "TabulatedRatingCurve":
+                    data = [read_rating_curve(kwk_df)]
+                elif node_type == "Outlet":
+                    data = [read_outlet(kwk_df, name=kwk.naam)]
+                elif node_type == "Pump":
+                    data = [read_pump(kwk_properties)]
+                else:
+                    raise ValueError(f"node-type {node_type} not yet implemented")
+
+                # update model
+                model.update_node(
+                    node_id=node_id,
+                    node_type=node_type,
+                    data=data,
+                    node_properties={"name": kwk.naam},
+                )
+
+            # check if structure has pid control
+            if "PidControl" in kwk_df["Eigenschap"].to_numpy():
+                control_properties = kwk_df.loc[
+                    kwk_df.Eigenschap.to_list().index("PidControl") + 1 :
+                ][["Eigenschap", "Waarde"]].set_index("Eigenschap")["Waarde"]
+
+                if control_properties["Controle benedenstrooms"]:
+                    # waterlichaam should be upstream
+                    control_basin_id = model.find_node_id(
+                        us_node_id=node_id,
+                        name=control_properties["Waterlichaam"],
+                    )
+                else:  # waterlichaam should be donstream
+                    control_basin_id = model.find_node_id(
+                        ds_node_id=node_id,
+                        name=control_properties["Waterlichaam"],
+                    )
+
+                # add control node to network
+                model.add_control_node(
+                    to_node_id=node_id,
+                    data=read_pid(control_properties, control_basin_id),
+                    ctrl_type="PidControl",
+                    node_offset=20,
+                )
+                # check if network-direction is correct with control-parameters
+
+            # check if structure has qq control
+            if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
+                qq_properties = read_qq_curve(kwk_df)
+
+                listen_node_id = model.find_node_id(
+                    meta_meetlocatie_code=str(kwk_properties["Meetlocatiecode"])
+                )
+
+                condition_df = dc.condition(
+                    values=qq_properties.condition_flow_rate.to_list(),
+                    node_id=model.next_node_id,
+                    listen_feature_id=listen_node_id,
+                    name=kwk.naam,
+                )
+
+                logic_df = dc.logic(
+                    node_id=model.next_node_id,
+                    length=len(qq_properties),
+                    name=kwk.naam,
+                )
+
+                data = [
+                    discrete_control.Variable(
+                        compound_variable_id=1,
+                        listen_node_id=[listen_node_id],
+                        listen_node_type=[model.get_node_type(listen_node_id)],
+                        variable=["flow_rate"],
+                    ),
+                    discrete_control.Condition(
+                        compound_variable_id=1,
+                        greater_than=condition_df["greater_than"].to_list(),
+                    ),
+                    discrete_control.Logic(
+                        truth_state=logic_df.truth_state.to_list(),
+                        control_state=logic_df.control_state.to_list(),
+                    ),
+                ]
+
+                model.add_control_node(
+                    to_node_id=node_id,
+                    data=data,
+                    ctrl_type="DiscreteControl",
+                    node_offset=20,
+                )
+
+        except ValueError as e:
+            print(f"ERROR: {e}")
+            pass
+
+
+# %% write
+ribasim_toml = cloud.joinpath(
+    "Rijkswaterstaat",
+    "modellen",
+    "hws_sturing",
+    "hws.toml",
 )
 
-level_df = pd.concat(
-    [
-        pd.concat(
-            [level_df, pd.DataFrame({"node_id": [node_id] * len(level_df)})], axis=1
-        )
-        for node_id in node_ids
-    ],
-    ignore_index=True,
-)
-model.level_boundary.time.df = level_df
-model.level_boundary.static.df = model.level_boundary.static.df[
-    ~model.level_boundary.static.df.node_id.isin(node_ids)
-]
-
-# %% toevoegen Irenesluizen
-
-# PID control op ARK volgens peilbesluit op -0.4m NAP: https://www.helpdeskwater.nl/publish/pages/138359/41_peilbesluit_boezem_noordzeekanaal_amsterdam-rijnkanaal.pdf
-name = "Irenesluizen"
-code_waterbeheerder = "39B-002-02"
-
-node_ids = model.network.node.df[
-    model.network.node.df["meta_code_waterbeheerder"] == code_waterbeheerder
-].index
-
-condition = model.outlet.static.df.node_id == node_ids[0]
-model.outlet.static.df.loc[condition, ["min_flow_rate", "max_flow_rate"]] = 0, 60
-
-gdf = model.network.edge.df[model.network.edge.df.from_node_id == node_ids[0]]
-gdf = gdf[gdf.to_node_type == "Basin"]
-listen_node_id = gdf.iloc[0].to_node_id
-
-
-ctrl_node_id = add_control_node_to_network(
-    model.network,
-    node_ids,
-    meta_waterbeheerder="Rijkswaterstaat",
-    name=name,
-    meta_code_waterbeheerder=name,
-    ctrl_type="PidControl",
-)
-
-pids = [
-    {
-        "node_id": ctrl_node_id,
-        "listen_node_type": "Basin",
-        "listen_node_id": listen_node_id,
-        "target": -0.4,
-        "proportional": -50000,
-        "integral": -1e-7,
-        "derivative": 0,
-    }
-]
-
-# %% toevoegen Gemaal Panheel
-
-# PID control op Kanaal Wessem-Nederweerd volgens peilbesluit op 26.65m NAP: https://www.helpdeskwater.nl/publish/pages/188982/watersystemen-midden-limburg-en-noord-brabantse-kanalen.pdf
-name = "Gemaal Panheel"
-code_waterbeheerder = "58C-001-06"
-
-node_ids = model.network.node.df[
-    model.network.node.df["meta_code_waterbeheerder"] == code_waterbeheerder
-].index
-
-condition = model.pump.static.df.node_id == node_ids[0]
-model.pump.static.df.loc[condition, ["min_flow_rate", "max_flow_rate"]] = 0, 3
-
-gdf = model.network.edge.df[model.network.edge.df.from_node_id == node_ids[0]]
-gdf = gdf[gdf.to_node_type == "Basin"]
-listen_node_id = gdf.iloc[0].to_node_id
-
-
-ctrl_node_id = add_control_node_to_network(
-    model.network,
-    node_ids,
-    meta_waterbeheerder="Rijkswaterstaat",
-    name=name,
-    meta_code_waterbeheerder=name,
-    ctrl_type="PidControl",
-    offset=20,
-    # ctrl_node_geom=(188298, 354034),
-)
-
-pids += [
-    {
-        "node_id": ctrl_node_id,
-        "listen_node_type": "Basin",
-        "listen_node_id": listen_node_id,
-        "target": 26.60,
-        "proportional": -50000,
-        "integral": -1e-7,
-        "derivative": 0,
-    }
-]
-
-name = "Sluis Panheel"
-code_waterbeheerder = "58C-001-04"
-
-node_ids = model.network.node.df[
-    model.network.node.df["meta_code_waterbeheerder"] == code_waterbeheerder
-].index
-
-condition = model.outlet.static.df.node_id == node_ids[0]
-model.outlet.static.df.loc[condition, ["min_flow_rate", "max_flow_rate"]] = 2.5, 10
-
-gdf = model.network.edge.df[model.network.edge.df.from_node_id == node_ids[0]]
-gdf = gdf[gdf.to_node_type == "Basin"]
-listen_node_id = gdf.iloc[0].to_node_id
-
-
-ctrl_node_id = add_control_node_to_network(
-    model.network,
-    node_ids,
-    meta_waterbeheerder="Rijkswaterstaat",
-    name=name,
-    meta_code_waterbeheerder=name,
-    ctrl_type="PidControl",
-    offset=20,
-    # ctrl_node_geom=(188175, 353945),
-)
-
-pids += [
-    {
-        "node_id": ctrl_node_id,
-        "listen_node_type": "Basin",
-        "listen_node_id": listen_node_id,
-        "target": 26.70,
-        "proportional": -50000,
-        "integral": -1e-7,
-        "derivative": 0,
-    }
-]
-
-
-pid_df = pd.DataFrame(pids)
-
-model.pid_control = ribasim.PidControl(static=pid_df)
-
-# %% wegschrijven model
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_sturing", "hws.toml")
 model.write(ribasim_toml)
