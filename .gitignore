@@ -20,36 +20,5 @@ dmypy.json
 # pytest --basetemp
 src/hydamo/tests/temp/
 src/ribasim_nl/tests/temp/
-notebooks/rijkswaterstaat/6_model_sturing.py.bak
-notebooks/rijkswaterstaat/plots/Binnen Kievitswaard.png
-notebooks/rijkswaterstaat/plots/Crevecoeur.png
-notebooks/rijkswaterstaat/plots/Dordrecht.png
-notebooks/rijkswaterstaat/plots/Empel beneden.png
-notebooks/rijkswaterstaat/plots/Empel boven.png
-notebooks/rijkswaterstaat/plots/Empel sluis.png
-notebooks/rijkswaterstaat/plots/Gennep.png
-notebooks/rijkswaterstaat/plots/Grave beneden.png
-notebooks/rijkswaterstaat/plots/Grave boven.png
-notebooks/rijkswaterstaat/plots/Happen Hennip.png
-notebooks/rijkswaterstaat/plots/Heesbeen.png
-notebooks/rijkswaterstaat/plots/Inlaat Landsweijer.png
-notebooks/rijkswaterstaat/plots/Inlaat Teersesluispolder.png
-notebooks/rijkswaterstaat/plots/Inlaat Weurt.png
-notebooks/rijkswaterstaat/plots/Keizersveer.png
-notebooks/rijkswaterstaat/plots/Kleine Zalm.png
-notebooks/rijkswaterstaat/plots/Lith boven.png
-notebooks/rijkswaterstaat/plots/Lith Dorp.png
-notebooks/rijkswaterstaat/plots/Megen.png
-notebooks/rijkswaterstaat/plots/Middelste Kievitswaard.png
-notebooks/rijkswaterstaat/plots/Mook.png
-notebooks/rijkswaterstaat/plots/Sambeek beneden.png
-notebooks/rijkswaterstaat/plots/Sambeek boven.png
-notebooks/rijkswaterstaat/plots/Steenenmuur.png
-notebooks/rijkswaterstaat/plots/Steurgat.png
-notebooks/rijkswaterstaat/plots/t Kooike.png
-notebooks/rijkswaterstaat/plots/Vogelenzang.png
-notebooks/rijkswaterstaat/plots/Vuren.png
-notebooks/rijkswaterstaat/plots/Waalwijk.png
-notebooks/rijkswaterstaat/plots/Well Dorp.png
-notebooks/rijkswaterstaat/plots/Werkendam buiten.png
-notebooks/rijkswaterstaat/plots/Zaltbommel.png
+
+notebooks/rijkswaterstaat/plots/
