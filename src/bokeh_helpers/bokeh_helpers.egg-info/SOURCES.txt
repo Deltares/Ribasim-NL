@@ -1,8 +1,0 @@
-pyproject.toml
-bokeh_helpers/__init__.py
-bokeh_helpers.egg-info/PKG-INFO
-bokeh_helpers.egg-info/SOURCES.txt
-bokeh_helpers.egg-info/dependency_links.txt
-bokeh_helpers.egg-info/requires.txt
-bokeh_helpers.egg-info/top_level.txt
-bokeh_helpers.egg-info/zip-safe
