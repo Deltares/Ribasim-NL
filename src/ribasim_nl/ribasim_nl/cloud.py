@@ -82,13 +82,9 @@ class CloudStorage:
     def __post_init__(self):
         # check if user and password are specified
         if self.user is None:
-            raise ValueError(
-                """'user' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_USER."""
-            )
+            raise ValueError("""'user' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_USER.""")
         if self.password is None:
-            raise ValueError(
-                """'password' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_PASS."""
-            )
+            raise ValueError("""'password' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_PASS.""")
         # check if we have correct credentials
         response = requests.get(self.url, auth=self.auth)
         if response.ok:
@@ -98,9 +94,7 @@ class CloudStorage:
 
         # check if data_dir is specified
         if self.data_dir is None:
-            raise ValueError(
-                """'data_dir' is None. Provide it or set environment variable RIBASIM_NL_DATA_DIR."""
-            )
+            raise ValueError("""'data_dir' is None. Provide it or set environment variable RIBASIM_NL_DATA_DIR.""")
         else:
             self.data_dir = Path(self.data_dir)
 
@@ -206,9 +200,7 @@ class CloudStorage:
         </D:propfind>
         """
 
-        response = requests.request(
-            "PROPFIND", url, headers=headers, auth=self.auth, data=xml_data
-        )
+        response = requests.request("PROPFIND", url, headers=headers, auth=self.auth, data=xml_data)
 
         if response.status_code != 207:
             response.raise_for_status()
@@ -278,9 +270,7 @@ class CloudStorage:
                 path.mkdir(parents=True, exist_ok=True)  # create if it doesn't exist
                 self.download_content(item_url)  # get content of directory
             else:
-                if (
-                    overwrite and path.exists()
-                ):  # delete if exists and we want to overwrite
+                if overwrite and path.exists():  # delete if exists and we want to overwrite
                     path.unlink()
                 if not path.exists():  # download if it doesn't exist
                     logger.info(f"downloading file {path}")
@@ -307,9 +297,7 @@ class CloudStorage:
             if path.stem not in content:
                 remote_path = self.relative_path(path).as_posix()
                 self.create_dir(remote_path)
-                self.upload_content(
-                    dir_path=dir_path.joinpath(path.stem), overwrite=overwrite
-                )
+                self.upload_content(dir_path=dir_path.joinpath(path.stem), overwrite=overwrite)
 
     def download_aangeleverd(self, authority: str, overwrite: bool = False):
         """Download all files in folder 'aangeleverd'"""
@@ -370,9 +358,7 @@ class CloudStorage:
 
         return [strip_version(i) for i in uploaded_models]
 
-    def upload_model(
-        self, authority: str, model: str, include_results=False, include_plots=False
-    ):
+    def upload_model(self, authority: str, model: str, include_results=False, include_plots=False):
         """Upload a model to a water authority
 
         Parameters
@@ -406,9 +392,7 @@ class CloudStorage:
         monthly_revisions = [
             i.revision
             for i in uploaded_models
-            if (i.model == model)
-            and (i.year == today.year)
-            and (i.month == today.month)
+            if (i.model == model) and (i.year == today.year) and (i.month == today.month)
         ]
 
         if monthly_revisions:
@@ -417,9 +401,7 @@ class CloudStorage:
             revision = 0
 
         # create local version_directory
-        model_version_dir = model_dir.parent.joinpath(
-            f"{model}_{today.year}_{today.month}_{revision}"
-        )
+        model_version_dir = model_dir.parent.joinpath(f"{model}_{today.year}_{today.month}_{revision}")
         if model_version_dir.exists():
             shutil.rmtree(model_version_dir)
         model_version_dir.mkdir()

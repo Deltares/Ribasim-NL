@@ -56,9 +56,7 @@ def get_path(from_point, to_point):
     # determine source, target node and get path
     source = nodes_gdf.distance(from_point).sort_values().index[0]
     target = nodes_gdf.distance(to_point).sort_values().index[0]
-    shortest_path = nx.shortest_path(
-        graph, source=source, target=target, weight="length", method="dijkstra"
-    )
+    shortest_path = nx.shortest_path(graph, source=source, target=target, weight="length", method="dijkstra")
 
     # create points from source and target
     source_point = graph.nodes[shortest_path[0]]["geometry"]
@@ -103,12 +101,7 @@ for row in pump_tuples:
             "type": type,
         }
     ]
-    rws_to_user_id = (
-        basin_area_gdf[basin_area_gdf.rijkswater == row.id_to]
-        .distance(kwk_point)
-        .sort_values()
-        .index[0]
-    )
+    rws_to_user_id = basin_area_gdf[basin_area_gdf.rijkswater == row.id_to].distance(kwk_point).sort_values().index[0]
     geometry = LineString((kwk_point, basin_gdf.loc[rws_to_user_id].geometry))
     data += [
         {
@@ -126,12 +119,7 @@ type = "outlet"
 for row in outlet_tuples:
     basin_point = basin_gdf.loc[row.id_to].geometry
     kwk_point = row.geometry
-    rws_to_user_id = (
-        basin_area_gdf[basin_area_gdf.rijkswater == row.id_from]
-        .distance(kwk_point)
-        .sort_values()
-        .index[0]
-    )
+    rws_to_user_id = basin_area_gdf[basin_area_gdf.rijkswater == row.id_from].distance(kwk_point).sort_values().index[0]
     rws_point = basin_gdf.loc[rws_to_user_id].geometry
     geometry = LineString((rws_point, kwk_point))
     data += [
@@ -189,24 +177,14 @@ for row in resistance_gdf.itertuples():
     kwk_id = row.user_id
 
     # specify basin_from_id and point
-    basin_from_id = (
-        basin_area_gdf[basin_area_gdf.rijkswater == row.id_from]
-        .distance(kwk_point)
-        .sort_values()
-        .index[0]
-    )
+    basin_from_id = basin_area_gdf[basin_area_gdf.rijkswater == row.id_from].distance(kwk_point).sort_values().index[0]
     basin_from_point = basin_gdf.loc[basin_from_id].geometry
 
     # specify basin_to_id and point
     if (
         row.id_to != "WADDENZEE"
     ):  # TODO: make this generic (keep all in basins and turn basins to level-boundaries later)
-        basin_to_id = (
-            basin_area_gdf[basin_area_gdf.rijkswater == row.id_to]
-            .distance(kwk_point)
-            .sort_values()
-            .index[0]
-        )
+        basin_to_id = basin_area_gdf[basin_area_gdf.rijkswater == row.id_to].distance(kwk_point).sort_values().index[0]
         basin_to_point = basin_gdf.loc[basin_to_id].geometry
     else:
         basin_to_id = "NL.WBHCODE.80.basin.WADDENZEE"
@@ -241,24 +219,14 @@ type = "inter-basin"
 resistance_data = []
 
 
-for row in hydroobject_gdf[
-    ~hydroobject_gdf.index.isin(hydroobject_indices)
-].itertuples():
+for row in hydroobject_gdf[~hydroobject_gdf.index.isin(hydroobject_indices)].itertuples():
     geometry = row.geometry
-    basin_from_id = basin_area_gdf.loc[
-        basin_area_gdf.contains(row.geometry.boundary.geoms[0])
-    ].index[0]
-    basin_to_id = basin_area_gdf.loc[
-        basin_area_gdf.contains(row.geometry.boundary.geoms[1])
-    ].index[0]
+    basin_from_id = basin_area_gdf.loc[basin_area_gdf.contains(row.geometry.boundary.geoms[0])].index[0]
+    basin_to_id = basin_area_gdf.loc[basin_area_gdf.contains(row.geometry.boundary.geoms[1])].index[0]
     resistance_id = f"{basin_from_id}-{basin_to_id}"
     resistance_point = geometry.interpolate(0.5, normalized=True)
-    resistance_data += [
-        {"user_id": resistance_id, "resistance": 1.0, "geometry": resistance_point}
-    ]
-    us_geometry, ds_geometry = split(
-        snap(geometry, resistance_point, 0.01), resistance_point
-    ).geoms
+    resistance_data += [{"user_id": resistance_id, "resistance": 1.0, "geometry": resistance_point}]
+    us_geometry, ds_geometry = split(snap(geometry, resistance_point, 0.01), resistance_point).geoms
     data += [
         {
             "user_id_from": basin_from_id,
@@ -274,9 +242,7 @@ for row in hydroobject_gdf[
         },
     ]
 
-resistance_gdf = pd.concat(
-    [resistance_gdf, gpd.GeoDataFrame(resistance_data, crs=28992)]
-)
+resistance_gdf = pd.concat([resistance_gdf, gpd.GeoDataFrame(resistance_data, crs=28992)])
 resistance_gdf.to_file(MODEL_DATA_GPKG, layer="resistance")
 # %% write result
 gpd.GeoDataFrame(data, crs=28992).to_file(MODEL_DATA_GPKG, layer="edge")

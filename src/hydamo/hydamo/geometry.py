@@ -62,12 +62,8 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
         # Determine intersection geometries per branch
         geobounds = geometries.bounds.to_numpy().T
         for branch in branches.itertuples():
-            selection = geometries.loc[
-                possibly_intersecting(geobounds, branch.geometry)
-            ].copy()
-            intersecting = selection.loc[
-                selection.intersects(branch.geometry).to_numpy()
-            ]
+            selection = geometries.loc[possibly_intersecting(geobounds, branch.geometry)].copy()
+            intersecting = selection.loc[selection.intersects(branch.geometry).to_numpy()]
 
             # For each geometry, determine offset along branch
             for geometry in intersecting.itertuples():
@@ -78,9 +74,7 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
                 branchgeo = branch.geometry
                 mindist = min(0.1, branchgeo.length / 2.0)
                 offset = round(
-                    branchgeo.project(
-                        branchgeo.intersection(geometry.geometry).centroid
-                    ),
+                    branchgeo.project(branchgeo.intersection(geometry.geometry).centroid),
                     3,
                 )
                 offset = max(mindist, min(branchgeo.length - mindist, offset))
@@ -91,9 +85,7 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
         # In case of looking for the nearest, it is easier to iteratie over the geometries instead of the branches
         for geometry in geometries.itertuples():
             # Find near branches
-            nearidx = possibly_intersecting(
-                branch_bounds, geometry.geometry, buffer=maxdist
-            )
+            nearidx = possibly_intersecting(branch_bounds, geometry.geometry, buffer=maxdist)
             selection = branches.loc[nearidx]
 
             if method == "overall":
@@ -107,11 +99,7 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
                 crds = geometry.geometry.coords[:]
                 dist = (
                     selection["geometry"]
-                    .apply(
-                        lambda x: max(
-                            x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))
-                        )
-                    )
+                    .apply(lambda x: max(x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))))
                     .astype(float)
                 )
                 # dist = (

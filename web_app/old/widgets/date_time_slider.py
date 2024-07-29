@@ -8,9 +8,7 @@ from bokeh.models import DatetimeTickFormatter, Slider
 
 
 def get_formatter(format="%Y-%m-%d %H:%M:%S"):
-    return DatetimeTickFormatter(
-        years=format, days=format, hours=format, minutes=format
-    )
+    return DatetimeTickFormatter(years=format, days=format, hours=format, minutes=format)
 
 
 def round_seconds(ts_seconds, td_seconds, method):
@@ -22,9 +20,7 @@ def round_seconds(ts_seconds, td_seconds, method):
     return rounder(ts_seconds / td_seconds) * td_seconds
 
 
-def round_datetime(
-    dt, timedelta_round, method: Literal["floor", "ceil", "round"] = "round"
-):
+def round_datetime(dt, timedelta_round, method: Literal["floor", "ceil", "round"] = "round"):
     ts_seconds = dt.timestamp()
     td_seconds = timedelta_round.total_seconds()
     rounded_seconds = round_seconds(ts_seconds, td_seconds, method)

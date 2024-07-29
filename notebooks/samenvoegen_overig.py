@@ -114,19 +114,13 @@ models = [
 gdfs = []
 for model in models:
     print(model["authority"])
-    model_versions = [
-        i
-        for i in cloud.uploaded_models(model["authority"])
-        if i.model == model["model"]
-    ]
+    model_versions = [i for i in cloud.uploaded_models(model["authority"]) if i.model == model["model"]]
     if model_versions:
         model_version = sorted(model_versions, key=lambda x: x.version)[-1]
     else:
         raise ValueError(f"No models with name {model["model"]} in the cloud")
 
-    gpkg_file = cloud.joinpath(
-        model["authority"], "modellen", model_version.path_string, model["area_file"]
-    )
+    gpkg_file = cloud.joinpath(model["authority"], "modellen", model_version.path_string, model["area_file"])
 
     gdf = gpd.read_file(gpkg_file, layer=model["area_layer"], engine="pyogrio")
     if gdf.crs is None:
@@ -144,16 +138,12 @@ for model in models:
 gdf = pd.concat(gdfs, ignore_index=True)
 
 # drop z-coordinates
-gdf.loc[gdf.has_z, "geometry"] = gdf.loc[gdf.has_z, "geometry"].apply(
-    lambda x: drop_z(x)
-)
+gdf.loc[gdf.has_z, "geometry"] = gdf.loc[gdf.has_z, "geometry"].apply(lambda x: drop_z(x))
 
 # drop non-polygons
 mask = gdf.geom_type == "GeometryCollection"
 gdf.loc[mask, "geometry"] = gdf.loc[mask, "geometry"].apply(
-    lambda x: MultiPolygon(
-        [i for i in x.geoms if i.geom_type in ["Polygon", "MultiPolygon"]]
-    )
+    lambda x: MultiPolygon([i for i in x.geoms if i.geom_type in ["Polygon", "MultiPolygon"]])
 )
 
 gpkg_file = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm", "project_data.gpkg")

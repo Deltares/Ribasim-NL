@@ -38,9 +38,7 @@ def concat(models: list[Model]) -> Model:
         #     df=pd.concat([model.network.node.df, merge_model.network.node.df])
         # )
         model.edge = ribasim.EdgeTable(
-            df=pd.concat(
-                [model.edge.df, merge_model.edge.df], ignore_index=True
-            ).reset_index(drop=True)
+            df=pd.concat([model.edge.df, merge_model.edge.df], ignore_index=True).reset_index(drop=True)
         )
 
         # merge tables

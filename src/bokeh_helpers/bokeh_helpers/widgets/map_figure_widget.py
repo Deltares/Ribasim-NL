@@ -77,11 +77,7 @@ def get_tilesource(layer, map_configs=BACKGROUND_LAYERS):
 def update_background(map_figure_widget, background_control_widget, attrname, old, new):
     """Update map_figure when background is selected"""
     tile_source = get_tilesource(background_control_widget.labels[new])
-    idx = next(
-        idx
-        for idx, i in enumerate(map_figure_widget.renderers)
-        if i.name == "background"
-    )
+    idx = next(idx for idx, i in enumerate(map_figure_widget.renderers) if i.name == "background")
     map_figure_widget.renderers[idx].tile_source = tile_source
 
 
@@ -112,9 +108,7 @@ class MapFigure:
         ]
 
         # init map_widget
-        self.map_figure_widget = figure(
-            tools=tools, x_range=x_range, y_range=y_range, **self.figure_settings
-        )
+        self.map_figure_widget = figure(tools=tools, x_range=x_range, y_range=y_range, **self.figure_settings)
 
         # set settings
         self.map_figure_widget.axis.visible = False
@@ -130,9 +124,7 @@ class MapFigure:
 
         # init background control widget
         labels = list(BACKGROUND_LAYERS.keys())
-        self.background_control_widget = RadioGroup(
-            labels=labels, active=labels.index(self.background)
-        )
+        self.background_control_widget = RadioGroup(labels=labels, active=labels.index(self.background))
 
         # add background control callback
         self.background_control_widget.on_change(

@@ -22,14 +22,7 @@ CLASS_TABLES = {
     "TabulatedRatingCurve": ["static"],
 }
 
-TABLES = [
-    j
-    for r in [
-        [f"{pascal_to_snake_case(k)}.{i}.df" for i in v]
-        for k, v in CLASS_TABLES.items()
-    ]
-    for j in r
-]
+TABLES = [j for r in [[f"{pascal_to_snake_case(k)}.{i}.df" for i in v] for k, v in CLASS_TABLES.items()] for j in r]
 
 
 def get_table(model: Model, table: str = "basin.static.df"):
@@ -89,18 +82,10 @@ def add_control_node_to_network(
 
     if ctrl_node_geom is None:
         if node_id is not None:  # if node-id we take the left-offset
-            linestring = (
-                network.edge.df[network.edge.df["to_node_id"] == node_id]
-                .iloc[0]
-                .geometry
-            )
-            ctrl_node_geom = Point(
-                linestring.parallel_offset(offset, "left").coords[-1]
-            )
+            linestring = network.edge.df[network.edge.df["to_node_id"] == node_id].iloc[0].geometry
+            ctrl_node_geom = Point(linestring.parallel_offset(offset, "left").coords[-1])
         else:  # if not we take the centroid of all node_ids
-            ctrl_node_geom = network.node.df[
-                network.node.df.index.isin(node_ids)
-            ].unary_union.centroid
+            ctrl_node_geom = network.node.df[network.node.df.index.isin(node_ids)].unary_union.centroid
     else:
         ctrl_node_geom = Point(ctrl_node_geom)
 
@@ -123,17 +108,13 @@ def add_control_node_to_network(
                 "from_node_id": ctrl_node_id,
                 "to_node_id": i,
                 "edge_type": "control",
-                "geometry": LineString(
-                    (ctrl_node_geom, network.node.df.at[i, "geometry"])
-                ),
+                "geometry": LineString((ctrl_node_geom, network.node.df.at[i, "geometry"])),
             }
             for i in node_ids
         ]
     )
 
-    network.edge = ribasim.Edge(
-        df=pd.concat([network.edge.df, ctrl_edge_gdf], ignore_index=True)
-    )
+    network.edge = ribasim.Edge(df=pd.concat([network.edge.df, ctrl_edge_gdf], ignore_index=True))
     return ctrl_node_id
 
 

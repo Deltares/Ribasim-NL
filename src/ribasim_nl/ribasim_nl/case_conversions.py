@@ -8,6 +8,4 @@ def snake_to_pascal_case(snake_case: str) -> str:
 def pascal_to_snake_case(pascal_case: str) -> str:
     """Convert PascalCase to snake_case"""
 
-    return "".join(["_" + i.lower() if i.isupper() else i for i in pascal_case]).lstrip(
-        "_"
-    )
+    return "".join(["_" + i.lower() if i.isupper() else i for i in pascal_case]).lstrip("_")

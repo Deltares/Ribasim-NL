@@ -12,14 +12,10 @@ from ribasim_nl.verdeelsleutels import read_verdeelsleutel, verdeelsleutel_to_co
 cloud = CloudStorage()
 waterbeheerder = "Rijkswaterstaat"
 
-ribasim_toml = cloud.joinpath(
-    "Rijkswaterstaat", "modellen", "hws_network_upgraded", "hws.toml"
-)
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_network_upgraded", "hws.toml")
 model = ribasim.Model.read(ribasim_toml)
 
-verdeelsleutel_df = read_verdeelsleutel(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "verdeelsleutel_driel.xlsx")
-)
+verdeelsleutel_df = read_verdeelsleutel(cloud.joinpath("Rijkswaterstaat", "verwerkt", "verdeelsleutel_driel.xlsx"))
 
 
 def add_pid(node_id, node_type, ctrl_node, pid):
@@ -41,9 +37,7 @@ name = "Driel"
 code_waterbeheerder = "40A-004-02"
 
 offset_node_id = (
-    model.node_table().df[
-        model.node_table().df["meta_code_waterbeheerder"] == code_waterbeheerder
-    ]
+    model.node_table().df[model.node_table().df["meta_code_waterbeheerder"] == code_waterbeheerder]
 ).node_id.to_numpy()[0]
 
 model = verdeelsleutel_to_control(
@@ -62,9 +56,7 @@ flow_rate_haringvliet = [0, 0, 50, 50, 400, 2500, 3800, 5200, 6800, 8000, 9000]
 flow_rate_lobith = [0, 1100, 1100, 1700, 2000, 4000, 6000, 8000, 10000, 12000, 15000]
 
 node_ids = (
-    model.node_table()
-    .df[model.node_table().df["meta_code_waterbeheerder"] == code_waterbeheerder]
-    .node_id.to_numpy()
+    model.node_table().df[model.node_table().df["meta_code_waterbeheerder"] == code_waterbeheerder].node_id.to_numpy()
 )
 
 
@@ -78,14 +70,10 @@ ctrl_node = add_control_node_to_network(
 )
 
 listen_node_id = (
-    model.node_table()
-    .df[model.node_table().df["meta_code_waterbeheerder"] == "LOBH"]
-    .node_id.to_numpy()[0]
+    model.node_table().df[model.node_table().df["meta_code_waterbeheerder"] == "LOBH"].node_id.to_numpy()[0]
 )
 
-listen_node_type = (
-    model.node_table().df.set_index("node_id").at[listen_node_id, "node_type"]
-)
+listen_node_type = model.node_table().df.set_index("node_id").at[listen_node_id, "node_type"]
 
 
 condition_df = discrete_control.condition(
@@ -123,27 +111,21 @@ model.edge.add(
 )
 
 
-outlet_df = discrete_control.node_table(
-    values=flow_rate_lobith, variable="flow_rate", name=name, node_id=node_ids[0]
-)
+outlet_df = discrete_control.node_table(values=flow_rate_lobith, variable="flow_rate", name=name, node_id=node_ids[0])
 for col, dtype in model.outlet.static.df.dtypes.to_dict().items():
     if col not in outlet_df.columns:
         outlet_df.loc[:, [col]] = None
     outlet_df[col] = outlet_df[col].astype(dtype)
 
 
-model.outlet.static.df = model.outlet.static.df[
-    model.outlet.static.df.node_id != node_ids[0]
-]
+model.outlet.static.df = model.outlet.static.df[model.outlet.static.df.node_id != node_ids[0]]
 model.outlet.static.df = pd.concat([model.outlet.static.df, outlet_df])
 
 # %% toevoegen IJsselmeer
 
 # toevoegen peil IJsselmeer door opgave peil waddenzee
 node_ids = (
-    model.node_table()
-    .df[model.node_table().df["meta_code_waterbeheerder"].isin(["KOBU", "OEBU"])]
-    .node_id.to_numpy()
+    model.node_table().df[model.node_table().df["meta_code_waterbeheerder"].isin(["KOBU", "OEBU"])].node_id.to_numpy()
 )
 
 time = pd.date_range(model.starttime, model.endtime)
@@ -193,38 +175,25 @@ level = [
 ]
 level_cycle_df = pd.DataFrame(
     {
-        "dayofyear": [
-            datetime.strptime(i, "%m-%d").timetuple().tm_yday for i in day_of_year
-        ],
+        "dayofyear": [datetime.strptime(i, "%m-%d").timetuple().tm_yday for i in day_of_year],
         "level": level,
     }
 ).set_index("dayofyear")
 
 
 def get_level(timestamp, level_cycle_df):
-    return level_cycle_df.at[
-        level_cycle_df.index[level_cycle_df.index <= timestamp.dayofyear].max(), "level"
-    ]
+    return level_cycle_df.at[level_cycle_df.index[level_cycle_df.index <= timestamp.dayofyear].max(), "level"]
 
 
 time = pd.date_range(model.starttime, model.endtime)
-level_df = pd.DataFrame(
-    {"time": time, "level": [get_level(i, level_cycle_df) for i in time]}
-)
+level_df = pd.DataFrame({"time": time, "level": [get_level(i, level_cycle_df) for i in time]})
 
 level_df = pd.concat(
-    [
-        pd.concat(
-            [level_df, pd.DataFrame({"node_id": [node_id] * len(level_df)})], axis=1
-        )
-        for node_id in node_ids
-    ],
+    [pd.concat([level_df, pd.DataFrame({"node_id": [node_id] * len(level_df)})], axis=1) for node_id in node_ids],
     ignore_index=True,
 )
 model.level_boundary.time.df = level_df
-model.level_boundary.static.df = model.level_boundary.static.df[
-    ~model.level_boundary.static.df.node_id.isin(node_ids)
-]
+model.level_boundary.static.df = model.level_boundary.static.df[~model.level_boundary.static.df.node_id.isin(node_ids)]
 
 # %% toevoegen Irenesluizen
 
@@ -346,9 +315,7 @@ add_pid(node_id, node_type, ctrl_node, pid)
 
 
 # %% wegschrijven model
-ribasim_toml = cloud.joinpath(
-    "Rijkswaterstaat", "modellen", "hws_sturing_upgraded", "hws.toml"
-)
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_sturing_upgraded", "hws.toml")
 model.write(ribasim_toml)
 
 # %%

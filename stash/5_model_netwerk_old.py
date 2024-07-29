@@ -17,9 +17,7 @@ boundaries_passed = []
 PRECIPITATION = 0.005 / 86400  # m/s
 EVAPORATION = 0.001 / 86400  # m/s
 
-network = Network.from_network_gpkg(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg")
-)
+network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
 boundary_gdf = gpd.read_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "model_user_data.gpkg"),
     engine="pyogrio",
@@ -41,15 +39,11 @@ basin_poly_gdf = gpd.read_file(
     fid_as_index=True,
 )
 
-structures_df = pd.read_excel(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerk_complexen.xlsx")
-)
+structures_df = pd.read_excel(cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerk_complexen.xlsx"))
 structures_df = structures_df[structures_df.in_model]
 structures_df["code"] = structures_df["code"].astype(str)
 
-level_area_df = pd.read_csv(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_level_area.csv")
-)
+level_area_df = pd.read_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_level_area.csv"))
 
 rating_curves_gdf = gpd.read_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "rating_curves.gpkg"),
@@ -63,9 +57,7 @@ verdeelsleutel_gdf = gpd.read_file(
     fid_as_index=True,
 )
 
-verdeelsleutel_df = read_verdeelsleutel(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "verdeelsleutel_driel.xlsx")
-)
+verdeelsleutel_df = read_verdeelsleutel(cloud.joinpath("Rijkswaterstaat", "verwerkt", "verdeelsleutel_driel.xlsx"))
 
 
 # %% inlezen netwerk nodes en links
@@ -75,9 +67,7 @@ links_gdf = network.links
 network_union_lines = links_gdf.unary_union
 network.overlay(basin_poly_gdf[["basin_id", "geometry"]])
 
-basin_admin: dict[str, list] = {
-    i: {"nodes_from": [], "nodes_to": [], "neighbors": []} for i in basin_poly_gdf.index
-}
+basin_admin: dict[str, list] = {i: {"nodes_from": [], "nodes_to": [], "neighbors": []} for i in basin_poly_gdf.index}
 
 # %% toevoegen reating-curves aan basin-admin
 # toevoegen reating-curves aan basin-admin
@@ -100,9 +90,7 @@ boundary_gdf["node_id"] = boundary_gdf["geometry"].apply(
 def get_structure_codes(structures_gdf, complex_codes, line_string):
     """Return list of nearest structure_codes from a list of complex_codes and a linestring."""
     structure_codes = []
-    for complex_code, gdf in structures_gdf[
-        structures_gdf.complex_code.isin(complex_codes)
-    ].groupby("complex_code"):
+    for complex_code, gdf in structures_gdf[structures_gdf.complex_code.isin(complex_codes)].groupby("complex_code"):
         gdf_select = gdf[
             gdf.soort.isin(
                 [
@@ -118,11 +106,7 @@ def get_structure_codes(structures_gdf, complex_codes, line_string):
             gdf_select = gdf[gdf.soort == "Schutsluizen"]
             if gdf_select.empty:
                 raise Exception(f"kan geen kunstwerk vinden voor {complex_code}")
-        structure_codes += [
-            gdf_select.at[
-                gdf_select.distance(line_string).sort_values().index[0], "code"
-            ]
-        ]
+        structure_codes += [gdf_select.at[gdf_select.distance(line_string).sort_values().index[0], "code"]]
     return structure_codes
 
 
@@ -138,13 +122,9 @@ def get_type_and_value(code, structures_gdf, structures_df):
 # %% kunstwerken toekennen aan basins
 # kunstwerken toekennen aan basins
 # maak lijst met kunstwerk-codes
-structure_codes = structures_df[structures_df.code.isin(structures_gdf.code)][
-    "code"
-].to_list()
+structure_codes = structures_df[structures_df.code.isin(structures_gdf.code)]["code"].to_list()
 
-complex_codes = structures_df[~structures_df.code.isin(structures_gdf.code)][
-    "code"
-].to_list()
+complex_codes = structures_df[~structures_df.code.isin(structures_gdf.code)]["code"].to_list()
 structure_codes += get_structure_codes(
     structures_gdf,
     complex_codes=complex_codes,
@@ -182,9 +162,7 @@ for kwk in kwk_select_gdf.itertuples():
             if downstream is not None:
                 basin_admin[upstream]["neighbors"] += [downstream]
         else:
-            raise ValueError(
-                f"Kan geen boven en benedenstroomse knoop vinden voor {kwk.naam}"
-            )
+            raise ValueError(f"Kan geen boven en benedenstroomse knoop vinden voor {kwk.naam}")
         if downstream is not None:
             basin_admin[downstream]["nodes_from"] += [node_id]
             if upstream is not None:
@@ -192,10 +170,7 @@ for kwk in kwk_select_gdf.itertuples():
         else:
             print(f"{kwk.naam} is een outlet")
             boundary = boundary_gdf.loc[
-                boundary_gdf[boundary_gdf["type"] == "LevelBoundary"]
-                .distance(kwk.geometry)
-                .sort_values()
-                .index[0]
+                boundary_gdf[boundary_gdf["type"] == "LevelBoundary"].distance(kwk.geometry).sort_values().index[0]
             ]
             boundaries_passed += [boundary.name]
             node_list += [
@@ -267,25 +242,17 @@ for basin in basin_poly_gdf.itertuples():
     # for basin in basin_poly_gdf.loc[[55, 70]].itertuples():
     print(f"{basin.Index} {basin.naam}")
     # get upstream an downstream basin boundary nodes
-    boundary_nodes = network.nodes[
-        network.nodes.distance(basin.geometry.boundary) < 0.01
-    ]
-    us_ds = [
-        network.get_upstream_downstream(i, "basin_id", max_iters=3, max_length=1000)
-        for i in boundary_nodes.index
-    ]
+    boundary_nodes = network.nodes[network.nodes.distance(basin.geometry.boundary) < 0.01]
+    us_ds = [network.get_upstream_downstream(i, "basin_id", max_iters=3, max_length=1000) for i in boundary_nodes.index]
     boundary_nodes["upstream"] = [i[0] for i in us_ds]
     boundary_nodes["downstream"] = [i[1] for i in us_ds]
     boundary_nodes = boundary_nodes.dropna(subset=["upstream", "downstream"], how="any")
     boundary_nodes.loc[:, ["count"]] = [
-        len(network.upstream_nodes(i)) + len(network.downstream_nodes(i))
-        for i in boundary_nodes.index
+        len(network.upstream_nodes(i)) + len(network.downstream_nodes(i)) for i in boundary_nodes.index
     ]
 
     boundary_nodes.sort_values(by="count", ascending=False, inplace=True)
-    boundary_nodes.loc[:, ["sum"]] = (
-        boundary_nodes["upstream"] + boundary_nodes["downstream"]
-    )
+    boundary_nodes.loc[:, ["sum"]] = boundary_nodes["upstream"] + boundary_nodes["downstream"]
     boundary_nodes.drop_duplicates("sum", inplace=True)
     connected = basin_admin[basin.Index]["neighbors"]
     boundary_nodes = boundary_nodes[~boundary_nodes["upstream"].isin(connected)]
@@ -293,9 +260,7 @@ for basin in basin_poly_gdf.itertuples():
 
     # add boundary nodes
     for node in boundary_nodes.itertuples():
-        neighbor = next(
-            i for i in [node.upstream, node.downstream] if not i == basin.Index
-        )
+        neighbor = next(i for i in [node.upstream, node.downstream] if not i == basin.Index)
         if basin.Index not in basin_admin[neighbor]["neighbors"]:
             ds_node = node.upstream == basin.Index
             node_type = "ManningResistance"
@@ -309,11 +274,7 @@ for basin in basin_poly_gdf.itertuples():
 
             if node_type == "FractionalFlow":
                 code = verdeelsleutel_gdf.at[
-                    verdeelsleutel_gdf.distance(
-                        network.nodes.at[node.Index, "geometry"]
-                    )
-                    .sort_values()
-                    .index[0],
+                    verdeelsleutel_gdf.distance(network.nodes.at[node.Index, "geometry"]).sort_values().index[0],
                     "fractie",
                 ]
             else:
@@ -380,9 +341,7 @@ for basin in basin_poly_gdf.itertuples():
 
     # add rating-curve and extra edge
     if "rating_curve" in basin_admin[basin.Index].keys():
-        rc_node_id = next(
-            i for i in network.downstream_nodes(basin_node_id) if i in gdf.index
-        )
+        rc_node_id = next(i for i in network.downstream_nodes(basin_node_id) if i in gdf.index)
         node_list += [
             {
                 "type": "TabulatedRatingCurve",
@@ -417,9 +376,7 @@ for basin in basin_poly_gdf.itertuples():
                 "to_node_id": basin_node_id,
                 "name": basin.naam,
                 "edge_type": "flow",
-                "geometry": network.get_line(
-                    node_from, basin_node_id, directed=False, weight="weight"
-                ),
+                "geometry": network.get_line(node_from, basin_node_id, directed=False, weight="weight"),
             }
         ]
 
@@ -431,9 +388,7 @@ for basin in basin_poly_gdf.itertuples():
                 "to_node_id": node_to,
                 "name": basin.naam,
                 "edge_type": "flow",
-                "geometry": network.get_line(
-                    from_id, node_to, directed=False, weight="weight"
-                ),
+                "geometry": network.get_line(from_id, node_to, directed=False, weight="weight"),
             }
         ]
 # %% afronden boundaries
@@ -449,9 +404,7 @@ for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertu
                 "to_node_id": basin_admin[basin_id]["node_id"],
                 "name": basin_poly_gdf.loc[basin_id].naam,
                 "edge_type": "flow",
-                "geometry": network.get_line(
-                    boundary.node_id, basin_admin[basin_id]["node_id"], directed=True
-                ),
+                "geometry": network.get_line(boundary.node_id, basin_admin[basin_id]["node_id"], directed=True),
             }
         ]
         basin_admin[basin_id]["nodes_from"] += [boundary.node_id]
@@ -461,11 +414,7 @@ for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertu
 
         gdf = network.nodes[network.nodes["basin_id"] == basin_id]
         manning_node_id = (
-            gdf.distance(
-                network.get_line(basin_node_id, boundary.node_id).interpolate(
-                    0.5, normalized=True
-                )
-            )
+            gdf.distance(network.get_line(basin_node_id, boundary.node_id).interpolate(0.5, normalized=True))
             .sort_values()
             .index[0]
         )  # get manning node, closest to half-way on the line between basin and boundary
@@ -485,18 +434,14 @@ for boundary in boundary_gdf[~boundary_gdf.index.isin(boundaries_passed)].itertu
                 "to_node_id": manning_node_id,
                 "name": basin_poly_gdf.loc[basin_id].naam,
                 "edge_type": "flow",
-                "geometry": network.get_line(
-                    basin_node_id, manning_node_id, directed=True
-                ),
+                "geometry": network.get_line(basin_node_id, manning_node_id, directed=True),
             },
             {
                 "from_node_id": manning_node_id,
                 "to_node_id": boundary.node_id,
                 "name": basin_poly_gdf.loc[basin_id].naam,
                 "edge_type": "flow",
-                "geometry": network.get_line(
-                    manning_node_id, boundary.node_id, directed=True
-                ),
+                "geometry": network.get_line(manning_node_id, boundary.node_id, directed=True),
             },
         ]
         basin_admin[basin_id]["nodes_to"] += [boundary.node_id]
@@ -532,9 +477,7 @@ node_df = gpd.GeoDataFrame(node_list, crs=28992).drop_duplicates()
 node_df.set_index("node_id", drop=False, inplace=True)
 node_df.index.name = "fid"
 node = ribasim.Node(
-    df=node_df[
-        ["node_id", "name", "type", "waterbeheerder", "code_waterbeheerder", "geometry"]
-    ].rename(
+    df=node_df[["node_id", "name", "type", "waterbeheerder", "code_waterbeheerder", "geometry"]].rename(
         columns={
             "type": "node_type",
             "code_waterbeheerder": "meta_code_waterbeheerder",
@@ -544,27 +487,19 @@ node = ribasim.Node(
 )
 
 edge_df = gpd.GeoDataFrame(edge_list, crs=28992)
-edge_df.loc[:, "from_node_type"] = edge_df.from_node_id.apply(
-    lambda x: node_df.at[x, "type"]
-)
+edge_df.loc[:, "from_node_type"] = edge_df.from_node_id.apply(lambda x: node_df.at[x, "type"])
 
-edge_df.loc[:, "to_node_type"] = edge_df.to_node_id.apply(
-    lambda x: node_df.at[x, "type"]
-)
+edge_df.loc[:, "to_node_type"] = edge_df.to_node_id.apply(lambda x: node_df.at[x, "type"])
 
 edge = ribasim.Edge(df=edge_df)
 network = ribasim.Network(node=node, edge=edge)
 
 # define Basin
-static_df = node_df[node_df["type"] == "Basin"][["node_id", "basin_id"]].set_index(
-    "basin_id"
-)
+static_df = node_df[node_df["type"] == "Basin"][["node_id", "basin_id"]].set_index("basin_id")
 
 # Area
 area_df = node_df[node_df["type"] == "Basin"][["basin_id", "node_id"]]
-area_df.loc[:, "geometry"] = area_df.basin_id.apply(
-    lambda x: basin_poly_gdf.at[x, "geometry"]
-)
+area_df.loc[:, "geometry"] = area_df.basin_id.apply(lambda x: basin_poly_gdf.at[x, "geometry"])
 area_df = gpd.GeoDataFrame(area_df[["node_id", "geometry"]], crs=28992)
 
 level_area_df.drop_duplicates(["level", "area", "id"], inplace=True)
@@ -581,9 +516,7 @@ static_df["urban_runoff"] = 0
 state_df = profile_df.groupby("node_id").min()["level"].reset_index()
 state_df.loc[:, ["level"]] = state_df["level"].apply(lambda x: max(x + 1, 0))
 
-basin = ribasim.Basin(
-    profile=profile_df, static=static_df, state=state_df, area=area_df
-)
+basin = ribasim.Basin(profile=profile_df, static=static_df, state=state_df, area=area_df)
 
 resistance_df = node_df[node_df["type"] == "LinearResistance"][["node_id", "value"]]
 resistance_df.rename(columns={"value": "resistance"}, inplace=True)
@@ -601,25 +534,23 @@ outlet_df.rename(columns={"value": "flow_rate"}, inplace=True)
 outlet = ribasim.Outlet(static=outlet_df)
 
 # % define fraction
-node_index = node_df[node_df["type"] == "FractionalFlow"][
-    ["code_waterbeheerder", "node_id"]
-].set_index("code_waterbeheerder")["node_id"]
+node_index = node_df[node_df["type"] == "FractionalFlow"][["code_waterbeheerder", "node_id"]].set_index(
+    "code_waterbeheerder"
+)["node_id"]
 
 fractional_flow_df = verdeelsleutel_to_fractions(verdeelsleutel_df, node_index)
 fractional_flow = ribasim.FractionalFlow(static=fractional_flow_df)
 
 # %
-node_index = node_df[node_df["type"] == "TabulatedRatingCurve"][
-    ["code_waterbeheerder", "node_id"]
-].set_index("code_waterbeheerder")["node_id"]
+node_index = node_df[node_df["type"] == "TabulatedRatingCurve"][["code_waterbeheerder", "node_id"]].set_index(
+    "code_waterbeheerder"
+)["node_id"]
 tabulated_rating_curve_df = read_rating_curve(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "rating_curves.xlsx"),
     node_index,
 )
 tabulated_rating_curve = ribasim.TabulatedRatingCurve(
-    static=tabulated_rating_curve_df.rename(
-        columns={"code_waterbeheerder": "meta_code_waterbeheerder"}
-    )
+    static=tabulated_rating_curve_df.rename(columns={"code_waterbeheerder": "meta_code_waterbeheerder"})
 )
 
 # % define Manning
@@ -663,18 +594,16 @@ model = ribasim.Model(
 model = reset_index(model)
 
 #  Nijkerkersluis naar inactive
-nijkerk_idx = model.network.node.df[
-    model.network.node.df["meta_code_waterbeheerder"] == "32E-001-04"
-].index
+nijkerk_idx = model.network.node.df[model.network.node.df["meta_code_waterbeheerder"] == "32E-001-04"].index
 
 
-model.linear_resistance.static.df.loc[
-    model.linear_resistance.static.df["node_id"].isin(nijkerk_idx), ["active"]
-] = False
+model.linear_resistance.static.df.loc[model.linear_resistance.static.df["node_id"].isin(nijkerk_idx), ["active"]] = (
+    False
+)
 
-model.linear_resistance.static.df.loc[
-    ~model.linear_resistance.static.df["node_id"].isin(nijkerk_idx), ["active"]
-] = True
+model.linear_resistance.static.df.loc[~model.linear_resistance.static.df["node_id"].isin(nijkerk_idx), ["active"]] = (
+    True
+)
 
 
 #

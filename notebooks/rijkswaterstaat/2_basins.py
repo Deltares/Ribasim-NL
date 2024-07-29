@@ -17,28 +17,16 @@ DEFAULT_PROFILE = pd.DataFrame(
     }
 )
 
-watervlak_gpkg = cloud.joinpath(
-    "Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg"
-)
-watervlak_diss_gdf = gpd.read_file(
-    watervlak_gpkg, layer="watervlak", engine="pyogrio", fid_as_index=True
-)
+watervlak_gpkg = cloud.joinpath("Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg")
+watervlak_diss_gdf = gpd.read_file(watervlak_gpkg, layer="watervlak", engine="pyogrio", fid_as_index=True)
 
 basins_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg")
-basins_user_data_gpkg = cloud.joinpath(
-    "Rijkswaterstaat", "verwerkt", "basins_user_data.gpkg"
-)
-cut_lines_gdf = gpd.read_file(
-    basins_user_data_gpkg, layer="cut_lines", engine="pyogrio", fid_as_index=True
-)
+basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_user_data.gpkg")
+cut_lines_gdf = gpd.read_file(basins_user_data_gpkg, layer="cut_lines", engine="pyogrio", fid_as_index=True)
 
-merge_lines_gdf = gpd.read_file(
-    basins_user_data_gpkg, layer="merge_lines", engine="pyogrio", fid_as_index=True
-)
+merge_lines_gdf = gpd.read_file(basins_user_data_gpkg, layer="merge_lines", engine="pyogrio", fid_as_index=True)
 
-add_basins_gdf = gpd.read_file(
-    basins_user_data_gpkg, layer="add_basins", engine="pyogrio", fid_as_index=True
-)
+add_basins_gdf = gpd.read_file(basins_user_data_gpkg, layer="add_basins", engine="pyogrio", fid_as_index=True)
 
 
 osm_basins_gdf = gpd.read_file(
@@ -52,14 +40,10 @@ print("dissolve")
 
 add_basins_gdf.loc[:, ["categorie"]] = "nationaal hoofdwater"
 osm_basins_gdf.loc[:, ["categorie"]] = "nationaal hoofdwater"
-watervlak_diss_gdf = pd.concat(
-    [watervlak_diss_gdf, osm_basins_gdf, add_basins_gdf], ignore_index=True
-)
+watervlak_diss_gdf = pd.concat([watervlak_diss_gdf, osm_basins_gdf, add_basins_gdf], ignore_index=True)
 
 data = {"naam": [], "geometry": []}
-for name, df in watervlak_diss_gdf[
-    watervlak_diss_gdf.categorie == "nationaal hoofdwater"
-].groupby(by="naam"):
+for name, df in watervlak_diss_gdf[watervlak_diss_gdf.categorie == "nationaal hoofdwater"].groupby(by="naam"):
     # dissolve touching polygons (magic!)
     geometry = df.geometry.buffer(0.1).unary_union.buffer(-0.1)
     # make sure we have a list of single polygons
@@ -97,9 +81,7 @@ for line in merge_lines_gdf.itertuples():
         raise ValueError(f"line with index {line.Index} does not end in a polygon")
     if idx_from == idx_to:
         print(f"line with index {line.Index} is contained within a polygon")
-    basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[
-        [idx_from, idx_to]
-    ].unary_union
+    basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].unary_union
     basins_gdf = basins_gdf[basins_gdf.index != idx_from]
 
 basins_gdf.to_file(basins_gpkg, layer="merged_basins", engine="pyogrio")
@@ -122,9 +104,7 @@ snap_distance = 0.1
 
 
 for basin in basins_gdf[~large_basins_mask].itertuples():
-    basin_candidates_gdf = basins_gdf[
-        basins_gdf.distance(basin.geometry) < snap_distance
-    ]
+    basin_candidates_gdf = basins_gdf[basins_gdf.distance(basin.geometry) < snap_distance]
     if basin_candidates_gdf.empty:
         raise ValueError(
             f"basin met naam {basin.naam} kan niet auto gemerged worden. Zorg dat er een polygon naast ligt"
@@ -157,9 +137,7 @@ def exterior_polygon(geometry):
         return Polygon(boundary)
 
 
-basins_gdf.loc[:, ["geometry"]] = basins_gdf.geometry.apply(
-    lambda x: exterior_polygon(x)
-)
+basins_gdf.loc[:, ["geometry"]] = basins_gdf.geometry.apply(lambda x: exterior_polygon(x))
 
 # remove "internal boundaries"
 basins_gdf.loc[:, ["geometry"]] = basins_gdf.buffer(0.1).buffer(-0.1)
@@ -170,13 +148,9 @@ basins_gdf.loc[:, ["basin_id"]] = basins_gdf.index + 1
 basins_gdf.to_file(basins_gpkg, layer="ribasim_basins", engine="pyogrio")
 # %% sample profiles
 
-raster_path = cloud.joinpath(
-    "Rijkswaterstaat", "verwerkt", "bathymetrie", "bathymetrie-merged.tif"
-)
+raster_path = cloud.joinpath("Rijkswaterstaat", "verwerkt", "bathymetrie", "bathymetrie-merged.tif")
 
-elevation_basins_gdf = gpd.read_file(
-    basins_user_data_gpkg, layer="hoogtes", engine="pyogrio", fid_as_index=True
-)
+elevation_basins_gdf = gpd.read_file(basins_user_data_gpkg, layer="hoogtes", engine="pyogrio", fid_as_index=True)
 
 elevation_basins_gdf = elevation_basins_gdf.dropna()
 dfs = []
@@ -202,9 +176,7 @@ for row in basins_gdf.itertuples():
             invert_level = elevation_df.streefpeil.max()
             bottom_level = elevation_df.bodemhoogte.min()
             if bottom_level > invert_level:
-                raise ValueError(
-                    f"bottom_level > invert_level: {bottom_level} > {invert_level}"
-                )
+                raise ValueError(f"bottom_level > invert_level: {bottom_level} > {invert_level}")
             bottom_area = row.geometry.buffer(-((invert_level - bottom_level) * 2)).area
 
             df = pd.DataFrame(

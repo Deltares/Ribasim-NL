@@ -170,11 +170,7 @@ for idx, model in enumerate(models):
         model_version = model["model_version"]
 
     else:
-        model_versions = [
-            i
-            for i in cloud.uploaded_models(model["authority"])
-            if i.model == model["model"]
-        ]
+        model_versions = [i for i in cloud.uploaded_models(model["authority"]) if i.model == model["model"]]
         if model_versions:
             model_version = sorted(model_versions, key=lambda x: x.sorter)[-1]
         else:
@@ -186,14 +182,10 @@ for idx, model in enumerate(models):
     if not model_path.exists():
         if download_latest_model:
             print(f"Downloaden versie: {model_version.version}")
-            url = cloud.joinurl(
-                model["authority"], "modellen", model_version.path_string
-            )
+            url = cloud.joinurl(model["authority"], "modellen", model_version.path_string)
             cloud.download_content(url)
         else:
-            model_versions = sorted(
-                model_versions, key=lambda x: x.version, reverse=True
-            )
+            model_versions = sorted(model_versions, key=lambda x: x.version, reverse=True)
             model_paths = (get_model_path(model, i) for i in model_versions)
             model_path = next((i for i in model_paths if i.exists()), None)
             if model_path is None:
@@ -203,9 +195,7 @@ for idx, model in enumerate(models):
     if model["find_toml"]:
         tomls = list(model_path.glob("*.toml"))
         if len(tomls) > 1:
-            raise ValueError(
-                f"User provided more than one toml-file: {len(tomls)}, remove one!"
-            )
+            raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one!")
         else:
             model_path = tomls[0]
     else:
@@ -237,16 +227,14 @@ for idx, model in enumerate(models):
             if not df.empty:
                 node_ids = set(
                     np.concatenate(
-                        ribasim_model.edge.df[
-                            ribasim_model.edge.df["meta_zoom_level"] == 2
-                        ][["from_node_id", "to_node_id"]].to_numpy()
+                        ribasim_model.edge.df[ribasim_model.edge.df["meta_zoom_level"] == 2][
+                            ["from_node_id", "to_node_id"]
+                        ].to_numpy()
                     )
                 )
                 # zoom_level to model
                 for node_type in ribasim_model.node_table().df.node_type.unique():
-                    ribasim_node = getattr(
-                        ribasim_model, pascal_to_snake_case(node_type)
-                    )
+                    ribasim_node = getattr(ribasim_model, pascal_to_snake_case(node_type))
                     ribasim_node.node.df.loc[
                         ribasim_node.node.df["node_id"].isin(node_ids),
                         "meta_zoom_level",

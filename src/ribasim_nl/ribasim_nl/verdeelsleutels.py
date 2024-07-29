@@ -15,14 +15,10 @@ def read_verdeelsleutel(file_path: Path) -> DataFrame:
     return pd.concat([pd.read_excel(file_path, sheet_name=i) for i in sheet_names])
 
 
-def verdeelsleutel_to_fractions(
-    verdeelsleutel_df: DataFrame, node_index: Series, keys: int = 2
-) -> DataFrame:
+def verdeelsleutel_to_fractions(verdeelsleutel_df: DataFrame, node_index: Series, keys: int = 2) -> DataFrame:
     df = pd.concat(
         [
-            verdeelsleutel_df[
-                [f"locatie_benedenstrooms_{i}", f"fractie_{i}", "beschrijving"]
-            ].rename(
+            verdeelsleutel_df[[f"locatie_benedenstrooms_{i}", f"fractie_{i}", "beschrijving"]].rename(
                 columns={
                     f"locatie_benedenstrooms_{i}": "locatie_benedenstrooms",
                     f"fractie_{i}": "fraction",
@@ -34,9 +30,7 @@ def verdeelsleutel_to_fractions(
     )
 
     for code, node_id in zip(node_index.index, node_index):
-        df.loc[
-            df.locatie_benedenstrooms.str.lower() == code.lower(), "node_id"
-        ] = node_id
+        df.loc[df.locatie_benedenstrooms.str.lower() == code.lower(), "node_id"] = node_id
 
     df.loc[:, "fraction"] = df["fraction"].round(3)
     return df[["node_id", "fraction", "control_state"]]
@@ -52,29 +46,19 @@ def verdeelsleutel_to_control(
     keys = verdeelsleutel_df.locatie_bovenstrooms.unique()
     frac_nodes = []
     if len(keys) != 1:
-        raise ValueError(
-            f"number of keys in verdeelsleutel != 1: {verdeelsleutel_df.locatie_bovenstrooms.unique()}"
-        )
+        raise ValueError(f"number of keys in verdeelsleutel != 1: {verdeelsleutel_df.locatie_bovenstrooms.unique()}")
     else:
         listen_node_id = (
-            model.node_table()
-            .df[model.node_table().df["meta_code_waterbeheerder"] == keys[0]]
-            .iloc[0]
-            .node_id
+            model.node_table().df[model.node_table().df["meta_code_waterbeheerder"] == keys[0]].iloc[0].node_id
         )
 
     # get frac-nodes
-    for (loc1, loc2), df in verdeelsleutel_df.groupby(
-        ["locatie_benedenstrooms_1", "locatie_benedenstrooms_2"]
-    ):
+    for (loc1, loc2), df in verdeelsleutel_df.groupby(["locatie_benedenstrooms_1", "locatie_benedenstrooms_2"]):
         frac_nodes += [
             model.node_table()
             .df[
                 (model.node_table().df["node_type"] == "FractionalFlow")
-                & (
-                    model.node_table().df["meta_code_waterbeheerder"].str.lower()
-                    == i.lower()
-                )
+                & (model.node_table().df["meta_code_waterbeheerder"].str.lower() == i.lower())
             ]
             .iloc[0]
             .node_id
@@ -102,14 +86,10 @@ def verdeelsleutel_to_control(
     condition_df["variable"] = "flow_rate"
 
     logic_df = df[["beschrijving"]].rename(columns={"beschrijving": "control_state"})
-    logic_df["truth_state"] = [
-        "".join(["T"] * i + ["F"] * len(df))[0 : len(df)] for i in range(len(df))
-    ]
+    logic_df["truth_state"] = ["".join(["T"] * i + ["F"] * len(df))[0 : len(df)] for i in range(len(df))]
     logic_df["node_id"] = ctrl_node.node_id
 
-    listen_node_type = (
-        model.node_table().df.set_index("node_id").at[listen_node_id, "node_type"]
-    )
+    listen_node_type = model.node_table().df.set_index("node_id").at[listen_node_id, "node_type"]
     model.discrete_control.add(
         ctrl_node,
         [

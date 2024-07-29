@@ -22,21 +22,13 @@ def add_demand(
     **kwargs,
 ):
     if inlet_geometry is not None:  # demand from basin at inlet
-        inlet_basin_node = model.find_closest_basin(
-            geometry=inlet_geometry, max_distance=max_distance
-        )
+        inlet_basin_node = model.find_closest_basin(geometry=inlet_geometry, max_distance=max_distance)
     else:  # demand from basin at demand_node
-        inlet_basin_node = model.find_closest_basin(
-            geometry=geometry, max_distance=max_distance
-        )
+        inlet_basin_node = model.find_closest_basin(geometry=geometry, max_distance=max_distance)
         inlet_geometry = geometry
 
-    if (outlet_geometry is not None) and (
-        not outlet_as_terminal
-    ):  # return-flow to basin at outlet
-        outlet_basin_node = model.find_closest_basin(
-            geometry=outlet_geometry, max_distance=max_distance
-        )
+    if (outlet_geometry is not None) and (not outlet_as_terminal):  # return-flow to basin at outlet
+        outlet_basin_node = model.find_closest_basin(geometry=outlet_geometry, max_distance=max_distance)
     else:
         outlet_basin_node = inlet_basin_node
 
@@ -67,11 +59,7 @@ def add_demand(
     )
 
     # Find network_node at inlet
-    network_to_id = (
-        network.nodes[network.nodes.basin_id == inlet_basin_node.node_id]
-        .distance(inlet_geometry)
-        .idxmin()
-    )
+    network_to_id = network.nodes[network.nodes.basin_id == inlet_basin_node.node_id].distance(inlet_geometry).idxmin()
 
     # Edge_geometry from basin to inlet to demand_node
     line = network.get_line(network_from_id, network_to_id)
@@ -83,9 +71,7 @@ def add_demand(
         line = LineString(list(line.coords) + list(geometry.coords))
 
     # Edge from inlet_basin to demand_node
-    model.edge.add(
-        inlet_basin_node, model.user_demand[demand_node_id], geometry=line, name=name
-    )
+    model.edge.add(inlet_basin_node, model.user_demand[demand_node_id], geometry=line, name=name)
 
     if outlet_as_terminal:
         terminal_node_id = model.node_table().df.node_id.max() + 1
@@ -98,9 +84,7 @@ def add_demand(
     elif outlet_geometry is not None:
         # Find network_node at outlet
         network_from_id = (
-            network.nodes[network.nodes.basin_id == outlet_basin_node.node_id]
-            .distance(outlet_geometry)
-            .idxmin()
+            network.nodes[network.nodes.basin_id == outlet_basin_node.node_id].distance(outlet_geometry).idxmin()
         )
 
         # Find network_node_id at outlet_basin
@@ -152,9 +136,7 @@ model = Model.read(ribasim_toml)
 hydamo = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
 onttrekkingen_gpkg = cloud.joinpath("Onttrekkingen", "onttrekkingen.gpkg")
 
-network = Network.from_network_gpkg(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg")
-)
+network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
 
 # %% add basin_node_ids to network
 basin_area_gdf = model.basin.area.df.copy()
@@ -166,9 +148,7 @@ network.overlay(basin_area_gdf)  # basin_id toekennen aan netwerk
 
 
 # %% Drinkwater
-drinkwater_gdf = gpd.read_file(
-    onttrekkingen_gpkg, layer_name="Drinkwater_oppervlaktewater", engine="pyogrio"
-)
+drinkwater_gdf = gpd.read_file(onttrekkingen_gpkg, layer_name="Drinkwater_oppervlaktewater", engine="pyogrio")
 drinkwater_gdf.dropna(subset=["productie"], inplace=True)
 
 
@@ -189,20 +169,14 @@ for row in drinkwater_gdf.itertuples():
     )
 
 # %% Energie
-energie_gdf = gpd.read_file(
-    onttrekkingen_gpkg, layer="Energiecentrales", engine="pyogrio"
-)
+energie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales", engine="pyogrio")
 
-energie_inlet_gdf = gpd.read_file(
-    onttrekkingen_gpkg, layer="Energiecentrales-inlaat", engine="pyogrio"
-)
+energie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales-inlaat", engine="pyogrio")
 energie_inlet_gdf.drop_duplicates("osm_id_Energiecentrales", inplace=True)
 
 mask = ~energie_inlet_gdf.naam.isin(["Centrale Bergum", "Pallas Reactor"])
 
-energie_outlet_gdf = gpd.read_file(
-    onttrekkingen_gpkg, layer="Energiecentrales-uitlaat", engine="pyogrio"
-)
+energie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales-uitlaat", engine="pyogrio")
 
 priority = 2
 return_factor = 0.95
@@ -219,9 +193,7 @@ for row in energie_inlet_gdf[mask].itertuples():
     print(name)
     beheerder = plant.operator
     geometry = plant.geometry.centroid
-    outlets = energie_outlet_gdf[
-        energie_outlet_gdf["osm_id_Energiecentrales"] == osm_id
-    ]
+    outlets = energie_outlet_gdf[energie_outlet_gdf["osm_id_Energiecentrales"] == osm_id]
     outlet_geometry = outlets.geometry.iloc[0]
 
     add_demand(
@@ -242,9 +214,7 @@ for row in energie_inlet_gdf[mask].itertuples():
 # %% Industrie
 industrie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrieen", engine="pyogrio")
 
-industrie_inlet_gdf = gpd.read_file(
-    onttrekkingen_gpkg, layer="Industrie-inlaat", engine="pyogrio"
-)
+industrie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-inlaat", engine="pyogrio")
 industrie_inlet_gdf.rename(columns={"debiet(m3/s)": "demand"}, inplace=True)
 industrie_inlet_gdf.loc[:, "basin_id"] = industrie_inlet_gdf.geometry.apply(
     lambda x: basin_area_gdf.set_index("basin_id").distance(x).idxmin()
@@ -252,13 +222,9 @@ industrie_inlet_gdf.loc[:, "basin_id"] = industrie_inlet_gdf.geometry.apply(
 industrie_inlet_gdf.drop_duplicates(["osm_id_Industrieen", "basin_id"], inplace=True)
 industrie_inlet_gdf = industrie_inlet_gdf[industrie_inlet_gdf["demand"] != 0]
 
-mask = ~industrie_inlet_gdf.naam.isin(
-    ["Avebe", "Evides Geervliet", "Evides Veerweg", "Evides KPE Zinker"]
-)
+mask = ~industrie_inlet_gdf.naam.isin(["Avebe", "Evides Geervliet", "Evides Veerweg", "Evides KPE Zinker"])
 
-industrie_outlet_gdf = gpd.read_file(
-    onttrekkingen_gpkg, layer="Industrie-uitlaat", engine="pyogrio"
-)
+industrie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-uitlaat", engine="pyogrio")
 
 #
 maas_line = model.edge.df[model.edge.df.name == "Maas"].unary_union
@@ -294,9 +260,7 @@ for row in industrie_inlet_gdf[mask].itertuples():
     else:
         outlet_as_terminal = False
         outlet_geometry = outlets.geometry.iloc[0]
-        if (
-            outlets["return_flow"].isna().all()
-        ):  # no outlet capacity defined, we assume 90%
+        if outlets["return_flow"].isna().all():  # no outlet capacity defined, we assume 90%
             return_factor = 0.9
         else:  # else we calculate
             return_flow = outlets["return_flow"].sum()

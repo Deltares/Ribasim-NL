@@ -62,9 +62,7 @@ def add_lines(attr, old, new):
     for node_id in node_ids:
         for active_variable in time_fig_variables.active:
             variable_name = basin_variable_columns[active_variable]
-            df = basin_results_df[basin_results_df.node_id == node_id][
-                ["time", variable_name]
-            ]
+            df = basin_results_df[basin_results_df.node_id == node_id][["time", variable_name]]
             max_y += [df[variable_name].max()]
             min_y += [df[variable_name].min()]
             source = ColumnDataSource(df)
@@ -95,14 +93,11 @@ def update_map_values(attr, old, new):
 
     # slice results
     df_results_select = basin_results_df[
-        basin_results_df["time"]
-        == date_time_slider.value_as_datetime.date().isoformat()
+        basin_results_df["time"] == date_time_slider.value_as_datetime.date().isoformat()
     ].set_index("node_id")[variable]
 
     # update locations source
-    locations_source.data["value"] = df_select.node_id.apply(
-        lambda x: abs(df_results_select.at[x])
-    ).to_list()
+    locations_source.data["value"] = df_select.node_id.apply(lambda x: abs(df_results_select.at[x])).to_list()
 
     # update map_fig_variable_range
     map_fig_variable_range.start = 0
@@ -132,9 +127,7 @@ results_dir = model.filepath.parent / model.results_dir
 # basin results
 basin_results_df = pd.read_feather(results_dir / "basin.arrow")
 basin_results_df.reset_index(inplace=True)
-basin_variable_columns = [
-    i for i in basin_results_df.columns if i not in ["time", "node_id"]
-]
+basin_variable_columns = [i for i in basin_results_df.columns if i not in ["time", "node_id"]]
 if INIT_VARIABLE in basin_variable_columns:
     actives = [basin_variable_columns.index(INIT_VARIABLE)]
 else:
@@ -197,9 +190,7 @@ time_fig.toolbar.logo = None
 time_fig.xaxis.formatter = get_formatter()
 time_fig.xaxis.major_label_orientation = math.pi / 4
 
-time_line = Span(
-    location=model.starttime, dimension="height", line_color="red", line_width=3
-)
+time_line = Span(location=model.starttime, dimension="height", line_color="red", line_width=3)
 
 time_fig.add_layout(time_line)
 
@@ -238,9 +229,7 @@ variables_layout = column(
         column(Div(text="<b>grafiek:</b>"), time_fig_variables),
     ),
 )
-control_layout = column(
-    variables_layout, map_fig_variable_range, date_time_slider.widget
-)
+control_layout = column(variables_layout, map_fig_variable_range, date_time_slider.widget)
 
 layout = row(map_fig, time_fig, control_layout)
 

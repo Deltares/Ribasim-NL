@@ -33,25 +33,21 @@ UPDATE_KWK_DATA = True
 
 # %% functies
 def read_rating_curve(kwk_df):
-    qh_df = kwk_df.loc[kwk_df.Eigenschap.to_list().index("Q(h) relatie") + 2 :][
-        ["Eigenschap", "Waarde"]
-    ].rename(columns={"Eigenschap": "level", "Waarde": "flow_rate"})
+    qh_df = kwk_df.loc[kwk_df.Eigenschap.to_list().index("Q(h) relatie") + 2 :][["Eigenschap", "Waarde"]].rename(
+        columns={"Eigenschap": "level", "Waarde": "flow_rate"}
+    )
     qh_df.dropna(inplace=True)
     return tabulated_rating_curve.Static(**qh_df.to_dict(orient="list"))
 
 
 def read_qq_curve(kwk_df):
-    return kwk_df.loc[kwk_df.Eigenschap.to_list().index("QQ relatie") + 2 :][
-        ["Eigenschap", "Waarde"]
-    ].rename(columns={"Eigenschap": "condition_flow_rate", "Waarde": "flow_rate"})
+    return kwk_df.loc[kwk_df.Eigenschap.to_list().index("QQ relatie") + 2 :][["Eigenschap", "Waarde"]].rename(
+        columns={"Eigenschap": "condition_flow_rate", "Waarde": "flow_rate"}
+    )
 
 
 def read_kwk_properties(kwk_df):
-    properties = (
-        kwk_df[0:12][["Eigenschap", "Waarde"]]
-        .dropna()
-        .set_index("Eigenschap")["Waarde"]
-    )
+    properties = kwk_df[0:12][["Eigenschap", "Waarde"]].dropna().set_index("Eigenschap")["Waarde"]
 
     if "Kunstwerkcode" in properties.keys():
         properties["Kunstwerkcode"] = str(properties["Kunstwerkcode"])
@@ -70,9 +66,7 @@ def read_flow_kwargs(kwk_properties, include_crest_level=False):
     if "flow_rate" in kwargs.keys():
         kwargs["max_flow_rate"] = kwargs["flow_rate"]
     kwargs = {
-        k: [v]
-        for k, v in kwargs.items()
-        if k in ["flow_rate", "min_flow_rate", "max_flow_rate", "min_crest_level"]
+        k: [v] for k, v in kwargs.items() if k in ["flow_rate", "min_flow_rate", "max_flow_rate", "min_crest_level"]
     }
     # kwargs["flow_rate"] = [kwk_properties["Capaciteit (m3/s)"]]
     return kwargs
@@ -92,9 +86,7 @@ def read_outlet(kwk_df, name=None):
             control_state=outlet_df.control_state.to_list(),
         )
     else:
-        return outlet.Static(
-            **read_flow_kwargs(read_kwk_properties(kwk_df), include_crest_level=True)
-        )
+        return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df), include_crest_level=True))
 
 
 def read_pump(kwk_properties):
@@ -162,9 +154,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 )
 
             # find existing node_id in model
-            node_id = model.find_node_id(
-                meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"])
-            )
+            node_id = model.find_node_id(meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"]))
 
             if UPDATE_KWK_DATA:
                 # prepare static-data for updating node
@@ -188,9 +178,9 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 
             # check if structure has pid control
             if "PidControl" in kwk_df["Eigenschap"].to_numpy():
-                control_properties = kwk_df.loc[
-                    kwk_df.Eigenschap.to_list().index("PidControl") + 1 :
-                ][["Eigenschap", "Waarde"]].set_index("Eigenschap")["Waarde"]
+                control_properties = kwk_df.loc[kwk_df.Eigenschap.to_list().index("PidControl") + 1 :][
+                    ["Eigenschap", "Waarde"]
+                ].set_index("Eigenschap")["Waarde"]
 
                 if control_properties["Controle benedenstrooms"]:
                     # waterlichaam should be upstream
@@ -217,9 +207,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
             if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
                 qq_properties = read_qq_curve(kwk_df)
 
-                listen_node_id = model.find_node_id(
-                    meta_meetlocatie_code=str(kwk_properties["Meetlocatiecode"])
-                )
+                listen_node_id = model.find_node_id(meta_meetlocatie_code=str(kwk_properties["Meetlocatiecode"]))
 
                 condition_df = dc.condition(
                     values=qq_properties.condition_flow_rate.to_list(),

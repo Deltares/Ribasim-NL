@@ -39,24 +39,16 @@ node_gdf = pd.concat(
 )
 
 if node_gdf.user_id.isna().any():
-    raise ValueError(
-        "missing user_id's in 'basin', 'pump', 'outlet', 'resistance' or 'level_boundary' layer"
-    )
+    raise ValueError("missing user_id's in 'basin', 'pump', 'outlet', 'resistance' or 'level_boundary' layer")
 
 if node_gdf.user_id.duplicated().any():
-    raise ValueError(
-        f"duplicated user_id's: {list(node_gdf[node_gdf.user_id.duplicated()].user_id.unique())}"
-    )
+    raise ValueError(f"duplicated user_id's: {list(node_gdf[node_gdf.user_id.duplicated()].user_id.unique())}")
 
 node_gdf.node_id = node_gdf.index + 1
 node_gdf.set_index("user_id", drop=False, inplace=True)
 
-edge_gdf["from_node_id"] = edge_gdf["user_id_from"].apply(
-    lambda x: node_gdf.loc[x]["node_id"]
-)
-edge_gdf["to_node_id"] = edge_gdf["user_id_to"].apply(
-    lambda x: node_gdf.loc[x]["node_id"]
-)
+edge_gdf["from_node_id"] = edge_gdf["user_id_from"].apply(lambda x: node_gdf.loc[x]["node_id"])
+edge_gdf["to_node_id"] = edge_gdf["user_id_to"].apply(lambda x: node_gdf.loc[x]["node_id"])
 edge_gdf["edge_type"] = "flow"
 # %% add basins
 
@@ -71,12 +63,7 @@ basin_static_df["precipitation"] = PRECIPITATION
 basin_static_df["urban_runoff"] = 0.0
 
 basin_profile_df = pd.DataFrame(
-    data=[
-        [node, area, level]
-        for node in basin_df["node_id"]
-        for area in AREA
-        for level in LEVEL
-    ],
+    data=[[node, area, level] for node in basin_df["node_id"] for area in AREA for level in LEVEL],
     columns=["node_id", "area", "level"],
 )
 
@@ -97,18 +84,14 @@ outlet = ribasim.Outlet(static=outlet_df)
 # %%
 resistance_df = resistance_gdf[["user_id", "resistance"]]
 
-resistance_df["node_id"] = resistance_df.user_id.apply(
-    lambda x: node_gdf.loc[x].node_id
-)
+resistance_df["node_id"] = resistance_df.user_id.apply(lambda x: node_gdf.loc[x].node_id)
 resistance_df.rename(columns={"user_id": "remarks"}, inplace=True)
 
 linear_resistance = ribasim.LinearResistance(static=resistance_df)
 
 # %%
 level_boundary_df = level_boundary_gdf[["user_id", "level"]]
-level_boundary_df["node_id"] = level_boundary_df.user_id.apply(
-    lambda x: node_gdf.loc[x].node_id
-)
+level_boundary_df["node_id"] = level_boundary_df.user_id.apply(lambda x: node_gdf.loc[x].node_id)
 level_boundary_df.rename(columns={"user_id": "remarks"}, inplace=True)
 level_boundary = ribasim.LevelBoundary(static=level_boundary_df)
 
@@ -152,9 +135,7 @@ BASE_URL = f"{WEBDAV_URL}/files/{RIBASIM_NL_CLOUD_USER}/D-HYDRO modeldata"
 
 def upload_file(url, path):
     with open(path, "rb") as f:
-        r = requests.put(
-            url, data=f, auth=(RIBASIM_NL_CLOUD_USER, RIBASIM_NL_CLOUD_PASS)
-        )
+        r = requests.put(url, data=f, auth=(RIBASIM_NL_CLOUD_USER, RIBASIM_NL_CLOUD_PASS))
     r.raise_for_status()
 
 

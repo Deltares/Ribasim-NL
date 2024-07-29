@@ -104,30 +104,16 @@ def name_from_intake_tag(string):
 # Inlezen bestanden
 
 # paden naar bestanden
-krw_lichaam = cloud.joinpath(
-    "Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg"
-)
+krw_lichaam = cloud.joinpath("Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
 
-nis_hws = cloud.joinpath(
-    "Rijkswaterstaat", "aangeleverd", "NIS", "nis_all_kunstwerken_hws_2019.gpkg"
-)
+nis_hws = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "NIS", "nis_all_kunstwerken_hws_2019.gpkg")
 baseline = cloud.joinpath("baseline-nl_land-j23_6-v1", "baseline.gdb")
-osm_scheeresluis = cloud.joinpath(
-    "basisgegevens", "osm", "Nederland_Belgie", "osm_scheeresluis.gpkg"
-)
-osm_sluizen_belgie = cloud.joinpath(
-    "basisgegevens", "osm", "Nederland_Belgie", "lock_belgium.gpkg"
-)
-osm_stuwen_belgie = cloud.joinpath(
-    "basisgegevens", "osm", "Nederland_Belgie", "waterway_weir_belgium.gpkg"
-)
+osm_scheeresluis = cloud.joinpath("basisgegevens", "osm", "Nederland_Belgie", "osm_scheeresluis.gpkg")
+osm_sluizen_belgie = cloud.joinpath("basisgegevens", "osm", "Nederland_Belgie", "lock_belgium.gpkg")
+osm_stuwen_belgie = cloud.joinpath("basisgegevens", "osm", "Nederland_Belgie", "waterway_weir_belgium.gpkg")
 
-nis_hwvn = cloud.joinpath(
-    "Rijkswaterstaat", "aangeleverd", "NIS", "nis_alle_kunstwerken_hwvn_2019.gpkg"
-)
-primaire_kunstwerken = cloud.joinpath(
-    "Rijkswaterstaat", "aangeleverd", "kunstwerken_primaire_waterkeringen.gpkg"
-)
+nis_hwvn = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "NIS", "nis_alle_kunstwerken_hwvn_2019.gpkg")
+primaire_kunstwerken = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "kunstwerken_primaire_waterkeringen.gpkg")
 
 onttrekkingen = cloud.joinpath("Onttrekkingen", "onttrekkingen.gpkg")
 
@@ -155,15 +141,9 @@ osm_kunstwerken_gdf = pd.concat(
 # %% Locaties uit NIS
 
 # Samenstellen locaties uit NIS
-baseline_in_model = gpd.sjoin_nearest(
-    baseline_kunstwerken_gdf, krw_lichaam_gdf, how="inner", max_distance=50
-)
-selected_hws_points = gpd.sjoin_nearest(
-    nis_hws_gdf, krw_lichaam_gdf, how="inner", max_distance=100
-)
-selected_hwvn_points = gpd.sjoin_nearest(
-    nis_hwvn_gdf, krw_lichaam_gdf, how="inner", max_distance=20
-)
+baseline_in_model = gpd.sjoin_nearest(baseline_kunstwerken_gdf, krw_lichaam_gdf, how="inner", max_distance=50)
+selected_hws_points = gpd.sjoin_nearest(nis_hws_gdf, krw_lichaam_gdf, how="inner", max_distance=100)
+selected_hwvn_points = gpd.sjoin_nearest(nis_hwvn_gdf, krw_lichaam_gdf, how="inner", max_distance=20)
 
 # combineren nis_kunstwerken en filteren op soort
 nis_points_gdf = pd.concat([selected_hws_points, selected_hwvn_points])
@@ -188,9 +168,7 @@ nis_points_gdf.loc[:, ["nearest_distance"]] = [
 nis_points_gdf = nis_points_gdf[nis_points_gdf["nearest_distance"] < 500]
 
 # Remove specific values
-filtered_nearest_points = nis_points_gdf[
-    ~nis_points_gdf["complex_code"].isin(REMOVE_NIS)
-]
+filtered_nearest_points = nis_points_gdf[~nis_points_gdf["complex_code"].isin(REMOVE_NIS)]
 nis_points_gdf = nis_points_gdf.drop(["index_right"], axis=1)
 
 nis_points_gdf = pd.concat(
@@ -200,9 +178,7 @@ nis_points_gdf = pd.concat(
         nis_hwvn_gdf[nis_hwvn_gdf["complex_code"].isin(ADD_NIS)],
     ]
 )
-nis_points_gdf.rename(
-    columns={"kw_naam": "naam", "kw_code": "code", "kw_soort": "soort"}, inplace=True
-)
+nis_points_gdf.rename(columns={"kw_naam": "naam", "kw_code": "code", "kw_soort": "soort"}, inplace=True)
 nis_points_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
     "Rijkswaterstaat",
     "water",
@@ -213,13 +189,9 @@ nis_points_gdf = nis_points_gdf[[i for i in COLUMNS if i in nis_points_gdf.colum
 # %% Locaties uit Baseline
 
 # kunstwerken uit BaseLine
-baseline_kwk_add_gdf = baseline_kunstwerken_gdf[
-    baseline_kunstwerken_gdf["NAME"].isin(ADD_BASELINE)
-]
+baseline_kwk_add_gdf = baseline_kunstwerken_gdf[baseline_kunstwerken_gdf["NAME"].isin(ADD_BASELINE)]
 baseline_kwk_add_gdf.loc[:, ["geometry"]] = baseline_kwk_add_gdf.centroid
-baseline_kwk_add_gdf.loc[:, ["naam"]] = baseline_kwk_add_gdf["NAME"].apply(
-    name_from_baseline
-)
+baseline_kwk_add_gdf.loc[:, ["naam"]] = baseline_kwk_add_gdf["NAME"].apply(name_from_baseline)
 baseline_kwk_add_gdf.loc[:, ["complex_naam"]] = baseline_kwk_add_gdf["naam"]
 baseline_kwk_add_gdf.loc[:, ["code"]] = baseline_kwk_add_gdf["NAME"]
 
@@ -229,9 +201,7 @@ baseline_kwk_add_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
     "baseline",
 )
 
-baseline_kwk_add_gdf = baseline_kwk_add_gdf[
-    [i for i in COLUMNS if i in baseline_kwk_add_gdf.columns]
-]
+baseline_kwk_add_gdf = baseline_kwk_add_gdf[[i for i in COLUMNS if i in baseline_kwk_add_gdf.columns]]
 
 # %% Kunstwerken uit OSM
 
@@ -247,17 +217,13 @@ osm_kunstwerken_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
     "OSM",
 )
 
-osm_kunstwerken_gdf = osm_kunstwerken_gdf[
-    [i for i in COLUMNS if i in osm_kunstwerken_gdf.columns]
-]
+osm_kunstwerken_gdf = osm_kunstwerken_gdf[[i for i in COLUMNS if i in osm_kunstwerken_gdf.columns]]
 
 
 # %% Primaire keringen
 
 # RWS primaire keringen
-primaire_kwk_add_gdf = primaire_kunstwerken_gdf[
-    primaire_kunstwerken_gdf["kd_code1"].isin(ADD_PRIMAIRE_KERINGEN)
-]
+primaire_kwk_add_gdf = primaire_kunstwerken_gdf[primaire_kunstwerken_gdf["kd_code1"].isin(ADD_PRIMAIRE_KERINGEN)]
 
 # alles hernoemen naar juiste kolomnamen
 primaire_kwk_add_gdf.rename(
@@ -271,9 +237,7 @@ primaire_kwk_add_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
     "kunsterken primaire waterkeringen",
 )
 
-primaire_kwk_add_gdf = primaire_kwk_add_gdf[
-    [i for i in COLUMNS if i in primaire_kwk_add_gdf.columns]
-]
+primaire_kwk_add_gdf = primaire_kwk_add_gdf[[i for i in COLUMNS if i in primaire_kwk_add_gdf.columns]]
 
 
 # %% Toevoegen onttrekkingen
@@ -306,8 +270,6 @@ kunstwerken_gdf.loc[:, ["photo_url"]] = kunstwerken_gdf["code"].apply(photo_url)
 
 # Save results to GeoPackage files
 output_file = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
-kunstwerken_gdf.to_file(
-    output_file, layer="kunstwerken", driver="GPKG", engine="pyogrio"
-)
+kunstwerken_gdf.to_file(output_file, layer="kunstwerken", driver="GPKG", engine="pyogrio")
 
 # %%
