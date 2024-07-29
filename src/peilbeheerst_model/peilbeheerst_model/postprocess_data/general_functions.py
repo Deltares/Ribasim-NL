@@ -1,24 +1,22 @@
 # import packages and functions
-import os
 
-import fiona
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import shapely
 
 
 def read_gpkg_layers(gpkg_path, variables, engine="fiona", print_var=False):
     """
     Read specified layers from a GeoPackage (GPKG) file and return them as a dictionary.
 
-    Parameters:
+    Parameters
+    ----------
         gpkg_path (str): The file path to the GeoPackage (GPKG) file to read from.
         variables (list): A list of layer names to read from the GeoPackage.
         print_var (bool, optional): If True, print the name of each variable as it is read. Default is False.
 
-    Returns:
+    Returns
+    -------
         dict: A dictionary containing the GeoDataFrames, with layer names as keys.
 
     This function reads specified layers from a GeoPackage (GPKG) file and returns them as a dictionary. You can
@@ -39,10 +37,12 @@ def show_layers_and_columns(waterschap):
     """
     Display Information About Layers and Columns in a Geospatial Dataset.
 
-    Parameters:
+    Parameters
+    ----------
         waterschap (dict): A dictionary containing geospatial datasets as GeoDataFrames.
 
-    Returns:
+    Returns
+    -------
         None
 
     This function prints the names of all layers and the columns within each layer of a geospatial dataset stored
@@ -62,16 +62,19 @@ def store_data(waterschap, output_gpkg_path):
     """
     Store Geospatial Data to a GeoPackage (GPKG) File.
 
-    Parameters:
+    Parameters
+    ----------
         waterschap (dict): A dictionary containing GeoDataFrames to be stored in the GPKG file.
         output_gpkg_path (str): The file path (including the file name without extension) to save the GPKG file.
 
-    Returns:
+    Returns
+    -------
         None
 
     This function stores geospatial data from a dictionary of GeoDataFrames into a GeoPackage (GPKG) file.
 
-    Parameters:
+    Parameters
+    ----------
     - waterschap: A dictionary where the keys represent layer names, and the values are GeoDataFrames.
     - output_gpkg_path: The file path for the output GPKG file. The '.gpkg' extension is added automatically.
     """
@@ -84,17 +87,20 @@ def overlapping_peilgebieden(waterschap_peilgebieden):
     """
     Identify and calculate the percentage of overlapping peilgebieden.
 
-    Parameters:
+    Parameters
+    ----------
         waterschap_peilgebieden (geopandas.GeoDataFrame): A GeoDataFrame containing polygons (the peilgebieden).
 
-    Returns:
+    Returns
+    -------
         geopandas.GeoDataFrame: A GeoDataFrame with overlapping polygons and their overlap percentages.
 
     This function analyzes a GeoDataFrame of peilgebied polygons to find overlapping polygons and calculate
     the percentage of overlap between them. It returns a GeoDataFrame with information about the overlapping
     polygons, including their overlap percentages.
 
-    Parameters:
+    Parameters
+    ----------
     - waterschap_peilgebieden: A GeoDataFrame containing the peilgebieden polygons.
     """
 
@@ -141,11 +147,13 @@ def plot_histogram_overlap(overlapping_polygons):
     """
     Plots a histogram of the overlapping polygons in a DataFrame.
 
-    Parameters:
+    Parameters
+    ----------
         overlapping_polygons (pd.DataFrame): A DataFrame containing information about overlapping polygons.
             It should have a 'overlap_percentage' column to represent the percentage of overlap between polygons.
 
-    Returns:
+    Returns
+    -------
         None
 
     The function calculates a histogram of overlapping percentages, providing insights into the distribution of overlaps
@@ -175,18 +183,21 @@ def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_perc
     """
     Plot Overlapping Peilgebieden on a map, including a Minimum Percentage of Overlap to show.
 
-    Parameters:
+    Parameters
+    ----------
         peilgebied (geopandas.GeoDataFrame): A GeoDataFrame representing the peilgebied polygons.
         overlapping_polygons (geopandas.GeoDataFrame): A GeoDataFrame containing information about overlapping polygons/peilgebieden.
         minimum_percentage (float or int): The minimum overlap percentage required for polygons to be displayed.
 
-    Returns:
+    Returns
+    -------
         None
 
     This function creates a plot to visualize overlapping peilgebieden based on a specified minimum overlap percentage.
     It displays a subset of overlapping polygons with a percentage greater than the specified minimum.
 
-    Parameters:
+    Parameters
+    ----------
     - peilgebied: The entire peilgebieden GeoDataFrame serving as the background.
     - overlapping_polygons: GeoDataFrame containing information about overlapping polygons.
     - minimum_percentage: The minimum overlap percentage required for polygons to be displayed.
