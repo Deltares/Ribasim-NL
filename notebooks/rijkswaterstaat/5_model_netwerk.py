@@ -9,7 +9,6 @@ from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
-    fractional_flow,
     level_boundary,
     manning_resistance,
     outlet,
@@ -291,9 +290,9 @@ for row in boundary_gdf.itertuples():
         table.add(Node(node_id, point, name=name))
 
     # toevoegen meta_code
-    table.node.df.loc[table.node.df.node_id == node_id, "meta_meetlocatie_code"] = (
-        row.meetlocatie_code
-    )
+    table.node.df.loc[
+        table.node.df.node_id == node_id, "meta_meetlocatie_code"
+    ] = row.meetlocatie_code
 
 # %% kunsterken toevoegen
 

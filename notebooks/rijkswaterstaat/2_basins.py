@@ -195,7 +195,7 @@ for row in basins_gdf.itertuples():
                 "level": df.level.max() + 0.1,
             }
         dfs += [df]
-    except:  # handle missing bathymetry (need new!)
+    except Exception:  # handle missing bathymetry (need new!)
         elevation_df = elevation_basins_gdf[elevation_basins_gdf.within(row.geometry)]
         if not elevation_df.empty:
             print(f"WARNING: profile elevation points for {row.basin_id}")

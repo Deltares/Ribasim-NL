@@ -1,13 +1,10 @@
 # %%
-import itertools
 from datetime import datetime
 
 import numpy as np
 import ribasim
-from bokeh.palettes import Category10
 from ribasim_nl import CloudStorage
 from ribasim_nl.case_conversions import pascal_to_snake_case
-from ribasim_nl.cloud import ModelVersion
 from ribasim_nl.concat import concat
 
 # %%

@@ -141,9 +141,9 @@ class Model(Model):
         self.edge.df.loc[
             self.edge.df["from_node_id"] == node_id, ["from_node_type"]
         ] = node_type
-        self.edge.df.loc[self.edge.df["to_node_id"] == node_id, ["to_node_type"]] = (
-            node_type
-        )
+        self.edge.df.loc[
+            self.edge.df["to_node_id"] == node_id, ["to_node_type"]
+        ] = node_type
 
     def add_control_node(
         self,

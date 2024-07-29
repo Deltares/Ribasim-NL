@@ -452,9 +452,9 @@ class Network:
                 # take the last from original geometry
                 coords += [geometry.coords[-1]]
 
-                self.graph.edges[(edge.node_from, edge.node_to)]["geometry"] = (
-                    LineString(coords)
-                )
+                self.graph.edges[(edge.node_from, edge.node_to)][
+                    "geometry"
+                ] = LineString(coords)
 
             # update end-node of edges
             edges_from = links_gdf[links_gdf.node_to == node_id]
@@ -475,9 +475,9 @@ class Network:
                 # take the last from point
                 coords += [(point.x, point.y)]
 
-                self.graph.edges[(edge.node_from, edge.node_to)]["geometry"] = (
-                    LineString(coords)
-                )
+                self.graph.edges[(edge.node_from, edge.node_to)][
+                    "geometry"
+                ] = LineString(coords)
             return node_id
         else:
             logger.warning(

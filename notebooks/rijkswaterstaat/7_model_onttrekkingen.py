@@ -1,6 +1,5 @@
 # %%
 import geopandas as gpd
-import ribasim
 from ribasim import Node
 from ribasim.nodes import user_demand
 from ribasim_nl import CloudStorage, Model, Network

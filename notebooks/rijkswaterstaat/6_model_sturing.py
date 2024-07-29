@@ -147,7 +147,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
         print(f"updating {kwk.naam}")
         # check if naam column exists as sheet in xlsx and read sheet
         try:
-            if not kwk.naam in sheet_names:
+            if kwk.naam not in sheet_names:
                 raise ValueError(f"{kwk.naam} not a sheet in {file_name}")
 
             kwk_df = pd.read_excel(file_name, sheet_name=kwk.naam)
