@@ -1,4 +1,5 @@
 """Tests for hydamo.code_utils"""
+
 from ribasim_nl import codes
 
 
@@ -22,10 +23,6 @@ def test_generate_model_id():
     assert result["wbh_code"] == codes.bgt_to_wbh_code(result["bgt_code"])
     code = "KGM001"
     layer = "gemaal"
-    model_id = codes.generate_model_id(
-        code=code, layer=layer, bgt_code=result["bgt_code"]
-    )
+    model_id = codes.generate_model_id(code=code, layer=layer, bgt_code=result["bgt_code"])
     assert model_id == f"NL.WBHCODE.69.{layer}.{code}"
-    assert model_id == codes.generate_model_id(
-        code=code, layer=layer, wbh_code=result["wbh_code"]
-    )
+    assert model_id == codes.generate_model_id(code=code, layer=layer, wbh_code=result["wbh_code"])

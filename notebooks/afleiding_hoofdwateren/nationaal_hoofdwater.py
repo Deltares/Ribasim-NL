@@ -31,23 +31,15 @@ MAP_SLUIZEN = {"Reevesluis": "Drontermeer"}
 top10_nl_water = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
 
 
-watervlak_gpkg = cloud.joinpath(
-    "Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg"
-)
+watervlak_gpkg = cloud.joinpath("Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg")
 
 
-result_gpkg = cloud.joinpath(
-    "Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg"
-)
+result_gpkg = cloud.joinpath("Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg")
 
 print("read")
-watervlak_gdf = gpd.read_file(
-    top10_nl_water, layer="top10nl_waterdeel_vlak", engine="pyogrio", fid_as_index=True
-)
+watervlak_gdf = gpd.read_file(top10_nl_water, layer="top10nl_waterdeel_vlak", engine="pyogrio", fid_as_index=True)
 
-rws_waterlijn_gdf = gpd.read_file(
-    result_gpkg, layer="waterlijnen_rws", engine="pyogrio", fid_as_index=True
-)
+rws_waterlijn_gdf = gpd.read_file(result_gpkg, layer="waterlijnen_rws", engine="pyogrio", fid_as_index=True)
 
 recategorize_xlsx = cloud.joinpath("Rijkswaterstaat", "verwerkt", "recategorize.xlsx")
 
@@ -57,32 +49,22 @@ if RE_DISSOLVE:
     # merge all name-categories
     print("merge name-fields")
     watervlak_gdf.loc[:, ["naam"]] = watervlak_gdf["naamofficieel"]
-    watervlak_gdf.loc[watervlak_gdf.naam.isna(), ["naam"]] = watervlak_gdf[
-        watervlak_gdf.naam.isna()
-    ]["naamnl"]
-    watervlak_gdf.loc[watervlak_gdf.naam.isna(), ["naam"]] = watervlak_gdf[
-        watervlak_gdf.naam.isna()
-    ]["naamfries"]
+    watervlak_gdf.loc[watervlak_gdf.naam.isna(), ["naam"]] = watervlak_gdf[watervlak_gdf.naam.isna()]["naamnl"]
+    watervlak_gdf.loc[watervlak_gdf.naam.isna(), ["naam"]] = watervlak_gdf[watervlak_gdf.naam.isna()]["naamfries"]
 
     print("name sluizen")
     for k, v in MAP_SLUIZEN.items():
         watervlak_gdf.loc[watervlak_gdf.sluisnaam == k, ["naam"]] = v
 
-    exclude_names_df = pd.read_excel(
-        recategorize_xlsx, sheet_name="TOP10NL_EXCLUDE_NAMES"
-    )
+    exclude_names_df = pd.read_excel(recategorize_xlsx, sheet_name="TOP10NL_EXCLUDE_NAMES")
 
-    watervlak_gdf = watervlak_gdf.loc[
-        ~watervlak_gdf.naam.isin(exclude_names_df["naam"])
-    ]
+    watervlak_gdf = watervlak_gdf.loc[~watervlak_gdf.naam.isin(exclude_names_df["naam"])]
 
     print("dissolve to naam, fysiekvoorkomen and hoofdafwatering")
     data = {"naam": [], "geometry": [], "fysiekvoorkomen": []}
 
     # fill fysiekvoorkomen so polygons don't get dropped
-    watervlak_gdf.loc[
-        watervlak_gdf["fysiekvoorkomen"].isna(), "fysiekvoorkomen"
-    ] = "overig"
+    watervlak_gdf.loc[watervlak_gdf["fysiekvoorkomen"].isna(), "fysiekvoorkomen"] = "overig"
 
     # custom dissolve section. We dissolve only adjacent polygons with the same name and not over sluices, bridges etc (fysiekvoorkomen)
     for (name, voorkomen), df in watervlak_gdf.groupby(by=["naam", "fysiekvoorkomen"]):
@@ -102,9 +84,7 @@ if RE_DISSOLVE:
     watervlak_diss_gdf = pd.concat(
         [
             gpd.GeoDataFrame(data, crs=28992),
-            watervlak_gdf[watervlak_gdf.naam.isna()][
-                ["naam", "fysiekvoorkomen", "geometry"]
-            ],
+            watervlak_gdf[watervlak_gdf.naam.isna()][["naam", "fysiekvoorkomen", "geometry"]],
         ]
     ).reset_index(drop=True)
 
@@ -117,9 +97,7 @@ if RE_DISSOLVE:
     watervlak_diss_gdf.to_file(result_gpkg, layer="watervlak", engine="pyogrio")
 else:
     print("read")
-    watervlak_diss_gdf = gpd.read_file(
-        result_gpkg, layer="watervlak", engine="pyogrio", fid_as_index=True
-    )
+    watervlak_diss_gdf = gpd.read_file(result_gpkg, layer="watervlak", engine="pyogrio", fid_as_index=True)
     # reset categorie column
     watervlak_diss_gdf.loc[:, ["categorie"]] = None
 
@@ -147,15 +125,11 @@ waterlijn_select_gdf = rws_waterlijn_gdf[mask]
 for row in waterlijn_select_gdf.itertuples():
     # get row indexes by spatial index and geometric selection
     idx = watervlak_diss_gdf.sindex.intersection(row.geometry.bounds)
-    idx = watervlak_diss_gdf.iloc[idx][
-        watervlak_diss_gdf.iloc[idx].intersects(row.geometry)
-    ].index
+    idx = watervlak_diss_gdf.iloc[idx][watervlak_diss_gdf.iloc[idx].intersects(row.geometry)].index
 
     if row.Label not in ignore_min_length:
         # should have sigificant overlap with polygon
-        mask = watervlak_diss_gdf.loc[idx].intersection(row.geometry).length > (
-            row.geometry.length * overlap
-        )
+        mask = watervlak_diss_gdf.loc[idx].intersection(row.geometry).length > (row.geometry.length * overlap)
 
         # or not being "overig" (sluis, bridge, etc)
         mask = mask | (watervlak_diss_gdf.loc[idx].fysiekvoorkomen != "overig")
@@ -171,9 +145,7 @@ for row in waterlijn_select_gdf.itertuples():
 
     # give rws-label if Top10NL name is None
     if row.Bron == "NWB Vaarwegen":
-        name_idx = watervlak_diss_gdf.loc[idx][
-            watervlak_diss_gdf.loc[idx].naam.isna()
-        ].index
+        name_idx = watervlak_diss_gdf.loc[idx][watervlak_diss_gdf.loc[idx].naam.isna()].index
         watervlak_diss_gdf.loc[name_idx, ["naam"]] = row.Label
 
 # Recategorize for
@@ -186,13 +158,9 @@ watervlak_diss_gdf.loc[watervlak_diss_gdf.naam.isna(), ["categorie"]] = None
 watervlak_diss_gdf.loc[watervlak_diss_gdf.index.isin(reset_fids), ["categorie"]] = None
 watervlak_diss_gdf.loc[watervlak_diss_gdf.naam.isin(reset_names), ["categorie"]] = None
 
-to_nationaal_hw_df = pd.read_excel(
-    recategorize_xlsx, sheet_name="TOP10NL_TO_NATIONAL_HW"
-)
+to_nationaal_hw_df = pd.read_excel(recategorize_xlsx, sheet_name="TOP10NL_TO_NATIONAL_HW")
 
-watervlak_diss_gdf.loc[
-    watervlak_diss_gdf.naam.isin(to_nationaal_hw_df["naam"]), ["categorie"]
-] = "nationaal hoofdwater"
+watervlak_diss_gdf.loc[watervlak_diss_gdf.naam.isin(to_nationaal_hw_df["naam"]), ["categorie"]] = "nationaal hoofdwater"
 
 # %% Write to disk
 print("write")

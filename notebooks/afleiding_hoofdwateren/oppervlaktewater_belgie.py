@@ -7,16 +7,10 @@ cloud = CloudStorage()
 
 basins_osm_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Belgie", "water_areas.gpkg")
 
-basins_user_data_gpkg = cloud.joinpath(
-    "Rijkswaterstaat", "verwerkt", "basins_user_data.gpkg"
-)
+basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_user_data.gpkg")
 
-rivers_osm_gpkg = cloud.joinpath(
-    "Basisgegevens", "OSM", "Nederland_Belgie", "waterway_river.gpkg"
-)
-canal_osm_gpkg = cloud.joinpath(
-    "Basisgegevens", "OSM", "Nederland_Belgie", "waterway_canal.gpkg"
-)
+rivers_osm_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Nederland_Belgie", "waterway_river.gpkg")
+canal_osm_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Nederland_Belgie", "waterway_canal.gpkg")
 
 # %%
 clip_poly = gpd.read_file(
@@ -24,9 +18,7 @@ clip_poly = gpd.read_file(
 ).unary_union
 
 basins_osm_gdf = (
-    gpd.read_file(basins_osm_gpkg, engine="pyogrio", fid_as_index=True)
-    .clip(clip_poly)
-    .explode(ignore_index=True)
+    gpd.read_file(basins_osm_gpkg, engine="pyogrio", fid_as_index=True).clip(clip_poly).explode(ignore_index=True)
 )
 
 canal_osm_gdf = gpd.read_file(canal_osm_gpkg, engine="pyogrio", fid_as_index=True)

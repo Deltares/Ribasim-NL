@@ -29,19 +29,13 @@ ribasim_model_dir
 
 plots_dir.mkdir(exist_ok=True)
 
-flow_df = pd.read_feather(ribasim_toml.parent / "results" / "flow.arrow").set_index(
-    "time"
-)
+flow_df = pd.read_feather(ribasim_toml.parent / "results" / "flow.arrow").set_index("time")
 flow_df = flow_df[flow_df.index > start_time]
-basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_index(
-    "time"
-)
+basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_index("time")
 basin_df = basin_df[basin_df.index > start_time]
 
 meting_df = pd.read_excel(
-    cloud.joinpath(
-        "Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx"
-    ),
+    cloud.joinpath("Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx"),
     header=[0, 1, 2, 3],
     index_col=[0],
 )
@@ -53,9 +47,9 @@ for k, v in CONFIG.items():
     if "edge_id" in v.keys():
         Q_meting = meting_df["Debiet"]["(m3/s)"][name]
         Q_meting.columns = ["meting"]
-        Q_berekening = flow_df[flow_df["edge_id"] == v["edge_id"]][
-            ["flow_rate"]
-        ].rename(columns={"flow_rate": "berekend"})
+        Q_berekening = flow_df[flow_df["edge_id"] == v["edge_id"]][["flow_rate"]].rename(
+            columns={"flow_rate": "berekend"}
+        )
 
         plot = pd.concat([Q_meting, Q_berekening]).plot(title=name, ylabel="m3/s")
         fig = plot.get_figure()
@@ -64,9 +58,7 @@ for k, v in CONFIG.items():
     if "node_id" in v.keys():
         H_meting = meting_df["Waterstand"]["(m) "][name]
         H_meting.columns = ["meting"]
-        H_berekening = basin_df[basin_df["node_id"] == v["node_id"]][["level"]].rename(
-            columns={"level": "berekend"}
-        )
+        H_berekening = basin_df[basin_df["node_id"] == v["node_id"]][["level"]].rename(columns={"level": "berekend"})
         plot = pd.concat([H_meting, H_berekening]).plot(title=name, ylabel="m NAP")
         fig = plot.get_figure()
         fig.savefig(plots_dir / f"{name}_m.png")

@@ -116,17 +116,13 @@ def make_options(
 ):
     # set overlay and handlers
     overlay_options = list(map_overlays.keys())
-    active_overlays = [
-        idx for idx, (_, v) in enumerate(map_overlays.items()) if v["visible"]
-    ]
+    active_overlays = [idx for idx, (_, v) in enumerate(map_overlays.items()) if v["visible"]]
     overlay_control = CheckboxGroup(labels=overlay_options, active=active_overlays)
     overlay_control.on_change("active", overlays_change)
 
     # set background and handlers
     background_options = list(BOKEH_BACKGROUNDS.keys())
-    background_active = list(BOKEH_BACKGROUNDS.keys()).index(
-        BOKEH_SETTINGS["background"]
-    )
+    background_active = list(BOKEH_BACKGROUNDS.keys()).index(BOKEH_SETTINGS["background"])
     background_control = RadioGroup(labels=background_options, active=background_active)
     background_control.on_change("active", background_change)
     map_controls = column(

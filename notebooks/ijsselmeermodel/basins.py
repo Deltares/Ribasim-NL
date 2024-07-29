@@ -60,9 +60,7 @@ for row in rws_krw_gdf.loc[krw_ids].itertuples():
         if code in krw_cutlines_gdf.owmident.to_numpy():
             if basin_polygon.geom_type == "Polygon":
                 for cut_line in (
-                    krw_cutlines_gdf[krw_cutlines_gdf.owmident == row.Index]
-                    .sort_values("cut_order")
-                    .itertuples()
+                    krw_cutlines_gdf[krw_cutlines_gdf.owmident == row.Index].sort_values("cut_order").itertuples()
                 ):
                     # cut_line = krw_cutlines_gdf[krw_cutlines_gdf.owmident == row.Index].sort_values("cut_order").geometry[0]
                     basin_multi_polygon = cut_basin(basin_polygon, cut_line.geometry)
@@ -79,9 +77,7 @@ for row in rws_krw_gdf.loc[krw_ids].itertuples():
                     rijkswater=strip_code(code),
                 )
             else:
-                raise TypeError(
-                    f"basin_polygon not of correct type {basin_polygon.geom_type}"
-                )
+                raise TypeError(f"basin_polygon not of correct type {basin_polygon.geom_type}")
     else:
         add_basin(
             user_id=user_id(code, "80"),

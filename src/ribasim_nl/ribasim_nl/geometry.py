@@ -1,4 +1,5 @@
 """Functions to apply on a shapely.geometry"""
+
 from typing import get_type_hints
 
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
@@ -85,11 +86,7 @@ def split_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
     unioned = basin_polygon.boundary.union(line)
 
     # use polygonize geos operator and filter out poygons outside of origina input polygon
-    keep_polys = [
-        poly
-        for poly in polygonize(unioned)
-        if poly.representative_point().within(basin_polygon)
-    ]
+    keep_polys = [poly for poly in polygonize(unioned) if poly.representative_point().within(basin_polygon)]
 
     # remaining polygons are the split polys of original shape
     if len(keep_polys) != 2:
@@ -104,9 +101,7 @@ def split_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
     return MultiPolygon(sort_basins(keep_polys))
 
 
-def drop_z(
-    geometry: LineString | MultiPolygon | Point | Polygon
-) -> Point | Polygon | MultiPolygon:
+def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Polygon | MultiPolygon:
     """Drop the z-coordinate of a geometry if it has.
 
     Parameters
@@ -136,9 +131,7 @@ def drop_z(
         # Polygon
         elif isinstance(geometry, Polygon):
             exterior = [(x, y) for x, y, _ in geometry.exterior.coords]
-            interiors = [
-                [(x, y) for x, y, _ in ring.coords] for ring in geometry.interiors
-            ]
+            interiors = [[(x, y) for x, y, _ in ring.coords] for ring in geometry.interiors]
             geometry = Polygon(exterior, interiors)
 
         else:

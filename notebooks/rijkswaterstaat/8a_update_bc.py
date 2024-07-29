@@ -13,9 +13,7 @@ ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_demand", "hws.
 model = Model.read(ribasim_toml)
 
 df = pd.read_excel(
-    cloud.joinpath(
-        "Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx"
-    ),
+    cloud.joinpath("Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx"),
     skiprows=3,
 )
 df.set_index("Unnamed: 0", inplace=True)
@@ -23,9 +21,7 @@ df.index.name = "time"
 
 # %%lobith series
 # "2023-09-15 07:00:00" and "2023-09-15 11:00:00" are outliers
-invalid_dt = np.array(
-    ["2023-09-15 07:00:00", "2023-09-15 11:00:00"], dtype=np.datetime64
-)
+invalid_dt = np.array(["2023-09-15 07:00:00", "2023-09-15 11:00:00"], dtype=np.datetime64)
 lobith_series = df.loc[~df.index.isin(invalid_dt)]["Lobith"]
 
 # interpolate missings
@@ -69,12 +65,8 @@ monsin_series.name = "flow_rate"
 # %% set FlowBoundary / Time
 
 # get node ids
-lobith_node_id = model.flow_boundary.node.df.set_index("meta_meetlocatie_code").at[
-    "LOBH", "node_id"
-]
-monsin_node_id = model.flow_boundary.node.df.set_index("meta_meetlocatie_code").at[
-    "MONS", "node_id"
-]
+lobith_node_id = model.flow_boundary.node.df.set_index("meta_meetlocatie_code").at["LOBH", "node_id"]
+monsin_node_id = model.flow_boundary.node.df.set_index("meta_meetlocatie_code").at["MONS", "node_id"]
 
 # set flow boundary timeseries
 lobith_df = pd.DataFrame(lobith_series).reset_index()
@@ -99,9 +91,7 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
 # %% update LevelBoundary / Time
 
 node_ids = (
-    model.node_table()
-    .df[model.node_table().df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])]
-    .node_id.to_numpy()
+    model.node_table().df[model.node_table().df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])].node_id.to_numpy()
 )
 
 time = pd.date_range(model.starttime, model.endtime)
@@ -151,39 +141,26 @@ level = [
 ]
 level_cycle_df = pd.DataFrame(
     {
-        "dayofyear": [
-            datetime.strptime(i, "%m-%d").timetuple().tm_yday for i in day_of_year
-        ],
+        "dayofyear": [datetime.strptime(i, "%m-%d").timetuple().tm_yday for i in day_of_year],
         "level": level,
     }
 ).set_index("dayofyear")
 
 
 def get_level(timestamp, level_cycle_df):
-    return level_cycle_df.at[
-        level_cycle_df.index[level_cycle_df.index <= timestamp.dayofyear].max(), "level"
-    ]
+    return level_cycle_df.at[level_cycle_df.index[level_cycle_df.index <= timestamp.dayofyear].max(), "level"]
 
 
 time = pd.date_range(model.starttime, model.endtime)
-level_df = pd.DataFrame(
-    {"time": time, "level": [get_level(i, level_cycle_df) for i in time]}
-)
+level_df = pd.DataFrame({"time": time, "level": [get_level(i, level_cycle_df) for i in time]})
 
 level_df = pd.concat(
-    [
-        pd.concat(
-            [level_df, pd.DataFrame({"node_id": [node_id] * len(level_df)})], axis=1
-        )
-        for node_id in node_ids
-    ],
+    [pd.concat([level_df, pd.DataFrame({"node_id": [node_id] * len(level_df)})], axis=1) for node_id in node_ids],
     ignore_index=True,
 )
 model.level_boundary.time.df = level_df
 
 
 # %%
-ribasim_toml = cloud.joinpath(
-    "Rijkswaterstaat", "modellen", "hws_transient", "hws.toml"
-)
+ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_transient", "hws.toml")
 model.write(ribasim_toml)

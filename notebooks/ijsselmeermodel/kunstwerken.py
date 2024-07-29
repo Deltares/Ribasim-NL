@@ -58,13 +58,9 @@ outlet_gdf.to_file(MODEL_DIR / "model_data.gpkg", layer="outlet")
 
 # %%
 
-resistance_gdf = gpd.read_file(
-    DATA_DIR.joinpath("ijsselmeergebied", "hydamo.gpkg"), layer="sluis"
-)
+resistance_gdf = gpd.read_file(DATA_DIR.joinpath("ijsselmeergebied", "hydamo.gpkg"), layer="sluis")
 
-resistance_gdf.rename(
-    columns={"rijkswater_naar": "id_to", "rijkswater_van": "id_from"}, inplace=True
-)
+resistance_gdf.rename(columns={"rijkswater_naar": "id_to", "rijkswater_van": "id_from"}, inplace=True)
 
 resistance_gdf["user_id"] = resistance_gdf["code"].apply(
     lambda x: code_utils.generate_model_id(code=x, layer="sluis", bgt_code="L0002")

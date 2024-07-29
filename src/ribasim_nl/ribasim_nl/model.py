@@ -44,11 +44,7 @@ class Model(Model):
     @property
     def basin_results(self):
         if self._basin_results is None:
-            filepath = (
-                self.filepath.parent.joinpath(self.results_dir, "basin.arrow")
-                .absolute()
-                .resolve()
-            )
+            filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
             self._basin_results = BasinResults(filepath=filepath)
         return self._basin_results
 
@@ -70,17 +66,9 @@ class Model(Model):
         if (ds_node_id is not None) or (us_node_id is not None):
             edge_df = self.edge.df
             if ds_node_id is not None:
-                df = df[
-                    df.node_id.isin(
-                        edge_df[edge_df.to_node_id == ds_node_id].from_node_id
-                    )
-                ]
+                df = df[df.node_id.isin(edge_df[edge_df.to_node_id == ds_node_id].from_node_id)]
             if us_node_id is not None:
-                df = df[
-                    df.node_id.isin(
-                        edge_df[edge_df.from_node_id == us_node_id].to_node_id
-                    )
-                ]
+                df = df[df.node_id.isin(edge_df[edge_df.from_node_id == us_node_id].to_node_id)]
 
         # check if we didn't find 0 or multiple node_ids
         node_ids = df.node_id.to_list()
@@ -109,9 +97,7 @@ class Model(Model):
         """Update a node type and/or data"""
 
         # get existing network node_type
-        existing_node_type = (
-            self.node_table().df.set_index("node_id").at[node_id, "node_type"]
-        )
+        existing_node_type = self.node_table().df.set_index("node_id").at[node_id, "node_type"]
 
         # read existing table
         table = getattr(self, pascal_to_snake_case(existing_node_type))
@@ -138,12 +124,8 @@ class Model(Model):
         node_properties_to_table(table, node_properties, node_id)
 
         # change type in edge table
-        self.edge.df.loc[
-            self.edge.df["from_node_id"] == node_id, ["from_node_type"]
-        ] = node_type
-        self.edge.df.loc[
-            self.edge.df["to_node_id"] == node_id, ["to_node_type"]
-        ] = node_type
+        self.edge.df.loc[self.edge.df["from_node_id"] == node_id, ["from_node_type"]] = node_type
+        self.edge.df.loc[self.edge.df["to_node_id"] == node_id, ["to_node_type"]] = node_type
 
     def add_control_node(
         self,
@@ -179,18 +161,10 @@ class Model(Model):
         # define node
         if node_geom is None:
             if isinstance(to_node_id, list):
-                raise TypeError(
-                    f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))"
-                )
+                raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
             else:
-                linestring = (
-                    self.edge.df[self.edge.df["to_node_id"] == to_node_id]
-                    .iloc[0]
-                    .geometry
-                )
-                node_geom = Point(
-                    linestring.parallel_offset(node_offset, "left").coords[-1]
-                )
+                linestring = self.edge.df[self.edge.df["to_node_id"] == to_node_id].iloc[0].geometry
+                node_geom = Point(linestring.parallel_offset(node_offset, "left").coords[-1])
                 to_node_id = [to_node_id]
 
         node_id = self.next_node_id
@@ -207,9 +181,7 @@ class Model(Model):
         for _to_node_id in to_node_id:
             self.edge.add(table[node_id], self.get_node(_to_node_id))
 
-    def find_closest_basin(
-        self, geometry: BaseGeometry, max_distance: float | None
-    ) -> NodeData:
+    def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""
 
         # only works when basin area are defined

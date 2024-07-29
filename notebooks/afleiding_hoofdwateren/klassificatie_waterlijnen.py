@@ -13,13 +13,9 @@ MAP_SCHALE = {
 }
 
 # Bestanden op de cloud-storage
-waterlijnen_rws = cloud.joinpath(
-    "Rijkswaterstaat", "aangeleverd", "BRT_waterlijnen_RWS", "WaterenNL.shp"
-)
+waterlijnen_rws = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "BRT_waterlijnen_RWS", "WaterenNL.shp")
 recategorize_xlsx = cloud.joinpath("Rijkswaterstaat", "verwerkt", "recategorize.xlsx")
-result_gpkg = cloud.joinpath(
-    "Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg"
-)
+result_gpkg = cloud.joinpath("Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg")
 
 # %% Fix RWS-lijnen
 rws_waterlijn_gdf = gpd.read_file(waterlijnen_rws, engine="pyogrio", fid_as_index=True)
@@ -27,9 +23,7 @@ rws_waterlijn_gdf.loc[:, "categorie"] = None
 
 # drop all FIDs we don't need. Mainly offshore.
 drop_fid_df = pd.read_excel(recategorize_xlsx, sheet_name="RWS_EXCLUDE_FID")
-rws_waterlijn_gdf = rws_waterlijn_gdf.loc[
-    ~rws_waterlijn_gdf.index.isin(drop_fid_df["FID"])
-]
+rws_waterlijn_gdf = rws_waterlijn_gdf.loc[~rws_waterlijn_gdf.index.isin(drop_fid_df["FID"])]
 
 # first map scales to water systems
 for k, v in MAP_SCHALE.items():
@@ -41,36 +35,28 @@ for k, v in MAP_SCHALE.items():
 rws_waterlijn_gdf = rws_waterlijn_gdf[rws_waterlijn_gdf["categorie"].notna()]
 
 # remap to national_hw
-label_to_national_hw_df = pd.read_excel(
-    recategorize_xlsx, sheet_name="RWS_LABEL_TO_NATIONAL_HW"
+label_to_national_hw_df = pd.read_excel(recategorize_xlsx, sheet_name="RWS_LABEL_TO_NATIONAL_HW")
+rws_waterlijn_gdf.loc[rws_waterlijn_gdf.Label.isin(label_to_national_hw_df["Label"]), ["categorie"]] = (
+    "nationaal hoofdwater"
 )
-rws_waterlijn_gdf.loc[
-    rws_waterlijn_gdf.Label.isin(label_to_national_hw_df["Label"]), ["categorie"]
-] = "nationaal hoofdwater"
 
 # remap to regional_hw
-label_to_regional_hw_df = pd.read_excel(
-    recategorize_xlsx, sheet_name="RWS_LABEL_TO_REGIONAL_HW"
-)
-rws_waterlijn_gdf.loc[
-    rws_waterlijn_gdf.Label.isin(label_to_regional_hw_df["Label"]), ["categorie"]
-] = "regionaal hoofdwater"
-
-fid_to_regional_hw_df = pd.read_excel(
-    recategorize_xlsx, sheet_name="RWS_FID_TO_REGIONAL_HW"
+label_to_regional_hw_df = pd.read_excel(recategorize_xlsx, sheet_name="RWS_LABEL_TO_REGIONAL_HW")
+rws_waterlijn_gdf.loc[rws_waterlijn_gdf.Label.isin(label_to_regional_hw_df["Label"]), ["categorie"]] = (
+    "regionaal hoofdwater"
 )
 
-rws_waterlijn_gdf.loc[
-    rws_waterlijn_gdf.index.isin(fid_to_regional_hw_df["FID"]), ["categorie"]
-] = "regionaal hoofdwater"
+fid_to_regional_hw_df = pd.read_excel(recategorize_xlsx, sheet_name="RWS_FID_TO_REGIONAL_HW")
 
-fid_to_national_hw_df = pd.read_excel(
-    recategorize_xlsx, sheet_name="RWS_FID_TO_NATIONAL_HW"
+rws_waterlijn_gdf.loc[rws_waterlijn_gdf.index.isin(fid_to_regional_hw_df["FID"]), ["categorie"]] = (
+    "regionaal hoofdwater"
 )
 
-rws_waterlijn_gdf.loc[
-    rws_waterlijn_gdf.index.isin(fid_to_national_hw_df["FID"]), ["categorie"]
-] = "nationaal hoofdwater"
+fid_to_national_hw_df = pd.read_excel(recategorize_xlsx, sheet_name="RWS_FID_TO_NATIONAL_HW")
+
+rws_waterlijn_gdf.loc[rws_waterlijn_gdf.index.isin(fid_to_national_hw_df["FID"]), ["categorie"]] = (
+    "nationaal hoofdwater"
+)
 
 
 rws_waterlijn_gdf.to_file(result_gpkg, layer="waterlijnen_rws", engine="pyogrio")

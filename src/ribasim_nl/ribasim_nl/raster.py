@@ -60,17 +60,13 @@ def build_vrt(raster_dir: Path):
         subdataset_name = f"SUBDATASET_{idx}_NAME"
         subdataset_description = f"SUBDATASET_{idx}_DESC"
         vrt_ds.GetRasterBand(1).SetMetadataItem(subdataset_name, file_name)
-        vrt_ds.GetRasterBand(1).SetMetadataItem(
-            subdataset_description, f"File: {file_name}"
-        )
+        vrt_ds.GetRasterBand(1).SetMetadataItem(subdataset_description, f"File: {file_name}")
 
     # Save the changes and close the VRT file
     vrt_ds = None
 
 
-def sample_level_area(
-    raster_path: Path, polygon: Polygon, ident=None, percentiles=DEFAULT_PERCENTILES
-) -> DataFrame:
+def sample_level_area(raster_path: Path, polygon: Polygon, ident=None, percentiles=DEFAULT_PERCENTILES) -> DataFrame:
     # Define the window coordinates (left, right, top, bottom)
 
     # Open raster and read window from polygon.bounds
@@ -117,9 +113,7 @@ def sample_level_area(
     return df
 
 
-def line_to_samples(
-    line: LineString, sample_dist: float, crs=28992
-) -> gpd.GeoDataFrame:
+def line_to_samples(line: LineString, sample_dist: float, crs=28992) -> gpd.GeoDataFrame:
     """Convert line to samples
 
     Parameters
@@ -138,10 +132,7 @@ def line_to_samples(
     """
     nbr_points = math.ceil(line.length / sample_dist)
     gdf = gpd.GeoDataFrame(
-        geometry=[
-            line.interpolate(i / float(nbr_points - 1), normalized=True)
-            for i in range(nbr_points)
-        ],
+        geometry=[line.interpolate(i / float(nbr_points - 1), normalized=True) for i in range(nbr_points)],
         crs=crs,
     )
     gdf["distance"] = gdf.geometry.apply(lambda x: line.project(x))

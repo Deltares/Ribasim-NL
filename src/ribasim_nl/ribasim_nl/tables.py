@@ -24,24 +24,15 @@ def average_width(df_left: pd.DataFrame, df_right: pd.DataFrame) -> pd.DataFrame
     # get unique levels
     level = list(set(df_left["level"].to_list() + df_right["level"].to_list()))
 
-    f_left = interpolate.interp1d(
-        df_left["level"].to_numpy(), df_left["width"].to_numpy(), bounds_error=False
-    )
-    f_right = interpolate.interp1d(
-        df_right["level"].to_numpy(), df_right["width"].to_numpy(), bounds_error=False
-    )
+    f_left = interpolate.interp1d(df_left["level"].to_numpy(), df_left["width"].to_numpy(), bounds_error=False)
+    f_right = interpolate.interp1d(df_right["level"].to_numpy(), df_right["width"].to_numpy(), bounds_error=False)
 
     width = (f_left(level) + f_right(level)) / 2
 
     df = pd.DataFrame({"level": level, "width": width})
 
     # where width is NaN, its out of bounds of bounds of left or right. We'll replace it with left or right
-    df_single = (
-        pd.concat([df_left, df_right])
-        .sort_values("level")
-        .drop_duplicates("level")
-        .reset_index(drop=True)
-    )
+    df_single = pd.concat([df_left, df_right]).sort_values("level").drop_duplicates("level").reset_index(drop=True)
     df[df.width.isna()] = df_single[df.width.isna()]
 
     return df

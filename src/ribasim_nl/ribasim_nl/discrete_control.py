@@ -25,14 +25,7 @@ def logic(
     length: int,
     name: str | None = None,
 ) -> DataFrame:
-    df = DataFrame(
-        {
-            "truth_state": [
-                "".join(["T"] * i + ["F"] * length)[0:length]
-                for i in range(1, length + 1)
-            ]
-        }
-    )
+    df = DataFrame({"truth_state": ["".join(["T"] * i + ["F"] * length)[0:length] for i in range(1, length + 1)]})
     df.loc[:, ["node_id"]] = node_id
     df.loc[:, ["control_state"]] = control_state(name, len(df))
     return df

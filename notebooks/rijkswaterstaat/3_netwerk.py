@@ -82,9 +82,7 @@ print("osm clippen op polygonen")
 data = []
 for row in osm_basins_gdf.itertuples():
     idx = network_lines_gdf.sindex.intersection(row.geometry.bounds)
-    select_gdf = network_lines_gdf.iloc[idx][
-        network_lines_gdf.iloc[idx].intersects(row.geometry)
-    ]
+    select_gdf = network_lines_gdf.iloc[idx][network_lines_gdf.iloc[idx].intersects(row.geometry)]
     data += [select_gdf]
 
 network_lines_gdf = pd.concat(data, ignore_index=True)
@@ -112,9 +110,7 @@ network_lines_gdf = gpd.overlay(network_lines_gdf, basins_gdf, how="union")
 print("lijnen opschonen met handmatig")
 remove_indices = []
 for geometry in remove_lines_gdf.geometry:
-    remove_indices += network_lines_gdf.loc[
-        network_lines_gdf.geometry.within(geometry.buffer(0.1))
-    ].index.to_list()
+    remove_indices += network_lines_gdf.loc[network_lines_gdf.geometry.within(geometry.buffer(0.1))].index.to_list()
 network_lines_gdf = network_lines_gdf[~network_lines_gdf.index.isin(remove_indices)]
 
 
@@ -141,8 +137,7 @@ def subdivide_line(line, max_length):
             + [
                 Point(i)
                 for i in line.coords
-                if (line.project(Point(i)) > start_dist)
-                and (line.project(Point(i)) < end_dist)
+                if (line.project(Point(i)) > start_dist) and (line.project(Point(i)) < end_dist)
             ]
             + [end_point]
         )

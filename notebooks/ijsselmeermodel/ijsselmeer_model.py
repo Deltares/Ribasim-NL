@@ -17,9 +17,7 @@ shapefile = DATA_DIR / r"nederland/Waterschapsgrenzen.shp"
 waterschapsgrenzen_gdf = gpd.read_file(shapefile)
 
 # Filter the GeoDataFrame to select the feature with value 'Waterschap Zuiderzeeland'
-selected_waterschap_gdf = waterschapsgrenzen_gdf[
-    waterschapsgrenzen_gdf["waterschap"] == "Waterschap Zuiderzeeland"
-]
+selected_waterschap_gdf = waterschapsgrenzen_gdf[waterschapsgrenzen_gdf["waterschap"] == "Waterschap Zuiderzeeland"]
 
 output_gpkg = MODEL_DIR / "ZZL_grens.gpkg"
 selected_waterschap_gdf.to_file(output_gpkg, driver="GPKG")
@@ -43,33 +41,23 @@ with fiona.open(gpkg_path, "r") as gpkg:
             uitlaten_inlaten_gdf[layer_name] = gdf
 
 # Spatial operations
-selected_waterschap_gdf = selected_waterschap_gdf.to_crs(
-    uitlaten_inlaten_gdf[desired_layers[0]].crs
-)
+selected_waterschap_gdf = selected_waterschap_gdf.to_crs(uitlaten_inlaten_gdf[desired_layers[0]].crs)
 
 # Perform the spatial join for the first layer
-points_within_waterschap_gdf = gpd.sjoin(
-    uitlaten_inlaten_gdf[desired_layers[0]], selected_waterschap_gdf, op="within"
-)
+points_within_waterschap_gdf = gpd.sjoin(uitlaten_inlaten_gdf[desired_layers[0]], selected_waterschap_gdf, op="within")
 
 # Combine the results from different layers (if needed)
 dfs_to_concat = []
 for layer_name in desired_layers[1:]:
-    result = gpd.sjoin(
-        uitlaten_inlaten_gdf[layer_name], selected_waterschap_gdf, op="within"
-    )
+    result = gpd.sjoin(uitlaten_inlaten_gdf[layer_name], selected_waterschap_gdf, op="within")
     dfs_to_concat.append(result)
 
 # Concatenate the DataFrames
-points_within_waterschap_gdf = pd.concat(
-    [points_within_waterschap_gdf] + dfs_to_concat, ignore_index=True
-)
+points_within_waterschap_gdf = pd.concat([points_within_waterschap_gdf] + dfs_to_concat, ignore_index=True)
 
 # Drop the 'OBJECTID' column if it exists
 if "OBJECTID" in points_within_waterschap_gdf:
-    points_within_waterschap_gdf = points_within_waterschap_gdf.drop(
-        columns=["OBJECTID"]
-    )
+    points_within_waterschap_gdf = points_within_waterschap_gdf.drop(columns=["OBJECTID"])
 
 # Output to a GeoPackage
 output_gpkg = MODEL_DIR / "inlaten_uitlaten_ZZL.gpkg"

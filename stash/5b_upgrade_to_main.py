@@ -37,28 +37,20 @@ def upgrade_crs(toml_path):
 
 cloud = CloudStorage()
 
-toml_file = cloud.joinpath(
-    "rijkswaterstaat", "modellen", "hws_network_upgraded", "hws.toml"
-)
+toml_file = cloud.joinpath("rijkswaterstaat", "modellen", "hws_network_upgraded", "hws.toml")
 upgrade_crs(toml_file)
 # upgrade_feature(toml_file.with_name("database").with_suffix(".gpkg"))
 
 # %%
 model = ribasim.Model.read(toml_file)
 
-mask = (model.edge.df.to_node_type == "LevelBoundary") & (
-    model.edge.df.from_node_type == "ManningResistance"
-)
+mask = (model.edge.df.to_node_type == "LevelBoundary") & (model.edge.df.from_node_type == "ManningResistance")
 
 node_ids = model.edge.df[mask].from_node_id.to_list()
 
 
-model.edge.df.loc[
-    model.edge.df.from_node_id.isin(node_ids), ["from_node_type"]
-] = "LinearResistance"
-model.edge.df.loc[
-    model.edge.df.to_node_id.isin(node_ids), ["to_node_type"]
-] = "LinearResistance"
+model.edge.df.loc[model.edge.df.from_node_id.isin(node_ids), ["from_node_type"]] = "LinearResistance"
+model.edge.df.loc[model.edge.df.to_node_id.isin(node_ids), ["to_node_type"]] = "LinearResistance"
 
 # %% change
 
@@ -71,8 +63,6 @@ for attr in model.manning_resistance.__fields__.keys():
 
 
 for _, node in nodes.iterrows():
-    model.linear_resistance.add(
-        Node(**node.to_dict()), [linear_resistance.Static(resistance=[0.005])]
-    )
+    model.linear_resistance.add(Node(**node.to_dict()), [linear_resistance.Static(resistance=[0.005])])
 
 model.write(toml_file)

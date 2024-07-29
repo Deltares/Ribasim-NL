@@ -1,4 +1,5 @@
 """All functions resulting in a geopandas.GeoDataFrame"""
+
 from typing import Literal
 
 import geopandas as gpd
@@ -53,9 +54,7 @@ def join_by_poly_overlay(
         overlay_gdf.drop_duplicates(subset="_left_index", keep="last", inplace=True)
         # add geometries that did not have an overlay
         if len(gdf) != len(overlay_gdf):
-            overlay_gdf = pd.concat(
-                [overlay_gdf, gdf[~gdf.index.isin(overlay_gdf["_left_index"])]]
-            )
+            overlay_gdf = pd.concat([overlay_gdf, gdf[~gdf.index.isin(overlay_gdf["_left_index"])]])
 
         # clean columns and index
         overlay_gdf.sort_values(by="_left_index", inplace=True)
@@ -91,25 +90,19 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
     for line in lines_gdf.explode(index_parts=False).itertuples():
         # filter by spatial index
         idx = basins_gdf.sindex.intersection(line.geometry.bounds)
-        poly_select_gdf = basins_gdf.iloc[idx][
-            basins_gdf.iloc[idx].intersects(line.geometry)
-        ]
+        poly_select_gdf = basins_gdf.iloc[idx][basins_gdf.iloc[idx].intersects(line.geometry)]
 
         ## filter by intersecting geometry
         poly_select_gdf = poly_select_gdf[poly_select_gdf.intersects(line.geometry)]
 
         ## filter polygons with two intersection-points only
         poly_select_gdf = poly_select_gdf[
-            poly_select_gdf.geometry.boundary.intersection(line.geometry).apply(
-                lambda x: not x.geom_type == "Point"
-            )
+            poly_select_gdf.geometry.boundary.intersection(line.geometry).apply(lambda x: not x.geom_type == "Point")
         ]
 
         ## if there are no polygon-candidates, something is wrong
         if poly_select_gdf.empty:
-            print(
-                f"no intersect for {line}. Please make sure it is extended outside the basin on two sides"
-            )
+            print(f"no intersect for {line}. Please make sure it is extended outside the basin on two sides")
         else:
             ## we create new features
             data = []
@@ -163,25 +156,17 @@ def direct_basins(
 
     def find_intersecting_basins(line):
         """Find intersecting basins on a LineString"""
-        intersecting_basins_gdf = basins_gdf.iloc[
-            basins_gdf.sindex.intersection(line.bounds)
-        ]
-        intersecting_basins_gdf = intersecting_basins_gdf[
-            intersecting_basins_gdf["geometry"].intersects(line)
-        ]
+        intersecting_basins_gdf = basins_gdf.iloc[basins_gdf.sindex.intersection(line.bounds)]
+        intersecting_basins_gdf = intersecting_basins_gdf[intersecting_basins_gdf["geometry"].intersects(line)]
         return intersecting_basins_gdf[basin_ident]
 
     def find_ident(point):
         """Find basin containing a Point"""
         # filter by spatial index
-        containing_basins_gdf = basins_gdf.iloc[
-            basins_gdf.sindex.intersection(point.bounds)
-        ]
+        containing_basins_gdf = basins_gdf.iloc[basins_gdf.sindex.intersection(point.bounds)]
 
         # filter by contain and take first row
-        containing_basins_gdf = containing_basins_gdf[
-            containing_basins_gdf["geometry"].contains(point)
-        ]
+        containing_basins_gdf = containing_basins_gdf[containing_basins_gdf["geometry"].contains(point)]
 
         if containing_basins_gdf.empty:
             return None
@@ -199,9 +184,7 @@ def direct_basins(
         poly_ident = getattr(poly_row, basin_ident)
 
         ## select intersecting lines, use spatial index (and then exact intersection)
-        intersecting_network_gdf = network_gdf.iloc[
-            network_gdf.sindex.intersection(poly_row.geometry.bounds)
-        ]
+        intersecting_network_gdf = network_gdf.iloc[network_gdf.sindex.intersection(poly_row.geometry.bounds)]
         intersecting_network_gdf = intersecting_network_gdf[
             intersecting_network_gdf["geometry"].intersects(poly_row.geometry.boundary)
         ]
@@ -216,9 +199,7 @@ def direct_basins(
             ds_ident = find_ident(ds_point)
 
             # determine if/how a link should be added to data
-            if ((us_ident is not None) and (ds_ident is not None)) and (
-                us_ident != ds_ident
-            ):
+            if ((us_ident is not None) and (ds_ident is not None)) and (us_ident != ds_ident):
                 link_id = getattr(line_row, link_ident)
 
                 if poly_ident not in [us_ident, ds_ident]:
@@ -252,9 +233,7 @@ def direct_basins(
 
     # if we found duplicates, we may want to drop them
     if drop_duplicates:
-        poly_directions_gdf.drop_duplicates(
-            ["us_basin", "ds_basin"], keep="first", inplace=True
-        )
+        poly_directions_gdf.drop_duplicates(["us_basin", "ds_basin"], keep="first", inplace=True)
 
     return poly_directions_gdf
 
@@ -317,11 +296,7 @@ def basins_to_points(
             # if we selected links, we snap to closest node
             if not links_select_gdf.empty:
                 # get link maximum length
-                link = links_select_gdf.loc[
-                    links_select_gdf.geometry.length.sort_values(ascending=False).index[
-                        0
-                    ]
-                ]
+                link = links_select_gdf.loc[links_select_gdf.geometry.length.sort_values(ascending=False).index[0]]
 
                 # get distance to upstream and downstream point in the link
                 us_point, ds_point = link.geometry.boundary.geoms

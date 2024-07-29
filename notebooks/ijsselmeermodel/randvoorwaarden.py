@@ -17,7 +17,5 @@ data = [
 ]
 
 
-gpd.GeoDataFrame(data, crs=28992).to_file(
-    MODEL_DIR / "model_data.gpkg", layer="level_boundary"
-)
+gpd.GeoDataFrame(data, crs=28992).to_file(MODEL_DIR / "model_data.gpkg", layer="level_boundary")
 # %%

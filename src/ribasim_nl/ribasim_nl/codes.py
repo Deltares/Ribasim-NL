@@ -1,4 +1,5 @@
 """Utilities for generating unique codes."""
+
 from pathlib import Path
 
 import pandas as pd
@@ -27,9 +28,7 @@ def get_codes_df() -> DataFrame:
     if CODES_DF is None:
         CODES_DF = pd.read_csv(CODES_CSV)
         CODES_DF.set_index(CODES_DF.name.str.lower(), inplace=True)
-        CODES_DF["wbh_code"] = CODES_DF.wbh_code.apply(
-            lambda x: f"{int(x):02}" if not pd.isna(x) else None
-        )
+        CODES_DF["wbh_code"] = CODES_DF.wbh_code.apply(lambda x: f"{int(x):02}" if not pd.isna(x) else None)
     return CODES_DF.copy()
 
 
@@ -50,9 +49,7 @@ def bgt_to_wbh_code(bgt_code) -> str | None:
     wbh_code = None
     if bgt_code_exists(bgt_code):
         codes_df = get_codes_df()
-        wbh_code = (
-            codes_df.reset_index(drop=True).set_index("bgt_code").loc[bgt_code].wbh_code
-        )
+        wbh_code = codes_df.reset_index(drop=True).set_index("bgt_code").loc[bgt_code].wbh_code
 
     return wbh_code
 
@@ -68,13 +65,8 @@ def find_codes(
 
     # filter on administration_category
     if administration_category:
-        if (
-            administration_category.lower()
-            in codes_df.administration_category.to_numpy()
-        ):
-            codes_df = codes_df.loc[
-                codes_df.administration_category == administration_category.lower()
-            ]
+        if administration_category.lower() in codes_df.administration_category.to_numpy():
+            codes_df = codes_df.loc[codes_df.administration_category == administration_category.lower()]
         else:
             raise (
                 ValueError(
@@ -87,9 +79,7 @@ def find_codes(
         df = codes_df.loc[organization.lower()]
     # if more matches we return all matches
     else:
-        df = codes_df.loc[
-            codes_df.name.apply(lambda x: organization.lower() in x.lower())
-        ]
+        df = codes_df.loc[codes_df.name.apply(lambda x: organization.lower() in x.lower())]
     if to_dict:
         if isinstance(df, DataFrame):
             codes = df.to_dict(orient="records")
@@ -142,13 +132,9 @@ def generate_model_id(code, layer, wbh_code=None, bgt_code=None, geometry=None) 
         if bgt_code_exists(bgt_code):
             wbh_code = bgt_to_wbh_code(bgt_code)
             if wbh_code:
-                result = WBH_CODE_TEMPLATE.format(
-                    wbh_code=wbh_code, layer=layer, code=code
-                )
+                result = WBH_CODE_TEMPLATE.format(wbh_code=wbh_code, layer=layer, code=code)
             else:
-                result = BGT_CODE_TEMPLATE.format(
-                    bgt_code=bgt_code, layer=layer, code=code
-                )
+                result = BGT_CODE_TEMPLATE.format(bgt_code=bgt_code, layer=layer, code=code)
     if result is None:
         raise ValueError(
             f"""

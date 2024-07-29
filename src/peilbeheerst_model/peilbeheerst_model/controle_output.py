@@ -124,9 +124,9 @@ class Control:
         error_gdf["summed_error"] = relative_error_sum["relative_error"]
 
         # retrieve the geometries
-        error_gdf["geometry"] = error_gdf.merge(
-            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        )["geometry"]
+        error_gdf["geometry"] = error_gdf.merge(self.model.basin.node.df, on="node_id", suffixes=("", "model_"))[
+            "geometry"
+        ]
 
         error_gdf = gpd.GeoDataFrame(error_gdf, geometry="geometry")
 

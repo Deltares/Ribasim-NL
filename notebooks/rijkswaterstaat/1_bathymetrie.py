@@ -26,9 +26,7 @@ baseline_file = cloud.joinpath(
 )  # dit bestand is read-only voor D2HYDRO ivm verwerkersovereenkomst
 layer = "bedlevel_points"
 
-krw_poly_gpkg = cloud.joinpath(
-    "Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg"
-)
+krw_poly_gpkg = cloud.joinpath("Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
 
 bathymetrie_nl = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "bathymetrie")
 
@@ -41,9 +39,7 @@ nodata = -9999
 
 datasets = [rasterio.open(i) for i in bathymetrie_nl.glob("*NAP.tif")]
 
-data, transform = rasterio.merge.merge(
-    datasets, bounds=bounds, res=(res, res), nodata=nodata
-)
+data, transform = rasterio.merge.merge(datasets, bounds=bounds, res=(res, res), nodata=nodata)
 
 data = np.where(data != nodata, data * 100, nodata).astype("int16")
 
@@ -108,9 +104,7 @@ with rasterio.open(
         bounds = (xmin, ymin, xmax, ymax)
         area_poly = box(*bounds)
         print("select water-mask geometries")
-        water_geometries_select = water_geometries[
-            water_geometries.intersects(area_poly)
-        ]
+        water_geometries_select = water_geometries[water_geometries.intersects(area_poly)]
         if not water_geometries_select.empty:
             area_poly_buffer = area_poly.buffer(res * 4)
             print("read points")
@@ -134,9 +128,7 @@ with rasterio.open(
                     gdf,
                     measurements=["ELEVATION"],
                     resolution=(res, -res),
-                    rasterize_function=partial(
-                        rasterize_points_griddata, method="linear"
-                    ),
+                    rasterize_function=partial(rasterize_points_griddata, method="linear"),
                     interpolate_na_method="nearest",
                 )
 
@@ -146,16 +138,10 @@ with rasterio.open(
                 cube.ELEVATION.attrs["scale_factor"] = 0.01
 
                 print("clip cube")
-                mask = water_geometries_select.geometry.unary_union.intersection(
-                    area_poly
-                )
+                mask = water_geometries_select.geometry.unary_union.intersection(area_poly)
                 convex_hull = gdf.unary_union.convex_hull
                 if isinstance(mask, MultiPolygon):
-                    mask = [
-                        i.intersection(convex_hull)
-                        for i in mask.geoms
-                        if i.intersects(convex_hull)
-                    ]
+                    mask = [i.intersection(convex_hull) for i in mask.geoms if i.intersects(convex_hull)]
 
                 else:  # is one polygon
                     mask = [mask.intersection(convex_hull)]
@@ -165,9 +151,7 @@ with rasterio.open(
                 if cube.ELEVATION.size > 0:
                     print("add to tiff")
                     window = from_bounds(*cube.rio.bounds(), transform)
-                    dst.write(
-                        np.fliplr(np.flipud(cube.ELEVATION)), window=window, indexes=1
-                    )
+                    dst.write(np.fliplr(np.flipud(cube.ELEVATION)), window=window, indexes=1)
                 else:
                     print("no cube.ELEVATION points within water-mask")
             else:
@@ -184,9 +168,7 @@ with rasterio.open(
 # read bathymetrie-nl and its spatial characteristics
 with rasterio.open(out_dir / "bathymetrie-nl.tif") as src:
     bathymetry_nl_data = src.read(1)
-    bathymetry_nl_data = np.where(
-        bathymetry_nl_data == src.nodata, nodata, bathymetry_nl_data
-    )
+    bathymetry_nl_data = np.where(bathymetry_nl_data == src.nodata, nodata, bathymetry_nl_data)
     bounds = src.bounds
     transform = src.transform
     profile = src.profile

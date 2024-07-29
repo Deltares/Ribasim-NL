@@ -110,7 +110,7 @@ def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forc
 
     Generate static forcing data for a Ribasim-NL model simulation, assigning
     hydrological inputs to each node in a basin based on specified parameters.
-    Modifies the ribasim_model object in place by updating its basin static 
+    Modifies the ribasim_model object in place by updating its basin static
     DataFrame with the new forcing data.
 
     Parameters
@@ -126,7 +126,7 @@ def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forc
     ribasim_model : object
         A model object containing the basin node data for assigning forcing inputs.
     """
-    
+
     """_summary_
 
     Parameters
@@ -313,9 +313,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
 
     # find the min_crest_level
     # to do so, find the target levels of the (boezem) connected basins. This has to be done by looking within the edges
-    target_level = TRC_naar_OL.merge(
-        ribasim_model.edge.df, left_on="node_id", right_on="to_node_id", how="left"
-    )
+    target_level = TRC_naar_OL.merge(ribasim_model.edge.df, left_on="node_id", right_on="to_node_id", how="left")
 
     # the basins of which the target_levels should be retrieved, are stored in the column of from_node_id
     target_level = target_level.merge(
@@ -435,9 +433,7 @@ def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4):
     df_edge_tab = ribasim_model.tabulated_rating_curve.static.df.merge(
         df_edge, left_on="node_id", right_on="to_node_id", how="inner"
     )
-    df_tab = ribasim_model.basin.state.df.merge(
-        df_edge_tab, left_on="node_id", right_on="from_node_id", how="inner"
-    )
+    df_tab = ribasim_model.basin.state.df.merge(df_edge_tab, left_on="node_id", right_on="from_node_id", how="inner")
     df_tab = df_tab[["to_node_id", "active", "level_x", "flow_rate", "control_state", "meta_type_verbinding"]]
     df_tab = df_tab.rename(columns={"to_node_id": "node_id", "level_x": "level"})
 
