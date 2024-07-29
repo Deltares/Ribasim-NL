@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.550">
+<meta name="generator" content="quarto-1.4.557">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -19,6 +19,40 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -119,7 +153,24 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#ribasim_nl.CloudStorage" id="toc-ribasim_nl.CloudStorage" class="nav-link active" data-scroll-target="#ribasim_nl.CloudStorage">CloudStorage</a></li>
+  <li><a href="#ribasim_nl.CloudStorage" id="toc-ribasim_nl.CloudStorage" class="nav-link active" data-scroll-target="#ribasim_nl.CloudStorage">CloudStorage</a>
+  <ul class="collapse">
+  <li><a href="#attributes" id="toc-attributes" class="nav-link" data-scroll-target="#attributes">Attributes</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods">Methods</a>
+  <ul class="collapse">
+  <li><a href="#ribasim_nl.CloudStorage.content" id="toc-ribasim_nl.CloudStorage.content" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.content">content</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.dirs" id="toc-ribasim_nl.CloudStorage.dirs" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.dirs">dirs</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.download_aangeleverd" id="toc-ribasim_nl.CloudStorage.download_aangeleverd" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.download_aangeleverd">download_aangeleverd</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.download_all" id="toc-ribasim_nl.CloudStorage.download_all" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.download_all">download_all</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.download_basisgegevens" id="toc-ribasim_nl.CloudStorage.download_basisgegevens" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.download_basisgegevens">download_basisgegevens</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.download_content" id="toc-ribasim_nl.CloudStorage.download_content" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.download_content">download_content</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.download_verwerkt" id="toc-ribasim_nl.CloudStorage.download_verwerkt" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.download_verwerkt">download_verwerkt</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.upload_content" id="toc-ribasim_nl.CloudStorage.upload_content" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.upload_content">upload_content</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.upload_model" id="toc-ribasim_nl.CloudStorage.upload_model" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.upload_model">upload_model</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.upload_verwerkt" id="toc-ribasim_nl.CloudStorage.upload_verwerkt" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.upload_verwerkt">upload_verwerkt</a></li>
+  <li><a href="#ribasim_nl.CloudStorage.uploaded_models" id="toc-ribasim_nl.CloudStorage.uploaded_models" class="nav-link" data-scroll-target="#ribasim_nl.CloudStorage.uploaded_models">uploaded_models</a></li>
+  </ul></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -133,8 +184,259 @@ ul.task-list li input[type="checkbox"] {
 <h1>CloudStorage</h1>
 <p><code>CloudStorage(self, data_dir=RIBASIM_NL_DATA_DIR, user=RIBASIM_NL_CLOUD_USER, url=BASE_URL, password=RIBASIM_NL_CLOUD_PASS)</code></p>
 <p>Connect a local ’data_dir` to cloud-storage.</p>
+<section id="attributes" class="level2">
+<h2 class="anchored" data-anchor-id="attributes">Attributes</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.auth">auth</a></td>
+<td>Auth tuple for requests</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.CloudStorage.source_data">source_data</a></td>
+<td>List of all source_data (directories) in sub-folder ’Basisgegevens`.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.water_authorities">water_authorities</a></td>
+<td>List of all water authorities (directories)</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.content">content</a></td>
+<td>List all content in a directory</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.CloudStorage.dirs">dirs</a></td>
+<td>List sub-directories in a directory</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.download_aangeleverd">download_aangeleverd</a></td>
+<td>Download all files in folder ‘aangeleverd’</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.CloudStorage.download_all">download_all</a></td>
+<td>Download all files for authority.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.download_basisgegevens">download_basisgegevens</a></td>
+<td>Download sources in the folder ‘Basisgegevens’</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.CloudStorage.download_content">download_content</a></td>
+<td>Download content of a directory recursively.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.download_verwerkt">download_verwerkt</a></td>
+<td>Download all files in folder ‘verwerkt’</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.CloudStorage.upload_content">upload_content</a></td>
+<td>Upload content of a directory recursively.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.upload_model">upload_model</a></td>
+<td>Upload a model to a water authority</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.CloudStorage.upload_verwerkt">upload_verwerkt</a></td>
+<td>Upload all files in folder ‘verwerkt’</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.CloudStorage.uploaded_models">uploaded_models</a></td>
+<td>Get all model versions uploaded for an authority</td>
+</tr>
+</tbody>
+</table>
+<section id="ribasim_nl.CloudStorage.content" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.content">content</h3>
+<p><code>CloudStorage.content(url)</code></p>
+<p>List all content in a directory</p>
+<p>User can specify a path to the directory with additional arguments.</p>
+<section id="examples" class="level4">
+<h4 class="anchored" data-anchor-id="examples">Examples</h4>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud <span class="op">=</span> Cloud()</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs()</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"AaenMaas"</span>, <span class="st">"AmselGooienVecht"</span>, ...]</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs(<span class="st">"AaenMaas"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"aangeleverd"</span>, <span class="st">"modellen"</span>, <span class="st">"verwerkt"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="returns" class="level4">
+<h4 class="anchored" data-anchor-id="returns">Returns</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>list[str]</td>
+<td>List of all content directories in a specified path</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="ribasim_nl.CloudStorage.dirs" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.dirs">dirs</h3>
+<p><code>CloudStorage.dirs(*args)</code></p>
+<p>List sub-directories in a directory</p>
+<p>User can specify a path to the directory with additional arguments.</p>
+<section id="examples-1" class="level4">
+<h4 class="anchored" data-anchor-id="examples-1">Examples</h4>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud <span class="op">=</span> Cloud()</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs()</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"AaenMaas"</span>, <span class="st">"AmselGooienVecht"</span>, ...]</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs(<span class="st">"AaenMaas"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"aangeleverd"</span>, <span class="st">"modellen"</span>, <span class="st">"verwerkt"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="returns-1" class="level4">
+<h4 class="anchored" data-anchor-id="returns-1">Returns</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>list[str]</td>
+<td>List of directories in a specified path</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="ribasim_nl.CloudStorage.download_aangeleverd" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_aangeleverd">download_aangeleverd</h3>
+<p><code>CloudStorage.download_aangeleverd(authority, overwrite=False)</code></p>
+<p>Download all files in folder ‘aangeleverd’</p>
+</section>
+<section id="ribasim_nl.CloudStorage.download_all" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_all">download_all</h3>
+<p><code>CloudStorage.download_all(authority, overwrite=False)</code></p>
+<p>Download all files for authority.</p>
+</section>
+<section id="ribasim_nl.CloudStorage.download_basisgegevens" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_basisgegevens">download_basisgegevens</h3>
+<p><code>CloudStorage.download_basisgegevens(bronnen=[], overwrite=True)</code></p>
+<p>Download sources in the folder ‘Basisgegevens’</p>
+</section>
+<section id="ribasim_nl.CloudStorage.download_content" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_content">download_content</h3>
+<p><code>CloudStorage.download_content(url, overwrite=False)</code></p>
+<p>Download content of a directory recursively.</p>
+</section>
+<section id="ribasim_nl.CloudStorage.download_verwerkt" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_verwerkt">download_verwerkt</h3>
+<p><code>CloudStorage.download_verwerkt(authority, overwrite=False)</code></p>
+<p>Download all files in folder ‘verwerkt’</p>
+</section>
+<section id="ribasim_nl.CloudStorage.upload_content" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.upload_content">upload_content</h3>
+<p><code>CloudStorage.upload_content(dir_path, overwrite=False)</code></p>
+<p>Upload content of a directory recursively.</p>
+</section>
+<section id="ribasim_nl.CloudStorage.upload_model" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.upload_model">upload_model</h3>
+<p><code>CloudStorage.upload_model(authority, model, include_results=False, include_plots=False)</code></p>
+<p>Upload a model to a water authority</p>
+<section id="parameters" class="level4">
+<h4 class="anchored" data-anchor-id="parameters">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 7%">
+<col style="width: 65%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>authority</code></td>
+<td>str</td>
+<td>Water authority to upload a model for</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>model</code></td>
+<td>str</td>
+<td>name of the model (directory) to upload</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>include_results</code></td>
+<td></td>
+<td>to include results dir in upload; yes/no = True/False. defaults to False.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td><code>include_plots</code></td>
+<td></td>
+<td>to include plots dir in upload; yes/no = True/False. defaults to False.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="raises" class="level4">
+<h4 class="anchored" data-anchor-id="raises">Raises</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ValueError</td>
+<td>If model does not exist locally</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="ribasim_nl.CloudStorage.upload_verwerkt" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.upload_verwerkt">upload_verwerkt</h3>
+<p><code>CloudStorage.upload_verwerkt(authority, overwrite=False)</code></p>
+<p>Upload all files in folder ‘verwerkt’</p>
+</section>
+<section id="ribasim_nl.CloudStorage.uploaded_models" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.uploaded_models">uploaded_models</h3>
+<p><code>CloudStorage.uploaded_models(authority)</code></p>
+<p>Get all model versions uploaded for an authority</p>
 
 
+</section>
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -217,6 +519,24 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     // clear code selection
     e.clearSelection();
   });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
   function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
     const config = {
       allowHTML: true,
@@ -251,7 +571,11 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       try { href = new URL(href).hash; } catch {}
       const id = href.replace(/^#\/?/, "");
       const note = window.document.getElementById(id);
-      return note.innerHTML;
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
     });
   }
   const xrefs = window.document.querySelectorAll('a.quarto-xref');

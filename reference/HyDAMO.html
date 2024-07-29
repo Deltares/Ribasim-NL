@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.550">
+<meta name="generator" content="quarto-1.4.557">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -119,7 +119,17 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#hydamo.HyDAMO" id="toc-hydamo.HyDAMO" class="nav-link active" data-scroll-target="#hydamo.HyDAMO">HyDAMO</a></li>
+  <li><a href="#hydamo.HyDAMO" id="toc-hydamo.HyDAMO" class="nav-link active" data-scroll-target="#hydamo.HyDAMO">HyDAMO</a>
+  <ul class="collapse">
+  <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods">Methods</a>
+  <ul class="collapse">
+  <li><a href="#hydamo.HyDAMO.from_geopackage" id="toc-hydamo.HyDAMO.from_geopackage" class="nav-link" data-scroll-target="#hydamo.HyDAMO.from_geopackage">from_geopackage</a></li>
+  <li><a href="#hydamo.HyDAMO.get" id="toc-hydamo.HyDAMO.get" class="nav-link" data-scroll-target="#hydamo.HyDAMO.get">get</a></li>
+  <li><a href="#hydamo.HyDAMO.init_datamodel" id="toc-hydamo.HyDAMO.init_datamodel" class="nav-link" data-scroll-target="#hydamo.HyDAMO.init_datamodel">init_datamodel</a></li>
+  <li><a href="#hydamo.HyDAMO.set_data" id="toc-hydamo.HyDAMO.set_data" class="nav-link" data-scroll-target="#hydamo.HyDAMO.set_data">set_data</a></li>
+  <li><a href="#hydamo.HyDAMO.to_geopackage" id="toc-hydamo.HyDAMO.to_geopackage" class="nav-link" data-scroll-target="#hydamo.HyDAMO.to_geopackage">to_geopackage</a></li>
+  </ul></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -133,8 +143,282 @@ ul.task-list li input[type="checkbox"] {
 <h1>HyDAMO</h1>
 <p><code>HyDAMO(self, version='2.2', schemas_path=SCHEMAS_DIR, ignored_layers=['afvoeraanvoergebied', 'imwa_geoobject', 'leggerwatersysteem', 'leggerwaterveiligheid', 'waterbeheergebied'])</code></p>
 <p>Definition of the HyDAMO datamodel.</p>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#hydamo.HyDAMO.from_geopackage">from_geopackage</a></td>
+<td>Initialize HyDAMO class from GeoPackage</td>
+</tr>
+<tr class="even">
+<td><a href="#hydamo.HyDAMO.get">get</a></td>
+<td>Get a DataFrame row (feature) providing a layer an global_id.</td>
+</tr>
+<tr class="odd">
+<td><a href="#hydamo.HyDAMO.init_datamodel">init_datamodel</a></td>
+<td>Initialize DataModel from self.schemas_path.</td>
+</tr>
+<tr class="even">
+<td><a href="#hydamo.HyDAMO.set_data">set_data</a></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><a href="#hydamo.HyDAMO.to_geopackage">to_geopackage</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<section id="hydamo.HyDAMO.from_geopackage" class="level3">
+<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.from_geopackage">from_geopackage</h3>
+<p><code>HyDAMO.from_geopackage(file_path, version='2.2', check_columns=True, check_geotype=True)</code></p>
+<p>Initialize HyDAMO class from GeoPackage</p>
+<section id="parameters" class="level4">
+<h4 class="anchored" data-anchor-id="parameters">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 13%">
+<col style="width: 11%">
+<col style="width: 65%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>file_path</code></td>
+<td>path - string</td>
+<td>Path-string to the hydamo GeoPackage</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>check_columns</code></td>
+<td>bool</td>
+<td>Check if all required columns are present in the GeoDataFrame. The default is True.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td><code>check_geotype</code></td>
+<td>bool</td>
+<td>Check if the geometry is of the required type. The default is True.</td>
+<td><code>True</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns" class="level4">
+<h4 class="anchored" data-anchor-id="returns">Returns</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>HyDAMO</td>
+<td>HyDAMO object initialized with content of GeoPackage</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="hydamo.HyDAMO.get" class="level3">
+<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.get">get</h3>
+<p><code>HyDAMO.get(layer, global_id)</code></p>
+<p>Get a DataFrame row (feature) providing a layer an global_id.</p>
+<section id="parameters-1" class="level4">
+<h4 class="anchored" data-anchor-id="parameters-1">Parameters</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>layer</code></td>
+<td>str</td>
+<td>DESCRIPTION.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>global_id</code></td>
+<td>str</td>
+<td>DESCRIPTION.</td>
+<td><em>required</em></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-1" class="level4">
+<h4 class="anchored" data-anchor-id="returns-1">Returns</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>TYPE</td>
+<td>DESCRIPTION.</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="hydamo.HyDAMO.init_datamodel" class="level3">
+<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.init_datamodel">init_datamodel</h3>
+<p><code>HyDAMO.init_datamodel()</code></p>
+<p>Initialize DataModel from self.schemas_path.</p>
+</section>
+<section id="hydamo.HyDAMO.set_data" class="level3">
+<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.set_data">set_data</h3>
+<p><code>HyDAMO.set_data(gdf, layer, index_col=None, check_columns=True, check_geotype=True, extra_values={})</code></p>
+<section id="parameters-2" class="level4">
+<h4 class="anchored" data-anchor-id="parameters-2">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 13%">
+<col style="width: 10%">
+<col style="width: 66%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>gdf</code></td>
+<td>GeoDataFrame</td>
+<td>GeoDataFrame with a HyDAMO object-layer</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>layer</code></td>
+<td>TYPE</td>
+<td>HyDAMO layer to be set</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>index_col</code></td>
+<td>str</td>
+<td>Column to be used as index. The default is None.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>check_columns</code></td>
+<td>bool</td>
+<td>Check if all required columns are present in the GeoDataFrame. The default is True.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td><code>check_geotype</code></td>
+<td>bool</td>
+<td>Check if the geometry is of the required type. The default is True.</td>
+<td><code>True</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-2" class="level4">
+<h4 class="anchored" data-anchor-id="returns-2">Returns</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>None.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="hydamo.HyDAMO.to_geopackage" class="level3">
+<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.to_geopackage">to_geopackage</h3>
+<p><code>HyDAMO.to_geopackage(file_path, use_schema=True)</code></p>
+<section id="parameters-3" class="level4">
+<h4 class="anchored" data-anchor-id="parameters-3">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 13%">
+<col style="width: 14%">
+<col style="width: 61%">
+<col style="width: 11%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>file_path</code></td>
+<td>path - string</td>
+<td>Path-string where the file should be written to</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>use_schema</code></td>
+<td>bool</td>
+<td>Use the schema to specify column-properties The default is True.</td>
+<td><code>True</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-3" class="level4">
+<h4 class="anchored" data-anchor-id="returns-3">Returns</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>None.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 
 
+</section>
+</section>
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -217,6 +501,24 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     // clear code selection
     e.clearSelection();
   });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
   function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
     const config = {
       allowHTML: true,
@@ -251,7 +553,11 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       try { href = new URL(href).hash; } catch {}
       const id = href.replace(/^#\/?/, "");
       const note = window.document.getElementById(id);
-      return note.innerHTML;
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
     });
   }
   const xrefs = window.document.querySelectorAll('a.quarto-xref');
