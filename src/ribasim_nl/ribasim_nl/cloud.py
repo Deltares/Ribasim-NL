@@ -370,7 +370,9 @@ class CloudStorage:
 
         return [strip_version(i) for i in uploaded_models]
 
-    def upload_model(self, authority: str, model: str, include_results=False):
+    def upload_model(
+        self, authority: str, model: str, include_results=False, include_plots=False
+    ):
         """Upload a model to a water authority
 
         Parameters
@@ -381,6 +383,8 @@ class CloudStorage:
             name of the model (directory) to upload
         include_results: bool, optional
             to include results dir in upload; yes/no = True/False. defaults to False.
+        include_plots: bool, optional
+            to include plots dir in upload; yes/no = True/False. defaults to False.
 
         Raises
         ------
@@ -434,6 +438,16 @@ class CloudStorage:
                 results_dir.mkdir()
                 for file in files:
                     out_file = results_dir / file.name
+                    out_file.write_bytes(file.read_bytes())
+
+        # if plots, copy too
+        if include_plots and (model_dir.joinpath("plots").exists()):
+            files = list(model_dir.joinpath("plots").glob("*.*"))
+            if files:
+                plots_dir = model_version_dir.joinpath("plots")
+                plots_dir.mkdir()
+                for file in files:
+                    out_file = plots_dir / file.name
                     out_file.write_bytes(file.read_bytes())
 
         # create dir in CloudStorage and upload content

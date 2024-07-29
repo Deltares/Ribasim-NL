@@ -109,6 +109,7 @@ def sample_level_area(
     area = [np.sum(mask & (window_data <= value)) * cell_area for value in level]
 
     df = DataFrame({"percentiles": percentiles, "level": level, "area": area})
+    df = df[~df[["level", "area"]].duplicated()]
 
     if ident is not None:
         print(f"sampled polygon {ident}")

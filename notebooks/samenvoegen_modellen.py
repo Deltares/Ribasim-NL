@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 import ribasim
 from ribasim_nl import CloudStorage
-from ribasim_nl.cloud import ModelVersion
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.concat import concat
 
 # %%
@@ -27,7 +27,6 @@ models = [
         "model": "hws",
         "find_toml": False,
         "zoom_level": 0,
-        "model_version": ModelVersion(model="hws", year=2024, month=4, revision=1),
     },
     {
         "authority": "AmstelGooienVecht",
@@ -89,72 +88,72 @@ models = [
         "find_toml": True,
         "zoom_level": 3,
     },
-    # {
-    #     "authority": "AaenMaas",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "BrabantseDelta",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "DeDommel",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "DrentsOverijsselseDelta",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "HunzeenAas",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "Limburg",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "Noorderzijlvest",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "RijnenIJssel",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "StichtseRijnlanden",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "ValleienVeluwe",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
-    # {
-    #     "authority": "Vechtstromen",
-    #     "model": "ribasim_model",
-    #     "find_toml": True,
-    #     "zoom_level": 3,
-    # },
+    {
+        "authority": "AaenMaas",
+        "model": "AaenMaas",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "BrabantseDelta",
+        "model": "BrabantseDelta",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "DeDommel",
+        "model": "DeDommel",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "DrentsOverijsselseDelta",
+        "model": "DrentsOverijsselseDelta",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "HunzeenAas",
+        "model": "HunzeenAas",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "Limburg",
+        "model": "Limburg",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "Noorderzijlvest",
+        "model": "Noorderzijlvest",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "RijnenIJssel",
+        "model": "RijnenIJssel",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "StichtseRijnlanden",
+        "model": "StichtseRijnlanden",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "ValleienVeluwe",
+        "model": "ValleienVeluwe",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
+    {
+        "authority": "Vechtstromen",
+        "model": "Vechtstromen",
+        "find_toml": True,
+        "zoom_level": 3,
+    },
 ]
 
 
@@ -214,42 +213,69 @@ for idx, model in enumerate(models):
 
     # read model
     ribasim_model = ribasim.Model.read(model_path)
-    ribasim_model.network.node.df.loc[:, "meta_zoom_level"] = model["zoom_level"]
-    ribasim_model.network.edge.df.loc[:, "meta_zoom_level"] = model["zoom_level"]
+
+    # zoom_level to model
+    for node_type in ribasim_model.node_table().df.node_type.unique():
+        ribasim_node = getattr(ribasim_model, pascal_to_snake_case(node_type))
+        ribasim_node.node.df.loc[:, "meta_zoom_level"] = model["zoom_level"]
+        ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = model["authority"]
+
+    ribasim_model.edge.df.loc[:, "meta_zoom_level"] = model["zoom_level"]
+    ribasim_model.edge.df.loc[:, "meta_waterbeheerder"] = model["authority"]
 
     if idx == 0:
         lhm_model = ribasim_model
     else:
-        # tric to use higher zoom-level for primary waters
+        if "meta_categorie" in ribasim_model.edge.df.columns:
+            # tric to use higher zoom-level for primary waters
 
-        ribasim_model.network.edge.df.loc[
-            ribasim_model.network.edge.df.geometry.apply(lambda x: len(x.coords) > 2),
-            "meta_zoom_level",
-        ] = 2
-        df = ribasim_model.network.edge.df[
-            ribasim_model.network.edge.df["meta_zoom_level"] == 2
-        ]
-        if not df.empty:
-            node_ids = set(
-                np.concatenate(
-                    ribasim_model.network.edge.df[
-                        ribasim_model.network.edge.df["meta_zoom_level"] == 2
-                    ][["from_node_id", "to_node_id"]].to_numpy()
-                )
-            )
-            ribasim_model.network.node.df.loc[
-                ribasim_model.network.node.df["node_id"].isin(node_ids),
+            ribasim_model.edge.df.loc[
+                ribasim_model.edge.df["meta_categorie"] == "hoofdwater",
                 "meta_zoom_level",
             ] = 2
+            df = ribasim_model.edge.df[ribasim_model.edge.df["meta_zoom_level"] == 2]
+            if not df.empty:
+                node_ids = set(
+                    np.concatenate(
+                        ribasim_model.edge.df[
+                            ribasim_model.edge.df["meta_zoom_level"] == 2
+                        ][["from_node_id", "to_node_id"]].to_numpy()
+                    )
+                )
+                # zoom_level to model
+                for node_type in ribasim_model.node_table().df.node_type.unique():
+                    ribasim_node = getattr(
+                        ribasim_model, pascal_to_snake_case(node_type)
+                    )
+                    ribasim_node.node.df.loc[
+                        ribasim_node.node.df["node_id"].isin(node_ids),
+                        "meta_zoom_level",
+                    ] = 2
 
-        cols = [i for i in lhm_model.network.edge.df.columns if i != "meta_index"]
-        lhm_model.network.edge.df = lhm_model.network.edge.df[cols]
-        ribasim_model.network.node.df.loc[:, "meta_waterbeheerder"] = model["authority"]
-        ribasim_model.network.edge.df.loc[:, "meta_waterbeheerder"] = model["authority"]
-        lhm_model = concat([lhm_model, ribasim_model])
+        cols = [i for i in lhm_model.edge.df.columns if i != "meta_index"]
+        lhm_model.edge.df = lhm_model.edge.df[cols]
+        try:
+            lhm_model = concat([lhm_model, ribasim_model])
+        except KeyError:
+            print(f"model {model['authority']} is waarschijnlijk niet aan de haak")
+            pass
 
-    readme += f"""
-**{model["authority"]}**: {model["model"]} ({model_version.version})"""
+        readme += f"""
+    **{model["authority"]}**: {model["model"]} ({model_version.version})"""
+
+# %% color
+# color_cycle = itertools.cycle(Category10[10])
+# lhm_model.basin.area.df.loc[
+#     lhm_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil",
+#     "meta_streefpeil",
+# ] = None
+# lhm_model.basin.area.df.loc[:, "meta_streefpeil"] = lhm_model.basin.area.df[
+#     "meta_streefpeil"
+# ].astype(float)
+
+# lhm_model.basin.area.df.loc[:, "meta_color"] = [
+#     next(color_cycle) for _ in range(len(lhm_model.basin.area.df))
+# ]
 
 # %%
 print("write lhm model")

@@ -20,3 +20,5 @@ dmypy.json
 # pytest --basetemp
 src/hydamo/tests/temp/
 src/ribasim_nl/tests/temp/
+
+notebooks/rijkswaterstaat/plots/

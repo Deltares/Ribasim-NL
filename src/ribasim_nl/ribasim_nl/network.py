@@ -299,7 +299,7 @@ class Network:
     def has_downstream_nodes(self, node_id):
         return len(self.downstream_nodes(node_id)) > 0
 
-    def find_upstream(self, node_id, attribute, max_iters=10):
+    def find_upstream(self, node_id, attribute, max_iters=10, include_node_id=False):
         upstream_nodes = self.upstream_nodes(node_id)
         max_iters = min(max_iters, len(upstream_nodes))
         value = None
@@ -309,9 +309,12 @@ class Network:
                 if pd.notna(node[attribute]):
                     value = node[attribute]
                     break
-        return value
+        if include_node_id:
+            return value, upstream_nodes[idx]
+        else:
+            return value
 
-    def find_downstream(self, node_id, attribute, max_iters=10):
+    def find_downstream(self, node_id, attribute, max_iters=10, include_node_id=False):
         downstream_nodes = self.downstream_nodes(node_id)
         max_iters = min(max_iters, len(downstream_nodes))
         value = None
@@ -321,7 +324,10 @@ class Network:
                 if pd.notna(node[attribute]):
                     value = node[attribute]
                     break
-        return value
+        if include_node_id:
+            return value, downstream_nodes[idx]
+        else:
+            return value
 
     def get_downstream(self, node_id, attribute, max_iters=5):
         downstream_nodes = self.downstream_nodes(node_id)

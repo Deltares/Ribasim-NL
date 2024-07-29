@@ -1,0 +1,97 @@
+/* .kaart { grid-area: kaart; } */
+
+.map_opt{
+  position: absolute;
+  display:block;
+  background: white;
+  width: 100px;
+  bottom: 60px;
+  left: 10px;
+  background-color: white;
+  padding: 2px;
+  border: 1px solid #F1F2F3;
+  border-radius:6px;
+  opacity:0;
+  box-shadow: rgba(0, 0, 0, 0.2) 0px 20px 30px;
+
+}
+
+#button_leg_bar {
+  background-color: transparent;
+  background-image: url(app/static/icons/layers.svg), linear-gradient(90deg, white 0%, white 100%) ;
+  background-repeat: no-repeat;
+  border-width: 0px;
+  bottom: 10px;
+  left: 10px;
+  width: 50px;
+  position:absolute;
+  border-radius: 4px;
+  box-shadow: 1px 1px 10px lightgrey ;
+  z-index:1;
+}
+
+#maplayer_icon{
+  width: 46px;
+  height:42px;
+  border-color: transparent;
+  background-color: transparent;
+  border-width: 0px;
+  outline: none;
+}
+
+#locations_select{
+  top: 30px;
+  left: 10px;
+  position:absolute;
+  z-index:1;
+}
+
+#grid-container {
+  display: grid;
+  grid-template-areas:
+    /* 'header header header header' */
+    'kaart kaartdragbar grafiek controls'
+  gap: 0px;
+  /* background-color: #2196F3; */
+  padding: 0px;
+  grid-template-columns: 200px auto 8px 40%;
+  grid-template-rows: auto auto auto 5%;
+  height:100%;
+}
+
+.grid-container > div {
+  background-color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  /* padding: 20px 0; */
+  font-size: 30px;
+  /* height:800px; */
+}
+
+/*****************************/
+
+#header {
+  overflow: auto;
+  grid-area: header;
+}
+
+#kaart {
+  position: relative;
+  overflow: auto;
+  grid-area: kaart;
+  cursor: zoom-in;
+  z-index:0;
+}
+
+#kaartdragbar {
+  grid-area: kaartdragbar;
+  cursor: ew-resize;
+}
+
+#grafiek {
+  grid-area: grafiek;
+  cursor: ew-resize;
+}
+#controls {
+  grid-area: controls;
+  cursor: ew-resize;
+}
