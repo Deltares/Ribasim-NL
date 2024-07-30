@@ -940,35 +940,35 @@ class RibasimLumpingNetwork(BaseModel):
         gpkg_path = Path(results_network_dir, "ribasim_network.gpkg")
         qgz_path = Path(results_network_dir, "ribasim_network.qgz")
 
-        gdfs_orig = dict(
-            areas=self.areas_gdf,
-            branches=self.branches_gdf,
-            nodes=self.nodes_gdf,
-            edges=self.edges_gdf,
-            stations=self.stations_gdf,
-            pumps=self.pumps_gdf,
-            weirs=self.weirs_gdf,
-            orifices=self.orifices_gdf,
-            bridges=self.bridges_gdf,
-            culverts=self.culverts_gdf,
-            uniweirs=self.uniweirs_gdf,
-            basin_areas=self.basin_areas_gdf,
-            split_nodes=self.split_nodes,
-            basins=self.basins_gdf,
-            basin_connections=self.basin_connections_gdf,
-            laterals=self.laterals_gdf,
-            boundaries=self.boundaries_gdf,
-            boundary_connections=self.boundary_connections_gdf,
-            node_h=self.nodes_h_df,
-            node_a=self.nodes_a_df,
-            node_v=self.nodes_v_df,
-            basin_h=self.basins_h_df,
-            basin_a=self.basins_a_df,
-            basin_v=self.basins_v_df,
-            basins_nodes_h_relation=self.basins_nodes_h_relation,
-        )
-        gdfs_none = dict()
-        gdfs = dict()
+        gdfs_orig = {
+            "areas": self.areas_gdf,
+            "branches": self.branches_gdf,
+            "nodes": self.nodes_gdf,
+            "edges": self.edges_gdf,
+            "stations": self.stations_gdf,
+            "pumps": self.pumps_gdf,
+            "weirs": self.weirs_gdf,
+            "orifices": self.orifices_gdf,
+            "bridges": self.bridges_gdf,
+            "culverts": self.culverts_gdf,
+            "uniweirs": self.uniweirs_gdf,
+            "basin_areas": self.basin_areas_gdf,
+            "split_nodes": self.split_nodes,
+            "basins": self.basins_gdf,
+            "basin_connections": self.basin_connections_gdf,
+            "laterals": self.laterals_gdf,
+            "boundaries": self.boundaries_gdf,
+            "boundary_connections": self.boundary_connections_gdf,
+            "node_h": self.nodes_h_df,
+            "node_a": self.nodes_a_df,
+            "node_v": self.nodes_v_df,
+            "basin_h": self.basins_h_df,
+            "basin_a": self.basins_a_df,
+            "basin_v": self.basins_v_df,
+            "basins_nodes_h_relation": self.basins_nodes_h_relation,
+        }
+        gdfs_none = {}
+        gdfs = {}
         for gdf_name, gdf in gdfs_orig.items():
             if gdf is None:
                 gdfs_none[gdf_name] = gdf

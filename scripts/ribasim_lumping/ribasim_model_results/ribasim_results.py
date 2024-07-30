@@ -390,7 +390,7 @@ def plot_results_basin_ribasim_model(
         basin_profile = pd.concat(
             [
                 pd.DataFrame(
-                    dict(level=[basin_results.basin_profile.level.min()], area=[0.0], remarks=[""]), index=[0]
+                    {"level": [basin_results.basin_profile.level.min()], "area": [0.0], "remarks": [""]}, index=[0]
                 ),
                 basin_results.basin_profile,
             ]
@@ -411,7 +411,7 @@ def plot_results_basin_ribasim_model(
         basin_storage = pd.concat(
             [
                 pd.DataFrame(
-                    dict(level=[basin_results.basin_profile.level.min()], storage=[0.0], remarks=[""]), index=[0]
+                    {"level": [basin_results.basin_profile.level.min()], "storage": [0.0], "remarks": [""]}, index=[0]
                 ),
                 basin_results.basin.reset_index(drop=True),
             ]

@@ -87,9 +87,7 @@ def split_graph_based_on_split_nodes(
         graph.add_edge(new.upstream_node_no, new.new_node_no1)
         graph.add_edge(new.new_node_no2, new.downstream_node_no)
     # update split nodes gdf with new node no
-    new_graph_node_no = [
-        (x1, x2) for x1, x2 in zip(split_nodes_edges["new_node_no1"], split_nodes_edges["new_node_no1"])
-    ]
+    new_graph_node_no = list(zip(split_nodes_edges["new_node_no1"], split_nodes_edges["new_node_no1"]))
     split_nodes.loc[split_nodes_edges.index, "graph_node_no"] = pd.Series(
         new_graph_node_no, index=split_nodes_edges.index, dtype=object
     )
@@ -304,17 +302,15 @@ def create_basin_areas_based_on_drainage_areas(
 def create_basins_based_on_subgraphs_and_nodes(
     graph: nx.DiGraph, nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame
 ) -> gpd.GeoDataFrame:
-    """
-    create basin nodes based on basin_areas or nodes
-    """
+    """Create basin nodes based on basin_areas or nodes"""
     connected_components = list(nx.weakly_connected_components(graph))
     centralities = {}
     for i, component in enumerate(connected_components):
         subgraph = graph.subgraph(component).to_undirected()
         centrality_subgraph = nx.closeness_centrality(subgraph)
-        centralities.update({node: centrality for node, centrality in centrality_subgraph.items()})
+        centralities.update(dict(centrality_subgraph.items()))
 
-    centralities = pd.DataFrame(dict(node_no=list(centralities.keys()), centrality=list(centralities.values())))
+    centralities = pd.DataFrame({"node_no": list(centralities.keys()), "centrality": list(centralities.values())})
     centralities = centralities[centralities["node_no"] < 900_000_000_000]
     basins_temp = nodes[["node_no", "basin", "geometry"]].merge(
         centralities, how="outer", left_on="node_no", right_on="node_no"
@@ -378,7 +374,7 @@ def create_basins_based_on_subgraphs_and_nodes(
         basins2["geometry"] = basins2["geometry"].fillna(basins2_geometry)
 
     basins = pd.concat([basins1, basins2])
-    basins = basins[basins.geometry != None]
+    basins = basins[basins.geometry is not None]
     print(f" - create final locations Ribasim-Basins ({len(basins)}x)")
     return basins
 
@@ -768,7 +764,7 @@ def regenerate_node_ids(
         basins.insert(loc=1, column="basin_node_id", value=basins["basin"] + len_split_nodes + len_boundaries)
     else:
         basins["basin_node_id"] = basins["basin"] + len_split_nodes + len_boundaries
-    len_basins = len(basins)
+    len(basins)
 
     # basin_connections
     basin_connections["split_node_node_id"] = basin_connections["split_node"] + len_boundaries
@@ -1013,15 +1009,15 @@ def generate_ribasim_network_using_split_nodes(
     #     boundary_connections=boundary_connections,
     # )
 
-    return dict(
-        basin_areas=basin_areas,
-        boundaries=boundaries,
-        basins=basins,
-        areas=areas,
-        nodes=nodes,
-        edges=edges,
-        split_nodes=split_nodes,
-        network_graph=network_graph,
-        basin_connections=basin_connections,
-        boundary_connections=boundary_connections,
-    )
+    return {
+        "basin_areas": basin_areas,
+        "boundaries": boundaries,
+        "basins": basins,
+        "areas": areas,
+        "nodes": nodes,
+        "edges": edges,
+        "split_nodes": split_nodes,
+        "network_graph": network_graph,
+        "basin_connections": basin_connections,
+        "boundary_connections": boundary_connections,
+    }

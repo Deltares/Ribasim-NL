@@ -51,7 +51,7 @@ def find_directory_in_directory(directory, dir_name) -> Path:
 
 
 class MultiOrderDict(OrderedDict):
-    _unique = dict()
+    _unique = {}
 
     def __setitem__(self, key, val):
         if isinstance(val, dict):
@@ -583,7 +583,7 @@ def split_edges_by_split_nodes(
     print(" - Split edges by split nodes locations...")
     split_nodes["edge_no"] = [None] * len(split_nodes)
     edge_no_col_present = "edge_no" in split_nodes.columns
-    edge_no_col_present = all([x is not None for x in split_nodes["edge_no"]]) if edge_no_col_present else False
+    edge_no_col_present = all(x is not None for x in split_nodes["edge_no"]) if edge_no_col_present else False
     edges_orig = edges.copy()
     # to speed-up splitting and if edge_no column is present in split nodes gdf, only
     # split those edges
@@ -615,7 +615,7 @@ def split_edges_by_split_nodes(
             # also skip split nodes that are located within buffer distance from start/end nodes of edge
             nodes = np.array([edge.interpolate(x) for x in [0, edge.length]], dtype=object)
             split_points = np.array(
-                [p for p in split_points if not any([p.intersects(n.buffer(buffer_distance)) for n in nodes])],
+                [p for p in split_points if not any(p.intersects(n.buffer(buffer_distance)) for n in nodes)],
                 dtype=object,
             )
             if len(split_points) == 0:
@@ -868,7 +868,7 @@ def assign_unassigned_areas_to_basin_areas(
         )
 
     print(" - basin areas and areas updated")
-    return dict(areas=areas, basin_areas=basin_areas)
+    return {"areas": areas, "basin_areas": basin_areas}
 
 
 def _remove_holes(geom, min_area):
@@ -911,7 +911,7 @@ def extract_segment_from_linestring(line, point1, point2):
     coords.append(line.interpolate(start_dist).coords[0])
 
     for seg_start, seg_end in zip(line.coords[:-1], line.coords[1:]):
-        seg_line = LineString([seg_start, seg_end])
+        LineString([seg_start, seg_end])
         seg_start_dist = line.project(Point(seg_start))
         seg_end_dist = line.project(Point(seg_end))
 

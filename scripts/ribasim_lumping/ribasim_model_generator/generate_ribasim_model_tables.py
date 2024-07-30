@@ -11,11 +11,11 @@ def generate_basin_profile_table(
 ):
     if dummy_model or basin_h is None:
         return pd.DataFrame(
-            dict(
-                node_id=np.repeat(basins.basin_node_id.values, 2),
-                level=[0.0, 1.0] * len(basins),
-                area=[1000.0, 1000.0] * len(basins),
-            )
+            {
+                "node_id": np.repeat(basins.basin_node_id.values, 2),
+                "level": [0.0, 1.0] * len(basins),
+                "area": [1000.0, 1000.0] * len(basins),
+            }
         )
 
     # take only basin node ids from basins
@@ -185,15 +185,15 @@ def generate_basin_time_table(
             pd.concat(
                 [
                     pd.DataFrame(
-                        dict(
-                            time=pd.date_range(start_time, end_time),
-                            node_id=node_id,
-                            precipitation=random.uniform(0.0, 1.0) / 365.0 / 24.0 / 3600.0,
-                            potential_evaporation=random.uniform(0, 500) / 365.0 / 24.0 / 3600.0,
-                            drainage=0.0,
-                            infiltration=0.0,
-                            urban_runoff=0.0,
-                        )
+                        {
+                            "time": pd.date_range(start_time, end_time),
+                            "node_id": node_id,
+                            "precipitation": random.uniform(0.0, 1.0) / 365.0 / 24.0 / 3600.0,
+                            "potential_evaporation": random.uniform(0, 500) / 365.0 / 24.0 / 3600.0,
+                            "drainage": 0.0,
+                            "infiltration": 0.0,
+                            "urban_runoff": 0.0,
+                        }
                     )
                     for node_id in basin_node_ids
                 ]
@@ -261,7 +261,7 @@ def generate_tabulated_rating_curve(
     for i, trc in tabulated_rating_curves.iterrows():
         if dummy_model:
             curve = pd.DataFrame(
-                dict(node_id=trc["split_node_node_id"], level=[0.0, 1.0, 1.1], flow_rate=[0.0, 0.0, 1.0])
+                {"node_id": trc["split_node_node_id"], "level": [0.0, 1.0, 1.1], "flow_rate": [0.0, 0.0, 1.0]}
             )
             curves = pd.concat([curves, curve])
             continue
@@ -271,20 +271,20 @@ def generate_tabulated_rating_curve(
 
         basin_node_id = trc["from_node_id"]
         water_levels_basin = basin_h.loc[set_name][basin_node_id]
-        targetlevel = trc["crestlevel"]
+        trc["crestlevel"]
 
         split_type = trc["split_type"]
         split_node_name = trc["split_node_id"]
 
-        discharges_list = dict(
-            weir=weir_q_df,
-            universalWeir=uniweir_q_df,
-            orifice=orifice_q_df,
-            culvert=culvert_q_df,
-            bridge=bridge_q_df,
-            pump=pump_q_df,
-            openwater=edge_q_df,
-        )
+        discharges_list = {
+            "weir": weir_q_df,
+            "universalWeir": uniweir_q_df,
+            "orifice": orifice_q_df,
+            "culvert": culvert_q_df,
+            "bridge": bridge_q_df,
+            "pump": pump_q_df,
+            "openwater": edge_q_df,
+        }
         discharges = discharges_list[split_type]
         if discharges is None:
             curve = pd.DataFrame()
@@ -347,23 +347,23 @@ def generate_tabulated_rating_curve(
 
 def generate_manning_resistances(manningresistance, set_name):
     return pd.DataFrame(
-        dict(
-            node_id=manningresistance["split_node_node_id"],
-            length=[750.0] * len(manningresistance),
-            manning_n=[0.04] * len(manningresistance),
-            profile_width=[5.0] * len(manningresistance),
-            profile_slope=[3.0] * len(manningresistance),
-        )
+        {
+            "node_id": manningresistance["split_node_node_id"],
+            "length": [750.0] * len(manningresistance),
+            "manning_n": [0.04] * len(manningresistance),
+            "profile_width": [5.0] * len(manningresistance),
+            "profile_slope": [3.0] * len(manningresistance),
+        }
     )
 
 
 def generate_linear_resistances(linearresistance, set_name):
     return pd.DataFrame(
-        dict(
-            node_id=linearresistance["split_node_node_id"],
-            resistance=[0.02] * len(linearresistance),
-            max_flow_rate=[10000.0] * len(linearresistance),
-        )
+        {
+            "node_id": linearresistance["split_node_node_id"],
+            "resistance": [0.02] * len(linearresistance),
+            "max_flow_rate": [10000.0] * len(linearresistance),
+        }
     )
 
 
@@ -448,12 +448,12 @@ def generate_basin_subgrid_table(basins_nodes_h_relation, set_name, dummy_model=
         levels_basins = [0.0, 1.0, 2.0]
         levels_subgrids = [0.0, 1.0, 2.0]
         return pd.DataFrame(
-            dict(
-                subgrid_id=np.repeat(range(len(basins) * len(levels_basins)), no_subgrid_per_basin),
-                node_id=np.repeat(basins.basin_node_id, no_subgrid_per_basin * len(levels_basins)),
-                basin_level=levels_basins * no_subgrid_per_basin * len(basins),
-                subgrid_level=levels_subgrids * no_subgrid_per_basin * len(basins),
-            )
+            {
+                "subgrid_id": np.repeat(range(len(basins) * len(levels_basins)), no_subgrid_per_basin),
+                "node_id": np.repeat(basins.basin_node_id, no_subgrid_per_basin * len(levels_basins)),
+                "basin_level": levels_basins * no_subgrid_per_basin * len(basins),
+                "subgrid_level": levels_subgrids * no_subgrid_per_basin * len(basins),
+            }
         )
 
     basin_subgrid = basins_nodes_h_relation[
@@ -530,7 +530,7 @@ def generate_ribasim_model_tables(
     end_time = pd.Timestamp(2021, 1, 1, 0, 0, 0)
 
     # create tables for BASINS
-    tables = dict()
+    tables = {}
     print("basin-profile: generated")
     tables["basin_profile"] = generate_basin_profile_table(
         basin_h=basin_h, basin_a=basin_a, basins=basins, decimals=3, set_name=set_name, dummy_model=dummy_model
@@ -583,7 +583,7 @@ def generate_ribasim_model_tables(
         tables["flow_boundary_time"] = (
             pd.concat(
                 [
-                    pd.DataFrame(dict(time=pd.date_range(start_time, end_time), node_id=node_id, flow_rate=1.0))
+                    pd.DataFrame({"time": pd.date_range(start_time, end_time), "node_id": node_id, "flow_rate": 1.0})
                     for node_id in flow_boundaries.boundary_node_id.values
                 ]
             )
@@ -596,7 +596,7 @@ def generate_ribasim_model_tables(
         tables["level_boundary_time"] = (
             pd.concat(
                 [
-                    pd.DataFrame(dict(time=pd.date_range(start_time, end_time), node_id=node_id, level=0.0))
+                    pd.DataFrame({"time": pd.date_range(start_time, end_time), "node_id": node_id, "level": 0.0})
                     for node_id in level_boundaries.boundary_node_id.values
                 ]
             )
@@ -626,18 +626,18 @@ def generate_ribasim_model_tables(
     else:
         # oud
         tables["flow_boundary_static"] = pd.DataFrame(
-            dict(
-                node_id=flow_boundaries["boundary_node_id"],
-                flow_rate=[0.0] * len(flow_boundaries),
-            )
+            {
+                "node_id": flow_boundaries["boundary_node_id"],
+                "flow_rate": [0.0] * len(flow_boundaries),
+            }
         )
         tables["flow_boundary_time"] = None
 
         tables["level_boundary_static"] = pd.DataFrame(
-            dict(
-                node_id=level_boundaries["boundary_node_id"],
-                level=[7.15] * len(level_boundaries),
-            )
+            {
+                "node_id": level_boundaries["boundary_node_id"],
+                "level": [7.15] * len(level_boundaries),
+            }
         )
         tables["level_boundary_time"] = None
 
@@ -648,17 +648,17 @@ def generate_ribasim_model_tables(
         tables["pump_static"] = None
     elif dummy_model:
         tables["pump_static"] = pd.DataFrame(
-            dict(
-                node_id=pumps["split_node_node_id"],
-                flow_rate=[0.0] * len(pumps),
-            )
+            {
+                "node_id": pumps["split_node_node_id"],
+                "flow_rate": [0.0] * len(pumps),
+            }
         )
     else:
         tables["pump_static"] = pd.DataFrame(
-            dict(
-                node_id=pumps["split_node_node_id"],
-                flow_rate=[0.0] * len(pumps),
-            )
+            {
+                "node_id": pumps["split_node_node_id"],
+                "flow_rate": [0.0] * len(pumps),
+            }
         )
 
     # create tables for OUTLETS
@@ -668,17 +668,17 @@ def generate_ribasim_model_tables(
         tables["outlet_static"] = None
     elif dummy_model:
         tables["outlet_static"] = pd.DataFrame(
-            dict(
-                node_id=outlets["split_node_node_id"],
-                flow_rate=[0.0] * len(outlets),
-            )
+            {
+                "node_id": outlets["split_node_node_id"],
+                "flow_rate": [0.0] * len(outlets),
+            }
         )
     else:
         tables["outlet_static"] = pd.DataFrame(
-            dict(
-                node_id=outlets["split_node_node_id"],
-                flow_rate=[0.0] * len(outlets),
-            )
+            {
+                "node_id": outlets["split_node_node_id"],
+                "flow_rate": [0.0] * len(outlets),
+            }
         )
 
     # create tables for TABULATED RATING CURVES

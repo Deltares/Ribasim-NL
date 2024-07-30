@@ -120,7 +120,7 @@ def split_linestring_by_indices(linestring: LineString, split_indices: list) -> 
         list: list of resulting linestrings
     """
     split_linestrings = []
-    split_indices = sorted(list(set([0] + split_indices + [len(linestring.coords) - 1])))
+    split_indices = sorted(set([0] + split_indices + [len(linestring.coords) - 1]))
     for i in range(len(split_indices) - 1):
         split_linestrings.append(LineString(linestring.coords[split_indices[i] : split_indices[i + 1] + 1]))
 
@@ -140,7 +140,7 @@ def remove_duplicate_split_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     -------
         gpd.GeoDataFrame: Vector data containing line features without duplicates
     """
-    lines["distance"] = list(map(lambda x: x.length, lines["geometry"]))
+    lines["distance"] = [x.length for x in lines["geometry"]]
     updated_endpoints = get_endpoints_from_lines(lines)
     ending_lines_clean_start = updated_endpoints[(updated_endpoints["starting_lines"].str.len() > 1)]["starting_lines"]
     ending_lines_clean_start = list(itertools.chain.from_iterable(ending_lines_clean_start))
@@ -260,25 +260,13 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
         )
         lines["buffer_geometry"] = lines.geometry.buffer(buffer_distance, join_style="round")
 
-        boundary_endpoints["overlaying_line_buffers"] = list(
-            map(lambda x: lines[lines.buffer_geometry.contains(x)].code.tolist(), boundary_endpoints.geometry)
-        )
+        boundary_endpoints["overlaying_line_buffers"] = [lines[lines.buffer_geometry.contains(x)].code.tolist() for x in boundary_endpoints.geometry]
         boundary_endpoints["startpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: list(
-                map(
-                    lambda y: x["coordinates"] in list(lines[lines.code == y].endpoint.values),
-                    x["overlaying_line_buffers"],
-                )
-            ),
+            lambda x: [x["coordinates"] in list(lines[lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]],
             axis=1,
         )
         boundary_endpoints["endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: list(
-                map(
-                    lambda y: x["coordinates"] in list(lines[lines.code == y].startpoint.values),
-                    x["overlaying_line_buffers"],
-                )
-            ),
+            lambda x: [x["coordinates"] in list(lines[lines.code == y].startpoint.values) for y in x["overlaying_line_buffers"]],
             axis=1,
         )
         boundary_endpoints["start_or_endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
@@ -523,12 +511,12 @@ def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, righ
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(
         lambda x: pd.DataFrame(left_gdf[left_gdf[left_id].isin(x)])
     )
-    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"] != None])
+    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"] is not None])
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].isna() == False])
     if type(right_gdf) == gpd.GeoDataFrame:
         left_gdf["touching_polygons"] = left_gdf.apply(
             lambda x: x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]
-            if x["right_id"] != None
+            if x["right_id"] is not None
             else x["touching_polygons"],
             axis=1,
         )

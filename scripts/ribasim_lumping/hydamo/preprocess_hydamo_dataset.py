@@ -122,9 +122,7 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
             nodes_to_add += [node]
 
         split_indices = sorted(
-            list(
-                set([0] + [list(linestring.coords).index(node) for node in nodes_to_add] + [len(linestring.coords) - 1])
-            )
+            set([0] + [list(linestring.coords).index(node) for node in nodes_to_add] + [len(linestring.coords) - 1])
         )
 
         for i in range(len(split_indices) - 1):
@@ -141,7 +139,7 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
     connected_lines = pd.concat([uneditted_lines, split_lines], axis=0, join="outer")
     connected_lines.index = range(len(connected_lines))
 
-    connected_lines["distance"] = list(map(lambda x: x.length, connected_lines["geometry"]))
+    connected_lines["distance"] = [x.length for x in connected_lines["geometry"]]
 
     updated_endpoints = get_endpoints_from_lines(connected_lines)
 
@@ -187,30 +185,15 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
 
         lines["buffer_geometry"] = lines.geometry.buffer(buffer_distance, join_style="round")
 
-        boundary_endpoints["overlaying_line_buffers"] = list(
-            map(
-                lambda x: lines[lines.buffer_geometry.contains(x)].code.tolist(),
-                boundary_endpoints.geometry,
-            )
-        )
+        boundary_endpoints["overlaying_line_buffers"] = [lines[lines.buffer_geometry.contains(x)].code.tolist() for x in boundary_endpoints.geometry]
 
         boundary_endpoints["startpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: list(
-                map(
-                    lambda y: x["coordinates"] in list(lines[lines.code == y].endpoint.values),
-                    x["overlaying_line_buffers"],
-                )
-            ),
+            lambda x: [x["coordinates"] in list(lines[lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]],
             axis=1,
         )
 
         boundary_endpoints["endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: list(
-                map(
-                    lambda y: x["coordinates"] in list(lines[lines.code == y].startpoint.values),
-                    x["overlaying_line_buffers"],
-                )
-            ),
+            lambda x: [x["coordinates"] in list(lines[lines.code == y].startpoint.values) for y in x["overlaying_line_buffers"]],
             axis=1,
         )
 
@@ -296,7 +279,7 @@ def create_nodes_and_edges_from_hydroobjects(edges, buffer_distance=0.05):
     nodes = pd.unique(edges[["from_node", "to_node"]].values.ravel("K"))
     indexer = dict(zip(nodes, range(len(nodes))))
     edges[["from_node", "to_node"]] = edges[["from_node", "to_node"]].applymap(indexer.get)
-    nodes = gpd.GeoDataFrame(map(lambda x: Point(x), nodes), columns=["geometry"]).set_geometry("geometry")
+    nodes = gpd.GeoDataFrame((Point(x) for x in nodes), columns=["geometry"]).set_geometry("geometry")
     nodes["node_no"] = nodes.index
     edges.index = range(len(edges))
     edges["edge_no"] = edges.index

@@ -93,7 +93,7 @@ def read_structures_from_excel(excel_path):
     structures_excel = pd.read_excel(excel_path, sheet_name=None)  # sheet_name None to read all sheets as dictionary
 
     structures_ids_to_include_as_splitnode = []
-    split_node_id_conversion = dict()
+    split_node_id_conversion = {}
 
     for key in structures_excel:
         structure_name = key

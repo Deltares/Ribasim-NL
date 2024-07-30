@@ -30,7 +30,7 @@ from ..utils.general_functions import (
 
 def get_dhydro_files(simulation_path: Path):
     """Get DHydro input files"""
-    input_files = dict()
+    input_files = {}
     mdu_file = ""
     mdu_file = find_file_in_directory(simulation_path, ".mdu")
     print(f"  - MDU-file: {mdu_file}")
@@ -71,7 +71,7 @@ def get_dhydro_network_data(network_file: Path):
 
 def get_dhydro_branches_from_network_data(network_data, crs):
     """Get DHydro branches"""
-    branch_keys = [b for b in network_data._mesh1d.branches.keys()]
+    branch_keys = list(network_data._mesh1d.branches.keys())
     branch_geom = [b.geometry for b in network_data._mesh1d.branches.values()]
     branches_df = pd.DataFrame({"branch_id": branch_keys, "branch_geom": branch_geom})
     branches_df["geometry"] = branches_df.apply(lambda row: LineString(row["branch_geom"]), axis=1)
@@ -413,7 +413,7 @@ def get_dhydro_forcing_data(mdu_input_dir: Path, boundaries_gdf: gpd.GeoDataFram
             return None
         laterals_data = laterals_data.merge(laterals_gdf["name"], how="right", left_on="name", right_on="name")
         laterals_df = pd.DataFrame()
-        laterals_floats = dict()
+        laterals_floats = {}
         for i, lateral_data in laterals_data.iterrows():
             lateral_data = assess_lateral_data(lateral_data)
             if isinstance(lateral_data, pd.Series):
@@ -500,20 +500,20 @@ def get_dhydro_data_from_simulation(
         volume_tool_increment=volume_tool_increment,
     )
 
-    results = dict(
-        network_data=network_data,
-        network_nodes_gdf=network_nodes_gdf,
-        files=files,
-        branches_gdf=branches_gdf,
-        nodes_gdf=nodes_gdf,
-        edges_gdf=edges_gdf,
-        structures_gdf=structures_gdf,
-        structures_dict=structures_dict,
-        boundaries_gdf=boundaries_gdf,
-        laterals_gdf=laterals_gdf,
-        laterals_data=laterals_data,
-        boundaries_data=boundaries_data,
-        volume_data=volume_data,
-    )
+    results = {
+        "network_data": network_data,
+        "network_nodes_gdf": network_nodes_gdf,
+        "files": files,
+        "branches_gdf": branches_gdf,
+        "nodes_gdf": nodes_gdf,
+        "edges_gdf": edges_gdf,
+        "structures_gdf": structures_gdf,
+        "structures_dict": structures_dict,
+        "boundaries_gdf": boundaries_gdf,
+        "laterals_gdf": laterals_gdf,
+        "laterals_data": laterals_data,
+        "boundaries_data": boundaries_data,
+        "volume_data": volume_data,
+    }
 
     return results

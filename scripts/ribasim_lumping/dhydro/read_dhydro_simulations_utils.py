@@ -54,14 +54,14 @@ def get_data_from_simulation(
         map_data = xu.open_dataset(map_file, decode_times=False)
         map_data["mesh1d_edge_nodes"] = map_data_xr["mesh1d_edge_nodes"]
 
-    if isinstance(simulations_ts[0], (datetime.datetime, pd.Timestamp)):
+    if isinstance(simulations_ts[0], datetime.datetime | pd.Timestamp):
         his_data = his_data.sel(time=simulations_ts)
     else:
         his_data = his_data.isel(time=simulations_ts)
     his_data = his_data.rename({"time": "condition"})
     his_data.coords["condition"] = np.arange(n_start, n_start + len(his_data.condition))
 
-    if isinstance(simulations_ts[0], (datetime.datetime, pd.Timestamp)):
+    if isinstance(simulations_ts[0], datetime.datetime | pd.Timestamp):
         map_data = map_data.sel(time=simulations_ts)
     else:
         map_data = map_data.isel(time=simulations_ts)
