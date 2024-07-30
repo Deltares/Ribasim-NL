@@ -22,8 +22,9 @@ def create_graph_based_on_nodes_edges(
     print_logmessage: bool = True,
 ) -> nx.Graph | nx.DiGraph:
     """
-    create networkx graph based on geographic nodes and edges.
-    default a directional graph.
+    Create networkx graph based on geographic nodes and edges.
+
+    Defaults to a directional graph.
     """
     if directional_graph:
         graph = nx.DiGraph()
@@ -47,12 +48,13 @@ def split_graph_based_on_split_nodes(
     graph: nx.DiGraph, split_nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame
 ) -> tuple[nx.DiGraph, gpd.GeoDataFrame]:
     """
-    Split networkx graph at split_edge or split_node. It removes the original edges(s)/node(s) which are the same as split_edge and
+    Split networkx graph at split_edge or split_node.
+
+    It removes the original edges(s)/node(s) which are the same as split_edge and
     split_node and inserts new edges and nodes such that the graph becomes disconnected at the split point. After this edges don't
     connect to 1 node (at split point) but each end in each own new node. Because of this removing and adding edges and nodes in the
     graph, these new nodes no in graph are added to split_nodes gdf and also returned as result of this function.
     """
-
     split_nodes = split_nodes.copy()  # copy to make sure gdf variable is not linked
     split_nodes["graph_node_no"] = pd.Series(
         [-1] * len(split_nodes), index=split_nodes.index, dtype=object
@@ -166,7 +168,6 @@ def check_if_split_node_is_used(
     edges: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
     """Check whether split_nodes are used, split_nodes and split_edges"""
-
     split_nodes = split_nodes.copy()  # copy to make sure gdf variable is not linked
     split_nodes["status"] = True
 
@@ -208,10 +209,10 @@ def create_basin_areas_based_on_drainage_areas(
     laterals: gpd.GeoDataFrame = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
-    find areas with spatial join on edges. add subgraph code to areas
-    and combine all areas with certain subgraph code into one basin
-    """
+    Find areas with spatial join on edges.
 
+    Add subgraph code to areas and combine all areas with certain subgraph code into one Basin.
+    """
     if areas is None:
         return None, None
     else:
@@ -232,7 +233,7 @@ def create_basin_areas_based_on_drainage_areas(
     def get_basin_code_from_lateral(area_code, laterals_join):
         basins = list(
             laterals_join["basin"][
-                (laterals_join["area_code_included"] == area_code) & (laterals_join["basin"].isna() == False)
+                (laterals_join["area_code_included"] == area_code) & laterals_join["basin"].notna()
             ].values
         )
         if len(basins) == 0:
@@ -383,7 +384,6 @@ def check_if_nodes_edges_within_basin_areas(
     nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, basin_areas: gpd.GeoDataFrame
 ) -> tuple[gpd.GeoDataFrame]:
     """Check whether nodes assigned to a basin are also within the polygon assigned to that basin"""
-
     edges, nodes, basin_areas = (
         edges.copy(),
         nodes.copy(),
@@ -680,9 +680,10 @@ def remove_boundary_basins_if_not_needed(
     include_level_boundary_basins: bool = False,
 ):
     """
-    FlowBoundaries and LevelBoundaries are connected to basins using the subgraph method.
-    When include_flow_boundary_basins=False or include_level_boundary_basins=False
-    the basins are removed and boundaries_nodes are directly connected to the split_nodes
+    FlowBoundaries and LevelBoundaries are connected to Basins using the subgraph method.
+
+    When `include_flow_boundary_basins=False` or `include_level_boundary_basins=False`
+    the Basins are removed and boundaries_nodes are directly connected to the split_nodes
     """
     flow_boundary_connections = boundary_connections[boundary_connections.boundary_type == "FlowBoundary"]
     level_boundary_connections = boundary_connections[boundary_connections.boundary_type == "LevelBoundary"]
@@ -870,6 +871,7 @@ def remove_isolated_basins_and_update_administration(
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Remove isolated basins (including 1-on-1 connected basin areas) based on basin and boundary connections.
+
     Update the basin administration in basin areas, areas, edges and nodes
     Returns basin, basin areas, areas, edges and nodes
     """
@@ -932,8 +934,8 @@ def generate_ribasim_network_using_split_nodes(
     option_edges_hydroobjects: bool = False,
 ) -> dict:
     """
-    Create basins (nodes) and basin_areas (large polygons) and connections (edges)
-    based on nodes, edges, split_nodes and areas (discharge units).
+    Create basins (nodes) and basin_areas (large polygons) and connections (edges) based on nodes, edges, split_nodes and areas (discharge units).
+
     This function calls all other functions
     """
     network_graph = None

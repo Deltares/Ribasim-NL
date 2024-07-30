@@ -1,27 +1,14 @@
-import datetime
-import itertools
 import logging
-import os
 import time
 import warnings
 
 import geopandas as gpd
-import networkx as nx
-import numpy as np
 import pandas as pd
-from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import snap, split
 
 from .general import (
-    add_overlapping_polygons,
-    add_point_to_linestring,
     connect_endpoints_by_buffer,
-    connect_lines_by_endpoints,
-    get_endpoints_from_lines,
     get_most_overlapping_polygon,
-    remove_duplicate_split_lines,
     report_time_interval,
-    split_linestring_by_indices,
 )
 
 # %% wfd
@@ -36,7 +23,7 @@ def add_wfd_id_to_hydroobjects(
     overlap_ratio: float = 0.9,
 ) -> gpd.GeoDataFrame:
     """
-
+    Assign Water Framework Directive (WFD) waterbody ID to hydroobjects based on overlap ratio.
 
     Parameters
     ----------
@@ -58,7 +45,6 @@ def add_wfd_id_to_hydroobjects(
     GeoDataFrame that contains hydroobjects with their assigned wfd body id
 
     """
-
     warnings.filterwarnings("ignore")
     start_time = time.time()
 
@@ -94,7 +80,7 @@ def add_wfd_id_to_hydroobjects(
         lambda x: x["most_overlapping_polygon_id"]
         if x["most_overlapping_polygon_area"] > overlap_ratio * x["left_area"]
         else None
-        if type(x["most_overlapping_polygon_area"]) == float
+        if isinstance(x["most_overlapping_polygon_area"], float)
         else None,
         axis=1,
     )
@@ -105,8 +91,8 @@ def add_wfd_id_to_hydroobjects(
     end_time = time.time()
     passed_time = report_time_interval(start_time, end_time)
 
-    nr_hydroobjects_wfd = len(hydroobjects[hydroobjects[wfd_id_column].isna() == False][wfd_id_column])
-    nr_unique_wfd_ids = len(hydroobjects[hydroobjects[wfd_id_column].isna() == False][wfd_id_column].unique())
+    nr_hydroobjects_wfd = len(hydroobjects[hydroobjects[wfd_id_column].notna()][wfd_id_column])
+    nr_unique_wfd_ids = len(hydroobjects[hydroobjects[wfd_id_column].notna()][wfd_id_column].unique())
 
     hydroobjects = hydroobjects.drop(
         columns=[
@@ -143,6 +129,7 @@ def preprocess_hydamo_hydroobjects(
     overlap_ratio_wfd: float = 0.9,
 ) -> gpd.GeoDataFrame:
     """
+    Preprocess hydamo hydroobjects.
 
     Parameters
     ----------

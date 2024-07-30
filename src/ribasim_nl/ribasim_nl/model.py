@@ -54,7 +54,6 @@ class Model(Model):
 
     def find_node_id(self, ds_node_id=None, us_node_id=None, **kwargs) -> int:
         """Find a node_id by it's properties"""
-
         # get node table
         df = self.node_table().df
 
@@ -95,7 +94,6 @@ class Model(Model):
 
     def update_node(self, node_id, node_type, data, node_properties: dict = {}):
         """Update a node type and/or data"""
-
         # get existing network node_type
         existing_node_type = self.node_table().df.set_index("node_id").at[node_id, "node_type"]
 
@@ -157,7 +155,6 @@ class Model(Model):
             extra properties to add to the control node id.
 
         """
-
         # define node
         if node_geom is None:
             if isinstance(to_node_id, list):
@@ -183,7 +180,6 @@ class Model(Model):
 
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""
-
         # only works when basin area are defined
         if self.basin.area.df is None:
             raise ValueError("No basin.area table defined for model")

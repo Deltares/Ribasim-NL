@@ -364,7 +364,6 @@ class ParseCrossings:
         gpd.GeoDataFrame
             _description_
         """
-
         # Add columns to peilgebieden dataframe
         pgb_krw_id = "owmident"
         pgb_krw_name = "owmnaam"
@@ -453,7 +452,6 @@ class ParseCrossings:
         gpd.GeoDataFrame
             _description_
         """
-
         # Check uniqueness of globalid
         for lyr in ["peilgebied", layer, filterlayer]:
             if lyr is None:
@@ -845,7 +843,6 @@ class ParseCrossings:
         LineString
             _description_
         """
-
         # Find the line(s) on which the current crossing lies and the directly
         # connected lines.
         nrec = 10
@@ -909,7 +906,6 @@ class ParseCrossings:
         dict[tuple[str | None, str | None, float, float], Point]
             _description_
         """
-
         for crossing in crossing_points.geometry:
             # Find crossing line with potentially added connections
             merged_crossing_line, merged_ids = self._make_merged_line(
@@ -1016,7 +1012,6 @@ class ParseCrossings:
         TypeError
             _description_
         """
-
         dfs = dfc.copy()
         dfs.insert(len(dfs.columns) - 1, "match_group", 0)
         dfs.insert(len(dfs.columns) - 1, "match_stacked", 0)
@@ -1827,7 +1822,6 @@ class ParseCrossings:
         tuple[gpd.GeoDataFrame, list]
             _description_
         """
-
         # Find the line objects nearest to the structure
         _, idxs = self._find_closest_lines(
             structure_geom,
@@ -2097,7 +2091,6 @@ class ParseCrossings:
         gpd.GeoDataFrame
             _description_
         """
-
         group_col = "agg_links_group"
         old_use_col = "in_use"
         new_use_col = "agg_links_in_use"

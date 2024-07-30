@@ -155,8 +155,9 @@ class RibasimLumpingNetwork(BaseModel):
         hydamo_split_network_dx: float = None,
     ) -> tuple[gpd.GeoDataFrame]:
         """
-        Add (detailed) base network which will used to derive Ribasim network. Source type can either be "dhydro" or
-        "hydamo".
+        Add (detailed) base network which will used to derive Ribasim network.
+
+        Source type can either be "dhydro" or "hydamo".
         If "dhydro", provide arguments for D-HYDRO volume tool (arguments dhydro_volume_*) and model simulation
         (model_dir, simulation_name). All necessary information (like boundaries and split nodes) will be derived from
         the D-HYDRO model data.
@@ -286,6 +287,7 @@ class RibasimLumpingNetwork(BaseModel):
     ):
         """
         Add discharge unit areas (e.g. "afwateringseenheden" or "peilgebiedenpraktijk") from file.
+
         In case of geopackage, provide layer_name. Overwrites previously defined areas
         """
         print(f"Network {self.name} - Analysis Areas")
@@ -304,6 +306,7 @@ class RibasimLumpingNetwork(BaseModel):
     ):
         """
         Add drainage areas (e.g. "afvoergebieden") from file.
+
         In case of geopackage, provide layer_name.
         Overwrites previously defined drainage areas
         """
@@ -326,7 +329,9 @@ class RibasimLumpingNetwork(BaseModel):
         crs: int = 28992,
     ):
         """
-        Add supply areas (e.g. "afvoergebieden") from file. In case of geopackage, provide layer_name.
+        Add supply areas (e.g. "afvoergebieden") from file.
+
+        In case of geopackage, provide layer_name.
         Overwrites previously defined supply areas
 
         Args:
@@ -353,7 +358,9 @@ class RibasimLumpingNetwork(BaseModel):
         min_length_edge: float = 2.0,
     ):
         """
-        Add Ribasim boundaries from file. In case of geopackage, provide layer_name.
+        Add Ribasim boundaries from file.
+
+        In case of geopackage, provide layer_name.
         Overwrites previously defined boundaries
 
         Args:
@@ -477,7 +484,6 @@ class RibasimLumpingNetwork(BaseModel):
         edge_ids_to_exclude: list[int] = [],
     ) -> gpd.GeoDataFrame:
         """Set split nodes geodataframe in network object. Overwrites previously defined split nodes"""
-
         self.split_nodes = add_split_nodes_based_on_selection(
             stations=stations,
             pumps=pumps,

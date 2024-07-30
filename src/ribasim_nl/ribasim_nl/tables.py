@@ -51,7 +51,6 @@ def cumulative_area(df: pd.DataFrame) -> pd.Series:
     pd.Series
         Series with cumulative area
     """
-
     df.reset_index(drop=True, inplace=True)
     df.sort_values("level", inplace=True)
 
@@ -77,7 +76,6 @@ def manning_profile(df: pd.DataFrame) -> tuple[float, float]:
     Tuple[int, int]
         Tuple with (profile_width, slope) values
     """
-
     dz = df["level"].max() - df["level"].min()
     tw = df["width"].max()
 

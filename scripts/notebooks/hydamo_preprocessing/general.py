@@ -1,16 +1,12 @@
 import datetime
 import itertools
 import logging
-import os
 import time
 import warnings
 
 import geopandas as gpd
-import networkx as nx
-import numpy as np
 import pandas as pd
-from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import snap, split
+from shapely.geometry import LineString, Point
 
 # %% Monitoring
 
@@ -76,9 +72,7 @@ def get_endpoints_from_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def add_point_to_linestring(point: Point, linestring: LineString) -> LineString:
     """
-    Inserts point into a linestring, placing the point next to its
-    nearest neighboring point in a way that minimizes the total length
-    of the linestring.
+    Inserts point into a linestring, placing the point next to its nearest neighboring point in a way that minimizes the total length of the linestring.
 
     Args:
         point (Point): point
@@ -108,8 +102,7 @@ def add_point_to_linestring(point: Point, linestring: LineString) -> LineString:
 
 def split_linestring_by_indices(linestring: LineString, split_indices: list) -> list:
     """
-    Divides a linestring into multiple linestrings based on a list that contains
-    the indices of the split points within the linestring
+    Divides a linestring into multiple linestrings based on a list that contains the indices of the split points within the linestring.
 
     Args:
         linestring (LineString): Linestring
@@ -129,8 +122,9 @@ def split_linestring_by_indices(linestring: LineString, split_indices: list) -> 
 
 def remove_duplicate_split_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Removes duplicates of split lines from line feature vector dataset. Duplicates
-    are removed from a subselection from the line feature dataset that contains
+    Removes duplicates of split lines from line feature vector dataset.
+
+    Duplicates are removed from a subselection from the line feature dataset that contains
     all line features that have been split.
 
     Args:
@@ -160,8 +154,9 @@ def remove_duplicate_split_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Connects boundary lines to other lines, based on instructions for each line endpoint. Connections are
-    created by inserting the endpoints into their target lines. The target line features are
+    Connects boundary lines to other lines, based on instructions for each line endpoint.
+
+    Connections are created by inserting the endpoints into their target lines. The target line features are
     split afterwards in order to create nodes at the intersection of the connected linestrings.
 
     Args:
@@ -172,7 +167,6 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
     -------
         gpd.GeoDataFrame: line feature dataframe
     """
-
     listed_lines = list(itertools.chain.from_iterable(split_endpoints["target_lines"]))
     listed_points = list(itertools.chain.from_iterable(split_endpoints["points_to_target_lines"]))
     connections_to_create = pd.DataFrame({"lines": listed_lines, "point": listed_points})
@@ -193,12 +187,12 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
             (modified_linestring, index_nearest_neighbour) = add_point_to_linestring(Point(node), linestring)
 
             if index_nearest_neighbour == 0 and linestring.coords[0] in list(
-                connections_to_create.loc[connections_to_create["inserted"] == True, "point"].values
+                connections_to_create.loc[connections_to_create["inserted"], "point"].values
             ):
                 continue
 
             elif index_nearest_neighbour == len(linestring.coords) - 1 and linestring.coords[-1] in list(
-                connections_to_create.loc[connections_to_create["inserted"] == True, "point"].values
+                connections_to_create.loc[connections_to_create["inserted"], "point"].values
             ):
                 continue
 
@@ -231,9 +225,9 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
 
 def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float = 0.5) -> gpd.GeoDataFrame:
     """
-    Connects boundary line endpoints within a vector dataset to neighbouring lines that pass
-    within a specified buffer distance with respect to the the boundary endpoints. The boundary
-    endpoints are inserted into the passing linestrings
+    Connects boundary line endpoints to neighbouring lines that pass within a specified buffer distance with respect to the the boundary endpoints.
+
+    The boundary endpoints are inserted into the passing linestrings
 
     Args:
         lines (gpd.GeoDataFrame): Line vector data
@@ -281,9 +275,9 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
         boundary_endpoints["crossed_by_unconnected_lines"] = boundary_endpoints.apply(
             lambda x: True in [True not in y for y in x["start_or_endpoint_overlaying_line_buffers"]], axis=1
         )
-        unconnected_endpoints = boundary_endpoints[
-            boundary_endpoints["crossed_by_unconnected_lines"] == True
-        ].reset_index(drop=True)
+        unconnected_endpoints = boundary_endpoints[boundary_endpoints["crossed_by_unconnected_lines"]].reset_index(
+            drop=True
+        )
         unconnected_endpoints["target_lines"] = unconnected_endpoints.apply(
             lambda x: [
                 x["overlaying_line_buffers"][i]
@@ -323,14 +317,14 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
 
 
 def add_overlapping_polygons(
-    left_geodataframe: gpd.GeoDataFrame(),
-    right_geodataframe: gpd.GeoDataFrame(),
+    left_geodataframe: gpd.GeoDataFrame,
+    right_geodataframe: gpd.GeoDataFrame,
     left_id_column: str,
     right_id_column: str,
 ):
     """
-    creates a column in a left geodataframe where it lists the overlapping
-    polygons from the right geodataframe for each polygon in the left geodataframe.
+    Create a column in a left geodataframe where it lists the overlapping polygons from the right geodataframe for each polygon in the left geodataframe.
+
     The id columns of the right and left dataframe have to be defined.
 
     Parameters
@@ -352,7 +346,6 @@ def add_overlapping_polygons(
         insights in the overlapping polygons from the right dataframe
 
     """
-
     # Calculate total areas of left and right polygons
     left_geodataframe["left_area"] = left_geodataframe["geometry"].apply(lambda x: x.area)
     right_geodataframe["surface_area"] = right_geodataframe.area
@@ -409,8 +402,8 @@ def get_most_overlapping_polygon(
     right_id_column: str,
 ):
     """
-    creates a column in a left geodataframe that contains IDs of the most overlapping
-    polygon from the right geodataframe based on their geometries.
+    Create a column in a left geodataframe that contains IDs of the most overlapping polygon from the right geodataframe based on their geometries.
+
     The id columns of the left and right dataframe have to be defined.
 
     Parameters
@@ -431,7 +424,6 @@ def get_most_overlapping_polygon(
         the updated left geodataframe
 
     """
-
     left_geodataframe = add_overlapping_polygons(left_geodataframe, right_geodataframe, left_id_column, right_id_column)
 
     left_geodataframe["overlapping_areas"] = left_geodataframe["overlapping_areas"].apply(lambda x: pd.DataFrame(x))
@@ -511,15 +503,15 @@ def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, righ
             return None
 
     left_gdf = get_touching_polygons_from_within_gdf(left_gdf, left_id)
-    if type(right_gdf) == gpd.GeoDataFrame:
+    if isinstance(right_gdf, gpd.GeoDataFrame):
         left_gdf = get_most_overlapping_polygon_from_other_gdf(left_gdf, right_gdf, left_id, right_id)
         left_gdf["right_id"][left_gdf[left_id] == left_gdf["right_id"]] = None
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(
         lambda x: pd.DataFrame(left_gdf[left_gdf[left_id].isin(x)])
     )
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"] is not None])
-    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].isna() == False])
-    if type(right_gdf) == gpd.GeoDataFrame:
+    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].notna()])
+    if isinstance(right_gdf, gpd.GeoDataFrame):
         left_gdf["touching_polygons"] = left_gdf.apply(
             lambda x: x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]
             if x["right_id"] is not None

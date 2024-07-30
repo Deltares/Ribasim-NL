@@ -19,7 +19,6 @@ def concat(models: list[Model]) -> Model:
     Model
         concatenated ribasim.Model
     """
-
     # models will be concatenated to first model.
     model = reset_index(models[0])
     # determine node_start of next model

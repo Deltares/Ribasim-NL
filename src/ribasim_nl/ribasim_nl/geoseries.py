@@ -16,5 +16,4 @@ def basins_to_points(basin_series: GeoSeries) -> GeoSeries:
     GeoSeries
         Basin points
     """
-
     return basin_series.apply(basin_to_point)

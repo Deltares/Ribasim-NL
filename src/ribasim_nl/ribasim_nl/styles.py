@@ -61,6 +61,7 @@ VALUES (
 def read_style(style_path: Path) -> str:
     """
     To make style-text sql-compatible, we need to replace single ' to ''.
+
     Example 'http://mrcc.com/qgis.dtd -> ''http://mrcc.com/qgis.dtd''
 
     Parameters
@@ -96,7 +97,6 @@ def add_styles_to_geopackage(gpkg_path: Path):
     None.
 
     """
-
     with sqlite3.connect(gpkg_path) as conn:
         # create table
         conn.execute(DROP_TABLE_SQL)

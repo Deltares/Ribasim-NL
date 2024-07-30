@@ -126,7 +126,6 @@ def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forc
     ribasim_model : object
         A model object containing the basin node data for assigning forcing inputs.
     """
-
     """_summary_
 
     Parameters

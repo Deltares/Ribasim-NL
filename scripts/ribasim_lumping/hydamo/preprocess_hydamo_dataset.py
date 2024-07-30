@@ -1,14 +1,13 @@
 import itertools
 import logging
-import os
 import time
 import warnings
 
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import snap, split
+from shapely.geometry import LineString, Point
+from shapely.ops import snap
 
 warnings.filterwarnings("ignore")
 
@@ -86,22 +85,16 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
 
             if dist1pos == 0:
                 if linestring.coords[0] in list(connections_to_create["point"].values):
-                    if (
-                        connections_to_create["inserted"][
-                            connections_to_create["point"] == linestring.coords[0]
-                        ].values[0]
-                        == True
-                    ):
+                    if connections_to_create["inserted"][connections_to_create["point"] == linestring.coords[0]].values[
+                        0
+                    ]:
                         continue
 
             elif dist1pos == len(linestring.coords) - 1:
                 if linestring.coords[len(linestring.coords) - 1] in list(connections_to_create["point"].values):
-                    if (
-                        connections_to_create["inserted"][
-                            connections_to_create["point"] == linestring.coords[len(linestring.coords) - 1]
-                        ].values[0]
-                        == True
-                    ):
+                    if connections_to_create["inserted"][
+                        connections_to_create["point"] == linestring.coords[len(linestring.coords) - 1]
+                    ].values[0]:
                         continue
             # else:
 
@@ -218,9 +211,9 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
             axis=1,
         )
 
-        unconnected_endpoints = boundary_endpoints[
-            boundary_endpoints["crossed_by_unconnected_lines"] == True
-        ].reset_index(drop=True)
+        unconnected_endpoints = boundary_endpoints[boundary_endpoints["crossed_by_unconnected_lines"]].reset_index(
+            drop=True
+        )
 
         unconnected_endpoints["target_lines"] = unconnected_endpoints.apply(
             lambda x: [
@@ -377,6 +370,7 @@ def create_graph_based_on_nodes_edges(
 ) -> nx.DiGraph:
     """
     create networkx graph from ribasim model.
+
     input: nodes and edges
     """
     graph = nx.DiGraph()

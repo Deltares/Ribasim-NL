@@ -50,7 +50,7 @@ default_properties: dict[str, Any] = {
 
 def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
     """
-
+    Validation schema for the HyDAMO class.
 
     Parameters
     ----------
@@ -63,7 +63,6 @@ def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
         Validation schema for the HyDAMO class.
 
     """
-
     # start with an empty list to populate
     result = []
 
@@ -201,7 +200,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
         extra_attributes={},
     ):
         """
-
+        Set data to the ExtendedGeoDataFrame.
 
         Parameters
         ----------
@@ -220,7 +219,6 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
         None.
 
         """
-
         if not self.empty:
             self.delete_all()
 
@@ -265,7 +263,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
 
     def snap_to_branch(self, branches, snap_method, maxdist=5):
         """
-
+        Snap the geometries to the branch.
 
         Parameters
         ----------
@@ -281,8 +279,6 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
         None.
 
         """
-
-        """Snap the geometries to the branch."""
         geometry.find_nearest_branch(branches=branches, geometries=self, method=snap_method, maxdist=maxdist)
 
 
@@ -372,7 +368,7 @@ class HyDAMO:
         extra_values={},
     ):
         """
-
+        Set data to a HyDAMO object-layer.
 
         Parameters
         ----------
@@ -393,7 +389,6 @@ class HyDAMO:
         None.
 
         """
-
         getattr(self, layer).set_data(
             gdf,
             index_col=index_col,
@@ -404,6 +399,7 @@ class HyDAMO:
 
     def to_geopackage(self, file_path, use_schema=True):
         """
+        Write HyDAMO object to a GeoPackage.
 
         Parameters
         ----------

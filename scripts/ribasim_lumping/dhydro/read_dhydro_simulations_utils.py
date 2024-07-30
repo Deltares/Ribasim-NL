@@ -24,10 +24,13 @@ def get_data_from_simulation(
     simulations_ts: list | pd.DatetimeIndex,
     n_start: int = 0,
 ) -> tuple[xr.Dataset, xu.UgridDataset]:
-    """Gets simulation data
+    """
+    Gets simulation data
+
     - from a simulation
     - at certain timestamps.
     - Replaces time coordinate with counter 'condition' (int). Starts counting at n_start
+
     Returns: map_data (edges/nodes) and his_data (structures) from one simulation
     """
     files = get_dhydro_files(simulation_path)
@@ -73,11 +76,13 @@ def get_data_from_simulations_set(
     simulations_names: list[str],
     simulations_ts: list | pd.DatetimeIndex,
 ) -> tuple[xr.Dataset, xu.UgridDataset]:
-    """Combines simulation data:
+    """Combines simulation data
+
     - from several simulations (names)
     - from simulation folder (dir)
     - at predefined timestamps (ts)
     - replaces simulation timestamp with condition (int)
+
     Returns: map_data (edges/nodes), his_data (structures) and boundary data, all simulations combined
     """
     print("Read D-HYDRO simulations sets")
@@ -131,8 +136,10 @@ def combine_data_from_simulations_sets(
     xugrid: bool = False,
     dim: str = "set",
 ) -> xr.Dataset | xu.UgridDataset:
-    """Combine his.nc and map.nc data from two cases over dimension DIM assuming
-    that all nc-variables not including DIM as dimension are equal
+    """
+    Combine his.nc and map.nc data from two cases over dimension DIM.
+
+    Assumes that all nc-variables not including DIM as dimension are equal.
     """
     nc_set_vars = [v_n for v_n, v in nc_data_new.data_vars.items() if dim in v.dims]
     nc_nonset_vars = [v_n for v_n, v in nc_data_new.data_vars.items() if dim not in v.dims]

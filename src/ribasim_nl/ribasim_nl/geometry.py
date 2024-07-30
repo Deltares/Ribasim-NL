@@ -21,7 +21,6 @@ def basin_to_point(basin_polygon: Polygon | MultiPolygon) -> Point:
     Point
         Representative point for the basin
     """
-
     point = basin_polygon.centroid
 
     # if point not within basin, we return polylabel
@@ -80,7 +79,6 @@ def split_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
     MultiPolygon
         Multipolygon with two polygons
     """
-
     _validate_inputs(split_basin, polygon=basin_polygon, line=line)
 
     unioned = basin_polygon.boundary.union(line)
@@ -114,7 +112,6 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Pol
     Point | Polygon | MultiPolygon
         Output geometry
     """
-
     # MultiPolygon
     if isinstance(geometry, MultiPolygon):
         geometry = MultiPolygon([drop_z(poly) for poly in geometry.geoms])

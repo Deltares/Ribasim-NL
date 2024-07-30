@@ -298,6 +298,7 @@ def log_and_remove_duplicate_geoms(gdf: gpd.GeoDataFrame, colname: str = None) -
 def generate_nodes_from_edges(edges: gpd.GeoDataFrame) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Generate start/end nodes from edges and update node information in edges GeoDataFrame.
+
     Return updated edges geodataframe and nodes geodataframe
 
     Parameters
@@ -354,7 +355,6 @@ def snap_to_network(
     -------
     GeoDataFrame with snapped geometries that are either snapped or not (based on edge_no or node_no column value)
     """
-
     if snap_type == "split_node":
         print(
             f" - Snapping split nodes: buffer distance to nodes ({buffer_distance * 0.1:.3f} m) or edges ({buffer_distance:.3f} m)..."
@@ -434,7 +434,6 @@ def snap_points_to_nodes_and_edges(
     -------
     GeoDataFrame with snapped points (whether or not it's snapped can be derived from edge_no or node_no column value)
     """
-
     print(" - Snapping points to nodes and/or edges")
     new_points = points.geometry.tolist()
     for i, point in points.iterrows():
@@ -523,7 +522,6 @@ def get_node_no_and_edge_no_for_points(
     -------
     Original GeoDataFrame of split nodes with extra edge_no and node_no column
     """
-
     print(" - Retrieving edge no or node no for point locations...")
     prev_typs = None
     for typ, gdf in zip(["node_no", "edge_no"], [nodes, edges]):
@@ -555,7 +553,9 @@ def split_edges_by_split_nodes(
     split_nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, buffer_distance: float = 0.5
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
-    Splits edges (lines) by split node locations. Split nodes should be (almost) perfectly be aligned to edges (within buffer distance).
+    Splits edges (lines) by split node locations.
+
+    Split nodes should be (almost) perfectly be aligned to edges (within buffer distance).
     If not, use .snap_nodes_to_edges() before to align them to edges within a buffer distance.
 
     If split nodes gdf contains edge_no column (which is filled with only integers), only those edges will be split. If the column is missing
@@ -577,7 +577,6 @@ def split_edges_by_split_nodes(
     -------
     Tuple containing GeoDataFrame with split nodes, GeoDataFrame with edges and GeoDataFrame (start/end)nodes of edges
     """
-
     print(" - Split edges by split nodes locations...")
     split_nodes["edge_no"] = [None] * len(split_nodes)
     edge_no_col_present = "edge_no" in split_nodes.columns
@@ -766,6 +765,7 @@ def assign_unassigned_areas_to_basin_areas(
 ) -> dict[str, gpd.GeoDataFrame]:
     """
     Assign unassigned areas to basin areas based on neighbouring basin areas within optionally the same drainage area if possible.
+
     Optionally, if edges are provided, the basin and basin_area columns will be updated in those gdfs for edges
     where no basin/basin_area is filled in (equals to -1). Those will be filled based on overlapping basin area after assignment
     of unassigned areas. The edges will also be used to assign unassigned areas more logically based on network connections.
@@ -784,7 +784,6 @@ def assign_unassigned_areas_to_basin_areas(
     Dict of basin areas where unassigned areas are assigned to basin areas and areas geodataframe with updated basin codes
     It will also include edges if they are provided as input
     """
-
     areas = areas.copy()
     basin_areas = basin_areas.copy()
     drainage_areas = drainage_areas.copy() if drainage_areas is not None else None

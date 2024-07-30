@@ -44,7 +44,6 @@ def build_vrt(raster_dir: Path):
     raster_dir : Path
         _description_
     """
-
     rasters_vrt = raster_dir / f"{raster_dir.name}.vrt"
     if rasters_vrt.exists():
         rasters_vrt.unlink()
@@ -154,7 +153,6 @@ def sample_elevation_distance(raster_path: Path, line: LineString) -> gpd.GeoDat
     gpd.GeoDataFrame
         GeoDataFrame with Point-geometry, distance along the line and elevation value
     """
-
     with rasterio.open(raster_path) as src:
         sample_dist = abs(src.res[0])
         gdf = line_to_samples(line, sample_dist)

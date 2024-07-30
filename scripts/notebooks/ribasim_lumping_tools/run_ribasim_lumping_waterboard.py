@@ -10,9 +10,6 @@ import os
 import warnings
 from pathlib import Path
 
-import geopandas as gpd
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from ribasim_lumping import create_ribasim_lumping_network
 

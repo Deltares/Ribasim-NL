@@ -62,7 +62,9 @@ def generate_ribasim_basins(
     basin_subgrid: pd.DataFrame,
     basin_areas: gpd.GeoDataFrame,
 ):
-    """Generate settings for Ribasim Basins:
+    """
+    Generate settings for Ribasim Basins.
+
     static: node_id, drainage, potential_evaporation, infiltration, precipitation, urban_runoff
     profile: node_id, level, area, storage
     """
@@ -80,7 +82,9 @@ def generate_ribasim_level_boundaries(
     level_boundary_static: gpd.GeoDataFrame,
     level_boundary_time: pd.DataFrame,
 ):
-    """Generate ribasim level boundaries for all level boundary nodes
+    """
+    Generate ribasim level boundaries for all level boundary nodes
+
     static: node_id, level
     """
     if level_boundary_time is not None:
@@ -94,7 +98,9 @@ def generate_ribasim_level_boundaries(
 
 
 def generate_ribasim_flow_boundaries(flow_boundary_static: gpd.GeoDataFrame, flow_boundary_time: pd.DataFrame):
-    """Generate ribasim flow boundaries for all flow boundary nodes
+    """
+    Generate ribasim flow boundaries for all flow boundary nodes
+
     static: node_id, flow_rate
     """
     print("flow_boundaries ", end="", flush=True)
@@ -107,7 +113,9 @@ def generate_ribasim_flow_boundaries(flow_boundary_static: gpd.GeoDataFrame, flo
 
 
 def generate_ribasim_pumps(pump_static: gpd.GeoDataFrame):
-    """Generate ribasim pumps for all pump nodes
+    """
+    Generate ribasim pumps for all pump nodes
+
     static: node_id, flow_rate
     """
     print("pumps ", end="", flush=True)
@@ -118,7 +126,9 @@ def generate_ribasim_pumps(pump_static: gpd.GeoDataFrame):
 
 
 def generate_ribasim_outlets(outlet_static: gpd.GeoDataFrame):
-    """Generate ribasim outlets for all outlet nodes
+    """
+    Generate ribasim outlets for all outlet nodes
+
     static: node_id, flow_rate
     """
     print("outlets ", end="", flush=True)
@@ -129,7 +139,9 @@ def generate_ribasim_outlets(outlet_static: gpd.GeoDataFrame):
 
 
 def generate_ribasim_tabulatedratingcurves(tabulated_rating_curve_static: pd.DataFrame):
-    """Generate ribasim tabulated rating using dummyvalues for level and flow_rate
+    """
+    Generate ribasim tabulated rating using dummyvalues for level and flow_rate
+
     static: node_id, level, flow_rate
     """
     print("tabulatedratingcurve ", end="", flush=True)
@@ -140,7 +152,9 @@ def generate_ribasim_tabulatedratingcurves(tabulated_rating_curve_static: pd.Dat
 
 
 def generate_ribasim_manningresistances(manningresistance_static: gpd.GeoDataFrame):
-    """Generate ribasim manning resistances
+    """
+    Generate ribasim manning resistances
+
     static: node_id, length, manning_n, profile_width, profile_slope
     """
     print("manningresistances ", end="", flush=True)
@@ -151,7 +165,9 @@ def generate_ribasim_manningresistances(manningresistance_static: gpd.GeoDataFra
 
 
 def generate_ribasim_linear_resistances(linearresistance_static: gpd.GeoDataFrame):
-    """Generate ribasim linear resistances
+    """
+    Generate ribasim linear resistances
+
     static: node_id, resistance, max_flow_rate
     """
     print("linearresistances ", end="", flush=True)
@@ -204,10 +220,11 @@ def generate_ribasim_model(
     database_gpkg: str = "database.gpkg",
     results_dir: str = "results",
 ):
-    """Generate ribasim model from ribasim nodes and edges and
+    """
+    Generate ribasim model from ribasim nodes and edges
+
     optional input; ribasim basins, level boundary, flow_boundary, pump, tabulated rating curve and manning resistance
     """
-
     print("Generate ribasim model: ", end="", flush=True)
 
     ribasim_nodes = generate_ribasim_nodes_static(
