@@ -354,7 +354,6 @@ def snap_to_network(
     -------
     GeoDataFrame with snapped geometries that are either snapped or not (based on edge_no or node_no column value)
     """
-
     if snap_type == "split_node":
         print(
             f" - Snapping split nodes: buffer distance to nodes ({buffer_distance * 0.1:.3f} m) or edges ({buffer_distance:.3f} m)..."
@@ -434,7 +433,6 @@ def snap_points_to_nodes_and_edges(
     -------
     GeoDataFrame with snapped points (whether or not it's snapped can be derived from edge_no or node_no column value)
     """
-
     print(" - Snapping points to nodes and/or edges")
     new_points = points.geometry.tolist()
     for i, point in points.iterrows():
@@ -523,7 +521,6 @@ def get_node_no_and_edge_no_for_points(
     -------
     Original GeoDataFrame of split nodes with extra edge_no and node_no column
     """
-
     print(" - Retrieving edge no or node no for point locations...")
     prev_typs = None
     for typ, gdf in zip(["node_no", "edge_no"], [nodes, edges]):
@@ -577,7 +574,6 @@ def split_edges_by_split_nodes(
     -------
     Tuple containing GeoDataFrame with split nodes, GeoDataFrame with edges and GeoDataFrame (start/end)nodes of edges
     """
-
     print(" - Split edges by split nodes locations...")
     split_nodes["edge_no"] = [None] * len(split_nodes)
     edge_no_col_present = "edge_no" in split_nodes.columns
@@ -784,7 +780,6 @@ def assign_unassigned_areas_to_basin_areas(
     Dict of basin areas where unassigned areas are assigned to basin areas and areas geodataframe with updated basin codes
     It will also include edges if they are provided as input
     """
-
     areas = areas.copy()
     basin_areas = basin_areas.copy()
     drainage_areas = drainage_areas.copy() if drainage_areas is not None else None

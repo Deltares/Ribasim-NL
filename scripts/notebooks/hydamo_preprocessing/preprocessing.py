@@ -58,7 +58,6 @@ def add_wfd_id_to_hydroobjects(
     GeoDataFrame that contains hydroobjects with their assigned wfd body id
 
     """
-
     warnings.filterwarnings("ignore")
     start_time = time.time()
 

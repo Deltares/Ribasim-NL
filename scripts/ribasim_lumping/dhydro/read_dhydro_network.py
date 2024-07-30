@@ -241,7 +241,6 @@ def check_number_of_pumps_at_pumping_station(pumps_gdf: gpd.GeoDataFrame, set_na
 
 def split_dhydro_structures(structures_gdf: gpd.GeoDataFrame, set_name: str):
     """Get all DHydro structures dataframes"""
-
     list_structure_types = list(structures_gdf["object_type"].unique())
     structures_gdf_dict = {}
     for structure_type in list_structure_types:

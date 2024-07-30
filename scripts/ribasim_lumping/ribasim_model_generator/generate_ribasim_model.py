@@ -207,7 +207,6 @@ def generate_ribasim_model(
     """Generate ribasim model from ribasim nodes and edges and
     optional input; ribasim basins, level boundary, flow_boundary, pump, tabulated rating curve and manning resistance
     """
-
     print("Generate ribasim model: ", end="", flush=True)
 
     ribasim_nodes = generate_ribasim_nodes_static(

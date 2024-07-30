@@ -96,7 +96,6 @@ def add_styles_to_geopackage(gpkg_path: Path):
     None.
 
     """
-
     with sqlite3.connect(gpkg_path) as conn:
         # create table
         conn.execute(DROP_TABLE_SQL)

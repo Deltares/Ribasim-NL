@@ -477,7 +477,6 @@ class RibasimLumpingNetwork(BaseModel):
         edge_ids_to_exclude: list[int] = [],
     ) -> gpd.GeoDataFrame:
         """Set split nodes geodataframe in network object. Overwrites previously defined split nodes"""
-
         self.split_nodes = add_split_nodes_based_on_selection(
             stations=stations,
             pumps=pumps,

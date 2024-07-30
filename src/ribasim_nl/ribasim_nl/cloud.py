@@ -189,7 +189,6 @@ class CloudStorage:
         list[str]
             List of all content directories in a specified path
         """
-
         headers = {"Depth": "1", "Content-Type": "application/xml"}
 
         xml_data = """
@@ -234,7 +233,6 @@ class CloudStorage:
         list[str]
             List of directories in a specified path
         """
-
         content = self.content(*args)
 
         return [item for item in content if is_dir(item)]
@@ -253,7 +251,6 @@ class CloudStorage:
 
     def download_content(self, url, overwrite: bool = False):
         """Download content of a directory recursively."""
-
         # get all content (files and directories from url)
         content = self.content(url)
 
@@ -278,7 +275,6 @@ class CloudStorage:
 
     def upload_content(self, dir_path: Path, overwrite: bool = False):
         """Upload content of a directory recursively."""
-
         # get all remote content
         content = self.content(self.joinurl(self.relative_path(dir_path).as_posix()))
 
@@ -377,7 +373,6 @@ class CloudStorage:
         ValueError
             If model does not exist locally
         """
-
         # get today, so we can later derive a version
         today = date.today()
 

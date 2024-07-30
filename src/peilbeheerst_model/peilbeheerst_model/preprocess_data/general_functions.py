@@ -22,7 +22,6 @@ def read_gpkg_layers(gpkg_path, variables, engine="fiona", print_var=False):
     This function reads specified layers from a GeoPackage (GPKG) file and returns them as a dictionary. You can
     choose to print the names of variables as they are read by setting `print_var` to True.
     """
-
     data = {}
     for variable in variables:
         if print_var:
@@ -49,7 +48,6 @@ def show_layers_and_columns(waterschap):
     in a dictionary.
 
     """
-
     for key in waterschap.keys():
         print(key)
         print(waterschap[str(key)].columns.values)
@@ -78,7 +76,6 @@ def store_data(waterschap, output_gpkg_path):
     - waterschap: A dictionary where the keys represent layer names, and the values are GeoDataFrames.
     - output_gpkg_path: The file path for the output GPKG file. The '.gpkg' extension is added automatically.
     """
-
     for key in waterschap.keys():
         waterschap[str(key)].to_file(output_gpkg_path + ".gpkg", layer=str(key), driver="GPKG")
 
@@ -103,7 +100,6 @@ def overlapping_peilgebieden(waterschap_peilgebieden):
     ----------
     - waterschap_peilgebieden: A GeoDataFrame containing the peilgebieden polygons.
     """
-
     peilgebied = waterschap_peilgebieden
     peilgebied.geometry = peilgebied.buffer(distance=0)  # make invalid geometries valid
     peilgebied.set_crs(crs="EPSG:28992", inplace=True)

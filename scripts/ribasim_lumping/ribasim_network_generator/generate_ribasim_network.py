@@ -52,7 +52,6 @@ def split_graph_based_on_split_nodes(
     connect to 1 node (at split point) but each end in each own new node. Because of this removing and adding edges and nodes in the
     graph, these new nodes no in graph are added to split_nodes gdf and also returned as result of this function.
     """
-
     split_nodes = split_nodes.copy()  # copy to make sure gdf variable is not linked
     split_nodes["graph_node_no"] = pd.Series(
         [-1] * len(split_nodes), index=split_nodes.index, dtype=object
@@ -166,7 +165,6 @@ def check_if_split_node_is_used(
     edges: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
     """Check whether split_nodes are used, split_nodes and split_edges"""
-
     split_nodes = split_nodes.copy()  # copy to make sure gdf variable is not linked
     split_nodes["status"] = True
 
@@ -211,7 +209,6 @@ def create_basin_areas_based_on_drainage_areas(
     find areas with spatial join on edges. add subgraph code to areas
     and combine all areas with certain subgraph code into one basin
     """
-
     if areas is None:
         return None, None
     else:
@@ -383,7 +380,6 @@ def check_if_nodes_edges_within_basin_areas(
     nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, basin_areas: gpd.GeoDataFrame
 ) -> tuple[gpd.GeoDataFrame]:
     """Check whether nodes assigned to a basin are also within the polygon assigned to that basin"""
-
     edges, nodes, basin_areas = (
         edges.copy(),
         nodes.copy(),

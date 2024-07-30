@@ -63,7 +63,6 @@ def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
         Validation schema for the HyDAMO class.
 
     """
-
     # start with an empty list to populate
     result = []
 
@@ -220,7 +219,6 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
         None.
 
         """
-
         if not self.empty:
             self.delete_all()
 
@@ -281,7 +279,6 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
         None.
 
         """
-
         """Snap the geometries to the branch."""
         geometry.find_nearest_branch(branches=branches, geometries=self, method=snap_method, maxdist=maxdist)
 
@@ -393,7 +390,6 @@ class HyDAMO:
         None.
 
         """
-
         getattr(self, layer).set_data(
             gdf,
             index_col=index_col,

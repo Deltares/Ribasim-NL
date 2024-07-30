@@ -172,7 +172,6 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
     -------
         gpd.GeoDataFrame: line feature dataframe
     """
-
     listed_lines = list(itertools.chain.from_iterable(split_endpoints["target_lines"]))
     listed_points = list(itertools.chain.from_iterable(split_endpoints["points_to_target_lines"]))
     connections_to_create = pd.DataFrame({"lines": listed_lines, "point": listed_points})
@@ -352,7 +351,6 @@ def add_overlapping_polygons(
         insights in the overlapping polygons from the right dataframe
 
     """
-
     # Calculate total areas of left and right polygons
     left_geodataframe["left_area"] = left_geodataframe["geometry"].apply(lambda x: x.area)
     right_geodataframe["surface_area"] = right_geodataframe.area
@@ -431,7 +429,6 @@ def get_most_overlapping_polygon(
         the updated left geodataframe
 
     """
-
     left_geodataframe = add_overlapping_polygons(left_geodataframe, right_geodataframe, left_id_column, right_id_column)
 
     left_geodataframe["overlapping_areas"] = left_geodataframe["overlapping_areas"].apply(lambda x: pd.DataFrame(x))

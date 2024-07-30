@@ -10,7 +10,6 @@ def cloud(tmp_path):
 
 def test_initialize(cloud):
     """Test if cloud still has same structure"""
-
     assert cloud.data_dir.exists()
 
     # check if we have the correct directories

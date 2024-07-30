@@ -73,7 +73,6 @@ def add_control_node_to_network(
     network, int
         updated network and node_id of the control-node
     """
-
     # see if we have one node-id to offset ctrl-node from
     if offset_node_id is not None:
         node_id = offset_node_id

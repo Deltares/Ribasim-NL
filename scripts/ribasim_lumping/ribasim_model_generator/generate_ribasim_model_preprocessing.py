@@ -14,7 +14,6 @@ def generate_ribasim_types_for_all_split_nodes(
     split_node_id_conversion: dict,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Generate Ribasim Types for all split nodes"""
-
     print(" - define Ribasim-Nodes types based on input conversion table(s)")
     # Basins
     basins["ribasim_type"] = "Basin"

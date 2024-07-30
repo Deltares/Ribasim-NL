@@ -19,7 +19,6 @@ def write_structures_to_excel(
     """Export all structures and splitnode info to excel file with seperate sheet per structure type
     input: network with structure gdfs, splitnodes, split node type conversion tables
     """
-
     list_gdfs = [pumps, weirs, orifices, bridges, culverts, uniweirs]
     structures = pd.DataFrame(columns=["mesh1d_node_id", "mesh1d_nEdges", "geometry", "object_type"])
 

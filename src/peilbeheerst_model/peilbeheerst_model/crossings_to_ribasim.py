@@ -870,7 +870,6 @@ class RibasimNetwork:
         _type_
             _description_
         """
-
         edge = gpd.GeoDataFrame()
 
         # fix the from nodes
@@ -901,7 +900,6 @@ class RibasimNetwork:
         _type_
             _description_
         """
-
         basin_nodes = self.nodes.loc[self.nodes["type"] == "Basin"][
             ["node_id", "streefpeil", "geometry", "basins_area_geom"]
         ]
@@ -1056,7 +1054,6 @@ class RibasimNetwork:
         _type_
             _description_
         """
-
         flow_boundary_nodes = self.nodes.loc[self.nodes["type"] == "FlowBoundary"][
             ["node_id", "geometry"]
         ]  # .node_id.to_numpy()
@@ -1156,7 +1153,6 @@ class RibasimNetwork:
         _type_
             _description_
         """
-
         outlet = ribasim.Outlet(static=pd.DataFrame(data={"node_id": [], "flow_rate": []}))
         return outlet
 

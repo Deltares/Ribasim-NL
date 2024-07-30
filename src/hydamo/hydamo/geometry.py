@@ -15,7 +15,6 @@ def possibly_intersecting(dataframebounds, geometry, buffer=0):
     dataframebounds : numpy.array
     geometry : shapely.geometry.Polygon
     """
-
     geobounds = geometry.bounds
     idx = (
         (dataframebounds[0] - buffer < geobounds[2])
