@@ -185,15 +185,21 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
 
         lines["buffer_geometry"] = lines.geometry.buffer(buffer_distance, join_style="round")
 
-        boundary_endpoints["overlaying_line_buffers"] = [lines[lines.buffer_geometry.contains(x)].code.tolist() for x in boundary_endpoints.geometry]
+        boundary_endpoints["overlaying_line_buffers"] = [
+            lines[lines.buffer_geometry.contains(x)].code.tolist() for x in boundary_endpoints.geometry
+        ]
 
         boundary_endpoints["startpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: [x["coordinates"] in list(lines[lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]],
+            lambda x: [
+                x["coordinates"] in list(lines[lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]
+            ],
             axis=1,
         )
 
         boundary_endpoints["endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: [x["coordinates"] in list(lines[lines.code == y].startpoint.values) for y in x["overlaying_line_buffers"]],
+            lambda x: [
+                x["coordinates"] in list(lines[lines.code == y].startpoint.values) for y in x["overlaying_line_buffers"]
+            ],
             axis=1,
         )
 
