@@ -298,6 +298,7 @@ def log_and_remove_duplicate_geoms(gdf: gpd.GeoDataFrame, colname: str = None) -
 def generate_nodes_from_edges(edges: gpd.GeoDataFrame) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Generate start/end nodes from edges and update node information in edges GeoDataFrame.
+
     Return updated edges geodataframe and nodes geodataframe
 
     Parameters
@@ -552,7 +553,9 @@ def split_edges_by_split_nodes(
     split_nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, buffer_distance: float = 0.5
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
-    Splits edges (lines) by split node locations. Split nodes should be (almost) perfectly be aligned to edges (within buffer distance).
+    Splits edges (lines) by split node locations.
+
+    Split nodes should be (almost) perfectly be aligned to edges (within buffer distance).
     If not, use .snap_nodes_to_edges() before to align them to edges within a buffer distance.
 
     If split nodes gdf contains edge_no column (which is filled with only integers), only those edges will be split. If the column is missing
@@ -762,6 +765,7 @@ def assign_unassigned_areas_to_basin_areas(
 ) -> dict[str, gpd.GeoDataFrame]:
     """
     Assign unassigned areas to basin areas based on neighbouring basin areas within optionally the same drainage area if possible.
+
     Optionally, if edges are provided, the basin and basin_area columns will be updated in those gdfs for edges
     where no basin/basin_area is filled in (equals to -1). Those will be filled based on overlapping basin area after assignment
     of unassigned areas. The edges will also be used to assign unassigned areas more logically based on network connections.

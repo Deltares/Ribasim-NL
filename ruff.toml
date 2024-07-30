@@ -7,7 +7,6 @@ line-length = 120
 select = ["D", "E", "F", "NPY", "PD", "C4", "I", "UP"]
 ignore = [
     "D1",
-    "D205",
     "D400",
     "D401",
     "D404",

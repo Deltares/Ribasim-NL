@@ -377,6 +377,7 @@ def create_graph_based_on_nodes_edges(
 ) -> nx.DiGraph:
     """
     create networkx graph from ribasim model.
+
     input: nodes and edges
     """
     graph = nx.DiGraph()

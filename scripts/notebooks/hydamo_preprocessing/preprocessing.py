@@ -36,7 +36,7 @@ def add_wfd_id_to_hydroobjects(
     overlap_ratio: float = 0.9,
 ) -> gpd.GeoDataFrame:
     """
-
+    Assign Water Framework Directive (WFD) waterbody ID to hydroobjects based on overlap ratio.
 
     Parameters
     ----------
@@ -142,6 +142,7 @@ def preprocess_hydamo_hydroobjects(
     overlap_ratio_wfd: float = 0.9,
 ) -> gpd.GeoDataFrame:
     """
+    Preprocess hydamo hydroobjects.
 
     Parameters
     ----------

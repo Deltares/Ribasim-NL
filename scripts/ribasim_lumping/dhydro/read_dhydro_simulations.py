@@ -90,7 +90,9 @@ def add_dhydro_simulation_data(
     his_data: xr.Dataset = None,
     map_data: xu.UgridDataset = None,
 ):
-    """Receives his- and map-data. calculations should be placed in dhydro_results_dir
+    """
+    Receives his- and map-data. calculations should be placed in dhydro_results_dir.
+
     - set_name
     - within directory: simulations_dir
     - at timestamps: simulations_ts

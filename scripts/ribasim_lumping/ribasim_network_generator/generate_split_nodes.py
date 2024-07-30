@@ -13,7 +13,9 @@ def get_split_nodes_based_on_type(
     list_gdfs: list[gpd.GeoDataFrame] = None,
     crs: int = 28992,
 ):
-    """Get split_nodes based on weirs and/or pumps.
+    """
+    Get split_nodes based on weirs and/or pumps.
+
     list_gdfs is a list of geodataframes including
     stations, pumps, weirs, orifices, bridges, culverts, uniweirs
     """
@@ -48,9 +50,12 @@ def add_split_nodes_based_on_selection(
     edge_ids_to_include: list[int] = [],
     edge_ids_to_exclude: list[int] = [],
 ) -> gpd.GeoDataFrame:
-    """Receive node id's of splitnodes
-    by choosing which structures to use as splitnodes locations
+    """
+    Receive node ID's of splitnodes.
+
+    Works by choosing which structures to use as splitnodes locations
     and including or excluding specific nodes as splitnode
+
     returns splitnodes
     """
     network_edges = list_gdfs[-1]

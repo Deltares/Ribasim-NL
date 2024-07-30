@@ -1,5 +1,6 @@
 """
 Read network locations from D-Hydro simulation
+
 Harm Nomden (Sweco)
 """
 
@@ -202,7 +203,9 @@ def get_dhydro_structures_locations(structures_file: Path, branches_gdf: gpd.Geo
 
 
 def check_number_of_pumps_at_pumping_station(pumps_gdf: gpd.GeoDataFrame, set_name: str):
-    """Check number of pumps at pumping station and combine them into one representative pump
+    """
+    Check number of pumps at pumping station and combine them into one representative pump.
+
     Input:  Geodataframe with pumps with multiple per location
     Output: Geodataframe with one pump per location.
     Total capacity (sum), Max start level, Min stop level

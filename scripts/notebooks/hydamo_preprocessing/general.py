@@ -76,9 +76,7 @@ def get_endpoints_from_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def add_point_to_linestring(point: Point, linestring: LineString) -> LineString:
     """
-    Inserts point into a linestring, placing the point next to its
-    nearest neighboring point in a way that minimizes the total length
-    of the linestring.
+    Inserts point into a linestring, placing the point next to its nearest neighboring point in a way that minimizes the total length of the linestring.
 
     Args:
         point (Point): point
@@ -108,8 +106,7 @@ def add_point_to_linestring(point: Point, linestring: LineString) -> LineString:
 
 def split_linestring_by_indices(linestring: LineString, split_indices: list) -> list:
     """
-    Divides a linestring into multiple linestrings based on a list that contains
-    the indices of the split points within the linestring
+    Divides a linestring into multiple linestrings based on a list that contains the indices of the split points within the linestring.
 
     Args:
         linestring (LineString): Linestring
@@ -129,8 +126,9 @@ def split_linestring_by_indices(linestring: LineString, split_indices: list) -> 
 
 def remove_duplicate_split_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Removes duplicates of split lines from line feature vector dataset. Duplicates
-    are removed from a subselection from the line feature dataset that contains
+    Removes duplicates of split lines from line feature vector dataset.
+
+    Duplicates are removed from a subselection from the line feature dataset that contains
     all line features that have been split.
 
     Args:
@@ -160,8 +158,9 @@ def remove_duplicate_split_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Connects boundary lines to other lines, based on instructions for each line endpoint. Connections are
-    created by inserting the endpoints into their target lines. The target line features are
+    Connects boundary lines to other lines, based on instructions for each line endpoint.
+
+    Connections are created by inserting the endpoints into their target lines. The target line features are
     split afterwards in order to create nodes at the intersection of the connected linestrings.
 
     Args:
@@ -230,9 +229,9 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
 
 def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float = 0.5) -> gpd.GeoDataFrame:
     """
-    Connects boundary line endpoints within a vector dataset to neighbouring lines that pass
-    within a specified buffer distance with respect to the the boundary endpoints. The boundary
-    endpoints are inserted into the passing linestrings
+    Connects boundary line endpoints to neighbouring lines that pass within a specified buffer distance with respect to the the boundary endpoints.
+
+    The boundary endpoints are inserted into the passing linestrings
 
     Args:
         lines (gpd.GeoDataFrame): Line vector data
@@ -322,14 +321,14 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
 
 
 def add_overlapping_polygons(
-    left_geodataframe: gpd.GeoDataFrame(),
-    right_geodataframe: gpd.GeoDataFrame(),
+    left_geodataframe: gpd.GeoDataFrame,
+    right_geodataframe: gpd.GeoDataFrame,
     left_id_column: str,
     right_id_column: str,
 ):
     """
-    creates a column in a left geodataframe where it lists the overlapping
-    polygons from the right geodataframe for each polygon in the left geodataframe.
+    Create a column in a left geodataframe where it lists the overlapping polygons from the right geodataframe for each polygon in the left geodataframe.
+
     The id columns of the right and left dataframe have to be defined.
 
     Parameters
@@ -407,8 +406,8 @@ def get_most_overlapping_polygon(
     right_id_column: str,
 ):
     """
-    creates a column in a left geodataframe that contains IDs of the most overlapping
-    polygon from the right geodataframe based on their geometries.
+    Create a column in a left geodataframe that contains IDs of the most overlapping polygon from the right geodataframe based on their geometries.
+
     The id columns of the left and right dataframe have to be defined.
 
     Parameters

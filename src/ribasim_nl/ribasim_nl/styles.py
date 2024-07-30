@@ -61,6 +61,7 @@ VALUES (
 def read_style(style_path: Path) -> str:
     """
     To make style-text sql-compatible, we need to replace single ' to ''.
+
     Example 'http://mrcc.com/qgis.dtd -> ''http://mrcc.com/qgis.dtd''
 
     Parameters
