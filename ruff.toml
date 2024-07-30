@@ -9,7 +9,7 @@ ignore = [
     "D1",
     "D400",
     "D401",
-    "E402",
+    "E402", # TODO remove https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file/
     "E501",
     "E712",
     "E721",

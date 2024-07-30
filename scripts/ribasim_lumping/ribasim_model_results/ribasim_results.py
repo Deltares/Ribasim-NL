@@ -5,6 +5,7 @@ import geopandas as gpd
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
+import ribasim
 from numba.core.errors import NumbaDeprecationWarning
 from pydantic import BaseModel, ConfigDict
 
@@ -12,7 +13,6 @@ warnings.simplefilter("ignore", category=NumbaDeprecationWarning)
 warnings.simplefilter("ignore", category=UserWarning)
 warnings.simplefilter("ignore", category=FutureWarning)
 pd.options.mode.chained_assignment = None
-import ribasim
 
 
 class RibasimModelResults(BaseModel):
