@@ -12,24 +12,13 @@ def get_split_nodes_based_on_type(
     culverts: bool = False,
     uniweirs: bool = False,
     list_gdfs: List[gpd.GeoDataFrame] = None,
-    crs: int = 28992
+    crs: int = 28992,
 ):
     """get split_nodes based on weirs and/or pumps.
-    list_gdfs is a list of geodataframes including 
+    list_gdfs is a list of geodataframes including
     stations, pumps, weirs, orifices, bridges, culverts, uniweirs"""
-    list_objects = [
-        stations,
-        pumps,
-        weirs,
-        orifices,
-        bridges,
-        culverts,
-        uniweirs,
-        False
-    ]
-    split_nodes_columns = [
-        "split_node_id", "geometry", "object_type", "split_type", "edge_no", "node_no"
-    ]
+    list_objects = [stations, pumps, weirs, orifices, bridges, culverts, uniweirs, False]
+    split_nodes_columns = ["split_node_id", "geometry", "object_type", "split_type", "edge_no", "node_no"]
     split_nodes = gpd.GeoDataFrame(
         columns=split_nodes_columns,
         geometry="geometry",
@@ -39,7 +28,7 @@ def get_split_nodes_based_on_type(
         if gdf_include and gdf is not None:
             gdf = gdf.rename({"structure_id": "split_node_id"}, axis=1, level=1)
             split_nodes = pd.concat(
-                [split_nodes, gdf['general'].merge(gdf['geometry'], left_index=True, right_index=True)]
+                [split_nodes, gdf["general"].merge(gdf["geometry"], left_index=True, right_index=True)]
             )
     return split_nodes[split_nodes_columns]
 
@@ -73,7 +62,7 @@ def add_split_nodes_based_on_selection(
         bridges=bridges,
         culverts=culverts,
         uniweirs=uniweirs,
-        list_gdfs=list_gdfs
+        list_gdfs=list_gdfs,
     )
     # include split_nodes with id
     all_structures = get_split_nodes_based_on_type(
@@ -84,19 +73,12 @@ def add_split_nodes_based_on_selection(
         bridges=True,
         culverts=True,
         uniweirs=True,
-        list_gdfs=list_gdfs
+        list_gdfs=list_gdfs,
     )
-    structures_to_include = all_structures[
-        all_structures.split_node_id.isin(structures_ids_to_include)
-    ]
-    split_nodes = pd.concat([
-        split_nodes_structures, 
-        structures_to_include
-    ])
+    structures_to_include = all_structures[all_structures.split_node_id.isin(structures_ids_to_include)]
+    split_nodes = pd.concat([split_nodes_structures, structures_to_include])
     # exclude split_nodes with id
-    split_nodes = split_nodes[
-        ~split_nodes.split_node_id.isin(structures_ids_to_exclude)
-    ]
+    split_nodes = split_nodes[~split_nodes.split_node_id.isin(structures_ids_to_exclude)]
 
     # include/exclude edge centers
     if edges or len(edge_ids_to_include) >= 1:
@@ -108,9 +90,9 @@ def add_split_nodes_based_on_selection(
                     ~additional_split_nodes.edge_no.isin(edge_ids_to_exclude)
                 ]
         elif len(edge_ids_to_include):
-            additional_split_nodes = network_edges[
-                network_edges.edge_no.isin(edge_ids_to_include)
-            ][["edge_no", "branch_id", "geometry"]]
+            additional_split_nodes = network_edges[network_edges.edge_no.isin(edge_ids_to_include)][
+                ["edge_no", "branch_id", "geometry"]
+            ]
         if additional_split_nodes is not None:
             additional_split_nodes.geometry = additional_split_nodes.geometry.apply(
                 lambda g: g.interpolate(0.5, normalized=True)
@@ -125,10 +107,9 @@ def add_split_nodes_based_on_selection(
     split_nodes["node_no"] = -1
     split_nodes = split_nodes.reset_index(drop=True)
     split_nodes.insert(0, "split_node", split_nodes.index + 1)
-    
+
     # print content of all split_nodes included
     print(f"{len(split_nodes)} split locations")
     for obj_type in split_nodes.object_type.unique():
         print(f" - {obj_type}: {len(split_nodes[split_nodes['object_type']==obj_type])}")
     return split_nodes
-

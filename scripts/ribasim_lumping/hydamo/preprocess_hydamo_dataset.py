@@ -8,6 +8,7 @@ import os
 import time
 import logging
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -28,27 +29,17 @@ def get_passed_time(start, end):
 
 
 def get_endpoints_from_lines(lines):
-    lines[["startpoint", "endpoint"]] = lines["geometry"].apply(
-        lambda x: pd.Series([x.coords[0], x.coords[-1]])
-    )
+    lines[["startpoint", "endpoint"]] = lines["geometry"].apply(lambda x: pd.Series([x.coords[0], x.coords[-1]]))
     endpoints = pd.unique(lines[["startpoint", "endpoint"]].values.ravel("K"))
     endpoints = gpd.GeoDataFrame({"coordinates": endpoints})
     endpoints["starting_lines"] = endpoints["coordinates"].apply(
         lambda x: lines["code"][lines["startpoint"] == x].values
     )
-    endpoints["ending_lines"] = endpoints["coordinates"].apply(
-        lambda x: lines["code"][lines["endpoint"] == x].values
-    )
+    endpoints["ending_lines"] = endpoints["coordinates"].apply(lambda x: lines["code"][lines["endpoint"] == x].values)
 
-    endpoints["count_starting_lines"] = endpoints.apply(
-        lambda x: len(list(x["starting_lines"])), axis=1
-    )
-    endpoints["count_ending_lines"] = endpoints.apply(
-        lambda x: len(list(x["ending_lines"])), axis=1
-    )
-    endpoints["count"] = endpoints.apply(
-        lambda x: x["count_starting_lines"] + x["count_ending_lines"], axis=1
-    )
+    endpoints["count_starting_lines"] = endpoints.apply(lambda x: len(list(x["starting_lines"])), axis=1)
+    endpoints["count_ending_lines"] = endpoints.apply(lambda x: len(list(x["ending_lines"])), axis=1)
+    endpoints["count"] = endpoints.apply(lambda x: x["count_starting_lines"] + x["count_ending_lines"], axis=1)
     endpoints = endpoints.set_geometry(endpoints.coordinates.apply(lambda x: Point(x)))
     return endpoints
 
@@ -56,12 +47,8 @@ def get_endpoints_from_lines(lines):
 def snap_connect_lines_by_endpoints(split_endpoints, lines):
     connections_to_create = pd.DataFrame(
         {
-            "lines": list(
-                itertools.chain.from_iterable(split_endpoints["target_lines"])
-            ),
-            "point": list(
-                itertools.chain.from_iterable(split_endpoints["points_to_target_lines"])
-            ),
+            "lines": list(itertools.chain.from_iterable(split_endpoints["target_lines"])),
+            "point": list(itertools.chain.from_iterable(split_endpoints["points_to_target_lines"])),
         }
     )
 
@@ -70,11 +57,7 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
     splits = [
         {
             "split_line": x,
-            "split_points": list(
-                connections_to_create[connections_to_create["lines"] == x][
-                    "point"
-                ].values
-            ),
+            "split_points": list(connections_to_create[connections_to_create["lines"] == x]["point"].values),
         }
         for x in pd.unique(connections_to_create["lines"])
     ]
@@ -96,9 +79,7 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
         for node in split_action["split_points"]:
             # break
 
-            distances = [
-                Point(node).distance(Point(point)) for point in list(linestring.coords)
-            ]
+            distances = [Point(node).distance(Point(point)) for point in list(linestring.coords)]
 
             dist1pos = distances.index(min(distances))
 
@@ -113,13 +94,10 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
                         continue
 
             elif dist1pos == len(linestring.coords) - 1:
-                if linestring.coords[len(linestring.coords) - 1] in list(
-                    connections_to_create["point"].values
-                ):
+                if linestring.coords[len(linestring.coords) - 1] in list(connections_to_create["point"].values):
                     if (
                         connections_to_create["inserted"][
-                            connections_to_create["point"]
-                            == linestring.coords[len(linestring.coords) - 1]
+                            connections_to_create["point"] == linestring.coords[len(linestring.coords) - 1]
                         ].values[0]
                         == True
                     ):
@@ -133,37 +111,23 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
             )
 
             linestring2 = LineString(
-                list(linestring.coords)[:dist1pos]
-                + [Point(node).coords[0]]
-                + list(linestring.coords)[dist1pos:]
+                list(linestring.coords)[:dist1pos] + [Point(node).coords[0]] + list(linestring.coords)[dist1pos:]
             )
 
-            linestring = (
-                linestring1 if linestring1.length < linestring2.length else linestring2
-            )
+            linestring = linestring1 if linestring1.length < linestring2.length else linestring2
 
-            connections_to_create["inserted"][
-                connections_to_create["point"] == node
-            ] = True
+            connections_to_create["inserted"][connections_to_create["point"] == node] = True
 
             nodes_to_add += [node]
 
         split_indices = sorted(
             list(
-                set(
-                    [0]
-                    + [list(linestring.coords).index(node) for node in nodes_to_add]
-                    + [len(linestring.coords) - 1]
-                )
+                set([0] + [list(linestring.coords).index(node) for node in nodes_to_add] + [len(linestring.coords) - 1])
             )
         )
 
         for i in range(len(split_indices) - 1):
-            segments.append(
-                LineString(
-                    linestring.coords[split_indices[i] : split_indices[i + 1] + 1]
-                )
-            )
+            segments.append(LineString(linestring.coords[split_indices[i] : split_indices[i + 1] + 1]))
 
         for k, segment in enumerate(segments):
             snip_line = line.copy()
@@ -176,30 +140,22 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
     connected_lines = pd.concat([uneditted_lines, split_lines], axis=0, join="outer")
     connected_lines.index = range(len(connected_lines))
 
-    connected_lines["distance"] = list(
-        map(lambda x: x.length, connected_lines["geometry"])
-    )
+    connected_lines["distance"] = list(map(lambda x: x.length, connected_lines["geometry"]))
 
     updated_endpoints = get_endpoints_from_lines(connected_lines)
 
     ending_lines_clean_start = list(
         itertools.chain.from_iterable(
-            updated_endpoints[(updated_endpoints["starting_lines"].str.len() > 1)][
-                "starting_lines"
-            ]
+            updated_endpoints[(updated_endpoints["starting_lines"].str.len() > 1)]["starting_lines"]
         )
     )
 
     ending_lines_clean_end = list(
         itertools.chain.from_iterable(
-            updated_endpoints[(updated_endpoints["ending_lines"].str.len() > 1)][
-                "ending_lines"
-            ]
+            updated_endpoints[(updated_endpoints["ending_lines"].str.len() > 1)]["ending_lines"]
         )
     )
-    lines_to_remove = list(
-        pd.unique(pd.Series(ending_lines_clean_start + ending_lines_clean_end))
-    )
+    lines_to_remove = list(pd.unique(pd.Series(ending_lines_clean_start + ending_lines_clean_end)))
     connected_lines = connected_lines[
         ~(
             (connected_lines["distance"] <= 0.5)
@@ -219,23 +175,16 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
     unconnected_endpoints_count = 0
     finished = False
 
-    logging.info(
-        f"Detect unconnected endpoints nearby linestrings, buffer distance: {buffer_distance}m"
-    )
+    logging.info(f"Detect unconnected endpoints nearby linestrings, buffer distance: {buffer_distance}m")
 
     while not finished:
         endpoints = get_endpoints_from_lines(lines)
 
         boundary_endpoints = gpd.GeoDataFrame(
-            endpoints[
-                (endpoints["count_starting_lines"] == 0)
-                | (endpoints["count_ending_lines"] == 0)
-            ]
+            endpoints[(endpoints["count_starting_lines"] == 0) | (endpoints["count_ending_lines"] == 0)]
         )
 
-        lines["buffer_geometry"] = lines.geometry.buffer(
-            buffer_distance, join_style="round"
-        )
+        lines["buffer_geometry"] = lines.geometry.buffer(buffer_distance, join_style="round")
 
         boundary_endpoints["overlaying_line_buffers"] = list(
             map(
@@ -244,35 +193,27 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
             )
         )
 
-        boundary_endpoints[
-            "startpoint_overlaying_line_buffers"
-        ] = boundary_endpoints.apply(
+        boundary_endpoints["startpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
             lambda x: list(
                 map(
-                    lambda y: x["coordinates"]
-                    in list(lines[lines.code == y].endpoint.values),
+                    lambda y: x["coordinates"] in list(lines[lines.code == y].endpoint.values),
                     x["overlaying_line_buffers"],
                 )
             ),
             axis=1,
         )
 
-        boundary_endpoints[
-            "endpoint_overlaying_line_buffers"
-        ] = boundary_endpoints.apply(
+        boundary_endpoints["endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
             lambda x: list(
                 map(
-                    lambda y: x["coordinates"]
-                    in list(lines[lines.code == y].startpoint.values),
+                    lambda y: x["coordinates"] in list(lines[lines.code == y].startpoint.values),
                     x["overlaying_line_buffers"],
                 )
             ),
             axis=1,
         )
 
-        boundary_endpoints[
-            "start_or_endpoint_overlaying_line_buffers"
-        ] = boundary_endpoints.apply(
+        boundary_endpoints["start_or_endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
             lambda x: list(
                 zip(
                     x["startpoint_overlaying_line_buffers"],
@@ -283,8 +224,7 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
         )
 
         boundary_endpoints["crossed_by_unconnected_lines"] = boundary_endpoints.apply(
-            lambda x: True
-            in [True not in y for y in x["start_or_endpoint_overlaying_line_buffers"]],
+            lambda x: True in [True not in y for y in x["start_or_endpoint_overlaying_line_buffers"]],
             axis=1,
         )
 
@@ -314,10 +254,7 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
 
         logging.info(f"{unconnected_endpoints_count} unconnected endpoints detected")
 
-        if (
-            unconnected_endpoints_count != 0
-            and unconnected_endpoints_count != previous_unconnected_endpoints_count
-        ):
+        if unconnected_endpoints_count != 0 and unconnected_endpoints_count != previous_unconnected_endpoints_count:
             logging.info("Snapping unconnected endpoints...")
 
             lines = snap_connect_lines_by_endpoints(unconnected_endpoints, lines)
@@ -354,17 +291,11 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
 def create_nodes_and_edges_from_hydroobjects(edges, buffer_distance=0.05):
     warnings.filterwarnings("ignore")
 
-    edges[["from_node", "to_node"]] = edges["geometry"].apply(
-        lambda x: pd.Series([x.coords[0], x.coords[-1]])
-    )
+    edges[["from_node", "to_node"]] = edges["geometry"].apply(lambda x: pd.Series([x.coords[0], x.coords[-1]]))
     nodes = pd.unique(edges[["from_node", "to_node"]].values.ravel("K"))
     indexer = dict(zip(nodes, range(len(nodes))))
-    edges[["from_node", "to_node"]] = edges[["from_node", "to_node"]].applymap(
-        indexer.get
-    )
-    nodes = gpd.GeoDataFrame(
-        map(lambda x: Point(x), nodes), columns=["geometry"]
-    ).set_geometry("geometry")
+    edges[["from_node", "to_node"]] = edges[["from_node", "to_node"]].applymap(indexer.get)
+    nodes = gpd.GeoDataFrame(map(lambda x: Point(x), nodes), columns=["geometry"]).set_geometry("geometry")
     nodes["node_no"] = nodes.index
     edges.index = range(len(edges))
     edges["edge_no"] = edges.index
@@ -432,10 +363,7 @@ def get_outlet_nodes(nodes, edges, crs="EPSG:28992"):
 
     # Select boundary endpoints from line network
     boundary_endpoints = gpd.GeoDataFrame(
-        endpoints[
-            (endpoints["count_starting_lines"] == 0)
-            & (endpoints["count_ending_lines"] >= 1)
-        ]
+        endpoints[(endpoints["count_starting_lines"] == 0) & (endpoints["count_ending_lines"] >= 1)]
     )
 
     edges = edges.drop(["line_geometry", "startpoint", "endpoint"], axis=1)
@@ -471,9 +399,7 @@ def create_graph_based_on_nodes_edges(
                 graph.add_edge(e.from_node_id, e.to_node_id, weight=e.geometry.length)
             else:
                 graph.add_edge(e.from_node_id, e.to_node_id)
-    print(
-        f" - create network graph from nodes ({len(node)}x) and edges ({len(edge)}x)"
-    )
+    print(f" - create network graph from nodes ({len(node)}x) and edges ({len(edge)}x)")
     return graph
 
 
@@ -493,9 +419,7 @@ def add_basin_code_from_network_to_nodes_and_edges(
         edges.loc[
             edges["from_node"].isin(node_ids) & edges["to_node"].isin(node_ids),
             "basin",
-        ] = (
-            i + 1
-        )
+        ] = i + 1
         nodes.loc[nodes["node_no"].isin(list(subgraph)), "basin"] = i + 1
     print(f" - define numbers Ribasim-Basins ({len(subgraphs)}x) and join edges/nodes")
     return nodes, edges

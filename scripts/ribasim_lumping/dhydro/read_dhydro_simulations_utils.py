@@ -31,15 +31,15 @@ def get_data_from_simulation(
     - Replaces time coordinate with counter 'condition' (int). Starts counting at n_start
     Returns: map_data (edges/nodes) and his_data (structures) from one simulation"""
     files = get_dhydro_files(simulation_path)
-    his_file = files['output_his_file']
-    map_file = files['output_map_file']
+    his_file = files["output_his_file"]
+    map_file = files["output_map_file"]
 
     # file names
     if not his_file.exists():
-        raise ValueError(f'no his_file present: {simulation_path}*_his.nc')
+        raise ValueError(f"no his_file present: {simulation_path}*_his.nc")
     if not map_file.exists():
-        raise ValueError(f'no his_file present: {simulation_path}*_map.nc')
-    
+        raise ValueError(f"no his_file present: {simulation_path}*_map.nc")
+
     try:
         his_data = xr.open_mfdataset([his_file], preprocess=dfmt.preprocess_hisnc)
         map_data_xr = xr.open_dataset(map_file)
@@ -50,7 +50,7 @@ def get_data_from_simulation(
         map_data_xr = xr.open_dataset(map_file, decode_times=False)
         map_data = xu.open_dataset(map_file, decode_times=False)
         map_data["mesh1d_edge_nodes"] = map_data_xr["mesh1d_edge_nodes"]
-    
+
     if isinstance(simulations_ts[0], (datetime.datetime, pd.Timestamp)):
         his_data = his_data.sel(time=simulations_ts)
     else:
@@ -78,14 +78,14 @@ def get_data_from_simulations_set(
     - from simulation folder (dir)
     - at predefined timestamps (ts)
     - replaces simulation timestamp with condition (int)
-    Returns: map_data (edges/nodes), his_data (structures) and boundary data, all simulations combined 
+    Returns: map_data (edges/nodes), his_data (structures) and boundary data, all simulations combined
     """
     print(f"Read D-HYDRO simulations sets")
     his_data = None
     map_data = None
     # boundary_data = None
     n_start = 0
-    
+
     for simulation_name in simulations_names:
         simulation_path = Path(simulations_dir, simulation_name)
         print(
@@ -102,16 +102,10 @@ def get_data_from_simulations_set(
             map_data = map_data_x
         else:
             his_data = combine_data_from_simulations_sets(
-                nc_data=his_data, 
-                nc_data_new=his_data_x, 
-                xugrid=False, 
-                dim='condition'
+                nc_data=his_data, nc_data_new=his_data_x, xugrid=False, dim="condition"
             )
             map_data = combine_data_from_simulations_sets(
-                nc_data=map_data, 
-                nc_data_new=map_data_x, 
-                xugrid=True, 
-                dim='condition'
+                nc_data=map_data, nc_data_new=map_data_x, xugrid=True, dim="condition"
             )
 
         for var_name, var in map_data.data_vars.items():
@@ -127,8 +121,8 @@ def get_data_from_simulations_set(
                 elif set_name not in var.set:
                     his_data[var_name] = var.expand_dims(set=[set_name])
         n_start = len(his_data.condition)
-    
-    return his_data, map_data #, boundary_data
+
+    return his_data, map_data  # , boundary_data
 
 
 def combine_data_from_simulations_sets(
@@ -145,16 +139,11 @@ def combine_data_from_simulations_sets(
         nc_data = nc_data_new[nc_set_vars]
     else:
         if xugrid:
-            nc_data = xu.concat(
-                [nc_data[nc_set_vars], nc_data_new[nc_set_vars]], dim=dim
-            )
+            nc_data = xu.concat([nc_data[nc_set_vars], nc_data_new[nc_set_vars]], dim=dim)
         else:
-            nc_data = xr.concat(
-                [nc_data[nc_set_vars], nc_data_new[nc_set_vars]], dim=dim
-            )
+            nc_data = xr.concat([nc_data[nc_set_vars], nc_data_new[nc_set_vars]], dim=dim)
     if xugrid:
         nc_data = xu.merge([nc_data_new[nc_nonset_vars], nc_data])
     else:
         nc_data = xr.merge([nc_data_new[nc_nonset_vars], nc_data])
     return nc_data
-

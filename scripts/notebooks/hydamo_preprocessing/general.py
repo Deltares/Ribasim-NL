@@ -11,7 +11,8 @@ import time
 import logging
 import warnings
 
-#%% Monitoring
+# %% Monitoring
+
 
 def report_time_interval(start: datetime.datetime, end: datetime.datetime) -> str:
     """
@@ -38,7 +39,9 @@ def report_time_interval(start: datetime.datetime, end: datetime.datetime) -> st
     passed_time += f"{seconds} seconds"
     return passed_time
 
-#%% Extended geospatial vector operations
+
+# %% Extended geospatial vector operations
+
 
 def get_endpoints_from_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
@@ -317,12 +320,14 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
     return lines
 
 
-def add_overlapping_polygons(left_geodataframe: gpd.GeoDataFrame(),
-                             right_geodataframe: gpd.GeoDataFrame(),
-                             left_id_column: str,
-                             right_id_column: str):
+def add_overlapping_polygons(
+    left_geodataframe: gpd.GeoDataFrame(),
+    right_geodataframe: gpd.GeoDataFrame(),
+    left_id_column: str,
+    right_id_column: str,
+):
     """
-    creates a column in a left geodataframe where it lists the overlapping 
+    creates a column in a left geodataframe where it lists the overlapping
     polygons from the right geodataframe for each polygon in the left geodataframe.
     The id columns of the right and left dataframe have to be defined.
 
@@ -335,79 +340,74 @@ def add_overlapping_polygons(left_geodataframe: gpd.GeoDataFrame(),
     left_id_column : str
         the name of the ID column in the left geodataframe
     right_id_column : str
-        the name of the ID column in the right geodataframe, 
+        the name of the ID column in the right geodataframe,
         from which the values will be added to the left geodataframe
 
     Returns
     -------
     left_geodataframe : TYPE
-        the updated left geodataframe with an added column which contains 
+        the updated left geodataframe with an added column which contains
         insights in the overlapping polygons from the right dataframe
 
     """
-    
-    # Calculate total areas of left and right polygons
-    left_geodataframe["left_area"] = left_geodataframe["geometry"].apply(
-        lambda x: x.area)
-    right_geodataframe['surface_area'] = right_geodataframe.area
-    right_geodataframe['right_geometry'] = right_geodataframe['geometry']   
-    
-    # Join left and right polygons
-    joined = gpd.sjoin(left_geodataframe, right_geodataframe, 
-                       how='left', op='intersects')
-    joined = joined.loc[:,~joined.columns.duplicated()].copy()
 
-    
+    # Calculate total areas of left and right polygons
+    left_geodataframe["left_area"] = left_geodataframe["geometry"].apply(lambda x: x.area)
+    right_geodataframe["surface_area"] = right_geodataframe.area
+    right_geodataframe["right_geometry"] = right_geodataframe["geometry"]
+
+    # Join left and right polygons
+    joined = gpd.sjoin(left_geodataframe, right_geodataframe, how="left", op="intersects")
+    joined = joined.loc[:, ~joined.columns.duplicated()].copy()
+
     # Get overlapping right polygon ids, polygons & areas for left polygons
-    grouped = pd.DataFrame(joined.groupby(
-        left_id_column)[right_id_column].unique().reset_index(
-        name=right_id_column))
-    grouped['right_geometry'] = joined.groupby(
-        left_id_column)['right_geometry'].unique().reset_index(
-        name='right_geometry')['right_geometry']      
-    grouped['right_area'] = joined.groupby(
-        left_id_column)['surface_area'].unique().reset_index(
-        name='right_area')['right_area'] 
+    grouped = pd.DataFrame(joined.groupby(left_id_column)[right_id_column].unique().reset_index(name=right_id_column))
+    grouped["right_geometry"] = (
+        joined.groupby(left_id_column)["right_geometry"].unique().reset_index(name="right_geometry")["right_geometry"]
+    )
+    grouped["right_area"] = (
+        joined.groupby(left_id_column)["surface_area"].unique().reset_index(name="right_area")["right_area"]
+    )
 
     # Drop NA values from overlapping polygon info columns
-    grouped[right_id_column] = grouped[right_id_column].apply(
-        lambda x: pd.Series(x).dropna().tolist())
-    grouped['right_area'] = grouped['right_area'].apply(
-        lambda x: pd.Series(x).dropna().tolist())
-    grouped['right_geometry'] = grouped['right_geometry'].apply(
-        lambda x: pd.Series(x).dropna().tolist())
-    
+    grouped[right_id_column] = grouped[right_id_column].apply(lambda x: pd.Series(x).dropna().tolist())
+    grouped["right_area"] = grouped["right_area"].apply(lambda x: pd.Series(x).dropna().tolist())
+    grouped["right_geometry"] = grouped["right_geometry"].apply(lambda x: pd.Series(x).dropna().tolist())
+
     # Merge
     left_geodataframe = left_geodataframe.merge(
-        grouped[[left_id_column, right_id_column, 
-                 'right_geometry','right_area']], 
-        on=left_id_column, how='left')
+        grouped[[left_id_column, right_id_column, "right_geometry", "right_area"]], on=left_id_column, how="left"
+    )
 
     # Postprocessing
-    left_geodataframe['overlapping_areas'] = left_geodataframe.apply(
-        lambda x: [y.intersection(x['geometry']).area 
-        for y in x['right_geometry']],axis = 1)
-    left_geodataframe['overlapping_areas'] = left_geodataframe.apply(
-        lambda x: 
-            [{'id':x[right_id_column][i],
-              'right_area':x['right_area'][i],
-              'overlapping_area': x['overlapping_areas'][i],
-              'intersection_length': x['right_geometry'][i].intersection(x['geometry']).length} for i in 
-             range(len(x['right_area']))]
-            , axis = 1)
-    left_geodataframe = left_geodataframe.drop(columns = ['right_area',
-        'right_geometry'])
-    
+    left_geodataframe["overlapping_areas"] = left_geodataframe.apply(
+        lambda x: [y.intersection(x["geometry"]).area for y in x["right_geometry"]], axis=1
+    )
+    left_geodataframe["overlapping_areas"] = left_geodataframe.apply(
+        lambda x: [
+            {
+                "id": x[right_id_column][i],
+                "right_area": x["right_area"][i],
+                "overlapping_area": x["overlapping_areas"][i],
+                "intersection_length": x["right_geometry"][i].intersection(x["geometry"]).length,
+            }
+            for i in range(len(x["right_area"]))
+        ],
+        axis=1,
+    )
+    left_geodataframe = left_geodataframe.drop(columns=["right_area", "right_geometry"])
+
     return left_geodataframe
 
 
-def get_most_overlapping_polygon(left_geodataframe: gpd.GeoDataFrame(),
-                             right_geodataframe: gpd.GeoDataFrame(),
-                             left_id_column: str,
-                             right_id_column: str):
-
+def get_most_overlapping_polygon(
+    left_geodataframe: gpd.GeoDataFrame(),
+    right_geodataframe: gpd.GeoDataFrame(),
+    left_id_column: str,
+    right_id_column: str,
+):
     """
-    creates a column in a left geodataframe that contains IDs of the most overlapping 
+    creates a column in a left geodataframe that contains IDs of the most overlapping
     polygon from the right geodataframe based on their geometries.
     The id columns of the left and right dataframe have to be defined.
 
@@ -420,7 +420,7 @@ def get_most_overlapping_polygon(left_geodataframe: gpd.GeoDataFrame(),
     left_id_column : str
         the name of the ID column in the left geodataframe
     right_id_column : str
-        the name of the ID column in the right geodataframe, 
+        the name of the ID column in the right geodataframe,
         from which the values will be added to the left geodataframe
 
     Returns
@@ -429,93 +429,103 @@ def get_most_overlapping_polygon(left_geodataframe: gpd.GeoDataFrame(),
         the updated left geodataframe
 
     """
-    
-    left_geodataframe = add_overlapping_polygons(left_geodataframe, 
-        right_geodataframe, left_id_column, right_id_column) 
 
-    left_geodataframe['overlapping_areas'] = left_geodataframe['overlapping_areas'].apply(
-        lambda x: pd.DataFrame(x))
-  
-    
-    left_geodataframe['most_overlapping_polygon_id'] = left_geodataframe.apply(lambda x:
-        x['overlapping_areas'][
-            x['overlapping_areas']['overlapping_area']==x['overlapping_areas']['overlapping_area'].max()
-            ]["id"].values[0] 
-        if len(x['overlapping_areas'])!=0 else None, axis = 1)  
-        
-    left_geodataframe['most_overlapping_polygon_area'] = left_geodataframe.apply(lambda x:
-        x['overlapping_areas'][
-            x['overlapping_areas']['overlapping_area']==x['overlapping_areas']['overlapping_area'].max()
-            ]["overlapping_area"].values[0] 
-        if len(x['overlapping_areas'])!=0 else None, axis = 1)  
-        
+    left_geodataframe = add_overlapping_polygons(left_geodataframe, right_geodataframe, left_id_column, right_id_column)
 
-    return(left_geodataframe)
+    left_geodataframe["overlapping_areas"] = left_geodataframe["overlapping_areas"].apply(lambda x: pd.DataFrame(x))
 
-def get_polygon_with_largest_area(polygons,id_col, area_col):
+    left_geodataframe["most_overlapping_polygon_id"] = left_geodataframe.apply(
+        lambda x: x["overlapping_areas"][
+            x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
+        ]["id"].values[0]
+        if len(x["overlapping_areas"]) != 0
+        else None,
+        axis=1,
+    )
+
+    left_geodataframe["most_overlapping_polygon_area"] = left_geodataframe.apply(
+        lambda x: x["overlapping_areas"][
+            x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
+        ]["overlapping_area"].values[0]
+        if len(x["overlapping_areas"]) != 0
+        else None,
+        axis=1,
+    )
+
+    return left_geodataframe
+
+
+def get_polygon_with_largest_area(polygons, id_col, area_col):
     if len(polygons) == 0:
-        return(0)
+        return 0
     else:
         polygons[area_col] = polygons.area
-        polygons = polygons[polygons[area_col]==max(polygons[area_col])]
-        return(polygons[id_col].values[0])
-    
+        polygons = polygons[polygons[area_col] == max(polygons[area_col])]
+        return polygons[id_col].values[0]
+
 
 def get_most_overlapping_polygon_from_other_gdf(left_gdf, right_gdf, left_id, right_id):
     if right_id in left_gdf.columns:
-        future_right_id = f'{right_id}_2'
-        future_left_id = f'{left_id}_1'
+        future_right_id = f"{right_id}_2"
+        future_left_id = f"{left_id}_1"
     else:
         future_right_id = right_id
         future_left_id = left_id
     combined_gdf = left_gdf.overlay(right_gdf, how="intersection")
-    combined_gdf['area_geometry'] = combined_gdf.area
-    left_gdf['overlapping_polygons'] = left_gdf[left_id].apply(lambda x:
-        combined_gdf[combined_gdf[future_left_id]==x])
-    left_gdf['right_id'] = left_gdf['overlapping_polygons'].apply(lambda x:
-        get_polygon_with_largest_area(x,future_right_id,'area_geometry'))
-    left_gdf = left_gdf.drop(columns = ['overlapping_polygons'])    
-    return(left_gdf)
+    combined_gdf["area_geometry"] = combined_gdf.area
+    left_gdf["overlapping_polygons"] = left_gdf[left_id].apply(
+        lambda x: combined_gdf[combined_gdf[future_left_id] == x]
+    )
+    left_gdf["right_id"] = left_gdf["overlapping_polygons"].apply(
+        lambda x: get_polygon_with_largest_area(x, future_right_id, "area_geometry")
+    )
+    left_gdf = left_gdf.drop(columns=["overlapping_polygons"])
+    return left_gdf
 
 
 def get_touching_polygons_from_within_gdf(gdf, id_col):
-    id_col_right = f'{id_col}_2'
+    id_col_right = f"{id_col}_2"
     right_gdf, left_gdf = gdf.copy(), gdf.copy()
     right_gdf[id_col_right] = right_gdf[id_col]
-    right_gdf = right_gdf.drop(columns = [id_col])
-    joined_gdf = left_gdf.sjoin(right_gdf,predicate='touches')
-    gdf['touching_polygons'] = gdf[id_col].apply(lambda x:
-        list(joined_gdf[id_col_right][(joined_gdf[id_col]==x) &
-                   (joined_gdf[id_col_right]!=x)].unique())
-        )
-    return(gdf)
+    right_gdf = right_gdf.drop(columns=[id_col])
+    joined_gdf = left_gdf.sjoin(right_gdf, predicate="touches")
+    gdf["touching_polygons"] = gdf[id_col].apply(
+        lambda x: list(joined_gdf[id_col_right][(joined_gdf[id_col] == x) & (joined_gdf[id_col_right] != x)].unique())
+    )
+    return gdf
 
-    
+
 def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, right_id=None):
     def get_most_intersecting(gdf, polygon, left_id):
         try:
-            gdf = gpd.GeoDataFrame(gdf.drop(columns="geometry"),
-                                   geometry = gdf["geometry"])
-            gdf['geomtry']=gdf.buffer(0.5)
-            gdf['intersection_length']=gdf['geometry'].apply(lambda x: x.intersection(polygon).boundary.length)
-            most_overlapping_polygon = gdf[left_id][gdf["intersection_length"]==gdf["intersection_length"].max()].values[0]
-            return(most_overlapping_polygon)
+            gdf = gpd.GeoDataFrame(gdf.drop(columns="geometry"), geometry=gdf["geometry"])
+            gdf["geomtry"] = gdf.buffer(0.5)
+            gdf["intersection_length"] = gdf["geometry"].apply(lambda x: x.intersection(polygon).boundary.length)
+            most_overlapping_polygon = gdf[left_id][
+                gdf["intersection_length"] == gdf["intersection_length"].max()
+            ].values[0]
+            return most_overlapping_polygon
         except:
-            return(None)
+            return None
+
     left_gdf = get_touching_polygons_from_within_gdf(left_gdf, left_id)
-    if type(right_gdf)==gpd.GeoDataFrame:
-        left_gdf = get_most_overlapping_polygon_from_other_gdf(left_gdf, right_gdf, left_id, right_id)  
-        left_gdf["right_id"][left_gdf[left_id]==left_gdf["right_id"]]=None
-    left_gdf['touching_polygons'] = left_gdf['touching_polygons'].apply(lambda x: pd.DataFrame(left_gdf[left_gdf[left_id].isin(x)]))
-    left_gdf['touching_polygons'] = left_gdf['touching_polygons'].apply(lambda x: x[x['basin']!=None])
-    left_gdf['touching_polygons'] = left_gdf['touching_polygons'].apply(lambda x: x[x['basin'].isna()==False])
-    if type(right_gdf)==gpd.GeoDataFrame:    
-        left_gdf['touching_polygons'] = left_gdf.apply(
-            lambda x: x['touching_polygons'][x['touching_polygons']['right_id']==x['right_id']]
-            if x['right_id']!= None else x['touching_polygons']
-            , axis = 1)                                                               
-    left_gdf['most_adjacent_polygon'] = left_gdf.apply(
-        lambda x: get_most_intersecting(x['touching_polygons'], x["geometry"], left_id),
-        axis=1)
-    left_gdf = left_gdf.drop(columns=['touching_polygons'])
-    return(left_gdf)
+    if type(right_gdf) == gpd.GeoDataFrame:
+        left_gdf = get_most_overlapping_polygon_from_other_gdf(left_gdf, right_gdf, left_id, right_id)
+        left_gdf["right_id"][left_gdf[left_id] == left_gdf["right_id"]] = None
+    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(
+        lambda x: pd.DataFrame(left_gdf[left_gdf[left_id].isin(x)])
+    )
+    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"] != None])
+    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].isna() == False])
+    if type(right_gdf) == gpd.GeoDataFrame:
+        left_gdf["touching_polygons"] = left_gdf.apply(
+            lambda x: x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]
+            if x["right_id"] != None
+            else x["touching_polygons"],
+            axis=1,
+        )
+    left_gdf["most_adjacent_polygon"] = left_gdf.apply(
+        lambda x: get_most_intersecting(x["touching_polygons"], x["geometry"], left_id), axis=1
+    )
+    left_gdf = left_gdf.drop(columns=["touching_polygons"])
+    return left_gdf

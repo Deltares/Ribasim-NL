@@ -55,7 +55,7 @@ def default_model(
     rating_curve: dict,
     start_time: str,
     end_time: str,
-    crs: int = "28992"
+    crs: int = "28992",
 ) -> ribasim.Model:
     """Model with default settings.
 
@@ -116,73 +116,109 @@ def default_model(
     if "split_type" in node_df.columns:
         rename_columns = {
             "object_type": "meta_object_type",
-            "split_node_id": "meta_split_node_id", 
-            "split_type": "meta_split_type", 
-            "boundary": "meta_boundary", 
-            "split_node": "meta_split_node", 
+            "split_node_id": "meta_split_node_id",
+            "split_type": "meta_split_type",
+            "boundary": "meta_boundary",
+            "split_node": "meta_split_node",
             "basin": "meta_basin",
-            "connection": "meta_connection"
+            "connection": "meta_connection",
         }
         node_df = node_df.rename(columns=rename_columns)
-    
+
     # define all node types
-    model.basin.node.df = node_df[node_df.node_type=="Basin"]
+    model.basin.node.df = node_df[node_df.node_type == "Basin"]
     model.basin.area.df = basin_areas_df
-    model.pump.node.df = node_df[node_df.node_type=="Pump"]
-    model.outlet.node.df = node_df[node_df.node_type=="Outlet"]
-    model.tabulated_rating_curve.node.df = node_df[node_df.node_type=="TabulatedRatingCurve"]
-    model.manning_resistance.node.df = node_df[node_df.node_type=="ManningResistance"]
-    model.linear_resistance.node.df = node_df[node_df.node_type=="LinearResistance"]
-    model.level_boundary.node.df = node_df[node_df.node_type=="LevelBoundary"]
-    model.flow_boundary.node.df = node_df[node_df.node_type=="FlowBoundary"]
-    
+    model.pump.node.df = node_df[node_df.node_type == "Pump"]
+    model.outlet.node.df = node_df[node_df.node_type == "Outlet"]
+    model.tabulated_rating_curve.node.df = node_df[node_df.node_type == "TabulatedRatingCurve"]
+    model.manning_resistance.node.df = node_df[node_df.node_type == "ManningResistance"]
+    model.linear_resistance.node.df = node_df[node_df.node_type == "LinearResistance"]
+    model.level_boundary.node.df = node_df[node_df.node_type == "LevelBoundary"]
+    model.flow_boundary.node.df = node_df[node_df.node_type == "FlowBoundary"]
+
     # check and drop duplicated edges
-    if 'split_type' in edge_df.columns:
+    if "split_type" in edge_df.columns:
         rename_columns = {
-                "object_type": "meta_object_type",
-                "split_node_id": "meta_split_node_id", 
-                "split_type": "meta_split_type", 
-                "boundary": "meta_boundary", 
-                "split_node": "meta_split_node", 
-                "basin": "meta_basin",
-                "connection": "meta_connection"
-            }
+            "object_type": "meta_object_type",
+            "split_node_id": "meta_split_node_id",
+            "split_type": "meta_split_type",
+            "boundary": "meta_boundary",
+            "split_node": "meta_split_node",
+            "basin": "meta_basin",
+            "connection": "meta_connection",
+        }
         edge_df = edge_df.rename(columns=rename_columns)
         edge_df["meta_boundary"] = edge_df["meta_boundary"].fillna(-1).astype(int)
     if "from_node_id" not in edge_df.columns:
         nodes = node_df[["node_id", "node_type", "meta_basin", "meta_boundary", "meta_split_node", "meta_categorie"]]
-        node_basin = nodes[nodes.meta_basin!=-1]
-        node_boundary = nodes[nodes.meta_boundary!=-1]
-        node_split_node = nodes[nodes.meta_split_node!=-1]
-        rename_from_nodes = {"node_id": "from_node_id", "node_type": "from_node_type", "meta_categorie": "meta_from_categorie"}
+        node_basin = nodes[nodes.meta_basin != -1]
+        node_boundary = nodes[nodes.meta_boundary != -1]
+        node_split_node = nodes[nodes.meta_split_node != -1]
+        rename_from_nodes = {
+            "node_id": "from_node_id",
+            "node_type": "from_node_type",
+            "meta_categorie": "meta_from_categorie",
+        }
         rename_to_nodes = {"node_id": "to_node_id", "node_type": "to_node_type", "meta_categorie": "meta_to_categorie"}
-        from_node_basin = node_basin.rename(columns=rename_from_nodes)[["from_node_id", "from_node_type", "meta_from_categorie", "meta_basin"]]
-        to_node_basin = node_basin.rename(columns=rename_to_nodes)[["to_node_id", "to_node_type", "meta_to_categorie", "meta_basin"]]
-        from_node_boundary = node_boundary.rename(columns=rename_from_nodes)[["from_node_id", "from_node_type", "meta_from_categorie", "meta_boundary"]]
-        to_node_boundary = node_boundary.rename(columns=rename_to_nodes)[["to_node_id", "to_node_type", "meta_to_categorie", "meta_boundary"]]
-        from_node_split_node = node_split_node.rename(columns=rename_from_nodes)[["from_node_id", "from_node_type", "meta_from_categorie", "meta_split_node"]]
-        to_node_split_node = node_split_node.rename(columns=rename_to_nodes)[["to_node_id", "to_node_type", "meta_to_categorie", "meta_split_node"]]
+        from_node_basin = node_basin.rename(columns=rename_from_nodes)[
+            ["from_node_id", "from_node_type", "meta_from_categorie", "meta_basin"]
+        ]
+        to_node_basin = node_basin.rename(columns=rename_to_nodes)[
+            ["to_node_id", "to_node_type", "meta_to_categorie", "meta_basin"]
+        ]
+        from_node_boundary = node_boundary.rename(columns=rename_from_nodes)[
+            ["from_node_id", "from_node_type", "meta_from_categorie", "meta_boundary"]
+        ]
+        to_node_boundary = node_boundary.rename(columns=rename_to_nodes)[
+            ["to_node_id", "to_node_type", "meta_to_categorie", "meta_boundary"]
+        ]
+        from_node_split_node = node_split_node.rename(columns=rename_from_nodes)[
+            ["from_node_id", "from_node_type", "meta_from_categorie", "meta_split_node"]
+        ]
+        to_node_split_node = node_split_node.rename(columns=rename_to_nodes)[
+            ["to_node_id", "to_node_type", "meta_to_categorie", "meta_split_node"]
+        ]
 
-        edge_split_node_to_basin = edge_df[edge_df.meta_connection=="split_node_to_basin"]
-        edge_basin_to_split_node = edge_df[edge_df.meta_connection=="basin_to_split_node"]
-        edge_split_node_to_boundary = edge_df[edge_df.meta_connection=="split_node_to_boundary"]
-        edge_boundary_to_split_node = edge_df[edge_df.meta_connection=="boundary_to_split_node"]
+        edge_split_node_to_basin = edge_df[edge_df.meta_connection == "split_node_to_basin"]
+        edge_basin_to_split_node = edge_df[edge_df.meta_connection == "basin_to_split_node"]
+        edge_split_node_to_boundary = edge_df[edge_df.meta_connection == "split_node_to_boundary"]
+        edge_boundary_to_split_node = edge_df[edge_df.meta_connection == "boundary_to_split_node"]
 
         edge_split_node_to_basin = to_node_basin.merge(edge_split_node_to_basin, how="inner", on="meta_basin")
-        edge_split_node_to_basin = from_node_split_node.merge(edge_split_node_to_basin, how="inner", on="meta_split_node")
+        edge_split_node_to_basin = from_node_split_node.merge(
+            edge_split_node_to_basin, how="inner", on="meta_split_node"
+        )
         edge_basin_to_split_node = to_node_split_node.merge(edge_basin_to_split_node, how="inner", on="meta_split_node")
         edge_basin_to_split_node = from_node_basin.merge(edge_basin_to_split_node, how="inner", on="meta_basin")
-        edge_split_node_to_boundary = to_node_boundary.merge(edge_split_node_to_boundary, how="inner", on="meta_boundary")
-        edge_split_node_to_boundary = from_node_split_node.merge(edge_split_node_to_boundary, how="inner", on="meta_split_node")
-        edge_boundary_to_split_node = to_node_split_node.merge(edge_boundary_to_split_node, how="inner", on="meta_split_node")
-        edge_boundary_to_split_node = from_node_boundary.merge(edge_boundary_to_split_node, how="inner", on="meta_boundary")
+        edge_split_node_to_boundary = to_node_boundary.merge(
+            edge_split_node_to_boundary, how="inner", on="meta_boundary"
+        )
+        edge_split_node_to_boundary = from_node_split_node.merge(
+            edge_split_node_to_boundary, how="inner", on="meta_split_node"
+        )
+        edge_boundary_to_split_node = to_node_split_node.merge(
+            edge_boundary_to_split_node, how="inner", on="meta_split_node"
+        )
+        edge_boundary_to_split_node = from_node_boundary.merge(
+            edge_boundary_to_split_node, how="inner", on="meta_boundary"
+        )
 
-        edge_df = pd.concat([edge_split_node_to_basin, edge_basin_to_split_node, edge_split_node_to_boundary, edge_boundary_to_split_node])
+        edge_df = pd.concat(
+            [
+                edge_split_node_to_basin,
+                edge_basin_to_split_node,
+                edge_split_node_to_boundary,
+                edge_boundary_to_split_node,
+            ]
+        )
         edge_df = edge_df.reset_index(drop=True)
         edge_df.index.name = "fid"
         edge_df = gpd.GeoDataFrame(edge_df, geometry="geometry", crs=crs)
-        edge_df["meta_categorie"] = 'doorgaand'
-        edge_df.loc[(edge_df["meta_from_categorie"]=='hoofdwater') & (edge_df["meta_to_categorie"]=='hoofdwater'), "meta_categorie"] = "hoofdwater"
+        edge_df["meta_categorie"] = "doorgaand"
+        edge_df.loc[
+            (edge_df["meta_from_categorie"] == "hoofdwater") & (edge_df["meta_to_categorie"] == "hoofdwater"),
+            "meta_categorie",
+        ] = "hoofdwater"
 
     if edge_df.duplicated(subset=["from_node_id", "from_node_type", "to_node_id", "to_node_type"]).any():
         logger.warning("edge_df contains duplicated node_ids that get dropped")
@@ -190,7 +226,7 @@ def default_model(
 
     # convert to edge-table
     model.edge.df = edge_df
-    
+
     # define ribasim basin-table
     profile_df = pd.concat(
         [
@@ -253,7 +289,7 @@ def default_model(
         ],
         ignore_index=True,
     )
-    
+
     model.tabulated_rating_curve.static.df = static_df
 
     # define ribasim flow boundary

@@ -21,67 +21,64 @@ warnings.simplefilter("ignore")
 pd.options.mode.chained_assignment = None
 # change workdir
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-warnings.simplefilter(action='ignore', category=UserWarning)
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action="ignore", category=UserWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 # Settings #
 def run_ribasim_lumping_for_waterboard(
-        base_dir: Path, 
-        waterschap: str, 
-        dx: float = 100.0, 
-        buffer_distance: float = 1.0, 
-        assign_unassigned_areas_to_basins: bool = True,
-        remove_isolated_basins: bool = True,
-        include_flow_boundary_basins: bool = True,
-        include_level_boundary_basins: bool = False,
-    ):
+    base_dir: Path,
+    waterschap: str,
+    dx: float = 100.0,
+    buffer_distance: float = 1.0,
+    assign_unassigned_areas_to_basins: bool = True,
+    remove_isolated_basins: bool = True,
+    include_flow_boundary_basins: bool = True,
+    include_level_boundary_basins: bool = False,
+):
     ts_start = pd.Timestamp.now()
     print(f"\n\nRun RIBASIM-lumping for waterboard {waterschap}")
-    base_dir                   = Path(base_dir, waterschap, 'verwerkt')
+    base_dir = Path(base_dir, waterschap, "verwerkt")
 
     # define network name, base dir
-    source_type                = "hydamo"
+    source_type = "hydamo"
 
     # directory results
-    results_dir                = Path(base_dir, "4_ribasim")
-    simulation_code            = "."
+    results_dir = Path(base_dir, "4_ribasim")
+    simulation_code = "."
 
     # Create networkanalysis
-    network = create_ribasim_lumping_network(
-        base_dir=base_dir, 
-        name=waterschap, 
-        results_dir=results_dir, 
-        crs=28992
-    )
+    network = create_ribasim_lumping_network(base_dir=base_dir, name=waterschap, results_dir=results_dir, crs=28992)
 
     ## -------- AREAS --------
     # areas (discharge units: afwaterende eenheden)
-    areas_file                 = Path(base_dir, "3_input", "areas.gpkg")
-    areas_gpkg_layer           = "areas"
-    areas_code_column          = "CODE"
+    areas_file = Path(base_dir, "3_input", "areas.gpkg")
+    areas_gpkg_layer = "areas"
+    areas_code_column = "CODE"
 
     # drainage areas (afvoergebieden)
-    drainage_areas_file        = Path(base_dir, "3_input", "areas.gpkg")
-    drainage_areas_gpkg_layer  = "drainage_areas"
+    drainage_areas_file = Path(base_dir, "3_input", "areas.gpkg")
+    drainage_areas_gpkg_layer = "drainage_areas"
     drainage_areas_code_column = "CODE"
 
     # Load areas
     network.read_areas(
         areas_file_path=areas_file,
         layer_name=areas_gpkg_layer,
-        areas_code_column=areas_code_column, 
+        areas_code_column=areas_code_column,
     )
     network.read_drainage_areas(
         drainage_areas_file_path=drainage_areas_file,
         layer_name=drainage_areas_gpkg_layer,
-        drainage_areas_code_column=drainage_areas_code_column
+        drainage_areas_code_column=drainage_areas_code_column,
     )
 
     ## -------- HYDAMO DATA --------
     # HyDAMO data
-    hydamo_network_file        = Path(base_dir, "4_ribasim", "hydamo.gpkg")
-    hydamo_split_network_dx    = dx  # split up hydamo hydroobjects in sections of approximate 25 m. Use None to don't split
+    hydamo_network_file = Path(base_dir, "4_ribasim", "hydamo.gpkg")
+    hydamo_split_network_dx = (
+        dx  # split up hydamo hydroobjects in sections of approximate 25 m. Use None to don't split
+    )
 
     # Read HyDAMO network data
     network.add_basis_network(
@@ -92,23 +89,23 @@ def run_ribasim_lumping_for_waterboard(
 
     ## -------- RIBASIM INPUT --------
     # input files
-    ribasim_input_boundary_file              = Path(base_dir, "3_input", "ribasim_input.gpkg")
-    ribasim_input_boundary_gpkg_layer        = 'boundaries'
-    ribasim_input_split_nodes_file           = Path(base_dir, "3_input", "ribasim_input.gpkg")
-    ribasim_input_split_nodes_gpkg_layer     = "split_nodes"
+    ribasim_input_boundary_file = Path(base_dir, "3_input", "ribasim_input.gpkg")
+    ribasim_input_boundary_gpkg_layer = "boundaries"
+    ribasim_input_split_nodes_file = Path(base_dir, "3_input", "ribasim_input.gpkg")
+    ribasim_input_split_nodes_gpkg_layer = "split_nodes"
 
     network.read_split_nodes(
         split_nodes_file_path=ribasim_input_split_nodes_file,
         layer_name=ribasim_input_split_nodes_gpkg_layer,
         buffer_distance=buffer_distance,
-        crs=28992
+        crs=28992,
     )
 
     network.read_boundaries(
         boundary_file_path=ribasim_input_boundary_file,
         layer_name=ribasim_input_boundary_gpkg_layer,
         buffer_distance=buffer_distance,
-        crs=28992
+        crs=28992,
     )
 
     # generate Ribasim network
@@ -130,11 +127,10 @@ if __name__ == "__main__":
     dx = 250.0
 
     run_ribasim_lumping_for_waterboard(
-        base_dir=base_dir, 
-        waterschap=waterschap, 
+        base_dir=base_dir,
+        waterschap=waterschap,
         dx=dx,
         buffer_distance=1.0,
-        assign_unassigned_areas_to_basins=False if waterschap=="ValleienVeluwe" else True,
+        assign_unassigned_areas_to_basins=False if waterschap == "ValleienVeluwe" else True,
         remove_isolated_basins=False,
     )
-
