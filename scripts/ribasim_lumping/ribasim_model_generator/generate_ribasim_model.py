@@ -1,10 +1,8 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
 
 import geopandas as gpd
 import pandas as pd
 import ribasim
-from shapely.geometry import LineString
 
 
 def generate_ribasim_nodes_static(

@@ -260,13 +260,19 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
         )
         lines["buffer_geometry"] = lines.geometry.buffer(buffer_distance, join_style="round")
 
-        boundary_endpoints["overlaying_line_buffers"] = [lines[lines.buffer_geometry.contains(x)].code.tolist() for x in boundary_endpoints.geometry]
+        boundary_endpoints["overlaying_line_buffers"] = [
+            lines[lines.buffer_geometry.contains(x)].code.tolist() for x in boundary_endpoints.geometry
+        ]
         boundary_endpoints["startpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: [x["coordinates"] in list(lines[lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]],
+            lambda x: [
+                x["coordinates"] in list(lines[lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]
+            ],
             axis=1,
         )
         boundary_endpoints["endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: [x["coordinates"] in list(lines[lines.code == y].startpoint.values) for y in x["overlaying_line_buffers"]],
+            lambda x: [
+                x["coordinates"] in list(lines[lines.code == y].startpoint.values) for y in x["overlaying_line_buffers"]
+            ],
             axis=1,
         )
         boundary_endpoints["start_or_endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
@@ -501,7 +507,7 @@ def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, righ
                 gdf["intersection_length"] == gdf["intersection_length"].max()
             ].values[0]
             return most_overlapping_polygon
-        except:
+        except Exception:
             return None
 
     left_gdf = get_touching_polygons_from_within_gdf(left_gdf, left_id)

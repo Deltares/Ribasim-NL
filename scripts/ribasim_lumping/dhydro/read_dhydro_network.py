@@ -89,7 +89,7 @@ def get_dhydro_network_nodes_from_network_nc(network_nc, crs):
                 "Y": network_nc.network_node_y,
             }
         )
-    except:
+    except Exception:
         nodes_df = pd.DataFrame(
             {
                 "network_node_id": network_nc.Network_node_id,
@@ -401,7 +401,7 @@ def get_dhydro_forcing_data(mdu_input_dir: Path, boundaries_gdf: gpd.GeoDataFram
             start_datetime = lateral_data.quantityunitpair[0]["unit"][-19:]
             start_datetime = datetime.datetime.strptime(start_datetime, "%Y-%m-%d %H:%M:%S")
             ts = [start_datetime + datetime.timedelta(minutes=t[0]) for t in lateral_data.datablock]
-            lateral_data_data = [l[1] for l in lateral_data.datablock]
+            lateral_data_data = [lt[1] for lt in lateral_data.datablock]
             laterals_df = pd.Series(index=ts, data=lateral_data_data, name=lateral_data["name"])
             laterals_df.index = pd.to_datetime(laterals_df.index)
             return laterals_df

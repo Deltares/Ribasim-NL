@@ -1,11 +1,8 @@
-import sys
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import geopandas as gpd
 import matplotlib
-import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 from numba.core.errors import NumbaDeprecationWarning
@@ -233,6 +230,8 @@ def plot_results_basins_ribasim_model(
     simulation_path: Path,
 ):
     ribasim_results = read_ribasim_model_results(simulation_path=simulation_path)
+    node_df = ribasim_model.node_table().df
+    assert node_df is not None
     basin_nos = node_df[node_df.node_type == "Basin"].node_id
     for basin_no in basin_nos:
         print(f" - Basin {basin_no}")

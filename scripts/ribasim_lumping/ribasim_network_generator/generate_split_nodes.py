@@ -1,5 +1,3 @@
-from typing import List
-
 import geopandas as gpd
 import pandas as pd
 

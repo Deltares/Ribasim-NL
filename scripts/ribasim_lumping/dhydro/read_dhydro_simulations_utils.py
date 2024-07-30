@@ -1,11 +1,8 @@
-# pylint: disable=missing-function-docstring
 import datetime
 import os
 from pathlib import Path
-from typing import List, Tuple, Union
 
 import dfm_tools as dfmt
-import hydrolib.core.dflowfm as hcdfm
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -48,7 +45,7 @@ def get_data_from_simulation(
         map_data_xr = xr.open_dataset(map_file)
         map_data = xu.open_dataset(map_file)
         map_data["mesh1d_edge_nodes"] = map_data_xr["mesh1d_edge_nodes"]
-    except:
+    except Exception:
         his_data = xr.open_mfdataset([his_file], preprocess=dfmt.preprocess_hisnc, decode_times=False)
         map_data_xr = xr.open_dataset(map_file, decode_times=False)
         map_data = xu.open_dataset(map_file, decode_times=False)
@@ -76,7 +73,7 @@ def get_data_from_simulations_set(
     simulations_names: list[str],
     simulations_ts: list | pd.DatetimeIndex,
 ) -> tuple[xr.Dataset, xu.UgridDataset]:
-    """ "Combines simulation data:
+    """Combines simulation data:
     - from several simulations (names)
     - from simulation folder (dir)
     - at predefined timestamps (ts)
@@ -134,7 +131,7 @@ def combine_data_from_simulations_sets(
     xugrid: bool = False,
     dim: str = "set",
 ) -> xr.Dataset | xu.UgridDataset:
-    """ "Combine his.nc and map.nc data from two cases over dimension DIM assuming
+    """Combine his.nc and map.nc data from two cases over dimension DIM assuming
     that all nc-variables not including DIM as dimension are equal
     """
     nc_set_vars = [v_n for v_n, v in nc_data_new.data_vars.items() if dim in v.dims]

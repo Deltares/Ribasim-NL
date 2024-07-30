@@ -1,9 +1,6 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
 
 import geopandas as gpd
-import networkx as nx
-import numpy as np
 import pandas as pd
 
 

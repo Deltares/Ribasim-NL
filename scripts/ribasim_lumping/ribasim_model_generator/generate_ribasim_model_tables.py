@@ -72,7 +72,7 @@ def generate_basin_time_table_laterals(basins, basin_areas, laterals, laterals_d
     for basin_node_id in basin_node_ids:
         if basin_node_id in basin_areas["basin_node_id"].to_numpy():
             laterals_basin = laterals_basins[laterals_basins["basin_node_id"] == basin_node_id]["id"].to_numpy()
-            laterals_basin = [l for l in laterals_basin if l in laterals_data.columns]
+            laterals_basin = [lt for lt in laterals_basin if lt in laterals_data.columns]
             timeseries_basin = laterals_data[laterals_basin].sum(axis=1)
             timeseries_basin.name = "drainage"
             timeseries_basin = timeseries_basin.to_frame()

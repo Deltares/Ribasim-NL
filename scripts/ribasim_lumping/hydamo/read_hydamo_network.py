@@ -1,10 +1,7 @@
 from pathlib import Path
-from typing import Tuple
 
 import fiona
 import geopandas as gpd
-import pandas as pd
-from shapely.geometry import LineString, Point
 
 from ..utils.general_functions import generate_nodes_from_edges, read_geom_file, split_edges_by_dx
 

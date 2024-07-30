@@ -1014,16 +1014,18 @@ class RibasimLumpingNetwork(BaseModel):
         print(f"Export location: {qgz_path}")
 
     def plot(self):
-        """ "Plot RIBASIM lumping network"""
+        """Plot RIBASIM lumping network"""
         fig, ax = plt.subplots(figsize=(10, 10))
+        rng = np.random.default_rng()
+
         if self.basin_areas_gdf is not None:
-            cmap = matplotlib.colors.ListedColormap(np.random.rand(len(self.basin_areas_gdf) * 2, 3))
+            cmap = matplotlib.colors.ListedColormap(rng.random((len(self.basin_areas_gdf) * 2, 3)))
             self.basin_areas_gdf.plot(ax=ax, column="basin_node_id", cmap=cmap, alpha=0.35, zorder=1)
             self.basin_areas_gdf.plot(
                 ax=ax, facecolor="none", edgecolor="black", linewidth=0.25, label="basin_areas", zorder=1
             )
         elif self.areas_gdf is not None:
-            cmap = matplotlib.colors.ListedColormap(np.random.rand(len(self.areas_gdf) * 2, 3))
+            cmap = matplotlib.colors.ListedColormap(rng.random((len(self.areas_gdf) * 2, 3)))
             self.areas_gdf.plot(ax=ax, column="code", cmap=cmap, alpha=0.35, zorder=1)
             self.areas_gdf.plot(ax=ax, facecolor="none", edgecolor="black", linewidth=0.2, label="areas", zorder=1)
         # if self.ribasim_model is not None:

@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Union
 
 import pandas as pd
 import xarray as xr

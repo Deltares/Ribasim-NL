@@ -1,15 +1,13 @@
 import configparser
 import os
 from collections import OrderedDict
-from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, List, Tuple, TypeVar, Union
+from typing import TypeVar
 
 import fiona
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import nearest_points, snap
 
@@ -480,16 +478,16 @@ def snap_points_to_nodes_and_edges(
             # if no edge is within point combined with buffer distance, skip
             lines = edges.geometry.values[edges.geometry.intersects(point.geometry.buffer(edges_bufdist))]
             # also skip if line is shorter than 2 m
-            lines = lines[[l.length > min_length_edge for l in lines]]
+            lines = lines[[ln.length > min_length_edge for ln in lines]]
             if len(lines) == 0:
                 continue
             # project node onto edge but make sure resulting point is some distance (0.5 meter) from start/end node of edge
-            _dist_along_line = [l.project(point.geometry) for l in lines]
+            _dist_along_line = [ln.project(point.geometry) for ln in lines]
             _dist_along_line = [
-                ((l.length - 0.5) if (d > (l.length - 0.5)) else d) if (d > 0.5) else 0.5
-                for l, d in zip(lines, _dist_along_line)
+                ((ln.length - 0.5) if (d > (ln.length - 0.5)) else d) if (d > 0.5) else 0.5
+                for ln, d in zip(lines, _dist_along_line)
             ]
-            _nodes = np.array([l.interpolate(d) for l, d in zip(lines, _dist_along_line)], dtype=object)
+            _nodes = np.array([ln.interpolate(d) for ln, d in zip(lines, _dist_along_line)], dtype=object)
             _dist_n_to_nodes = np.array([n.distance(point.geometry) for n in _nodes])
             # filter out nodes that is within buffer distance and use one with minimum distance
             ix = np.where(_dist_n_to_nodes <= edges_bufdist)[0]
@@ -683,8 +681,8 @@ def split_edges_by_dx(
 
         # now split and store
         new_lines = split_line_in_multiple(line, dists_to_split)
-        for j, l in enumerate(new_lines):
-            edges_to_add.append((i, j, l))
+        for j, ln in enumerate(new_lines):
+            edges_to_add.append((i, j, ln))
         edges_to_remove.append(i)
 
     # construct new geodataframe with new edges to add
@@ -732,9 +730,7 @@ def split_line_in_two(line: LineString, distance_along_line: float) -> list[Line
                 return [LineString(coords[:i] + [(cp.x, cp.y, cp.z)]), LineString([(cp.x, cp.y, cp.z)] + coords[i:])]
 
 
-def split_line_in_multiple(
-    line: LineString, distances_along_line: list[float | int] | np.ndarray
-) -> list[LineString]:
+def split_line_in_multiple(line: LineString, distances_along_line: list[float | int] | np.ndarray) -> list[LineString]:
     # Cuts a line in multiple sections at distances from the line starting point
     lines = []
     distances_along_line = sorted(distances_along_line)  # distances should by in sorted order for loop below to work
