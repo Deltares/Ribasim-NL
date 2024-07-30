@@ -1,16 +1,12 @@
 import datetime
 import itertools
 import logging
-import os
 import time
 import warnings
 
 import geopandas as gpd
-import networkx as nx
-import numpy as np
 import pandas as pd
-from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import snap, split
+from shapely.geometry import LineString, Point
 
 # %% Monitoring
 

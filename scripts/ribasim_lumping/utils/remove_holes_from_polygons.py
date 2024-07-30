@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from typing import TypeVar
 
 import geopandas as gpd

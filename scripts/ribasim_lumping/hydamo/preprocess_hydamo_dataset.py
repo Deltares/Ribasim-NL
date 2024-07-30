@@ -1,14 +1,13 @@
 import itertools
 import logging
-import os
 import time
 import warnings
 
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import snap, split
+from shapely.geometry import LineString, Point
+from shapely.ops import snap
 
 warnings.filterwarnings("ignore")
 
