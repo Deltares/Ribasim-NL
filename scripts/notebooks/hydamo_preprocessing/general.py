@@ -507,7 +507,7 @@ def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, righ
             return None
 
     left_gdf = get_touching_polygons_from_within_gdf(left_gdf, left_id)
-    if type(right_gdf) == gpd.GeoDataFrame:
+    if isinstance(right_gdf, gpd.GeoDataFrame):
         left_gdf = get_most_overlapping_polygon_from_other_gdf(left_gdf, right_gdf, left_id, right_id)
         left_gdf["right_id"][left_gdf[left_id] == left_gdf["right_id"]] = None
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(
@@ -515,7 +515,7 @@ def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, righ
     )
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"] is not None])
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].notna()])
-    if type(right_gdf) == gpd.GeoDataFrame:
+    if isinstance(right_gdf, gpd.GeoDataFrame):
         left_gdf["touching_polygons"] = left_gdf.apply(
             lambda x: x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]
             if x["right_id"] is not None

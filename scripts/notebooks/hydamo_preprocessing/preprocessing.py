@@ -93,7 +93,7 @@ def add_wfd_id_to_hydroobjects(
         lambda x: x["most_overlapping_polygon_id"]
         if x["most_overlapping_polygon_area"] > overlap_ratio * x["left_area"]
         else None
-        if type(x["most_overlapping_polygon_area"]) == float
+        if isinstance(x["most_overlapping_polygon_area"], float)
         else None,
         axis=1,
     )
