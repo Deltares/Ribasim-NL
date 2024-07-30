@@ -191,12 +191,12 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
             (modified_linestring, index_nearest_neighbour) = add_point_to_linestring(Point(node), linestring)
 
             if index_nearest_neighbour == 0 and linestring.coords[0] in list(
-                connections_to_create.loc[connections_to_create["inserted"] == True, "point"].values
+                connections_to_create.loc[connections_to_create["inserted"], "point"].values
             ):
                 continue
 
             elif index_nearest_neighbour == len(linestring.coords) - 1 and linestring.coords[-1] in list(
-                connections_to_create.loc[connections_to_create["inserted"] == True, "point"].values
+                connections_to_create.loc[connections_to_create["inserted"], "point"].values
             ):
                 continue
 
@@ -279,9 +279,9 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
         boundary_endpoints["crossed_by_unconnected_lines"] = boundary_endpoints.apply(
             lambda x: True in [True not in y for y in x["start_or_endpoint_overlaying_line_buffers"]], axis=1
         )
-        unconnected_endpoints = boundary_endpoints[
-            boundary_endpoints["crossed_by_unconnected_lines"] == True
-        ].reset_index(drop=True)
+        unconnected_endpoints = boundary_endpoints[boundary_endpoints["crossed_by_unconnected_lines"]].reset_index(
+            drop=True
+        )
         unconnected_endpoints["target_lines"] = unconnected_endpoints.apply(
             lambda x: [
                 x["overlaying_line_buffers"][i]
@@ -514,7 +514,7 @@ def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, righ
         lambda x: pd.DataFrame(left_gdf[left_gdf[left_id].isin(x)])
     )
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"] is not None])
-    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].isna() == False])
+    left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].notna()])
     if type(right_gdf) == gpd.GeoDataFrame:
         left_gdf["touching_polygons"] = left_gdf.apply(
             lambda x: x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]

@@ -104,8 +104,8 @@ def add_wfd_id_to_hydroobjects(
     end_time = time.time()
     passed_time = report_time_interval(start_time, end_time)
 
-    nr_hydroobjects_wfd = len(hydroobjects[hydroobjects[wfd_id_column].isna() == False][wfd_id_column])
-    nr_unique_wfd_ids = len(hydroobjects[hydroobjects[wfd_id_column].isna() == False][wfd_id_column].unique())
+    nr_hydroobjects_wfd = len(hydroobjects[hydroobjects[wfd_id_column].notna()][wfd_id_column])
+    nr_unique_wfd_ids = len(hydroobjects[hydroobjects[wfd_id_column].notna()][wfd_id_column].unique())
 
     hydroobjects = hydroobjects.drop(
         columns=[

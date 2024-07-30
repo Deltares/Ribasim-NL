@@ -233,7 +233,7 @@ def create_basin_areas_based_on_drainage_areas(
     def get_basin_code_from_lateral(area_code, laterals_join):
         basins = list(
             laterals_join["basin"][
-                (laterals_join["area_code_included"] == area_code) & (laterals_join["basin"].isna() == False)
+                (laterals_join["area_code_included"] == area_code) & laterals_join["basin"].notna()
             ].values
         )
         if len(basins) == 0:
