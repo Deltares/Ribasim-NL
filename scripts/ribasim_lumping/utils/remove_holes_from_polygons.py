@@ -1,7 +1,8 @@
-from typing import TypeVar, Callable
+from collections.abc import Callable
+from typing import TypeVar
 
 import geopandas as gpd
-from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry import MultiPolygon, Polygon
 
 
 def _remove_holes(geom, min_area):

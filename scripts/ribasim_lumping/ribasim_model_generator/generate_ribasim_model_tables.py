@@ -591,7 +591,7 @@ def generate_ribasim_model_tables(
             .reset_index(drop=True)
         )
         tables["flow_boundary_static"] = None
-        print(f"flowboundaries: dummy_model --> flow_rate=1.0m3/s")
+        print("flowboundaries: dummy_model --> flow_rate=1.0m3/s")
 
         tables["level_boundary_time"] = (
             pd.concat(
@@ -604,7 +604,7 @@ def generate_ribasim_model_tables(
             .reset_index(drop=True)
         )
         tables["level_boundary_static"] = None
-        print(f"levelboundaries: dummy_model --> level=1.0m")
+        print("levelboundaries: dummy_model --> level=1.0m")
 
     elif method_boundaries and boundaries_timeseries_data is not None:
         print(f"flowboundaries: based on timeseries ({len(flow_boundaries)} flowboundaries)")

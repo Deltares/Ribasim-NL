@@ -1,8 +1,9 @@
 import configparser
 import os
 from collections import OrderedDict
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple, TypeVar, Union
+from typing import Dict, List, Tuple, TypeVar, Union
 
 import fiona
 import geopandas as gpd
@@ -14,7 +15,7 @@ from shapely.ops import nearest_points, snap
 
 
 def replace_string_in_file(file_path, string, new_string):
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         content = file.read()
     content = content.replace(string, new_string)
     with open(file_path, "w") as file:
@@ -180,9 +181,9 @@ def find_nearest_edges(
 
 
 def create_objects_gdf(
-    data: Dict,
-    xcoor: List[float],
-    ycoor: List[float],
+    data: dict,
+    xcoor: list[float],
+    ycoor: list[float],
     edges_gdf: gpd.GeoDataFrame,
     selection: str = None,
     tolerance: int = 100,
@@ -296,7 +297,7 @@ def log_and_remove_duplicate_geoms(gdf: gpd.GeoDataFrame, colname: str = None) -
     return gdf
 
 
-def generate_nodes_from_edges(edges: gpd.GeoDataFrame) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+def generate_nodes_from_edges(edges: gpd.GeoDataFrame) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Generate start/end nodes from edges and update node information in edges GeoDataFrame.
     Return updated edges geodataframe and nodes geodataframe
@@ -373,7 +374,7 @@ def snap_to_network(
         points = get_node_no_and_edge_no_for_points(points, edges=edges, nodes=nodes)
         # print out all non-snapped split nodes
         if ((points["node_no"] == -1) & (points["edge_no"] == -1)).any():
-            print(f" * The following split nodes could not be snapped to nodes or edges within buffer distance:")
+            print(" * The following split nodes could not be snapped to nodes or edges within buffer distance:")
             for i, row in points[(points["node_no"] == -1) & (points["edge_no"] == -1)].iterrows():
                 print(row)
                 print(f"  * Split node {row['split_node']} - split_node_id {row['split_node_id']}")
@@ -391,7 +392,7 @@ def snap_to_network(
         points = get_node_no_and_edge_no_for_points(points, edges=None, nodes=nodes)
         # print out all non-snapped boundaries
         if (points["node_no"] == -1).any():
-            print(f"The following boundaries could not be snapped to nodes within buffer distance:")
+            print("The following boundaries could not be snapped to nodes within buffer distance:")
             for i, row in points[points["node_no"] == -1].iterrows():
                 print(row)
                 print(f"  Boundary {row['boundary_id']} - {row['boundary_name']}")
@@ -436,7 +437,7 @@ def snap_points_to_nodes_and_edges(
     GeoDataFrame with snapped points (whether or not it's snapped can be derived from edge_no or node_no column value)
     """
 
-    print(f" - Snapping points to nodes and/or edges")
+    print(" - Snapping points to nodes and/or edges")
     new_points = points.geometry.tolist()
     for i, point in points.iterrows():
         if nodes is not None:
@@ -554,7 +555,7 @@ def get_node_no_and_edge_no_for_points(
 
 def split_edges_by_split_nodes(
     split_nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, buffer_distance: float = 0.5
-) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Splits edges (lines) by split node locations. Split nodes should be (almost) perfectly be aligned to edges (within buffer distance).
     If not, use .snap_nodes_to_edges() before to align them to edges within a buffer distance.
@@ -714,7 +715,7 @@ def split_edges_by_dx(
     return edges_new
 
 
-def split_line_in_two(line: LineString, distance_along_line: float) -> List[LineString]:
+def split_line_in_two(line: LineString, distance_along_line: float) -> list[LineString]:
     # Cuts a line in two at a distance from the line starting point
     if distance_along_line <= 0.0 or distance_along_line >= line.length:
         return [LineString(line)]
@@ -732,8 +733,8 @@ def split_line_in_two(line: LineString, distance_along_line: float) -> List[Line
 
 
 def split_line_in_multiple(
-    line: LineString, distances_along_line: Union[List[Union[float, int]], np.ndarray]
-) -> List[LineString]:
+    line: LineString, distances_along_line: list[float | int] | np.ndarray
+) -> list[LineString]:
     # Cuts a line in multiple sections at distances from the line starting point
     lines = []
     distances_along_line = sorted(distances_along_line)  # distances should by in sorted order for loop below to work
@@ -766,7 +767,7 @@ def assign_unassigned_areas_to_basin_areas(
     areas: gpd.GeoDataFrame,
     basin_areas: gpd.GeoDataFrame,
     drainage_areas: gpd.GeoDataFrame = None,
-) -> Dict[str, gpd.GeoDataFrame]:
+) -> dict[str, gpd.GeoDataFrame]:
     """
     Assign unassigned areas to basin areas based on neighbouring basin areas within optionally the same drainage area if possible.
     Optionally, if edges are provided, the basin and basin_area columns will be updated in those gdfs for edges
@@ -866,7 +867,7 @@ def assign_unassigned_areas_to_basin_areas(
             f" - not all unassigned areas could be assigned automatically ({len(areas.loc[areas['basin']==-1])}x remaining). Please inspect manually"
         )
 
-    print(f" - basin areas and areas updated")
+    print(" - basin areas and areas updated")
     return dict(areas=areas, basin_areas=basin_areas)
 
 

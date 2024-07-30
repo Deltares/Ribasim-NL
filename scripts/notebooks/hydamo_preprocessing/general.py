@@ -1,15 +1,16 @@
-import geopandas as gpd
-import pandas as pd
-import networkx as nx
-from shapely.geometry import Polygon, Point, LineString
-from shapely.ops import snap, split
-import itertools
 import datetime
-import os
-import numpy as np
-import time
+import itertools
 import logging
+import os
+import time
 import warnings
+
+import geopandas as gpd
+import networkx as nx
+import numpy as np
+import pandas as pd
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import snap, split
 
 # %% Monitoring
 
@@ -22,7 +23,8 @@ def report_time_interval(start: datetime.datetime, end: datetime.datetime) -> st
         start (datetime.datetime): start time
         end (datetime.datetime): end time
 
-    Returns:
+    Returns
+    -------
         str: Report of time interval in hours, minu|tes and seconds
     """
     temp = end - start
@@ -50,7 +52,8 @@ def get_endpoints_from_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     Args:
         lines (gpd.GeoDataFrame): GeoDataFrame containing line features
 
-    Returns:
+    Returns
+    -------
         gpd.GeoDataFrame: GeoDataFrame containing all unique endpoints from
         line features
     """
@@ -81,7 +84,8 @@ def add_point_to_linestring(point: Point, linestring: LineString) -> LineString:
         point (Point): point
         linestring (LineString): linestring
 
-    Returns:
+    Returns
+    -------
         LineString: resulting linestring
     """
     distances = [point.distance(Point(line_point)) for line_point in linestring.coords]
@@ -111,7 +115,8 @@ def split_linestring_by_indices(linestring: LineString, split_indices: list) -> 
         linestring (LineString): Linestring
         split_indices (list): List of indices of split nodes within the linestring
 
-    Returns:
+    Returns
+    -------
         list: list of resulting linestrings
     """
     split_linestrings = []
@@ -131,7 +136,8 @@ def remove_duplicate_split_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     Args:
         lines (gpd.GeoDataFrame): Vector data containing line features
 
-    Returns:
+    Returns
+    -------
         gpd.GeoDataFrame: Vector data containing line features without duplicates
     """
     lines["distance"] = list(map(lambda x: x.length, lines["geometry"]))
@@ -162,7 +168,8 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
         split_endpoints (gpd.GeoDataFrame): Dataframe containing line endpoints and instructions
         lines (list): Vector Dataset containing line features
 
-    Returns:
+    Returns
+    -------
         gpd.GeoDataFrame: line feature dataframe
     """
 
@@ -233,7 +240,8 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
         buffer distance (float): Buffer distance for connecting line boundary endpoints, expressed
         in the distance unit of vector line dataset
 
-    Returns:
+    Returns
+    -------
         gpd.Geo: list of resulting linestrings
     """
     warnings.filterwarnings("ignore")

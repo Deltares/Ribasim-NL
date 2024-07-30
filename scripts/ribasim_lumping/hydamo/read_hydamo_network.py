@@ -1,11 +1,12 @@
 from pathlib import Path
-from shapely.geometry import LineString, Point
 from typing import Tuple
+
+import fiona
 import geopandas as gpd
 import pandas as pd
-import fiona
+from shapely.geometry import LineString, Point
 
-from ..utils.general_functions import read_geom_file, generate_nodes_from_edges, split_edges_by_dx
+from ..utils.general_functions import generate_nodes_from_edges, read_geom_file, split_edges_by_dx
 
 
 def add_hydamo_basis_network(
@@ -26,7 +27,8 @@ def add_hydamo_basis_network(
         hydamo_network_gpkg_layer (str):    Layer name in geopackage. Needed when file is a geopackage
         crs (int):                          (optional) CRS EPSG code. Default 28992 (RD New)
 
-    Returns:
+    Returns
+    -------
         Tuple containing GeoDataFrames with branches, edges nodes
     """
     branches_gdf = read_geom_file(filepath=hydamo_network_file, layer_name="hydroobject", crs=crs, remove_z_dim=True)

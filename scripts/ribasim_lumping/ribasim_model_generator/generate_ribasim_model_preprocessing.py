@@ -17,7 +17,7 @@ def generate_ribasim_types_for_all_split_nodes(
     Generate Ribasim Types for all split nodes
     """
 
-    print(f" - define Ribasim-Nodes types based on input conversion table(s)")
+    print(" - define Ribasim-Nodes types based on input conversion table(s)")
     # Basins
     basins["ribasim_type"] = "Basin"
     basins["name"] = "Basin"

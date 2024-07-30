@@ -1,13 +1,14 @@
-import geopandas as gpd
-import pandas as pd
-import networkx as nx
-from shapely.geometry import Polygon, Point, LineString
-from shapely.ops import snap, split
 import itertools
+import logging
 import os
 import time
-import logging
 import warnings
+
+import geopandas as gpd
+import networkx as nx
+import pandas as pd
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import snap, split
 
 warnings.filterwarnings("ignore")
 
@@ -408,7 +409,7 @@ def add_basin_code_from_network_to_nodes_and_edges(
     nodes: gpd.GeoDataFrame,
     edges: gpd.GeoDataFrame,
 ):
-    """add basin (subgraph) code to nodes and edges"""
+    """Add basin (subgraph) code to nodes and edges"""
     subgraphs = list(nx.weakly_connected_components(graph))
     if nodes is None or edges is None:
         return None, None

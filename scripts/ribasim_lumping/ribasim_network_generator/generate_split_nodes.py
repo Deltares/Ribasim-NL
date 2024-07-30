@@ -1,6 +1,7 @@
 from typing import List
-import pandas as pd
+
 import geopandas as gpd
+import pandas as pd
 
 
 def get_split_nodes_based_on_type(
@@ -11,12 +12,13 @@ def get_split_nodes_based_on_type(
     bridges: bool = False,
     culverts: bool = False,
     uniweirs: bool = False,
-    list_gdfs: List[gpd.GeoDataFrame] = None,
+    list_gdfs: list[gpd.GeoDataFrame] = None,
     crs: int = 28992,
 ):
-    """get split_nodes based on weirs and/or pumps.
+    """Get split_nodes based on weirs and/or pumps.
     list_gdfs is a list of geodataframes including
-    stations, pumps, weirs, orifices, bridges, culverts, uniweirs"""
+    stations, pumps, weirs, orifices, bridges, culverts, uniweirs
+    """
     list_objects = [stations, pumps, weirs, orifices, bridges, culverts, uniweirs, False]
     split_nodes_columns = ["split_node_id", "geometry", "object_type", "split_type", "edge_no", "node_no"]
     split_nodes = gpd.GeoDataFrame(
@@ -42,16 +44,17 @@ def add_split_nodes_based_on_selection(
     culverts: bool = False,
     uniweirs: bool = False,
     edges: bool = False,
-    list_gdfs: List[gpd.GeoDataFrame] = [],
-    structures_ids_to_include: List[str] = [],
-    structures_ids_to_exclude: List[str] = [],
-    edge_ids_to_include: List[int] = [],
-    edge_ids_to_exclude: List[int] = [],
+    list_gdfs: list[gpd.GeoDataFrame] = [],
+    structures_ids_to_include: list[str] = [],
+    structures_ids_to_exclude: list[str] = [],
+    edge_ids_to_include: list[int] = [],
+    edge_ids_to_exclude: list[int] = [],
 ) -> gpd.GeoDataFrame:
-    """receive node id's of splitnodes
+    """Receive node id's of splitnodes
     by choosing which structures to use as splitnodes locations
     and including or excluding specific nodes as splitnode
-    returns splitnodes"""
+    returns splitnodes
+    """
     network_edges = list_gdfs[-1]
     # get split_nodes based on type
     split_nodes_structures = get_split_nodes_based_on_type(

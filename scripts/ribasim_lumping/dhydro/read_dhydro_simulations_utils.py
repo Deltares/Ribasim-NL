@@ -1,19 +1,21 @@
 # pylint: disable=missing-function-docstring
+import datetime
 import os
 from pathlib import Path
-from typing import List, Union, Tuple
-import datetime
-import pandas as pd
-import numpy as np
+from typing import List, Tuple, Union
+
 import dfm_tools as dfmt
+import hydrolib.core.dflowfm as hcdfm
+import numpy as np
+import pandas as pd
 import xarray as xr
 import xugrid as xu
-import hydrolib.core.dflowfm as hcdfm
+
 from .read_dhydro_network import get_dhydro_files
 
 
-def get_simulation_names_from_dir(path_dir) -> List[str]:
-    """search directory and find all dhydro-projects (.dsproj)"""
+def get_simulation_names_from_dir(path_dir) -> list[str]:
+    """Search directory and find all dhydro-projects (.dsproj)"""
     if not Path(path_dir).exists():
         raise ValueError("Path of simulations does not exist")
     simulations_names = [f for f in os.listdir(path_dir) if f.endswith(".dsproj")]
@@ -22,14 +24,15 @@ def get_simulation_names_from_dir(path_dir) -> List[str]:
 
 def get_data_from_simulation(
     simulation_path: Path,
-    simulations_ts: Union[List, pd.DatetimeIndex],
+    simulations_ts: list | pd.DatetimeIndex,
     n_start: int = 0,
-) -> Tuple[xr.Dataset, xu.UgridDataset]:
+) -> tuple[xr.Dataset, xu.UgridDataset]:
     """Gets simulation data
     - from a simulation
     - at certain timestamps.
     - Replaces time coordinate with counter 'condition' (int). Starts counting at n_start
-    Returns: map_data (edges/nodes) and his_data (structures) from one simulation"""
+    Returns: map_data (edges/nodes) and his_data (structures) from one simulation
+    """
     files = get_dhydro_files(simulation_path)
     his_file = files["output_his_file"]
     map_file = files["output_map_file"]
@@ -70,9 +73,9 @@ def get_data_from_simulation(
 def get_data_from_simulations_set(
     set_name: str,
     simulations_dir: Path,
-    simulations_names: List[str],
-    simulations_ts: Union[List, pd.DatetimeIndex],
-) -> Tuple[xr.Dataset, xu.UgridDataset]:
+    simulations_names: list[str],
+    simulations_ts: list | pd.DatetimeIndex,
+) -> tuple[xr.Dataset, xu.UgridDataset]:
     """ "Combines simulation data:
     - from several simulations (names)
     - from simulation folder (dir)
@@ -80,7 +83,7 @@ def get_data_from_simulations_set(
     - replaces simulation timestamp with condition (int)
     Returns: map_data (edges/nodes), his_data (structures) and boundary data, all simulations combined
     """
-    print(f"Read D-HYDRO simulations sets")
+    print("Read D-HYDRO simulations sets")
     his_data = None
     map_data = None
     # boundary_data = None
@@ -126,13 +129,14 @@ def get_data_from_simulations_set(
 
 
 def combine_data_from_simulations_sets(
-    nc_data: Union[xr.Dataset, xu.UgridDataset],
-    nc_data_new: Union[xr.Dataset, xu.UgridDataset],
+    nc_data: xr.Dataset | xu.UgridDataset,
+    nc_data_new: xr.Dataset | xu.UgridDataset,
     xugrid: bool = False,
     dim: str = "set",
-) -> Union[xr.Dataset, xu.UgridDataset]:
+) -> xr.Dataset | xu.UgridDataset:
     """ "Combine his.nc and map.nc data from two cases over dimension DIM assuming
-    that all nc-variables not including DIM as dimension are equal"""
+    that all nc-variables not including DIM as dimension are equal
+    """
     nc_set_vars = [v_n for v_n, v in nc_data_new.data_vars.items() if dim in v.dims]
     nc_nonset_vars = [v_n for v_n, v in nc_data_new.data_vars.items() if dim not in v.dims]
     if nc_data is None:

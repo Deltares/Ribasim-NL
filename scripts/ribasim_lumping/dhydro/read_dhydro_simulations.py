@@ -1,12 +1,14 @@
-from typing import List, Union
 from pathlib import Path
-import xarray as xr
+from typing import List, Union
+
 import pandas as pd
+import xarray as xr
 import xugrid as xu
+
 from .read_dhydro_network import get_dhydro_data_from_simulation
 from .read_dhydro_simulations_utils import (
-    get_data_from_simulations_set,
     combine_data_from_simulations_sets,
+    get_data_from_simulations_set,
 )
 
 
@@ -84,15 +86,16 @@ def add_dhydro_basis_network(
 def add_dhydro_simulation_data(
     set_name: str,
     model_dir: Path,
-    simulation_names: List[str],
-    simulation_ts: Union[List, pd.DatetimeIndex] = [-1],
+    simulation_names: list[str],
+    simulation_ts: list | pd.DatetimeIndex = [-1],
     his_data: xr.Dataset = None,
     map_data: xu.UgridDataset = None,
 ):
-    """receives his- and map-data. calculations should be placed in dhydro_results_dir
+    """Receives his- and map-data. calculations should be placed in dhydro_results_dir
     - set_name
     - within directory: simulations_dir
-    - at timestamps: simulations_ts"""
+    - at timestamps: simulations_ts
+    """
     simulations_dir = Path(model_dir)
     if not simulations_dir.exists():
         raise ValueError(f"Directory D-Hydro calculations does not exist: {simulations_dir}")

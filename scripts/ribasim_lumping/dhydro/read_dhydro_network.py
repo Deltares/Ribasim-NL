@@ -17,6 +17,7 @@ import xugrid as xu
 from shapely.geometry import LineString, Point
 
 from ..utils.general_functions import (
+    extract_segment_from_linestring,
     find_directory_in_directory,
     find_file_in_directory,
     find_nearest_edges_no,
@@ -24,7 +25,6 @@ from ..utils.general_functions import (
     get_points_on_linestrings_based_on_distances,
     read_ini_file_with_similar_sections,
     replace_string_in_file,
-    extract_segment_from_linestring,
 )
 
 
@@ -205,7 +205,8 @@ def check_number_of_pumps_at_pumping_station(pumps_gdf: gpd.GeoDataFrame, set_na
     """Check number of pumps at pumping station and combine them into one representative pump
     Input:  Geodataframe with pumps with multiple per location
     Output: Geodataframe with one pump per location.
-            Total capacity (sum), Max start level, Min stop level"""
+    Total capacity (sum), Max start level, Min stop level
+    """
     crs = pumps_gdf.crs
     pumps_gdf = (
         pumps_gdf.groupby(pumps_gdf.geometry.to_wkt(), as_index=False)
@@ -316,7 +317,7 @@ def split_dhydro_structures(structures_gdf: gpd.GeoDataFrame, set_name: str):
         structures_gdf_dict[structure_type] = structure_gdf.sort_values(by=("general", "structure_id")).reset_index(
             drop=True
         )
-    print(f" ")
+    print(" ")
     return structures_gdf_dict
 
 
@@ -435,7 +436,7 @@ def get_dhydro_volume_based_on_basis_simulations(
     mdu_file = find_file_in_directory(mdu_input_dir, ".mdu")
     volume_nc_file = find_file_in_directory(mdu_input_dir, "PerGridpoint_volume.nc")
     if volume_nc_file is None or volume_tool_force:
-        print(f"  - volume_tool: new level-volume dataframe not found")
+        print("  - volume_tool: new level-volume dataframe not found")
         subproces_cli = f'"{volume_tool_bat_file}" --mdufile "{mdu_file.name}" --increment {str(volume_tool_increment)} --outputfile volume.nc --output "All"'
         subprocess.Popen(subproces_cli, cwd=str(mdu_file.parent))
         volume_nc_file = find_file_in_directory(mdu_input_dir, "PerGridpoint_volume.nc")

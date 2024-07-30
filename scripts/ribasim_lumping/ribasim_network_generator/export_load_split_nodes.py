@@ -1,9 +1,10 @@
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import geopandas as gpd
 import networkx as nx
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Any, Union, Optional, Tuple
-from pathlib import Path
 
 
 def write_structures_to_excel(
@@ -14,12 +15,13 @@ def write_structures_to_excel(
     culverts: gpd.GeoDataFrame = None,
     uniweirs: gpd.GeoDataFrame = None,
     split_nodes: gpd.GeoDataFrame = None,
-    split_node_type_conversion: Dict = None,
-    split_node_id_conversion: Dict = None,
-    results_dir: Union[Path, str] = None,
+    split_node_type_conversion: dict = None,
+    split_node_id_conversion: dict = None,
+    results_dir: Path | str = None,
 ):
-    """export all structures and splitnode info to excel file with seperate sheet per structure type
-    input: network with structure gdfs, splitnodes, split node type conversion tables"""
+    """Export all structures and splitnode info to excel file with seperate sheet per structure type
+    input: network with structure gdfs, splitnodes, split node type conversion tables
+    """
 
     list_gdfs = [pumps, weirs, orifices, bridges, culverts, uniweirs]
     structures = pd.DataFrame(columns=["mesh1d_node_id", "mesh1d_nEdges", "geometry", "object_type"])
@@ -39,11 +41,11 @@ def write_structures_to_excel(
                 if split_node_type_conversion is not None:
                     # voeg conversie tabel toe
                     split_node_type_conversion = split_node_type_conversion
-                    if isinstance(split_node_type_conversion, Dict):
+                    if isinstance(split_node_type_conversion, dict):
                         for key, value in split_node_type_conversion.items():
                             splitnodes["type"] = splitnodes["split_type"].replace(split_node_type_conversion)
                     split_node_id_conversion = split_node_id_conversion
-                    if isinstance(split_node_id_conversion, Dict):
+                    if isinstance(split_node_id_conversion, dict):
                         for key, value in split_node_id_conversion.items():
                             if len(splitnodes[splitnodes["mesh1d_node_id"] == key]) == 0:
                                 print(f" * split_node type conversion id={key} (type={value}) does not exist")
@@ -81,12 +83,13 @@ def write_structures_to_excel(
 
 
 def read_structures_from_excel(excel_path):
-    """import all structure ids from excelfile
+    """Import all structure ids from excelfile
     use columns mesh1d_node_id, use_splitnode and type
     and output:
     - dictionary with excel data
     - list of structures to include as splitnode
-    - dictionary with structure ids and splitnode conversion type"""
+    - dictionary with structure ids and splitnode conversion type
+    """
     structures_excel = pd.read_excel(excel_path, sheet_name=None)  # sheet_name None to read all sheets as dictionary
 
     structures_ids_to_include_as_splitnode = []

@@ -1,6 +1,7 @@
-import pandas as pd
-import geopandas as gpd
 from pathlib import Path
+
+import geopandas as gpd
+import pandas as pd
 
 
 def read_original_data(waterboard_dir, hydamo_format, object_naam, waterboard):

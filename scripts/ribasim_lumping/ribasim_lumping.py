@@ -928,7 +928,7 @@ class RibasimLumpingNetwork(BaseModel):
         # write bat-file
         with open(Path(self.simulation_path, "run_ribasim_model.bat"), "w") as f:
             f.write(f"{str(self.path_ribasim_executable)} ribasim.toml\n")
-            f.write(f"pause")
+            f.write("pause")
 
     def export_to_geopackage(self, simulation_code: str, results_dir: Path | str = None):
         """Export RIBASIM lumping results to ribasim_network.gpkg"""
@@ -990,7 +990,7 @@ class RibasimLumpingNetwork(BaseModel):
             else:
                 gdfs[gdf_name] = gdf
 
-        print(f"Exporting to geopackage:")
+        print("Exporting to geopackage:")
         print(" - available: ", end="", flush=True)
         for gdf_name, gdf in gdfs.items():
             print(f"{gdf_name}, ", end="", flush=True)

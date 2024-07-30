@@ -559,7 +559,7 @@ def create_boundary_connections(
     split_nodes: gpd.GeoDataFrame,
 ) -> tuple[gpd.GeoDataFrame]:
     """Create boundary-basin connections"""
-    print(f" - create Ribasim-Edges between Boundaries and Basins")
+    print(" - create Ribasim-Edges between Boundaries and Basins")
     split_nodes = split_nodes[(split_nodes["split_type"] != "no_split") & (split_nodes["split_type"] != "harde_knip")]
     if boundaries is None or nodes is None or basins is None:
         return None, split_nodes, basins
@@ -745,7 +745,7 @@ def regenerate_node_ids(
         areas.copy(),
     )
 
-    print(f" - regenerate node-ids Ribasim-Nodes and Ribasim-Edges")
+    print(" - regenerate node-ids Ribasim-Nodes and Ribasim-Edges")
     # boundaries
     if boundaries is not None:
         if "boundary_node_id" in boundaries.columns:
@@ -857,7 +857,7 @@ def check_basins_connected_to_basin_areas(
         print(
             "   - Following basins are not connected to a basin area (either due to incorrect network input or multiple basins in the same basin area):"
         )
-        print(f"      Basins ", end="", flush=True)
+        print("      Basins ", end="", flush=True)
         for b in sorted(_basins["basin"].values):
             print(f"{b}, ", end="", flush=True)
     print("")

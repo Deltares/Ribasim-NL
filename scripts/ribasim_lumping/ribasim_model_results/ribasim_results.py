@@ -1,15 +1,15 @@
-from pathlib import Path
-from typing import List, Dict, Optional
 import sys
 import warnings
-import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from pydantic import BaseModel, ConfigDict
-import pandas as pd
-import geopandas as gpd
+from pathlib import Path
+from typing import Dict, List, Optional
 
+import geopandas as gpd
+import matplotlib
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import pandas as pd
 from numba.core.errors import NumbaDeprecationWarning
+from pydantic import BaseModel, ConfigDict
 
 warnings.simplefilter("ignore", category=NumbaDeprecationWarning)
 warnings.simplefilter("ignore", category=UserWarning)
@@ -27,11 +27,11 @@ class RibasimModelResults(BaseModel):
     node_v: pd.DataFrame
     basin_h: pd.DataFrame
     basin_v: pd.DataFrame
-    flow_edge: Optional[pd.DataFrame] = None
-    basin: Optional[pd.DataFrame] = None
-    control: Optional[pd.DataFrame] = None
-    flow: Optional[pd.DataFrame] = None
-    subgrid: Optional[pd.DataFrame] = None
+    flow_edge: pd.DataFrame | None = None
+    basin: pd.DataFrame | None = None
+    control: pd.DataFrame | None = None
+    flow: pd.DataFrame | None = None
+    subgrid: pd.DataFrame | None = None
     basin_areas: gpd.GeoDataFrame = None
 
 
@@ -42,18 +42,18 @@ class RibasimBasinResults(BaseModel):
     basin_no: int
     basin: pd.DataFrame
     basin_profile: pd.DataFrame
-    control: Optional[pd.DataFrame] = None
-    control_variable: Optional[pd.DataFrame] = None
-    control_condition: Optional[pd.DataFrame] = None
-    inflow_edge: Optional[pd.DataFrame] = None
-    outflow_edge: Optional[pd.DataFrame] = None
-    inflow: Optional[pd.DataFrame] = None
-    outflow: Optional[pd.DataFrame] = None
-    subgrid: Optional[pd.DataFrame] = None
+    control: pd.DataFrame | None = None
+    control_variable: pd.DataFrame | None = None
+    control_condition: pd.DataFrame | None = None
+    inflow_edge: pd.DataFrame | None = None
+    outflow_edge: pd.DataFrame | None = None
+    inflow: pd.DataFrame | None = None
+    outflow: pd.DataFrame | None = None
+    subgrid: pd.DataFrame | None = None
 
 
 def read_arrow_file(simulation_dir: Path, file_name: str, results_dir: str = "results"):
-    """read arrow files from folder"""
+    """Read arrow files from folder"""
     arrow_file_path = Path(simulation_dir, results_dir, f"{file_name}.arrow")
     if arrow_file_path.exists():
         return pd.read_feather(arrow_file_path)
@@ -310,7 +310,7 @@ def plot_results_basin_ribasim_model(
     # storage
     ax1 = fig.add_subplot(321)
     ax1.set_title(f"{basin_name} ({basin_no})", fontsize=15)
-    basin.level.interpolate().rename(f"Level").plot(ax=ax1, style="-o", markersize=1.5)
+    basin.level.interpolate().rename("Level").plot(ax=ax1, style="-o", markersize=1.5)
     # if complete:
     #     ax1.hlines(
     #         y=basin_results.basin_profile['level'].min(),
@@ -323,7 +323,7 @@ def plot_results_basin_ribasim_model(
     # level
     ax2 = fig.add_subplot(323, sharex=ax1)
     ax2.hlines(y=0.0, xmin=xmin, xmax=xmax, linestyle="-", color="black", label=None)
-    basin.storage.interpolate().rename(f"Storage").plot(ax=ax2, style="-o", markersize=2)
+    basin.storage.interpolate().rename("Storage").plot(ax=ax2, style="-o", markersize=2)
     # if control_storage is not None:
     #     ax1.hlines(
     #         y=control_storage.greater_than.values,
@@ -335,7 +335,7 @@ def plot_results_basin_ribasim_model(
     ax3.hlines(y=0.0, xmin=xmin, xmax=xmax, linestyle="-", color="black")
 
     basin["basin_flow"] = basin["drainage"] - basin["infiltration"]
-    basin.basin_flow.rename(f"Local inflow").plot(ax=ax3, style="-o", markersize=2)
+    basin.basin_flow.rename("Local inflow").plot(ax=ax3, style="-o", markersize=2)
 
     for i, inflow_edge in basin_results.inflow_edge.iterrows():
         from_node_id = inflow_edge["from_node_id"]
@@ -383,7 +383,7 @@ def plot_results_basin_ribasim_model(
             linestyle="-",
             color="black",
         )
-        ax4.set_title(f"Q-H relation", fontsize=10)
+        ax4.set_title("Q-H relation", fontsize=10)
         ax4.set_xlim([0.0, basin_results.outflow.flow_rate.max() * 1.1])
 
         ax5 = fig.add_subplot(344, sharey=ax1)
@@ -404,7 +404,7 @@ def plot_results_basin_ribasim_model(
             linestyle="-",
             color="black",
         )
-        ax4.set_title(f"A-H relation", fontsize=10, loc="left")
+        ax4.set_title("A-H relation", fontsize=10, loc="left")
         ax4.set_ylim([0.0, basin_profile.area.max() * 1.1])
 
         ax5 = plt.subplot2grid((4, 3), (1, 2), colspan=1, rowspan=1)
@@ -424,7 +424,7 @@ def plot_results_basin_ribasim_model(
             linestyle="-",
             color="black",
         )
-        ax5.set_title(f"V-H relation", fontsize=10, loc="left")
+        ax5.set_title("V-H relation", fontsize=10, loc="left")
         ax5.set_ylim([0.0, basin_storage.storage.max() * 1.1])
 
         ax6 = plt.subplot2grid((4, 3), (2, 2), colspan=1, rowspan=2)
@@ -450,7 +450,7 @@ def plot_results_basin_ribasim_model(
             linestyle="-",
             color="black",
         )
-        ax6.set_title(f"Q-H relation", fontsize=10, loc="left")
+        ax6.set_title("Q-H relation", fontsize=10, loc="left")
         ax6.set_ylim([0.0, basin_results.outflow.max().values * 1.1])
 
     # control levels

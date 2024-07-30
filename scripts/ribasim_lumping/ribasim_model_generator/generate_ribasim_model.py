@@ -37,7 +37,7 @@ def generate_ribasim_nodes_static(
 
 
 def generate_ribasim_edges(basin_connections: gpd.GeoDataFrame, boundary_connections: gpd.GeoDataFrame):
-    """generate ribasim edges between nodes, using basin connections and boundary-basin connections"""
+    """Generate ribasim edges between nodes, using basin connections and boundary-basin connections"""
     edges = pd.concat(
         [
             basin_connections[["from_node_id", "to_node_id", "geometry"]],
@@ -69,7 +69,7 @@ def generate_ribasim_basins(
     profile: node_id, level, area, storage
     """
     if basin_profile.empty or basin_time.empty:
-        print(f"basins (--)", end="", flush=True)
+        print("basins (--)", end="", flush=True)
         return ribasim.Basin()
     print(f"basins ({len(basin_state)}x)", end="", flush=True)
     ribasim_basins = ribasim.Basin(
@@ -82,21 +82,23 @@ def generate_ribasim_level_boundaries(
     level_boundary_static: gpd.GeoDataFrame,
     level_boundary_time: pd.DataFrame,
 ):
-    """generate ribasim level boundaries for all level boundary nodes
-    static: node_id, level"""
+    """Generate ribasim level boundaries for all level boundary nodes
+    static: node_id, level
+    """
     if level_boundary_time is not None:
         print("level")
         return ribasim.LevelBoundary(time=level_boundary_time)
     elif level_boundary_static is None or level_boundary_static.empty:
-        print(f"boundaries (--", end="", flush=True)
+        print("boundaries (--", end="", flush=True)
         return ribasim.LevelBoundary()
     print(f"boundaries ({len(level_boundary_static)}x)", end="", flush=True)
     return ribasim.LevelBoundary(static=level_boundary_static)
 
 
 def generate_ribasim_flow_boundaries(flow_boundary_static: gpd.GeoDataFrame, flow_boundary_time: pd.DataFrame):
-    """generate ribasim flow boundaries for all flow boundary nodes
-    static: node_id, flow_rate"""
+    """Generate ribasim flow boundaries for all flow boundary nodes
+    static: node_id, flow_rate
+    """
     print("flow_boundaries ", end="", flush=True)
     if flow_boundary_time is not None:
         return ribasim.FlowBoundary(time=flow_boundary_time)
@@ -107,8 +109,9 @@ def generate_ribasim_flow_boundaries(flow_boundary_static: gpd.GeoDataFrame, flo
 
 
 def generate_ribasim_pumps(pump_static: gpd.GeoDataFrame):
-    """generate ribasim pumps for all pump nodes
-    static: node_id, flow_rate"""
+    """Generate ribasim pumps for all pump nodes
+    static: node_id, flow_rate
+    """
     print("pumps ", end="", flush=True)
     if pump_static is None or pump_static.empty:
         print("   x no pumps")
@@ -117,8 +120,9 @@ def generate_ribasim_pumps(pump_static: gpd.GeoDataFrame):
 
 
 def generate_ribasim_outlets(outlet_static: gpd.GeoDataFrame):
-    """generate ribasim outlets for all outlet nodes
-    static: node_id, flow_rate"""
+    """Generate ribasim outlets for all outlet nodes
+    static: node_id, flow_rate
+    """
     print("outlets ", end="", flush=True)
     if outlet_static is None or outlet_static.empty:
         print("   x no outlets", end="", flush=True)
@@ -127,8 +131,9 @@ def generate_ribasim_outlets(outlet_static: gpd.GeoDataFrame):
 
 
 def generate_ribasim_tabulatedratingcurves(tabulated_rating_curve_static: pd.DataFrame):
-    """generate ribasim tabulated rating using dummyvalues for level and flow_rate
-    static: node_id, level, flow_rate"""
+    """Generate ribasim tabulated rating using dummyvalues for level and flow_rate
+    static: node_id, level, flow_rate
+    """
     print("tabulatedratingcurve ", end="", flush=True)
     if tabulated_rating_curve_static is None or tabulated_rating_curve_static.empty:
         print("   x no tabulated rating curve")
@@ -137,8 +142,9 @@ def generate_ribasim_tabulatedratingcurves(tabulated_rating_curve_static: pd.Dat
 
 
 def generate_ribasim_manningresistances(manningresistance_static: gpd.GeoDataFrame):
-    """generate ribasim manning resistances
-    static: node_id, length, manning_n, profile_width, profile_slope"""
+    """Generate ribasim manning resistances
+    static: node_id, length, manning_n, profile_width, profile_slope
+    """
     print("manningresistances ", end="", flush=True)
     if manningresistance_static is None or manningresistance_static.empty:
         print("   x no manningresistance")
@@ -147,8 +153,9 @@ def generate_ribasim_manningresistances(manningresistance_static: gpd.GeoDataFra
 
 
 def generate_ribasim_linear_resistances(linearresistance_static: gpd.GeoDataFrame):
-    """generate ribasim linear resistances
-    static: node_id, resistance, max_flow_rate"""
+    """Generate ribasim linear resistances
+    static: node_id, resistance, max_flow_rate
+    """
     print("linearresistances ", end="", flush=True)
     if linearresistance_static is None or linearresistance_static.empty:
         print("   x no linearresistance")
@@ -195,12 +202,13 @@ def generate_ribasim_model(
     boundaries: gpd.GeoDataFrame = None,
     basin_connections: gpd.GeoDataFrame = None,
     boundary_connections: gpd.GeoDataFrame = None,
-    tables: Dict = None,
+    tables: dict = None,
     database_gpkg: str = "database.gpkg",
     results_dir: str = "results",
 ):
-    """generate ribasim model from ribasim nodes and edges and
-    optional input; ribasim basins, level boundary, flow_boundary, pump, tabulated rating curve and manning resistance"""
+    """Generate ribasim model from ribasim nodes and edges and
+    optional input; ribasim basins, level boundary, flow_boundary, pump, tabulated rating curve and manning resistance
+    """
 
     print("Generate ribasim model: ", end="", flush=True)
 
