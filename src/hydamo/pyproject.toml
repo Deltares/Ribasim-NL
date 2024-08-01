@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "hydamo"
@@ -20,17 +20,8 @@ dynamic = ["version"]
 [project.optional-dependencies]
 tests = ["pytest"]
 
-[tool.setuptools]
-zip-safe = true
-
-[tool.setuptools.dynamic]
-version = { attr = "hydamo.__version__" }
-
-[tool.setuptools.packages.find]
-include = ["hydamo"]
-
-[tool.setuptools.package-data]
-"hydamo" = ["**/*.csv", "**/*.qml", "**/*.sld", "**/*.json"]
+[tool.hatch.version]
+path = "hydamo/__init__.py"
 
 [project.urls]
 Documentation = "https://deltares.github.io/Ribasim-NL/HyDAMO"

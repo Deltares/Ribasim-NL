@@ -1,1 +1,0 @@
-pixi run code . | exit
