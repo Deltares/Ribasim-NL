@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ribasim_lumping"
+description = "Aggregate a HyDAMO or D-Hydro network into a simplified Ribasim network"
+readme = "README.md"
+authors = [
+    { name = "Harm Nomden", email = "harm.nomden@sweco.nl" },
+    { name = "Tessa Andringa", email = "tessa.andringa@sweco.nl" },
+]
+license = { text = "MIT" }
+
+requires-python = ">=3.10"
+dependencies = [
+    "contextily",
+    "geopandas",
+    "matplotlib",
+    "networkx",
+    "numpy",
+    "pandas",
+    "pydantic",
+    "ribasim",
+    "shapely",
+    "xarray",
+    "xugrid",
+]
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "ribasim_lumping/__init__.py"

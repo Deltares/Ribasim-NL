@@ -38,6 +38,7 @@ app = "bokeh serve web_app --show --dev --port 5007"
 
 [feature.common.dependencies]
 bokeh = ">=3.0"
+contextily = "*"
 fiona = "*"
 geocube = "*"
 geopandas = "*"
@@ -67,18 +68,21 @@ shapely = ">=2"
 tomli = "*"
 tomli-w = "*"
 types-requests = "*"
+xugrid = "*"
 
 [feature.common.pypi-dependencies]
-hydamo = { path = "src/hydamo", editable = true }
-ribasim_nl = { path = "src/ribasim_nl", editable = true }
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
+hydamo = { path = "src/hydamo", editable = true }
+peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
+ribasim_lumping = { path = "src/ribasim_lumping", editable = true }
+ribasim_nl = { path = "src/ribasim_nl", editable = true }
 
-# [feature.dev.pypi-dependencies]
-# ribasim = { path = "../Ribasim/python/ribasim", editable = true }
+[feature.dev.pypi-dependencies]
+ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 
 [feature.prod.dependencies]
 ribasim = "==2024.10.0"
 
 [environments]
 default = { features = ["common", "prod"] }
-# dev = { features = ["common", "dev"] }
+dev = { features = ["common", "dev"] }

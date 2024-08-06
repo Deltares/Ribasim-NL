@@ -1,9 +1,9 @@
 [build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-name = "bokeh-helpers"
+name = "bokeh_helpers"
 description = "helpers for building bokeh dashboards"
 readme = "README.md"
 authors = [
@@ -20,11 +20,5 @@ dynamic = ["version"]
 [project.optional-dependencies]
 tests = ["pytest"]
 
-[tool.setuptools]
-zip-safe = true
-
-[tool.setuptools.dynamic]
-version = { attr = "bokeh_helpers.__version__" }
-
-[tool.setuptools.packages.find]
-include = ["bokeh_helpers"]
+[tool.hatch.version]
+path = "bokeh_helpers/__init__.py"
