@@ -1,4 +1,4 @@
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.model import Model
