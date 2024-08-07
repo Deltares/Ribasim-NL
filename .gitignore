@@ -23,7 +23,7 @@ src/ribasim_nl/tests/temp/
 src/peilbeheerst_model/tests/temp/
 
 src/peilbeheerst_model/*.html
-src/peilbeheerst_model/*.ipynb
+# src/peilbeheerst_model/*.ipynb
 src/peilbeheerst_model/*.code-workspace
 src/peilbeheerst_model/.vscode
 
