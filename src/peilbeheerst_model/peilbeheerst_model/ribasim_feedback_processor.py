@@ -51,12 +51,12 @@ class RibasimFeedbackProcessor:
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
 
-        # logging.basicConfig(
-        #     filename=self.log_filename,
-        #     level=logging.DEBUG,
-        #     format='%(asctime)s - %(levelname)s - %(message)s',
-        #     datefmt='%Y-%m-%d %H:%M:%S'
-        # )
+        logging.basicConfig(
+            filename=self.log_filename,
+            level=logging.DEBUG,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
 
     def load_feedback(self, feedback_excel):
         df = pd.read_excel(feedback_excel, sheet_name="Feedback_Formulier", skiprows=7)
@@ -87,14 +87,15 @@ class RibasimFeedbackProcessor:
         max_id = max(max_ids)
         return max_id
 
-    # def write_ribasim_model(self):
-    #     outputdir = Path(self.output_folder)
-    #     modelcase_dir = Path(f'updated_{self.waterschap.lower()}')
+    def write_ribasim_model(self):
+        outputdir = Path(self.output_folder)
+        # modelcase_dir = Path(f'updated_{self.waterschap.lower()}')
 
-    #     full_path = outputdir / modelcase_dir
-    #     full_path.mkdir(parents=True, exist_ok=True)
+        # full_path = outputdir / modelcase_dir
+        # full_path.mkdir(parents=True, exist_ok=True)
 
-    #     self.model.write(full_path / "ribasim.toml")
+        # print(self.output_folder)
+        self.model.write(outputdir / "ribasim.toml")
 
     def update_dataframe_with_new_node_ids(self, node_id_map):
         for old_id, new_id in node_id_map.items():
@@ -201,19 +202,19 @@ class RibasimFeedbackProcessor:
         logging.info(f"Adding DiscreteControl node for Pump Node ID: {pump_node_id}")
 
         control_states = ["off", "on"]
-        dfs_pump = self.model.pump.static.df
-
+        dfs_pump = ribasim_model.pump.static.df
+        
         if "control_state" not in dfs_pump.columns.tolist() or pd.isna(dfs_pump.control_state).all():
             dfs_pump_list = []
             for control_state in control_states:
-                df_pump = dfs_pump.copy()
+                df_pump = ribasim_model.pump.static.df.copy()
                 df_pump["control_state"] = control_state
                 if control_state == "off":
                     df_pump["flow_rate"] = 0.0
                 dfs_pump_list.append(df_pump)
             dfs_pump = pd.concat(dfs_pump_list, ignore_index=True)
-            self.model.pump.static.df = dfs_pump
-
+            ribasim_model.pump.static.df = dfs_pump
+        
         cur_max_nodeid = self.get_current_max_nodeid()
 
         if cur_max_nodeid < 90000:
@@ -587,7 +588,7 @@ class RibasimFeedbackProcessor:
             self.special_preprocessing_for_hollandse_delta()
         self.process_model()
         self.save_feedback()
-        # self.write_ribasim_model()
+        self.write_ribasim_model()
 
 
 # # Voorbeeld gebruik

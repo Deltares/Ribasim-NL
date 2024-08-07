@@ -96,10 +96,14 @@ class CrossingsToRibasim:
             crossings = crossings[crossings.in_use].reset_index(drop=True)  # only use the crossings in use
 
         if self.model_characteristics["agg_links_in_use"]:
-            crossings = crossings[crossings.agg_links_in_use].reset_index(drop=True)  # only use the crossings in use
+            crossings = crossings[crossings.agg_links_in_use].reset_index(
+                drop=True
+            )  # only use the crossings in use
 
         if self.model_characteristics["agg_areas_in_use"]:
-            crossings = crossings[crossings.agg_areas_in_use].reset_index(drop=True)  # only use the crossings in use
+            crossings = crossings[crossings.agg_areas_in_use].reset_index(
+                drop=True
+            )  # only use the crossings in use
 
         crossings["geometry"] = gpd.GeoSeries(
             gpd.points_from_xy(x=crossings["geometry"].x, y=crossings["geometry"].y)
@@ -715,7 +719,8 @@ class CrossingsToRibasim:
             # add a column if a shortest path is found
             edges["bool_SP"] = edges["line_geom"]
             edges["bool_SP"].loc[edges["bool_SP"].isna()] = False
-            edges["bool_SP"].loc[edges["bool_SP"]] = True
+            # edges["bool_SP"].loc[edges["bool_SP"]] = True
+            edges['bool_SP'].loc[edges['bool_SP']!=False] = True
 
             # fill the line geoms with the previous geoms if no shortest path is found
             edges.line_geom = edges.line_geom.fillna(edges.line_geom_oud)
@@ -767,47 +772,51 @@ class CrossingsToRibasim:
     def change_boezems_manually(self, edges):
         if self.model_characteristics["waterschap"] == "HollandsNoorderkwartier":
             edges = self.change_edge(
-                edges, from_node_id_to_change=455, to_node_id_to_change=5, from_node_id_geom=456, to_node_id_geom=5
+                edges, from_node_id_to_change=447, to_node_id_to_change=3, from_node_id_geom=83, to_node_id_geom=447
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=475, to_node_id_to_change=5, from_node_id_geom=476, to_node_id_geom=5
+                edges, from_node_id_to_change=395, to_node_id_to_change=3, from_node_id_geom=68, to_node_id_geom=395
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=574, to_node_id_to_change=5, from_node_id_geom=575, to_node_id_geom=5
+                edges, from_node_id_to_change=571, to_node_id_to_change=3, from_node_id_geom=126, to_node_id_geom=571
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=582, to_node_id_to_change=5, from_node_id_geom=584, to_node_id_geom=5
+                edges, from_node_id_to_change=1287, to_node_id_to_change=3, from_node_id_geom=226, to_node_id_geom=1287
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=641, to_node_id_to_change=5, from_node_id_geom=642, to_node_id_geom=5
+                edges, from_node_id_to_change=911, to_node_id_to_change=3, from_node_id_geom=101, to_node_id_geom=911
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=851, to_node_id_to_change=5, from_node_id_geom=854, to_node_id_geom=5
+                edges, from_node_id_to_change=383, to_node_id_to_change=3, from_node_id_geom=65, to_node_id_geom=383
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=957, to_node_id_to_change=5, from_node_id_geom=959, to_node_id_geom=5
+                edges, from_node_id_to_change=817, to_node_id_to_change=3, from_node_id_geom=119, to_node_id_geom=817
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=1061, to_node_id_to_change=5, from_node_id_geom=1065, to_node_id_geom=5
+                edges, from_node_id_to_change=366, to_node_id_to_change=3, from_node_id_geom=57, to_node_id_geom=366
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=1198, to_node_id_to_change=5, from_node_id_geom=1201, to_node_id_geom=5
+                edges, from_node_id_to_change=717, to_node_id_to_change=3, from_node_id_geom=13, to_node_id_geom=717
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=1295, to_node_id_to_change=5, from_node_id_geom=1299, to_node_id_geom=5
+                edges, from_node_id_to_change=487, to_node_id_to_change=3, from_node_id_geom=98, to_node_id_geom=487
             )
 
             edges = self.change_edge(
-                edges, from_node_id_to_change=1513, to_node_id_to_change=5, from_node_id_geom=1516, to_node_id_geom=5
+                edges, from_node_id_to_change=481, to_node_id_to_change=3, from_node_id_geom=96, to_node_id_geom=481
+            )
+
+            edges = self.change_edge(
+                edges, from_node_id_to_change=1027, to_node_id_to_change=3, from_node_id_geom=197, to_node_id_geom=1027
             )
 
         return edges
@@ -870,6 +879,7 @@ class RibasimNetwork:
         _type_
             _description_
         """
+
         edge = gpd.GeoDataFrame()
 
         # fix the from nodes
@@ -900,6 +910,7 @@ class RibasimNetwork:
         _type_
             _description_
         """
+
         basin_nodes = self.nodes.loc[self.nodes["type"] == "Basin"][
             ["node_id", "streefpeil", "geometry", "basins_area_geom"]
         ]
@@ -937,7 +948,7 @@ class RibasimNetwork:
         basin_static["potential_evaporation"] = 0
         basin_static["infiltration"] = 0
         basin_static["precipitation"] = 0
-        basin_static["urban_runoff"] = 0
+        # basin_static["urban_runoff"] = 0
 
         # display(basin_nodes)
         basin_area = basin_nodes[["node_id", "streefpeil", "basins_area_geom"]]
@@ -1054,6 +1065,7 @@ class RibasimNetwork:
         _type_
             _description_
         """
+
         flow_boundary_nodes = self.nodes.loc[self.nodes["type"] == "FlowBoundary"][
             ["node_id", "geometry"]
         ]  # .node_id.to_numpy()
@@ -1153,6 +1165,7 @@ class RibasimNetwork:
         _type_
             _description_
         """
+
         outlet = ribasim.Outlet(static=pd.DataFrame(data={"node_id": [], "flow_rate": []}))
         return outlet
 
@@ -1604,7 +1617,7 @@ class RibasimNetwork:
         points_within = gpd.sjoin(
             basin_nodes, checks["boezem"], how="inner", predicate="within"
         )  # find the basins which are within a peilgebied (found in the checks)
-        model.basin.state.df.meta_categorie.loc[points_within.index] = (
+        model.basin.state.df.meta_categorie.loc[points_within.index-1] = (
             "hoofdwater"  # set these basins to become peilgebied_cat == 1, or 'doorgaand'
         )
 
@@ -1616,17 +1629,25 @@ class RibasimNetwork:
             right_on="globalid",
         )
 
-        pump_function = coupled_crossings_pump.merge(model.pump.node.df, on="geometry", suffixes=("", "_duplicate"))[
-            ["node_id", "func_afvoer", "func_aanvoer", "func_circulatie"]
-        ]
+        pump_function = coupled_crossings_pump.merge(
+            model.pump.node.df, on="geometry", suffixes=("", "_duplicate")
+        )[["node_id", "func_afvoer", "func_aanvoer", "func_circulatie"]]
         # display(pump_function)
-        coupled_pump_function = model.pump.static.df.merge(pump_function, left_on="node_id", right_on="node_id")
+        coupled_pump_function = model.pump.static.df.merge(
+            pump_function, left_on="node_id", right_on="node_id"
+        )
 
         # add the coupled_pump_function column per column to the model.pump.static.df
-        func_afvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_afvoer"]
-        func_aanvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_aanvoer"]
+        func_afvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[
+            "func_afvoer"
+        ]
+        func_aanvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[
+            "func_aanvoer"
+        ]
 
-        func_circulatie = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_circulatie"]
+        func_circulatie = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[
+            "func_circulatie"
+        ]
 
         model.pump.static.df["meta_func_afvoer"] = func_afvoer
         model.pump.static.df["meta_func_aanvoer"] = func_aanvoer

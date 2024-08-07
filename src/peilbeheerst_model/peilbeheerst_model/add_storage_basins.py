@@ -40,6 +40,7 @@ class AddStorageBasin:
 
     def setup_logging(self):
         """Set up logging to file and console."""
+
         # Clear any existing handlers
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
@@ -91,6 +92,7 @@ class AddStorageBasin:
 
     def add_basin_nodes_with_manning_resistance(self):
         """Add basin nodes with Manning resistance based on meta_categorie."""
+
         # Get the meta_categorie column from the state DataFrame
         state_df = self.model.basin.state.df
 
@@ -259,6 +261,7 @@ class AddStorageBasin:
 
     def run(self):
         """Run the process of adding basin nodes with Manning resistance and writing the updated model"""
+
         self.add_basin_nodes_with_manning_resistance()
         # self.write_ribasim_model()
         logging.shutdown()
@@ -267,6 +270,7 @@ class AddStorageBasin:
 
     def write_ribasim_model(self):
         """Write the updated ribasim model to the output directory"""
+
         outputdir = Path(self.output_folder)
         modelcase_dir = Path(f"updated_{self.model_name.lower()}")
 
