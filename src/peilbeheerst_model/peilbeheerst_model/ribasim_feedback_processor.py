@@ -6,8 +6,6 @@ import numpy as np
 import pandas as pd
 import ribasim
 from pyproj import Proj, Transformer
-from ribasim import Node
-from ribasim.nodes import discrete_control
 from shapely.geometry import LineString, Point
 
 # Mapping between feedback form and model names
@@ -198,96 +196,96 @@ class RibasimFeedbackProcessor:
         except Exception as e:
             logging.error(f"Error removing node {row['Node ID']}: {e}")
 
-    def add_discrete_control_node_for_pump(self, pump_node_id, pump_geometry):
-        logging.info(f"Adding DiscreteControl node for Pump Node ID: {pump_node_id}")
+    # def add_discrete_control_node_for_pump(self, pump_node_id, pump_geometry):
+    #     logging.info(f"Adding DiscreteControl node for Pump Node ID: {pump_node_id}")
 
-        control_states = ["off", "on"]
-        dfs_pump = ribasim_model.pump.static.df
+    #     control_states = ["off", "on"]
+    #     dfs_pump = ribasim_model.pump.static.df
         
-        if "control_state" not in dfs_pump.columns.tolist() or pd.isna(dfs_pump.control_state).all():
-            dfs_pump_list = []
-            for control_state in control_states:
-                df_pump = ribasim_model.pump.static.df.copy()
-                df_pump["control_state"] = control_state
-                if control_state == "off":
-                    df_pump["flow_rate"] = 0.0
-                dfs_pump_list.append(df_pump)
-            dfs_pump = pd.concat(dfs_pump_list, ignore_index=True)
-            ribasim_model.pump.static.df = dfs_pump
+    #     if "control_state" not in dfs_pump.columns.tolist() or pd.isna(dfs_pump.control_state).all():
+    #         dfs_pump_list = []
+    #         for control_state in control_states:
+    #             df_pump = ribasim_model.pump.static.df.copy()
+    #             df_pump["control_state"] = control_state
+    #             if control_state == "off":
+    #                 df_pump["flow_rate"] = 0.0
+    #             dfs_pump_list.append(df_pump)
+    #         dfs_pump = pd.concat(dfs_pump_list, ignore_index=True)
+    #         ribasim_model.pump.static.df = dfs_pump
         
-        cur_max_nodeid = self.get_current_max_nodeid()
+    #     cur_max_nodeid = self.get_current_max_nodeid()
 
-        if cur_max_nodeid < 90000:
-            new_nodeid = 90000 + cur_max_nodeid + 1
-        else:
-            new_nodeid = cur_max_nodeid + 1
+    #     if cur_max_nodeid < 90000:
+    #         new_nodeid = 90000 + cur_max_nodeid + 1
+    #     else:
+    #         new_nodeid = cur_max_nodeid + 1
 
-        basin = self.model.edge.df[
-            ((self.model.edge.df["to_node_id"] == pump_node_id) | (self.model.edge.df["from_node_id"] == pump_node_id))
-            & ((self.model.edge.df["from_node_type"] == "Basin") | (self.model.edge.df["to_node_type"] == "Basin"))
-        ]
-        assert len(basin) >= 1
-        basin = basin.iloc[0, :].copy()
-        if basin["from_node_type"] == "Basin":
-            compound_variable_id = basin["from_node_id"]
-            listen_node_id = basin["from_node_id"]
-        else:
-            compound_variable_id = basin["to_node_id"]
-            listen_node_id = basin["to_node_id"]
+    #     basin = self.model.edge.df[
+    #         ((self.model.edge.df["to_node_id"] == pump_node_id) | (self.model.edge.df["from_node_id"] == pump_node_id))
+    #         & ((self.model.edge.df["from_node_type"] == "Basin") | (self.model.edge.df["to_node_type"] == "Basin"))
+    #     ]
+    #     assert len(basin) >= 1
+    #     basin = basin.iloc[0, :].copy()
+    #     if basin["from_node_type"] == "Basin":
+    #         compound_variable_id = basin["from_node_id"]
+    #         listen_node_id = basin["from_node_id"]
+    #     else:
+    #         compound_variable_id = basin["to_node_id"]
+    #         listen_node_id = basin["to_node_id"]
 
-        df_streefpeilen = self.model.basin.area.df.set_index("node_id")
-        assert df_streefpeilen.index.is_unique
+    #     df_streefpeilen = self.model.basin.area.df.set_index("node_id")
+    #     assert df_streefpeilen.index.is_unique
 
-        try:
-            self.model.discrete_control.add(
-                Node(new_nodeid, pump_geometry),
-                [
-                    discrete_control.Variable(
-                        compound_variable_id=compound_variable_id,
-                        listen_node_type=["Basin"],
-                        listen_node_id=listen_node_id,
-                        variable=["level"],
-                    ),
-                    discrete_control.Condition(
-                        compound_variable_id=compound_variable_id,
-                        greater_than=[df_streefpeilen.at[listen_node_id, "meta_streefpeil"]],
-                    ),
-                    discrete_control.Logic(
-                        truth_state=["F", "T"],
-                        control_state=control_states,
-                    ),
-                ],
-            )
-            logging.info(f"Added DiscreteControl Node with ID: {new_nodeid}")
-        except Exception as e:
-            logging.error(f"Error adding DiscreteControl Node: {e}")
+    #     try:
+    #         self.model.discrete_control.add(
+    #             Node(new_nodeid, pump_geometry),
+    #             [
+    #                 discrete_control.Variable(
+    #                     compound_variable_id=compound_variable_id,
+    #                     listen_node_type=["Basin"],
+    #                     listen_node_id=listen_node_id,
+    #                     variable=["level"],
+    #                 ),
+    #                 discrete_control.Condition(
+    #                     compound_variable_id=compound_variable_id,
+    #                     greater_than=[df_streefpeilen.at[listen_node_id, "meta_streefpeil"]],
+    #                 ),
+    #                 discrete_control.Logic(
+    #                     truth_state=["F", "T"],
+    #                     control_state=control_states,
+    #                 ),
+    #             ],
+    #         )
+    #         logging.info(f"Added DiscreteControl Node with ID: {new_nodeid}")
+    #     except Exception as e:
+    #         logging.error(f"Error adding DiscreteControl Node: {e}")
 
-        try:
-            self.model.edge.add(self.model.discrete_control[new_nodeid], self.model.pump[pump_node_id])
-            logging.info(
-                f"Added control edge from DiscreteControl Node ID: {new_nodeid} to Pump Node ID: {pump_node_id}"
-            )
-        except Exception as e:
-            logging.error(f"Error adding control edge: {e}")
+    #     try:
+    #         self.model.edge.add(self.model.discrete_control[new_nodeid], self.model.pump[pump_node_id])
+    #         logging.info(
+    #             f"Added control edge from DiscreteControl Node ID: {new_nodeid} to Pump Node ID: {pump_node_id}"
+    #         )
+    #     except Exception as e:
+    #         logging.error(f"Error adding control edge: {e}")
 
-        new_node_type_row = pd.DataFrame(
-            [
-                {
-                    "fid": np.nan,
-                    "name": np.nan,
-                    "node_type": "discrete_control",
-                    "subnetwork_id": np.nan,
-                }
-            ],
-            index=[new_nodeid],
-        )
+    #     new_node_type_row = pd.DataFrame(
+    #         [
+    #             {
+    #                 "fid": np.nan,
+    #                 "name": np.nan,
+    #                 "node_type": "discrete_control",
+    #                 "subnetwork_id": np.nan,
+    #             }
+    #         ],
+    #         index=[new_nodeid],
+    #     )
 
-        self.df_node_types = pd.concat([self.df_node_types, new_node_type_row])
+    #     self.df_node_types = pd.concat([self.df_node_types, new_node_type_row])
 
-        logging.info(
-            f"Added DiscreteControl node with Node ID: {new_nodeid} at the same location as Pump with Node ID: {pump_node_id}"
-        )
-        logging.info(f"Added control edge from DiscreteControl Node ID: {new_nodeid} to Pump Node ID: {pump_node_id}")
+    #     logging.info(
+    #         f"Added DiscreteControl node with Node ID: {new_nodeid} at the same location as Pump with Node ID: {pump_node_id}"
+    #     )
+    #     logging.info(f"Added control edge from DiscreteControl Node ID: {new_nodeid} to Pump Node ID: {pump_node_id}")
 
     def add_node(self, row):
         try:
