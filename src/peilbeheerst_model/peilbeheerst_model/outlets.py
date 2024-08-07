@@ -300,7 +300,7 @@ class case1:
             df_basin_wide = df_basin.pivot_table(index="time", columns="node_id", values=["level"])
             df_basin_wide["level"].plot()
 
-            display(df_basin)
+            # display(df_basin)
 
     def create_model(self, copy=False):
         """Create the model by running all the functions."""
@@ -585,7 +585,7 @@ class case2:
             df_basin_wide = df_basin.pivot_table(index="time", columns="node_id", values=["level"])
             df_basin_wide["level"].plot()
 
-            display(df_basin)
+            # display(df_basin)
 
     def add_edges(self, model):
         """Add edges between each node."""

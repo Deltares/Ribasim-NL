@@ -999,7 +999,7 @@ def add_discrete_control_partswise(
             .reset_index(drop=True)
         )
         ribasim_model.pump.static.df = pump_static
-        display(pump_static)
+        # display(pump_static)
 
     ### condition ####################################################
     # create the DiscreteControl condition table
