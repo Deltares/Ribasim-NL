@@ -1,8 +1,12 @@
 # import pathlib
+import json
+import os
+import shutil
 import subprocess
 import sys
 import warnings
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import ribasim
@@ -44,7 +48,9 @@ def set_initial_basin_state(ribasim_model):
     return
 
 
-def insert_standard_profile(ribasim_model, regular_percentage=10, boezem_percentage=90, depth_profile=2):
+def insert_standard_profile(
+    ribasim_model, unknown_streefpeil, regular_percentage=10, boezem_percentage=90, depth_profile=2
+):
     profile = ribasim_model.basin.area.df.copy()
     profile.node_id, profile.meta_streefpeil = (
         profile.node_id.astype(int),
@@ -80,9 +86,51 @@ def insert_standard_profile(ribasim_model, regular_percentage=10, boezem_percent
     profile_total = pd.concat([profile_bottom, profile_slightly_above_bottom, profile_top])
     profile_total = profile_total.sort_values(by=["node_id", "level", "area"], ascending=True).reset_index(drop=True)
 
+    # the profiles of the bergende basins are not the same as the doorgaande basins. Fix this.
+    profile_total["meta_categorie"] = profile_total.merge(right=ribasim_model.basin.state.df, on="node_id")[
+        "meta_categorie"
+    ]
+
+    # find the node_id of the bergende nodes with the doorgaande nodes
+    bergende_nodes = profile_total.loc[profile_total.meta_categorie == "bergend"][["node_id"]].reset_index(drop=True)
+    bergende_nodes["from_MR_node"] = bergende_nodes.merge(
+        right=ribasim_model.edge.df, left_on="node_id", right_on="from_node_id", how="left"
+    )["to_node_id"]
+
+    bergende_nodes["doorgaande_node"] = bergende_nodes.merge(
+        right=ribasim_model.edge.df, left_on="from_MR_node", right_on="from_node_id", how="left"
+    )["to_node_id"]
+
+    # find the profiles
+    bergende_nodes = bergende_nodes.drop_duplicates(subset="node_id")
+    bergende_nodes = bergende_nodes.merge(
+        right=ribasim_model.basin.profile.df,
+        left_on="doorgaande_node",
+        right_on="node_id",
+        how="inner",
+        suffixes=("", "doorgaand"),
+    )
+    bergende_nodes["meta_categorie"] = "bergend"
+
+    # add the found profiles in the table
+    profile_total = profile_total.loc[profile_total.meta_categorie != "bergend"].reset_index(
+        drop=True
+    )  # remove bergende profiles, as they will be added here below
+    profile_total = pd.concat([profile_total, bergende_nodes[["node_id", "level", "area", "meta_categorie"]]])
+    profile_total = profile_total.sort_values(by=["node_id", "level"]).reset_index(drop=True)
+
     # insert the new tables in the model
     ribasim_model.basin.profile.df = profile_total
 
+    # due to the bergende basin, the surface area has been doubled. Correct this.
+    ribasim_model.basin.profile.df.area /= 2
+
+    # The newly created (storage) basins do not have a correct initial level yet. Fix this as well.
+    initial_level = ribasim_model.basin.profile.df.copy()
+    initial_level = initial_level.drop_duplicates(subset="node_id", keep="last")
+    ribasim_model.basin.state.df["level"] = ribasim_model.basin.state.df.merge(right=initial_level, on="node_id")[
+        "level_y"
+    ]
     return
 
 
@@ -299,9 +347,12 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
 def add_outlets(ribasim_model, delta_crest_level=0.10):
     # select all TRC's which are inlaten
     # display(ribasim_model.tabulated_rating_curve.static.df)
-    TRC_naar_OL = ribasim_model.tabulated_rating_curve.static.df.loc[
-        ribasim_model.tabulated_rating_curve.static.df.meta_type_verbinding == "Inlaat"
-    ]
+    # TRC_naar_OL = ribasim_model.tabulated_rating_curve.static.df.loc[
+    #     ribasim_model.tabulated_rating_curve.static.df.meta_type_verbinding == "Inlaat"
+    # ]
+
+    # update: change all TRC's to Outlets
+    TRC_naar_OL = ribasim_model.tabulated_rating_curve.static.df.copy()
     TRC_naar_OL = TRC_naar_OL.drop_duplicates(subset="node_id", keep="first")
     TRC_naar_OL = TRC_naar_OL[["node_id"]]
 
@@ -337,7 +388,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
 
     # add the outlets to the model
     ribasim_model.outlet.node.df = outlet[["node_id", "node_type", "geometry"]]
-    ribasim_model.outlet.static.df = outlet[["node_id", "flow_rate", "meta_categorie"]]
+    ribasim_model.outlet.static.df = outlet[["node_id", "flow_rate", "min_crest_level", "meta_categorie"]]
 
     # remove the TRC's nodes
     ribasim_model.tabulated_rating_curve.node = ribasim_model.tabulated_rating_curve.node.df.loc[
@@ -427,29 +478,47 @@ def add_discrete_control_nodes(ribasim_model):
     return
 
 
-def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4):
-    df_edge = ribasim_model.edge.df
-    df_edge_tab = ribasim_model.tabulated_rating_curve.static.df.merge(
-        df_edge, left_on="node_id", right_on="to_node_id", how="inner"
+def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, LevelBoundary_level=0):
+    """Create the Q(h)-relations for each TRC. It starts passing water from target level onwards."""
+    # find the originating basin of each TRC
+    target_level = ribasim_model.edge.df.loc[
+        ribasim_model.edge.df.to_node_type == "TabulatedRatingCurve"
+    ]  # select all TRC's. Do this from the edge table, so we can look the basins easily up afterwards
+
+    # find the target level
+    target_level = pd.merge(
+        left=target_level,
+        right=ribasim_model.basin.state.df[["node_id", "level"]],
+        left_on="from_node_id",
+        right_on="node_id",
+        how="left",
     )
-    df_tab = ribasim_model.basin.state.df.merge(df_edge_tab, left_on="node_id", right_on="from_node_id", how="inner")
-    df_tab = df_tab[["to_node_id", "active", "level_x", "flow_rate", "control_state", "meta_type_verbinding"]]
-    df_tab = df_tab.rename(columns={"to_node_id": "node_id", "level_x": "level"})
 
-    def adjust_rows(df):
-        df["row_num"] = df.groupby("node_id").cumcount() + 1
-        df.loc[df["row_num"] == 2, "level"] += level_increase
-        df.loc[df["row_num"] == 2, "flow_rate"] = flow_rate
-        df.drop(columns="row_num", inplace=True)
+    target_level.level.fillna(value=LevelBoundary_level, inplace=True)
 
-        return df
+    # zero flow rate on target level
+    Qh_table0 = target_level[["to_node_id", "level"]]
+    Qh_table0 = Qh_table0.rename(columns={"to_node_id": "node_id"})
+    Qh_table0["flow_rate"] = 0
 
-    # Apply the function
-    df_tab.node_id = df_tab.node_id.astype(int)
-    df_tab.level = df_tab.level.astype(float)
-    df_tab.flow_rate = df_tab.flow_rate.astype(float)
+    # pre defined flow rate on target level + level increase
+    Qh_table1 = Qh_table0.copy()
+    Qh_table1["level"] += level_increase
+    Qh_table1["flow_rate"] = flow_rate
 
-    ribasim_model.tabulated_rating_curve.static.df = adjust_rows(df_tab)
+    # combine tables, sort, reset index
+    Qh_table = pd.concat([Qh_table0, Qh_table1])
+    Qh_table.sort_values(by=["node_id", "level", "flow_rate"], inplace=True)
+    Qh_table.reset_index(drop=True, inplace=True)
+
+    ribasim_model.tabulated_rating_curve.static.df = Qh_table
+
+    # remove all redundand TRC nodes
+    ribasim_model.tabulated_rating_curve.node.df = ribasim_model.tabulated_rating_curve.node.df.loc[
+        ribasim_model.tabulated_rating_curve.node.df.node_id.isin(Qh_table.node_id)
+    ]
+    ribasim_model.tabulated_rating_curve.node.df.sort_values(by="node_id", inplace=True)
+    ribasim_model.tabulated_rating_curve.node.df.reset_index(drop=True, inplace=True)
 
     return
 
@@ -501,28 +570,92 @@ def set_tabulated_rating_curves_boundaries(ribasim_model, level_increase=0.1, fl
     return
 
 
+def create_sufficient_Qh_relation_points(ribasim_model):
+    """There are more TRC nodes than defined in the static table. Identify the nodes which occur less than twice in the table, and create a (for now) dummy relation. Also delete the TRC in the static table if it doesnt occur in the node table"""
+    # #get rid of all TRC's static rows which do not occur in the node table (assuming the node table is the groundtruth)
+    # TRC_nodes = ribasim_model.tabulated_rating_curve.node.df.node_id.values
+    # ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.loc[ribasim_model.tabulated_rating_curve.static.df.node_id.isin(TRC_nodes)]
+
+    # #put all TRC's nodes on one pile. So both the static as well as the node df
+    # TRC_pile = pd.concat([ribasim_model.tabulated_rating_curve.static.df['node_id'],
+    #                       ribasim_model.tabulated_rating_curve.node.df['node_id']])
+
+    # #each node_id should occur at least three times in the pile (once because of the node, twice because of the Qh relation)
+    # node_id_counts = ribasim_model.tabulated_rating_curve.static.df['node_id'].value_counts()
+
+    # #select all nodes which occur less than 3 times
+    # unique_node_ids = node_id_counts[node_id_counts < 3].index
+
+    # #create new Qh relations
+    # zero_flow = ribasim_model.tabulated_rating_curve.static.df[ribasim_model.tabulated_rating_curve.static.df['node_id'].isin(unique_node_ids)]
+    # one_flow = zero_flow.copy()
+    # zero_flow.flow_rate = 0 #set flow rate to 0 if on target level
+    # one_flow.level += 1 #set level 1 meter higher where it discharges 1 m3/s
+
+    # #remove old Qh points
+    # ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.loc[~ribasim_model.tabulated_rating_curve.static.df['node_id'].isin(unique_node_ids)]
+
+    # #add the new Qh points back in the df
+    # ribasim_model.tabulated_rating_curve.static.df = pd.concat([ribasim_model.tabulated_rating_curve.static.df,
+    #                                                             zero_flow,
+    #                                                             one_flow])
+    # #drop duplicates, sort and reset index
+    # ribasim_model.tabulated_rating_curve.static.df.drop_duplicates(subset = ['node_id', 'level'], inplace = True)
+    # ribasim_model.tabulated_rating_curve.static.df.sort_values(by=['node_id', 'level', 'flow_rate'], inplace = True)
+    # ribasim_model.tabulated_rating_curve.node.df.sort_values(by=['node_id'], inplace = True)
+    # ribasim_model.tabulated_rating_curve.static.df.reset_index(drop = True, inplace = True)
+
+    # print(len(TRC_nodes))
+    # print(len(ribasim_model.tabulated_rating_curve.static.df.node_id.unique()))
+
+    return
+
+
 def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml):
     # Write Ribasim model to the Z drive
+    if not os.path.exists(path_ribasim_toml):
+        os.makedirs(path_ribasim_toml)
+
     ribasim_model.write(path_ribasim_toml)
 
 
 def write_ribasim_model_GoodCloud(
     ribasim_model, path_ribasim_toml, waterschap, modeltype="boezemmodel", include_results=True
 ):
-    # Write Ribasim model to the Z drive again, as we want to store the results as well
-    ribasim_model.write(path_ribasim_toml)
+    # copy the results folder from the "updated" folder to the "Ribasim_networks" folder
+    results_source = f"../../../../../Ribasim_updated_models/{waterschap}/modellen/{waterschap}_parametrized/results"
+    parametrized_location = (
+        f"../../../../../Ribasim_networks/Waterschappen/{waterschap}/modellen/{waterschap}_parametrized"
+    )
 
-    # Write Ribasim model to the GoodCloud
+    if not os.path.exists(parametrized_location):
+        os.makedirs(parametrized_location)
+
+    # If the destination folder of the results already exists, remove it
+    print(os.path.join(parametrized_location, "results"))
+    if os.path.exists(os.path.join(parametrized_location, "results")):
+        shutil.rmtree(os.path.join(parametrized_location, "results"))
+
+    # copy the results to the Ribasim_networks folder
+    shutil.copytree(results_source, os.path.join(parametrized_location, "results"))
+
+    # copy the model to the Ribasim_networks folder
+    parametrized_location = os.path.join(parametrized_location, "ribasim.toml")
+    ribasim_model.write(
+        parametrized_location
+    )  # write to the "Ribasim_networks" folder (will NOT be overwritten at each upload)
+
     path_goodcloud_password = "../../../../../Data_overig/password_goodcloud.txt"
     with open(path_goodcloud_password) as file:
         password = file.read()
 
-    # Gain access to the goodcloud
-    cloud_storage = CloudStorage(password=password, data_dir=r"../../../../../Ribasim_networks/Waterschappen/")
+    cloud_storage = CloudStorage(
+        password=password,
+        data_dir=r"../../../../../Ribasim_networks/Waterschappen/",
+    )
 
-    # Upload the model
     cloud_storage.upload_model(
-        authority=waterschap, model=waterschap + "_" + modeltype, include_results=include_results
+        authority=waterschap, model=waterschap + "_parametrized", include_results=include_results
     )
 
     print(f"The model of waterboard {waterschap} has been uploaded to the goodcloud in the directory of {modeltype}!")
@@ -684,6 +817,7 @@ def validate_basin_area(model):
     :param model: The ribasim model to validate
     :return: None
     """
+    too_small_basins = []
     error = False
     for index, row in model.basin.node.df.iterrows():
         basin_id = int(row["node_id"])
@@ -693,8 +827,619 @@ def validate_basin_area(model):
             if basin_area < 100:
                 error = True
                 print(f"Basin with Node ID {basin_id} has an area smaller than 100 m²: {basin_area} m²")
+                too_small_basins.append(basin_id)
     if not error:
         print("All basins are larger than 100 m²")
+
+    return
+
+
+def identify_node_meta_categorie(ribasim_model):
+    """
+    Identify the meta_categorie of each Outlet, Pump and LevelBoundary.
+
+    It checks whether they are inlaten en uitlaten from a boezem, buitenwater or just regular peilgebieden.
+    This will determine the rules of the control nodes.
+    """
+    # create new columsn to store the meta categorie of each node
+    ribasim_model.outlet.static.df["meta_categorie"] = np.nan
+    ribasim_model.pump.static.df["meta_categorie"] = np.nan
+
+    # select all basins which are not "bergend"
+    basin_nodes = ribasim_model.basin.state.df.copy()
+    # peilgebied_basins = basin_nodes.loc[basin_nodes.meta_categorie == "doorgaand", "node_id"]
+    boezem_basins = basin_nodes.loc[basin_nodes.meta_categorie == "hoofdwater", "node_id"]
+
+    # select the nodes which originate from a boezem, and the ones which go to a boezem. Use the edge table for this.
+    nodes_from_boezem = ribasim_model.edge.df.loc[ribasim_model.edge.df.from_node_id.isin(boezem_basins), "to_node_id"]
+    nodes_to_boezem = ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id.isin(boezem_basins), "from_node_id"]
+
+    # select the nodes which originate from, and go to a boundary
+    nodes_from_boundary = ribasim_model.edge.df.loc[
+        ribasim_model.edge.df.from_node_type == "LevelBoundary", "to_node_id"
+    ]
+    nodes_to_boundary = ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_type == "LevelBoundary", "from_node_id"]
+
+    # identify the INlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
+    ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem), "meta_categorie"
+    ] = "Inlaat boezem, stuw"
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem), "meta_categorie"] = (
+        "Inlaat boezem, gemaal"
+    )
+
+    # identify the UITlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
+    ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.node_id.isin(nodes_to_boezem), "meta_categorie"
+    ] = "Uitlaat boezem, stuw"
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem), "meta_categorie"] = (
+        "Uitlaat boezem, gemaal"
+    )
+
+    # identify the outlets and pumps at the regular peilgebieden
+    ribasim_model.outlet.static.df.loc[
+        ~(
+            (ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem))
+            | (ribasim_model.outlet.static.df.node_id.isin(nodes_to_boezem))
+        ),
+        "meta_categorie",
+    ] = "Reguliere stuw"
+    ribasim_model.pump.static.df.loc[
+        ~(
+            (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
+            | (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
+        ),
+        "meta_categorie",
+    ] = "Regulier gemaal"
+
+    # repeat for the boundary nodes
+    # identify the buitenwater uitlaten and inlaten. A part will be overwritten later, if its a boundary & boezem.
+    ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.node_id.isin(nodes_to_boundary), "meta_categorie"
+    ] = "Uitlaat buitenwater peilgebied, stuw"
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary), "meta_categorie"] = (
+        "Uitlaat buitenwater peilgebied, gemaal"
+    )
+
+    ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.node_id.isin(nodes_from_boundary), "meta_categorie"
+    ] = "Inlaat buitenwater peilgebied, stuw"
+    ribasim_model.pump.static.df.loc[
+        ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary), "meta_categorie"
+    ] = "Inlaat buitenwater peilgebied, gemaal"
+
+    # boundary & boezem. This is the part where a portion of the already defined meta_categorie will be overwritten by the code above.
+    ribasim_model.outlet.static.df.loc[
+        (ribasim_model.outlet.static.df.node_id.isin(nodes_to_boundary))
+        & (ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem)),  # to
+        "meta_categorie",
+    ] = "Uitlaat buitenwater boezem, stuw"
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
+        & (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem)),  # to
+        "meta_categorie",
+    ] = "Uitlaat buitenwater boezem, gemaal"
+
+    ribasim_model.outlet.static.df.loc[
+        (ribasim_model.outlet.static.df.node_id.isin(nodes_from_boundary))
+        & (ribasim_model.outlet.static.df.node_id.isin(nodes_to_boezem)),  # from
+        "meta_categorie",
+    ] = "Inlaat buitenwater boezem, stuw"
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
+        & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem)),  # from
+        "meta_categorie",
+    ] = "Inlaat buitenwater boezem, gemaal"
+
+    # boezem & boezem.
+    ribasim_model.outlet.static.df.loc[
+        (ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem))
+        & (ribasim_model.outlet.static.df.node_id.isin(nodes_to_boezem)),
+        "meta_categorie",
+    ] = "Boezem boezem, stuw"
+
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
+        & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem)),
+        "meta_categorie",
+    ] = "Boezem boezem, gemaal"
+
+    # some pumps have been added due to the feedback form. Assume all these nodes are afvoer gemalen
+    ribasim_model.pump.static.df.meta_func_afvoer.fillna(value=1.0, inplace=True)
+    ribasim_model.pump.static.df.meta_func_aanvoer.fillna(value=0.0, inplace=True)
+    ribasim_model.pump.static.df.meta_func_circulatie.fillna(value=0.0, inplace=True)
+
+    return
+
+
+def load_model_settings(file_path):
+    with open(file_path) as file:
+        settings = json.load(file)
+    return settings
+
+
+def add_discrete_control(ribasim_model, waterschap, default_level):
+    """Add discrete control nodes to the network. The rules are based on the meta_categorie of each node."""
+    # load in the sturing which is defined in the json files
+    sturing = load_model_settings(f"sturing_{waterschap}.json")
+
+    # Remove all Discrete Control nodes and edges if its present
+    ribasim_model.discrete_control.node.df = ribasim_model.discrete_control.node.df.iloc[0:0]
+    if ribasim_model.discrete_control.condition.df is not None:
+        ribasim_model.discrete_control.condition.df = ribasim_model.discrete_control.condition.df.iloc[0:0]
+        ribasim_model.discrete_control.logic.df = ribasim_model.discrete_control.logic.df.iloc[0:0]
+        ribasim_model.discrete_control.variable.df = ribasim_model.discrete_control.variable.df.iloc[0:0]
+        ribasim_model.edge.df = ribasim_model.edge.df.loc[ribasim_model.edge.df.edge_type != "control"]
+
+    # start assigning sturing to outlets/weirs
+    # find the nodes to change
+    inlaat_boezem_stuw = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.meta_categorie == "Inlaat boezem, stuw", "node_id"
+    ]
+    uitlaat_boezem_stuw = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.meta_categorie == "Uitlaat boezem, stuw", "node_id"
+    ]
+    reguliere_stuw = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.meta_categorie == "Reguliere stuw", "node_id"
+    ]
+    inlaat_buitenwater_peilgebied_stuw = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.meta_categorie == "Inlaat buitenwater peilgebied, stuw", "node_id"
+    ]
+    uitlaat_buitenwater_peilgebied_stuw = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.meta_categorie == "Uitlaat buitenwater peilgebied, stuw", "node_id"
+    ]
+    boezem_boezem_stuw = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.meta_categorie == "Boezem boezem, stuw", "node_id"
+    ]
+
+    # assign the sturing for the weirs/outlets.
+    nodes_to_control_list_stuw = [
+        inlaat_boezem_stuw,
+        uitlaat_boezem_stuw,
+        reguliere_stuw,
+        inlaat_buitenwater_peilgebied_stuw,
+        uitlaat_buitenwater_peilgebied_stuw,
+        boezem_boezem_stuw,
+    ]
+
+    category_list_stuw = [
+        "Inlaat boezem, stuw",
+        "Uitlaat boezem, stuw",
+        "Reguliere stuw",
+        "Inlaat buitenwater peilgebied, stuw",
+        "Uitlaat buitenwater peilgebied, stuw",
+        "Boezem boezem, stuw",
+    ]
+
+    # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
+    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw):
+        if len(nodes_to_control) > 0:
+            print(f"Sturing has been added for the category {category}")
+            add_discrete_control_partswise(
+                ribasim_model=ribasim_model,
+                nodes_to_control=nodes_to_control,
+                category=category,
+                sturing=sturing,
+                default_level=default_level,
+            )
+        else:
+            print(f"No stuwen are found in the category of {category}")
+
+    # repeat for the pumps
+    # find the nodes to change
+    inlaat_boezem_gemaal = ribasim_model.pump.static.df.loc[
+        ribasim_model.pump.static.df.meta_categorie == "Inlaat boezem, gemaal", "node_id"
+    ]
+    uitlaat_boezem_gemaal = ribasim_model.pump.static.df.loc[
+        ribasim_model.pump.static.df.meta_categorie == "Uitlaat boezem, gemaal", "node_id"
+    ]
+
+    regulier_gemaal_afvoer = ribasim_model.pump.static.df.loc[
+        (
+            (ribasim_model.pump.static.df.meta_categorie == "Regulier gemaal")
+            & (ribasim_model.pump.static.df.meta_func_afvoer != 0)
+        ),
+        "node_id",
+    ]
+    regulier_gemaal_aanvoer = ribasim_model.pump.static.df.loc[
+        (
+            (ribasim_model.pump.static.df.meta_categorie == "Regulier gemaal")
+            & (ribasim_model.pump.static.df.meta_func_afvoer != 1)
+        ),
+        "node_id",
+    ]
+
+    uitlaat_buitenwater_peilgebied_gemaal_afvoer = ribasim_model.pump.static.df.loc[
+        (
+            (ribasim_model.pump.static.df.meta_categorie == "Uitlaat buitenwater peilgebied, gemaal")
+            & (ribasim_model.pump.static.df.meta_func_afvoer != 0)
+        ),
+        "node_id",
+    ]
+    uitlaat_buitenwater_peilgebied_gemaal_aanvoer = ribasim_model.pump.static.df.loc[
+        (
+            (ribasim_model.pump.static.df.meta_categorie == "Uitlaat buitenwater peilgebied, gemaal")
+            & (ribasim_model.pump.static.df.meta_func_afvoer != 1)
+        ),
+        "node_id",
+    ]
+
+    inlaat_buitenwater_peilgebied_gemaal_afvoer = ribasim_model.pump.static.df.loc[
+        (
+            (ribasim_model.pump.static.df.meta_categorie == "Inlaat buitenwater peilgebied, gemaal")
+            & (ribasim_model.pump.static.df.meta_func_afvoer != 0)
+        ),
+        "node_id",
+    ]
+    inlaat_buitenwater_peilgebied_gemaal_aanvoer = ribasim_model.pump.static.df.loc[
+        (
+            (ribasim_model.pump.static.df.meta_categorie == "Inlaat buitenwater peilgebied, gemaal")
+            & (ribasim_model.pump.static.df.meta_func_afvoer != 1)
+        ),
+        "node_id",
+    ]
+
+    # display(inlaat_buitenwater_peilgebied_gemaal_afvoer)
+    # display(inlaat_buitenwater_peilgebied_gemaal_aanvoer)
+    boezem_boezem_gemaal_afvoer = ribasim_model.outlet.static.df.loc[
+        (
+            (ribasim_model.outlet.static.df.meta_categorie == "Boezem boezem, gemaal")
+            & (ribasim_model.pump.static.df.meta_func_afvoer != 0)
+        ),
+        "node_id",
+    ]
+    boezem_boezem_gemaal_aanvoer = ribasim_model.outlet.static.df.loc[
+        (
+            (ribasim_model.outlet.static.df.meta_categorie == "Boezem boezem, gemaal")
+            & (ribasim_model.pump.static.df.meta_func_afvoer != 1)
+        ),
+        "node_id",
+    ]
+
+    # assign the sturing for the gemalen/pumps.
+    nodes_to_control_list_gemaal = [
+        inlaat_boezem_gemaal,
+        uitlaat_boezem_gemaal,
+        regulier_gemaal_afvoer,
+        regulier_gemaal_aanvoer,
+        uitlaat_buitenwater_peilgebied_gemaal_afvoer,
+        uitlaat_buitenwater_peilgebied_gemaal_aanvoer,
+        inlaat_buitenwater_peilgebied_gemaal_afvoer,  #
+        inlaat_buitenwater_peilgebied_gemaal_aanvoer,  #
+        boezem_boezem_gemaal_afvoer,
+        boezem_boezem_gemaal_aanvoer,
+    ]
+
+    category_list_gemaal = [
+        "Inlaat boezem, gemaal",
+        "Uitlaat boezem, gemaal",
+        "Regulier afvoer gemaal",
+        "Regulier aanvoer gemaal",
+        "Uitlaat buitenwater peilgebied, afvoer gemaal",
+        "Uitlaat buitenwater peilgebied, aanvoer gemaal",
+        "Inlaat buitenwater peilgebied, afvoer gemaal",  #
+        "Inlaat buitenwater peilgebied, aanvoer gemaal",  #
+        "Boezem boezem, afvoer gemaal",
+        "Boezem boezem, aanvoer gemaal",
+    ]
+
+    # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
+    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal):
+        if len(nodes_to_control) > 0:
+            print(f"Sturing has been added for the category {category}")
+            add_discrete_control_partswise(
+                ribasim_model=ribasim_model,
+                nodes_to_control=nodes_to_control,
+                category=category,
+                sturing=sturing,
+                default_level=default_level,
+            )
+        else:
+            print(f"No gemalen are found in the category of {category}")
+
+    # # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie. Start with the outlets/stuwen
+    # add_discrete_control_partswise(
+    #     ribasim_model=ribasim_model,
+    #     nodes_to_control=inlaat_boezem_stuw,
+    #     category='Inlaat boezem, stuw',
+    #     sturing = sturing,
+    #     default_level = default_level)
+
+    # many duplicate values have been created. Discard those.
+    # ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.drop_duplicates().reset_index(drop=True)
+    # ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop_duplicates().reset_index(drop=True)
+
+    # a DC node occures twice in the table of teh nodes at case of AGV, while this node is not present at all in the DC tables. REmove it
+    DC_nodes = pd.concat(
+        [
+            ribasim_model.discrete_control.logic.df.node_id,
+            ribasim_model.discrete_control.variable.df.node_id,
+            ribasim_model.discrete_control.condition.df.node_id,
+        ]
+    )
+
+    DC_nodes = DC_nodes.drop_duplicates().reset_index(drop=True)
+
+    # add meta_downstream to the DC variable
+    ribasim_model.discrete_control.variable.df["meta_downstream"] = ribasim_model.discrete_control.variable.df.merge(
+        right=ribasim_model.discrete_control.condition.df,
+        left_on=["compound_variable_id", "listen_node_id"],
+        right_on=["compound_variable_id", "meta_listen_node_id"],
+        how="left",
+    )[["meta_downstream"]]
+
+    ribasim_model.discrete_control.node.df = ribasim_model.discrete_control.node.df.loc[
+        ribasim_model.discrete_control.node.df.node_id.isin(DC_nodes.values)
+    ].reset_index(drop=True)
+    ribasim_model.discrete_control.node.df = ribasim_model.discrete_control.node.df.drop_duplicates(
+        subset="node_id"
+    ).reset_index(drop=True)
+    ribasim_model.discrete_control.condition.df = (
+        ribasim_model.discrete_control.condition.df.drop_duplicates()
+        .sort_values(by=["node_id", "meta_downstream"])
+        .reset_index(drop=True)
+    )
+    ribasim_model.discrete_control.variable.df = (
+        ribasim_model.discrete_control.variable.df.drop_duplicates()
+        .sort_values(by=["node_id", "meta_downstream"])
+        .reset_index(drop=True)
+    )
+    ribasim_model.discrete_control.logic.df = (
+        ribasim_model.discrete_control.logic.df.drop_duplicates()
+        .sort_values(by=["node_id", "truth_state"])
+        .reset_index(drop=True)
+    )
+
+    return
+
+
+def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, sturing, default_level):
+    # define the sturing parameters in variables
+    upstream_level_offset = sturing[category]["upstream_level_offset"]
+    truth_state = sturing[category]["truth_state"]
+    control_state = sturing[category]["control_state"]
+    flow_rate_block = sturing[category]["flow_rate_block"]
+    flow_rate_pass = sturing[category]["flow_rate_pass"]
+    node_type = sturing[category]["node_type"]
+
+    ### node ####################################################
+    # add the discrete control .node table. The node_ids are the same as the node_id of the outlet/pump, but 80.000 is added
+    DC_nodes = pd.DataFrame()
+    DC_nodes["node_id"] = nodes_to_control.astype(int) + 80000
+
+    # trace back the node_id which the DiscreteControl controls, including the compoun_variable_id which is set the same as the node_id
+    DC_nodes["meta_control_node_id"] = nodes_to_control
+    DC_nodes["meta_compound_variable_id"] = DC_nodes["node_id"]
+    DC_nodes["node_type"] = "DiscreteControl"
+    DC_nodes = DC_nodes.sort_values(by="node_id").reset_index(drop=True)
+
+    # retrieve the geometries of the DiscreteControl. Put it at the same location, so they may be stored in either the Outlets or the Pumps, so check both    if
+    if node_type == "outlet" or node_type == "Outlet":
+        DC_nodes["geometry"] = DC_nodes.merge(
+            right=ribasim_model.outlet.node.df[["node_id", "geometry"]],
+            left_on="meta_control_node_id",
+            right_on="node_id",
+            how="left",
+        )["geometry"]
+    elif node_type == "pump" or node_type == "Pump":
+        DC_nodes["geometry"] = DC_nodes.merge(
+            right=ribasim_model.pump.node.df[["node_id", "geometry"]],
+            left_on="meta_control_node_id",
+            right_on="node_id",
+            how="left",
+        )["geometry"]
+
+    DC_nodes = DC_nodes[["node_id", "node_type", "meta_control_node_id", "meta_compound_variable_id", "geometry"]]
+
+    # concat the DC_nodes to the ribasim model
+    ribasim_model.discrete_control.node.df = (
+        pd.concat([ribasim_model.discrete_control.node.df, DC_nodes]).sort_values(by="node_id").reset_index(drop=True)
+    )
+    ribasim_model.discrete_control.node.df = gpd.GeoDataFrame(
+        ribasim_model.discrete_control.node.df, geometry="geometry"
+    )
+
+    ### node OUTLET static ###
+    if node_type == "outlet" or node_type == "Outlet":
+        # df when water is blocked
+        outlet_static_block = ribasim_model.outlet.static.df.copy()
+        outlet_static_block["control_state"] = "block"
+        outlet_static_block["flow_rate"] = flow_rate_block
+        outlet_static_block["min_crest_level"] = (
+            np.nan
+        )  # min crest level is redundant, as control is defined for both upstream as well as downstream levels
+
+        # df when water is passed
+        outlet_static_pass = ribasim_model.outlet.static.df.copy()
+        outlet_static_pass["control_state"] = "pass"
+        outlet_static_pass["flow_rate"] = flow_rate_pass
+        outlet_static_pass["min_crest_level"] = (
+            np.nan
+        )  # min crest level is redundant, as control is defined for both upstream as well as downstream levels
+
+        outlet_static = (
+            pd.concat([outlet_static_block, outlet_static_pass])
+            .sort_values(by=["node_id", "control_state"])
+            .reset_index(drop=True)
+        )
+        ribasim_model.outlet.static.df = outlet_static
+
+    ### node PUMP static ###
+    if node_type == "pump" or node_type == "Pump":
+        # df when water is blocked
+        pump_static_block = ribasim_model.pump.static.df.copy()
+        pump_static_block["control_state"] = "block"
+        pump_static_block["flow_rate"] = flow_rate_block
+
+        # df when water is passed
+        pump_static_pass = ribasim_model.pump.static.df.copy()
+        pump_static_pass["control_state"] = "pass"
+        pump_static_pass["flow_rate"] = flow_rate_pass
+
+        pump_static = (
+            pd.concat([pump_static_block, pump_static_pass])
+            .sort_values(by=["node_id", "control_state"])
+            .reset_index(drop=True)
+        )
+        ribasim_model.pump.static.df = pump_static
+        # display(pump_static)
+
+    ### condition ####################################################
+    # create the DiscreteControl condition table
+    DC_condition_us = pd.DataFrame()
+    DC_condition_us["node_id"] = ribasim_model.discrete_control.node.df["node_id"]
+    DC_condition_us["meta_control_node_id"] = ribasim_model.discrete_control.node.df["meta_control_node_id"]
+    DC_condition_us["compound_variable_id"] = ribasim_model.discrete_control.node.df["meta_compound_variable_id"]
+    DC_condition_ds = DC_condition_us.copy(deep=True)
+
+    # find the greather_than value by looking the corresponding UPstream basin up in the edge table
+    basin_to_control_node_us = ribasim_model.edge.df.loc[
+        ribasim_model.edge.df.to_node_id.isin(nodes_to_control.values)
+    ]  # ['from_node_id']
+    basin_to_control_node_us = basin_to_control_node_us.merge(
+        right=ribasim_model.basin.state.df, left_on="from_node_id", right_on="node_id", how="left"
+    )[["to_node_id", "to_node_type", "level", "from_node_id", "from_node_type"]]
+    basin_to_control_node_us["meta_to_control_node_id"] = basin_to_control_node_us["to_node_id"]
+    basin_to_control_node_us["meta_to_control_node_type"] = basin_to_control_node_us["to_node_type"]
+
+    DC_condition_us = DC_condition_us.merge(
+        right=basin_to_control_node_us, left_on="meta_control_node_id", right_on="to_node_id"
+    )
+    DC_condition_us["level"] -= upstream_level_offset
+
+    # formatting
+    DC_condition_us.rename(
+        columns={
+            "level": "greater_than",
+            "from_node_id": "meta_listen_node_id",
+            "from_node_type": "meta_listen_node_type",
+        },
+        inplace=True,
+    )
+    DC_condition_us = DC_condition_us[
+        [
+            "node_id",
+            "compound_variable_id",
+            "greater_than",
+            "meta_listen_node_id",
+            "meta_listen_node_type",
+            "meta_to_control_node_id",
+            "meta_to_control_node_type",
+        ]
+    ]
+    DC_condition_us["meta_downstream"] = 0  # add a column to sort it later on
+
+    # for each row, there is (incorrectly) another row added where the listen node is the DiscreteControl. This should not be the case. Remove it
+    DC_condition_us = DC_condition_us.loc[DC_condition_us.meta_listen_node_type != "DiscreteControl"]
+
+    # the upstream node which is listened to is found. Now, find the downstream listen node.
+    # basically repeat the same lines as above
+    basin_to_control_node_ds = ribasim_model.edge.df.loc[
+        ribasim_model.edge.df.from_node_id.isin(nodes_to_control.values)
+    ]
+    basin_to_control_node_ds = basin_to_control_node_ds.merge(
+        right=ribasim_model.basin.state.df, left_on="to_node_id", right_on="node_id", how="left"
+    )[["from_node_id", "from_node_type", "level", "to_node_id", "to_node_type"]]
+
+    DC_condition_ds = DC_condition_ds.merge(
+        right=basin_to_control_node_ds, left_on="meta_control_node_id", right_on="from_node_id"
+    )
+    DC_condition_ds["level"] -= upstream_level_offset
+
+    # formatting
+    DC_condition_ds.rename(
+        columns={"level": "greater_than", "to_node_id": "meta_listen_node_id", "to_node_type": "meta_listen_node_type"},
+        inplace=True,
+    )
+    DC_condition_ds = DC_condition_ds[
+        ["node_id", "compound_variable_id", "greater_than", "meta_listen_node_id", "meta_listen_node_type"]
+    ]
+    DC_condition_ds["meta_downstream"] = 1  # add a column to sort it later on
+
+    # add some more columns so the downstream table matches the upstream table. Not sure why this is not created
+    DC_condition_ds["meta_to_control_node_id"] = DC_condition_ds.merge(
+        right=DC_condition_us, on="compound_variable_id", how="left"
+    )["meta_to_control_node_id"]
+    DC_condition_ds["meta_to_control_node_type"] = DC_condition_ds.merge(
+        right=DC_condition_us, on="compound_variable_id", how="left"
+    )["meta_to_control_node_type"]
+
+    # concat the upstream and the downstream condition table
+    DC_condition = pd.concat([DC_condition_us, DC_condition_ds])
+
+    # every basin should have a target level by this part of the code. However, LevelBoundaries may not. Implement it
+    DC_condition.greater_than.fillna(value=default_level, inplace=True)
+
+    # concat the entire DC_condition to the ribasim model
+    ribasim_model.discrete_control.condition.df = pd.concat([ribasim_model.discrete_control.condition.df, DC_condition])
+    ribasim_model.discrete_control.condition.df = ribasim_model.discrete_control.condition.df.sort_values(
+        by=["node_id", "meta_downstream"]
+    ).reset_index(drop=True)
+
+    ### logic ####################################################
+    DC_logic = pd.DataFrame()
+    for i in range(len(truth_state)):
+        DC_logic_temp = DC_condition.copy()[["node_id"]].drop_duplicates()
+        DC_logic_temp["truth_state"] = truth_state[i]
+        DC_logic_temp["control_state"] = control_state[i]
+
+        DC_logic = pd.concat([DC_logic, DC_logic_temp])
+
+    # concat the DC_condition to the ribasim model
+    ribasim_model.discrete_control.logic.df = pd.concat([ribasim_model.discrete_control.logic.df, DC_logic])
+    ribasim_model.discrete_control.logic.df = ribasim_model.discrete_control.logic.df.sort_values(
+        by=["node_id", "truth_state"]
+    ).reset_index(drop=True)
+
+    ### variable ####################################################
+    DC_variable = DC_condition.copy()[
+        ["node_id", "compound_variable_id", "meta_listen_node_id", "meta_listen_node_type"]
+    ]
+    DC_variable.rename(
+        columns={"meta_listen_node_id": "listen_node_id", "meta_listen_node_type": "listen_node_type"}, inplace=True
+    )
+    DC_variable["variable"] = "level"
+
+    # concat the DC_variable to the ribasim model
+    ribasim_model.discrete_control.variable.df = pd.concat([ribasim_model.discrete_control.variable.df, DC_variable])
+    ribasim_model.discrete_control.variable.df = ribasim_model.discrete_control.variable.df.sort_values(
+        by=["node_id", "listen_node_id"]
+    ).reset_index(drop=True)
+
+    ### edge ####################################################
+    DC_edge = DC_condition.copy()[["node_id", "meta_to_control_node_id", "meta_to_control_node_type"]]
+
+    # as the DC listens to both the upstream as well as the downstream nodes, it contains twice the node_ids. Only select one.
+    DC_edge = DC_edge.drop_duplicates(subset="node_id")
+    DC_edge.rename(
+        columns={
+            "node_id": "from_node_id",
+            "meta_to_control_node_id": "to_node_id",
+            "meta_to_control_node_type": "to_node_type",
+        },
+        inplace=True,
+    )
+
+    # DC_edge['to_node_type'] = ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id == DC_edge.node_id, 'to_node_type']
+    DC_edge["from_node_type"] = "DiscreteControl"
+    DC_edge["edge_type"] = "control"
+    DC_edge["meta_categorie"] = "DC_control"
+
+    # retrieve the FROM geometry from the DC_nodes. The TO is the same, as the DiscreteControl is on the same location
+    DC_edge["from_coord"] = DC_nodes["geometry"]
+    DC_edge["to_coord"] = DC_nodes["geometry"]
+
+    def create_linestring(row):
+        return LineString([row["from_coord"], row["to_coord"]])
+
+    DC_edge["geometry"] = DC_edge.apply(create_linestring, axis=1)
+
+    DC_edge = DC_edge[
+        ["from_node_id", "from_node_type", "to_node_id", "to_node_type", "edge_type", "meta_categorie", "geometry"]
+    ]
+    ribasim_model.edge.df = pd.concat([ribasim_model.edge.df, DC_edge]).reset_index(drop=True)
+
+    return
 
 
 ##################### Recycle bin ##########################

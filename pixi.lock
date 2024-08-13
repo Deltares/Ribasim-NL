@@ -16046,30 +16046,6 @@ packages:
   constrains:
   - numpy-base <0a0
   license: BSD-3-Clause
-  purls:
-  - pkg:pypi/numpy?source=conda-forge-mapping
-  size: 8345605
-  timestamp: 1721966364929
-- kind: conda
-  name: numpy
-  version: 2.0.1
-  build: py312h1103770_0
-  subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.0.1-py312h1103770_0.conda
-  sha256: 0746a37d09036b4164ac14dd1328dd4e449a038383aac1e25e2d5f3a691518da
-  md5: 9f444595d8d9682891f2f078fc19da43
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libblas >=3.9.0,<4.0a0
-  - libcblas >=3.9.0,<4.0a0
-  - libgcc-ng >=12
-  - liblapack >=3.9.0,<4.0a0
-  - libstdcxx-ng >=12
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  constrains:
-  - numpy-base <0a0
-  license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/numpy?source=conda-forge-mapping
@@ -16095,58 +16071,11 @@ packages:
   constrains:
   - numpy-base <0a0
   license: BSD-3-Clause
-  purls:
-  - pkg:pypi/numpy?source=conda-forge-mapping
-  size: 6945867
-  timestamp: 1721966986321
-- kind: conda
-  name: numpy
-  version: 2.0.1
-  build: py312h49bc9c5_0
-  subdir: win-64
-  url: https://conda.anaconda.org/conda-forge/win-64/numpy-2.0.1-py312h49bc9c5_0.conda
-  sha256: 13b38db57cefbbea0cb6a44a5c75df8010480dc6200eda3491c8d203072d1675
-  md5: e7fed4e2639f3a0d58bd8b2164059e8d
-  depends:
-  - libblas >=3.9.0,<4.0a0
-  - libcblas >=3.9.0,<4.0a0
-  - liblapack >=3.9.0,<4.0a0
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  - ucrt >=10.0.20348.0
-  - vc >=14.2,<15
-  - vc14_runtime >=14.29.30139
-  constrains:
-  - numpy-base <0a0
-  license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/numpy?source=conda-forge-mapping
   size: 6945867
   timestamp: 1721966986321
-- kind: conda
-  name: numpy
-  version: 2.0.1
-  build: py312h8813227_0
-  subdir: osx-64
-  url: https://conda.anaconda.org/conda-forge/osx-64/numpy-2.0.1-py312h8813227_0.conda
-  sha256: 3f73ed4464e3dc639c875b6cbe86e8095f88afe047bdfdc3d4b4ae120dd830e8
-  md5: 7f239fbf9d9355f86529a35af0b24d29
-  depends:
-  - __osx >=10.13
-  - libblas >=3.9.0,<4.0a0
-  - libcblas >=3.9.0,<4.0a0
-  - libcxx >=16
-  - liblapack >=3.9.0,<4.0a0
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  constrains:
-  - numpy-base <0a0
-  license: BSD-3-Clause
-  purls:
-  - pkg:pypi/numpy?source=conda-forge-mapping
-  size: 7464264
-  timestamp: 1721966235928
 - kind: conda
   name: numpy
   version: 2.0.1
@@ -18465,30 +18394,6 @@ packages:
   constrains:
   - pytest-faulthandler >=2
   license: MIT
-  purls:
-  - pkg:pypi/pytest?source=conda-forge-mapping
-  size: 257671
-  timestamp: 1721923749407
-- kind: conda
-  name: pytest
-  version: 8.3.2
-  build: pyhd8ed1ab_0
-  subdir: noarch
-  noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/pytest-8.3.2-pyhd8ed1ab_0.conda
-  sha256: 72c84a3cd9fe82835a88e975fd2a0dbf2071d1c423ea4f79e7930578c1014873
-  md5: e010a224b90f1f623a917c35addbb924
-  depends:
-  - colorama
-  - exceptiongroup >=1.0.0rc8
-  - iniconfig
-  - packaging
-  - pluggy <2,>=1.5
-  - python >=3.8
-  - tomli >=1
-  constrains:
-  - pytest-faulthandler >=2
-  license: MIT
   license_family: MIT
   purls:
   - pkg:pypi/pytest?source=conda-forge-mapping
@@ -19591,7 +19496,7 @@ packages:
   name: ribasim-lumping
   version: 0.1.0
   path: src/ribasim_lumping
-  sha256: dec80735ccc9bf83d5a0805f5081c910c8aa81dc76abdb7052253a657ba034b3
+  sha256: 25f734682e8e1d8bbcea37b6147101f264a13471b82341daf989834955d1a942
   requires_dist:
   - contextily
   - geopandas
@@ -19674,25 +19579,6 @@ packages:
   - vc >=14.2,<15
   - vc14_runtime >=14.29.30139
   license: MIT
-  purls:
-  - pkg:pypi/rpds-py?source=conda-forge-mapping
-  size: 206243
-  timestamp: 1721862293173
-- kind: conda
-  name: rpds-py
-  version: 0.19.1
-  build: py312h2615798_0
-  subdir: win-64
-  url: https://conda.anaconda.org/conda-forge/win-64/rpds-py-0.19.1-py312h2615798_0.conda
-  sha256: 892407686805709a37a6dd29da06042f891a35774b25cee51368a29be9ccac6b
-  md5: 80bb17e18169ac455444b8167a105059
-  depends:
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  - ucrt >=10.0.20348.0
-  - vc >=14.2,<15
-  - vc14_runtime >=14.29.30139
-  license: MIT
   license_family: MIT
   purls:
   - pkg:pypi/rpds-py?source=conda-forge-mapping
@@ -19713,50 +19599,11 @@ packages:
   constrains:
   - __osx >=10.13
   license: MIT
-  purls:
-  - pkg:pypi/rpds-py?source=conda-forge-mapping
-  size: 295442
-  timestamp: 1721861174737
-- kind: conda
-  name: rpds-py
-  version: 0.19.1
-  build: py312ha47ea1c_0
-  subdir: osx-64
-  url: https://conda.anaconda.org/conda-forge/osx-64/rpds-py-0.19.1-py312ha47ea1c_0.conda
-  sha256: dc5ce3a63deffc69263a8e8699e43ae64b45663ce3f39799c10b35524cc3e861
-  md5: c54025057789a55e07d585e743fc8744
-  depends:
-  - __osx >=10.13
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  constrains:
-  - __osx >=10.13
-  license: MIT
   license_family: MIT
   purls:
   - pkg:pypi/rpds-py?source=conda-forge-mapping
   size: 295442
   timestamp: 1721861174737
-- kind: conda
-  name: rpds-py
-  version: 0.19.1
-  build: py312hf008fa9_0
-  subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/rpds-py-0.19.1-py312hf008fa9_0.conda
-  sha256: 931d84722857bfdc9c1bbf8acc9c3bcf9aa294d8d9b4f26015569a3a0fbabefd
-  md5: ebdebabe560c06a70bc41221b9606945
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc-ng >=12
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  constrains:
-  - __glibc >=2.17
-  license: MIT
-  purls:
-  - pkg:pypi/rpds-py?source=conda-forge-mapping
-  size: 333274
-  timestamp: 1721861124399
 - kind: conda
   name: rpds-py
   version: 0.19.1

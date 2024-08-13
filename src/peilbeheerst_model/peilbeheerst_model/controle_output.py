@@ -199,6 +199,8 @@ class Control:
 
         return control_dict
 
+    # def inspect_individual_basins(self, data):
+
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():

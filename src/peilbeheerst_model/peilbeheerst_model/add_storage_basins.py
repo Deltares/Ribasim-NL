@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 
-# import numpy as np
 import pandas as pd
 from ribasim import Model
 from shapely.geometry import Point

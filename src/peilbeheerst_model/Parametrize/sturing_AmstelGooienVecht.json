@@ -1,0 +1,136 @@
+{
+  "Inlaat boezem, stuw": {
+    "upstream_level_offset": 0.10,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "block"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 2.0,
+    "node_type": "outlet"
+  },
+
+  "Uitlaat boezem, stuw": {
+    "upstream_level_offset": 0.00,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 2.0,
+    "node_type": "outlet"
+  },
+
+  "Reguliere stuw": {
+    "upstream_level_offset": 0.15,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 1.0,
+    "node_type": "outlet"
+  },
+
+  "Inlaat buitenwater peilgebied, stuw": {
+    "upstream_level_offset": 0.10,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["pass", "block", "pass", "block"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 1.0,
+    "node_type": "outlet"
+  },
+
+  "Uitlaat buitenwater peilgebied, stuw": {
+    "upstream_level_offset": 0.10,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 1.0,
+    "node_type": "outlet"
+  },
+
+  "Boezem boezem, stuw": {
+    "upstream_level_offset": 0.10,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 10.0,
+    "node_type": "outlet"
+  },
+
+  "Inlaat boezem, gemaal": {
+    "upstream_level_offset": 0.10,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "block"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 0.2,
+    "node_type": "pump"
+  },
+
+  "Uitlaat boezem, gemaal": {
+    "upstream_level_offset": 0.00,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 0.2,
+    "node_type": "pump"
+  },
+
+  "Regulier afvoer gemaal": {
+    "upstream_level_offset": 0.00,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 0.2,
+    "node_type": "pump"
+  },
+
+  "Regulier aanvoer gemaal": {
+    "upstream_level_offset": 0.15,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["pass", "block", "pass", "block"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 0.1,
+    "node_type": "pump"
+  },
+
+  "Uitlaat buitenwater peilgebied, afvoer gemaal": {
+    "upstream_level_offset": 0.15,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 0.2,
+    "node_type": "pump"
+  },
+
+  "Uitlaat buitenwater peilgebied, aanvoer gemaal": {
+    "upstream_level_offset": 0.15,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["pass", "block", "pass", "block"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 0.1,
+    "node_type": "pump"
+  },
+
+  "Inlaat buitenwater peilgebied, afvoer gemaal": {
+    "upstream_level_offset": 0.00,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 0.2,
+    "node_type": "pump"
+  },
+
+  "Inlaat buitenwater peilgebied, aanvoer gemaal": {
+    "upstream_level_offset": 0.15,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["pass", "block", "pass", "block"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 0.1,
+    "node_type": "pump"
+  },
+
+  "Boezem boezem, afvoer gemaal": {
+    "upstream_level_offset": 0.00,
+    "truth_state": ["FF", "FT", "TF", "TT"],
+    "control_state": ["block", "block", "pass", "pass"],
+    "flow_rate_block": 0,
+    "flow_rate_pass": 10.0,
+    "node_type": "pump"
+  }
+}
