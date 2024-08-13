@@ -3,7 +3,7 @@ name = "Ribasim-NL"
 version = "0.1.0"
 description = "Ribasim water resources modeling in the Netherlands"
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64"]
+platforms = ["win-64", "linux-64", "osx-arm64"]
 readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
@@ -86,3 +86,7 @@ ribasim = "==2024.10.0"
 [environments]
 default = { features = ["common", "prod"] }
 dev = { features = ["common", "dev"] }
+
+[feature.dev.dependencies]
+dvc = ">=2.46.0,<2.47"
+dvc-webdav = ">=3.0.0,<4"

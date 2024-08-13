@@ -1,0 +1,6 @@
+[core]
+    analytics = false
+    remote = goodcloud
+    autostage = true
+['remote "goodcloud"']
+    url = webdavs://deltares.thegood.cloud/remote.php/dav/files/nhi_api/dvc
