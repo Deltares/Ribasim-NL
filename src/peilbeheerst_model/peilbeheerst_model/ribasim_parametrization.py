@@ -950,7 +950,7 @@ def identify_node_meta_categorie(ribasim_model):
     return
 
 def load_model_settings(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path) as file:
         settings = json.load(file)
     return settings
 
