@@ -96,14 +96,10 @@ class CrossingsToRibasim:
             crossings = crossings[crossings.in_use].reset_index(drop=True)  # only use the crossings in use
 
         if self.model_characteristics["agg_links_in_use"]:
-            crossings = crossings[crossings.agg_links_in_use].reset_index(
-                drop=True
-            )  # only use the crossings in use
+            crossings = crossings[crossings.agg_links_in_use].reset_index(drop=True)  # only use the crossings in use
 
         if self.model_characteristics["agg_areas_in_use"]:
-            crossings = crossings[crossings.agg_areas_in_use].reset_index(
-                drop=True
-            )  # only use the crossings in use
+            crossings = crossings[crossings.agg_areas_in_use].reset_index(drop=True)  # only use the crossings in use
 
         crossings["geometry"] = gpd.GeoSeries(
             gpd.points_from_xy(x=crossings["geometry"].x, y=crossings["geometry"].y)
@@ -720,7 +716,7 @@ class CrossingsToRibasim:
             edges["bool_SP"] = edges["line_geom"]
             edges["bool_SP"].loc[edges["bool_SP"].isna()] = False
             # edges["bool_SP"].loc[edges["bool_SP"]] = True
-            edges['bool_SP'].loc[edges['bool_SP']!=False] = True  # noqa: E712
+            edges["bool_SP"].loc[edges["bool_SP"] != False] = True  # noqa: E712
 
             # fill the line geoms with the previous geoms if no shortest path is found
             edges.line_geom = edges.line_geom.fillna(edges.line_geom_oud)
@@ -1613,7 +1609,7 @@ class RibasimNetwork:
         points_within = gpd.sjoin(
             basin_nodes, checks["boezem"], how="inner", predicate="within"
         )  # find the basins which are within a peilgebied (found in the checks)
-        model.basin.state.df.meta_categorie.loc[points_within.index-1] = (
+        model.basin.state.df.meta_categorie.loc[points_within.index - 1] = (
             "hoofdwater"  # set these basins to become peilgebied_cat == 1, or 'doorgaand'
         )
 
@@ -1625,25 +1621,17 @@ class RibasimNetwork:
             right_on="globalid",
         )
 
-        pump_function = coupled_crossings_pump.merge(
-            model.pump.node.df, on="geometry", suffixes=("", "_duplicate")
-        )[["node_id", "func_afvoer", "func_aanvoer", "func_circulatie"]]
+        pump_function = coupled_crossings_pump.merge(model.pump.node.df, on="geometry", suffixes=("", "_duplicate"))[
+            ["node_id", "func_afvoer", "func_aanvoer", "func_circulatie"]
+        ]
         # display(pump_function)
-        coupled_pump_function = model.pump.static.df.merge(
-            pump_function, left_on="node_id", right_on="node_id"
-        )
+        coupled_pump_function = model.pump.static.df.merge(pump_function, left_on="node_id", right_on="node_id")
 
         # add the coupled_pump_function column per column to the model.pump.static.df
-        func_afvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[
-            "func_afvoer"
-        ]
-        func_aanvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[
-            "func_aanvoer"
-        ]
+        func_afvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_afvoer"]
+        func_aanvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_aanvoer"]
 
-        func_circulatie = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[
-            "func_circulatie"
-        ]
+        func_circulatie = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_circulatie"]
 
         model.pump.static.df["meta_func_afvoer"] = func_afvoer
         model.pump.static.df["meta_func_aanvoer"] = func_aanvoer

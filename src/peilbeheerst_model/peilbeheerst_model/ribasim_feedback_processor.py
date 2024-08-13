@@ -52,8 +52,8 @@ class RibasimFeedbackProcessor:
         logging.basicConfig(
             filename=self.log_filename,
             level=logging.DEBUG,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
     def load_feedback(self, feedback_excel):
@@ -201,7 +201,7 @@ class RibasimFeedbackProcessor:
 
     #     control_states = ["off", "on"]
     #     dfs_pump = ribasim_model.pump.static.df
-        
+
     #     if "control_state" not in dfs_pump.columns.tolist() or pd.isna(dfs_pump.control_state).all():
     #         dfs_pump_list = []
     #         for control_state in control_states:
@@ -212,7 +212,7 @@ class RibasimFeedbackProcessor:
     #             dfs_pump_list.append(df_pump)
     #         dfs_pump = pd.concat(dfs_pump_list, ignore_index=True)
     #         ribasim_model.pump.static.df = dfs_pump
-        
+
     #     cur_max_nodeid = self.get_current_max_nodeid()
 
     #     if cur_max_nodeid < 90000:

@@ -48,9 +48,9 @@ class Control:
             initial_final_level_df["initial_level"] - initial_final_level_df["final_level"]
         )
 
-        initial_final_level_df[
-            "final_level_within_target"
-        ] = True  # final level within target level (deviate max 20 cm from streefpeil) is default True ...
+        initial_final_level_df["final_level_within_target"] = (
+            True  # final level within target level (deviate max 20 cm from streefpeil) is default True ...
+        )
         initial_final_level_df.loc[
             (initial_final_level_df["difference_level"] > 0.2) | (initial_final_level_df["difference_level"] < -0.2),
             "final_level_within_target",
