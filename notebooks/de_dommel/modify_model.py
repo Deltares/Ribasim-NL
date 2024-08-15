@@ -2,8 +2,7 @@
 import sqlite3
 
 import pandas as pd
-from ribasim import Model
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 
@@ -33,12 +32,20 @@ conn.close()
 # %% read model
 model = Model.read(ribasim_toml)
 
+network_validator = NetworkValidator(model)
+
 # %% verwijder Basin to Basin edges
-model.edge.df = model.edge.df[~((model.edge.df.from_node_type == "Basin") & (model.edge.df.to_node_type == "Basin"))]
+duplicated_edges_df = network_validator.edge_duplicated()
+
+if not duplicated_edges_df.empty:
+    model.edge.df = model.edge.df[
+        ~((model.edge.df.from_node_type == "Basin") & (model.edge.df.to_node_type == "Basin"))
+    ]
+
 
 # %% write model
-ribasim_toml = ribasim_toml.parents[1].joinpath("DeDommel", ribasim_toml.name)
-model.write(ribasim_toml)
+# ribasim_toml = ribasim_toml.parents[1].joinpath("DeDommel", ribasim_toml.name)
+# model.write(ribasim_toml)
 
 # %% upload model
 
