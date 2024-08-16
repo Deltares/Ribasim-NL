@@ -92,7 +92,7 @@ class Model(Model):
         node_type = self.get_node_type(node_id)
         return getattr(self, pascal_to_snake_case(node_type))[node_id]
 
-    def remove_node(self, node_id: int):
+    def remove_node(self, node_id: int, remove_edges: bool = False):
         """Remove node from model"""
         node_type = self.get_node_type(node_id)
 
@@ -105,6 +105,16 @@ class Model(Model):
             if df is not None:
                 getattr(table, attr).df = df[df.node_id != node_id]
 
+        if remove_edges and (self.edge.df is not None):
+            for row in self.edge.df[self.edge.df.from_node_id == node_id].itertuples():
+                self.remove_edge(
+                    from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
+                )
+            for row in self.edge.df[self.edge.df.to_node_id == node_id].itertuples():
+                self.remove_edge(
+                    from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
+                )
+
     def update_node(self, node_id, node_type, data, node_properties: dict = {}):
         """Update a node type and/or data"""
         # get existing network node_type
@@ -115,6 +125,7 @@ class Model(Model):
 
         # save node, so we can add it later
         node_dict = table.node.df[table.node.df["node_id"] == node_id].iloc[0].to_dict()
+        node_dict.pop("node_type")
 
         # remove node from all tables
         for attr in table.model_fields.keys():
@@ -191,11 +202,15 @@ class Model(Model):
         for _to_node_id in to_node_id:
             self.edge.add(table[node_id], self.get_node(_to_node_id))
 
-    def reverse_edge(self, edge_id: int):
+    def reverse_edge(self, from_node_id: int, to_node_id: int):
         """Reverse an edge"""
         if self.edge.df is not None:
             # get original edge-data
-            edge_data = dict(self.edge.df.loc[edge_id])
+            df = self.edge.df.copy()
+            df.loc[:, ["edge_id"]] = df.index
+            df = df.set_index(["from_node_id", "to_node_id"], drop=False)
+            edge_data = dict(df.loc[from_node_id, to_node_id])
+            edge_id = edge_data["edge_id"]
 
             # revert node ids
             self.edge.df.loc[edge_id, ["from_node_id"]] = edge_data["to_node_id"]
@@ -208,21 +223,22 @@ class Model(Model):
             # revert geometry
             self.edge.df.loc[edge_id, ["geometry"]] = edge_data["geometry"].reverse()
 
-            return self.edge.df.loc[edge_id]
-
-    def remove_edge(self, edge_id: int):
+    def remove_edge(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
         """Remove an edge and disconnected nodes"""
         if self.edge.df is not None:
             # get original edge-data
-            edge_data = dict(self.edge.df.loc[edge_id])
+            indices = self.edge.df[
+                (self.edge.df.from_node_id == from_node_id) & (self.edge.df.to_node_id == to_node_id)
+            ].index
 
             # remove edge from edge-table
-            self.edge.df = self.edge.df[self.edge.df.index != edge_id]
+            self.edge.df = self.edge.df[~self.edge.df.index.isin(indices)]
 
             # remove disconnected nodes
-            for node_id in [edge_data["from_node_id"], edge_data["to_node_id"]]:
-                if node_id not in self.edge.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
-                    self.remove_node(node_id)
+            if remove_disconnected_nodes:
+                for node_id in [from_node_id, to_node_id]:
+                    if node_id not in self.edge.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
+                        self.remove_node(node_id)
 
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""

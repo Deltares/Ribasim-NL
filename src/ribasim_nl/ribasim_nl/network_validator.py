@@ -98,3 +98,8 @@ class NetworkValidator:
         )
 
         return self.edge_df[mask]
+
+    def edge_incorrect_type_connectivity(self, from_node_type="ManningResistance", to_node_type="LevelBoundary"):
+        """Check edges that contain wrong connectivity"""
+        mask = (self.edge_df.from_node_type == from_node_type) & (self.edge_df.to_node_type == to_node_type)
+        return self.edge_df[mask]
