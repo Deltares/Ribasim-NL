@@ -25,5 +25,5 @@ tests = ["pytest"]
 path = "ribasim_nl/__init__.py"
 
 [project.urls]
-Documentation = "https://deltares.github.io/Ribasim-NL"
-Source = "https://github.com/Deltares/Ribasim-nl"
+Documentation = "https://ribasim.nl/"
+Source = "https://github.com/Deltares/Ribasim-NL"
