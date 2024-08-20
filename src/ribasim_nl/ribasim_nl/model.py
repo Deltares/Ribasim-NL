@@ -5,7 +5,7 @@ import pandas as pd
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.geometry.edge import NodeData
-from shapely.geometry import Point
+from shapely.geometry import LineString, Point
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
@@ -308,3 +308,14 @@ class Model(Model):
                 raise ValueError("Assign Basin Area to your model first")
         else:
             raise ValueError("Assign a Basin Node to your model first")
+
+    def reset_edge_geometry(self, edge_ids: list | None = None):
+        node_df = self.node_table().df.set_index("node_id")
+        if edge_ids is not None:
+            df = self.edge.df[self.edge.df.index.isin(edge_ids)]
+        else:
+            df = self.edge.df
+
+        for row in df.itertuples():
+            geometry = LineString([node_df.at[row.from_node_id, "geometry"], node_df.at[row.to_node_id, "geometry"]])
+            self.edge.df.loc[row.Index, ["geometry"]] = geometry
