@@ -33,6 +33,17 @@ def check_internal_basin(row, edge_df) -> bool:
 
 @dataclass
 class NetworkValidator:
+    """Contains some methods for validating a RIBASIM-model
+
+    Parameters
+    ----------
+    model: ribasim.Model
+        Ribasim model
+    tolerance: float (default=1)
+        Tolerance to use for snapping. Should be in the units of the model.crs
+
+    """
+
     model: Model
     tolerance: float = 1
 
