@@ -189,14 +189,16 @@ df = network_validator.edge_incorrect_type_connectivity(
 for node_id in df.from_node_id:
     model.update_node(node_id, "Outlet", [outlet.Static(flow_rate=[100])])
 
-# see: https://github.com/Deltares/Ribasim-NL/issues/132
+# # see: https://github.com/Deltares/Ribasim-NL/issues/132
+model.basin.area.df.loc[model.basin.area.df.duplicated("node_id"), ["node_id"]] = -1
+model.basin.area.df.reset_index(drop=True, inplace=True)
 model.fix_unassigned_basin_area()
 model.fix_unassigned_basin_area(method="closest", distance=100)
 model.fix_unassigned_basin_area()
 
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
 
-# %% write model
+# # %% write model
 ribasim_toml = ribasim_toml.parents[1].joinpath("DeDommel", ribasim_toml.name)
 model.write(ribasim_toml)
 
