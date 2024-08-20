@@ -295,6 +295,8 @@ class Model(Model):
                         if basin_df.empty:
                             basin_df = self.basin.node.df[self.basin.node.df.distance(row.geometry) < distance]
 
+                    else:
+                        ValueError(f"Supported methods are 'within' or 'closest', got '{method}'."
                     # check if basin_nodes within area are not yet assigned an area
                     basin_df = basin_df[~basin_df.node_id.isin(self.basin.area.df.node_id)]
 
