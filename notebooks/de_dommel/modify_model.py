@@ -50,7 +50,6 @@ model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
 # %% verwijder duplicated edges
-duplicated_edges_df = network_validator.edge_duplicated()
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2288780504
 model.edge.df = model.edge.df[~((model.edge.df.from_node_type == "Basin") & (model.edge.df.to_node_type == "Basin"))]
