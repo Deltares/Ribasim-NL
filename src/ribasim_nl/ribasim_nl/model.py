@@ -84,6 +84,16 @@ class Model(Model):
         else:
             return node_ids[0]
 
+    @property
+    def unassigned_basin_area(self):
+        """Get unassigned basin area"""
+        return self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.node_id)]
+
+    @property
+    def basin_node_without_area(self):
+        """Get basin node without area"""
+        return self.basin.node.df[~self.basin.node.df.node_id.isin(self.basin.area.df.node_id)]
+
     def get_node_type(self, node_id: int):
         return self.node_table().df.set_index("node_id").at[node_id, "node_type"]
 
@@ -262,3 +272,39 @@ class Model(Model):
                 )
 
         return self.basin[basin_node_id]
+
+    def fix_unassigned_basin_area(self, method: str = "within", distance: float = 100):
+        """Assign a Basin node_id to a Basin / Area if the Area doesn't contain a basin node_id.
+
+        Args:
+            method (str): method to find basin node_id; `within` or `closest`. First start with `within`. Default is `within`
+            distance (float, optional): for method closest, the distance to find an unassigned basin node_id. Defaults to 100.
+        """
+        if self.basin.node.df is not None:
+            if self.basin.area.df is not None:
+                basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.node_id)]
+
+                for row in basin_area_df.itertuples():
+                    if method == "within":
+                        # check if area contains basin-nodes
+                        basin_df = self.basin.node.df[self.basin.node.df.within(row.geometry)]
+
+                    elif method == "closest":
+                        basin_df = self.basin.node.df[self.basin.node.df.within(row.geometry)]
+                        # if method is `distance` and basin_df is emtpy we create a new basin_df
+                        if basin_df.empty:
+                            basin_df = self.basin.node.df[self.basin.node.df.distance(row.geometry) < distance]
+
+                    else:
+                        ValueError(f"Supported methods are 'within' or 'closest', got '{method}'.")
+
+                    # check if basin_nodes within area are not yet assigned an area
+                    basin_df = basin_df[~basin_df.node_id.isin(self.basin.area.df.node_id)]
+
+                    # if we have one node left we are done
+                    if len(basin_df) == 1:
+                        self.basin.area.df.loc[row.Index, ["node_id"]] = basin_df.iloc[0].node_id
+            else:
+                raise ValueError("Assign Basin Area to your model first")
+        else:
+            raise ValueError("Assign a Basin Node to your model first")
