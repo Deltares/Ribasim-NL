@@ -189,16 +189,12 @@ df = network_validator.edge_incorrect_type_connectivity(
 for node_id in df.from_node_id:
     model.update_node(node_id, "Outlet", [outlet.Static(flow_rate=[100])])
 
-# for row in df.itertuples():
-#     area_select_df = model.basin.area.df[model.basin.area.df.geometry.contains(row.geometry)]
-#     if len(area_select_df) == 1:
-#         area_id = area_select_df.iloc[0]["node_id"]
-#         if row.node_id != area_id:
-#             print(f"{row.node_id} == {area_id}")
-#     elif area_select_df.empty:
-#         raise Exception(f"Basin {row.node_id} not within Area")
-#     else:
-#         raise Exception(f"Basin {row.node_id} contained by multiple areas")
+# see: https://github.com/Deltares/Ribasim-NL/issues/132
+model.fix_unassigned_basin_area()
+model.fix_unassigned_basin_area(method="closest", distance=100)
+model.fix_unassigned_basin_area()
+
+model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
 
 # %% write model
 ribasim_toml = ribasim_toml.parents[1].joinpath("DeDommel", ribasim_toml.name)
