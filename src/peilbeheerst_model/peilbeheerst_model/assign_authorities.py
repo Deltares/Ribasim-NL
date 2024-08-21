@@ -1,8 +1,8 @@
-import pandas as pd
+
 import geopandas as gpd
-import os
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
+
 
 class AssignAuthorities:
     def __init__(self, ribasim_model, waterschap, ws_grenzen_path, RWS_grenzen_path, ws_buffer=1025, RWS_buffer=1000):
@@ -23,7 +23,7 @@ class AssignAuthorities:
         return ribasim_model
         
     def retrieve_geodataframe(self):
-        '''Main function which calls the other functions.'''
+        """Main function which calls the other functions."""
         ws_grenzen, RWS_grenzen = self.load_data()
         authority_borders = self.clip_and_buffer(ws_grenzen, RWS_grenzen)
         authority_borders = self.extent_authority_borders(authority_borders)
@@ -31,7 +31,7 @@ class AssignAuthorities:
         return authority_borders
         
     def load_data(self):
-        ''' Loads and processes the authority areas of the waterschappen and RWS.'''
+        """Loads and processes the authority areas of the waterschappen and RWS."""
         ws_grenzen = gpd.read_file(self.ws_grenzen_path)
         RWS_grenzen = gpd.read_file(self.RWS_grenzen_path)
         
@@ -65,7 +65,7 @@ class AssignAuthorities:
 
 
     def clip_and_buffer(self, ws_grenzen, RWS_grenzen):
-        '''Clips the waterboard boundaries by removing the RWS areas and applies a buffer to the remaining polygons.'''
+        """Clips the waterboard boundaries by removing the RWS areas and applies a buffer to the remaining polygons."""
         # Remove the RWS area in each WS
         ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how='symmetric_difference')
         ws_grenzen_cut_out.dropna(subset='area', inplace=True)
@@ -85,7 +85,6 @@ class AssignAuthorities:
 
     def extent_authority_borders(self, authority_borders):
         """Extends the authority borders by combining them with the original waterboard boundaries and dissolving the geometries based on the name."""
-
         # Add a bit more area by dissolving it with the original gdf
         authority_borders = pd.concat([authority_borders, self.ws_grenzen_OG])
         authority_borders = gpd.GeoDataFrame(authority_borders, geometry = 'geometry').set_crs(crs='EPSG:28992')
