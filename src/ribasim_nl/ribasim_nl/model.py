@@ -84,6 +84,16 @@ class Model(Model):
         else:
             return node_ids[0]
 
+    @property
+    def unassigned_basin_area(self):
+        """Get unassigned basin area"""
+        return self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.node_id)]
+
+    @property
+    def basin_node_without_area(self):
+        """Get basin node without area"""
+        return self.basin.node.df[~self.basin.node.df.node_id.isin(self.basin.area.df.node_id)]
+
     def get_node_type(self, node_id: int):
         return self.node_table().df.set_index("node_id").at[node_id, "node_type"]
 
@@ -91,6 +101,29 @@ class Model(Model):
         """Return model-node by node_id"""
         node_type = self.get_node_type(node_id)
         return getattr(self, pascal_to_snake_case(node_type))[node_id]
+
+    def remove_node(self, node_id: int, remove_edges: bool = False):
+        """Remove node from model"""
+        node_type = self.get_node_type(node_id)
+
+        # read existing table
+        table = getattr(self, pascal_to_snake_case(node_type))
+
+        # remove node from all tables
+        for attr in table.model_fields.keys():
+            df = getattr(table, attr).df
+            if df is not None:
+                getattr(table, attr).df = df[df.node_id != node_id]
+
+        if remove_edges and (self.edge.df is not None):
+            for row in self.edge.df[self.edge.df.from_node_id == node_id].itertuples():
+                self.remove_edge(
+                    from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
+                )
+            for row in self.edge.df[self.edge.df.to_node_id == node_id].itertuples():
+                self.remove_edge(
+                    from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
+                )
 
     def update_node(self, node_id, node_type, data, node_properties: dict = {}):
         """Update a node type and/or data"""
@@ -102,6 +135,7 @@ class Model(Model):
 
         # save node, so we can add it later
         node_dict = table.node.df[table.node.df["node_id"] == node_id].iloc[0].to_dict()
+        node_dict.pop("node_type")
 
         # remove node from all tables
         for attr in table.model_fields.keys():
@@ -178,6 +212,44 @@ class Model(Model):
         for _to_node_id in to_node_id:
             self.edge.add(table[node_id], self.get_node(_to_node_id))
 
+    def reverse_edge(self, from_node_id: int, to_node_id: int):
+        """Reverse an edge"""
+        if self.edge.df is not None:
+            # get original edge-data
+            df = self.edge.df.copy()
+            df.loc[:, ["edge_id"]] = df.index
+            df = df.set_index(["from_node_id", "to_node_id"], drop=False)
+            edge_data = dict(df.loc[from_node_id, to_node_id])
+            edge_id = edge_data["edge_id"]
+
+            # revert node ids
+            self.edge.df.loc[edge_id, ["from_node_id"]] = edge_data["to_node_id"]
+            self.edge.df.loc[edge_id, ["to_node_id"]] = edge_data["from_node_id"]
+
+            # revert node types
+            self.edge.df.loc[edge_id, ["from_node_type"]] = edge_data["to_node_type"]
+            self.edge.df.loc[edge_id, ["to_node_type"]] = edge_data["from_node_type"]
+
+            # revert geometry
+            self.edge.df.loc[edge_id, ["geometry"]] = edge_data["geometry"].reverse()
+
+    def remove_edge(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
+        """Remove an edge and disconnected nodes"""
+        if self.edge.df is not None:
+            # get original edge-data
+            indices = self.edge.df[
+                (self.edge.df.from_node_id == from_node_id) & (self.edge.df.to_node_id == to_node_id)
+            ].index
+
+            # remove edge from edge-table
+            self.edge.df = self.edge.df[~self.edge.df.index.isin(indices)]
+
+            # remove disconnected nodes
+            if remove_disconnected_nodes:
+                for node_id in [from_node_id, to_node_id]:
+                    if node_id not in self.edge.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
+                        self.remove_node(node_id)
+
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""
         # only works when basin area are defined
@@ -200,3 +272,39 @@ class Model(Model):
                 )
 
         return self.basin[basin_node_id]
+
+    def fix_unassigned_basin_area(self, method: str = "within", distance: float = 100):
+        """Assign a Basin node_id to a Basin / Area if the Area doesn't contain a basin node_id.
+
+        Args:
+            method (str): method to find basin node_id; `within` or `closest`. First start with `within`. Default is `within`
+            distance (float, optional): for method closest, the distance to find an unassigned basin node_id. Defaults to 100.
+        """
+        if self.basin.node.df is not None:
+            if self.basin.area.df is not None:
+                basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.node_id)]
+
+                for row in basin_area_df.itertuples():
+                    if method == "within":
+                        # check if area contains basin-nodes
+                        basin_df = self.basin.node.df[self.basin.node.df.within(row.geometry)]
+
+                    elif method == "closest":
+                        basin_df = self.basin.node.df[self.basin.node.df.within(row.geometry)]
+                        # if method is `distance` and basin_df is emtpy we create a new basin_df
+                        if basin_df.empty:
+                            basin_df = self.basin.node.df[self.basin.node.df.distance(row.geometry) < distance]
+
+                    else:
+                        ValueError(f"Supported methods are 'within' or 'closest', got '{method}'.")
+
+                    # check if basin_nodes within area are not yet assigned an area
+                    basin_df = basin_df[~basin_df.node_id.isin(self.basin.area.df.node_id)]
+
+                    # if we have one node left we are done
+                    if len(basin_df) == 1:
+                        self.basin.area.df.loc[row.Index, ["node_id"]] = basin_df.iloc[0].node_id
+            else:
+                raise ValueError("Assign Basin Area to your model first")
+        else:
+            raise ValueError("Assign a Basin Node to your model first")
