@@ -442,7 +442,7 @@ class Network:
             )
             return None
 
-    def add_node(self, point: Point, max_distance: float):
+    def add_node(self, point: Point, max_distance: float, align_distance: float = 100):
         # set _graph undirected to None
         self._graph_undirected = None
 
@@ -469,7 +469,7 @@ class Network:
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
-            return self.move_node(point, max_distance=max_distance, align_distance=100)
+            return self.move_node(point, max_distance=max_distance, align_distance=align_distance)
         else:
             logger.warning(
                 f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
