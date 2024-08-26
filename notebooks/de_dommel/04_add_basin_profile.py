@@ -127,7 +127,7 @@ for row in model.basin.node.df.itertuples():
     area_geometry, profile = get_area_and_profile(row.node_id)
 
     level = [profile.bodemhoogte, profile.insteekhoogte]
-    area = [0, max(area_geometry.area, 999)]
+    area = [1, max(area_geometry.area, 999)]
 
     # remove profile from basin
     model.basin.profile.df = model.basin.profile.df[model.basin.profile.df.node_id != row.node_id]
@@ -141,6 +141,10 @@ for row in model.basin.node.df.itertuples():
     )
 
     model.basin.node.df.loc[row.Index, ["meta_profile_id"]] = profile[PROFIEL_LINE_ID_COLUMN]
+
+    # set basin state
+    model.basin.state.df.loc[model.basin.state.df.node_id == row.node_id, "level"] = profile.insteekhoogte
+
 
 # %% update manning / static
 for row in model.manning_resistance.static.df.itertuples():
@@ -210,6 +214,8 @@ for row in model.tabulated_rating_curve.node.df.itertuples():
         # we determine crest_width
         if stuw is not None:
             crest_width = stuw.KRUINBREEDTE
+        else:
+            crest_width = pd.NA
         if pd.isna(crest_width) | (crest_width > profile.geometry.length):  # cannot be > profile width
             crest_width = 0.5 * profile.geometry.length  # assumption is 1/2 profile_width
 
