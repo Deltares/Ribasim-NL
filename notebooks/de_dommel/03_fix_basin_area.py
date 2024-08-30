@@ -8,7 +8,7 @@ cloud = CloudStorage()
 
 
 # %% load model
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_edges", "model.toml")
 model = Model.read(ribasim_toml)
 
 
@@ -23,7 +23,7 @@ dissolved_area_gdf = pd.concat([unnamed_area_gdf, named_area_gdf])
 dissolved_area_gdf.to_file(cloud.joinpath("DeDommel", "verwerkt", "water_area.gpkg"))
 
 # %%
-basin_df = model.basin.node.df.set_index("node_id")
+basin_df = model.basin.node.df
 basin_area_df = gpd.read_file(
     cloud.joinpath("DeDommel", "verwerkt", "basin_area.gpkg"), engine="pyogrio", fid_as_index=True
 )
@@ -51,7 +51,7 @@ for row in basin_df.itertuples():
         area_df = selected_areas[selected_areas.contains(row.geometry)]
         if not area_df.empty:
             name = area_df.iloc[0].NAAM
-        model.basin.node.df.loc[model.basin.node[row.Index].index[0], ["name"]] = name
+        model.basin.node.df.loc[row.Index, ["name"]] = name
         # assign name to edges if defined
         model.edge.df.loc[edges_mask, ["name"]] = name
 
@@ -75,7 +75,8 @@ model.edge.df.loc[edges_mask, "name"] = name
 
 area_df = gpd.GeoDataFrame(data, crs=model.basin.node.df.crs)
 area_df = area_df[~area_df.is_empty]
+area_df.index.name = "fid"
 model.basin.area.df = area_df
 # %%
-
+ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_areas", "model.toml")
 model.write(ribasim_toml)

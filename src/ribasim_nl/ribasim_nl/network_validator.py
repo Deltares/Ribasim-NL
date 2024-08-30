@@ -26,7 +26,7 @@ def check_node_connectivity(row, node_df, tolerance=1.0) -> bool:
 
 def check_internal_basin(row, edge_df) -> bool:
     if row.node_type == "Basin":
-        return row.node_id not in edge_df.from_node_id.to_numpy()
+        return row.name not in edge_df.from_node_id.to_numpy()
     else:
         return False
 
@@ -81,7 +81,7 @@ class NetworkValidator:
 
     def edge_incorrect_from_node(self):
         """Check if the `from_node_type` in edge-table in matches the `node_type` of the corresponding node in the node-table"""
-        node_df = self.node_df.set_index("node_id")
+        node_df = self.node_df
         mask = ~self.edge_df.apply(
             lambda row: node_df.at[row["from_node_id"], "node_type"] == row["from_node_type"]
             if row["from_node_id"] in node_df.index
@@ -92,7 +92,7 @@ class NetworkValidator:
 
     def edge_incorrect_to_node(self):
         """Check if the `to_node_type` in edge-table in matches the `node_type` of the corresponding node in the node-table"""
-        node_df = self.node_df.set_index("node_id")
+        node_df = self.node_df
         mask = ~self.edge_df.apply(
             lambda row: node_df.at[row["to_node_id"], "node_type"] == row["to_node_type"]
             if row["to_node_id"] in node_df.index
@@ -103,7 +103,7 @@ class NetworkValidator:
 
     def edge_incorrect_connectivity(self):
         """Check if the geometries of the `from_node_id` and `to_node_id` are on the start and end vertices of the edge-geometry within tolerance (default=1m)"""
-        node_df = self.node_df.set_index("node_id")
+        node_df = self.node_df
         mask = self.edge_df.apply(
             lambda row: check_node_connectivity(row=row, node_df=node_df, tolerance=self.tolerance), axis=1
         )
@@ -112,5 +112,5 @@ class NetworkValidator:
 
     def edge_incorrect_type_connectivity(self, from_node_type="ManningResistance", to_node_type="LevelBoundary"):
         """Check edges that contain wrong connectivity"""
-        mask = (self.edge_df.from_node_type == from_node_type) & (self.edge_df.to_node_type == to_node_type)
+        mask = (self.model.edge_from_node_type == from_node_type) & (self.model.edge_to_node_type == to_node_type)
         return self.edge_df[mask]

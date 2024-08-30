@@ -1,41 +1,84 @@
 # %%
 import geopandas as gpd
 import pandas as pd
-from ribasim.nodes import tabulated_rating_curve
+from ribasim.nodes import manning_resistance, pump
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.structure_node import get_outlet, get_tabulated_rating_curve
 from shapely.geometry import MultiLineString
 
 PROFIEL_ID_COLUMN = "PROFIELLIJNID"
 PROFIEL_LINE_ID_COLUMN = "profiel_id"
 PROFIEL_HOOGTE_COLUMN = "HOOGTE"
 PROFIEL_BREEDTE_COLUMN = "breedte"
+STUW_TARGET_LEVEL_COLUMN = "WS_STREEFPEILLAAG"
+STUW_CREST_LEVEL_COLUMN = "LAAGSTEDOORSTROOMHOOGTE"
+STUW_CODE_COLUMN = "WS_DOMMELID"
+STUW_WIDTH_COLUMN = "KRUINBREEDTE"
+STUW_NAME_COLUMN = "NAAM"
+
+KDU_INVERT_LEVEL_US_COLUMN = "WS_BODEMHOOGTEBOV"
+KDU_INVERT_LEVEL_DS_COLUMN = "WS_BODEMHOOGTEBEN"
+KDU_WIDTH_COLUMN = "BREEDTEOPENING"
+KDU_HEIGHT_COLUMN = "HOOGTEOPENING"
+KDU_SHAPE_COLUMN = "VORMKOKER2"
+KDU_SHAPE_MAP = {
+    "rond": "round",
+    "rechthoekig": "rectangle",
+    "eivorming": "ellipse",
+    "heulprofiel": "ellipse",
+    "muilprofiel": "ellipse",
+    "ellipsvormig": "ellipse",
+}
+
+KGM_CAPACITY_COLUMN = "MAXIMALECAPACITEIT"
+KGM_NAME_COLUMN = "NAAM"
+KGM_CODE_COLUMN = "WS_DOMMELID"
+
 
 cloud = CloudStorage()
 
 
-# %%
-
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel", "model.toml")
+# %% Voorbereiden profielen uit HyDAMO
+ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_areas", "model.toml")
 model = Model.read(ribasim_toml)
+model.tabulated_rating_curve.static.df = None
+model.basin.static.df = None
+model.manning_resistance.static.df = None
+model.outlet.static.df = None
+
+
 profile_gpkg = cloud.joinpath("DeDommel", "verwerkt", "profile.gpkg")
+hydamo_gpkg = cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg")
+stuw_df = gpd.read_file(hydamo_gpkg, layer="stuw", engine="pyogrio")
+stuw_df.loc[stuw_df.CODE.isna(), ["CODE"]] = stuw_df[stuw_df.CODE.isna()].NAAM
+stuw_df.loc[stuw_df.CODE.isna(), ["CODE"]] = stuw_df[stuw_df.CODE.isna()].WS_DOMMELID
+stuw_df.set_index("CODE", inplace=True)
+
+kdu_df = gpd.read_file(hydamo_gpkg, layer="duikersifonhevel", engine="pyogrio").set_index("CODE")
+
+kgm_df = gpd.read_file(hydamo_gpkg, layer="gemaal", engine="pyogrio").set_index("CODE")
+
+basin_area_df = gpd.read_file(cloud.joinpath("DeDommel", "verwerkt", "basin_area.gpkg"), engine="pyogrio").set_index(
+    "node_id"
+)
 
 if not profile_gpkg.exists():
     profielpunt_gdf = gpd.read_file(
-        cloud.joinpath("DeDommel", "verwerkt", "2_voorbewerking", "hydamo.gpkg"),
+        hydamo_gpkg,
         layer="profielpunt",
         engine="pyogrio",
         fid_as_index=True,
     )
 
     profiellijn_gdf = gpd.read_file(
-        cloud.joinpath("DeDommel", "verwerkt", "2_voorbewerking", "hydamo.gpkg"),
+        hydamo_gpkg,
         layer="profiellijn",
         engine="pyogrio",
         fid_as_index=True,
     ).set_index("GLOBALID")
 
     hydroobject_gdf = gpd.read_file(
-        cloud.joinpath("DeDommel", "verwerkt", "2_voorbewerking", "hydamo.gpkg"),
+        hydamo_gpkg,
         layer="hydroobject",
         engine="pyogrio",
         fid_as_index=True,
@@ -48,9 +91,7 @@ if not profile_gpkg.exists():
     )
 
     data = []
-    # profiel_id, df = list(profielpunt_gdf.groupby(PROFIEL_ID_COLUMN))[2]
     for profiel_id, df in profielpunt_gdf.groupby(PROFIEL_ID_COLUMN):
-        # df = df[df.within(area_poly)]
         if not df.empty:
             if profiel_id in profiellijn_gdf.index:
                 lowest_point = df.at[df[PROFIEL_HOOGTE_COLUMN].idxmin(), "geometry"]
@@ -68,11 +109,14 @@ if not profile_gpkg.exists():
 
                     bodemhoogte = df[PROFIEL_HOOGTE_COLUMN].min()
                     insteekhoogte = df[PROFIEL_HOOGTE_COLUMN].max()
+                    waterlijnhoogte = df[df.within(area_poly)][PROFIEL_HOOGTE_COLUMN].max()
+
                     data += [
                         {
                             "profiel_id": profiel_id,
                             "bodemhoogte": bodemhoogte,
                             "insteekhoogte": insteekhoogte,
+                            "waterlijnhoogte": waterlijnhoogte,
                             "breedte": breedte,
                             "geometry": geom,
                         }
@@ -88,14 +132,14 @@ else:
     profile_df.drop_duplicates("profiel_id", inplace=True)
 
 
-# %%
+# %% Basin / Profile
 # of all profiles within basin/area we take the one with the lowest level
 def get_area_and_profile(node_id):
     area_geometry = None
 
     # try to get a sensible area_geometry from basin-area
     if node_id in model.basin.area.df.node_id.to_list():
-        area_geometry = model.basin.area.df.set_index("node_id").loc[node_id, "geometry"]
+        area_geometry = model.basin.area[node_id].set_index("node_id").at[node_id, "geometry"]
         if area_geometry.area > 1000:
             selected_profiles_df = profile_df[profile_df.intersects(area_geometry)]
         else:
@@ -116,42 +160,206 @@ def get_area_and_profile(node_id):
         profile = selected_profiles_df.loc[selected_profiles_df["bodemhoogte"].idxmin()]
 
     else:  # we select closest profile
-        print(f"basin without intersecting profile {row.node_id}")
+        print(f"basin without intersecting profile {row.Index}")
         profile = profile_df.loc[profile_df.distance(row.geometry).idxmin()]
 
     return area_geometry, profile
 
 
 # %% update basin / profile
+
 for row in model.basin.node.df.itertuples():
-    area_geometry, profile = get_area_and_profile(row.node_id)
+    area_geometry, profile = get_area_and_profile(row.Index)
 
     level = [profile.bodemhoogte, profile.insteekhoogte]
-    area = [1, max(area_geometry.area, 999)]
+    area = [1, round(max(area_geometry.area, 999))]
 
     # remove profile from basin
-    model.basin.profile.df = model.basin.profile.df[model.basin.profile.df.node_id != row.node_id]
+    model.basin.profile.df = model.basin.profile.df[model.basin.profile.df.node_id != row.Index]
 
     # add profile to basin
-    model.basin.profile.df = pd.concat(
+    basin_profile_df = pd.concat(
         [
             model.basin.profile.df,
-            pd.DataFrame({"node_id": [row.node_id] * len(level), "level": level, "area": area}),
+            pd.DataFrame({"node_id": [row.Index] * len(level), "level": level, "area": area}),
         ]
     )
+    basin_profile_df.index.name = "fid"
+    model.basin.profile.df = basin_profile_df
 
     model.basin.node.df.loc[row.Index, ["meta_profile_id"]] = profile[PROFIEL_LINE_ID_COLUMN]
 
     # set basin state
-    model.basin.state.df.loc[model.basin.state.df.node_id == row.node_id, "level"] = profile.insteekhoogte
+    model.basin.state.df.loc[model.basin.state.df.node_id == row.Index, "level"] = profile.insteekhoogte
 
+# %%
+# Stuwen als tabulated_rating_cuves
+for row in model.node_table().df[model.node_table().df.meta_object_type == "stuw"].itertuples():
+    node_id = row.Index
 
-# %% update manning / static
-for row in model.manning_resistance.static.df.itertuples():
-    # get profile_width
-    from_basin_id = model.edge.df.set_index("to_node_id").at[row.node_id, "from_node_id"]
-    profile_id = model.basin.node.df.set_index("node_id").at[from_basin_id, "meta_profile_id"]
-    profile = profile_df.set_index(PROFIEL_LINE_ID_COLUMN).loc[profile_id]
+    # get weir
+    if row.name in stuw_df.index:
+        kst = stuw_df.loc[row.name]
+    elif stuw_df.distance(row.geometry).min() < 1:
+        kst = stuw_df.loc[stuw_df.distance(row.geometry).idxmin()]
+    else:
+        raise ValueError(f"Geen stuw gevonden voor node_id {node_id}")
+
+    if isinstance(kst, gpd.GeoDataFrame):
+        kst = kst.iloc[0]
+    name = kst[STUW_NAME_COLUMN]
+    code = kst[STUW_CODE_COLUMN]
+    if pd.isna(name):
+        name = code
+
+    # get upstream, if at flowboundary downstream profile
+    basin_node_id = model.upstream_node_id(node_id)
+    if not model.node_table().df.at[basin_node_id, "node_type"] == "Basin":
+        basin_node_id = model.downstream_node_id(node_id)
+
+    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
+
+    # get level
+
+    # from target-level
+    crest_level = kst[STUW_TARGET_LEVEL_COLUMN]
+
+    # if NA crest-level
+    if pd.isna(crest_level):
+        crest_level = kst[STUW_CREST_LEVEL_COLUMN]
+
+    # if NA upstream min basin-level + 10cm
+    if pd.isna(crest_level):
+        crest_level = profile.waterlijnhoogte
+        if pd.isna(crest_level):
+            crest_level = profile[["bodemhoogte", "waterlijnhoogte"]].mean()
+
+    # get width
+    crest_width = kst[STUW_WIDTH_COLUMN]
+
+    # if NA or implausible we overwrite with 0.5 of profile width
+    if pd.isna(crest_width) | (crest_width > profile.geometry.length):  # cannot be > profile width
+        crest_width = 0.5 * profile.geometry.length  # assumption is 1/2 profile_width
+
+    # get data
+    data = [get_tabulated_rating_curve(crest_level=crest_level, width=crest_width)]
+
+    model.update_node(
+        node_id,
+        node_type="TabulatedRatingCurve",
+        data=data,
+        node_properties={"name": name, "meta_code_waterbeheerder": code},
+    )
+
+# %% Duikers als tabulated_rating_cuves
+for row in model.node_table().df[model.node_table().df.meta_object_type == "duikersifonhevel"].itertuples():
+    node_id = row.Index
+
+    # get culvert
+    if row.name in kdu_df.index:
+        kdu = kdu_df.loc[row.name]
+    elif kdu_df.distance(row.geometry).min() < 1:
+        kdu = kdu_df.loc[kdu_df.distance(row.geometry).idxmin()]
+    else:
+        raise ValueError(f"Geen stuw gevonden voor node_id {node_id}")
+
+    # get upstream, if at flowboundary downstream profile
+    basin_node_id = model.upstream_node_id(node_id)
+    if not model.node_table().df.at[basin_node_id, "node_type"] == "Basin":
+        basin_node_id = model.downstream_node_id(node_id)
+
+    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
+
+    # get level
+
+    # from invert-levels
+    crest_level = kdu[[KDU_INVERT_LEVEL_US_COLUMN, KDU_INVERT_LEVEL_DS_COLUMN]].dropna().max()
+
+    # if NA upstream min basin-level + 10cm
+    if pd.isna(crest_level):
+        crest_level = profile.waterlijnhoogte
+        if pd.isna(crest_level):
+            crest_level = profile[["bodemhoogte", "waterlijnhoogte"]].mean()
+
+    # get width
+    width = kdu[KDU_WIDTH_COLUMN]
+
+    # if NA or implausible we overwrite with 0.5 of profile width
+    if pd.isna(width) | (width > profile.geometry.length):  # cannot be > profile width
+        width = profile.geometry.length / 3  # assumption is 1/3 profile_width
+
+    # get height
+    height = kdu[KDU_HEIGHT_COLUMN]
+
+    if pd.isna(height):
+        height = width
+
+    # get shape
+    shape = kdu[KDU_SHAPE_COLUMN]
+
+    if pd.isna(shape):
+        shape = "rectangle"
+    else:
+        shape = KDU_SHAPE_MAP[shape]
+
+    # update model
+    data = get_tabulated_rating_curve(
+        crest_level=crest_level,
+        width=width,
+        height=height,
+        shape=shape,
+        levels=[0, 0.1, 0.5],
+    )
+
+    model.update_node(
+        node_id,
+        node_type="TabulatedRatingCurve",
+        data=[data],
+        node_properties={"meta_code_waterbeheerder": row.name},
+    )
+
+# %% gemalen als pump
+for row in model.node_table().df[model.node_table().df.meta_object_type == "gemaal"].itertuples():
+    node_id = row.Index
+
+    # get upstream profile
+    basin_node_id = model.upstream_node_id(node_id)
+    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
+    min_upstream_level = profile.waterlijnhoogte
+
+    kgm = kgm_df.loc[row.name]
+
+    # set name and code column
+    name = kgm[KGM_NAME_COLUMN]
+    code = kgm[KGM_CODE_COLUMN]
+
+    if pd.isna(name):
+        name = code
+
+    # get flow_rate
+    flow_rate = kgm[KGM_CAPACITY_COLUMN]
+
+    if pd.isna(flow_rate):
+        flow_rate = round(
+            basin_area_df.at[model.upstream_node_id(node_id), "geometry"].area * 0.015 / 86400, 2
+        )  # 15mm/day of upstream areay
+
+    data = pump.Static(flow_rate=[flow_rate], meta_min_upstream_level=min_upstream_level)
+
+    model.update_node(
+        node_id,
+        node_type="Pump",
+        data=[data],
+        node_properties={"name": name, "meta_code_waterbeheerder": code},
+    )
+
+# %% update open water
+for row in model.node_table().df[model.node_table().df.node_type == "ManningResistance"].itertuples():
+    node_id = row.Index
+
+    # get depth
+    basin_node_id = model.upstream_node_id(node_id)
+    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
     depth = profile.insteekhoogte - profile.bodemhoogte
 
     # compute profile_width from slope
@@ -164,101 +372,52 @@ for row in model.manning_resistance.static.df.itertuples():
         profile_slope = depth / profile_width
 
     # get length
-    to_basin_id = model.edge.df.set_index("from_node_id").at[row.node_id, "to_node_id"]
-    df = model.edge.df.set_index(["from_node_id", "to_node_id"])
-    length = (
-        df.at[(from_basin_id, row.node_id), "geometry"].length + df.at[(row.node_id, to_basin_id), "geometry"].length
+    length = round(
+        model.edge.df[(model.edge.df.from_node_id == node_id) | (model.edge.df.to_node_id == node_id)].length.sum()
     )
 
-    # update manning-static
-    model.manning_resistance.static.df.loc[row.Index, ["length"]] = round(length)
-    model.manning_resistance.static.df.loc[row.Index, ["profile_width"]] = round(profile_width, 2)
-    model.manning_resistance.static.df.loc[row.Index, ["profile_slope"]] = round(profile_slope, 2)
-
-    # add profile to meta_data
-    model.manning_resistance.node.df.loc[row.Index, ["meta_profile_id"]] = profile_id
-
-
-# %% update tabulated rating curves
-def weir_flow(level, crest_level, crest_width, loss_coefficient=0.63):
-    """Compute free weir flow from level, crest_level and crest_width"""
-    if level < crest_level:
-        return 0
-    else:
-        u = loss_coefficient * ((2 / 3) * 9.81 * (level - crest_level)) ** (1 / 2)
-        a = crest_width * ((2 / 3) * (level - crest_level))
-        return round(u * a, 2)
+    # # update node
+    data = manning_resistance.Static(
+        length=[round(length)],
+        profile_width=[round(profile_width, 2)],
+        profile_slope=[round(profile_slope, 2)],
+        manning_n=[0.04],
+    )
+    model.update_node(node_id, node_type="ManningResistance", data=[data])
 
 
-stuwen_gdf = gpd.read_file(cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="stuw").set_index(
-    "CODE"
-)
+# %% update outlets
+for row in model.node_table().df[model.node_table().df.node_type == "Outlet"].itertuples():
+    node_id = row.Index
 
-stuwen_lww_gdf = gpd.read_file(cloud.joinpath("DeDommel", "downloads", "LWW_2023_Stuw_V.shp")).set_index("Lokaal_ID")
+    # get upstream, if at flowboundary downstream profile
+    basin_node_id = model.upstream_node_id(node_id)
+    if not model.node_table().df.at[basin_node_id, "node_type"] == "Basin":
+        basin_node_id = model.downstream_node_id(node_id)
 
-for row in model.tabulated_rating_curve.node.df.itertuples():
-    # get basin_profile for comparison
-    from_basin_id = model.edge.df.set_index("to_node_id").at[row.node_id, "from_node_id"]
-    if from_basin_id in model.basin.node.df.node_id.to_list():
-        profile_id = model.basin.node.df.set_index("node_id").at[from_basin_id, "meta_profile_id"]
-        profile = profile_df.set_index(PROFIEL_LINE_ID_COLUMN).loc[profile_id]
+    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
 
-        if row.name in stuwen_gdf.index:
-            stuw = stuwen_gdf.loc[row.name]
-            if isinstance(stuw, gpd.GeoDataFrame):
-                stuw.loc[:, "distance"] = stuw.distance(row.geometry)
-                stuw = stuw.sort_values("distance").iloc[0]
-        else:
-            stuw = None
+    height = round(profile.insteekhoogte - profile.bodemhoogte, 2)
+    width = round(profile.geometry.length, 2)
 
-        # we determine crest_width
-        if stuw is not None:
-            crest_width = stuw.KRUINBREEDTE
-        else:
-            crest_width = pd.NA
-        if pd.isna(crest_width) | (crest_width > profile.geometry.length):  # cannot be > profile width
-            crest_width = 0.5 * profile.geometry.length  # assumption is 1/2 profile_width
+    try:
+        crest_level = round(model.upstream_profile(node_id).level.min() + 0.1, 2)
+    except ValueError:
+        crest_level = round(model.downstream_profile(node_id).level.min() + 0.1, 2)
 
-        # we determine crest_level
-        crest_level: float | None = None
-        try:
-            if stuw is not None:
-                if stuw.WS_DOMMELID in stuwen_lww_gdf.index:  #
-                    crest_level_str = stuwen_lww_gdf.at[stuw.WS_DOMMELID, "min_doorst"]
+    data = get_outlet(crest_level=crest_level, width=width, height=height, max_velocity=0.5)
 
-                elif stuwen_lww_gdf.distance(row.geometry) < 1:
-                    crest_level_str = stuwen_lww_gdf.at[stuwen_lww_gdf.distance(row.geometry).idxmin(), "min_doorst"]
+    model.update_node(node_id, node_type="Outlet", data=[data])
 
-                if crest_level_str is not None:
-                    crest_level = pd.to_numeric(crest_level_str.replace(",", "."))
-        except ValueError:
-            crest_level = None
-
-        if pd.isna(crest_level):
-            if stuw is not None:
-                crest_level = stuw.HOOGTECONSTRUCTIE
-
-        if pd.isna(crest_level):  # presume crest_level will be within bottom and insteeklevel
-            crest_level = (profile.bodemhoogte + profile.insteekhoogte) / 2
-        elif crest_level < profile.bodemhoogte:
-            crest_level = profile.bodemhoogte + 0.1
-
-        level = [round(crest_level, 2) + i for i in [0, 0.1, 0.25, 0.5, 2]]
-        flow_rate = [weir_flow(i, round(crest_level, 2), crest_width) for i in level]
-
-        # update resistance-static
-        if stuw is not None:
-            node_properties = {"name": stuw.NAAM, "meta_code_waterbeheerder": stuw.WS_DOMMELID}
-        else:
-            node_properties = {"name": row.name}
-        model.update_node(
-            node_id=row.node_id,
-            node_type=row.node_type,
-            data=[tabulated_rating_curve.Static(level=level, flow_rate=flow_rate)],
-            node_properties=node_properties,
-        )
-    else:
-        print(f"{row.node_id} probably shouldn't be a TabulatedRatingCurve but Outlet")
-
+# %% clean boundaries
+model.flow_boundary.static.df = model.flow_boundary.static.df[
+    model.flow_boundary.static.df.node_id.isin(
+        model.node_table().df[model.node_table().df.node_type == "FlowBoundary"].index
+    )
+]
+model.flow_boundary.static.df.loc[:, "flow_rate"] = 0
 # %% write model
+ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_parameterized", "model.toml")
 model.write(ribasim_toml)
+
+# %%
