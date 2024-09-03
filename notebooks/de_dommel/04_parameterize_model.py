@@ -42,7 +42,6 @@ cloud = CloudStorage()
 ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_areas", "model.toml")
 model = Model.read(ribasim_toml)
 model.tabulated_rating_curve.static.df = None
-model.basin.static.df = None
 model.manning_resistance.static.df = None
 model.outlet.static.df = None
 
@@ -167,7 +166,7 @@ def get_area_and_profile(node_id):
 
 
 # %% update basin / profile
-
+basin_profile_df = model.basin.profile.df[model.basin.profile.df.node_id == -999]
 for row in model.basin.node.df.itertuples():
     area_geometry, profile = get_area_and_profile(row.Index)
 
@@ -180,17 +179,22 @@ for row in model.basin.node.df.itertuples():
     # add profile to basin
     basin_profile_df = pd.concat(
         [
-            model.basin.profile.df,
+            basin_profile_df,
             pd.DataFrame({"node_id": [row.Index] * len(level), "level": level, "area": area}),
         ]
     )
-    basin_profile_df.index.name = "fid"
-    model.basin.profile.df = basin_profile_df
 
     model.basin.node.df.loc[row.Index, ["meta_profile_id"]] = profile[PROFIEL_LINE_ID_COLUMN]
 
-    # set basin state
-    model.basin.state.df.loc[model.basin.state.df.node_id == row.Index, "level"] = profile.insteekhoogte
+
+basin_profile_df.reset_index(inplace=True, drop=True)
+basin_profile_df.index.name = "fid"
+model.basin.profile.df = basin_profile_df
+
+# set basin state
+state_df = model.basin.profile.df.groupby("node_id").max()["level"].reset_index()
+state_df.index.name = "fid"
+model.basin.state.df = state_df
 
 # %%
 # Stuwen als tabulated_rating_cuves
@@ -233,6 +237,10 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "stuw
         crest_level = profile.waterlijnhoogte
         if pd.isna(crest_level):
             crest_level = profile[["bodemhoogte", "waterlijnhoogte"]].mean()
+
+    # if crest_level < upstream bottom-level we lower it to upstream bottom-level
+    if crest_level < profile.bodemhoogte:
+        crest_level = profile.bodemhoogte + 0.1
 
     # get width
     crest_width = kst[STUW_WIDTH_COLUMN]
@@ -280,6 +288,10 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "duik
         crest_level = profile.waterlijnhoogte
         if pd.isna(crest_level):
             crest_level = profile[["bodemhoogte", "waterlijnhoogte"]].mean()
+
+    # if crest_level < upstream bottom-level we lower it to upstream bottom-level
+    if crest_level < profile.bodemhoogte:
+        crest_level = profile.bodemhoogte + 0.1
 
     # get width
     width = kdu[KDU_WIDTH_COLUMN]
