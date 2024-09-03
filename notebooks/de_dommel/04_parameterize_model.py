@@ -240,6 +240,7 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "stuw
 
     # if crest_level < upstream bottom-level we lower it to upstream bottom-level
     if crest_level < profile.bodemhoogte:
+        print(f"crest-level lower than upstream basin {node_id}")
         crest_level = profile.bodemhoogte + 0.1
 
     # get width
@@ -291,6 +292,7 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "duik
 
     # if crest_level < upstream bottom-level we lower it to upstream bottom-level
     if crest_level < profile.bodemhoogte:
+        print(f"crest-level lower than upstream basin {node_id}")
         crest_level = profile.bodemhoogte + 0.1
 
     # get width
