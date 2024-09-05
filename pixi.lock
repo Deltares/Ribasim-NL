@@ -6882,7 +6882,7 @@ packages:
   name: hydamo
   version: 0.1.0
   path: src/hydamo
-  sha256: 27847d37e229347bf6a33874901a43cdbdf28e721253b329d0b56494933ac740
+  sha256: 8981c9d89f3f7f7dd48c6c5cf14396677feed3971cc661e63f398f3b57ae6f4c
   requires_dist:
   - geopandas
   - pytest ; extra == 'tests'
@@ -14265,7 +14265,7 @@ packages:
   name: peilbeheerst-model
   version: 0.1.0
   path: src/peilbeheerst_model
-  sha256: 8d7d2795eb936f3d5489fc50ced3cef99ea3f5ddd80f8bedddc517c0aae7e1c0
+  sha256: 21b935f0542b5dbb76baaf1944b11ef6fab94b5a5926565410fe3d62722c332d
   requires_dist:
   - geopandas
   - numpy
@@ -16545,7 +16545,7 @@ packages:
   name: ribasim
   version: 2024.10.0
   path: ../Ribasim/python/ribasim
-  sha256: be31457a51083ee5f04c05753c0308f556542c46f94a60a82f9387c5156e82ff
+  sha256: dabdd02a24d0b7d6a745c1bcdd800f8afdeb527b8b294ded4eaaf7205939a9cd
   requires_dist:
   - geopandas
   - matplotlib
@@ -16607,7 +16607,7 @@ packages:
   name: ribasim-nl
   version: 0.1.0
   path: src/ribasim_nl
-  sha256: ba120e73f39459ac8850c2e5ded5c299f05e375723a4d4cb6fc7b9bff11ad791
+  sha256: c88a53d538c83ac90850bab1b6312861cccdd0308477e30cc3d8879643db57c0
   requires_dist:
   - geopandas
   - pytest ; extra == 'tests'
