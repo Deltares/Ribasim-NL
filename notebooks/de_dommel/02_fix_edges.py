@@ -6,7 +6,7 @@ cloud = CloudStorage()
 
 
 # %% load model
-ribasim_toml = ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_model_network", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_model_network", "model.toml")
 model = Model.read(ribasim_toml)
 
 # %% network from HydroObjects
