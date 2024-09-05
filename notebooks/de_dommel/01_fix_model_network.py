@@ -8,7 +8,7 @@ from shapely.geometry import Point
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_update_to_main", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_2024_6_3", "model.toml")
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 
 
@@ -78,16 +78,16 @@ for row in network_validator.edge_incorrect_connectivity().itertuples():
         meta_object_type = "duikersifonhevel"
 
     # add manning-node
-    manning_node_id = model.next_node_id
-    manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
-    model.manning_resistance.add(
-        Node(node_id=manning_node_id, geometry=geometry, name=name, meta_object_type=meta_object_type),
-        [manning_data],
+    outlet_node_id = model.next_node_id
+    outlet_data = outlet.Static(flow_rate=[100])
+    model.outlet.add(
+        Node(node_id=outlet_node_id, geometry=geometry, name=name, meta_object_type=meta_object_type),
+        [outlet_data],
     )
 
     # add edges
-    model.edge.add(model.basin[row.from_node_id], model.manning_resistance[manning_node_id])
-    model.edge.add(model.manning_resistance[manning_node_id], model.level_boundary[row.to_node_id])
+    model.edge.add(model.basin[row.from_node_id], model.outlet[outlet_node_id])
+    model.edge.add(model.outlet[outlet_node_id], model.level_boundary[row.to_node_id])
 
 
 if not network_validator.edge_incorrect_connectivity().empty:
@@ -141,7 +141,7 @@ gdf = gpd.read_file(
 
 geometry = gdf.loc[2751].geometry.interpolate(0.5, normalized=True)
 node_id = model.next_node_id
-data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
+manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 
 model.manning_resistance.add(Node(node_id=node_id, geometry=geometry), [manning_data])
 

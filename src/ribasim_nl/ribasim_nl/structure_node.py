@@ -56,7 +56,7 @@ def get_outlet(
     area = calculate_area(width=width, shape=shape, height=height)
     flow_rate = round(area * max_velocity, 2)
 
-    return outlet.Static(flow_rate=[flow_rate], min_crest_level=crest_level)
+    return outlet.Static(flow_rate=[flow_rate], min_upstream_level=crest_level)
 
 
 def get_tabulated_rating_curve(
