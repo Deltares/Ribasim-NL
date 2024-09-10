@@ -34,6 +34,10 @@ def reset_index(model: Model, node_start=1):
                     elif table.df.index.name == "node_id":
                         table.df.index = table.df.reset_index("node_id")["node_id"].apply(lambda x: index.loc[x])
                         # table.df.index.name = "node_id"
+
+                    if "listen_node_id" in table.df.columns:
+                        table.df.loc[:, "listen_node_id"] = table.df["listen_node_id"].apply(lambda x: index[x])
+
     return model
 
 
