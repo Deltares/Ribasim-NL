@@ -1,7 +1,6 @@
 # %%
 import pandas as pd
 from ribasim import Model
-
 from ribasim_nl.case_conversions import pascal_to_snake_case
 
 
@@ -32,11 +31,8 @@ def reset_index(model: Model, node_start=1):
                         if "node_id" in table.df.columns:
                             table.df.loc[:, "node_id"] = table.df["node_id"].apply(lambda x: index[x])
                             table.df.index += 1
-                        if "listen_node_id" in table.df.columns:
-                            table.df.loc[:, "listen_node_id"] = table.df["listen_node_id"].apply(lambda x: index[x])
-                        if table.df.index.name == "node_id":
-                            table.df.index = table.df.reset_index("node_id")["node_id"].apply(lambda x: index[x])
-
+                        elif table.df.index.name == "node_id":
+                            table.df.index = table.df.reset_index("node_id")["node_id"].apply(lambda x: index.loc[x])
                             # table.df.index.name = "node_id"
                 except KeyError as e:
                     raise KeyError(f"node_id {e} not in {node_type} / {attr} not in node-table")

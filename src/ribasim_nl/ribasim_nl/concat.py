@@ -1,5 +1,4 @@
 import pandas as pd
-import ribasim
 from ribasim import Model
 
 from ribasim_nl import reset_index
@@ -21,24 +20,17 @@ def concat(models: list[Model]) -> Model:
     """
     # models will be concatenated to first model.
     model = reset_index(models[0])
-    # determine node_start of next model
-    node_start = model.node_table().df.node_id.max() + 1
 
     # concat all other models into model
     for merge_model in models[1:]:
-        # reset index
+        # reset index of mergemodel, node_start is max node_id
+        node_start = model.node_table().df.index.max() + 1
         merge_model = reset_index(merge_model, node_start)
 
-        # determine node_start of next model
-        node_start = model.node_table().df.node_id.max() + 1
-
-        # merge network
-        # model.network.node = ribasim.Node(
-        #     df=pd.concat([model.network.node.df, merge_model.network.node.df])
-        # )
-        model.edge = ribasim.EdgeTable(
-            df=pd.concat([model.edge.df, merge_model.edge.df], ignore_index=True).reset_index(drop=True)
-        )
+        # concat edges
+        edge_df = pd.concat([model.edge.df, merge_model.edge.df], ignore_index=True)
+        edge_df.index.name = "edge_id"
+        model.edge.df = edge_df
 
         # merge tables
         for node_type in model.node_table().df.node_type.unique():
@@ -51,7 +43,13 @@ def concat(models: list[Model]) -> Model:
                 if merge_model_df is not None:
                     if model_df is not None:
                         # make sure we concat both df's into the correct ribasim-object
-                        df = pd.concat([model_df, merge_model_df], ignore_index=True)
+                        if "node_id" in model_df.columns:
+                            df = pd.concat([model_df, merge_model_df], ignore_index=True)
+                            df.index.name = "fid"
+                        elif model_df.index.name == "node_id":
+                            df = pd.concat([model_df, merge_model_df], ignore_index=False)
+                        else:
+                            raise Exception(f"{node_type} / {attr} cannot be merged")
                     else:
                         df = merge_model_df
                     model_node_table.df = df

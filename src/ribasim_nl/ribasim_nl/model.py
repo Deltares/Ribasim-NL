@@ -139,7 +139,7 @@ class Model(Model):
         for attr in table.model_fields.keys():
             df = getattr(table, attr).df
             if df is not None:
-                if node_id in df.columns:
+                if "node_id" in df.columns:
                     getattr(table, attr).df = df[df.node_id != node_id]
                 else:
                     getattr(table, attr).df = df[df.index != node_id]
@@ -153,6 +153,20 @@ class Model(Model):
                 self.remove_edge(
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
+
+    def update_meta_properties(self, node_properties: dict, node_types: list | None = None):
+        """Set properties for all, or a selection of, node-types."""
+        if node_types is None:
+            node_types = self.node_table().df.node_type.unique()
+
+        for node_type in node_types:
+            table = getattr(self, pascal_to_snake_case(node_type))
+            node_df = getattr(table, "node").df
+            if node_df is not None:
+                for key, value in node_properties.items():
+                    if not key.startswith("meta_"):
+                        key = f"meta_{key}"
+                node_df.loc[:, [key]] = value
 
     def update_node(self, node_id, node_type, data, node_properties: dict = {}):
         existing_node_type = self.node_table().df.at[node_id, "node_type"]
