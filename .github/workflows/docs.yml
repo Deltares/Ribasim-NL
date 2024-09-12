@@ -29,7 +29,6 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          manifest-path: Ribasim/pixi.toml
           pixi-version: "latest"
 
       - name: Check Quarto installation and all engines
