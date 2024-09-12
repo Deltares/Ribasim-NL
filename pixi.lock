@@ -345,7 +345,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qhull-2020.2-h434a139_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qt6-main-6.7.2-hb12f9c5_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/quarto-1.5.55-ha770c72_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.5-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rasterio-1.3.10-py312hff7f44f_5.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rasterstats-0.19.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/re2-2023.09.01-h7f4b329_2.conda
@@ -766,7 +766,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/pyzmq-26.1.0-py312h7a17523_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/qhull-2020.2-h3c5361c_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/quarto-1.5.55-h694c41f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.5-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/rasterio-1.3.10-py312h1c98354_5.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rasterstats-0.19.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/re2-2023.09.01-hb168e87_2.conda
@@ -1166,7 +1166,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/qhull-2020.2-hc790b64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qt6-main-6.7.2-hbb46ec1_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/quarto-1.5.55-h57928b3_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.5-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/rasterio-1.3.10-py312he4a2ebf_5.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rasterstats-0.19.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/re2-2023.09.01-hd3b24a8_2.conda
@@ -1601,7 +1601,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qhull-2020.2-h434a139_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qt6-main-6.7.2-hb12f9c5_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/quarto-1.5.55-ha770c72_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.5-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rasterio-1.3.10-py312hff7f44f_5.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rasterstats-0.19.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/re2-2023.09.01-h7f4b329_2.conda
@@ -2022,7 +2022,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/pyzmq-26.1.0-py312h7a17523_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/qhull-2020.2-h3c5361c_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/quarto-1.5.55-h694c41f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.5-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/rasterio-1.3.10-py312h1c98354_5.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rasterstats-0.19.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/re2-2023.09.01-hb168e87_2.conda
@@ -2422,7 +2422,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/qhull-2020.2-hc790b64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qt6-main-6.7.2-hbb46ec1_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/quarto-1.5.55-h57928b3_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.5-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/rasterio-1.3.10-py312he4a2ebf_5.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rasterstats-0.19.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/re2-2023.09.01-hd3b24a8_2.conda
@@ -16233,13 +16233,13 @@ packages:
   timestamp: 1722532945632
 - kind: conda
   name: quartodoc
-  version: 0.7.5
+  version: 0.7.6
   build: pyhd8ed1ab_0
   subdir: noarch
   noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.5-pyhd8ed1ab_0.conda
-  sha256: b274b1715455b4cc629fff973fa74cf7c712072d25c24fc1c01396778d3be567
-  md5: e792d8c21d24dbb2b880c07430328536
+  url: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.6-pyhd8ed1ab_0.conda
+  sha256: aa8b66a33d88ad834956ab4ec5993f0858ecbd243156cc45f6b1ab7443378617
+  md5: 02da3ef68978e1d6d61ded2338b2ee8b
   depends:
   - click
   - griffe >=0.33
@@ -16258,8 +16258,8 @@ packages:
   license_family: MIT
   purls:
   - pkg:pypi/quartodoc?source=hash-mapping
-  size: 65878
-  timestamp: 1718900565226
+  size: 65713
+  timestamp: 1724510613002
 - kind: conda
   name: rasterio
   version: 1.3.10
@@ -16545,7 +16545,7 @@ packages:
   name: ribasim
   version: 2024.10.0
   path: ../Ribasim/python/ribasim
-  sha256: dabdd02a24d0b7d6a745c1bcdd800f8afdeb527b8b294ded4eaaf7205939a9cd
+  sha256: c48692687129085ad19256cbf54c8df9853f6259b31997cc4a282fde86072751
   requires_dist:
   - geopandas
   - matplotlib
