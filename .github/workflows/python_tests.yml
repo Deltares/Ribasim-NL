@@ -37,6 +37,7 @@ jobs:
         with:
           manifest-path: Ribasim-NL/pixi.toml
           pixi-version: "latest"
+          log-level: "v"
 
       - name: Run tests
         working-directory: Ribasim-NL
