@@ -31,7 +31,7 @@ jobs:
         with:
           manifest-path: Ribasim-NL/pixi.toml
           pixi-version: "latest"
-          log-level: "v"
+          frozen: true
 
       - name: Run mypy on hydamo
         working-directory: Ribasim-NL
