@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.5.55">
+<meta name="generator" content="quarto-1.5.57">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -186,23 +186,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Connect a local ’data_dir` to cloud-storage.</p>
 <section id="attributes" class="level2">
 <h2 class="anchored" data-anchor-id="attributes">Attributes</h2>
-<table class="caption-top">
+<table class="caption-top table">
 <thead>
-<tr>
+<tr class="header">
 <th>Name</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.CloudStorage.auth">auth</a></td>
 <td>Auth tuple for requests</td>
 </tr>
-<tr>
+<tr class="even">
 <td><a href="#ribasim_nl.CloudStorage.source_data">source_data</a></td>
 <td>List of all source_data (directories) in sub-folder ’Basisgegevens`.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.CloudStorage.water_authorities">water_authorities</a></td>
 <td>List of all water authorities (directories)</td>
 </tr>
@@ -211,55 +211,55 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="methods" class="level2">
 <h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<table class="caption-top">
+<table class="caption-top table">
 <thead>
-<tr>
+<tr class="header">
 <th>Name</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.CloudStorage.content">content</a></td>
 <td>List all content in a directory</td>
 </tr>
-<tr>
+<tr class="even">
 <td><a href="#ribasim_nl.CloudStorage.dirs">dirs</a></td>
 <td>List sub-directories in a directory</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.CloudStorage.download_aangeleverd">download_aangeleverd</a></td>
 <td>Download all files in folder ‘aangeleverd’</td>
 </tr>
-<tr>
+<tr class="even">
 <td><a href="#ribasim_nl.CloudStorage.download_all">download_all</a></td>
 <td>Download all files for authority.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.CloudStorage.download_basisgegevens">download_basisgegevens</a></td>
 <td>Download sources in the folder ‘Basisgegevens’</td>
 </tr>
-<tr>
+<tr class="even">
 <td><a href="#ribasim_nl.CloudStorage.download_content">download_content</a></td>
 <td>Download content of a directory recursively.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.CloudStorage.download_verwerkt">download_verwerkt</a></td>
 <td>Download all files in folder ‘verwerkt’</td>
 </tr>
-<tr>
+<tr class="even">
 <td><a href="#ribasim_nl.CloudStorage.upload_content">upload_content</a></td>
 <td>Upload content of a directory recursively.</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.CloudStorage.upload_model">upload_model</a></td>
 <td>Upload a model to a water authority</td>
 </tr>
-<tr>
+<tr class="even">
 <td><a href="#ribasim_nl.CloudStorage.upload_verwerkt">upload_verwerkt</a></td>
 <td>Upload all files in folder ‘verwerkt’</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.CloudStorage.uploaded_models">uploaded_models</a></td>
 <td>Get all model versions uploaded for an authority</td>
 </tr>
@@ -280,15 +280,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="returns" class="level4">
 <h4 class="anchored" data-anchor-id="returns">Returns</h4>
-<table class="caption-top">
+<table class="caption-top table">
 <thead>
-<tr>
+<tr class="header">
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>list[str]</td>
 <td>List of all content directories in a specified path</td>
 </tr>
@@ -311,15 +311,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="returns-1" class="level4">
 <h4 class="anchored" data-anchor-id="returns-1">Returns</h4>
-<table class="caption-top">
+<table class="caption-top table">
 <thead>
-<tr>
+<tr class="header">
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>list[str]</td>
 <td>List of directories in a specified path</td>
 </tr>
@@ -363,7 +363,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Upload a model to a water authority</p>
 <section id="parameters" class="level4">
 <h4 class="anchored" data-anchor-id="parameters">Parameters</h4>
-<table class="caption-top">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 16%">
 <col style="width: 7%">
@@ -371,7 +371,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <col style="width: 10%">
 </colgroup>
 <thead>
-<tr>
+<tr class="header">
 <th>Name</th>
 <th>Type</th>
 <th>Description</th>
@@ -379,25 +379,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>authority</code></td>
 <td>str</td>
 <td>Water authority to upload a model for</td>
 <td><em>required</em></td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>model</code></td>
 <td>str</td>
 <td>name of the model (directory) to upload</td>
 <td><em>required</em></td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>include_results</code></td>
 <td></td>
 <td>to include results dir in upload; yes/no = True/False. defaults to False.</td>
 <td><code>False</code></td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>include_plots</code></td>
 <td></td>
 <td>to include plots dir in upload; yes/no = True/False. defaults to False.</td>
@@ -408,15 +408,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="raises" class="level4">
 <h4 class="anchored" data-anchor-id="raises">Raises</h4>
-<table class="caption-top">
+<table class="caption-top table">
 <thead>
-<tr>
+<tr class="header">
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>ValueError</td>
 <td>If model does not exist locally</td>
 </tr>
