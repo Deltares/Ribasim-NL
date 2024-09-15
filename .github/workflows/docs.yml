@@ -29,8 +29,9 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          manifest-path: Ribasim/pixi.toml
+          manifest-path: Ribasim-NL/pixi.toml
           pixi-version: "latest"
+          frozen: true
 
       - name: Check Quarto installation and all engines
         working-directory: Ribasim-NL
