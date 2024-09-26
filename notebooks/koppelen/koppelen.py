@@ -1,7 +1,4 @@
 # %%
-
-import sqlite3
-
 import pandas as pd
 from networkx import NetworkXNoPath
 from ribasim_nl import CloudStorage, Model, Network, reset_index
@@ -11,29 +8,11 @@ from shapely.geometry import LineString
 
 cloud = CloudStorage()
 
-
-def update_database(toml_file):
-    database_gpkg = toml_file.with_name("database.gpkg")
-    conn = sqlite3.connect(database_gpkg)
-
-    # get table into DataFrame
-    table = "Outlet / static"
-    df = pd.read_sql_query(f"SELECT * FROM '{table}'", conn)
-
-    # drop urban runoff column if exists
-    df.rename(columns={"min_crest_level": "min_upstream_level"}, inplace=True)
-
-    #  Write the DataFrame back to the SQLite table
-    df.to_sql(table, conn, if_exists="replace", index=False)
-
-    # # Close the connection
-    conn.close()
-
-
 # %% update RWS-HWS
+
+# RWS-HWS
 model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "hws")
 toml_file = model_path / "hws.toml"
-update_database(toml_file)
 rws_model = Model.read(toml_file)
 
 # some fixes
@@ -54,38 +33,78 @@ rws_model.write(model_path.with_name("hws_temp") / "hws.toml")
 
 
 # %% update AGV
+
+# AGV
 model_path = cloud.joinpath("AmstelGooienVecht", "modellen", "AmstelGooienVecht_parametrized_2024_8_47")
 if not model_path.exists():
     model_url = cloud.joinurl("AmstelGooienVecht", "modellen", "AmstelGooienVecht_parametrized_2024_8_47")
     cloud.download_content(model_url)
 toml_file = model_path / "ribasim.toml"
-update_database(toml_file)
-model_to_couple = Model.read(toml_file)
+# update_database(toml_file)
+agv_model = Model.read(toml_file)
 
 # fix manning issue
-model_to_couple.manning_resistance.static.df = model_to_couple.manning_resistance.static.df[
-    model_to_couple.manning_resistance.static.df.node_id.isin(model_to_couple.node_table().df.index)
+agv_model.manning_resistance.static.df = agv_model.manning_resistance.static.df[
+    agv_model.manning_resistance.static.df.node_id.isin(agv_model.node_table().df.index)
 ]
 
 # fix boundary-node issue
-model_to_couple.remove_node(957, remove_edges=False)
+agv_model.remove_node(957, remove_edges=False)
 
 # reset index
-model_to_couple = reset_index(model_to_couple, node_start=rws_model.next_node_id)
+agv_model = reset_index(agv_model, node_start=rws_model.next_node_id)
 
 # # write model
-model_to_couple.update_meta_properties(node_properties={"authority": "AmstelGooienVecht"})
-model_to_couple.write(model_path.with_name("AmstelGooienVecht_temp") / "agv.toml")
+agv_model.update_meta_properties(node_properties={"authority": "AmstelGooienVecht"})
+agv_model.write(model_path.with_name("AmstelGooienVecht_temp") / "agv.toml")
 
-# %% load network
-netwerk_mask_poly = model_to_couple.basin.area.df.union_all()
+# %% update De Dommel
 
-models = [rws_model, model_to_couple]
+# update De Dommel
+model_path = cloud.joinpath("DeDommel", "modellen", "DeDommel")
+toml_file = model_path / "model.toml"
+# update_database(toml_file)
+dommel_model = Model.read(toml_file)
+
+# set LevelBoundary from-to RWS
+mask = dommel_model.level_boundary.static.df.node_id.isin([19, 20, 21, 22, 23, 24, 25, 27])
+dommel_model.level_boundary.static.df.loc[mask, "meta_from_authority"] = "DeDommel"
+dommel_model.level_boundary.static.df.loc[mask, "meta_to_authority"] = "Rijkswaterstaat"
+
+mask = dommel_model.level_boundary.static.df.node_id.isin([17, 18])
+dommel_model.level_boundary.static.df.loc[mask, "meta_from_authority"] = "Rijkswaterstaat"
+dommel_model.level_boundary.static.df.loc[mask, "meta_to_authority"] = "DeDommel"
+
+df = pd.DataFrame({"node_id": dommel_model.basin.node.df.index.to_list()})
+df.index.name = "fid"
+df.loc[:, "precipitation"] = 5.787037e-08
+df.loc[:, "potential_evaporation"] = 1.157407e-08
+df.loc[:, "drainage"] = 0
+df.loc[:, "infiltration"] = 0
+dommel_model.basin.static.df = df
+
+# reset index
+dommel_model = reset_index(dommel_model, node_start=agv_model.next_node_id)
+
+# # write model
+dommel_model.update_meta_properties(node_properties={"authority": "DeDommel"})
+
+
+dommel_model.write(model_path.with_name("DeDommel_temp") / "de_dommel.toml")
+
+# %% prepare coupling
+
+# prepare coupling
+netwerk_mask_poly = agv_model.basin.area.df.union_all()
+
+models = [rws_model, dommel_model]
 coupled_model = concat(models)
 
 network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
 
-# %%
+# %% coupling
+
+# couple boundaries
 boundary_node_ids = coupled_model.level_boundary.static.df[
     (coupled_model.level_boundary.static.df.meta_to_authority == "Rijkswaterstaat")
     | (coupled_model.level_boundary.static.df.meta_from_authority == "Rijkswaterstaat")
