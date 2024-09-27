@@ -122,8 +122,6 @@ model.edge.add(model.tabulated_rating_curve[614], model.level_boundary[28])
 model.remove_node(node_id=1898, remove_edges=True)
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2292017813
-# for node_id in [1891, 989, 1058]:
-#     model.remove_node(node_id, remove_edges=True)
 model.update_node(989, "Outlet", [outlet.Static(flow_rate=[0])])
 model.update_node(1891, "LevelBoundary", [level_data])
 
@@ -163,7 +161,6 @@ if not network_validator.node_internal_basin().empty:
 gdf = gpd.read_file(
     cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg"),
     layer="stuw",
-    engine="pyogrio",
     fid_as_index=True,
 )
 kst = gdf.loc[35]

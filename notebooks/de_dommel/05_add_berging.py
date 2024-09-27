@@ -270,9 +270,4 @@ for row in model.basin.node.df.itertuples():
 # %%
 ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_bergend", "model.toml")
 
-# if ribasim_toml.parent.exists():
-#     shutil.rmtree(ribasim_toml.parent)
-
 model.write(ribasim_toml)
-
-# %%
