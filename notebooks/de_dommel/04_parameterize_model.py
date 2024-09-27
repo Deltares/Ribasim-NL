@@ -357,6 +357,8 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "gema
         flow_rate = round(
             basin_area_df.at[model.upstream_node_id(node_id), "geometry"].area * 0.015 / 86400, 2
         )  # 15mm/day of upstream areay
+    else:
+        flow_rate = flow_rate / 60  # m3/min -> m3/s
 
     data = pump.Static(flow_rate=[flow_rate], min_upstream_level=min_upstream_level)
 

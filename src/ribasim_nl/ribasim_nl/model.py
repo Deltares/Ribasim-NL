@@ -154,6 +154,10 @@ class Model(Model):
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
 
+        # remove from used node-ids so we can add it again in the same table
+        if node_id in table._parent._used_node_ids:
+            table._parent._used_node_ids.node_ids.remove(node_id)
+
     def update_node(self, node_id, node_type, data, node_properties: dict = {}):
         existing_node_type = self.node_table().df.at[node_id, "node_type"]
 
