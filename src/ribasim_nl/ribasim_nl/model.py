@@ -153,6 +153,9 @@ class Model(Model):
                 self.remove_edge(
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
+        # remove from used node-ids so we can add it again in the same table
+        if node_id in table._parent._used_node_ids:
+            table._parent._used_node_ids.node_ids.remove(node_id)
 
     def update_meta_properties(self, node_properties: dict, node_types: list | None = None):
         """Set properties for all, or a selection of, node-types."""
