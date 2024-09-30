@@ -34,5 +34,6 @@ src/peilbeheerst_model/.vscode
 # /src/peilbeheerst_model/vervallen
 /src/peilbeheerst_model/Parametrize/ribasim
 /src/peilbeheerst_model/Parametrize/fix_FF_HHSK.ipynb
+/src/peilbeheerst_model/01_test_parse_crossings.ipynb
 
 notebooks/rijkswaterstaat/plots/
