@@ -1,5 +1,4 @@
 # %%
-import pandas as pd
 from networkx import NetworkXNoPath
 from ribasim_nl import CloudStorage, Model, Network, reset_index
 from ribasim_nl.case_conversions import pascal_to_snake_case
@@ -11,7 +10,7 @@ cloud = CloudStorage()
 # %% update RWS-HWS
 
 # RWS-HWS
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "hws")
+model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_bergend")
 toml_file = model_path / "hws.toml"
 rws_model = Model.read(toml_file)
 
@@ -75,14 +74,6 @@ mask = dommel_model.level_boundary.static.df.node_id.isin([17, 18])
 dommel_model.level_boundary.static.df.loc[mask, "meta_from_authority"] = "Rijkswaterstaat"
 dommel_model.level_boundary.static.df.loc[mask, "meta_to_authority"] = "DeDommel"
 
-df = pd.DataFrame({"node_id": dommel_model.basin.node.df.index.to_list()})
-df.index.name = "fid"
-df.loc[:, "precipitation"] = 5.787037e-08
-df.loc[:, "potential_evaporation"] = 1.157407e-08
-df.loc[:, "drainage"] = 0
-df.loc[:, "infiltration"] = 0
-dommel_model.basin.static.df = df
-
 # reset index
 dommel_model = reset_index(dommel_model, node_start=agv_model.next_node_id)
 
@@ -109,9 +100,12 @@ boundary_node_ids = coupled_model.level_boundary.static.df[
     (coupled_model.level_boundary.static.df.meta_to_authority == "Rijkswaterstaat")
     | (coupled_model.level_boundary.static.df.meta_from_authority == "Rijkswaterstaat")
 ].node_id.to_list()
-basin_ids = (
-    coupled_model.node_table().df[coupled_model.node_table().df.meta_authority == "Rijkswaterstaat"].index.to_list()
+
+mask = (coupled_model.node_table().df.meta_authority == "Rijkswaterstaat") & (
+    coupled_model.node_table().df.meta_categorie == "hoofdwater"
 )
+
+basin_ids = coupled_model.node_table().df[mask].index.to_list()
 basin_areas_df = coupled_model.basin.area.df[coupled_model.basin.area.df.node_id.isin(basin_ids)].set_index("node_id")
 
 for boundary_node_id in boundary_node_ids:
@@ -205,9 +199,6 @@ for boundary_node_id in boundary_node_ids:
         meta_from_authority="AmstelGooiEnVecht",
         meta_to_authority="Rijkswaterstaat",
     )
-
-# # remove node and it's edge
-# #
 
 
 # %%
