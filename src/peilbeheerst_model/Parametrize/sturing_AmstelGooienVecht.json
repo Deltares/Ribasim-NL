@@ -58,7 +58,7 @@
     "truth_state": ["FF", "FT", "TF", "TT"],
     "control_state": ["block", "block", "pass", "block"],
     "flow_rate_block": 0,
-    "flow_rate_pass": 0.2,
+    "flow_rate_pass": 0.20,
     "node_type": "pump"
   },
 
@@ -67,7 +67,7 @@
     "truth_state": ["FF", "FT", "TF", "TT"],
     "control_state": ["block", "block", "pass", "pass"],
     "flow_rate_block": 0,
-    "flow_rate_pass": 0.2,
+    "flow_rate_pass": 0.20,
     "node_type": "pump"
   },
 
@@ -76,7 +76,7 @@
     "truth_state": ["FF", "FT", "TF", "TT"],
     "control_state": ["block", "block", "pass", "pass"],
     "flow_rate_block": 0,
-    "flow_rate_pass": 0.2,
+    "flow_rate_pass": 0.20,
     "node_type": "pump"
   },
 
@@ -85,7 +85,7 @@
     "truth_state": ["FF", "FT", "TF", "TT"],
     "control_state": ["pass", "block", "pass", "block"],
     "flow_rate_block": 0,
-    "flow_rate_pass": 0.1,
+    "flow_rate_pass": 0.10,
     "node_type": "pump"
   },
 
