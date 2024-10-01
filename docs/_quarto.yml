@@ -9,6 +9,7 @@ website:
     left:
       - reference/index.qmd
       - cloudstorage.qmd
+      - rws_hws.qmd
     right:
       - icon: github
         href: https://github.com/Deltares/Ribasim-NL

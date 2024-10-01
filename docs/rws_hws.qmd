@@ -1,15 +1,16 @@
 ---
-title: "Building Ribasim RWS-HWS"
+title: "Building RWS-HWS"
 ---
 
-All files are in `notebooks/rijkswaterstaat` and numbered by order of to be executed.
+All files are in [`notebooks/rijkswaterstaat`](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/rijkswaterstaat) are numbered in order of execution.
 
-## 1_bathymertrie
+# 1_bathymetrie.py
 In this script we merge data from Baseline (version j23_6-v1, non-public) with grids from [bathymetrie-Nederland](https://maps.rijkswaterstaat.nl/geoweb55/index.html?viewer=Bathymetrie_Nederland) to one 5x5m GeoTiff.
 
-We combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the Ijsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a bollean column `baseline`
+We combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland.
+For the mask we use Top10NL waterdelen and manually filled a boolean column `baseline`.
 
-<p align="center">
-  <img src="bathymetrie_mask.png" alt="Image 1"  height="450px" style="object-fit: contain;" />
-  <img src="bathymetrie_result.png" alt="Image 2"  height="450px" style="object-fit: contain;" />
-</p>
+::: {layout-ncol=2}
+![bathymetry mask](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_mask.png)
+![bathymetry result](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_result.png)
+:::
