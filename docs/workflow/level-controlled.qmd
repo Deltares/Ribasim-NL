@@ -2,19 +2,21 @@
 title: "Level controlled"
 ---
 
-Workflow ontwikkelen code peilbeheerst NL:
+Workflow for deriving level controlled (peilbeheerst) regional models.
+All code can be found under [`src/peilbeheerst_model`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model).
+The paths below are relative to this path.
 
-1) Doorloop de preprocessing notebooks. Notebook per waterschap, locatie: peilbeheerst_model/peilbeheerst_model/preprocess_data
-2) Doorloop de post processing notebook. Notebook per waterschap, locatie: peilbeheerst_model/peilbeheerst_model/postprocess_data
-3) Doorloop de crossings notebook. E�n notebook, locatie: peilbeheerst_model/01_test_parse_crossings.ipynb
-4) Doorloop shortest paths notebookS. Notebook per waterschap, locatie: peilbeheerst_model/Shortest_path
-5) Doorloop crossings to Ribasim notebook. E�n notebook, alle waterschappen staan onder elkaar, locatie: peilbeheerst_model/02_crossings_to_ribasim_notebook.ipynb
-6) Doorloop parametrize notebookS. Notebook per waterschap, voor nu alleen nog AGV. Locatie: peilbeheerst_model/Parametrize/AmstelGooienVecht_parametrize.ipynb
+1. Run the preprocessing notebooks. One notebook per water board, path: `peilbeheerst_model/preprocess_data/`
+2. Run the postprocessing notebook. One notebook per water board, path: `peilbeheerst_model/postprocess_data/`
+3. Run the crossings notebook. One notebook, path: `01_test_parse_crossings.ipynb`
+4. Run shortest paths notebooks. One notebook per water board, path: `Shortest_path/`
+5. Run crossings to Ribasim notebook. One notebook, all water boards are below each other, path: `02_crossings_to_ribasim_notebook.ipynb`
+6. Run parametrize notebooks. One notebook per water board, for now only Amstel, Gooi en Vecht (AGV), path: `Parametrize/AmstelGooienVecht_parametrize.ipynb`
 
-We hadden oorspronkelijk meer parametrize notebooks, maar omdat zo veel is veranderd heb ik deze nu opgeslagen in onze back up.
-Deze gaan we alleen gebruiken om te kijken of er nog extra handmatige aanpassingen waren.
-Voor de rest gaat het dezelfde workflow volgens als AGV_parametrize.
+We originally had more parametrize notebooks, but because so much has changed I have now saved these in our backup.
+We will only use these to see if there were any additional manual adjustments.
+For the rest, it follows the same workflow as `AmstelGooienVecht_parametrize.ipynb`.
 
-Tot slot: stap 1 begon met een overzichtelijk notebook per waterschap. Gedurende het proces van 1.5 jaar zijn deze notebooks steeds groter en onoverzichtelijker geworden,
-waarbij niet elke regel meer nodig is. Voor nu ligt er geen prioriteit om dit op te schonen, mede omdat dit een groot risico dat de data (onbedoeld) wijzigt,
-waardoor de netwerken zullen veranderen en de feedback formulieren niet meer gebruikt kunnen worden.
+Finally: step 1 started with a clear notebook per water board.
+During the process of 1.5 years, these notebooks have become increasingly larger and more confusing, whereby not every line is needed anymore.
+For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.

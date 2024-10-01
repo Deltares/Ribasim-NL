@@ -19,8 +19,8 @@ website:
   sidebar:
     - title: "Workflows"
       contents:
-        - main-watersystem.qmd
-        - level-controlled.qmd
+        - workflow/main-watersystem.qmd
+        - workflow/level-controlled.qmd
 
 format:
   html:

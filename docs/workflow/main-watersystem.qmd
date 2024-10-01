@@ -1,5 +1,5 @@
 ---
-title: "Building RWS-HWS"
+title: "Main watersystem"
 ---
 
 All files are in [`notebooks/rijkswaterstaat`](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/rijkswaterstaat) are numbered in order of execution.
@@ -11,6 +11,7 @@ We combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanale
 For the mask we use Top10NL waterdelen and manually filled a boolean column `baseline`.
 
 ::: {layout-ncol=2}
-![bathymetry mask](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_mask.png)
-![bathymetry result](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_result.png)
+![Bathymetry mask](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_mask.png)
+
+![Bathymetry](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_result.png)
 :::
