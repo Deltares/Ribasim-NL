@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>possibly_intersecting – Ribasim-NL</title>
+<title>Level controlled – Ribasim-NL</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -71,7 +71,7 @@ ul.task-list li input[type="checkbox"] {
 <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="nav-fixed">
+<body class="nav-sidebar floating nav-fixed">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -97,7 +97,7 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Cloud storage</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
+    <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
 <span class="menu-text">Workflows</span></a>
   </li>  
 </ul>
@@ -113,70 +113,78 @@ ul.task-list li input[type="checkbox"] {
 </div>
       </div> <!-- /container-fluid -->
     </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
-<!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">On this page</h2>
-   
-  <ul>
-  <li><a href="#hydamo.possibly_intersecting" id="toc-hydamo.possibly_intersecting" class="nav-link active" data-scroll-target="#hydamo.possibly_intersecting">possibly_intersecting</a>
-  <ul class="collapse">
-  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
-  </ul></li>
-  </ul>
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Main watersystem</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Level controlled</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
 </nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+        
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Level controlled</h1>
+</div>
 
 
 
-<section id="hydamo.possibly_intersecting" class="level1">
-<h1>possibly_intersecting</h1>
-<p><code>possibly_intersecting(dataframebounds, geometry, buffer=0)</code></p>
-<p>Efficiently determine possibly intersecting geometries using a bounding box.</p>
-<p>Finding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.</p>
-<section id="parameters" class="level2">
-<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 26%">
-<col style="width: 36%">
-<col style="width: 20%">
-<col style="width: 16%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>dataframebounds</code></td>
-<td>numpy.array</td>
-<td></td>
-<td><em>required</em></td>
-</tr>
-<tr class="even">
-<td><code>geometry</code></td>
-<td>shapely.geometry.Polygon</td>
-<td></td>
-<td><em>required</em></td>
-</tr>
-</tbody>
-</table>
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
 
 
-</section>
-</section>
+</header>
+
+
+<p>Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model"><code>src/peilbeheerst_model</code></a>. The paths below are relative to this path.</p>
+<ol type="1">
+<li>Run the preprocessing notebooks. One notebook per water board, path: <code>peilbeheerst_model/preprocess_data/</code></li>
+<li>Run the postprocessing notebook. One notebook per water board, path: <code>peilbeheerst_model/postprocess_data/</code></li>
+<li>Run the crossings notebook. One notebook, path: <code>01_test_parse_crossings.ipynb</code></li>
+<li>Run shortest paths notebooks. One notebook per water board, path: <code>Shortest_path/</code></li>
+<li>Run crossings to Ribasim notebook. One notebook, all water boards are below each other, path: <code>02_crossings_to_ribasim_notebook.ipynb</code></li>
+<li>Run parametrize notebooks. One notebook per water board, for now only Amstel, Gooi en Vecht (AGV), path: <code>Parametrize/AmstelGooienVecht_parametrize.ipynb</code></li>
+</ol>
+<p>We originally had more parametrize notebooks, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as <code>AmstelGooienVecht_parametrize.ipynb</code>.</p>
+<p>Finally: step 1 started with a clear notebook per water board. During the process of 1.5 years, these notebooks have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.</p>
+
+
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
