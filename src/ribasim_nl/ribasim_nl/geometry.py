@@ -145,3 +145,21 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Pol
             )
 
     return geometry
+
+
+def edge(point_from: Point, point_to: Point) -> LineString:
+    """Create a LineString geometry between two Point geometries, dropping z-coordinate if any
+
+    Args:
+        point_from (Point): _description_
+        point_to (Point): _description_
+
+    Returns
+    -------
+        LineString: LineString without z-coordinate
+    """
+    if point_from.has_z:
+        point_from = Point(point_from.x, point_from.y)
+    if point_to.has_z:
+        point_to = Point(point_to.x, point_to.y)
+    return LineString((point_from, point_to))

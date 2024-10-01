@@ -348,7 +348,9 @@ class Model(Model):
             df = self.edge.df
 
         for row in df.itertuples():
-            geometry = LineString([node_df.at[row.from_node_id, "geometry"], node_df.at[row.to_node_id, "geometry"]])
+            from_point = Point(node_df.at[row.from_node_id, "geometry"].x, node_df.at[row.from_node_id, "geometry"].y)
+            to_point = Point(node_df.at[row.to_node_id, "geometry"].x, node_df.at[row.to_node_id, "geometry"].y)
+            geometry = LineString([from_point, to_point])
             self.edge.df.loc[row.Index, ["geometry"]] = geometry
 
     @property
