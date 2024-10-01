@@ -1,9 +1,14 @@
-Stappenplan ontwikkelen code peilbeheerst NL:
+---
+title: "Level controlled"
+---
+
+Workflow ontwikkelen code peilbeheerst NL:
+
 1) Doorloop de preprocessing notebooks. Notebook per waterschap, locatie: peilbeheerst_model/peilbeheerst_model/preprocess_data
 2) Doorloop de post processing notebook. Notebook per waterschap, locatie: peilbeheerst_model/peilbeheerst_model/postprocess_data
-3) Doorloop de crossings notebook. Eén notebook, locatie: peilbeheerst_model/01_test_parse_crossings.ipynb
+3) Doorloop de crossings notebook. Eï¿½n notebook, locatie: peilbeheerst_model/01_test_parse_crossings.ipynb
 4) Doorloop shortest paths notebookS. Notebook per waterschap, locatie: peilbeheerst_model/Shortest_path
-5) Doorloop crossings to Ribasim notebook. Eén notebook, alle waterschappen staan onder elkaar, locatie: peilbeheerst_model/02_crossings_to_ribasim_notebook.ipynb
+5) Doorloop crossings to Ribasim notebook. Eï¿½n notebook, alle waterschappen staan onder elkaar, locatie: peilbeheerst_model/02_crossings_to_ribasim_notebook.ipynb
 6) Doorloop parametrize notebookS. Notebook per waterschap, voor nu alleen nog AGV. Locatie: peilbeheerst_model/Parametrize/AmstelGooienVecht_parametrize.ipynb
 
 We hadden oorspronkelijk meer parametrize notebooks, maar omdat zo veel is veranderd heb ik deze nu opgeslagen in onze back up.

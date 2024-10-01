@@ -10,7 +10,7 @@ website:
       - reference/index.qmd
       - cloudstorage.qmd
       - text: "Workflows"
-        file: workflow/hoofdwatersysteem.qmd
+        file: workflow/main-watersystem.qmd
     right:
       - icon: github
         href: https://github.com/Deltares/Ribasim-NL
@@ -19,8 +19,8 @@ website:
   sidebar:
     - title: "Workflows"
       contents:
-        - hoofdwatersysteem.qmd
-        - peilbeheerst.qmd
+        - main-watersystem.qmd
+        - level-controlled.qmd
 
 format:
   html:
