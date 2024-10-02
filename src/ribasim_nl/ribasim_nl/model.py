@@ -247,15 +247,18 @@ class Model(Model):
         for _to_node_id in to_node_id:
             self.edge.add(table[node_id], self.get_node(_to_node_id))
 
-    def reverse_edge(self, from_node_id: int, to_node_id: int):
+    def reverse_edge(self, from_node_id: int | None = None, to_node_id: int | None = None, edge_id: int | None = None):
         """Reverse an edge"""
         if self.edge.df is not None:
-            # get original edge-data
-            df = self.edge.df.copy()
-            df.loc[:, ["edge_id"]] = df.index
-            df = df.set_index(["from_node_id", "to_node_id"], drop=False)
-            edge_data = dict(df.loc[from_node_id, to_node_id])
-            edge_id = edge_data["edge_id"]
+            if edge_id is None:
+                # get original edge-data
+                df = self.edge.df.copy()
+                df.loc[:, ["edge_id"]] = df.index
+                df = df.set_index(["from_node_id", "to_node_id"], drop=False)
+                edge_data = dict(df.loc[from_node_id, to_node_id])
+                edge_id = edge_data["edge_id"]
+            else:
+                edge_data = dict(self.edge.df.loc[edge_id])
 
             # revert node ids
             self.edge.df.loc[edge_id, ["from_node_id"]] = edge_data["to_node_id"]
@@ -280,6 +283,21 @@ class Model(Model):
                 for node_id in [from_node_id, to_node_id]:
                     if node_id not in self.edge.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
                         self.remove_node(node_id)
+
+    def move_node(self, node_id: int, geometry: Point):
+        node_type = self.node_table().df.at[node_id, "node_type"]
+
+        # read existing table
+        table = getattr(self, pascal_to_snake_case(node_type))
+
+        # update geometry
+        table.node.df.loc[node_id, ["geometry"]] = geometry
+
+        # reset all edges
+        edge_ids = self.edge.df[
+            (self.edge.df.from_node_id == node_id) | (self.edge.df.to_node_id == node_id)
+        ].index.to_list()
+        self.reset_edge_geometry(edge_ids=edge_ids)
 
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""

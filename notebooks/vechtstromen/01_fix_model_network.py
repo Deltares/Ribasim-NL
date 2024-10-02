@@ -3,8 +3,8 @@ import geopandas as gpd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl import CloudStorage, Model, NetworkValidator
-from ribasim_nl.geometry import edge
-from shapely.geometry import LineString, Point
+from ribasim_nl.geometry import edge, split_basin
+from shapely.geometry import LineString, MultiPolygon, Point
 from shapely.ops import nearest_points
 
 cloud = CloudStorage()
@@ -13,6 +13,14 @@ ribasim_toml = cloud.joinpath("Vechtstromen", "modellen", "Vechtstromen_2024_6_3
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydroobject_gdf = gpd.read_file(
     cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject", fid_as_index=True
+)
+
+split_line_gdf = gpd.read_file(
+    cloud.joinpath("Vechtstromen", "verwerkt", "fix_user_data.gpkg"), layer="split_basins", fid_as_index=True
+)
+
+level_boundary_gdf = gpd.read_file(
+    cloud.joinpath("Vechtstromen", "verwerkt", "fix_user_data.gpkg"), layer="level_boundary", fid_as_index=True
 )
 
 # %% read model
@@ -60,13 +68,11 @@ edge_ids = model.edge.df[
 model.reset_edge_geometry(edge_ids=edge_ids)
 
 # verplaats basin 1375 naar het hydroobject
-gdf = gpd.read_file(
-    cloud.joinpath("Vechtstromen", "verwerkt", "fix_user_data.gpkg"), layer="level_boundary", fid_as_index=True
-)
+
 
 # verbind basins met level_boundaries
 for fid, node_id in [(1, 1375), (2, 1624)]:
-    boundary_node_geometry = gdf.at[fid, "geometry"]
+    boundary_node_geometry = level_boundary_gdf.at[fid, "geometry"]
 
     # line for interpolation
     basin_node_geometry = Point(
@@ -210,6 +216,126 @@ for node_id in remove_node_ids:
 model.edge.add(model.pump[667], model.basin[1495])
 
 # model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
+
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387026622
+
+# opruimen basin at Amsterdamscheveld
+model.remove_node(1683, remove_edges=True)
+
+# verbinden basin node_id 1680 met tabulated_rating_curve node_id 101 en 125
+model.edge.add(model.basin[1680], model.tabulated_rating_curve[101])
+model.edge.add(model.basin[1680], model.tabulated_rating_curve[125])
+
+# verbinden pump node_id 622 met basin node_id 1680
+model.edge.add(model.pump[622], model.basin[1680])
+
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387056481
+
+# Fix stieltjeskanaal
+
+# split basin_area bij manning_resistance node_id 1365
+
+line = split_line_gdf.at[1, "geometry"]
+
+basin_polygon = model.basin.area.df.at[8, "geometry"].geoms[0]
+basin_polygons = split_basin(basin_polygon, line)
+
+model.basin.area.df.loc[8, ["geometry"]] = MultiPolygon([basin_polygons.geoms[0]])
+model.basin.area.df.loc[model.basin.area.df.index.max() + 1, ["geometry"]] = MultiPolygon([basin_polygons.geoms[1]])
+
+# hef basin node_id 1901 op
+model.remove_node(1901, remove_edges=True)
+
+# hef pump node_id 574 (GM00246) en node_id 638 (GM00249) op
+model.remove_node(574, remove_edges=True)
+model.remove_node(638, remove_edges=True)
+
+# verbind basin node_id 1876 met pump node_ids 626 (GM00248) en 654 (GM00247)
+model.edge.add(model.basin[1876], model.pump[626])
+model.edge.add(model.basin[1876], model.pump[654])
+
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387815013
+
+# opruimen Zwinderskanaal
+
+
+# split basin_area bij rode lijn
+line = split_line_gdf.at[2, "geometry"]
+basin_polygon = model.basin.area.df.at[65, "geometry"].geoms[0]
+basin_polygons = split_basin(basin_polygon, line)
+
+model.basin.area.df.loc[65, ["geometry"]] = MultiPolygon([basin_polygons.geoms[0]])
+model.basin.area.df.loc[model.basin.area.df.index.max() + 1, ["geometry"]] = MultiPolygon([basin_polygons.geoms[1]])
+
+# verwijderen basin 2226, 2258, 2242 en manning_resistance 1366
+for node_id in [2226, 2258, 2242, 1366, 1350]:
+    model.remove_node(node_id, remove_edges=True)
+
+# verbinden tabulated_rating_curves 327 (ST03499) en 510 (ST03198) met basin 1897
+model.edge.add(model.basin[1897], model.tabulated_rating_curve[327])
+model.edge.add(model.tabulated_rating_curve[510], model.basin[1897])
+
+# verbinden basin 1897 met tabulated_rating_curve 279 (ST03138)
+model.edge.add(model.basin[1897], model.tabulated_rating_curve[279])
+
+# verbinden basin 1897 met manning_resistance 1351 en 1352
+model.edge.add(model.basin[1897], model.manning_resistance[1351])
+model.edge.add(model.basin[1897], model.manning_resistance[1352])
+
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387888742
+
+# Oplossen situatie Van Echtenskanaal/Scholtenskanaal Klazinaveen
+
+# verplaatsen level_boundary 33 naar splitsing scholtenskanaal/echtenskanaal en omzetten naar basin
+outlet_node_geometry = model.level_boundary[33].geometry
+model.update_node(33, "Basin", data=basin_data)
+model.move_node(node_id=33, geometry=hydroobject_gdf.loc[2679].geometry.boundary.geoms[1])
+
+# plaatsen outlet bij oorspronkelijke plaats level_boundary 33
+outlet_node = model.outlet.add(Node(geometry=outlet_node_geometry), tables=[outlet_data])
+
+# plaatsen nieuwe level_boundary op scholtenskanaal aan H&A zijde scholtenskanaal van outlet
+boundary_node = model.level_boundary.add(Node(geometry=level_boundary_gdf.at[3, "geometry"]), tables=[level_data])
+
+# toevoegen edges vanaf nieuwe basin 33 naar nieuwe outlet naar nieuwe boundary
+model.edge.add(model.basin[33], outlet_node, geometry=edge(model.basin[33].geometry, outlet_node.geometry))
+model.edge.add(outlet_node, boundary_node)
+
+# opheffen manning_resistance 1330 bij GM00213
+model.remove_node(1330, remove_edges=True)
+
+# verbinden nieuwe basin met outlet en oorspronkijke manning_knopen en pompen in oorspronkelijke richting
+for edge_id in [2711, 2712, 2713, 2714, 2708]:
+    model.reverse_edge(edge_id=edge_id)
+
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2388009499
+
+# basin met node_id 1873 gaat richting geesburg
+model.move_node(node_id=1873, geometry=hydroobject_gdf.loc[6616].geometry.boundary.geoms[1])
+
+# ege 2700, 2701, 2702 worden opgeheven
+model.edge.df = model.edge.df[~model.edge.df.index.isin([2700, 2701, 2702])]
+
+# basin 1873 wordt verbonden met manning_resistance 1054
+model.edge.add(
+    model.basin[1873],
+    model.manning_resistance[1054],
+    geometry=edge(model.basin[1873].geometry, model.manning_resistance[1054].geometry),
+)
+
+# manning_resistance 1308 en 1331 worden verbonden met basin 1873
+model.edge.add(
+    model.manning_resistance[1308],
+    model.basin[1873],
+    geometry=edge(model.manning_resistance[1308].geometry, model.basin[1873].geometry),
+)
+model.edge.add(
+    model.basin[1873],
+    model.manning_resistance[1331],
+    geometry=edge(model.basin[1873].geometry, model.manning_resistance[1331].geometry),
+)
+
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382572457
 
 # Administratie basin node_id in node_table en Basin / Area correct maken
