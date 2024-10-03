@@ -1,14 +1,16 @@
 from pathlib import Path
 from typing import Literal
 
+import networkx as nx
 import pandas as pd
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.geometry.edge import NodeData
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.geometry import split_basin
 
 
 def read_arrow(filepath: Path) -> pd.DataFrame:
@@ -45,6 +47,10 @@ class Model(Model):
             filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
             self._basin_results = BasinResults(filepath=filepath)
         return self._basin_results
+
+    @property
+    def graph(self):
+        return nx.from_pandas_edgelist(self.edge.df[["from_node_id", "to_node_id"]], "from_node_id", "to_node_id")
 
     @property
     def next_node_id(self):
@@ -380,3 +386,106 @@ class Model(Model):
     def edge_to_node_type(self):
         node_df = self.node_table().df
         return self.edge.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+
+    def split_basin(self, line: LineString):
+        if self.basin.area.df is None:
+            raise ValueError("provide basin / area table first")
+
+        line_centre = line.interpolate(0.5, normalized=True)
+        basin_area_df = self.basin.area.df[self.basin.area.df.contains(line_centre)]
+
+        if len(basin_area_df) != 1:
+            raise ValueError("Overlapping basin-areas at cut_line")
+
+        # get all we need
+        basin_fid = int(basin_area_df.iloc[0].name)
+        basin_geometry = basin_area_df.iloc[0].geometry
+        self.basin.area.df = self.basin.area.df[self.basin.area.df.index != basin_fid]
+
+        # get the polygon to cut
+        basin_geoms = list(basin_geometry.geoms)
+        cut_idx = next(idx for idx, i in enumerate(basin_geoms) if i.contains(line_centre))
+
+        # split it
+        right_basin_poly, left_basin_poly = split_basin(basin_geoms[cut_idx], line).geoms
+
+        # concat left-over polygons to the right-side
+        right_basin_poly = [right_basin_poly]
+        left_basin_poly = [left_basin_poly]
+
+        for idx, geom in enumerate(basin_geoms):
+            if idx != cut_idx:
+                if geom.distance(right_basin_poly[0]) < geom.distance(left_basin_poly[0]):
+                    right_basin_poly += [geom]
+                else:
+                    left_basin_poly += [geom]
+
+        right_basin_poly = MultiPolygon(right_basin_poly)
+        left_basin_poly = MultiPolygon(left_basin_poly)
+
+        for poly in [right_basin_poly, left_basin_poly]:
+            if self.basin.node.df.geometry.within(poly).any():
+                node_ids = self.basin.node.df[self.basin.node.df.geometry.within(poly)].index.to_list()
+                if len(node_ids) == 1:
+                    if node_ids[0] in self.basin.area.df.node_id.to_numpy():
+                        self.basin.area.df.loc[self.basin.area.df.node_id.isin(node_ids), ["geometry"]] = poly
+                    else:
+                        self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
+                            "node_id": node_ids[0],
+                            "geometry": poly,
+                        }
+                else:
+                    self.basin.area.df.loc[self.basin.area.df.index.max() + 1, ["geometry"]] = poly
+            else:
+                self.basin.area.df.loc[self.basin.area.df.index.max() + 1, ["geometry"]] = poly
+
+        if self.basin.area.df.crs is None:
+            self.basin.area.df.crs = self.crs
+
+    def merge_basins(self, basin_id: int, to_basin_id: int, are_connected=True):
+        for node_id in (basin_id, to_basin_id):
+            if node_id not in self.basin.node.df.index:
+                raise ValueError(f"{node_id} is not a basin")
+
+        if are_connected:
+            path = nx.shortest_path(self.graph, to_basin_id, basin_id)
+
+            if len(path) != 3:
+                raise ValueError(f"basin {basin_id} not a direct neighbor of basin {to_basin_id}")
+
+            # remove flow-node and connected edges
+            self.remove_node(path[1], remove_edges=True)
+
+        # get a complete edge-list to modify
+        edge_ids = self.edge.df[self.edge.df.from_node_id == basin_id].index.to_list()
+        edge_ids += self.edge.df[self.edge.df.to_node_id == basin_id].index.to_list()
+
+        # correct edge from and to attributes
+        self.edge.df.loc[self.edge.df.from_node_id == basin_id, "from_node_id"] = to_basin_id
+        self.edge.df.loc[self.edge.df.to_node_id == basin_id, "to_node_id"] = to_basin_id
+
+        # reset edge geometries
+        self.reset_edge_geometry(edge_ids=edge_ids)
+
+        # merge area if basin has any assigned to it
+        if basin_id in self.basin.area.df.node_id.to_numpy():
+            poly = self.basin.area.df.set_index("node_id").at[basin_id, "geometry"]
+
+            # if to_basin_id has area we union both areas
+            if to_basin_id in self.basin.area.df.node_id.to_numpy():
+                poly = poly.union(self.basin.area.df.set_index("node_id").at[to_basin_id, "geometry"])
+                if isinstance(poly, Polygon):
+                    poly = MultiPolygon([poly])
+                self.basin.area.df.loc[self.basin.area.df.node_id == to_basin_id, ["geometry"]] = poly
+
+            # else we add a record to basin
+            else:
+                if isinstance(poly, Polygon):
+                    poly = MultiPolygon([poly])
+                self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {"node_id": to_basin_id, "geometry": poly}
+
+        # finally we remove the basin
+        self.remove_node(basin_id)
+
+        if self.basin.area.df.crs is None:
+            self.basin.area.df.crs = self.crs

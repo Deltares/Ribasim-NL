@@ -1,9 +1,11 @@
 # %%
 import geopandas as gpd
+import numpy as np
+import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl import CloudStorage, Model, NetworkValidator
-from ribasim_nl.geometry import edge, split_basin
+from ribasim_nl.geometry import edge, split_basin, split_basin_multi_polygon
 from shapely.geometry import LineString, MultiPolygon, Point
 from shapely.ops import nearest_points
 
@@ -25,6 +27,7 @@ level_boundary_gdf = gpd.read_file(
 
 # %% read model
 model = Model.read(ribasim_toml)
+ribasim_toml = cloud.joinpath("Vechtstromen", "modellen", "Vechtstromen_fix_model_network", "vechtstromen.toml")
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
@@ -182,6 +185,8 @@ edge_ids = model.edge.df[
 
 model.reset_edge_geometry(edge_ids=edge_ids)
 
+model.split_basin(split_line_gdf.at[9, "geometry"])
+
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385409772
 
 incorrect_edges_df = network_validator.edge_incorrect_connectivity()
@@ -254,6 +259,7 @@ model.remove_node(638, remove_edges=True)
 # verbind basin node_id 1876 met pump node_ids 626 (GM00248) en 654 (GM00247)
 model.edge.add(model.basin[1876], model.pump[626])
 model.edge.add(model.basin[1876], model.pump[654])
+model.edge.add(model.tabulated_rating_curve[113], model.basin[1876])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387815013
 
@@ -313,7 +319,7 @@ for edge_id in [2711, 2712, 2713, 2714, 2708]:
 
 # basin met node_id 1873 gaat richting geesburg
 model.move_node(node_id=1873, geometry=hydroobject_gdf.loc[6616].geometry.boundary.geoms[1])
-
+model.basin.area.df.loc[model.basin.area.df.node_id == 1873, ["node_id"]] = pd.NA
 # ege 2700, 2701, 2702 worden opgeheven
 model.edge.df = model.edge.df[~model.edge.df.index.isin([2700, 2701, 2702])]
 
@@ -336,6 +342,509 @@ model.edge.add(
     geometry=edge(model.basin[1873].geometry, model.manning_resistance[1331].geometry),
 )
 
+# level_boundary 26 wordt een outlet
+model.update_node(26, "Outlet", data=[outlet_data])
+
+# nieuwe level_boundary benedenstrooms nieuwe outlet 26
+boundary_node = model.level_boundary.add(Node(geometry=level_boundary_gdf.at[4, "geometry"]), tables=[level_data])
+
+
+# basin 1873 wordt verbonden met outlet en outlet met level_boundary
+model.edge.add(
+    model.outlet[26],
+    model.basin[1873],
+    geometry=edge(model.outlet[26].geometry, model.basin[1873].geometry),
+)
+
+model.edge.add(boundary_node, model.outlet[26])
+
+
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2388334544
+
+# Kruising Dinkel/Kanaal Almelo Nordhorn corrigeren
+
+# ege 2700, 2701, 2702 worden opgeheven
+model.edge.df = model.edge.df[~model.edge.df.index.isin([2690, 2691, 2692, 2693, 2694, 2695, 2696])]
+
+# basin / area splitten bij rode lijn in twee vlakken
+line = split_line_gdf.at[3, "geometry"]
+
+total_basin_polygon = model.basin.area.df.at[544, "geometry"]
+basin_polygon = [i for i in model.basin.area.df.at[544, "geometry"].geoms if i.intersects(line)][0]
+basin_polygons = split_basin(basin_polygon, line)
+model.basin.area.df.loc[544, ["geometry"]] = MultiPolygon(
+    [i for i in model.basin.area.df.at[544, "geometry"].geoms if not i.intersects(line)] + [basin_polygons.geoms[0]]
+)
+model.basin.area.df.loc[model.basin.area.df.index.max() + 1, ["geometry"]] = MultiPolygon([basin_polygons.geoms[1]])
+
+# basin op dinkel bovenstrooms kanaal
+dinkel_basin_node = model.basin.add(
+    Node(geometry=hydroobject_gdf.loc[2966].geometry.boundary.geoms[1]), tables=basin_data
+)
+
+# basin in kanaal
+kanaal_basin_node = model.basin.add(
+    Node(geometry=hydroobject_gdf.loc[7720].geometry.boundary.geoms[1]), tables=basin_data
+)
+
+# edges v.a. tabulated_rating_curve 298 (ST01865) en 448 (ST01666) naar dinkel-basin
+model.edge.add(
+    model.tabulated_rating_curve[298],
+    dinkel_basin_node,
+    geometry=edge(model.tabulated_rating_curve[298].geometry, dinkel_basin_node.geometry),
+)
+
+model.edge.add(
+    model.tabulated_rating_curve[448],
+    dinkel_basin_node,
+    geometry=edge(model.tabulated_rating_curve[448].geometry, dinkel_basin_node.geometry),
+)
+
+# edge v.a. manning_resistance 915 naar dinkel basin
+model.edge.add(
+    model.manning_resistance[915],
+    dinkel_basin_node,
+    geometry=edge(model.manning_resistance[915].geometry, dinkel_basin_node.geometry),
+)
+
+# edges v.a. dinkel basin naar tabulate_rating_curves 132 (ST02129) en 474 (ST02130)
+model.edge.add(
+    dinkel_basin_node,
+    model.tabulated_rating_curve[132],
+    geometry=edge(dinkel_basin_node.geometry, model.tabulated_rating_curve[132].geometry),
+)
+
+model.edge.add(
+    dinkel_basin_node,
+    model.tabulated_rating_curve[474],
+    geometry=edge(dinkel_basin_node.geometry, model.tabulated_rating_curve[474].geometry),
+)
+
+# nieuwe manning_resistance in nieuwe dinkel-basin bovenstrooms kanaal
+manning_node = model.manning_resistance.add(
+    Node(geometry=hydroobject_gdf.at[7721, "geometry"].interpolate(0.5, normalized=True)), tables=[manning_data]
+)
+
+# nieuwe basin verbinden met nieuwe manning_resistance en nieuw kanaal basin
+model.edge.add(
+    dinkel_basin_node,
+    manning_node,
+    geometry=edge(dinkel_basin_node.geometry, manning_node.geometry),
+)
+
+model.edge.add(
+    manning_node,
+    kanaal_basin_node,
+    geometry=edge(manning_node.geometry, kanaal_basin_node.geometry),
+)
+
+# nieuw kanaal-basin vervinden met tabulated_rating_curve 471 (ST01051)
+model.edge.add(
+    kanaal_basin_node,
+    model.tabulated_rating_curve[471],
+    geometry=edge(kanaal_basin_node.geometry, model.tabulated_rating_curve[471].geometry),
+)
+
+# nieuw kanaal-basin vervinden met manning_resistance 1346
+model.edge.add(
+    kanaal_basin_node,
+    model.manning_resistance[1346],
+    geometry=edge(kanaal_basin_node.geometry, model.manning_resistance[1346].geometry),
+)
+
+# nieuwe outletlet bij grensduiker kanaal
+outlet_node = model.outlet.add(
+    Node(geometry=hydroobject_gdf.at[7746, "geometry"].boundary.geoms[0]), tables=[outlet_data]
+)
+
+# nieuwe basin verbinden met outlet verbinden met level_boundary 21
+model.edge.add(
+    outlet_node,
+    kanaal_basin_node,
+    geometry=edge(outlet_node.geometry, kanaal_basin_node.geometry),
+)
+
+model.edge.add(
+    model.level_boundary[21],
+    outlet_node,
+    geometry=edge(model.level_boundary[21].geometry, outlet_node.geometry),
+)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389192454
+model.reverse_edge(edge_id=2685)
+model.remove_node(node_id=2229, remove_edges=True)
+model.edge.add(
+    model.basin[1778],
+    model.outlet[1080],
+    geometry=edge(model.basin[1778].geometry, model.outlet[1080].geometry),
+)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389198178
+model.reverse_edge(edge_id=2715)
+model.reverse_edge(edge_id=2720)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390712613
+
+# Oplossen toplogische situatie kanaal Coevorden
+
+# opheffen basin 2243 en basin 2182
+model.remove_node(2243, remove_edges=True)
+model.remove_node(2182, remove_edges=True)
+model.remove_node(1351, remove_edges=True)
+model.remove_node(1268, remove_edges=True)
+model.remove_node(1265, remove_edges=True)
+
+# onknippen basin bij rode lijn
+line = split_line_gdf.at[4, "geometry"]
+basin_area_row = model.basin.area.df[model.basin.area.df.contains(line.centroid)].iloc[0]
+basin_area_index = basin_area_row.name
+basin_polygon = basin_area_row.geometry.geoms[0]
+basin_polygons = split_basin(basin_polygon, line)
+
+model.basin.area.df.loc[basin_area_index, ["geometry"]] = MultiPolygon([basin_polygons.geoms[1]])
+model.basin.area.df.loc[model.basin.area.df.index.max() + 1, ["geometry"]] = MultiPolygon([basin_polygons.geoms[0]])
+
+# # verplaatsen basin 1678 naar kruising waterlopen
+model.move_node(node_id=1678, geometry=hydroobject_gdf.loc[6594].geometry.boundary.geoms[1])
+
+# verwijderen edges 809, 814, 807, 810, 1293, 2772
+model.edge.df = model.edge.df[~model.edge.df.index.isin([809, 814, 807, 810, 887])]
+
+
+# verbinden manning 1270, 1127 en pumps 644, 579 en 649 met basin 1678
+for node_id in [1270, 1127]:
+    model.edge.add(
+        model.manning_resistance[node_id],
+        model.basin[1678],
+        geometry=edge(model.manning_resistance[node_id].geometry, model.basin[1678].geometry),
+    )
+
+for node_id in [644, 579, 649]:
+    model.edge.add(
+        model.pump[node_id],
+        model.basin[1678],
+        geometry=edge(model.pump[node_id].geometry, model.basin[1678].geometry),
+    )
+
+# verplaatsen manning 1267 naar basin-edge tussen 1678 en 1678
+model.move_node(node_id=1267, geometry=hydroobject_gdf.loc[6609].geometry.boundary.geoms[1])
+
+# maak nieuwe manning-node tussen 1678 en 1897
+manning_node = model.manning_resistance.add(
+    Node(geometry=hydroobject_gdf.loc[6596].geometry.interpolate(0.5, normalized=True)), tables=[manning_data]
+)
+
+# verbinden basin 1897 met manning-node
+model.edge.add(
+    model.basin[1897],
+    manning_node,
+    geometry=edge(model.basin[1897].geometry, manning_node.geometry),
+)
+
+model.edge.add(
+    manning_node,
+    model.basin[1678],
+    geometry=edge(manning_node.geometry, model.basin[1678].geometry),
+)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390952469
+
+# Schoonebekerdiep v.a. Twist Bült
+
+# verplaatsen basin 1909 nabij tabulated_rating_curve 383 (ST03607)
+model.move_node(1909, geometry=hydroobject_gdf.loc[6865].geometry.boundary.geoms[1])
+
+# verwijderen edges 780 en 778
+model.edge.df = model.edge.df[~model.edge.df.index.isin([780, 778])]
+
+# toevoegen edge tussen tabulated_rating_curve 383 en basin 1909
+model.edge.add(
+    model.tabulated_rating_curve[383],
+    model.basin[1909],
+    geometry=edge(model.tabulated_rating_curve[383].geometry, model.basin[1909].geometry),
+)
+
+# toevoegen edge tussen manning_resistance 851 en basin 1909
+model.edge.add(
+    model.manning_resistance[851],
+    model.basin[1909],
+    geometry=edge(model.manning_resistance[851].geometry, model.basin[1909].geometry),
+)
+
+# opknippen basin 1538 nabij 1909 en verbinden basin 1909 met 1539 via nieuwe manning_knoop
+line = split_line_gdf.at[5, "geometry"]
+model.split_basin(line=line)
+manning_node = model.manning_resistance.add(
+    Node(geometry=line.intersection(hydroobject_gdf.at[6866, "geometry"])), tables=[manning_data]
+)
+
+model.edge.add(model.basin[1909], manning_node)
+model.edge.add(manning_node, model.basin[1539], geometry=edge(manning_node.geometry, model.basin[1539].geometry))
+
+# verwijderen edge 2716,2718,2718,2719
+model.edge.df = model.edge.df[~model.edge.df.index.isin([2716, 2717, 2718, 2719])]
+
+# opknippen basin 2181 nabij 1881 en verbinden basin 1881 met 2181 via nieuwe manning_knoop
+model.move_node(1881, geometry=hydroobject_gdf.loc[6919].geometry.boundary.geoms[1])
+line = split_line_gdf.at[6, "geometry"]
+model.split_basin(line=line)
+manning_node = model.manning_resistance.add(
+    Node(geometry=line.intersection(hydroobject_gdf.at[6879, "geometry"])), tables=[manning_data]
+)
+
+model.edge.add(model.basin[1881], manning_node)
+model.edge.add(manning_node, model.basin[2181], geometry=edge(manning_node.geometry, model.basin[2181].geometry))
+
+for node_id in [139, 251, 267, 205]:
+    model.edge.add(
+        model.tabulated_rating_curve[node_id],
+        model.basin[1881],
+        geometry=edge(model.tabulated_rating_curve[node_id].geometry, model.basin[1881].geometry),
+    )
+
+model.move_node(1269, hydroobject_gdf.at[7749, "geometry"].interpolate(0.5, normalized=True))
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391168839
+
+# Molengoot Hardenberg
+
+# opheffen basin 1903
+model.remove_node(1903, remove_edges=True)
+
+# verbinden basin 1433 met pump 621
+model.edge.add(
+    model.basin[1433],
+    model.pump[621],
+    geometry=edge(model.basin[1433].geometry, model.pump[621].geometry),
+)
+
+# verbinden tabulated_rating_curves 99 en 283 met basin 1433
+for node_id in [99, 283]:
+    model.edge.add(
+        model.tabulated_rating_curve[node_id],
+        model.basin[1433],
+        geometry=edge(model.tabulated_rating_curve[node_id].geometry, model.basin[1433].geometry),
+    )
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390898004
+
+model.remove_node(1131, remove_edges=True)
+model.remove_node(1757, remove_edges=True)
+model.edge.add(
+    model.basin[1588],
+    model.tabulated_rating_curve[112],
+    geometry=edge(model.basin[1588].geometry, model.tabulated_rating_curve[112].geometry),
+)
+model.edge.add(
+    model.basin[1588],
+    model.manning_resistance[57],
+    geometry=edge(model.basin[1588].geometry, model.manning_resistance[57].geometry),
+)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391191673
+
+# verwijderen basin 1905
+model.remove_node(1905, remove_edges=True)
+
+# verbinden manning_resistance 995 met basin 2148
+model.edge.add(
+    model.basin[2148],
+    model.manning_resistance[995],
+)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391460899
+
+# Samenvoegen basin-knopen Overijsselse Vecht & Coevorden Vechtkanaal
+for basin_id in [1845, 2244, 2006, 1846]:
+    model.merge_basins(basin_id=basin_id, to_basin_id=2222)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391666745
+
+# Opruimen basins Nieuw-Amsterdam
+
+# opknippen basin 1611 bij rode lijn, area mergen met basin 1879
+basin_polygon = model.basin.area.df.set_index("node_id").at[1611, "geometry"]
+left_poly, right_poly = split_basin_multi_polygon(basin_polygon, split_line_gdf.at[8, "geometry"])
+model.basin.area.df.loc[model.basin.area.df.node_id == 1611, ["geometry"]] = right_poly
+
+left_poly = model.basin.area.df.set_index("node_id").at[1879, "geometry"].union(left_poly)
+model.basin.area.df.loc[model.basin.area.df.node_id == 1879, ["geometry"]] = MultiPolygon([left_poly])
+
+# merge basins 2186, 2173, 2022, 1611, 2185 in basin 1902
+for basin_id in [2186, 2173, 2022, 1611, 2185]:
+    model.merge_basins(basin_id=basin_id, to_basin_id=1902)
+
+# verplaats 1902 iets bovenstrooms
+model.move_node(1902, hydroobject_gdf.at[6615, "geometry"].boundary.geoms[1])
+
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391686269
+model.remove_node(2198, remove_edges=True)
+model.remove_node(2200, remove_edges=True)
+model.edge.add(model.basin[2111], model.pump[671])
+model.edge.add(model.tabulated_rating_curve[542], model.basin[2111])
+model.edge.add(model.pump[671], model.basin[2316])
+model.edge.add(model.basin[2316], model.tabulated_rating_curve[542])
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391710413
+
+model.remove_node(2202, remove_edges=True)
+model.edge.add(model.basin[1590], model.pump[657])
+model.edge.add(model.manning_resistance[1058], model.basin[1590])
+
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391672700
+
+# Merge basin 2176 in 1605
+model.merge_basins(basin_id=2176, to_basin_id=1605)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391726774
+# Merge basins 2206 in 1518
+model.merge_basins(basin_id=2206, to_basin_id=1518, are_connected=False)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391734144
+# dood takje uit Overijsselse Vecht
+model.remove_node(2210, remove_edges=True)
+model.remove_node(1294, remove_edges=True)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391740603
+
+# Merge basin 2225 met 2304
+model.merge_basins(2225, 2304)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391815016
+
+# Wetteringe als laterale inflow
+model.merge_basins(2231, 1853)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391750536
+
+# Rondom SL00010 opruimen
+model.remove_node(2230, remove_edges=True)
+model.remove_node(2251, remove_edges=True)
+model.edge.add(model.outlet[41], model.level_boundary[15])
+model.edge.add(model.basin[1442], model.pump[664])
+model.edge.add(model.basin[1442], model.pump[665])
+
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391820198
+
+# Merge basin 2232 in 1591
+model.merge_basins(basin_id=2232, to_basin_id=1591)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391825301
+
+# Basin 2236 naar LevelBoundary
+model.update_node(2236, "LevelBoundary", data=[level_data])
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391829471
+
+# Merge basin 2246 en 1419
+model.merge_basins(basin_id=2246, to_basin_id=1419)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391946915
+
+# Opruimen Elsbeek
+
+# Basin 2256 verplaatsen naar punt
+model.move_node(node_id=2256, geometry=hydroobject_gdf.loc[2896].geometry.boundary.geoms[1])
+
+# Basin knippen over lijn
+model.basin.area.df.loc[model.basin.area.df.node_id == 2256, ["node_id"]] = pd.NA
+model.split_basin(split_line_gdf.at[10, "geometry"])
+
+# Edges 446, 1516, 443 en 444 verwijderen
+model.edge.df = model.edge.df[~model.edge.df.index.isin([446, 1516, 443, 444])]
+
+# tabulated_rating_curves 202 en 230 verbinden met basin 2256
+model.edge.add(
+    model.tabulated_rating_curve[202],
+    model.basin[2256],
+    geometry=edge(model.tabulated_rating_curve[202].geometry, model.basin[2256].geometry),
+)
+model.edge.add(
+    model.tabulated_rating_curve[230],
+    model.basin[2256],
+    geometry=edge(model.tabulated_rating_curve[230].geometry, model.basin[2256].geometry),
+)
+
+# resistance 954 verbinden met basin 2256
+model.edge.add(
+    model.manning_resistance[954],
+    model.basin[2256],
+    geometry=edge(model.manning_resistance[954].geometry, model.basin[2256].geometry),
+)
+
+# basin 2256 verbinden met resistance 1106
+model.edge.add(
+    model.basin[2256],
+    model.manning_resistance[1106],
+    geometry=edge(model.basin[2256].geometry, model.manning_resistance[1106].geometry),
+)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391984234
+
+# Merge basin 2261 in basin 1698
+model.merge_basins(2261, 1698)
+model.remove_node(390, remove_edges=True)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391995841
+
+# Merge basin 2260 met basin 1645
+model.merge_basins(2260, 1645)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392010526
+# Merge basin 2220 met basin 1371
+model.merge_basins(2220, 1371, are_connected=False)
+
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392017041
+
+# Kanaal Almelo Nordhorn bij Almelo
+model.merge_basins(2219, 1583, are_connected=False)
+model.merge_basins(2209, 1583, are_connected=False)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392022887
+
+# Merge basin 2203 met 2227
+model.merge_basins(2203, 2227, are_connected=False)
+model.remove_node(1219, remove_edges=True)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392026739
+
+# Merge basin 2014 met 2144
+model.merge_basins(2014, 2144)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392030268
+
+# Merge basin 1696 met 1411
+model.merge_basins(1696, 1411)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392037263
+
+# Merge basin 2264 met 1459
+model.merge_basins(2264, 1459)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392043973
+
+# Merge basin 2212 en 2310
+model.merge_basins(2212, 2310)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392048684
+
+# Merge basin 2253 in basin 2228
+model.merge_basins(2253, 2228)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392052379
+
+# Merge basin 2221 in basin 1634
+model.merge_basins(2221, 1634)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392076634
+
+# Verbinding rondwaterleiding / Lennelwaterleiding herstellen
+model.merge_basins(1859, 2235, are_connected=False)
+
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382572457
 
 # Administratie basin node_id in node_table en Basin / Area correct maken
@@ -344,9 +853,86 @@ model.fix_unassigned_basin_area(method="closest", distance=100)
 model.fix_unassigned_basin_area()
 
 model.unassigned_basin_area.to_file("unassigned_basins.gpkg")
+model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
+
+
+# %%
+# corrigeren knoop-topologie
+
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
+
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
+
+# %%
+# basin-profielen updaten
+
+df = pd.DataFrame(
+    {
+        "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
+        "level": [0.0, 1.0] * len(model.basin.node.df),
+        "area": [0.01, 1000.0] * len(model.basin.node.df),
+    }
+)
+df.index.name = "fid"
+model.basin.profile.df = df
+
+df = model.basin.profile.df.groupby("node_id")[["level"]].max().reset_index()
+df.index.name = "fid"
+model.basin.state.df = df
+
+# %%
+# tabulated_rating_curves updaten
+df = pd.DataFrame(
+    {
+        "node_id": np.repeat(model.tabulated_rating_curve.node.df.index.to_numpy(), 2),
+        "level": [0.0, 5] * len(model.tabulated_rating_curve.node.df),
+        "flow_rate": [0, 0.1] * len(model.tabulated_rating_curve.node.df),
+    }
+)
+df.index.name = "fid"
+model.tabulated_rating_curve.static.df = df
+
+
+# %%
+
+# level_boundaries updaten
+df = pd.DataFrame(
+    {
+        "node_id": model.level_boundary.node.df.index.to_list(),
+        "level": [0.0] * len(model.level_boundary.node.df),
+    }
+)
+df.index.name = "fid"
+model.level_boundary.static.df = df
+
+# %%
+# manning_resistance updaten
+length = len(model.manning_resistance.node.df)
+df = pd.DataFrame(
+    {
+        "node_id": model.manning_resistance.node.df.index.to_list(),
+        "length": [100.0] * length,
+        "manning_n": [100.0] * length,
+        "profile_width": [100.0] * length,
+        "profile_slope": [100.0] * length,
+    }
+)
+df.index.name = "fid"
+model.manning_resistance.static.df = df
 
 #  %% write model
-model.use_validation = False
-ribasim_toml = cloud.joinpath("Vechtstromen", "modellen", "Vechtstromen_fix_model_network", "vechtstromen.toml")
+
+model.basin.area.df.loc[:, ["meta_area"]] = model.basin.area.df.area
+model.basin.node.df[~model.basin.node.df.index.isin(model.basin.area.df.node_id)].to_file("missing_areas.gpkg")
+
+
+# model.use_validation = True
 model.write(ribasim_toml)
+
 # %%
