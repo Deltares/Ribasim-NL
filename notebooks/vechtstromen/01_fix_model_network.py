@@ -6,7 +6,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 from ribasim_nl.geometry import edge, split_basin, split_basin_multi_polygon
-from shapely.geometry import LineString, MultiPolygon, Point
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import nearest_points
 
 cloud = CloudStorage()
@@ -829,11 +829,14 @@ model.merge_basins(2264, 1459)
 
 # Merge basin 2212 en 2310
 model.merge_basins(2212, 2310)
+poly = model.basin.area.df.at[59, "geometry"].union(model.basin.area.df.set_index("node_id").at[2310, "geometry"])
+model.basin.area.df.loc[model.basin.area.df.node_id == 2310, ["geometry"]] = MultiPolygon([poly])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392048684
 
 # Merge basin 2253 in basin 2228
 model.merge_basins(2253, 2228)
+
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392052379
 
@@ -855,7 +858,6 @@ model.fix_unassigned_basin_area()
 model.unassigned_basin_area.to_file("unassigned_basins.gpkg")
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
 
-
 # %%
 # corrigeren knoop-topologie
 
@@ -869,6 +871,94 @@ for row in network_validator.edge_incorrect_type_connectivity(
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
 
+
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382578661
+
+# opvullen gaten
+basin_polygon = model.basin.area.df.union_all()
+# holes = [Polygon(interior) for polygon in basin_polygon.buffer(10).buffer(-10).geoms for interior in polygon.interiors]
+holes = [Polygon(interior) for interior in basin_polygon.buffer(10).buffer(-10).interiors]
+holes_df = gpd.GeoSeries(holes, crs=28992)
+holes_df.index = holes_df.index + 1
+holes_df.to_file(
+    "holes.gpkg",
+    index=True,
+    fid="fid",
+)
+# splitsen Alemelo-Nordhorn / Overijsselskanaal. Overijsselskanaal zit in HWS
+line = split_line_gdf.at[12, "geometry"]
+idx = holes_df[holes_df.intersects(line)].index[0]
+poly = split_basin(holes_df[holes_df.intersects(line)].iloc[0], line).geoms[0]
+poly = model.basin.area.df.set_index("node_id").at[1583, "geometry"].union(poly)
+model.basin.area.df.loc[model.basin.area.df.node_id == 1583, ["geometry"]] = MultiPolygon([poly])
+
+# Split Overijsselskanaal bij Zwolsekanaal
+line = split_line_gdf.at[13, "geometry"]
+poly1, poly2 = split_basin(holes_df[holes_df.intersects(line)].iloc[0], line).geoms
+
+poly1 = model.basin.area.df.set_index("node_id").at[2116, "geometry"].union(poly1)
+poly1 = MultiPolygon([i for i in poly1.geoms if i.geom_type == "Polygon"])
+model.basin.area.df.loc[model.basin.area.df.node_id == 2116, ["geometry"]] = poly1
+
+poly2 = model.basin.area.df.set_index("node_id").at[2115, "geometry"].union(poly2)
+poly2 = MultiPolygon([i for i in poly2.geoms if i.geom_type == "Polygon"] + [holes_df.loc[38], holes_df.loc[29]])
+model.basin.area.df.loc[model.basin.area.df.node_id == 2115, ["geometry"]] = poly2
+
+# de rest gaan we automatisch vullen
+holes_df = holes_df[~holes_df.index.isin([10, 22, 29, 32, 38, 39, 41])]
+
+holes_df.to_file(
+    "holes.gpkg",
+    index=True,
+    fid="fid",
+)
+
+drainage_areas_df = gpd.read_file(
+    cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "areas.gpkg"), layer="drainage_areas"
+)
+
+drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
+
+for idx, geometry in enumerate(holes_df):
+    # select drainage-area
+    drainage_area_select = drainage_areas_df[drainage_areas_df.contains(geometry.buffer(-10))]
+    if not drainage_area_select.empty:
+        if not len(drainage_area_select) == 1:
+            raise ValueError("hole contained by multiple drainage areas, can't fix that yet")
+
+        drainage_area = drainage_area_select.iloc[0].geometry
+
+        # find basin_id to merge to
+        selected_basins_df = model.basin.area.df[
+            model.basin.area.df.node_id.isin(model.basin.node.df[model.basin.node.df.within(drainage_area)].index)
+        ].set_index("node_id")
+        if selected_basins_df.empty:
+            selected_basins_df = model.basin.area.df[
+                model.basin.area.df.buffer(-10).intersects(drainage_area)
+            ].set_index("node_id")
+
+        assigned_basin_id = selected_basins_df.intersection(geometry.buffer(10)).area.idxmax()
+
+        # clip and merge geometry
+        geometry = geometry.buffer(10).difference(basin_polygon)
+        geometry = (
+            model.basin.area.df.set_index("node_id")
+            .at[assigned_basin_id, "geometry"]
+            .union(geometry)
+            .buffer(0.1)
+            .buffer(-0.1)
+        )
+
+        if isinstance(geometry, Polygon):
+            geometry = MultiPolygon([geometry])
+        model.basin.area.df.loc[model.basin.area.df.node_id == assigned_basin_id, "geometry"] = geometry
+
+# buffer out small slivers
+model.basin.area.df.loc[:, ["geometry"]] = (
+    model.basin.area.df.buffer(0.1)
+    .buffer(-0.1)
+    .apply(lambda x: x if x.geom_type == "MultiPolygon" else MultiPolygon([x]))
+)
 # %%
 # basin-profielen updaten
 
