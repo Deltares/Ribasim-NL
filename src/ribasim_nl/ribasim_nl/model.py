@@ -290,6 +290,10 @@ class Model(Model):
                     if node_id not in self.edge.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
                         self.remove_node(node_id)
 
+    def remove_edges(self, edge_ids: list[int]):
+        if self.edge.df is not None:
+            self.edge.df = self.edge.df[~self.edge.df.index.isin(edge_ids)]
+
     def move_node(self, node_id: int, geometry: Point):
         node_type = self.node_table().df.at[node_id, "node_type"]
 
@@ -442,19 +446,29 @@ class Model(Model):
         if self.basin.area.df.crs is None:
             self.basin.area.df.crs = self.crs
 
+    def redirect_edge(self, edge_id: int, from_node_id: int | None = None, to_node_id: int | None = None):
+        if self.edge.df is not None:
+            if from_node_id is not None:
+                self.edge.df.loc[edge_id, ["from_node_id"]] = from_node_id
+            if to_node_id is not None:
+                self.edge.df.loc[edge_id, ["to_node_id"]] = to_node_id
+
+        self.reset_edge_geometry(edge_ids=[edge_id])
+
     def merge_basins(self, basin_id: int, to_basin_id: int, are_connected=True):
         for node_id in (basin_id, to_basin_id):
             if node_id not in self.basin.node.df.index:
                 raise ValueError(f"{node_id} is not a basin")
 
         if are_connected:
-            path = nx.shortest_path(self.graph, to_basin_id, basin_id)
+            paths = [i for i in nx.all_shortest_paths(self.graph, basin_id, to_basin_id) if len(i) == 3]
 
-            if len(path) != 3:
+            if len(paths) == 0:
                 raise ValueError(f"basin {basin_id} not a direct neighbor of basin {to_basin_id}")
 
             # remove flow-node and connected edges
-            self.remove_node(path[1], remove_edges=True)
+            for path in paths:
+                self.remove_node(path[1], remove_edges=True)
 
         # get a complete edge-list to modify
         edge_ids = self.edge.df[self.edge.df.from_node_id == basin_id].index.to_list()
