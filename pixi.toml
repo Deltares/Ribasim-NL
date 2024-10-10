@@ -80,7 +80,7 @@ ribasim_nl = { path = "src/ribasim_nl", editable = true }
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 
 [feature.prod.dependencies]
-ribasim = "==2024.10.0"
+ribasim = "==2024.11.0"
 
 [environments]
 default = { features = ["common", "prod"] }
