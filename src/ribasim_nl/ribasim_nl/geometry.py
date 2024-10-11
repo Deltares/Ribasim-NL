@@ -104,7 +104,8 @@ def split_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
     return MultiPolygon(sort_basins(keep_polys))
 
 
-def split_basin_multi_polygon(basin_polygon: MultiPolygon, line: LineString):
+def split_basin_multi_polygon(basin_polygon: MultiPolygon, line: LineString) -> tuple[MultiPolygon, MultiPolygon]:
+    """Split a MultiPolygon into two given a LineString."""
     line_centre = line.interpolate(0.5, normalized=True)
 
     # get the polygon to cut
