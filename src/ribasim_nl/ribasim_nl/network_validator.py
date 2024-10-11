@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import geopandas as gpd
 from ribasim import Model
 
 
@@ -67,6 +68,31 @@ class NetworkValidator:
         """Check if a Node with node_type Basin is not connected to another node"""
         mask = self.node_df.apply(lambda row: check_internal_basin(row, self.edge_df), axis=1)
         return self.node_df[mask]
+
+    def node_invalid_connectivity(self, tolerance: float = 1.0) -> gpd.GeoDataFrame:
+        """Check if node_from and node_to are correct on edge"""
+        node_df = self.node_df
+        invalid_edges_df = self.edge_incorrect_connectivity()
+        invalid_nodes = []
+        for row in invalid_edges_df.itertuples():
+            geoms = row.geometry.boundary.geoms
+
+            for idx, attr in ((0, "from_node_id"), (1, "to_node_id")):
+                node_id = getattr(row, attr)
+                point = geoms[idx]
+                if node_id in node_df.index:
+                    if point.distance(node_df.at[node_id, "geometry"]) > tolerance:
+                        invalid_nodes += [{"node_id": node_id, "geometry": point}]
+                else:
+                    invalid_nodes += [{"node_id": node_id, "geometry": point}]
+
+        if invalid_nodes:
+            df = gpd.GeoDataFrame(invalid_nodes, crs=node_df.crs)
+            df.drop_duplicates(inplace=True)
+        else:
+            df = gpd.GeoDataFrame({"node_id": []}, geometry=gpd.GeoSeries(), crs=node_df.crs)
+
+        return df
 
     def edge_duplicated(self):
         """Check if the `from_node_id` and `to_node_id` in the edge-table is duplicated"""

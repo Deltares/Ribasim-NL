@@ -104,6 +104,37 @@ def split_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
     return MultiPolygon(sort_basins(keep_polys))
 
 
+def split_basin_multi_polygon(basin_polygon: MultiPolygon, line: LineString) -> tuple[MultiPolygon, MultiPolygon]:
+    """Split a MultiPolygon into two given a LineString."""
+    line_centre = line.interpolate(0.5, normalized=True)
+
+    # get the polygon to cut
+    basin_geoms = list(basin_polygon.geoms)
+    if len(basin_geoms) == 0:
+        cut_idx = 0
+    else:
+        try:
+            cut_idx = next(idx for idx, i in enumerate(basin_geoms) if i.contains(line_centre))
+        except StopIteration:
+            cut_idx = next(idx for idx, i in enumerate(basin_geoms) if line.intersects(i))
+
+    # split it
+    right_basin_poly, left_basin_poly = split_basin(basin_geoms[cut_idx], line).geoms
+
+    # concat left-over polygons to the right-side
+    right_basin_poly = [right_basin_poly]
+    left_basin_poly = [left_basin_poly]
+
+    for idx, geom in enumerate(basin_geoms):
+        if idx != cut_idx:
+            if geom.distance(right_basin_poly[0]) < geom.distance(left_basin_poly[0]):
+                right_basin_poly += [geom]
+            else:
+                left_basin_poly += [geom]
+
+    return MultiPolygon(right_basin_poly), MultiPolygon(left_basin_poly)
+
+
 def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Polygon | MultiPolygon:
     """Drop the z-coordinate of a geometry if it has.
 
@@ -145,3 +176,21 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Pol
             )
 
     return geometry
+
+
+def edge(point_from: Point, point_to: Point) -> LineString:
+    """Create a LineString geometry between two Point geometries, dropping z-coordinate if any
+
+    Args:
+        point_from (Point): _description_
+        point_to (Point): _description_
+
+    Returns
+    -------
+        LineString: LineString without z-coordinate
+    """
+    if point_from.has_z:
+        point_from = Point(point_from.x, point_from.y)
+    if point_to.has_z:
+        point_to = Point(point_to.x, point_to.y)
+    return LineString((point_from, point_to))
