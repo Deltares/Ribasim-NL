@@ -9,10 +9,18 @@ website:
     left:
       - reference/index.qmd
       - cloudstorage.qmd
+      - text: "Workflows"
+        file: workflow/main-watersystem.qmd
     right:
       - icon: github
         href: https://github.com/Deltares/Ribasim-NL
         aria-label: GitHub
+
+  sidebar:
+    - title: "Workflows"
+      contents:
+        - workflow/main-watersystem.qmd
+        - workflow/level-controlled.qmd
 
 format:
   html:
