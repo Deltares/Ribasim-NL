@@ -1,285 +1,141 @@
 import logging
 from pathlib import Path
 
+import geopandas as gpd
 import pandas as pd
 from ribasim import Model
-from shapely.geometry import Point
+from shapely.geometry import Point, LineString
 
 
-class NoGeometryFilter(logging.Filter):
-    def filter(self, record):
-        return not record.getMessage().startswith("[")
+class AddStorageBasins:
+    def __init__(self, ribasim_model, exclude_hoofdwater, additional_basins_to_exclude, distance_bergende_basin=10):
+        self.ribasim_model = ribasim_model
+        self.exclude_hoofdwater = exclude_hoofdwater
+        self.additional_basins_to_exclude= additional_basins_to_exclude
+        self.distance_bergende_basin = distance_bergende_basin
 
 
-class AddStorageBasin:
-    def __init__(self, ribasim_toml, model_name, output_folder, include_hoofdwater=False, log=True, node_ids=None):
-        """
-        Initialize the AddStorageBasin class.
+    #duplicate the doorgaande basins:
+        #retrieve the ids of the doorgaande basins, exlude the basins_to_exclude
+        #copy the .node, .static, .state, .profile table 
 
-        :param ribasim_toml: Path to the ribasim TOML file
-        :param model_name: Name of the model
-        :param output_folder: Folder to output the results
-        :param include_hoofdwater: Boolean flag to include hoofdwater in processing
-        :param log: Boolean flag to enable logging
-        :param node_ids: List of node IDs to process, if specified
-        """
-        # Parse input
-        self.ribasim_toml = ribasim_toml
-        self.model_name = model_name
-        self.output_folder = output_folder
-        self.include_hoofdwater = include_hoofdwater
-        self.log = log
-        self.node_ids = node_ids
-        # Load model
-        self.model = self.load_ribasim_model(ribasim_toml)
-        # Set logging
-        if self.log is True:
-            self.log_filename = Path(output_folder) / f"{model_name}.log"
-            self.setup_logging()
+    def create_bergende_basins(self):
+        doorgaande_basin_ids = self.ribasim_model.basin.state.df.copy()
+        
+        #exclude (possibly) hoofdwater basins, as the majority of the area is meant for doorgaand water
+        if self.exclude_hoofdwater: 
+            doorgaande_basin_ids = doorgaande_basin_ids.loc[doorgaande_basin_ids.meta_categorie == 'doorgaand']
 
-    def setup_logging(self):
-        """Set up logging to file and console."""
-        # Clear any existing handlers
-        for handler in logging.root.handlers[:]:
-            logging.root.removeHandler(handler)
+        #exclude (possibly) other basins to create a storage basin
+        if self.additional_basins_to_exclude is not None and len(self.additional_basins_to_exclude) > 0:
+            doorgaande_basin_ids = doorgaande_basin_ids.loc[~doorgaande_basin_ids.node_id.isin(self.additional_basins_to_exclude)]
 
-        # Setup logging to file
-        logging.basicConfig(
-            filename=self.log_filename,
-            level=logging.DEBUG,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
+        #convert to numbers
+        doorgaande_basin_ids = doorgaande_basin_ids.node_id.to_numpy()
+        
+        # retrieve the max node_id
+        max_node_id = self.get_current_max_nodeid()
+        
+        # duplicate all the tables
+        bergende_node = self.ribasim_model.basin.node.df.loc[self.ribasim_model.basin.node.df.index.isin(doorgaande_basin_ids)].copy()
+        bergende_static = self.ribasim_model.basin.static.df.loc[self.ribasim_model.basin.static.df.node_id.isin(doorgaande_basin_ids)].copy()
+        bergende_state = self.ribasim_model.basin.state.df.loc[self.ribasim_model.basin.state.df.node_id.isin(doorgaande_basin_ids)].copy()
+        bergende_profile = self.ribasim_model.basin.profile.df.loc[self.ribasim_model.basin.profile.df.node_id.isin(doorgaande_basin_ids)].copy()
+        bergende_area = self.ribasim_model.basin.area.df.loc[self.ribasim_model.basin.area.df.node_id.isin(doorgaande_basin_ids)].copy()
+        
+        # store the linked node_id of the bergende basin, and add the found max node_id. Plus one as we need to start counting from the next node_id
+        bergende_node['doorgaand_id'] = bergende_node.index.copy()
+        bergende_node.index = max_node_id + bergende_node.index #+ 1 dont add the plus one here, as the index already starts at 1
+        bergende_static.node_id = max_node_id + bergende_static.node_id #+ 1
+        bergende_state.node_id = max_node_id + bergende_state.node_id #+ 1
+        bergende_profile.node_id = max_node_id + bergende_profile.node_id #+ 1
+        bergende_area.node_id = max_node_id + bergende_area.node_id #+ 1
 
-        # # Add console handler
-        # console_handler = logging.StreamHandler()
-        # console_handler.setLevel(logging.DEBUG)
-        # console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        #change the meta_categorie and column names from doorgaand to bergend
+        bergende_state.meta_categorie = 'bergend'
+        
+        #add the geometry information for the bergende basin and the manning_resistance
+        bergende_node = bergende_node.rename(columns={'geometry': 'geometry_doorgaand'}) #store the geometry of the doorgaande basin
+        bergende_node['geometry_bergend'] = bergende_node['geometry_doorgaand'].translate(xoff=self.distance_bergende_basin, yoff=0) #create a bergende basin x meters to the right
+        bergende_node['geometry_manning'] = bergende_node['geometry_doorgaand'].translate(xoff=self.distance_bergende_basin / 2, yoff=0) #create a bergende manning resistance in the middle (halfway, thus divided by 2)
+        bergende_node['manning_id'] = bergende_node.index.max() + bergende_node.index + 1 #retrieve new max node id for the manning node
 
-        # # Add custom filter to console handler
-        # console_handler.addFilter(NoGeometryFilter())
+        #create edges from the nodes
+        def create_linestring(row, from_col, to_col):
+            return LineString([row[from_col], row[to_col]])
 
-        # logging.getLogger().addHandler(console_handler)
+        bergende_node["geometry_edge_bergend_to_MR"] = bergende_node.apply(create_linestring, axis=1, from_col="geometry_bergend", to_col="geometry_manning")
+        bergende_node["geometry_edge_MR_to_doorgaand"] = bergende_node.apply(create_linestring, axis=1, from_col="geometry_manning", to_col="geometry_doorgaand")
 
-    def load_ribasim_model(self, ribasim_toml):
-        """
-        Load the ribasim model from the TOML file.
+        #create the manning resistance node table, conform Ribasim style
+        manning_node = bergende_node[['manning_id', 'geometry_manning']].copy().reset_index(drop=True)
+        manning_node = manning_node.rename(columns={'manning_id':'node_id',
+                                                    'geometry_manning':'geometry'})
+        manning_node = manning_node.set_index('node_id')
+        manning_node['node_type'] = 'ManningResistance'
+        manning_node['meta_node_id'] = manning_node.index
+        
+        #create the manning resistance static table, conform Ribasim style
+        manning_static = manning_node.reset_index()[['node_id']].copy()
+        manning_static['length'] = 1000
+        manning_static['manning_n'] = 0.02
+        manning_static['profile_width'] = 2.0
+        manning_static['profile_slope'] = 3.0
+        
+        #create the edges table which goes from the bergende basin to the ManningResistance (MR)
+        edge_bergend_MR = pd.DataFrame()
+        edge_bergend_MR['from_node_id'] = bergende_node.index.copy() #the index is the bergende node_id, which is the starting point
+        edge_bergend_MR['to_node_id'] = bergende_node.manning_id.to_numpy() #it goes to the manning node
+        edge_bergend_MR['geometry'] = bergende_node.geometry_edge_bergend_to_MR.values #edge geometry was already created
+        edge_bergend_MR['edge_type'] = 'flow'
+        edge_bergend_MR['meta_from_node_type'] = 'Basin' #include metadata
+        edge_bergend_MR['meta_to_node_type'] = 'ManningResistance' #include metadata
+        edge_bergend_MR['meta_categorie'] = 'bergend' #include metadata
 
-        :param ribasim_toml: Path to the ribasim TOML file
-        :return: Loaded ribasim model
-        """
-        model = Model(filepath=ribasim_toml)
-        return model
+        #repeat the same, but then from the ManningResistance (MR) to the doorgaande
+        edge_MR_doorgaand = pd.DataFrame()
+        edge_MR_doorgaand['from_node_id'] = bergende_node.manning_id.to_numpy() #the starting point is the ManningResistance node
+        edge_MR_doorgaand['to_node_id'] = bergende_node.doorgaand_id.to_numpy() #it goes to the doorgaande basin
+        edge_MR_doorgaand['geometry'] = bergende_node.geometry_edge_MR_to_doorgaand.values #edge geometry was already created
+        edge_MR_doorgaand['edge_type'] = 'flow'
+        edge_MR_doorgaand['meta_from_node_type'] = 'ManningResistance' #include metadata
+        edge_MR_doorgaand['meta_to_node_type'] = 'Basin' #include metadata
+        edge_MR_doorgaand['meta_categorie'] = 'bergend' #include metadata. This is still bergend. 
 
+        #combine the edge tables
+        edge_bergend_all = pd.concat([edge_bergend_MR, edge_MR_doorgaand]).reset_index(drop=True)
+        edge_bergend_all['edge_id'] = edge_bergend_all.index.copy() + self.ribasim_model.edge.df.index.max() + 1 #start counting from the highest edge_id
+        edge_bergend_all = edge_bergend_all.set_index('edge_id')
+
+        #clean the new node table, update the meta_node_id column
+        bergende_node = bergende_node[['node_type', 'meta_node_id', 'geometry_bergend']]
+        bergende_node = bergende_node.rename(columns={'geometry_bergend':'geometry'})
+        bergende_node['meta_node_id'] = bergende_node.index.copy()
+
+        #concat all the new tables to the existing model
+        self.ribasim_model.basin.node.df = pd.concat([self.ribasim_model.basin.node.df, bergende_node])
+        self.ribasim_model.basin.static = pd.concat([self.ribasim_model.basin.static.df, bergende_static]).reset_index(drop=True)
+        self.ribasim_model.basin.state = pd.concat([self.ribasim_model.basin.state.df, bergende_state]).reset_index(drop=True)
+        self.ribasim_model.basin.profile = pd.concat([self.ribasim_model.basin.profile.df, bergende_profile]).reset_index(drop=True)
+        self.ribasim_model.basin.area = pd.concat([self.ribasim_model.basin.area.df, bergende_area]).reset_index(drop=True)
+        
+        self.ribasim_model.manning_resistance.node.df = pd.concat([self.ribasim_model.manning_resistance.node.df, manning_node])        
+        self.ribasim_model.manning_resistance.static = pd.concat([self.ribasim_model.manning_resistance.static.df, manning_static]).reset_index(drop=True)
+
+        self.ribasim_model.edge.df = pd.concat([self.ribasim_model.edge.df, edge_bergend_all])        
+        
     def get_current_max_nodeid(self):
-        """
-        Get the current maximum node ID from the model.
-
-        :return: Maximum node ID
-        """
+        """Get the current maximum node ID from the model where node_id is stored as an index."""
         max_ids = []
-        for k, v in self.model.__dict__.items():
-            if hasattr(v, "node") and "node_id" in v.node.df.columns.tolist():
-                mid = v.node.df.node_id.max()
-                if not pd.isna(mid):
-                    max_ids.append(int(mid))
+        for k, v in self.ribasim_model.__dict__.items():
+            if hasattr(v, "node"):
+                # Check if the DataFrame's index is named 'meta_node_id'
+                if v.node.df.index.name == "node_id":
+                    mid = v.node.df.index.max()
+                    if not pd.isna(mid):
+                        max_ids.append(int(mid))
         if len(max_ids) == 0:
             raise ValueError("No node ids found")
         max_id = max(max_ids)
         return max_id
 
-    def add_basin_nodes_with_manning_resistance(self):
-        """Add basin nodes with Manning resistance based on meta_categorie."""
-        # Get the meta_categorie column from the state DataFrame
-        state_df = self.model.basin.state.df
-
-        for index, row in self.model.basin.node.df.iterrows():
-            node_id = row["node_id"]
-
-            # If node_ids is specified, only process those nodes
-            if self.node_ids is not None and node_id not in self.node_ids:
-                continue
-
-            # Retrieve the corresponding meta_categorie for the current node
-            meta_categorie = state_df.loc[state_df["node_id"] == node_id, "meta_categorie"].to_numpy()
-
-            # If meta_categorie is empty, continue to the next row
-            if len(meta_categorie) == 0:
-                continue
-
-            meta_categorie = meta_categorie[0]  # Get the actual value
-
-            if self.include_hoofdwater:
-                if "bergend" in meta_categorie or (
-                    "hoofdwater" not in meta_categorie and "doorgaand" not in meta_categorie
-                ):
-                    continue
-            else:
-                if "bergend" in meta_categorie or "hoofdwater" in meta_categorie or "doorgaand" not in meta_categorie:
-                    continue
-
-            original_node_id = row["node_id"]
-            original_geometry = row["geometry"]
-            logging.info(f"Processing Basin Node ID: {original_node_id}")
-
-            # Calculate new geometries
-            manning_geometry = Point(original_geometry.x + 5, original_geometry.y)
-            new_basin_geometry = Point(original_geometry.x + 10, original_geometry.y)
-
-            # Add manning resistance node
-            manning_node_id = self.add_manning_resistance_node(manning_geometry)
-            if manning_node_id is not None:
-                # Add new basin node and connect to manning resistance node
-                new_basin_node_id = self.add_new_basin_node(new_basin_geometry)
-                if new_basin_node_id is not None:
-                    self.connect_nodes(new_basin_node_id, manning_node_id, original_node_id)
-                else:
-                    logging.error(f"Failed to add new basin node for Manning Resistance Node ID: {manning_node_id}")
-            else:
-                logging.error(f"Failed to add Manning Resistance node for Basin Node ID: {original_node_id}")
-
-    def add_new_basin_node(self, geometry):
-        """
-        Add a new basin node at the specified geometry.
-
-        :param geometry: Geometry of the new basin node
-        :return: ID of the new basin node, or None if adding failed
-        """
-        try:
-            max_id = self.get_current_max_nodeid()
-            new_node_id = max_id + 1
-            key = "basin"
-            value = getattr(self.model, key, None)
-
-            if value is not None:
-                original_geometry = None
-                if hasattr(value, "__dict__"):
-                    # Retrieve the original geometry (MultiPolygon) from the first row of the basin area DataFrame
-                    if "area" in value.__dict__ and hasattr(value.area, "df") and not value.area.df.empty:
-                        original_geometry = value.area.df.iloc[0]["geometry"]
-
-                    for sub_key, sub_value in value.__dict__.items():
-                        if sub_key == "time" or sub_key == "subgrid":
-                            continue
-                        else:
-                            sub_value = getattr(value, sub_key, None)
-                            if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
-                                continue
-                            df_value = sub_value.df.copy()
-                            last_row = df_value.iloc[-1].copy()
-                            last_row["node_id"] = new_node_id
-                            if "geometry" in last_row:
-                                # Determine the geometry type based on the table type
-                                if sub_key == "node":
-                                    last_row["geometry"] = geometry
-                                elif sub_key == "area":
-                                    last_row["geometry"] = (
-                                        original_geometry if original_geometry is not None else geometry
-                                    )
-                            for col in last_row.index:
-                                if col.startswith("meta_cat"):
-                                    last_row[col] = "bergend"
-                            new_row_df = pd.DataFrame([last_row])
-                            df_value = pd.concat([df_value, new_row_df], ignore_index=True)
-                            sub_value.df = df_value
-
-                    logging.info(f"Successfully added new basin node with Node ID: {new_node_id}")
-                    return new_node_id
-                else:
-                    logging.error(f"Could not find value for key '{key}'")
-                    return None
-
-        except Exception as e:
-            logging.error(f"An error occurred while adding new basin node: {e}")
-            return None
-
-    def add_manning_resistance_node(self, geometry):
-        """
-        Add a Manning resistance node at the specified geometry.
-
-        :param geometry: Geometry of the Manning resistance node
-        :return: ID of the Manning resistance node, or None if adding failed
-        """
-        try:
-            max_id = self.get_current_max_nodeid()
-            manning_node_id = max_id + 1
-            key = "manning_resistance"
-            value = getattr(self.model, key, None)
-
-            if value is not None:
-                if hasattr(value, "__dict__"):
-                    for sub_key, sub_value in value.__dict__.items():
-                        if sub_key == "time" or sub_key == "subgrid":
-                            continue
-                        else:
-                            sub_value = getattr(value, sub_key, None)
-                            if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
-                                continue
-                            df_value = sub_value.df.copy()
-                            last_row = df_value.iloc[-1].copy()
-                            last_row["node_id"] = manning_node_id
-                            if "geometry" in last_row:
-                                last_row["geometry"] = geometry
-                            for col in last_row.index:
-                                if col.startswith("meta_categ"):
-                                    last_row[col] = "bergend"
-                            new_row_df = pd.DataFrame([last_row])
-                            df_value = pd.concat([df_value, new_row_df], ignore_index=True)
-                            sub_value.df = df_value
-
-                logging.info(f"Successfully added Manning Resistance node with Node ID: {manning_node_id}")
-                return manning_node_id
-            else:
-                logging.error(f"Could not find value for key '{key}'")
-                return None
-
-        except Exception as e:
-            logging.error(f"Error adding Manning Resistance node: {e}")
-            return None
-
-    def connect_nodes(self, new_basin_node_id, manning_node_id, original_node_id):
-        """
-        Connect the new basin node to the original basin node via the Manning resistance node.
-
-        :param new_basin_node_id: ID of the new basin node
-        :param manning_node_id: ID of the Manning resistance node
-        :param original_node_id: ID of the original basin node
-        """
-        try:
-            self.model.edge.add(self.model.basin[new_basin_node_id], self.model.manning_resistance[manning_node_id])
-            self.model.edge.add(self.model.manning_resistance[manning_node_id], self.model.basin[original_node_id])
-            logging.info(
-                f"Connected new Basin Node ID: {new_basin_node_id} to original Basin Node ID: {original_node_id} via Manning Resistance Node ID: {manning_node_id}"
-            )
-        except Exception as e:
-            logging.error(f"Error connecting nodes: {e}")
-
-    def run(self):
-        """Run the process of adding basin nodes with Manning resistance and writing the updated model"""
-        self.add_basin_nodes_with_manning_resistance()
-        # self.write_ribasim_model()
-        logging.shutdown()
-
-        return self.model
-
-    def write_ribasim_model(self):
-        """Write the updated ribasim model to the output directory"""
-        outputdir = Path(self.output_folder)
-        modelcase_dir = Path(f"updated_{self.model_name.lower()}")
-
-        full_path = outputdir / modelcase_dir
-        full_path.mkdir(parents=True, exist_ok=True)
-
-        self.model.write(full_path / "ribasim.toml")
-
-
-# Example usage
-# ribasim_toml =  r"C:\Users\Aerts\Desktop\RIBASIM Project\Verwerken_Feedback\modellen\AmstelGooienVecht_boezemmodel_2024_6_8\ribasim.toml"
-# output_folder = r"C:\Users\Aerts\Desktop\RIBASIM Project\Verwerken_Feedback\verwerkte_modellen"
-# model_name = 'test_hoofdwater'
-# node_ids = [1, 2, 3]  # Specify node IDs to process
-
-# processor = AddStorageBasin(ribasim_toml, model_name, output_folder, include_hoofdwater=True, log=True, node_ids=node_ids)
-# processor.run()
