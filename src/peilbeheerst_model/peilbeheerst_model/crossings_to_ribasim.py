@@ -8,7 +8,7 @@ import pandas as pd
 import ribasim
 from bokeh.palettes import Category10
 from ribasim_nl import CloudStorage
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon, MultiPolygon
 from shapely.wkt import loads
 
 
@@ -235,8 +235,8 @@ class CrossingsToRibasim:
         numbers_to = crossings[~crossings["peilgebied_to"].str.contains("[a-zA-Z_]", na=False)]
         numbers_df = pd.concat([numbers_from["peilgebied_from"], numbers_to["peilgebied_to"]])
         numbers_df = numbers_df.unique()
-
-        if numbers_df[0] is not None:  # detect the largest number
+        
+        if numbers_df[0] is not None and not np.isnan(numbers_df[0]):  # detect the largest number
             max_number = max(numbers_df.astype(int))
             if max_number < 0:
                 max_number = 0
@@ -881,19 +881,24 @@ class RibasimNetwork:
         from_node_type = self.edges.merge(self.nodes, left_on="from", right_on="node_id")["type"].to_numpy()
 
         edge["from_node_id"] = self.edges["from"]  # from node ids
-        edge["from_node_type"] = from_node_type
+        edge["meta_from_node_type"] = from_node_type
 
         # fix the to nodes
         to_node_type = self.edges.merge(self.nodes, left_on="to", right_on="node_id")["type"].to_numpy()
 
         edge["to_node_id"] = self.edges["to"]  # to node ids
-        edge["to_node_type"] = to_node_type
+        edge["meta_to_node_type"] = to_node_type
 
         # fill in the other columns
         edge["edge_type"] = "flow"
         edge["name"] = None
         edge["subnetwork_id"] = None
         edge["geometry"] = self.edges["line_geom"]
+
+        #comply to Ribasim 2024.11
+        edge = edge.reset_index(drop=True)
+        edge['edge_id'] = edge.index.astype(int)
+        edge = edge.set_index('edge_id')
 
         return edge
 
@@ -949,7 +954,19 @@ class RibasimNetwork:
         basin_area["geometry"] = basin_area["basins_area_geom"]
         basin_area["meta_streefpeil"] = basin_area["streefpeil"]
         basin_area = basin_area[["node_id", "meta_streefpeil", "geometry"]]
+        basin_area = gpd.GeoDataFrame(basin_area, geometry='geometry').to_crs(crs='EPSG:28992')
 
+        # Convert all geometries in the GeoDataFrame to MultiPolygons to comply with Ribasim 2024.11
+        basin_area['geometry'] = basin_area['geometry'].apply(
+            lambda geom: MultiPolygon([geom]) if isinstance(geom, Polygon) else geom)
+
+        #comply to Ribasim 2024.11
+        basin_node['meta_node_id'] = basin_node['node_id'].copy().astype(int)
+        basin_area['meta_node_id'] = basin_area['node_id'].copy().astype(int)
+        basin_node = basin_node.set_index('node_id')
+        # basin_area = basin_area.set_index('node_id')
+        
+        
         return basin_node, basin_profile, basin_static, basin_state, basin_area
 
     def tabulated_rating_curve(self):
@@ -994,6 +1011,10 @@ class RibasimNetwork:
         rating_curve_static["control_state"] = np.nan
         # rating_curve_static = rating_curve_static.reset_index(drop=True)
 
+        #comply to Ribasim 2024.11
+        rating_curve_node['meta_node_id'] = rating_curve_node['node_id'].copy().astype(int)
+        rating_curve_node = rating_curve_node.set_index('node_id')
+        
         return rating_curve_node, rating_curve_static
 
     def pump(self):
@@ -1022,6 +1043,10 @@ class RibasimNetwork:
         pump_static["max_flow_rate"] = np.nan
         pump_static["control_state"] = np.nan
 
+        #comply to Ribasim 2024.11
+        pump_node['meta_node_id'] = pump_node['node_id'].copy().astype(int)
+        pump_node = pump_node.set_index('node_id')
+        
         return pump_node, pump_static
 
     def level_boundary(self):
@@ -1049,6 +1074,10 @@ class RibasimNetwork:
         level_boundary_static["active"] = np.nan
         level_boundary_static["level"] = 0
 
+        #comply to Ribasim 2024.11
+        level_boundary_node['meta_node_id'] = level_boundary_node['node_id'].copy().astype(int)
+        level_boundary_node = level_boundary_node.set_index('node_id')
+        
         return level_boundary_node, level_boundary_static
 
     def flow_boundary(self):
@@ -1076,6 +1105,10 @@ class RibasimNetwork:
         flow_boundary_static["active"] = np.nan
         flow_boundary_static["flow_rate"] = 0
 
+        #comply to Ribasim 2024.11
+        flow_boundary_node['meta_node_id'] = flow_boundary_node['node_id'].copy().astype(int)
+        flow_boundary_node = flow_boundary_node.set_index('node_id')
+        
         return flow_boundary_node, flow_boundary_static
 
     def linear_resistance(self):
@@ -1116,6 +1149,10 @@ class RibasimNetwork:
         manning_resistance_static["profile_width"] = 2
         manning_resistance_static["profile_slope"] = 3
 
+        #comply to Ribasim 2024.11
+        manning_resistance_node['meta_node_id'] = manning_resistance_node['node_id'].copy().astype(int)
+        manning_resistance_node = manning_resistance_node.set_index('node_id')
+        
         return manning_resistance_node, manning_resistance_static
 
     def fractional_flow(self):
@@ -1148,6 +1185,10 @@ class RibasimNetwork:
         terminal_node["subnetwork_id"] = np.nan
         terminal_node["geometry"] = terminal_nodes["geometry"]
 
+        #comply to Ribasim 2024.11
+        terminal_node['meta_node_id'] = terminal_node['node_id'].copy().astype(int)
+        terminal_node = terminal_node.set_index('node_id')
+        
         return terminal_node
 
     def outlet(self, model):
@@ -1417,7 +1458,7 @@ class RibasimNetwork:
         basin_nodes = (
             model.basin.state.df.copy()
         )  # .loc[model.basin.state.df['node_type'] == 'Basin'] #select all basins
-        model.basin.node.df.index += 1
+        # model.basin.node.df.index += 1 #RB: outcommented plus one
         basin_nodes["geometry"] = model.basin.node.df.geometry  # add geometry column
         basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry="geometry")  # convert from pd go gpd
 
@@ -1439,11 +1480,11 @@ class RibasimNetwork:
 
         # inlaten_TRC
         inlaten_TRC = nodes_from_boezem.loc[
-            (nodes_from_boezem.to_node_type == "TabulatedRatingCurve") | (nodes_from_boezem.to_node_type == "Outlet")
+            (nodes_from_boezem.meta_to_node_type == "TabulatedRatingCurve") | (nodes_from_boezem.meta_to_node_type == "Outlet")
         ]
         inlaten_TRC = inlaten_TRC["to_node_id"]
         inlaten_TRC = model.tabulated_rating_curve.node.df.loc[
-            model.tabulated_rating_curve.node.df.node_id.isin(inlaten_TRC)
+            model.tabulated_rating_curve.node.df.index.isin(inlaten_TRC) #df.node_id --> df.index
         ]
 
         # add the outlets if this code is already ran before
@@ -1454,32 +1495,32 @@ class RibasimNetwork:
         inlaten_TRC["meta_type_verbinding"] = "Inlaat"
 
         # inlaten_gemalen
-        inlaten_gemalen = nodes_from_boezem.loc[nodes_from_boezem.to_node_type == "Pump"]
+        inlaten_gemalen = nodes_from_boezem.loc[nodes_from_boezem.meta_to_node_type == "Pump"]
         inlaten_gemalen = inlaten_gemalen["to_node_id"]
-        inlaten_gemalen = model.pump.node.df.loc[model.pump.node.df.node_id.isin(inlaten_gemalen)]
+        inlaten_gemalen = model.pump.node.df.loc[model.pump.node.df.index.isin(inlaten_gemalen)] #df.node_id --> df.index
         inlaten_gemalen["meta_type_verbinding"] = "Inlaat"
 
         # inlaten_flowboundary
-        inlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.from_node_type == "FlowBoundary"]
+        inlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "FlowBoundary"]
         inlaten_flowboundary = inlaten_flowboundary["from_node_id"]
         inlaten_flowboundary = model.flow_boundary.node.df.loc[
-            model.flow_boundary.node.df.node_id.isin(inlaten_flowboundary)
+            model.flow_boundary.node.df.index.isin(inlaten_flowboundary) #df.node_id --> df.index
         ]
         inlaten_flowboundary["meta_type_verbinding"] = "Inlaat boundary"
 
         # uitlaten_TRC
         uitlaten_TRC = nodes_to_boezem.loc[
-            (nodes_to_boezem.from_node_type == "TabulatedRatingCurve") | (nodes_to_boezem.from_node_type == "Outlet")
+            (nodes_to_boezem.meta_from_node_type == "TabulatedRatingCurve") | (nodes_to_boezem.meta_from_node_type == "Outlet")
         ]
         uitlaten_TRC = uitlaten_TRC["from_node_id"]
         uitlaten_TRC = model.tabulated_rating_curve.node.df.loc[
-            model.tabulated_rating_curve.node.df.node_id.isin(uitlaten_TRC)
+            model.tabulated_rating_curve.node.df.index.isin(uitlaten_TRC) #df.node_id --> df.index
         ]
 
         # uitlaten_gemalen
-        uitlaten_gemalen = nodes_to_boezem.loc[nodes_to_boezem.from_node_type == "Pump"]
+        uitlaten_gemalen = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "Pump"]
         uitlaten_gemalen = uitlaten_gemalen["from_node_id"]
-        uitlaten_gemalen = model.pump.node.df.loc[model.pump.node.df.node_id.isin(uitlaten_gemalen)]
+        uitlaten_gemalen = model.pump.node.df.loc[model.pump.node.df.index.isin(uitlaten_gemalen)] #df.node_id --> df.index
         uitlaten_gemalen["meta_type_verbinding"] = "Uitlaat"
 
         # add the outlets if this code is already ran before
@@ -1490,10 +1531,10 @@ class RibasimNetwork:
         uitlaten_TRC["meta_type_verbinding"] = "Uitlaat"
 
         # uitlaten_flowboundary
-        uitlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.from_node_type == "FlowBoundary"]
+        uitlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "FlowBoundary"]
         uitlaten_flowboundary = uitlaten_flowboundary["from_node_id"]
         uitlaten_flowboundary = model.flow_boundary.node.df.loc[
-            model.flow_boundary.node.df.node_id.isin(uitlaten_flowboundary)
+            model.flow_boundary.node.df.index.isin(uitlaten_flowboundary) #df.node_id --> df.index
         ]
         uitlaten_flowboundary["meta_type_verbinding"] = "Inlaat boundary"
 
@@ -1522,12 +1563,12 @@ class RibasimNetwork:
         # we first need to identify the connecting nodes, such as TRC and pumps, which originate from the boundaries
         # after that has been done, these nodes should be filtered based on whether they are connected with the nodes_from/to_boezem
         # BCN = Boundary Connection Nodes
-        condition_BCN_to_pump = nodes_from_boezem.to_node_type == "Pump"
-        condition_BCN_to_TRC = nodes_from_boezem.to_node_type == "TabulatedRatingCurve"
-        condition_BCN_to_outlet = nodes_from_boezem.to_node_type == "Outlet"
-        condition_BCN_from_pump = nodes_to_boezem.from_node_type == "Pump"
-        condition_BCN_from_TRC = nodes_to_boezem.from_node_type == "TabulatedRatingCurve"
-        condition_BCN_from_outlet = nodes_to_boezem.from_node_type == "Outlet"
+        condition_BCN_to_pump = nodes_from_boezem.meta_to_node_type == "Pump"
+        condition_BCN_to_TRC = nodes_from_boezem.meta_to_node_type == "TabulatedRatingCurve"
+        condition_BCN_to_outlet = nodes_from_boezem.meta_to_node_type == "Outlet"
+        condition_BCN_from_pump = nodes_to_boezem.meta_from_node_type == "Pump"
+        condition_BCN_from_TRC = nodes_to_boezem.meta_from_node_type == "TabulatedRatingCurve"
+        condition_BCN_from_outlet = nodes_to_boezem.meta_from_node_type == "Outlet"
 
         BCN_from = nodes_from_boezem.loc[
             condition_BCN_to_pump | condition_BCN_to_TRC | condition_BCN_to_outlet
@@ -1542,19 +1583,19 @@ class RibasimNetwork:
         BCN_from = BCN_from.to_node_id  # step 1
         BCN_from = model.edge.df.loc[model.edge.df.from_node_id.isin(BCN_from)]  # step 2
         BCN_from = BCN_from.loc[
-            (BCN_from.to_node_type == "FlowBoundary")
-            | (BCN_from.to_node_type == "LevelBoundary")
-            | (BCN_from.to_node_type == "Terminal")
+            (BCN_from.meta_to_node_type == "FlowBoundary")
+            | (BCN_from.meta_to_node_type == "LevelBoundary")
+            | (BCN_from.meta_to_node_type == "Terminal")
         ]
 
         # look the node ids up in each table.
         BCN_from_TRC = model.tabulated_rating_curve.node.df.loc[
-            model.tabulated_rating_curve.node.df.node_id.isin(BCN_from.from_node_id)
+            model.tabulated_rating_curve.node.df.index.isin(BCN_from.from_node_id) #df.node_id --> df.index
         ]
-        BCN_from_pump = model.pump.node.df.loc[model.pump.node.df.node_id.isin(BCN_from.from_node_id)]
+        BCN_from_pump = model.pump.node.df.loc[model.pump.node.df.index.isin(BCN_from.from_node_id)] #df.node_id --> df.index
 
         if model.outlet.node.df is not None:
-            BCN_from_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(BCN_from)]
+            BCN_from_outlet = model.outlet.node.df.loc[model.outlet.node.df.index.isin(BCN_from)] #df.node_id --> df.index
             BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump, BCN_from_outlet])
         else:
             BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump])
@@ -1566,20 +1607,20 @@ class RibasimNetwork:
         BCN_to = BCN_to.from_node_id  # step 1
         BCN_to = model.edge.df.loc[model.edge.df.to_node_id.isin(BCN_to)]  # step 2
         BCN_to = BCN_to.loc[
-            (BCN_to.from_node_type == "FlowBoundary")
-            | (BCN_to.from_node_type == "LevelBoundary")
-            | (BCN_to.from_node_type == "Terminal")
+            (BCN_to.meta_from_node_type == "FlowBoundary")
+            | (BCN_to.meta_from_node_type == "LevelBoundary")
+            | (BCN_to.meta_from_node_type == "Terminal")
         ]
         BCN_to["meta_type_verbinding"] = "Inlaat boundary"
 
         # look the node ids up in each table.
         BCN_to_TRC = model.tabulated_rating_curve.node.df.loc[
-            model.tabulated_rating_curve.node.df.node_id.isin(BCN_to.to_node_id)
+            model.tabulated_rating_curve.node.df.index.isin(BCN_to.to_node_id) #df.node_id --> df.index
         ]
-        BCN_to_pump = model.pump.node.df.loc[model.pump.node.df.node_id.isin(BCN_to.to_node_id)]
+        BCN_to_pump = model.pump.node.df.loc[model.pump.node.df.index.isin(BCN_to.to_node_id)] #df.node_id --> df.index
 
         if model.outlet.node.df is not None:
-            BCN_to_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(BCN_to)]
+            BCN_to_outlet = model.outlet.node.df.loc[model.outlet.node.df.index.isin(BCN_to)] #df.node_id --> df.index
             BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump, BCN_to_outlet])
         else:
             BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump])
@@ -1602,7 +1643,7 @@ class RibasimNetwork:
         basin_nodes = (
             model.basin.state.df.copy()
         )  # .loc[model.basin.state.df['node_type'] == 'Basin'] #select all basins
-        model.basin.node.df.index += 1
+        # model.basin.node.df.index += 1
         basin_nodes["geometry"] = model.basin.node.df.geometry  # add geometry column
         basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry="geometry")  # convert from pd go gpd
 
@@ -1664,25 +1705,31 @@ class RibasimNetwork:
 
         # TabulatedRatingCurve
         model.tabulated_rating_curve.static.df = model.tabulated_rating_curve.static.df.merge(
-            checks["inlaten_uitlaten_boezems"][["node_id", "meta_type_verbinding"]],
-            left_on=["node_id"],
-            right_on=["node_id"],
+            checks["inlaten_uitlaten_boezems"][["meta_type_verbinding"]],
+            left_index=True,
+            right_index=True,
+            # left_on=["node_id"],
+            # right_on=["node_id"],
             how="left",
         )
 
         # Pump
         model.pump.static.df = model.pump.static.df.merge(
-            checks["inlaten_uitlaten_boezems"][["node_id", "meta_type_verbinding"]],
-            left_on=["node_id"],
-            right_on=["node_id"],
+            checks["inlaten_uitlaten_boezems"][["meta_type_verbinding"]],
+            left_index=True,
+            right_index=True,
+            # left_on=["node_id"],
+            # right_on=["node_id"],
             how="left",
         )
 
         # FlowBoundary
         model.flow_boundary.static.df = model.flow_boundary.static.df.merge(
-            checks["inlaten_uitlaten_boezems"][["node_id", "meta_type_verbinding"]],
-            left_on=["node_id"],
-            right_on=["node_id"],
+            checks["inlaten_uitlaten_boezems"][["meta_type_verbinding"]],
+            left_index=True,
+            right_index=True,
+            # left_on=["node_id"],
+            # right_on=["node_id"],
             how="left",
         )
 
