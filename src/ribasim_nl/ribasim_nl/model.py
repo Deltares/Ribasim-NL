@@ -1,11 +1,13 @@
 from pathlib import Path
 from typing import Literal
 
+import geopandas as gpd
 import networkx as nx
 import pandas as pd
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.geometry.edge import NodeData
+from ribasim.validation import flow_edge_neighbor_amount as edge_amount
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
@@ -145,7 +147,7 @@ class Model(Model):
         for attr in table.model_fields.keys():
             df = getattr(table, attr).df
             if df is not None:
-                if "node_id" in df.columns:
+                if node_id in df.columns:
                     getattr(table, attr).df = df[df.node_id != node_id]
                 else:
                     getattr(table, attr).df = df[df.index != node_id]
@@ -159,23 +161,10 @@ class Model(Model):
                 self.remove_edge(
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
+
         # remove from used node-ids so we can add it again in the same table
         if node_id in table._parent._used_node_ids:
             table._parent._used_node_ids.node_ids.remove(node_id)
-
-    def update_meta_properties(self, node_properties: dict, node_types: list | None = None):
-        """Set properties for all, or a selection of, node-types."""
-        if node_types is None:
-            node_types = self.node_table().df.node_type.unique()
-
-        for node_type in node_types:
-            table = getattr(self, pascal_to_snake_case(node_type))
-            node_df = getattr(table, "node").df
-            if node_df is not None:
-                for key, value in node_properties.items():
-                    if not key.startswith("meta_"):
-                        key = f"meta_{key}"
-                node_df.loc[:, [key]] = value
 
     def update_node(self, node_id, node_type, data, node_properties: dict = {}):
         existing_node_type = self.node_table().df.at[node_id, "node_type"]
@@ -404,11 +393,13 @@ class Model(Model):
         node_df = self.node_table().df
         return self.edge.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
-    def split_basin(self, line: LineString):
+    def split_basin(self, line: LineString, basin_id: int | None = None):
         if self.basin.area.df is None:
             raise ValueError("provide basin / area table first")
 
         line_centre = line.interpolate(0.5, normalized=True)
+        if basin_id is not None:
+            basin_area_df = self.basin.area.df.loc[self.basin.area.df.node_id == basin_id]
         basin_area_df = self.basin.area.df[self.basin.area.df.contains(line_centre)]
 
         if len(basin_area_df) != 1:
@@ -516,3 +507,84 @@ class Model(Model):
 
         if self.basin.area.df.crs is None:
             self.basin.area.df.crs = self.crs
+
+    def invalid_topology_at_node(self, edge_type: str = "flow") -> gpd.GeoDataFrame:
+        df_graph = self.edge.df
+        df_node = self.node_table().df
+        # Join df_edge with df_node to get to_node_type
+        df_graph = df_graph.join(df_node[["node_type"]], on="from_node_id", how="left", rsuffix="_from")
+        df_graph = df_graph.rename(columns={"node_type": "from_node_type"})
+
+        df_graph = df_graph.join(df_node[["node_type"]], on="to_node_id", how="left", rsuffix="_to")
+        df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
+        df_node = self.node_table().df
+
+        """Check if the neighbor amount of the two nodes connected by the given edge meet the minimum requirements."""
+        errors = []
+
+        # filter graph by edge type
+        df_graph = df_graph.loc[df_graph["edge_type"] == edge_type]
+
+        # count occurrence of "from_node" which reflects the number of outneighbors
+        from_node_count = (
+            df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")  # type: ignore
+        )
+
+        # append from_node_count column to from_node_id and from_node_type
+        from_node_info = (
+            df_graph[["from_node_id", "from_node_type"]]
+            .drop_duplicates()
+            .merge(from_node_count, on="from_node_id", how="left")
+        )
+        from_node_info = from_node_info[["from_node_id", "from_node_count", "from_node_type"]]
+
+        # add the node that is not the upstream of any other nodes
+        from_node_info = self._add_source_sink_node(df_node["node_type"], from_node_info, "from")
+
+        # loop over all the "from_node" and check if they have enough outneighbor
+        for _, row in from_node_info.iterrows():
+            # from node's outneighbor
+            if row["from_node_count"] < edge_amount[row["from_node_type"]][2]:
+                node_id = row["from_node_id"]
+                errors += [
+                    {
+                        "geometry": df_node.at[node_id, "geometry"],
+                        "node_id": node_id,
+                        "node_type": df_node.at[node_id, "node_type"],
+                        "exception": f"must have at least {edge_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})",
+                    }
+                ]
+
+        # count occurrence of "to_node" which reflects the number of inneighbors
+        to_node_count = (
+            df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")  # type: ignore
+        )
+
+        # append to_node_count column to result
+        to_node_info = (
+            df_graph[["to_node_id", "to_node_type"]].drop_duplicates().merge(to_node_count, on="to_node_id", how="left")
+        )
+        to_node_info = to_node_info[["to_node_id", "to_node_count", "to_node_type"]]
+
+        # add the node that is not the downstream of any other nodes
+        to_node_info = self._add_source_sink_node(df_node["node_type"], to_node_info, "to")
+
+        # loop over all the "to_node" and check if they have enough inneighbor
+        for _, row in to_node_info.iterrows():
+            if row["to_node_count"] < edge_amount[row["to_node_type"]][0]:
+                node_id = row["to_node_id"]
+                errors += [
+                    {
+                        "geometry": df_node.at[node_id, "geometry"],
+                        "node_id": node_id,
+                        "node_type": df_node.at[node_id, "node_type"],
+                        "exception": f"must have at least {edge_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})",
+                    }
+                ]
+
+        if len(errors) > 0:
+            return gpd.GeoDataFrame(errors, crs=self.crs).set_index("node_id")
+        else:
+            return gpd.GeoDataFrame(
+                [], columns=["node_id", "node_type", "exception"], geometry=gpd.GeoSeries(crs=self.crs)
+            ).set_index("node_id")
