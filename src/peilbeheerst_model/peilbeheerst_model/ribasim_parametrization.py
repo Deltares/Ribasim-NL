@@ -11,8 +11,9 @@ import numpy as np
 import pandas as pd
 import ribasim
 import tqdm.auto as tqdm
-from ribasim_nl import CloudStorage
 from shapely.geometry import LineString
+
+from ribasim_nl import CloudStorage
 
 
 def get_current_max_nodeid(ribasim_model):
@@ -90,9 +91,8 @@ def insert_standard_profile(
         "meta_categorie"
     ]
 
-
     # find the node_id of the bergende nodes with the doorgaande nodes
-    bergende_nodes = profile_total.loc[profile_total.meta_categorie == "bergend"][["node_id"]].reset_index(drop=True) 
+    bergende_nodes = profile_total.loc[profile_total.meta_categorie == "bergend"][["node_id"]].reset_index(drop=True)
     bergende_nodes["from_MR_node"] = bergende_nodes.merge(
         right=ribasim_model.edge.df, left_on="node_id", right_on="from_node_id", how="left"
     )["to_node_id"]
@@ -118,7 +118,7 @@ def insert_standard_profile(
     )  # remove bergende profiles, as they will be added here below
     profile_total = pd.concat([profile_total, bergende_nodes[["node_id", "level", "area", "meta_categorie"]]])
     profile_total = profile_total.sort_values(by=["node_id", "level"]).reset_index(drop=True)
-    
+
     # insert the new tables in the model
     ribasim_model.basin.profile = profile_total
 
@@ -236,16 +236,16 @@ def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
 
     # second, implement the LevelBoundary nodes and change the node_type
     nodes_Terminals.node_type = "LevelBoundary"
-    
+
     ribasim_model.level_boundary.node.df = pd.concat([ribasim_model.level_boundary.node.df, nodes_Terminals])
-    ribasim_model.level_boundary.node.df = ribasim_model.level_boundary.node.df.sort_values(by='meta_node_id')
-    
+    ribasim_model.level_boundary.node.df = ribasim_model.level_boundary.node.df.sort_values(by="meta_node_id")
+
     # third, implement the LevelBoundary static
     nodes_Terminals = nodes_Terminals.reset_index()
     LB_static = nodes_Terminals[["node_id"]]
     LB_static["level"] = default_level
     LB_combined = pd.concat([ribasim_model.level_boundary.static.df, LB_static])
-    LB_combined = LB_combined.drop_duplicates(subset='node_id').sort_values(by='node_id').reset_index(drop=True)
+    LB_combined = LB_combined.drop_duplicates(subset="node_id").sort_values(by="node_id").reset_index(drop=True)
     ribasim_model.level_boundary.static = LB_combined
 
     # fourth, update the edges table.
@@ -269,11 +269,11 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     nodes_TRC_FlowBoundary["node_type"] = "TabulatedRatingCurve"
 
     # supplement the TRC.node table
-    new_TRC_node = pd.concat(
-        [ribasim_model.tabulated_rating_curve.node.df, nodes_TRC_FlowBoundary]
-    ).reset_index(drop=True)
-    new_TRC_node['node_id'] = new_TRC_node['meta_node_id'].copy()
-    new_TRC_node = new_TRC_node.set_index('node_id')
+    new_TRC_node = pd.concat([ribasim_model.tabulated_rating_curve.node.df, nodes_TRC_FlowBoundary]).reset_index(
+        drop=True
+    )
+    new_TRC_node["node_id"] = new_TRC_node["meta_node_id"].copy()
+    new_TRC_node = new_TRC_node.set_index("node_id")
 
     ribasim_model.tabulated_rating_curve.node.df = new_TRC_node
 
@@ -306,7 +306,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
 
     # up till this point, all FlowBoundaries have been converted to TRC's. Now the actual LevelBoundaries needs to be created
     max_id = get_current_max_nodeid(ribasim_model)
-    
+
     nodes_FlowBoundary["meta_old_node_id"] = nodes_FlowBoundary.meta_node_id  # store for later
     nodes_FlowBoundary["node_id"] = max_id + nodes_FlowBoundary.index + 1  # implement new id's
     # nodes_FlowBoundary["node_id"] = nodes_FlowBoundary.meta_node_id.copy()
@@ -315,19 +315,20 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     )  # move the points 1 meter to the lower left (diagonally)
     nodes_FlowBoundary["node_type"] = "LevelBoundary"
 
-    #set the new node_id; overrule the old
-    nodes_FlowBoundary = nodes_FlowBoundary.set_index('node_id', drop=True)
-    nodes_FlowBoundary = nodes_FlowBoundary[['node_type', 'geometry', 'meta_old_node_id']]
+    # set the new node_id; overrule the old
+    nodes_FlowBoundary = nodes_FlowBoundary.set_index("node_id", drop=True)
+    nodes_FlowBoundary = nodes_FlowBoundary[["node_type", "geometry", "meta_old_node_id"]]
 
     nodes_LevelBoundary = nodes_FlowBoundary.copy(deep=True)  # for clarity
 
     # supplement the LB.node table
     new_LB_node = pd.concat(
-        [ribasim_model.level_boundary.node.df, nodes_LevelBoundary[["node_type", "geometry", "meta_old_node_id"]]])#.reset_index(drop=True)
-    new_LB_node['meta_node_id'] = new_LB_node.index.copy()
-    
+        [ribasim_model.level_boundary.node.df, nodes_LevelBoundary[["node_type", "geometry", "meta_old_node_id"]]]
+    )  # .reset_index(drop=True)
+    new_LB_node["meta_node_id"] = new_LB_node.index.copy()
+
     ribasim_model.level_boundary.node.df = new_LB_node
-    
+
     # supplement the LB.static table
     # ribasim_model.level_boundary.static.df = pd.concat(
     #     [ribasim_model.level_boundary.static.df, nodes_LevelBoundary[["node_id", "level"]]]
@@ -335,7 +336,9 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
 
     # the nodes have been created. Now add the edges
     edges_LB = pd.DataFrame()
-    edges_LB["from_node_id"] = nodes_LevelBoundary.index.copy()#nodes_LevelBoundary["meta_node_id"].copy()  # as these nodes were initially FlowBoundaries, they always flow into the model, not out. Thus, is always the starting point (=from_node_id)
+    edges_LB["from_node_id"] = (
+        nodes_LevelBoundary.index.copy()
+    )  # nodes_LevelBoundary["meta_node_id"].copy()  # as these nodes were initially FlowBoundaries, they always flow into the model, not out. Thus, is always the starting point (=from_node_id)
     edges_LB["meta_from_node_type"] = "LevelBoundary"
     edges_LB["to_node_id"] = nodes_LevelBoundary["meta_old_node_id"].values.to_numpy()
     edges_LB["meta_to_node_type"] = "TabulatedRatingCurve"
@@ -354,30 +357,41 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
         lines_LB["geometry"] = lines_LB.apply(create_linestring, axis=1)
         # edges_LB["geometry"] = lines_LB["line"]
 
-        #merge the geometries to the newtemp
-        edges_LB = edges_LB.merge(right=lines_LB[['geometry']],
-                                  left_on='from_node_id',
-                                  right_index=True,
-                                  how='left')
-    
+        # merge the geometries to the newtemp
+        edges_LB = edges_LB.merge(right=lines_LB[["geometry"]], left_on="from_node_id", right_index=True, how="left")
+
     # concat the original edges with the newly created edges of the LevelBoundaries
     new_edges = pd.concat([ribasim_model.edge.df, edges_LB]).reset_index(drop=True)
-    new_edges['edge_id'] = new_edges.index.copy() + 1
-    new_edges = new_edges[['edge_id', 'from_node_id', 'to_node_id', 'edge_type', 'name', 'subnetwork_id', 
-                           'geometry', 'meta_from_node_type', 'meta_to_node_type', 'meta_categorie']]
-    new_edges = new_edges.set_index('edge_id')
+    new_edges["edge_id"] = new_edges.index.copy() + 1
+    new_edges = new_edges[
+        [
+            "edge_id",
+            "from_node_id",
+            "to_node_id",
+            "edge_type",
+            "name",
+            "subnetwork_id",
+            "geometry",
+            "meta_from_node_type",
+            "meta_to_node_type",
+            "meta_categorie",
+        ]
+    ]
+    new_edges = new_edges.set_index("edge_id")
     ribasim_model.edge.df = new_edges
 
     # replace all 'FlowBoundaries' with 'LevelBoundaries' in the edge table
     # ribasim_model.edge.df.replace(to_replace='FlowBoundary', value='LevelBoundary', inplace=True)
 
-    #create the static table for the 
-    static_LevelBoundary = nodes_LevelBoundary.reset_index().copy()[['node_id']]
-    static_LevelBoundary = static_LevelBoundary.rename(columns={'meta_node_id':'node_id'})
-    static_LevelBoundary['level'] = default_level
-    new_static_LevelBoundary = pd.concat([ribasim_model.level_boundary.static.df, static_LevelBoundary]).reset_index(drop=True)
+    # create the static table for the
+    static_LevelBoundary = nodes_LevelBoundary.reset_index().copy()[["node_id"]]
+    static_LevelBoundary = static_LevelBoundary.rename(columns={"meta_node_id": "node_id"})
+    static_LevelBoundary["level"] = default_level
+    new_static_LevelBoundary = pd.concat([ribasim_model.level_boundary.static.df, static_LevelBoundary]).reset_index(
+        drop=True
+    )
     ribasim_model.level_boundary.static = new_static_LevelBoundary
-    
+
     return
 
 
@@ -391,7 +405,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     # update: change all TRC's to Outlets
     # TRC_naar_OL = ribasim_model.tabulated_rating_curve.static.df.copy() #aanpassing RB 11 oktober
     TRC_naar_OL = ribasim_model.tabulated_rating_curve.node.df.copy()
-    TRC_naar_OL = TRC_naar_OL.reset_index() #convert the node_id index to a regular column 
+    TRC_naar_OL = TRC_naar_OL.reset_index()  # convert the node_id index to a regular column
     TRC_naar_OL = TRC_naar_OL.drop_duplicates(subset="node_id", keep="first")
     TRC_naar_OL = TRC_naar_OL[["node_id"]]
 
@@ -420,15 +434,17 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     get_outlet_geometries = ribasim_model.tabulated_rating_curve.node.df.loc[
         ribasim_model.tabulated_rating_curve.node.df.meta_node_id.isin(outlet.node_id.to_numpy())
     ]
-    outlet = outlet.merge(get_outlet_geometries[["meta_node_id", "geometry"]], left_on="node_id", right_on='meta_node_id')
+    outlet = outlet.merge(
+        get_outlet_geometries[["meta_node_id", "geometry"]], left_on="node_id", right_on="meta_node_id"
+    )
     outlet["node_type"] = "Outlet"
     outlet["flow_rate"] = 0  # default setting
     outlet["meta_categorie"] = "Inlaat"
 
     outlet_node = outlet[["node_id", "meta_node_id", "node_type", "geometry"]]
-    outlet_node = outlet_node.set_index('node_id')
+    outlet_node = outlet_node.set_index("node_id")
     outlet_static = outlet[["node_id", "flow_rate", "meta_min_crest_level", "meta_categorie"]]
-    
+
     # add the outlets to the model
     ribasim_model.outlet.node.df = outlet_node
     ribasim_model.outlet.static = outlet_static
@@ -436,9 +452,11 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     # remove the TRC's nodes
     ribasim_model.tabulated_rating_curve.node.df = ribasim_model.tabulated_rating_curve.node.df.loc[
         ~ribasim_model.tabulated_rating_curve.node.df.meta_node_id.isin(outlet.meta_node_id)
-    ]#.reset_index(drop=True)
+    ]  # .reset_index(drop=True)
     ribasim_model.tabulated_rating_curve.static = ribasim_model.tabulated_rating_curve.static.df.loc[
-        ribasim_model.tabulated_rating_curve.static.df.node_id.isin(ribasim_model.tabulated_rating_curve.node.df.index.to_numpy())
+        ribasim_model.tabulated_rating_curve.static.df.node_id.isin(
+            ribasim_model.tabulated_rating_curve.node.df.index.to_numpy()
+        )
     ].reset_index(drop=True)
 
     # replace the from_node_type and the to_node_type in the edge table
@@ -903,33 +921,39 @@ def identify_node_meta_categorie(ribasim_model):
     nodes_from_boundary = ribasim_model.edge.df.loc[
         ribasim_model.edge.df.meta_from_node_type == "LevelBoundary", "to_node_id"
     ]
-    nodes_to_boundary = ribasim_model.edge.df.loc[ribasim_model.edge.df.meta_to_node_type == "LevelBoundary", "from_node_id"]
+    nodes_to_boundary = ribasim_model.edge.df.loc[
+        ribasim_model.edge.df.meta_to_node_type == "LevelBoundary", "from_node_id"
+    ]
 
     # identify the INlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
     ribasim_model.outlet.static.df.loc[
         ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem), "meta_categorie"
     ] = "Inlaat boezem, stuw"
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
-                                      & (ribasim_model.pump.static.df.meta_func_aanvoer == 0), "meta_categorie"] = (
-        "Inlaat boezem, afvoer gemaal"
-    )
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
-                                      & (ribasim_model.pump.static.df.meta_func_aanvoer != 0), "meta_categorie"] = (
-        "Inlaat boezem, aanvoer gemaal"
-    )
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
+        "meta_categorie",
+    ] = "Inlaat boezem, afvoer gemaal"
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        "meta_categorie",
+    ] = "Inlaat boezem, aanvoer gemaal"
 
     # identify the UITlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
     ribasim_model.outlet.static.df.loc[
         ribasim_model.outlet.static.df.node_id.isin(nodes_to_boezem), "meta_categorie"
     ] = "Uitlaat boezem, stuw"
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-                                    & (ribasim_model.pump.static.df.meta_func_aanvoer == 0), "meta_categorie"] = (
-        "Uitlaat boezem, afvoer gemaal"
-    )
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-                                    & (ribasim_model.pump.static.df.meta_func_aanvoer != 0), "meta_categorie"] = (
-        "Uitlaat boezem, aanvoer gemaal"
-    )
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
+        "meta_categorie",
+    ] = "Uitlaat boezem, afvoer gemaal"
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        "meta_categorie",
+    ] = "Uitlaat boezem, aanvoer gemaal"
 
     # identify the outlets and pumps at the regular peilgebieden
     ribasim_model.outlet.static.df.loc[
@@ -939,43 +963,57 @@ def identify_node_meta_categorie(ribasim_model):
         ),
         "meta_categorie",
     ] = "Reguliere stuw"
-    
+
     ribasim_model.pump.static.df.loc[
         ~(
             (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
             | (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
         ),
         "meta_categorie",
-    ] = "Regulier gemaal" #differentiate between afvoer and aanvoer below
+    ] = "Regulier gemaal"  # differentiate between afvoer and aanvoer below
 
-    #differentiate between reguliere afvoer and regulieren aanvoer gemalen
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df.meta_categorie=='Regulier gemaal') 
-                                      & (ribasim_model.pump.static.df.meta_func_aanvoer == 0), 'meta_categorie'] = 'Regulier afvoer gemaal'
+    # differentiate between reguliere afvoer and regulieren aanvoer gemalen
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.meta_categorie == "Regulier gemaal")
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
+        "meta_categorie",
+    ] = "Regulier afvoer gemaal"
 
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df.meta_categorie=='Regulier gemaal') 
-                                      & (ribasim_model.pump.static.df.meta_func_aanvoer != 0), 'meta_categorie'] = 'Regulier aanvoer gemaal'
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.meta_categorie == "Regulier gemaal")
+        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        "meta_categorie",
+    ] = "Regulier aanvoer gemaal"
 
     # repeat for the boundary nodes
     # identify the buitenwater uitlaten and inlaten. A part will be overwritten later, if its a boundary & boezem.
     ribasim_model.outlet.static.df.loc[
         ribasim_model.outlet.static.df.node_id.isin(nodes_to_boundary), "meta_categorie"
     ] = "Uitlaat buitenwater peilgebied, stuw"
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary)) & (ribasim_model.pump.static.df.meta_func_aanvoer == 0), "meta_categorie"] = (
-        "Uitlaat buitenwater peilgebied, afvoer gemaal"
-    )
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary)) & (ribasim_model.pump.static.df.meta_func_aanvoer != 0), "meta_categorie"] = (
-        "Uitlaat buitenwater peilgebied, aanvoer gemaal"
-    )
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
+        "meta_categorie",
+    ] = "Uitlaat buitenwater peilgebied, afvoer gemaal"
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        "meta_categorie",
+    ] = "Uitlaat buitenwater peilgebied, aanvoer gemaal"
 
     ribasim_model.outlet.static.df.loc[
         ribasim_model.outlet.static.df.node_id.isin(nodes_from_boundary), "meta_categorie"
     ] = "Inlaat buitenwater peilgebied, stuw"
     ribasim_model.pump.static.df.loc[
-        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary)) & (ribasim_model.pump.static.df.meta_func_aanvoer == 0), "meta_categorie"
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
+        "meta_categorie",
     ] = "Inlaat buitenwater peilgebied, afvoer gemaal"
 
     ribasim_model.pump.static.df.loc[
-        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary)) & (ribasim_model.pump.static.df.meta_func_aanvoer != 0), "meta_categorie"
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        "meta_categorie",
     ] = "Inlaat buitenwater peilgebied, aanvoer gemaal"
 
     # boundary & boezem. This is the part where a portion of the already defined meta_categorie will be overwritten by the code above.
@@ -984,7 +1022,7 @@ def identify_node_meta_categorie(ribasim_model):
         & (ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem)),  # to
         "meta_categorie",
     ] = "Uitlaat buitenwater boezem, stuw"
-    
+
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
@@ -1007,14 +1045,14 @@ def identify_node_meta_categorie(ribasim_model):
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0), # from
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),  # from
         "meta_categorie",
     ] = "Inlaat buitenwater boezem, afvoer gemaal"
 
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0), # from
+        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),  # from
         "meta_categorie",
     ] = "Inlaat buitenwater boezem, aanvoer gemaal"
 
@@ -1052,56 +1090,63 @@ def load_model_settings(file_path):
         settings = json.load(file)
     return settings
 
-def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
-    sturing = load_model_settings(f"sturing_{waterschap}.json") #load the waterschap specific sturing
-    
-    #create empty columns for the sturing
-    ribasim_model.outlet.static.df['min_upstream_level'] = np.nan
-    ribasim_model.outlet.static.df['max_downstream_level'] = np.nan
-    ribasim_model.outlet.static.df['max_flow_rate'] = np.nan
-    ribasim_model.outlet.static.df['flow_rate'] = np.nan
-    
-    ribasim_model.pump.static.df['min_upstream_level'] = np.nan
-    ribasim_model.pump.static.df['max_downstream_level'] = np.nan
-    ribasim_model.pump.static.df['max_flow_rate'] = np.nan
-    ribasim_model.pump.static.df['flow_rate'] = np.nan
-    
 
-    #make a temp copy to reduce line length, place it later again in the model
+def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
+    sturing = load_model_settings(f"sturing_{waterschap}.json")  # load the waterschap specific sturing
+
+    # create empty columns for the sturing
+    ribasim_model.outlet.static.df["min_upstream_level"] = np.nan
+    ribasim_model.outlet.static.df["max_downstream_level"] = np.nan
+    ribasim_model.outlet.static.df["max_flow_rate"] = np.nan
+    ribasim_model.outlet.static.df["flow_rate"] = np.nan
+
+    ribasim_model.pump.static.df["min_upstream_level"] = np.nan
+    ribasim_model.pump.static.df["max_downstream_level"] = np.nan
+    ribasim_model.pump.static.df["max_flow_rate"] = np.nan
+    ribasim_model.pump.static.df["flow_rate"] = np.nan
+
+    # make a temp copy to reduce line length, place it later again in the model
     outlet = ribasim_model.outlet.static.df.copy()
     pump = ribasim_model.pump.static.df.copy()
-    
-    #for each different outlet and pump type, determine the min an max upstream and downstream level
+
+    # for each different outlet and pump type, determine the min an max upstream and downstream level
     for types, settings in sturing.items():
-        
         # Extract values for each setting
-        upstream_level_offset = settings['upstream_level_offset']
-        downstream_level_offset = settings['downstream_level_offset']
-        max_flow_rate = settings['max_flow_rate']
-        
+        upstream_level_offset = settings["upstream_level_offset"]
+        downstream_level_offset = settings["downstream_level_offset"]
+        max_flow_rate = settings["max_flow_rate"]
+
         # Update the min_upstream_level and max_downstream_level in the OUTLET dataframe
-        outlet.loc[outlet.meta_categorie == types, 'min_upstream_level'] = outlet.meta_from_level - upstream_level_offset
-        outlet.loc[outlet.meta_categorie == types, 'max_downstream_level'] = outlet.meta_to_level + downstream_level_offset
-        outlet.loc[outlet.meta_categorie == types, 'flow_rate'] = max_flow_rate
+        outlet.loc[outlet.meta_categorie == types, "min_upstream_level"] = (
+            outlet.meta_from_level - upstream_level_offset
+        )
+        outlet.loc[outlet.meta_categorie == types, "max_downstream_level"] = (
+            outlet.meta_to_level + downstream_level_offset
+        )
+        outlet.loc[outlet.meta_categorie == types, "flow_rate"] = max_flow_rate
 
         # Update the min_upstream_level and max_downstream_level in the PUMP dataframe. can be done within the same loop, as the meta_categorie is different for the outlet and pump
-        pump.loc[pump.meta_categorie == types, 'min_upstream_level'] = pump.meta_from_level - upstream_level_offset
-        pump.loc[pump.meta_categorie == types, 'max_downstream_level'] = pump.meta_to_level + downstream_level_offset
-        pump.loc[pump.meta_categorie == types, 'flow_rate'] = max_flow_rate
+        pump.loc[pump.meta_categorie == types, "min_upstream_level"] = pump.meta_from_level - upstream_level_offset
+        pump.loc[pump.meta_categorie == types, "max_downstream_level"] = pump.meta_to_level + downstream_level_offset
+        pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
 
     # outlet['flow_rate'] = outlet['max_flow_rate']
     # pump['flow_rate'] = pump['max_flow_rate']
-    
+
     # raise warning if there are np.nan in the columns
-    def check_for_nans_in_columns(df, outlet_or_pump, columns_to_check=['min_upstream_level', 'max_downstream_level', 'flow_rate', 'flow_rate']):
+    def check_for_nans_in_columns(
+        df, outlet_or_pump, columns_to_check=["min_upstream_level", "max_downstream_level", "flow_rate", "flow_rate"]
+    ):
         if df[columns_to_check].isnull().values.any():
-            warnings.warn(f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
-                          f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}")
-            
+            warnings.warn(
+                f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
+                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}"
+            )
+
     check_for_nans_in_columns(outlet, "outlet")
     check_for_nans_in_columns(pump, "pump")
 
-    #place the df's back in the ribasim_model
+    # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
     ribasim_model.pump.static.df = pump
 
@@ -1588,191 +1633,295 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
     return
 
+
 def clean_tables(ribasim_model):
     """Only retain node_id's which are present in the .node table."""
+    # Basin
+    basin_ids = ribasim_model.basin.node.df.loc[
+        ribasim_model.basin.node.df.node_type == "Basin", "meta_node_id"
+    ].to_numpy()
+    ribasim_model.basin.area = ribasim_model.basin.area.df.loc[
+        ribasim_model.basin.area.df.node_id.isin(basin_ids)
+    ].reset_index(drop=True)
+    ribasim_model.basin.profile = ribasim_model.basin.profile.df.loc[
+        ribasim_model.basin.profile.df.node_id.isin(basin_ids)
+    ].reset_index(drop=True)
+    ribasim_model.basin.state = ribasim_model.basin.state.df.loc[
+        ribasim_model.basin.state.df.node_id.isin(basin_ids)
+    ].reset_index(drop=True)
+    ribasim_model.basin.static = ribasim_model.basin.static.df.loc[
+        ribasim_model.basin.static.df.node_id.isin(basin_ids)
+    ].reset_index(drop=True)
 
-    #Basin
-    basin_ids = ribasim_model.basin.node.df.loc[ribasim_model.basin.node.df.node_type == 'Basin', 'meta_node_id'].to_numpy()
-    ribasim_model.basin.area = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id.isin(basin_ids)].reset_index(drop=True)
-    ribasim_model.basin.profile = ribasim_model.basin.profile.df.loc[ribasim_model.basin.profile.df.node_id.isin(basin_ids)].reset_index(drop=True)
-    ribasim_model.basin.state = ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df.node_id.isin(basin_ids)].reset_index(drop=True)
-    ribasim_model.basin.static = ribasim_model.basin.static.df.loc[ribasim_model.basin.static.df.node_id.isin(basin_ids)].reset_index(drop=True)
-    
-    #Outlet
-    outlet_ids = ribasim_model.outlet.node.df.loc[ribasim_model.outlet.node.df.node_type == 'Outlet', 'meta_node_id'].to_numpy()
-    ribasim_model.outlet.static = ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id.isin(outlet_ids)].reset_index(drop=True)
+    # Outlet
+    outlet_ids = ribasim_model.outlet.node.df.loc[
+        ribasim_model.outlet.node.df.node_type == "Outlet", "meta_node_id"
+    ].to_numpy()
+    ribasim_model.outlet.static = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.node_id.isin(outlet_ids)
+    ].reset_index(drop=True)
 
-    #Pump
-    pump_ids = ribasim_model.pump.node.df.loc[ribasim_model.pump.node.df.node_type == 'Pump', 'meta_node_id'].to_numpy()
-    ribasim_model.pump.static = ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id.isin(pump_ids)].reset_index(drop=True)
+    # Pump
+    pump_ids = ribasim_model.pump.node.df.loc[ribasim_model.pump.node.df.node_type == "Pump", "meta_node_id"].to_numpy()
+    ribasim_model.pump.static = ribasim_model.pump.static.df.loc[
+        ribasim_model.pump.static.df.node_id.isin(pump_ids)
+    ].reset_index(drop=True)
 
-    #ManningResistance
-    manningresistance_ids = ribasim_model.manning_resistance.node.df.loc[ribasim_model.manning_resistance.node.df.node_type == 'ManningResistance', 'meta_node_id'].to_numpy()
-    ribasim_model.manning_resistance.static = ribasim_model.manning_resistance.static.df.loc[ribasim_model.manning_resistance.static.df.node_id.isin(manningresistance_ids)].reset_index(drop=True)
+    # ManningResistance
+    manningresistance_ids = ribasim_model.manning_resistance.node.df.loc[
+        ribasim_model.manning_resistance.node.df.node_type == "ManningResistance", "meta_node_id"
+    ].to_numpy()
+    ribasim_model.manning_resistance.static = ribasim_model.manning_resistance.static.df.loc[
+        ribasim_model.manning_resistance.static.df.node_id.isin(manningresistance_ids)
+    ].reset_index(drop=True)
 
-    #LevelBoundary
-    levelboundary_ids = ribasim_model.level_boundary.node.df.loc[ribasim_model.level_boundary.node.df.node_type == 'LevelBoundary', 'meta_node_id'].to_numpy()
-    ribasim_model.level_boundary.static = ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id.isin(levelboundary_ids)].reset_index(drop=True)
-    
-    #identify empty static tables
-    #Basin
-    basin_static_missing = ribasim_model.basin.node.df.loc[~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.static.df.node_id)]#.index.to_numpy()
-    if len(basin_static_missing)> 0:
+    # LevelBoundary
+    levelboundary_ids = ribasim_model.level_boundary.node.df.loc[
+        ribasim_model.level_boundary.node.df.node_type == "LevelBoundary", "meta_node_id"
+    ].to_numpy()
+    ribasim_model.level_boundary.static = ribasim_model.level_boundary.static.df.loc[
+        ribasim_model.level_boundary.static.df.node_id.isin(levelboundary_ids)
+    ].reset_index(drop=True)
+
+    # identify empty static tables
+    # Basin
+    basin_static_missing = ribasim_model.basin.node.df.loc[
+        ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.static.df.node_id)
+    ]  # .index.to_numpy()
+    if len(basin_static_missing) > 0:
         print("\nFollowing node_id's in the Basin.static table are missing:\n", basin_static_missing.index.to_numpy())
 
-    basin_state_missing = ribasim_model.basin.node.df.loc[~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.state.df.node_id)]#.index.to_numpy()
-    if len(basin_state_missing)> 0:
+    basin_state_missing = ribasim_model.basin.node.df.loc[
+        ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.state.df.node_id)
+    ]  # .index.to_numpy()
+    if len(basin_state_missing) > 0:
         print("\nFollowing node_id's in the Basin.state table are missing:\n", basin_state_missing.index.to_numpy())
 
-    basin_profile_missing = ribasim_model.basin.node.df.loc[~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.profile.df.node_id)]#.index.to_numpy()
-    if len(basin_profile_missing)> 0:
+    basin_profile_missing = ribasim_model.basin.node.df.loc[
+        ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.profile.df.node_id)
+    ]  # .index.to_numpy()
+    if len(basin_profile_missing) > 0:
         print("\nFollowing node_id's in the Basin.profile table are missing:\n", basin_profile_missing.index.to_numpy())
-    
-    basin_area_missing = ribasim_model.basin.node.df.loc[~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.area.df.node_id)]#.index.to_numpy()
-    if len(basin_area_missing)> 0:
+
+    basin_area_missing = ribasim_model.basin.node.df.loc[
+        ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.area.df.node_id)
+    ]  # .index.to_numpy()
+    if len(basin_area_missing) > 0:
         print("\nFollowing node_id's in the Basin.area table are missing:\n", basin_area_missing.index.to_numpy())
 
-    #Outlet
-    outlet_missing = ribasim_model.outlet.node.df.loc[~ribasim_model.outlet.node.df.index.isin(ribasim_model.outlet.static.df.node_id)]#.index.to_numpy()
-    if len(outlet_missing)> 0:
+    # Outlet
+    outlet_missing = ribasim_model.outlet.node.df.loc[
+        ~ribasim_model.outlet.node.df.index.isin(ribasim_model.outlet.static.df.node_id)
+    ]  # .index.to_numpy()
+    if len(outlet_missing) > 0:
         print("\nFollowing node_id's in the Outlet.static table are missing:\n", outlet_missing.index.to_numpy())
 
-    #Pump
-    pump_missing = ribasim_model.pump.node.df.loc[~ribasim_model.pump.node.df.index.isin(ribasim_model.pump.static.df.node_id)]#.index.to_numpy()
-    if len(pump_missing)> 0:
+    # Pump
+    pump_missing = ribasim_model.pump.node.df.loc[
+        ~ribasim_model.pump.node.df.index.isin(ribasim_model.pump.static.df.node_id)
+    ]  # .index.to_numpy()
+    if len(pump_missing) > 0:
         print("\nFollowing node_id's in the pump.static table are missing:\n", pump_missing.index.to_numpy())
 
-    #Manning resistance
-    manning_resistance_missing = ribasim_model.manning_resistance.node.df.loc[~ribasim_model.manning_resistance.node.df.index.isin(ribasim_model.manning_resistance.static.df.node_id)]#.index.to_numpy()
-    if len(manning_resistance_missing)> 0:
-        print("\nFollowing node_id's in the manning_resistance.static table are missing\n:", manning_resistance_missing.index.to_numpy())
+    # Manning resistance
+    manning_resistance_missing = ribasim_model.manning_resistance.node.df.loc[
+        ~ribasim_model.manning_resistance.node.df.index.isin(ribasim_model.manning_resistance.static.df.node_id)
+    ]  # .index.to_numpy()
+    if len(manning_resistance_missing) > 0:
+        print(
+            "\nFollowing node_id's in the manning_resistance.static table are missing\n:",
+            manning_resistance_missing.index.to_numpy(),
+        )
 
-    level_boundary_missing = ribasim_model.level_boundary.node.df.loc[~ribasim_model.level_boundary.node.df.index.isin(ribasim_model.level_boundary.static.df.node_id)]#.index.to_numpy()
-    if len(level_boundary_missing)> 0:
-        print("\nFollowing node_id's in the level_boundary.static table are missing:\n", level_boundary_missing.index.to_numpy())
+    level_boundary_missing = ribasim_model.level_boundary.node.df.loc[
+        ~ribasim_model.level_boundary.node.df.index.isin(ribasim_model.level_boundary.static.df.node_id)
+    ]  # .index.to_numpy()
+    if len(level_boundary_missing) > 0:
+        print(
+            "\nFollowing node_id's in the level_boundary.static table are missing:\n",
+            level_boundary_missing.index.to_numpy(),
+        )
 
+    # check for duplicated indexes in all the node tables
+    # reating individual DataFrames for each node type
+    basin_ids_df = pd.DataFrame({"Type": "Basin", "node_id": basin_ids})
+    outlet_ids_df = pd.DataFrame({"Type": "Outlet", "node_id": outlet_ids})
+    pump_ids_df = pd.DataFrame({"Type": "Pump", "node_id": pump_ids})
+    manningresistance_ids_df = pd.DataFrame({"Type": "ManningResistance", "node_id": manningresistance_ids})
+    levelboundary_ids_df = pd.DataFrame({"Type": "LevelBoundary", "node_id": levelboundary_ids})
 
-    #check for duplicated indexes in all the node tables
-    #reating individual DataFrames for each node type
-    basin_ids_df = pd.DataFrame({'Type': 'Basin', 'node_id': basin_ids})
-    outlet_ids_df = pd.DataFrame({'Type': 'Outlet', 'node_id': outlet_ids})
-    pump_ids_df = pd.DataFrame({'Type': 'Pump', 'node_id': pump_ids})
-    manningresistance_ids_df = pd.DataFrame({'Type': 'ManningResistance', 'node_id': manningresistance_ids})
-    levelboundary_ids_df = pd.DataFrame({'Type': 'LevelBoundary', 'node_id': levelboundary_ids})
-    
     # Concatenating all DataFrames into one
-    combined_df = pd.concat([basin_ids_df, outlet_ids_df, pump_ids_df, manningresistance_ids_df, levelboundary_ids_df], ignore_index=True)
+    combined_df = pd.concat(
+        [basin_ids_df, outlet_ids_df, pump_ids_df, manningresistance_ids_df, levelboundary_ids_df], ignore_index=True
+    )
     duplicated_ids = combined_df[combined_df.duplicated(subset="node_id", keep=False)]
-    
+
     if len(duplicated_ids) > 0:
-        print('\nThe following node_ids are duplicates: \n', duplicated_ids)
+        print("\nThe following node_ids are duplicates: \n", duplicated_ids)
 
-    #check for duplicated indexes in the basin static tables
-    duplicated_static_basin = ribasim_model.basin.static.df.loc[ribasim_model.basin.static.df.duplicated(subset='node_id')]
-    if len(duplicated_static_basin)>0:
-        print('\nFollowing indexes are duplicated in the basin.static table:', duplicated_static_basin)
+    # check for duplicated indexes in the basin static tables
+    duplicated_static_basin = ribasim_model.basin.static.df.loc[
+        ribasim_model.basin.static.df.duplicated(subset="node_id")
+    ]
+    if len(duplicated_static_basin) > 0:
+        print("\nFollowing indexes are duplicated in the basin.static table:", duplicated_static_basin)
 
-    #check for duplicated indexes in the outlet static tables
-    duplicated_static_outlet = ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.duplicated(subset='node_id')]
-    if len(duplicated_static_outlet)>0:
-        print('\nFollowing indexes are duplicated in the outlet.static table:', duplicated_static_outlet)
+    # check for duplicated indexes in the outlet static tables
+    duplicated_static_outlet = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.duplicated(subset="node_id")
+    ]
+    if len(duplicated_static_outlet) > 0:
+        print("\nFollowing indexes are duplicated in the outlet.static table:", duplicated_static_outlet)
 
-    #check for duplicated indexes in the pump static tables
-    duplicated_static_pump = ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.duplicated(subset='node_id')]
-    if len(duplicated_static_pump)>0:
-        print('\nFollowing indexes are duplicated in the pump.static table:', duplicated_static_pump)
-    
-    #check for duplicated indexes in the manning_resistance static tables
-    duplicated_static_manning_resistance = ribasim_model.manning_resistance.static.df.loc[ribasim_model.manning_resistance.static.df.duplicated(subset='node_id')]
-    if len(duplicated_static_manning_resistance)>0:
-        print('\nFollowing indexes are duplicated in the manning_resistance.static table:', duplicated_static_manning_resistance)
+    # check for duplicated indexes in the pump static tables
+    duplicated_static_pump = ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.duplicated(subset="node_id")]
+    if len(duplicated_static_pump) > 0:
+        print("\nFollowing indexes are duplicated in the pump.static table:", duplicated_static_pump)
 
-    #check for duplicated indexes in the level_boundary static tables
-    duplicated_static_level_boundary = ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.duplicated(subset='node_id')]
-    if len(duplicated_static_level_boundary)>0:
-        print('\nFollowing indexes are duplicated in the level_boundary.static table:', duplicated_static_level_boundary)
-    
+    # check for duplicated indexes in the manning_resistance static tables
+    duplicated_static_manning_resistance = ribasim_model.manning_resistance.static.df.loc[
+        ribasim_model.manning_resistance.static.df.duplicated(subset="node_id")
+    ]
+    if len(duplicated_static_manning_resistance) > 0:
+        print(
+            "\nFollowing indexes are duplicated in the manning_resistance.static table:",
+            duplicated_static_manning_resistance,
+        )
+
+    # check for duplicated indexes in the level_boundary static tables
+    duplicated_static_level_boundary = ribasim_model.level_boundary.static.df.loc[
+        ribasim_model.level_boundary.static.df.duplicated(subset="node_id")
+    ]
+    if len(duplicated_static_level_boundary) > 0:
+        print(
+            "\nFollowing indexes are duplicated in the level_boundary.static table:", duplicated_static_level_boundary
+        )
+
     return
-    
+
+
 def find_upstream_downstream_target_levels(ribasim_model, node):
     """Find the target levels upstream and downstream from each outlet, and add it as meta data to the outlet.static table."""
-    if 'utlet' in node:
+    if "utlet" in node:
         structure_static = ribasim_model.outlet.static.df.copy(deep=True)
-        structure_static = structure_static[['node_id', 'active', 'flow_rate', 'min_flow_rate', 'max_flow_rate',
-                                       'meta_min_crest_level', 'control_state', 'meta_categorie']] #prevent errors if the function is ran before
-    elif 'ump' in node:
+        structure_static = structure_static[
+            [
+                "node_id",
+                "active",
+                "flow_rate",
+                "min_flow_rate",
+                "max_flow_rate",
+                "meta_min_crest_level",
+                "control_state",
+                "meta_categorie",
+            ]
+        ]  # prevent errors if the function is ran before
+    elif "ump" in node:
         structure_static = ribasim_model.pump.static.df.copy(deep=True)
-        structure_static = structure_static[['node_id', 'active', 'flow_rate', 'min_flow_rate', 'max_flow_rate','control_state', 
-                               'meta_func_afvoer', 'meta_func_aanvoer','meta_func_circulatie', 'meta_type_verbinding', 'meta_categorie']] #prevent errors if the function is ran before
-    #find upstream basin node_id
-    structure_static = structure_static.merge(right=ribasim_model.edge.df[['from_node_id', 'to_node_id']],
-                                        left_on='node_id',
-                                        right_on='to_node_id',
-                                        how='left')
-    structure_static = structure_static.drop(columns='to_node_id') #remove redundant column
+        structure_static = structure_static[
+            [
+                "node_id",
+                "active",
+                "flow_rate",
+                "min_flow_rate",
+                "max_flow_rate",
+                "control_state",
+                "meta_func_afvoer",
+                "meta_func_aanvoer",
+                "meta_func_circulatie",
+                "meta_type_verbinding",
+                "meta_categorie",
+            ]
+        ]  # prevent errors if the function is ran before
+    # find upstream basin node_id
+    structure_static = structure_static.merge(
+        right=ribasim_model.edge.df[["from_node_id", "to_node_id"]],
+        left_on="node_id",
+        right_on="to_node_id",
+        how="left",
+    )
+    structure_static = structure_static.drop(columns="to_node_id")  # remove redundant column
 
-    #find downstream basin node_id
-    structure_static = structure_static.merge(right=ribasim_model.edge.df[['to_node_id', 'from_node_id']],
-                                        left_on='node_id',
-                                        right_on='from_node_id',
-                                        how='left',
-                                        suffixes=('', '_remove'))
-    structure_static = structure_static.drop(columns='from_node_id_remove') #remove redundant column
+    # find downstream basin node_id
+    structure_static = structure_static.merge(
+        right=ribasim_model.edge.df[["to_node_id", "from_node_id"]],
+        left_on="node_id",
+        right_on="from_node_id",
+        how="left",
+        suffixes=("", "_remove"),
+    )
+    structure_static = structure_static.drop(columns="from_node_id_remove")  # remove redundant column
 
-    #merge upstream target level to the outlet static table by using the Basins
-    structure_static = structure_static.merge(right=ribasim_model.basin.state.df[['node_id', 'level']],
-                                        left_on='to_node_id',
-                                        right_on='node_id',
-                                        how='left',
-                                        suffixes=('','_remove'))
-    structure_static = structure_static.rename(columns={'level': 'to_basin_level'})
-    structure_static = structure_static.drop(columns='node_id_remove') #remove redundant column
-    
-    structure_static = structure_static.merge(right=ribasim_model.basin.state.df[['node_id', 'level']],
-                                        left_on='from_node_id',
-                                        right_on='node_id',
-                                        how='left',
-                                        suffixes=('','_remove'))
-    structure_static = structure_static.rename(columns={'level': 'from_basin_level'})
-    structure_static = structure_static.drop(columns='node_id_remove') #remove redundant column
+    # merge upstream target level to the outlet static table by using the Basins
+    structure_static = structure_static.merge(
+        right=ribasim_model.basin.state.df[["node_id", "level"]],
+        left_on="to_node_id",
+        right_on="node_id",
+        how="left",
+        suffixes=("", "_remove"),
+    )
+    structure_static = structure_static.rename(columns={"level": "to_basin_level"})
+    structure_static = structure_static.drop(columns="node_id_remove")  # remove redundant column
 
-    #merge upstream target level to the outlet static table by using the LevelBoundaries
-    structure_static = structure_static.merge(right=ribasim_model.level_boundary.static.df[['node_id', 'level']],
-                                        left_on='to_node_id',
-                                        right_on='node_id',
-                                        how='left',
-                                        suffixes=('', '_remove'))
-    structure_static = structure_static.rename(columns={'level': 'to_LevelBoundary_level'})
-    structure_static = structure_static.drop(columns='node_id_remove') #remove redundant column
-    
-    structure_static = structure_static.merge(right=ribasim_model.level_boundary.static.df[['node_id', 'level']],
-                                        left_on='from_node_id',
-                                        right_on='node_id',
-                                        how='left',
-                                        suffixes=('', '_remove'))
-    structure_static = structure_static.rename(columns={'level': 'from_LevelBoundary_level'})
-    structure_static = structure_static.drop(columns='node_id_remove') #remove redundant column
+    structure_static = structure_static.merge(
+        right=ribasim_model.basin.state.df[["node_id", "level"]],
+        left_on="from_node_id",
+        right_on="node_id",
+        how="left",
+        suffixes=("", "_remove"),
+    )
+    structure_static = structure_static.rename(columns={"level": "from_basin_level"})
+    structure_static = structure_static.drop(columns="node_id_remove")  # remove redundant column
 
+    # merge upstream target level to the outlet static table by using the LevelBoundaries
+    structure_static = structure_static.merge(
+        right=ribasim_model.level_boundary.static.df[["node_id", "level"]],
+        left_on="to_node_id",
+        right_on="node_id",
+        how="left",
+        suffixes=("", "_remove"),
+    )
+    structure_static = structure_static.rename(columns={"level": "to_LevelBoundary_level"})
+    structure_static = structure_static.drop(columns="node_id_remove")  # remove redundant column
 
-    #fill new columns with the upstream target levels of both Basins as well as LevelBoundaries
-    structure_static['from_level'] = structure_static['from_basin_level'].fillna(structure_static['from_LevelBoundary_level'])
-    structure_static['to_level'] = structure_static['to_basin_level'].fillna(structure_static['to_LevelBoundary_level'])
-    
-    #drop the redundant columns, and prepare column names for Ribasim 
-    structure_static = structure_static.drop(columns=['to_basin_level', 'from_basin_level', 'to_LevelBoundary_level', 'from_LevelBoundary_level'])
-    structure_static = structure_static.rename(columns={'from_node_id':'meta_from_node_id',
-                                                  'to_node_id':'meta_to_node_id',
-                                                  'from_level':'meta_from_level',
-                                                  'to_level':'meta_to_level'})
+    structure_static = structure_static.merge(
+        right=ribasim_model.level_boundary.static.df[["node_id", "level"]],
+        left_on="from_node_id",
+        right_on="node_id",
+        how="left",
+        suffixes=("", "_remove"),
+    )
+    structure_static = structure_static.rename(columns={"level": "from_LevelBoundary_level"})
+    structure_static = structure_static.drop(columns="node_id_remove")  # remove redundant column
 
-    #replace the old ribasim_model.____.static.df with the updated structure_static df
-    if 'utlet' in node:
+    # fill new columns with the upstream target levels of both Basins as well as LevelBoundaries
+    structure_static["from_level"] = structure_static["from_basin_level"].fillna(
+        structure_static["from_LevelBoundary_level"]
+    )
+    structure_static["to_level"] = structure_static["to_basin_level"].fillna(structure_static["to_LevelBoundary_level"])
+
+    # drop the redundant columns, and prepare column names for Ribasim
+    structure_static = structure_static.drop(
+        columns=["to_basin_level", "from_basin_level", "to_LevelBoundary_level", "from_LevelBoundary_level"]
+    )
+    structure_static = structure_static.rename(
+        columns={
+            "from_node_id": "meta_from_node_id",
+            "to_node_id": "meta_to_node_id",
+            "from_level": "meta_from_level",
+            "to_level": "meta_to_level",
+        }
+    )
+
+    # replace the old ribasim_model.____.static.df with the updated structure_static df
+    if "utlet" in node:
         ribasim_model.outlet.static = structure_static
-    elif 'ump' in node:
+    elif "ump" in node:
         ribasim_model.pump.static = structure_static
-    
+
     return
-        
+
+
 ##################### Recycle bin ##########################
 # def calculate_update_basin_area(ribasim_model, percentage):
 #     """
