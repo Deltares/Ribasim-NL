@@ -91,8 +91,9 @@ def insert_standard_profile(
         "meta_categorie"
     ]
 
+
     # find the node_id of the bergende nodes with the doorgaande nodes
-    bergende_nodes = profile_total.loc[profile_total.meta_categorie == "bergend"][["node_id"]].reset_index(drop=True)
+    bergende_nodes = profile_total.loc[profile_total.meta_categorie == "bergend"][["node_id"]].reset_index(drop=True) 
     bergende_nodes["from_MR_node"] = bergende_nodes.merge(
         right=ribasim_model.edge.df, left_on="node_id", right_on="from_node_id", how="left"
     )["to_node_id"]
@@ -118,7 +119,7 @@ def insert_standard_profile(
     )  # remove bergende profiles, as they will be added here below
     profile_total = pd.concat([profile_total, bergende_nodes[["node_id", "level", "area", "meta_categorie"]]])
     profile_total = profile_total.sort_values(by=["node_id", "level"]).reset_index(drop=True)
-
+    
     # insert the new tables in the model
     ribasim_model.basin.profile = profile_total
 
@@ -245,7 +246,7 @@ def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
     LB_static = nodes_Terminals[["node_id"]]
     LB_static["level"] = default_level
     LB_combined = pd.concat([ribasim_model.level_boundary.static.df, LB_static])
-    LB_combined = LB_combined.drop_duplicates(subset="node_id").sort_values(by="node_id").reset_index(drop=True)
+    LB_combined = LB_combined.drop_duplicates(subset='node_id').sort_values(by='node_id').reset_index(drop=True)
     ribasim_model.level_boundary.static = LB_combined
 
     # fourth, update the edges table.
@@ -269,11 +270,11 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     nodes_TRC_FlowBoundary["node_type"] = "TabulatedRatingCurve"
 
     # supplement the TRC.node table
-    new_TRC_node = pd.concat([ribasim_model.tabulated_rating_curve.node.df, nodes_TRC_FlowBoundary]).reset_index(
-        drop=True
-    )
-    new_TRC_node["node_id"] = new_TRC_node["meta_node_id"].copy()
-    new_TRC_node = new_TRC_node.set_index("node_id")
+    new_TRC_node = pd.concat(
+        [ribasim_model.tabulated_rating_curve.node.df, nodes_TRC_FlowBoundary]
+    ).reset_index(drop=True)
+    new_TRC_node['node_id'] = new_TRC_node['meta_node_id'].copy()
+    new_TRC_node = new_TRC_node.set_index('node_id')
 
     ribasim_model.tabulated_rating_curve.node.df = new_TRC_node
 
@@ -306,7 +307,6 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
 
     # up till this point, all FlowBoundaries have been converted to TRC's. Now the actual LevelBoundaries needs to be created
     max_id = get_current_max_nodeid(ribasim_model)
-
     nodes_FlowBoundary["meta_old_node_id"] = nodes_FlowBoundary.meta_node_id  # store for later
     nodes_FlowBoundary["node_id"] = max_id + nodes_FlowBoundary.index + 1  # implement new id's
     # nodes_FlowBoundary["node_id"] = nodes_FlowBoundary.meta_node_id.copy()
@@ -357,9 +357,12 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
         lines_LB["geometry"] = lines_LB.apply(create_linestring, axis=1)
         # edges_LB["geometry"] = lines_LB["line"]
 
-        # merge the geometries to the newtemp
-        edges_LB = edges_LB.merge(right=lines_LB[["geometry"]], left_on="from_node_id", right_index=True, how="left")
-
+        #merge the geometries to the newtemp
+        edges_LB = edges_LB.merge(right=lines_LB[['geometry']],
+                                  left_on='from_node_id',
+                                  right_index=True,
+                                  how='left')
+    
     # concat the original edges with the newly created edges of the LevelBoundaries
     new_edges = pd.concat([ribasim_model.edge.df, edges_LB]).reset_index(drop=True)
     new_edges["edge_id"] = new_edges.index.copy() + 1
@@ -962,7 +965,6 @@ def identify_node_meta_categorie(ribasim_model):
         ),
         "meta_categorie",
     ] = "Reguliere stuw"
-
     ribasim_model.pump.static.df.loc[
         ~(
             (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
@@ -1021,7 +1023,6 @@ def identify_node_meta_categorie(ribasim_model):
         & (ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem)),  # to
         "meta_categorie",
     ] = "Uitlaat buitenwater boezem, stuw"
-
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
@@ -1088,6 +1089,61 @@ def load_model_settings(file_path):
     with open(file_path) as file:
         settings = json.load(file)
     return settings
+
+def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
+    sturing = load_model_settings(f"sturing_{waterschap}.json") #load the waterschap specific sturing
+    
+    #create empty columns for the sturing
+    ribasim_model.outlet.static.df['min_upstream_level'] = np.nan
+    ribasim_model.outlet.static.df['max_downstream_level'] = np.nan
+    ribasim_model.outlet.static.df['max_flow_rate'] = np.nan
+    ribasim_model.outlet.static.df['flow_rate'] = np.nan
+    
+    ribasim_model.pump.static.df['min_upstream_level'] = np.nan
+    ribasim_model.pump.static.df['max_downstream_level'] = np.nan
+    ribasim_model.pump.static.df['max_flow_rate'] = np.nan
+    ribasim_model.pump.static.df['flow_rate'] = np.nan
+    
+
+    #make a temp copy to reduce line length, place it later again in the model
+    outlet = ribasim_model.outlet.static.df.copy()
+    pump = ribasim_model.pump.static.df.copy()
+    
+    #for each different outlet and pump type, determine the min an max upstream and downstream level
+    for types, settings in sturing.items():
+        
+        # Extract values for each setting
+        upstream_level_offset = settings['upstream_level_offset']
+        downstream_level_offset = settings['downstream_level_offset']
+        max_flow_rate = settings['max_flow_rate']
+        
+        # Update the min_upstream_level and max_downstream_level in the OUTLET dataframe
+        outlet.loc[outlet.meta_categorie == types, 'min_upstream_level'] = outlet.meta_from_level - upstream_level_offset
+        outlet.loc[outlet.meta_categorie == types, 'max_downstream_level'] = outlet.meta_to_level + downstream_level_offset
+        outlet.loc[outlet.meta_categorie == types, 'flow_rate'] = max_flow_rate
+
+        # Update the min_upstream_level and max_downstream_level in the PUMP dataframe. can be done within the same loop, as the meta_categorie is different for the outlet and pump
+        pump.loc[pump.meta_categorie == types, 'min_upstream_level'] = pump.meta_from_level - upstream_level_offset
+        pump.loc[pump.meta_categorie == types, 'max_downstream_level'] = pump.meta_to_level + downstream_level_offset
+        pump.loc[pump.meta_categorie == types, 'flow_rate'] = max_flow_rate
+
+    # outlet['flow_rate'] = outlet['max_flow_rate']
+    # pump['flow_rate'] = pump['max_flow_rate']
+    
+    # raise warning if there are np.nan in the columns
+    def check_for_nans_in_columns(df, outlet_or_pump, columns_to_check=['min_upstream_level', 'max_downstream_level', 'flow_rate', 'flow_rate']):
+        if df[columns_to_check].isnull().values.any():
+            warnings.warn(f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
+                          f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}")
+            
+    check_for_nans_in_columns(outlet, "outlet")
+    check_for_nans_in_columns(pump, "pump")
+
+    #place the df's back in the ribasim_model
+    ribasim_model.outlet.static.df = outlet
+    ribasim_model.pump.static.df = pump
+
+    return
 
 
 def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
@@ -1632,6 +1688,8 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
     return
 
+def clean_tables(ribasim_model):
+    """Only retain node_id's which are present in the .node table."""
 
 def clean_tables(ribasim_model):
     """Only retain node_id's which are present in the .node table."""
