@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 import ribasim
 from bokeh.palettes import Category10
-from shapely.geometry import LineString, Point
+from ribasim_nl import CloudStorage
+from shapely.geometry import LineString, Point, Polygon, MultiPolygon
 from shapely.wkt import loads
 
 from ribasim_nl import CloudStorage
@@ -234,7 +235,6 @@ class CrossingsToRibasim:
         numbers_to = crossings[~crossings["peilgebied_to"].str.contains("[a-zA-Z_]", na=False)]
         numbers_df = pd.concat([numbers_from["peilgebied_from"], numbers_to["peilgebied_to"]])
         numbers_df = numbers_df.unique()
-
         if numbers_df[0] is not None and not np.isnan(numbers_df[0]):  # detect the largest number
             max_number = max(numbers_df.astype(int))
             if max_number < 0:
@@ -952,13 +952,19 @@ class RibasimNetwork:
         basin_area["geometry"] = basin_area["basins_area_geom"]
         basin_area["meta_streefpeil"] = basin_area["streefpeil"]
         basin_area = basin_area[["node_id", "meta_streefpeil", "geometry"]]
-        basin_area = gpd.GeoDataFrame(basin_area, geometry="geometry").to_crs(crs="EPSG:28992")
+        basin_area = gpd.GeoDataFrame(basin_area, geometry='geometry').to_crs(crs='EPSG:28992')
 
-        # comply to Ribasim 2024.11
-        basin_node["meta_node_id"] = basin_node["node_id"].copy().astype(int)
-        basin_area["meta_node_id"] = basin_area["node_id"].copy().astype(int)
-        basin_node = basin_node.set_index("node_id")
+        # Convert all geometries in the GeoDataFrame to MultiPolygons to comply with Ribasim 2024.11
+        basin_area['geometry'] = basin_area['geometry'].apply(
+            lambda geom: MultiPolygon([geom]) if isinstance(geom, Polygon) else geom)
 
+        #comply to Ribasim 2024.11
+        basin_node['meta_node_id'] = basin_node['node_id'].copy().astype(int)
+        basin_area['meta_node_id'] = basin_area['node_id'].copy().astype(int)
+        basin_node = basin_node.set_index('node_id')
+        # basin_area = basin_area.set_index('node_id')
+        
+        
         return basin_node, basin_profile, basin_static, basin_state, basin_area
 
     def tabulated_rating_curve(self):
