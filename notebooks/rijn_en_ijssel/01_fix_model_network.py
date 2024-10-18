@@ -1,5 +1,7 @@
 # %%
 import geopandas as gpd
+import numpy as np
+import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl import CloudStorage, Model, NetworkValidator
@@ -85,12 +87,9 @@ model.update_node(47, "Basin", data=basin_data)
 model.reverse_edge(edge_id=1370)
 
 # omdraaien richting van `Edge` 196
-model.reverse_edge(edge_id=196)
-model.reverse_edge(edge_id=188)
-model.reverse_edge(edge_id=472)
-model.reverse_edge(edge_id=513)
-model.reverse_edge(edge_id=560)
-model.reverse_edge(edge_id=391)
+for edge_id in [196, 188, 472, 513, 560, 391, 566]:
+    model.reverse_edge(edge_id=edge_id)
+
 model.reverse_edge(edge_id=566)
 
 # opruimen basin Arnhem nabij Lauwersgracht
@@ -110,6 +109,61 @@ model.edge.add(outlet_node, model.level_boundary[43])
 model.edge.add(basin_node, model.pump[264])
 model.edge.add(model.pump[264], model.level_boundary[44])
 
+# %%
+# basin-profielen/state updaten
+df = pd.DataFrame(
+    {
+        "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
+        "level": [0.0, 1.0] * len(model.basin.node.df),
+        "area": [0.01, 1000.0] * len(model.basin.node.df),
+    }
+)
+df.index.name = "fid"
+model.basin.profile.df = df
+
+df = model.basin.profile.df.groupby("node_id")[["level"]].max().reset_index()
+df.index.name = "fid"
+model.basin.state.df = df
+
+# %%
+# tabulated_rating_curves updaten
+df = pd.DataFrame(
+    {
+        "node_id": np.repeat(model.tabulated_rating_curve.node.df.index.to_numpy(), 2),
+        "level": [0.0, 5] * len(model.tabulated_rating_curve.node.df),
+        "flow_rate": [0, 0.1] * len(model.tabulated_rating_curve.node.df),
+    }
+)
+df.index.name = "fid"
+model.tabulated_rating_curve.static.df = df
+
+
+# %%
+
+# level_boundaries updaten
+df = pd.DataFrame(
+    {
+        "node_id": model.level_boundary.node.df.index.to_list(),
+        "level": [0.0] * len(model.level_boundary.node.df),
+    }
+)
+df.index.name = "fid"
+model.level_boundary.static.df = df
+
+# %%
+# manning_resistance updaten
+length = len(model.manning_resistance.node.df)
+df = pd.DataFrame(
+    {
+        "node_id": model.manning_resistance.node.df.index.to_list(),
+        "length": [100.0] * length,
+        "manning_n": [100.0] * length,
+        "profile_width": [100.0] * length,
+        "profile_slope": [100.0] * length,
+    }
+)
+df.index.name = "fid"
+model.manning_resistance.static.df = df
 
 #  %% write model
 # model.use_validation = True
