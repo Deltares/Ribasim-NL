@@ -37,9 +37,10 @@ outlet_data = outlet.Static(flow_rate=[100])
 
 # HIER KOMEN ISSUES
 
-# Verwijderen duplicate edges
+# %% https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421617819
 
-# model.edge.df.drop_duplicates(inplace=True)
+# Verwijderen duplicate edges
+model.edge.df.drop_duplicates(inplace=True)
 
 # EINDE ISSUES
 
@@ -105,3 +106,5 @@ model.manning_resistance.static.df = df
 #  %% write model
 model.use_validation = True
 model.write(ribasim_toml)
+
+# %%
