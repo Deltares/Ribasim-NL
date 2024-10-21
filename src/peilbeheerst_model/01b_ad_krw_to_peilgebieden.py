@@ -21,7 +21,9 @@ for funcname, df in print_df.items():
 for waterschap, waterschap_struct in waterschap_data.items():
     print(f"\n{waterschap}...")
 
-    init_settings, crossing_settings = waterschap_struct.values()
+    crossing_settings = waterschap_struct["find_crossings_with_peilgebieden"]
+    init_settings = waterschap_struct["init"]
+
     gpkg = pathlib.Path(init_settings["output_path"])
     if not gpkg.exists():
         raise ValueError(gpkg)

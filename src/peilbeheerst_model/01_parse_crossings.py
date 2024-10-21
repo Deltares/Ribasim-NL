@@ -25,8 +25,9 @@ for funcname, df in print_df.items():
 for waterschap, waterschap_struct in waterschap_data.items():
     print(f"\n{waterschap}...")
 
-    init_settings, crossing_settings = waterschap_struct.values()
-    init_settings["logfile"] = pathlib.Path(init_settings["output_path"]).with_suffix("").with_suffix(".log")
+    crossing_settings = waterschap_struct["find_crossings_with_peilgebieden"]
+    init_settings = waterschap_struct["init"]
+    init_settings["logfile"] = pathlib.Path(init_settings["output_path"]).with_suffix(".log")
 
     if waterschap not in ["HHNK"]:
         continue
