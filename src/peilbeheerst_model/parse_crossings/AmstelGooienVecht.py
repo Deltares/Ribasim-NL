@@ -32,3 +32,7 @@ if crossing_settings["filterlayer"] is None:
 else:
     df_hydro, df_dsf, df_hydro_dsf = cross.find_crossings_with_peilgebieden("hydroobject", **crossing_settings)
     cross.write_crossings(df_hydro, crossing_settings["filterlayer"], df_dsf, df_hydro_dsf)
+
+# %%
+
+cloud.upload_verwerkt(waterschap)
