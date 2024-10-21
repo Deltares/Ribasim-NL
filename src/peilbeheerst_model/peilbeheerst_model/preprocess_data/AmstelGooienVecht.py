@@ -1,9 +1,9 @@
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from general_functions import show_layers_and_columns, store_data
 from shapely import wkt
 
+from peilbeheerst_model.general_functions import show_layers_and_columns, store_data
 from ribasim_nl import CloudStorage
 
 pd.set_option("display.max_columns", None)

@@ -2,7 +2,8 @@
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 # # Hollands Noorderkwartier
 

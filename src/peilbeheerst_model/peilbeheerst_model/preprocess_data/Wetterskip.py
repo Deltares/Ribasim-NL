@@ -1,7 +1,8 @@
 # import packages and functions
 import geopandas as gpd
 import pandas as pd
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 pd.set_option("display.max_columns", None)
 
