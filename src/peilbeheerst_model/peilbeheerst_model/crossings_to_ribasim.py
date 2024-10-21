@@ -8,7 +8,7 @@ import pandas as pd
 import ribasim
 from bokeh.palettes import Category10
 from ribasim_nl import CloudStorage
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.geometry import LineString, Point
 from shapely.wkt import loads
 
 
@@ -956,16 +956,10 @@ class RibasimNetwork:
         basin_area = basin_area[["node_id", "meta_streefpeil", "geometry"]]
         basin_area = gpd.GeoDataFrame(basin_area, geometry="geometry").to_crs(crs="EPSG:28992")
 
-        # Convert all geometries in the GeoDataFrame to MultiPolygons to comply with Ribasim 2024.11
-        basin_area["geometry"] = basin_area["geometry"].apply(
-            lambda geom: MultiPolygon([geom]) if isinstance(geom, Polygon) else geom
-        )
-
         # comply to Ribasim 2024.11
         basin_node["meta_node_id"] = basin_node["node_id"].copy().astype(int)
         basin_area["meta_node_id"] = basin_area["node_id"].copy().astype(int)
         basin_node = basin_node.set_index("node_id")
-        # basin_area = basin_area.set_index('node_id')
 
         return basin_node, basin_profile, basin_static, basin_state, basin_area
 
