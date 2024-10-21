@@ -16,7 +16,6 @@ from ribasim_nl import CloudStorage
 
 remove_cat_2 = True
 
-# %%
 waterschap = "AmstelGooienVecht"
 waterschap2 = "AGV"
 
@@ -31,25 +30,20 @@ cloud.download_verwerkt(waterschap)
 verwerkt_dir = cloud.joinpath(waterschap, "verwerkt")
 data_path = verwerkt_dir / "preprocessed.gpkg"
 
-# %%
 # Waterschaps boundaries
-grens_path = "/DATAFOLDER/projects/4750_30/Data_overig/Waterschapsgrenzen/Waterschapsgrenzen.geojson"
+grens_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
 
 # Hoofdwatersysteem boundaries
-hws_path = "/DATAFOLDER//projects/4750_30/Data_overig/HWS/krw_basins_vlakken.gpkg"
+hws_path = cloud.joinpath("Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg")
 
 # Buffer boundaries
-buffer_path = r"/DATAFOLDER//projects/4750_30/Data_overig/HWS/hws_buffer_agv.gpkg"
+buffer_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hws_buffer_agv.gpkg")
 
 # Buffer RWHS
-# rhws_path = f"/DATAFOLDER//projects/4750_30/Data_overig/HWS/agv_rhws_buffer.gpkg"
+rhws_path = cloud.joinpath("Rijkswaterstaat/verwerkt/agv_rhws_buffer.gpkg")
 
-# Output folder
-output_folder = f"/DATAFOLDER/projects/4750_30/Data_postprocessed/Waterschappen/{waterschap}"
 
-# Load Files
-
-# %%
+# %% Load Files
 # Load HHNK files
 AVG = read_gpkg_layers(
     gpkg_path=data_path,
@@ -67,8 +61,6 @@ AVG["peilgebied"] = AVG["peilgebied"].to_crs("EPSG:28992")
 
 # Load waterschap boundaries
 gdf_grens = gpd.read_file(grens_path)
-gdf_grens = gdf_grens.to_crs("EPSG:28992")
-gdf_grens = gdf_grens.set_index("waterschap")
 
 # Load hws
 gdf_hws = gpd.read_file(hws_path)
@@ -90,12 +82,13 @@ AVG["peilgebied"].globalid.is_unique
 
 # %%
 # Select boundaries HH Amstel, Gooi en Vecht
-gdf_grens = gdf_grens.loc[["HH Amstel, Gooi en Vecht"]]
+gdf_grens = gdf_grens.loc[gdf_grens["naam"].str.contains("Amstel, Gooi en Vecht")]
+assert len(gdf_grens) == 1
 
-# Use waterschap boudnaries to clip HWS layer
+# Use waterschap boundaries to clip HWS layer
 gdf_hws = gpd.overlay(gdf_grens, gdf_hws, how="intersection")
 
-# # Use waterschap boudnaries to clip HWS layer
+# Use waterschap boundaries to clip HWS layer
 # gdf_rhws = gpd.overlay(gdf_grens, gdf_rhws, how='intersection')
 
 # Peilgebied and HWS layer overlap:
@@ -139,10 +132,8 @@ for index, row in AVG["peilgebied"].iterrows():
 # Add new column and drop old HWS_BZM column
 AVG["peilgebied"]["peilgebied_cat"] = peilgebieden_cat
 
-# Add rhws to ['peilgebied','streefpeil']
-
-# %%
-# # update peilgebied dict key
+# %% Add rhws to ['peilgebied','streefpeil']
+# update peilgebied dict key
 # gdf_rhws['globalid'] = 'dummy_globalid_rhws_' + gdf_rhws.index.astype(str)
 # gdf_rhws['code'] = 'dummy_code_nhws_' + gdf_rhws.index.astype(str)
 # gdf_rhws['nen3610id'] = 'dummy_nen3610id_rhws_' + gdf_rhws.index.astype(str)
@@ -200,11 +191,10 @@ AVG["streefpeil"] = gpd.GeoDataFrame(AVG["streefpeil"])
 # buffer_polygon = buffer_polygon.set_geometry('geometry')
 # buffer_polygon = buffer_polygon.set_crs('EPSG:28992')
 
-# %% [markdown]
-# ### Add buffer to ['peilgebied','streefpeil']
 
-# %%
-# # update peilgebied dict key
+# %% Add buffer to ['peilgebied','streefpeil']
+
+# update peilgebied dict key
 # buffer_polygon = gpd.GeoDataFrame(buffer_polygon)
 # buffer_polygon['globalid'] = 'dummy_globalid_nhws_buffer_' + buffer_polygon.index.astype(str)
 # buffer_polygon['code'] = 'dummy_code_nhws_buffer_' + buffer_polygon.index.astype(str)
@@ -231,12 +221,14 @@ AVG["streefpeil"] = gpd.GeoDataFrame(AVG["streefpeil"])
 if remove_cat_2:
     AVG["peilgebied"] = AVG["peilgebied"].loc[AVG["peilgebied"].peilgebied_cat != 2]
 
-# Store output
+# %% Store output
 
-# %%
+output_gpkg_path = verwerkt_dir / "postprocessed.gpkg"
+
 for key in AVG.keys():
     print(key)
-    AVG[str(key)].to_file(f"{output_folder}/{waterschap2}.gpkg", layer=str(key), driver="GPKG")
+    AVG[str(key)].to_file(output_gpkg_path, layer=str(key), driver="GPKG")
 
+cloud.upload_verwerkt(output_gpkg_path)
 # %%
 AVG["peilgebied"]["peilgebied_cat"].unique()
