@@ -1,1 +1,2 @@
-pixi run --environment=dev code . | exit
+REM open using ribasim python release
+pixi run code . | exit

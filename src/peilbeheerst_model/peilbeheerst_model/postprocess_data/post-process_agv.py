@@ -10,6 +10,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from general_functions import read_gpkg_layers
+
 from ribasim_nl import CloudStorage
 
 # %%
@@ -176,10 +177,7 @@ streefpeil_hws["geometry"] = [None] * len(gdf_hws)
 AVG["streefpeil"] = pd.concat([streefpeil_hws, AVG["streefpeil"]])
 AVG["streefpeil"] = gpd.GeoDataFrame(AVG["streefpeil"])
 
-# %% [markdown]
-# ### Create buffer polygon between NHWS and peilgebied/RHWS
-
-# %%
+# %% Create buffer polygon between NHWS and peilgebied/RHWS
 # buffer_polygon = gdf_buffer.geometry.iat[0].intersection(gdf_grens.geometry.iat[0])
 # buffer_polygon = buffer_polygon.difference(shapely.geometry.MultiPolygon(gdf_hws.geometry.tolist()))
 # buffer_polygon = buffer_polygon.difference(shapely.ops.unary_union(AVG['peilgebied'].geometry.tolist()))

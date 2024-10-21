@@ -1,20 +1,14 @@
 # %%
-import json
 import pathlib
-from pathlib import Path
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from peilbeheerst_model import ParseCrossings
+from peilbeheerst_model import ParseCrossings, waterschap_data
 
 # %%
-json_path = Path(__file__).resolve().with_name("waterschappen.json")
-
-with open(json_path) as f:
-    waterschap_data = json.load(f)
 
 print_df = {}
 for waterschap, waterschap_struct in waterschap_data.items():
