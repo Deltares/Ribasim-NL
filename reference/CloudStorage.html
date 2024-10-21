@@ -186,7 +186,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="ribasim_nl.CloudStorage" class="level1">
 <h1>CloudStorage</h1>
-<p><code>CloudStorage(self, data_dir=RIBASIM_NL_DATA_DIR, user=RIBASIM_NL_CLOUD_USER, url=BASE_URL, password=RIBASIM_NL_CLOUD_PASS)</code></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>CloudStorage(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    data_dir<span class="op">=</span>RIBASIM_NL_DATA_DIR</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    user<span class="op">=</span>RIBASIM_NL_CLOUD_USER</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    url<span class="op">=</span>BASE_URL</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    password<span class="op">=</span>RIBASIM_NL_CLOUD_PASS</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Connect a local ’data_dir` to cloud-storage.</p>
 <section id="attributes" class="level2">
 <h2 class="anchored" data-anchor-id="attributes">Attributes</h2>
@@ -271,28 +277,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 <section id="ribasim_nl.CloudStorage.content" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.content">content</h3>
-<p><code>CloudStorage.content(url)</code></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.content(url)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>List all content in a directory</p>
 <p>User can specify a path to the directory with additional arguments.</p>
-<section id="examples" class="level4">
-<h4 class="anchored" data-anchor-id="examples">Examples</h4>
-<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud <span class="op">=</span> Cloud()</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs()</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"AaenMaas"</span>, <span class="st">"AmselGooienVecht"</span>, ...]</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs(<span class="st">"AaenMaas"</span>)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"aangeleverd"</span>, <span class="st">"modellen"</span>, <span class="st">"verwerkt"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<section id="examples" class="level4 doc-section doc-section-examples">
+<h4 class="doc-section doc-section-examples anchored" data-anchor-id="examples">Examples</h4>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud <span class="op">=</span> Cloud()</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs()</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"AaenMaas"</span>, <span class="st">"AmselGooienVecht"</span>, ...]</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs(<span class="st">"AaenMaas"</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"aangeleverd"</span>, <span class="st">"modellen"</span>, <span class="st">"verwerkt"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
-<section id="returns" class="level4">
-<h4 class="anchored" data-anchor-id="returns">Returns</h4>
+<section id="returns" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 10%">
+<col style="width: 17%">
+<col style="width: 71%">
+</colgroup>
 <thead>
 <tr class="header">
+<th>Name</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
+<td></td>
 <td>list[str]</td>
 <td>List of all content directories in a specified path</td>
 </tr>
@@ -302,28 +315,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.CloudStorage.dirs" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.dirs">dirs</h3>
-<p><code>CloudStorage.dirs(*args)</code></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.dirs(<span class="op">*</span>args)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>List sub-directories in a directory</p>
 <p>User can specify a path to the directory with additional arguments.</p>
-<section id="examples-1" class="level4">
-<h4 class="anchored" data-anchor-id="examples-1">Examples</h4>
-<div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud <span class="op">=</span> Cloud()</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs()</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"AaenMaas"</span>, <span class="st">"AmselGooienVecht"</span>, ...]</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs(<span class="st">"AaenMaas"</span>)</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"aangeleverd"</span>, <span class="st">"modellen"</span>, <span class="st">"verwerkt"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<section id="examples-1" class="level4 doc-section doc-section-examples">
+<h4 class="doc-section doc-section-examples anchored" data-anchor-id="examples-1">Examples</h4>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud <span class="op">=</span> Cloud()</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs()</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"AaenMaas"</span>, <span class="st">"AmselGooienVecht"</span>, ...]</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs(<span class="st">"AaenMaas"</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"aangeleverd"</span>, <span class="st">"modellen"</span>, <span class="st">"verwerkt"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
-<section id="returns-1" class="level4">
-<h4 class="anchored" data-anchor-id="returns-1">Returns</h4>
+<section id="returns-1" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
 <table class="caption-top table">
 <thead>
 <tr class="header">
+<th>Name</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
+<td></td>
 <td>list[str]</td>
 <td>List of directories in a specified path</td>
 </tr>
@@ -333,45 +348,50 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.CloudStorage.download_aangeleverd" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_aangeleverd">download_aangeleverd</h3>
-<p><code>CloudStorage.download_aangeleverd(authority, overwrite=False)</code></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.download_aangeleverd(authority, overwrite<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Download all files in folder ‘aangeleverd’</p>
 </section>
 <section id="ribasim_nl.CloudStorage.download_all" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_all">download_all</h3>
-<p><code>CloudStorage.download_all(authority, overwrite=False)</code></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.download_all(authority, overwrite<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Download all files for authority.</p>
 </section>
 <section id="ribasim_nl.CloudStorage.download_basisgegevens" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_basisgegevens">download_basisgegevens</h3>
-<p><code>CloudStorage.download_basisgegevens(bronnen=[], overwrite=True)</code></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.download_basisgegevens(bronnen<span class="op">=</span>[], overwrite<span class="op">=</span><span class="va">True</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Download sources in the folder ‘Basisgegevens’</p>
 </section>
 <section id="ribasim_nl.CloudStorage.download_content" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_content">download_content</h3>
-<p><code>CloudStorage.download_content(url, overwrite=False)</code></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.download_content(url, overwrite<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Download content of a directory recursively.</p>
 </section>
 <section id="ribasim_nl.CloudStorage.download_verwerkt" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.download_verwerkt">download_verwerkt</h3>
-<p><code>CloudStorage.download_verwerkt(authority, overwrite=False)</code></p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.download_verwerkt(authority, overwrite<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Download all files in folder ‘verwerkt’</p>
 </section>
 <section id="ribasim_nl.CloudStorage.upload_content" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.upload_content">upload_content</h3>
-<p><code>CloudStorage.upload_content(dir_path, overwrite=False)</code></p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.upload_content(dir_path, overwrite<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Upload content of a directory recursively.</p>
 </section>
 <section id="ribasim_nl.CloudStorage.upload_model" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.upload_model">upload_model</h3>
-<p><code>CloudStorage.upload_model(authority, model, include_results=False, include_plots=False)</code></p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.upload_model(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    authority</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    model</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    include_results<span class="op">=</span><span class="va">False</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    include_plots<span class="op">=</span><span class="va">False</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Upload a model to a water authority</p>
-<section id="parameters" class="level4">
-<h4 class="anchored" data-anchor-id="parameters">Parameters</h4>
+<section id="parameters" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 16%">
+<col style="width: 15%">
 <col style="width: 7%">
-<col style="width: 65%">
+<col style="width: 66%">
 <col style="width: 10%">
 </colgroup>
 <thead>
@@ -384,25 +404,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>authority</code></td>
+<td>authority</td>
 <td>str</td>
 <td>Water authority to upload a model for</td>
 <td><em>required</em></td>
 </tr>
 <tr class="even">
-<td><code>model</code></td>
+<td>model</td>
 <td>str</td>
 <td>name of the model (directory) to upload</td>
 <td><em>required</em></td>
 </tr>
 <tr class="odd">
-<td><code>include_results</code></td>
+<td>include_results</td>
 <td></td>
 <td>to include results dir in upload; yes/no = True/False. defaults to False.</td>
 <td><code>False</code></td>
 </tr>
 <tr class="even">
-<td><code>include_plots</code></td>
+<td>include_plots</td>
 <td></td>
 <td>to include plots dir in upload; yes/no = True/False. defaults to False.</td>
 <td><code>False</code></td>
@@ -410,17 +430,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="raises" class="level4">
-<h4 class="anchored" data-anchor-id="raises">Raises</h4>
+<section id="raises" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises">Raises</h4>
 <table class="caption-top table">
 <thead>
 <tr class="header">
+<th>Name</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
+<td></td>
 <td>ValueError</td>
 <td>If model does not exist locally</td>
 </tr>
@@ -430,12 +452,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.CloudStorage.upload_verwerkt" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.upload_verwerkt">upload_verwerkt</h3>
-<p><code>CloudStorage.upload_verwerkt(authority, overwrite=False)</code></p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.upload_verwerkt(authority, overwrite<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Upload all files in folder ‘verwerkt’</p>
 </section>
 <section id="ribasim_nl.CloudStorage.uploaded_models" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.CloudStorage.uploaded_models">uploaded_models</h3>
-<p><code>CloudStorage.uploaded_models(authority)</code></p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>CloudStorage.uploaded_models(authority)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Get all model versions uploaded for an authority</p>
 
 

@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -145,7 +179,12 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="hydamo.HyDAMO" class="level1">
 <h1>HyDAMO</h1>
-<p><code>HyDAMO(self, version='2.2', schemas_path=SCHEMAS_DIR, ignored_layers=['afvoeraanvoergebied', 'imwa_geoobject', 'leggerwatersysteem', 'leggerwaterveiligheid', 'waterbeheergebied'])</code></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>HyDAMO(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    version<span class="op">=</span><span class="st">'2.2'</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    schemas_path<span class="op">=</span>SCHEMAS_DIR</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    ignored_layers<span class="op">=</span>[<span class="st">'afvoeraanvoergebied'</span>, <span class="st">'imwa_geoobject'</span>, <span class="st">'leggerwatersysteem'</span>, <span class="st">'leggerwaterveiligheid'</span>, <span class="st">'waterbeheergebied'</span>]</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Definition of the HyDAMO datamodel.</p>
 <section id="methods" class="level2">
 <h2 class="anchored" data-anchor-id="methods">Methods</h2>
@@ -181,129 +220,19 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <section id="hydamo.HyDAMO.from_geopackage" class="level3">
 <h3 class="anchored" data-anchor-id="hydamo.HyDAMO.from_geopackage">from_geopackage</h3>
-<p><code>HyDAMO.from_geopackage(file_path, version='2.2', check_columns=True, check_geotype=True)</code></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>HyDAMO.from_geopackage(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    file_path</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    version<span class="op">=</span><span class="st">'2.2'</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    check_columns<span class="op">=</span><span class="va">True</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    check_geotype<span class="op">=</span><span class="va">True</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Initialize HyDAMO class from GeoPackage</p>
-<section id="parameters" class="level4">
-<h4 class="anchored" data-anchor-id="parameters">Parameters</h4>
+<section id="parameters" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 13%">
 <col style="width: 11%">
-<col style="width: 65%">
-<col style="width: 9%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>file_path</code></td>
-<td>path - string</td>
-<td>Path-string to the hydamo GeoPackage</td>
-<td><em>required</em></td>
-</tr>
-<tr class="even">
-<td><code>check_columns</code></td>
-<td>bool</td>
-<td>Check if all required columns are present in the GeoDataFrame. The default is True.</td>
-<td><code>True</code></td>
-</tr>
-<tr class="odd">
-<td><code>check_geotype</code></td>
-<td>bool</td>
-<td>Check if the geometry is of the required type. The default is True.</td>
-<td><code>True</code></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="returns" class="level4">
-<h4 class="anchored" data-anchor-id="returns">Returns</h4>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>HyDAMO</td>
-<td>HyDAMO object initialized with content of GeoPackage</td>
-</tr>
-</tbody>
-</table>
-</section>
-</section>
-<section id="hydamo.HyDAMO.get" class="level3">
-<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.get">get</h3>
-<p><code>HyDAMO.get(layer, global_id)</code></p>
-<p>Get a DataFrame row (feature) providing a layer an global_id.</p>
-<section id="parameters-1" class="level4">
-<h4 class="anchored" data-anchor-id="parameters-1">Parameters</h4>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>layer</code></td>
-<td>str</td>
-<td>DESCRIPTION.</td>
-<td><em>required</em></td>
-</tr>
-<tr class="even">
-<td><code>global_id</code></td>
-<td>str</td>
-<td>DESCRIPTION.</td>
-<td><em>required</em></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="returns-1" class="level4">
-<h4 class="anchored" data-anchor-id="returns-1">Returns</h4>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>TYPE</td>
-<td>DESCRIPTION.</td>
-</tr>
-</tbody>
-</table>
-</section>
-</section>
-<section id="hydamo.HyDAMO.init_datamodel" class="level3">
-<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.init_datamodel">init_datamodel</h3>
-<p><code>HyDAMO.init_datamodel()</code></p>
-<p>Initialize DataModel from self.schemas_path.</p>
-</section>
-<section id="hydamo.HyDAMO.set_data" class="level3">
-<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.set_data">set_data</h3>
-<p><code>HyDAMO.set_data(gdf, layer, index_col=None, check_columns=True, check_geotype=True, extra_values={})</code></p>
-<p>Set data to a HyDAMO object-layer.</p>
-<section id="parameters-2" class="level4">
-<h4 class="anchored" data-anchor-id="parameters-2">Parameters</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 13%">
-<col style="width: 10%">
+<col style="width: 11%">
 <col style="width: 66%">
 <col style="width: 9%">
 </colgroup>
@@ -317,31 +246,19 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>gdf</code></td>
-<td>GeoDataFrame</td>
-<td>GeoDataFrame with a HyDAMO object-layer</td>
+<td>file_path</td>
+<td>path - string</td>
+<td>Path-string to the hydamo GeoPackage</td>
 <td><em>required</em></td>
 </tr>
 <tr class="even">
-<td><code>layer</code></td>
-<td>TYPE</td>
-<td>HyDAMO layer to be set</td>
-<td><em>required</em></td>
-</tr>
-<tr class="odd">
-<td><code>index_col</code></td>
-<td>str</td>
-<td>Column to be used as index. The default is None.</td>
-<td><code>None</code></td>
-</tr>
-<tr class="even">
-<td><code>check_columns</code></td>
+<td>check_columns</td>
 <td>bool</td>
 <td>Check if all required columns are present in the GeoDataFrame. The default is True.</td>
 <td><code>True</code></td>
 </tr>
 <tr class="odd">
-<td><code>check_geotype</code></td>
+<td>check_geotype</td>
 <td>bool</td>
 <td>Check if the geometry is of the required type. The default is True.</td>
 <td><code>True</code></td>
@@ -349,17 +266,162 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 </section>
-<section id="returns-2" class="level4">
-<h4 class="anchored" data-anchor-id="returns-2">Returns</h4>
+<section id="returns" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 77%">
+</colgroup>
 <thead>
 <tr class="header">
+<th>Name</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
+<td>hydamo</td>
+<td>HyDAMO</td>
+<td>HyDAMO object initialized with content of GeoPackage</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="hydamo.HyDAMO.get" class="level3">
+<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.get">get</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>HyDAMO.get(layer, global_id)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Get a DataFrame row (feature) providing a layer an global_id.</p>
+<section id="parameters-1" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>layer</td>
+<td>str</td>
+<td>DESCRIPTION.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>global_id</td>
+<td>str</td>
+<td>DESCRIPTION.</td>
+<td><em>required</em></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-1" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>TYPE</td>
+<td>DESCRIPTION.</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="hydamo.HyDAMO.init_datamodel" class="level3">
+<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.init_datamodel">init_datamodel</h3>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>HyDAMO.init_datamodel()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Initialize DataModel from self.schemas_path.</p>
+</section>
+<section id="hydamo.HyDAMO.set_data" class="level3">
+<h3 class="anchored" data-anchor-id="hydamo.HyDAMO.set_data">set_data</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>HyDAMO.set_data(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    gdf</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    layer</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    index_col<span class="op">=</span><span class="va">None</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    check_columns<span class="op">=</span><span class="va">True</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    check_geotype<span class="op">=</span><span class="va">True</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    extra_values<span class="op">=</span>{}</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Set data to a HyDAMO object-layer.</p>
+<section id="parameters-2" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 67%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>gdf</td>
+<td>GeoDataFrame</td>
+<td>GeoDataFrame with a HyDAMO object-layer</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>layer</td>
+<td>TYPE</td>
+<td>HyDAMO layer to be set</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td>index_col</td>
+<td>str</td>
+<td>Column to be used as index. The default is None.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>check_columns</td>
+<td>bool</td>
+<td>Check if all required columns are present in the GeoDataFrame. The default is True.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td>check_geotype</td>
+<td>bool</td>
+<td>Check if the geometry is of the required type. The default is True.</td>
+<td><code>True</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-2" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-2">Returns</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
 <td>None.</td>
 <td></td>
 </tr>
@@ -369,15 +431,15 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="hydamo.HyDAMO.to_geopackage" class="level3">
 <h3 class="anchored" data-anchor-id="hydamo.HyDAMO.to_geopackage">to_geopackage</h3>
-<p><code>HyDAMO.to_geopackage(file_path, use_schema=True)</code></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>HyDAMO.to_geopackage(file_path, use_schema<span class="op">=</span><span class="va">True</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Write HyDAMO object to a GeoPackage.</p>
-<section id="parameters-3" class="level4">
-<h4 class="anchored" data-anchor-id="parameters-3">Parameters</h4>
+<section id="parameters-3" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 13%">
+<col style="width: 11%">
 <col style="width: 14%">
-<col style="width: 61%">
+<col style="width: 62%">
 <col style="width: 11%">
 </colgroup>
 <thead>
@@ -390,13 +452,13 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>file_path</code></td>
+<td>file_path</td>
 <td>path - string</td>
 <td>Path-string where the file should be written to</td>
 <td><em>required</em></td>
 </tr>
 <tr class="even">
-<td><code>use_schema</code></td>
+<td>use_schema</td>
 <td>bool</td>
 <td>Use the schema to specify column-properties The default is True.</td>
 <td><code>True</code></td>
@@ -404,17 +466,19 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 </section>
-<section id="returns-3" class="level4">
-<h4 class="anchored" data-anchor-id="returns-3">Returns</h4>
+<section id="returns-3" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-3">Returns</h4>
 <table class="caption-top table">
 <thead>
 <tr class="header">
+<th>Name</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
+<td></td>
 <td>None.</td>
 <td></td>
 </tr>

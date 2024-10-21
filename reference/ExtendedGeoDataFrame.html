@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -143,7 +177,16 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="hydamo.ExtendedGeoDataFrame" class="level1">
 <h1>ExtendedGeoDataFrame</h1>
-<p><code>ExtendedGeoDataFrame(self, validation_schema, geotype, layer_name='', required_columns=[], logger=logging, *args, **kwargs)</code></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    validation_schema</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    geotype</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    layer_name<span class="op">=</span><span class="st">''</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    required_columns<span class="op">=</span>[]</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    logger<span class="op">=</span>logging</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>args</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>A GeoPandas GeoDataFrame with extended properties and methods.</p>
 <section id="methods" class="level2">
 <h2 class="anchored" data-anchor-id="methods">Methods</h2>
@@ -171,20 +214,27 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <section id="hydamo.ExtendedGeoDataFrame.delete_all" class="level3">
 <h3 class="anchored" data-anchor-id="hydamo.ExtendedGeoDataFrame.delete_all">delete_all</h3>
-<p><code>ExtendedGeoDataFrame.delete_all()</code></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame.delete_all()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Empty the dataframe</p>
 </section>
 <section id="hydamo.ExtendedGeoDataFrame.set_data" class="level3">
 <h3 class="anchored" data-anchor-id="hydamo.ExtendedGeoDataFrame.set_data">set_data</h3>
-<p><code>ExtendedGeoDataFrame.set_data(gdf, layer='', index_col=None, check_columns=True, check_geotype=True, extra_attributes={})</code></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame.set_data(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    gdf</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    layer<span class="op">=</span><span class="st">''</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    index_col<span class="op">=</span><span class="va">None</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    check_columns<span class="op">=</span><span class="va">True</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    check_geotype<span class="op">=</span><span class="va">True</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    extra_attributes<span class="op">=</span>{}</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Set data to the ExtendedGeoDataFrame.</p>
-<section id="parameters" class="level4">
-<h4 class="anchored" data-anchor-id="parameters">Parameters</h4>
+<section id="parameters" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 13%">
-<col style="width: 10%">
-<col style="width: 66%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 67%">
 <col style="width: 9%">
 </colgroup>
 <thead>
@@ -197,25 +247,25 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>gdf</code></td>
+<td>gdf</td>
 <td>GeoDataFrame</td>
 <td>GeoDataFrame with a HyDAMO object-layer</td>
 <td><em>required</em></td>
 </tr>
 <tr class="even">
-<td><code>index_col</code></td>
+<td>index_col</td>
 <td>str</td>
 <td>Column to be used as index. The default is None.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="odd">
-<td><code>check_columns</code></td>
+<td>check_columns</td>
 <td>bool</td>
 <td>Check if all required columns are present in the GeoDataFrame. The default is True.</td>
 <td><code>True</code></td>
 </tr>
 <tr class="even">
-<td><code>check_geotype</code></td>
+<td>check_geotype</td>
 <td>bool</td>
 <td>Check if the geometry is of the required type. The default is True.</td>
 <td><code>True</code></td>
@@ -223,17 +273,19 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 </section>
-<section id="returns" class="level4">
-<h4 class="anchored" data-anchor-id="returns">Returns</h4>
+<section id="returns" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
 <table class="caption-top table">
 <thead>
 <tr class="header">
+<th>Name</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
+<td></td>
 <td>None.</td>
 <td></td>
 </tr>
@@ -243,15 +295,15 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="hydamo.ExtendedGeoDataFrame.snap_to_branch" class="level3">
 <h3 class="anchored" data-anchor-id="hydamo.ExtendedGeoDataFrame.snap_to_branch">snap_to_branch</h3>
-<p><code>ExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)</code></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist<span class="op">=</span><span class="dv">5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Snap the geometries to the branch.</p>
-<section id="parameters-1" class="level4">
-<h4 class="anchored" data-anchor-id="parameters-1">Parameters</h4>
+<section id="parameters-1" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
+<col style="width: 13%">
 <col style="width: 15%">
-<col style="width: 14%">
-<col style="width: 56%">
+<col style="width: 58%">
 <col style="width: 12%">
 </colgroup>
 <thead>
@@ -264,19 +316,19 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>branches</code></td>
+<td>branches</td>
 <td>GeoDataFrame</td>
 <td>GeoDataFrame with branches</td>
 <td><em>required</em></td>
 </tr>
 <tr class="even">
-<td><code>snap_method</code></td>
+<td>snap_method</td>
 <td>str</td>
 <td>Options for snapping</td>
 <td><em>required</em></td>
 </tr>
 <tr class="odd">
-<td><code>maxdist</code></td>
+<td>maxdist</td>
 <td>float</td>
 <td>The maximal distance for snapping. The default is 5.</td>
 <td><code>5</code></td>
@@ -284,17 +336,19 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 </section>
-<section id="returns-1" class="level4">
-<h4 class="anchored" data-anchor-id="returns-1">Returns</h4>
+<section id="returns-1" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
 <table class="caption-top table">
 <thead>
 <tr class="header">
+<th>Name</th>
 <th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
+<td></td>
 <td>None.</td>
 <td></td>
 </tr>
