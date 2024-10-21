@@ -16,32 +16,16 @@ path_HHSK = "..\..\Data_preprocessed\Waterschappen\HHSK\HyDamo_metWasverzachter_
 output_gpkg_path = "../../Data_postprocessed/Waterschappen/HHSK"
 
 
-HHSK = read_gpkg_layers(
-    gpkg_path=path_HHSK,
-    variables=[
-        "stuw",
-        "gemaal",
-        "afsluitmiddel",
-        "duikersifonhevel",
-        "hydroobject",
-        # 'peilgebiedvigerend',
-        # 'peilafwijkinggebied',
-        # 'peilbesluitgebied',
-        "streefpeil",
-    ],
-    engine="pyogrio",
-)
+HHSK = read_gpkg_layers(gpkg_path=path_HHSK, engine="pyogrio")
 
 
 HHSK_nalevering = read_gpkg_layers(
-    gpkg_path=r"D:\Users\Bruijns\Documents\PR4750_20\Data_preprocessed\Waterschappen\HHSK\LHM_hhsk_nalevering.gpkg",
-    variables=["Persleiding"],
+    gpkg_path=r"D:\Users\Bruijns\Documents\PR4750_20\Data_preprocessed\Waterschappen\HHSK\LHM_hhsk_nalevering.gpkg"
 )
 
 
 HHSK_2nalevering = read_gpkg_layers(
-    gpkg_path=r"D:\Users\Bruijns\Documents\PR4750_20\Data_preprocessed\Waterschappen\HHSK\hhsklevering_07032024.gpkg",
-    variables=["PeilgebiedPraktijk", "VigerendPeilgebiedZPP"],
+    gpkg_path=r"D:\Users\Bruijns\Documents\PR4750_20\Data_preprocessed\Waterschappen\HHSK\hhsklevering_07032024.gpkg"
 )
 
 

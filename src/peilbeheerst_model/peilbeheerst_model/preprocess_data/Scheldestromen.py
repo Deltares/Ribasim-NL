@@ -18,17 +18,6 @@ output_gpkg_path = "../../Data_postprocessed/Waterschappen/Scheldestromen"
 
 Scheldestromen = read_gpkg_layers(
     gpkg_path=path_Scheldestromen,
-    variables=[
-        "stuw",
-        "gemaal",
-        # 'afsluitmiddel',
-        "duikersifonhevel",
-        "hydroobject",
-        # 'peilgebiedvigerend',
-        # 'peilgebiedpraktijk',
-        # 'peilafwijkinggebied',
-        # 'streefpeil',
-    ],
     engine="pyogrio",
 )
 

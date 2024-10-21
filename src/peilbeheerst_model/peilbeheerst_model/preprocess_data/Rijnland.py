@@ -17,20 +17,7 @@ path_Rijnland = "..\..\Data_preprocessed\Waterschappen\Rijnland\DataRijnland\Dat
 output_gpkg_path = "../../Data_postprocessed/Waterschappen/Rijnland"
 
 
-Rijnland = read_gpkg_layers(
-    gpkg_path=path_Rijnland,
-    variables=[
-        "stuw",
-        "gemaal",
-        "afsluitmiddel",
-        "duikersifonhevel",
-        "hydroobject",
-        "peilgebiedvigerend",
-        "peilgebiedpraktijk",
-        "peilafwijkinggebied",
-        "streefpeil",
-    ],
-)
+Rijnland = read_gpkg_layers(gpkg_path=path_Rijnland)
 
 
 # # Rijnland

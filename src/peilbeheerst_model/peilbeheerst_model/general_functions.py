@@ -4,14 +4,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def read_gpkg_layers(gpkg_path, variables, engine="fiona", print_var=False):
+def read_gpkg_layers(gpkg_path, engine="fiona", print_var=False):
     """
     Read specified layers from a GeoPackage (GPKG) file and return them as a dictionary.
 
     Parameters
     ----------
         gpkg_path (str): The file path to the GeoPackage (GPKG) file to read from.
-        variables (list): A list of layer names to read from the GeoPackage.
         print_var (bool, optional): If True, print the name of each variable as it is read. Default is False.
 
     Returns
@@ -22,11 +21,12 @@ def read_gpkg_layers(gpkg_path, variables, engine="fiona", print_var=False):
     choose to print the names of variables as they are read by setting `print_var` to True.
     """
     data = {}
-    for variable in variables:
+    layers = gpd.list_layers(gpkg_path)
+    for layer in layers.name:
         if print_var:
-            print(variable)
-        data_temp = gpd.read_file(gpkg_path, layer=variable, engine=engine)
-        data[variable] = data_temp
+            print(layer)
+        data_temp = gpd.read_file(gpkg_path, layer=layer, engine=engine)
+        data[layer] = data_temp
 
     return data
 

@@ -177,6 +177,12 @@ AVG["hydroobject"] = pd.concat([AVG["hydroobject"], AVG["duikersifonhevel"]])
 AVG["hydroobject"] = AVG["hydroobject"].drop_duplicates(subset="globalid")  # in case it is run multiple times
 AVG["hydroobject"] = gpd.GeoDataFrame(AVG["hydroobject"]).set_crs("epsg:28992")
 
+# aggregation_area
+AVG["aggregation_area"] = AVG["peilgebied"].copy()
+AVG["aggregation_area"]["globalid"] = "dummy_globalid_agg_area_" + AVG["aggregation_area"].index.astype(str)
+AVG["aggregation_area"]["code"] = (
+    AVG["aggregation_area"]["code"] + "_dummy_id_" + AVG["aggregation_area"].index.astype(str)
+)
 
 # # Control, store
 

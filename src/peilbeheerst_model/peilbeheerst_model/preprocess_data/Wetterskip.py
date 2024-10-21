@@ -24,12 +24,6 @@ streefpeil_path = r"D:\Users\Bruijns\Documents\PR4750_20\Data_preprocessed\Water
 # retrieve the data
 Wetterskip = read_gpkg_layers(
     gpkg_path=gpkg_path_Wetterskip,
-    variables=["stuw", "gemaal", "afsluitmiddel", "hydroobject", "duikersifonhevel"],
-    # 'peilmerk',
-    # 'streefpeil',
-    # 'peilgebiedpraktijk',
-    # 'peilgebiedvigerend',
-    # 'peilbesluitgebied'],
     print_var=False,
 )
 

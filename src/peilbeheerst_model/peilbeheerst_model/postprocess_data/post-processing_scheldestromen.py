@@ -37,18 +37,7 @@ output_folder = f"/DATAFOLDER/projects/4750_30/Data_postprocessed/Waterschappen/
 
 
 # Load HHNK files
-Scheldestromen = read_gpkg_layers(
-    gpkg_path=data_path,
-    variables=[
-        "stuw",
-        "gemaal",
-        "hydroobject",
-        "duikersifonhevel",
-        "peilgebied",
-        "streefpeil",
-        "aggregation_area",
-    ],
-)
+Scheldestromen = read_gpkg_layers(gpkg_path=data_path)
 Scheldestromen["peilgebied"] = Scheldestromen["peilgebied"].to_crs("EPSG:28992")
 
 # Load waterschap boundaries

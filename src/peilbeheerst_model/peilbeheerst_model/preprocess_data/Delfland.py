@@ -15,9 +15,7 @@ gdb_path = "../../Data_preprocessed/Waterschappen/Delfland/Watersysteem.gdb"
 output_gpkg_path = "../../Data_postprocessed/Waterschappen/Delfland"
 
 
-Delfland = read_gpkg_layers(
-    gpkg_path=gdb_path, variables=["stuw", "gemaal", "watergang", "duikersifonhevel", "peilgebiedpraktijk", "keerschot"]
-)
+Delfland = read_gpkg_layers(gpkg_path=gdb_path)
 # 'peilafwijkinggebied',
 # 'pomp'])
 # 'streefpeil'])

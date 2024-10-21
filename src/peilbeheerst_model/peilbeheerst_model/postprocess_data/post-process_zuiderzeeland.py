@@ -36,18 +36,7 @@ output_folder = f"/DATAFOLDER/projects/4750_30/Data_postprocessed/Waterschappen/
 
 
 # Load HHNK files
-Zuiderzeeland = read_gpkg_layers(
-    gpkg_path=data_path,
-    variables=[
-        "stuw",
-        "gemaal",
-        "hydroobject",
-        "duikersifonhevel",
-        "peilgebied",
-        "streefpeil",
-        "aggregation_area",
-    ],
-)
+Zuiderzeeland = read_gpkg_layers(gpkg_path=data_path)
 Zuiderzeeland["peilgebied"] = Zuiderzeeland["peilgebied"].to_crs("EPSG:28992")
 
 # Load waterschap boundaries

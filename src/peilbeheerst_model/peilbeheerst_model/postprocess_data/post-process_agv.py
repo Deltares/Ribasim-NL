@@ -38,18 +38,7 @@ hws_path = cloud.joinpath("Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg")
 
 # %% Load Files
 # Load HHNK files
-AVG = read_gpkg_layers(
-    gpkg_path=data_path,
-    variables=[
-        "stuw",
-        "gemaal",
-        "hydroobject",
-        "duikersifonhevel",
-        "peilgebied",
-        "streefpeil",
-        "afsluitmiddel",
-    ],
-)
+AVG = read_gpkg_layers(gpkg_path=data_path)
 AVG["peilgebied"] = AVG["peilgebied"].to_crs("EPSG:28992")
 
 # Load waterschap boundaries
