@@ -28,7 +28,7 @@
       "downstream_level_offset": 0.15,
       "max_flow_rate": 1
   },
-    
+
   "Uitlaat buitenwater boezem, stuw": {
       "upstream_level_offset": 0,
       "downstream_level_offset": 0.30,
@@ -40,7 +40,7 @@
       "downstream_level_offset": 0,
       "max_flow_rate": 10
   },
-    
+
   "Boezem boezem, stuw": {
       "upstream_level_offset": 0,
       "downstream_level_offset": 0.10,
@@ -136,7 +136,7 @@
       "downstream_level_offset": 0.15,
       "max_flow_rate": 10
   },
-    
+
   "Boezem boezem, aanvoer gemaal": {
       "upstream_level_offset": 0.15,
       "downstream_level_offset": 0,
