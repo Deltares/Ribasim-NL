@@ -1,7 +1,8 @@
 # import packages and functions
 import geopandas as gpd
 import pandas as pd
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 pd.set_option("display.max_columns", None)
 
@@ -23,12 +24,6 @@ streefpeil_path = r"D:\Users\Bruijns\Documents\PR4750_20\Data_preprocessed\Water
 # retrieve the data
 Wetterskip = read_gpkg_layers(
     gpkg_path=gpkg_path_Wetterskip,
-    variables=["stuw", "gemaal", "afsluitmiddel", "hydroobject", "duikersifonhevel"],
-    # 'peilmerk',
-    # 'streefpeil',
-    # 'peilgebiedpraktijk',
-    # 'peilgebiedvigerend',
-    # 'peilbesluitgebied'],
     print_var=False,
 )
 

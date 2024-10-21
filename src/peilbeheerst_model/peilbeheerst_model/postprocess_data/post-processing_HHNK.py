@@ -8,7 +8,8 @@
 
 import geopandas as gpd
 import numpy as np
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 remove_cat_2 = True
 
@@ -36,18 +37,7 @@ output_folder = f"/DATAFOLDER/projects/4750_30/Data_postprocessed/Waterschappen/
 
 
 # Load HHNK files
-HHNK = read_gpkg_layers(
-    gpkg_path=data_path,
-    variables=[
-        "stuw",
-        "gemaal",
-        "hydroobject",
-        "duikersifonhevel",
-        "peilgebied",
-        "streefpeil",
-        "aggregation_area",
-    ],
-)
+HHNK = read_gpkg_layers(gpkg_path=data_path)
 HHNK["peilgebied"] = HHNK["peilgebied"].to_crs("EPSG:28992")
 
 # Load waterschap boundaries

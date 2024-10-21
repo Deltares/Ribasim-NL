@@ -4,7 +4,8 @@ import os
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 # # HD
 
@@ -15,17 +16,7 @@ data_path = "../../Data_preprocessed/Waterschappen/Hollandse_Delta/Hollandse_Del
 output_gpkg_path = "../../Data_postprocessed/Waterschappen/Hollandse_Delta"
 
 
-HD = read_gpkg_layers(
-    gpkg_path=data_path,
-    variables=[
-        "stuwen",
-        "gemalen",
-        "afsluitmiddelen",
-        "sluizen",
-        "HydroObjectWatergangtype",  # = hydroobject
-        "HydroObjectKunstwerkvakken",
-    ],
-)  # = duikersifonhevel
+HD = read_gpkg_layers(gpkg_path=data_path)
 
 # change names
 HD["stuw"] = HD.pop("stuwen")

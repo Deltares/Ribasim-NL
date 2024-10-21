@@ -5,7 +5,8 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 pd.set_option("display.max_columns", None)
 
@@ -16,20 +17,7 @@ path_Rijnland = "..\..\Data_preprocessed\Waterschappen\Rijnland\DataRijnland\Dat
 output_gpkg_path = "../../Data_postprocessed/Waterschappen/Rijnland"
 
 
-Rijnland = read_gpkg_layers(
-    gpkg_path=path_Rijnland,
-    variables=[
-        "stuw",
-        "gemaal",
-        "afsluitmiddel",
-        "duikersifonhevel",
-        "hydroobject",
-        "peilgebiedvigerend",
-        "peilgebiedpraktijk",
-        "peilafwijkinggebied",
-        "streefpeil",
-    ],
-)
+Rijnland = read_gpkg_layers(gpkg_path=path_Rijnland)
 
 
 # # Rijnland

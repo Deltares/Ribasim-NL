@@ -2,7 +2,8 @@
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 # # Hollands Noorderkwartier
 
@@ -16,24 +17,11 @@ interim_results = "../../Interim_results/Waterschappen/HHNK/Noorderkwartier_IR"
 
 
 # retrieve the data
-HHNK = read_gpkg_layers(
-    gpkg_path=gpkg_path_HHNK,
-    variables=[
-        # 'stuw', #nalevering
-        # 'gemaal', #nalevering
-        "afsluitmiddel",
-        "hydroobject",
-        "duikersifonhevel",
-    ],
-)
-# 'peilafwijkinggebied',
-# 'peilgebiedpraktijk',
-# 'pomp'])
-# 'streefpeil'])
+HHNK = read_gpkg_layers(gpkg_path=gpkg_path_HHNK)
 
 # retrieve data from a gdb, as the gpkg of HHNK does not contain all relevant data
 data_gdb = gpd.read_file(gdb_path_HHNK, layer="BWN_ruimtekaart")
-HHNK_nalevering = read_gpkg_layers(gpkg_path=gdb_path_HHNK_nalevering, variables=["stuw", "gemaal"])  # nalevering
+HHNK_nalevering = read_gpkg_layers(gpkg_path=gdb_path_HHNK_nalevering)  # nalevering
 
 HHNK["stuw"] = HHNK_nalevering["stuw"]
 HHNK["gemaal"] = HHNK_nalevering["gemaal"]

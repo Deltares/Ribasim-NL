@@ -45,7 +45,6 @@ class CrossingsToRibasim:
 
     def read_gpkg_layers(
         self,
-        variables=["hydroobject", "gemaal", "stuw", "peilgebied", "streefpeil", "duikersifonhevel"],
         print_var=False,
         data=None,
     ):
@@ -53,9 +52,6 @@ class CrossingsToRibasim:
 
         Parameters
         ----------
-        variables : list, optional
-            List of layer names to be read from the GeoPackage, by default
-            ["hydroobject", "gemaal", "stuw", "peilgebied", "streefpeil", "aggregation_area", 'duikersifonhevel']
         print_var : bool, optional
             Flag to print each layer name when reading, by default False
         data : _type_, optional
@@ -69,11 +65,13 @@ class CrossingsToRibasim:
         """
         if data is None:
             data = {}
-        for variable in variables:
+        gpkg_path = self.model_characteristics["path_postprocessed_data"]
+        layers = gpd.list_layers(gpkg_path)
+        for layer in layers.name:
             if print_var:
-                print(variable)
-            data_temp = gpd.read_file(self.model_characteristics["path_postprocessed_data"], layer=variable)
-            data[variable] = data_temp
+                print(layer)
+            data_temp = gpd.read_file(gpkg_path, layer=layer)
+            data[layer] = data_temp
 
         return data
 

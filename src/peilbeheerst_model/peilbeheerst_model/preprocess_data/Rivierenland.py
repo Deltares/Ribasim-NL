@@ -5,7 +5,8 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 pd.set_option("display.max_columns", None)
 
@@ -28,13 +29,9 @@ for root, dirs, files in os.walk(data_path):
             gpkg_path = os.path.join(root, file)
 
             if WSRL == {}:
-                WSRL = read_gpkg_layers(
-                    gpkg_path=gpkg_path, variables=["Stuw", "Gemaal", "Hydroobject", "Duikersifonhevel"]
-                )
+                WSRL = read_gpkg_layers(gpkg_path=gpkg_path)
             else:
-                temp_WSRL = read_gpkg_layers(
-                    gpkg_path=gpkg_path, variables=["Stuw", "Gemaal", "Hydroobject", "Duikersifonhevel"]
-                )
+                temp_WSRL = read_gpkg_layers(gpkg_path=gpkg_path)
                 for variable in WSRL.keys():
                     WSRL[variable] = pd.concat([WSRL[variable], temp_WSRL[variable]]).reset_index(drop=True)
 
@@ -43,7 +40,7 @@ for root, dirs, files in os.walk(data_path):
 
 
 gdb_path = r"..\..\Data_preprocessed\Waterschappen\WSRL\OverigeGegevens.gdb"
-WSRL_gdb = read_gpkg_layers(gpkg_path=gdb_path, variables=["PeilgebiedenPraktijk"])
+WSRL_gdb = read_gpkg_layers(gpkg_path=gdb_path)
 
 # add the gdb to the dict
 # WSRL['peilgebiedafwijking'] = WSRL_gdb['Peilafwijkingen']

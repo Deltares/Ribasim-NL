@@ -4,7 +4,8 @@ import os
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from general_functions import *
+
+from peilbeheerst_model.general_functions import *
 
 pd.set_option("display.max_columns", None)
 
@@ -17,17 +18,6 @@ output_gpkg_path = "../../Data_postprocessed/Waterschappen/Scheldestromen"
 
 Scheldestromen = read_gpkg_layers(
     gpkg_path=path_Scheldestromen,
-    variables=[
-        "stuw",
-        "gemaal",
-        # 'afsluitmiddel',
-        "duikersifonhevel",
-        "hydroobject",
-        # 'peilgebiedvigerend',
-        # 'peilgebiedpraktijk',
-        # 'peilafwijkinggebied',
-        # 'streefpeil',
-    ],
     engine="pyogrio",
 )
 
