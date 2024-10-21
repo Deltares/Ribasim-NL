@@ -3,8 +3,9 @@ from pathlib import Path
 
 import geopandas as gpd
 import pytest
-from ribasim_nl import Network
 from shapely.geometry import LineString
+
+from ribasim_nl import Network
 
 
 @pytest.fixture

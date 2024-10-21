@@ -3,8 +3,9 @@
 import geopandas as gpd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl import CloudStorage, Model, NetworkValidator
 from shapely.geometry import Point, Polygon
+
+from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 

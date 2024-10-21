@@ -2,8 +2,9 @@
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from ribasim_nl import CloudStorage, Network
 from shapely.geometry import LineString, Point
+
+from ribasim_nl import CloudStorage, Network
 
 cloud = CloudStorage()
 
