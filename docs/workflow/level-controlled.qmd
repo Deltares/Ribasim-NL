@@ -8,7 +8,7 @@ The paths below are relative to this path.
 
 1. Run the preprocessing notebooks. One notebook per water board, path: `peilbeheerst_model/preprocess_data/`
 2. Run the postprocessing notebook. One notebook per water board, path: `peilbeheerst_model/postprocess_data/`
-3. Run the crossings notebook. One notebook, path: `01_test_parse_crossings.ipynb`
+3. Run the crossings notebook. One notebook, path: `01_parse_crossings.ipynb`
 4. Run shortest paths notebooks. One notebook per water board, path: `Shortest_path/`
 5. Run crossings to Ribasim notebook. One notebook, all water boards are below each other, path: `02_crossings_to_ribasim_notebook.ipynb`
 6. Run parametrize notebooks. One notebook per water board, for now only Amstel, Gooi en Vecht (AGV), path: `Parametrize/AmstelGooienVecht_parametrize.ipynb`

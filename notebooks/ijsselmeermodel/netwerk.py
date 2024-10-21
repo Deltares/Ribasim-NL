@@ -5,9 +5,10 @@ from pathlib import Path
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from hydamo import HyDAMO
 from shapely.geometry import LineString
 from shapely.ops import snap, split
+
+from hydamo import HyDAMO
 
 DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
 MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"

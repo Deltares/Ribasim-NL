@@ -13,8 +13,9 @@ from rasterio import features, merge  # noqa: F401
 from rasterio.enums import Resampling
 from rasterio.transform import from_origin
 from rasterio.windows import from_bounds
-from ribasim_nl import CloudStorage
 from shapely.geometry import MultiPolygon, box
+
+from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 

@@ -10,6 +10,7 @@ from ribasim.nodes import (
     pump,
     tabulated_rating_curve,
 )
+
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl import discrete_control as dc
 

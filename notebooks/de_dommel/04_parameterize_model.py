@@ -2,9 +2,10 @@
 import geopandas as gpd
 import pandas as pd
 from ribasim.nodes import manning_resistance, pump
+from shapely.geometry import MultiLineString
+
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.structure_node import get_outlet, get_tabulated_rating_curve
-from shapely.geometry import MultiLineString
 
 PROFIEL_ID_COLUMN = "PROFIELLIJNID"
 PROFIEL_LINE_ID_COLUMN = "profiel_id"
