@@ -5,17 +5,22 @@ import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl import CloudStorage, Model, NetworkValidator
-from shapely.geometry import MultiPolygon
 
 cloud = CloudStorage()
 
-authority = "ValleienVeluwe"
-short_name = "venv"
+authority = "RijnenIJssel"
+short_name = "wrij"
 
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{short_name}.toml")
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-split_line_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg"), layer="split_basins", fid_as_index=True
+
+
+hydroobject_gdf = gpd.read_file(
+    cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject", fid_as_index=True
+)
+
+duiker_gdf = gpd.read_file(
+    cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="duikersifonhevel", fid_as_index=True
 )
 
 # %% read model
@@ -40,18 +45,16 @@ basin_data = [
 outlet_data = outlet.Static(flow_rate=[100])
 
 
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401873626
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419605149
 # Verwijderen duplicate edges
 
 model.edge.df.drop_duplicates(inplace=True)
 
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401876430
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419620184
+# toevoegen ontbrekende basins
 
-# Toevoegen ontbrekende basins (oplossen topologie)
 basin_edges_df = network_validator.edge_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
-basin_edges_df.to_file("basin_edges.gpkg")
-basin_nodes_df.to_file("basin_nodes.gpkg")
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
@@ -65,66 +68,73 @@ for row in basin_nodes_df.itertuples():
         basin_node.node_id
     )
 
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419649171
+# update edge administratie
 
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401959032
+model.edge.df.loc[516, "from_node_id"] = 666
+model.edge.df.loc[520, "from_node_id"] = 667
+model.edge.df.loc[954, "to_node_id"] = 652
+model.edge.df.loc[1271, "to_node_id"] = 662
+model.edge.df.loc[1281, "to_node_id"] = 667
 
-# Oplossen verkeerde takrichting
-for edge_id in [1353, 933, 373, 401, 4, 1338]:
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419747636
+
+# fix edge_richting
+
+# verplaatsen van `LevelBoundary` 47 binnen de basin, updaten naar `Basin` en reversen van `Edge` 1370
+model.move_node(47, hydroobject_gdf.at[8781, "geometry"].boundary.geoms[0])
+model.update_node(47, "Basin", data=basin_data)
+model.reverse_edge(edge_id=1370)
+
+# omdraaien richting van `Edge` 196
+for edge_id in [196, 188, 472, 513, 560, 391, 566]:
     model.reverse_edge(edge_id=edge_id)
 
-# model.invalid_topology_at_node().to_file("topo_errors.gpkg")
+# opruimen basin Arnhem nabij Lauwersgracht
+model.remove_node(514, remove_edges=True)
+model.remove_node(1101, remove_edges=True)
+model.remove_edges([1364, 1363])
+
+kdu = duiker_gdf.loc[548]
+outlet_node = model.outlet.add(
+    Node(name=kdu.code, geometry=kdu.geometry.interpolate(0.5, normalized=True), meta_object_type="duikersifonhevel"),
+    tables=[outlet_data],
+)
+basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[9528, "geometry"].boundary.geoms[0]))
+model.edge.add(model.tabulated_rating_curve[265], basin_node)
+model.edge.add(basin_node, outlet_node)
+model.edge.add(outlet_node, model.level_boundary[43])
+model.edge.add(basin_node, model.pump[264])
+model.edge.add(model.pump[264], model.level_boundary[44])
+
+# %% see https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2422536079
+
+# corrigeren ontbrekende outlets nabij Rijkswateren
+for fid, edge_id, boundary_node_id in ((14276, 1331, 19), (14259, 1337, 25), (14683, 1339, 27), (3294, 1355, 38)):
+    kdu = duiker_gdf.loc[fid]
+    outlet_node = model.outlet.add(
+        Node(
+            name=kdu.code, geometry=kdu.geometry.interpolate(0.5, normalized=True), meta_object_type="duikersifonhevel"
+        ),
+        tables=[outlet_data],
+    )
+    model.redirect_edge(edge_id=edge_id, to_node_id=outlet_node.node_id)
+    model.edge.add(outlet_node, model.level_boundary[boundary_node_id])
+
+# 1349 heeft geen duiker
+outlet_node = model.outlet.add(
+    Node(geometry=hydroobject_gdf.at[10080, "geometry"].interpolate(0.5, normalized=True)),
+    tables=[outlet_data],
+)
+model.redirect_edge(edge_id=1349, to_node_id=outlet_node.node_id)
+model.edge.add(outlet_node, model.level_boundary[33])
 
 
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402031275
+# %%
 
-# Veluwemeer at Harderwijk verwijderen
-for node_id in [24, 694]:
-    model.remove_node(node_id, remove_edges=True)
-
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402229646
-
-# Veluwemeer at Elburg verwijderen
-for node_id in [3, 1277]:
-    model.remove_node(node_id, remove_edges=True)
-
-# %% https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402257101
-
-model.fix_unassigned_basin_area()
-
-# %% https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402281396
-
-# Verwijderen basins zonder area of toevoegen/opknippen basin /area
-model.split_basin(line=split_line_gdf.at[1, "geometry"])
-model.split_basin(line=split_line_gdf.at[2, "geometry"])
-model.split_basin(line=split_line_gdf.at[3, "geometry"])
-model.merge_basins(basin_id=1150, to_basin_id=1101)
-model.merge_basins(basin_id=1196, to_basin_id=1192)
-model.merge_basins(basin_id=1202, to_basin_id=1049)
-model.merge_basins(basin_id=1207, to_basin_id=837)
-model.merge_basins(basin_id=1208, to_basin_id=851, are_connected=False)
-model.merge_basins(basin_id=1210, to_basin_id=1090)
-model.merge_basins(basin_id=1212, to_basin_id=823)
-model.merge_basins(basin_id=1216, to_basin_id=751, are_connected=False)
-model.merge_basins(basin_id=1217, to_basin_id=752)
-model.merge_basins(basin_id=1219, to_basin_id=814)
-model.merge_basins(basin_id=1220, to_basin_id=1118)
-model.merge_basins(basin_id=1221, to_basin_id=1170)
-model.update_node(1229, "LevelBoundary", data=[level_data])
-model.merge_basins(basin_id=1254, to_basin_id=1091, are_connected=False)
-model.merge_basins(basin_id=1260, to_basin_id=1125, are_connected=False)
-model.merge_basins(basin_id=1263, to_basin_id=863)
-model.merge_basins(basin_id=1265, to_basin_id=974)
-model.remove_node(node_id=539, remove_edges=True)
-model.merge_basins(basin_id=1267, to_basin_id=1177, are_connected=False)
-model.remove_node(1268, remove_edges=True)
-model.remove_node(360, remove_edges=True)
-model.remove_node(394, remove_edges=True)
-model.merge_basins(basin_id=1269, to_basin_id=1087)
-model.merge_basins(basin_id=1149, to_basin_id=1270, are_connected=False)
-
-
-model.fix_unassigned_basin_area()
-model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
+network_validator.edge_incorrect_type_connectivity(from_node_type="Basin", to_node_type="LevelBoundary").to_file(
+    "basin_to_levelboundary.gpkg"
+)
 
 # %%
 # corrigeren knoop-topologie
@@ -139,16 +149,8 @@ for row in network_validator.edge_incorrect_type_connectivity(
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
 
-
-# buffer out small slivers
-model.basin.area.df.loc[:, ["geometry"]] = (
-    model.basin.area.df.buffer(0.1)
-    .buffer(-0.1)
-    .apply(lambda x: x if x.geom_type == "MultiPolygon" else MultiPolygon([x]))
-)
-
-# basin-profielen updaten
-
+# %%
+# basin-profielen/state updaten
 df = pd.DataFrame(
     {
         "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
@@ -203,9 +205,8 @@ df = pd.DataFrame(
 df.index.name = "fid"
 model.manning_resistance.static.df = df
 
-
 #  %% write model
-# model.use_validation = True
+# model.use_validation = False
 model.write(ribasim_toml)
 
 # %%
