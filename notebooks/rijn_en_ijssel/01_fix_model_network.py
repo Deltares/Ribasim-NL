@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
+
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
@@ -90,8 +91,6 @@ model.reverse_edge(edge_id=1370)
 for edge_id in [196, 188, 472, 513, 560, 391, 566]:
     model.reverse_edge(edge_id=edge_id)
 
-model.reverse_edge(edge_id=566)
-
 # opruimen basin Arnhem nabij Lauwersgracht
 model.remove_node(514, remove_edges=True)
 model.remove_node(1101, remove_edges=True)
@@ -108,6 +107,48 @@ model.edge.add(basin_node, outlet_node)
 model.edge.add(outlet_node, model.level_boundary[43])
 model.edge.add(basin_node, model.pump[264])
 model.edge.add(model.pump[264], model.level_boundary[44])
+
+# %% see https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2422536079
+
+# corrigeren ontbrekende outlets nabij Rijkswateren
+for fid, edge_id, boundary_node_id in ((14276, 1331, 19), (14259, 1337, 25), (14683, 1339, 27), (3294, 1355, 38)):
+    kdu = duiker_gdf.loc[fid]
+    outlet_node = model.outlet.add(
+        Node(
+            name=kdu.code, geometry=kdu.geometry.interpolate(0.5, normalized=True), meta_object_type="duikersifonhevel"
+        ),
+        tables=[outlet_data],
+    )
+    model.redirect_edge(edge_id=edge_id, to_node_id=outlet_node.node_id)
+    model.edge.add(outlet_node, model.level_boundary[boundary_node_id])
+
+# 1349 heeft geen duiker
+outlet_node = model.outlet.add(
+    Node(geometry=hydroobject_gdf.at[10080, "geometry"].interpolate(0.5, normalized=True)),
+    tables=[outlet_data],
+)
+model.redirect_edge(edge_id=1349, to_node_id=outlet_node.node_id)
+model.edge.add(outlet_node, model.level_boundary[33])
+
+
+# %%
+
+network_validator.edge_incorrect_type_connectivity(from_node_type="Basin", to_node_type="LevelBoundary").to_file(
+    "basin_to_levelboundary.gpkg"
+)
+
+# %%
+# corrigeren knoop-topologie
+
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
+
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
 
 # %%
 # basin-profielen/state updaten
@@ -166,7 +207,7 @@ df.index.name = "fid"
 model.manning_resistance.static.df = df
 
 #  %% write model
-# model.use_validation = True
+# model.use_validation = False
 model.write(ribasim_toml)
 
 # %%

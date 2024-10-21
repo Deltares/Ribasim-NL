@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl import CloudStorage, Model, NetworkValidator
 from shapely.geometry import MultiPolygon
+
+from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 

@@ -1,10 +1,11 @@
 # %%
 import geopandas as gpd
 import pandas as pd
+from shapely.geometry import MultiLineString, MultiPolygon, Polygon
+
 from ribasim_nl import CloudStorage
 from ribasim_nl.geodataframe import split_basins
 from ribasim_nl.raster import sample_level_area
-from shapely.geometry import MultiLineString, MultiPolygon, Polygon
 
 cloud = CloudStorage()
 

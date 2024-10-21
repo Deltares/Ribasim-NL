@@ -4,10 +4,11 @@ import numpy as np
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl import CloudStorage, Model, NetworkValidator
-from ribasim_nl.geometry import edge, split_basin, split_basin_multi_polygon
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import nearest_points
+
+from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.geometry import edge, split_basin, split_basin_multi_polygon
 
 cloud = CloudStorage()
 

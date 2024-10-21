@@ -3,6 +3,7 @@ import sys
 
 import ribasim
 from bokeh.io import curdoc
+
 from bokeh_helpers.widgets.map_figure_widget import MapFigure
 
 toml_file = next((i for i in sys.argv if i.lower().endswith(".toml")), None)
