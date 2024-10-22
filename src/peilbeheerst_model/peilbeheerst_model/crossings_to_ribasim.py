@@ -1,6 +1,4 @@
 import itertools
-import os
-import shutil
 
 import geopandas as gpd
 import numpy as np
@@ -136,13 +134,14 @@ class CrossingsToRibasim:
         # define the most representative point where the basins will be located. This is always within the peilgebied polygon.
 
         # save the original peilgebied_from and _to for boezem purposes later, before changing anything due to the aggregation
-        crossings["peilgebied_from_original"] = crossings["peilgebied_from"]
-        crossings["peilgebied_to_original"] = crossings["peilgebied_to"]
+        crossings["peilgebied_from_original"] = crossings["peilgebied_from"].copy()
+        crossings["peilgebied_to_original"] = crossings["peilgebied_to"].copy()
 
         if self.model_characteristics["aggregation"]:
             # not all peilgebieden are part of a aggregation area. Add the missing peilgebieden to the agg_area column, so no areas will be left out
-            crossings["agg_area_from"].fillna(crossings["peilgebied_from"], inplace=True)
-            crossings["agg_area_to"].fillna(crossings["peilgebied_to"], inplace=True)
+            crossings.fillna(
+                {"agg_area_from": crossings["peilgebied_from"], "agg_area_to": crossings["peilgebied_to"]}, inplace=True
+            )
 
             # change administrative detailed peilgebieden to aggregation areas
             crossings["peilgebied_from"] = crossings["agg_area_from"]
@@ -893,8 +892,6 @@ class RibasimNetwork:
         edge["name"] = None
         edge["subnetwork_id"] = None
         edge["geometry"] = self.edges["line_geom"]
-
-        # comply to Ribasim 2024.11
         edge = edge.reset_index(drop=True)
         edge["edge_id"] = edge.index.astype(int)
         edge = edge.set_index("edge_id")
@@ -920,6 +917,8 @@ class RibasimNetwork:
         basin_node["name"] = np.nan
         basin_node["subnetwork_id"] = np.nan
         basin_node["geometry"] = basin_nodes["geometry"]
+        basin_node = basin_node.set_index("node_id")
+        basin_node = gpd.GeoDataFrame(basin_node, crs="EPSG:28992")
 
         basins_area = self.nodes.loc[self.nodes["type"] == "Basin"]
         basins_area = basins_area[["node_id", "streefpeil", "basins_area_geom"]]
@@ -955,11 +954,6 @@ class RibasimNetwork:
         basin_area = basin_area[["node_id", "meta_streefpeil", "geometry"]]
         basin_area = gpd.GeoDataFrame(basin_area, geometry="geometry").to_crs(crs="EPSG:28992")
 
-        # comply to Ribasim 2024.11
-        basin_node["meta_node_id"] = basin_node["node_id"].copy().astype(int)
-        basin_area["meta_node_id"] = basin_area["node_id"].copy().astype(int)
-        basin_node = basin_node.set_index("node_id")
-
         return basin_node, basin_profile, basin_static, basin_state, basin_area
 
     def tabulated_rating_curve(self):
@@ -994,7 +988,8 @@ class RibasimNetwork:
         rating_curve_node["name"] = np.nan
         rating_curve_node["subnetwork_id"] = np.nan
         rating_curve_node["geometry"] = TRC_nodes["geometry"]
-        # rating_curve_node = rating_curve_node.reset_index(drop=True)
+        rating_curve_node = rating_curve_node.set_index("node_id")
+        rating_curve_node = gpd.GeoDataFrame(rating_curve_node, crs="EPSG:28992")
 
         rating_curve_static = pd.DataFrame()
         rating_curve_static["node_id"] = Qh["node_id"]
@@ -1003,10 +998,6 @@ class RibasimNetwork:
         rating_curve_static["flow_rate"] = Qh["flow_rate"]
         rating_curve_static["control_state"] = np.nan
         # rating_curve_static = rating_curve_static.reset_index(drop=True)
-
-        # comply to Ribasim 2024.11
-        rating_curve_node["meta_node_id"] = rating_curve_node["node_id"].copy().astype(int)
-        rating_curve_node = rating_curve_node.set_index("node_id")
 
         return rating_curve_node, rating_curve_static
 
@@ -1027,6 +1018,8 @@ class RibasimNetwork:
         pump_node["name"] = np.nan
         pump_node["subnetwork_id"] = np.nan
         pump_node["geometry"] = pump_nodes["geometry"]
+        pump_node = pump_node.set_index("node_id")
+        pump_node = gpd.GeoDataFrame(pump_node, crs="EPSG:28992")
 
         pump_static = pd.DataFrame()
         pump_static["node_id"] = pump_nodes["node_id"]
@@ -1035,10 +1028,6 @@ class RibasimNetwork:
         pump_static["min_flow_rate"] = np.nan
         pump_static["max_flow_rate"] = np.nan
         pump_static["control_state"] = np.nan
-
-        # comply to Ribasim 2024.11
-        pump_node["meta_node_id"] = pump_node["node_id"].copy().astype(int)
-        pump_node = pump_node.set_index("node_id")
 
         return pump_node, pump_static
 
@@ -1061,15 +1050,13 @@ class RibasimNetwork:
         level_boundary_node["name"] = np.nan
         level_boundary_node["subnetwork_id"] = np.nan
         level_boundary_node["geometry"] = level_boundary_nodes["geometry"]
+        level_boundary_node = level_boundary_node.set_index("node_id")
+        level_boundary_node = gpd.GeoDataFrame(level_boundary_node, crs="EPSG:28992")
 
         level_boundary_static = pd.DataFrame()
         level_boundary_static["node_id"] = level_boundary_nodes["node_id"]
         level_boundary_static["active"] = np.nan
         level_boundary_static["level"] = 0
-
-        # comply to Ribasim 2024.11
-        level_boundary_node["meta_node_id"] = level_boundary_node["node_id"].copy().astype(int)
-        level_boundary_node = level_boundary_node.set_index("node_id")
 
         return level_boundary_node, level_boundary_static
 
@@ -1092,15 +1079,13 @@ class RibasimNetwork:
         flow_boundary_node["name"] = np.nan
         flow_boundary_node["subnetwork_id"] = np.nan
         flow_boundary_node["geometry"] = flow_boundary_nodes["geometry"]
+        flow_boundary_node = flow_boundary_node.set_index("node_id")
+        flow_boundary_node = gpd.GeoDataFrame(flow_boundary_node, crs="EPSG:28992")
 
         flow_boundary_static = pd.DataFrame()
         flow_boundary_static["node_id"] = flow_boundary_nodes["node_id"]
         flow_boundary_static["active"] = np.nan
         flow_boundary_static["flow_rate"] = 0
-
-        # comply to Ribasim 2024.11
-        flow_boundary_node["meta_node_id"] = flow_boundary_node["node_id"].copy().astype(int)
-        flow_boundary_node = flow_boundary_node.set_index("node_id")
 
         return flow_boundary_node, flow_boundary_static
 
@@ -1133,6 +1118,8 @@ class RibasimNetwork:
         manning_resistance_node["name"] = np.nan
         manning_resistance_node["subnetwork_id"] = np.nan
         manning_resistance_node["geometry"] = manning_resistance_nodes["geometry"]
+        manning_resistance_node = manning_resistance_node.set_index("node_id")
+        manning_resistance_node = gpd.GeoDataFrame(manning_resistance_node, crs="EPSG:28992")
 
         manning_resistance_static = pd.DataFrame()
         manning_resistance_static["node_id"] = manning_resistance_nodes["node_id"]
@@ -1141,10 +1128,6 @@ class RibasimNetwork:
         manning_resistance_static["manning_n"] = 0.02
         manning_resistance_static["profile_width"] = 2
         manning_resistance_static["profile_slope"] = 3
-
-        # comply to Ribasim 2024.11
-        manning_resistance_node["meta_node_id"] = manning_resistance_node["node_id"].copy().astype(int)
-        manning_resistance_node = manning_resistance_node.set_index("node_id")
 
         return manning_resistance_node, manning_resistance_static
 
@@ -1177,10 +1160,8 @@ class RibasimNetwork:
         terminal_node["name"] = np.nan
         terminal_node["subnetwork_id"] = np.nan
         terminal_node["geometry"] = terminal_nodes["geometry"]
-
-        # comply to Ribasim 2024.11
-        terminal_node["meta_node_id"] = terminal_node["node_id"].copy().astype(int)
         terminal_node = terminal_node.set_index("node_id")
+        terminal_node = gpd.GeoDataFrame(terminal_node, crs="EPSG:28992")
 
         return terminal_node
 
@@ -1453,7 +1434,7 @@ class RibasimNetwork:
         )  # .loc[model.basin.state.df['node_type'] == 'Basin'] #select all basins
         # model.basin.node.df.index += 1 #RB: outcommented plus one
         basin_nodes["geometry"] = model.basin.node.df.geometry  # add geometry column
-        basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry="geometry")  # convert from pd go gpd
+        basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry="geometry", crs=model.crs)  # convert from pd go gpd
 
         points_within = gpd.sjoin(
             basin_nodes, checks["boezem"], how="inner", predicate="within"
@@ -1475,7 +1456,7 @@ class RibasimNetwork:
         inlaten_TRC = nodes_from_boezem.loc[
             (nodes_from_boezem.meta_to_node_type == "TabulatedRatingCurve")
             | (nodes_from_boezem.meta_to_node_type == "Outlet")
-        ]
+        ].copy()
         inlaten_TRC = inlaten_TRC["to_node_id"]
         inlaten_TRC = model.tabulated_rating_curve.node.df.loc[
             model.tabulated_rating_curve.node.df.index.isin(inlaten_TRC)  # df.node_id --> df.index
@@ -1489,7 +1470,7 @@ class RibasimNetwork:
         inlaten_TRC["meta_type_verbinding"] = "Inlaat"
 
         # inlaten_gemalen
-        inlaten_gemalen = nodes_from_boezem.loc[nodes_from_boezem.meta_to_node_type == "Pump"]
+        inlaten_gemalen = nodes_from_boezem.loc[nodes_from_boezem.meta_to_node_type == "Pump"].copy()
         inlaten_gemalen = inlaten_gemalen["to_node_id"]
         inlaten_gemalen = model.pump.node.df.loc[
             model.pump.node.df.index.isin(inlaten_gemalen)
@@ -1497,7 +1478,7 @@ class RibasimNetwork:
         inlaten_gemalen["meta_type_verbinding"] = "Inlaat"
 
         # inlaten_flowboundary
-        inlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "FlowBoundary"]
+        inlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "FlowBoundary"].copy()
         inlaten_flowboundary = inlaten_flowboundary["from_node_id"]
         inlaten_flowboundary = model.flow_boundary.node.df.loc[
             model.flow_boundary.node.df.index.isin(inlaten_flowboundary)  # df.node_id --> df.index
@@ -1508,14 +1489,14 @@ class RibasimNetwork:
         uitlaten_TRC = nodes_to_boezem.loc[
             (nodes_to_boezem.meta_from_node_type == "TabulatedRatingCurve")
             | (nodes_to_boezem.meta_from_node_type == "Outlet")
-        ]
+        ].copy()
         uitlaten_TRC = uitlaten_TRC["from_node_id"]
         uitlaten_TRC = model.tabulated_rating_curve.node.df.loc[
             model.tabulated_rating_curve.node.df.index.isin(uitlaten_TRC)  # df.node_id --> df.index
         ]
 
         # uitlaten_gemalen
-        uitlaten_gemalen = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "Pump"]
+        uitlaten_gemalen = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "Pump"].copy()
         uitlaten_gemalen = uitlaten_gemalen["from_node_id"]
         uitlaten_gemalen = model.pump.node.df.loc[
             model.pump.node.df.index.isin(uitlaten_gemalen)
@@ -1530,7 +1511,7 @@ class RibasimNetwork:
         uitlaten_TRC["meta_type_verbinding"] = "Uitlaat"
 
         # uitlaten_flowboundary
-        uitlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "FlowBoundary"]
+        uitlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "FlowBoundary"].copy()
         uitlaten_flowboundary = uitlaten_flowboundary["from_node_id"]
         uitlaten_flowboundary = model.flow_boundary.node.df.loc[
             model.flow_boundary.node.df.index.isin(uitlaten_flowboundary)  # df.node_id --> df.index
@@ -1613,7 +1594,7 @@ class RibasimNetwork:
             (BCN_to.meta_from_node_type == "FlowBoundary")
             | (BCN_to.meta_from_node_type == "LevelBoundary")
             | (BCN_to.meta_from_node_type == "Terminal")
-        ]
+        ].copy()
         BCN_to["meta_type_verbinding"] = "Inlaat boundary"
 
         # look the node ids up in each table.
@@ -1633,7 +1614,7 @@ class RibasimNetwork:
 
         inlaten_uitlaten = pd.concat([inlaten_uitlaten, BCN_from, BCN_to])
         inlaten_uitlaten = inlaten_uitlaten.reset_index(drop=True)
-        inlaten_uitlaten = gpd.GeoDataFrame(inlaten_uitlaten, geometry="geometry", crs="EPSG:28992")
+        inlaten_uitlaten = gpd.GeoDataFrame(inlaten_uitlaten, geometry="geometry", crs=model.crs)
         checks["inlaten_uitlaten_boezems"] = inlaten_uitlaten
 
         return checks
@@ -1751,7 +1732,7 @@ class RibasimNetwork:
             _description_
         """
         for key in data.keys():
-            data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG")
+            data[str(key)].to_file(output_path.with_suffix(".gpkg"), layer=str(key), driver="GPKG")
 
         return
 
@@ -1765,216 +1746,23 @@ class RibasimNetwork:
         checks : _type_
             _description_
         """
-        path = f"../../../../Ribasim_networks/Waterschappen/{self.model_characteristics['waterschap']}"
-        #         path = os.path.join(path, '', 'modellen', '', self.model_characteristics['waterschap']  + '_' + self.model_characteristics['modeltype'])
+        cloud = CloudStorage()
+        waterschap = self.model_characteristics["waterschap"]
+        modeltype = self.model_characteristics["modeltype"]
+        modellen_dir = cloud.joinpath(waterschap, "modellen")
+        model_dir = modellen_dir / "_repro"
+        model_dir.mkdir(parents=True, exist_ok=True)
+        model.write(model_dir / "repro.toml")
 
-        ##### write the model to the Z drive #####
-        if self.model_characteristics["write_Zdrive"]:
-            dir_path = f"../../../../Ribasim_networks/Waterschappen/{self.model_characteristics['waterschap']}/modellen/{self.model_characteristics['waterschap']}_{self.model_characteristics['modeltype']}"
-
-            if not os.path.exists(dir_path):
-                os.makedirs(dir_path)
-            else:
-                for filename in os.listdir(dir_path):  # delete outdated models in de original folder
-                    file_path = os.path.join(dir_path, filename)
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
-
-            path_ribasim = os.path.join(
-                path,
-                "",
-                "modellen",
-                "",
-                self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                "ribasim.toml",
+        if self.model_characteristics["write_goodcloud"]:
+            cloud.upload_model(
+                authority=waterschap,
+                model=waterschap + "_" + modeltype,
             )
-            model.write(path_ribasim)
-
-            # print('Edges after writing to Z drive:')
-            # display(model.network.edge.df)
-            # gpd.GeoDataFrame(model.network.edge.df.geometry).plot(color='red')
-            # model.network.edge.df.to_file('zzl_test.gpkg')
-            # model.network.edge.plot()
-
-        ##### write the checks #####
         if self.model_characteristics["write_checks"]:
             RibasimNetwork.store_data(
                 data=checks,
-                #                                       output_path = str(path + self.model_characteristics['waterschap'] + '_' + self.model_characteristics['modelname'] + '_' + self.model_characteristics['modeltype'] + '_checks'))
-                output_path=os.path.join(
-                    path,
-                    "modellen",
-                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    "database_checks",
-                ),
-            )
-
-        ##### write to the P drive #####
-        if self.model_characteristics["write_Pdrive"]:
-            P_path = self.model_characteristics["path_Pdrive"]
-            P_path = os.path.join(
-                P_path,
-                self.model_characteristics["waterschap"],
-                "modellen",
-                self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                self.model_characteristics["waterschap"]
-                + "_"
-                + self.model_characteristics["modelname"]
-                + "_"
-                + self.model_characteristics["modeltype"],
-            )
-
-            if not os.path.exists(P_path):
-                os.makedirs(P_path)
-
-            P_path = os.path.join(
-                P_path,
-                f"{self.model_characteristics['waterschap']}_{self.model_characteristics['modelname']}_{self.model_characteristics['modeltype']}_ribasim.toml",
-            )
-
-            model.write(P_path)
-
-            # write checks to the P drive
-            RibasimNetwork.store_data(
-                data=checks,
-                output_path=str(P_path + "visualisation_checks"),
-            )
-
-        ##### copy symbology for the RIBASIM model #####
-        if self.model_characteristics["write_symbology"]:
-            # dont change the paths below!
-            checks_symbology_path = (
-                # r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_Ribasimmodel.qlr"
-                r"../../../../Data_overig/QGIS_qlr/visualisation_Ribasim.qlr"
-            )
-            checks_symbology_path_new = os.path.join(
-                path,
-                "modellen",
-                self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                "visualisation_Ribasim.qlr",
-            )
-
-            # dummy string, required to replace string in the file
-            # checks_path_old = r"../../symbology/symbology__poldermodel_Ribasim/symbology__poldermodel.gpkg"
-            # #             checks_path_new = os.path.join(self.model_characteristics['waterschap'] + '_' + self.model_characteristics['modelname'] + '_' + self.model_characteristics['modeltype'] + '.gpkg')
-            # checks_path_new = os.path.join("database.gpkg")
-
-            # copy checks_symbology file from old dir to new dir
-            shutil.copy(src=checks_symbology_path, dst=checks_symbology_path_new)
-
-            # read file
-            # with open(checks_symbology_path_new, encoding="utf-8") as file:
-            #     qlr_contents = file.read()
-
-            # # change paths in the .qlr file
-            # qlr_contents = qlr_contents.replace(checks_path_old, checks_path_new)
-
-            # # write updated file
-            # with open(checks_symbology_path_new, "w", encoding="utf-8") as file:
-            #     file.write(qlr_contents)
-
-            if self.model_characteristics["write_Pdrive"]:
-                # write Ribasim model to the P drive
-                P_path = self.model_characteristics["path_Pdrive"]
-                P_path = os.path.join(
-                    P_path,
-                    self.model_characteristics["waterschap"],
-                    "modellen",
-                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    self.model_characteristics["waterschap"]
-                    + "_"
-                    + self.model_characteristics["modelname"]
-                    + "_"
-                    + self.model_characteristics["modeltype"],
-                )
-
-                if not os.path.exists(P_path):
-                    os.makedirs(P_path)
-
-                P_path_ribasim = os.path.join(P_path, "ribasim.toml")
-                model.write(P_path_ribasim)
-
-                shutil.copy(
-                    src=checks_symbology_path_new,
-                    dst=os.path.join(
-                        P_path,
-                        "visualisation_Ribasim.qlr",
-                    ),
-                )
-
-        ##### copy symbology for the CHECKS data #####
-        if self.model_characteristics["write_symbology"]:
-            # dont change the paths below!
-            # checks_symbology_path = r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_checks.qlr"
-            checks_symbology_path = r"../../../../Data_overig/QGIS_qlr/visualisation_checks.qlr"
-
-            checks_symbology_path_new = os.path.join(
-                path,
-                "modellen",
-                self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                "visualisation_checks.qlr",
-            )
-
-            # # dummy string, required to replace string in the file
-            # checks_path_old = r"../../symbology/symbology__poldermodel_Ribasim/symbology__poldermodel_checks.gpkg"
-            # #             checks_path_new = os.path.join(self.model_characteristics['waterschap'] + '_' + self.model_characteristics['modelname'] + '_' + self.model_characteristics['modeltype'] + '.gpkg')
-            # checks_path_new = os.path.join("HollandseDelta_classtest_poldermodel_checks.gpkg")
-
-            # copy checks_symbology file from old dir to new dir
-            shutil.copy(src=checks_symbology_path, dst=checks_symbology_path_new)
-
-            # read file
-            # with open(checks_symbology_path_new, encoding="utf-8") as file:
-            #     qlr_contents = file.read()
-
-            # change paths in the .qlr file
-            # qlr_contents = qlr_contents.replace(checks_path_old, checks_path_new)
-
-            # # write updated file
-            # with open(checks_symbology_path_new, "w", encoding="utf-8") as file:
-            #     file.write(qlr_contents)
-
-            if self.model_characteristics["write_Pdrive"]:
-                # write Ribasim model to the P drive
-                P_path = self.model_characteristics["path_Pdrive"]
-                P_path = os.path.join(
-                    P_path,
-                    self.model_characteristics["waterschap"],
-                    "modellen",
-                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    self.model_characteristics["waterschap"]
-                    + "_"
-                    + self.model_characteristics["modelname"]
-                    + "_"
-                    + self.model_characteristics["modeltype"],
-                )
-
-                if not os.path.exists(P_path):
-                    os.makedirs(P_path)
-
-                P_path_ribasim = os.path.join(P_path, "ribasim.toml")
-                model.write(P_path_ribasim)
-
-                shutil.copy(
-                    src=checks_symbology_path_new,
-                    dst=os.path.join(
-                        P_path,
-                        "visualisation_Ribasim.qlr",
-                    ),
-                )
-
-        if self.model_characteristics["write_goodcloud"]:
-            with open(self.model_characteristics["path_goodcloud_password"]) as file:
-                password = file.read()
-
-            cloud_storage = CloudStorage(
-                password=password,
-                data_dir=r"../../../../Ribasim_networks/Waterschappen/",  # + waterschap + '_'+ modelname + '_' + modeltype,
-            )
-
-            cloud_storage.upload_model(
-                authority=self.model_characteristics["waterschap"],
-                model=self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
+                output_path=model_dir / "database_checks",
             )
 
         print("Done")

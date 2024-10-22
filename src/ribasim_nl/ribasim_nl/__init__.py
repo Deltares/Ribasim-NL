@@ -1,9 +1,15 @@
 __version__ = "0.1.0"
 
-from ribasim_nl.cloud import CloudStorage
-from ribasim_nl.model import Model
-from ribasim_nl.network import Network
-from ribasim_nl.network_validator import NetworkValidator
-from ribasim_nl.reset_index import reset_index
+from .cloud import CloudStorage
+from .model import Model
+from .network import Network
+from .network_validator import NetworkValidator
+from .reset_index import reset_index
 
-__all__ = ["CloudStorage", "Network", "reset_index", "Model", "NetworkValidator"]
+__all__ = [
+    "CloudStorage",
+    "Model",
+    "Network",
+    "NetworkValidator",
+    "reset_index",
+]
