@@ -14706,10 +14706,12 @@ packages:
   name: peilbeheerst-model
   version: 0.1.0
   path: src/peilbeheerst_model
-  sha256: e8c270f68d683c802990a8bb905cd665fd327b33e1d17bf3e01dfe9c49ec335e
+  sha256: 9ec22544800123361c4449542c548c1e3739a3f8d9d5bbe2f91a8d50d304fac5
   requires_dist:
+  - fiona
   - geopandas
   - matplotlib
+  - networkx
   - numpy
   - pandas
   - pydantic
