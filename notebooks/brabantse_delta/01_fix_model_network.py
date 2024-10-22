@@ -53,13 +53,15 @@ outlet_data = outlet.Static(flow_rate=[100])
 model.remove_node(2288, remove_edges=True)
 model.redirect_edge(edge_id=2450, to_node_id=955)
 
+# %% https://github.com/Deltares/Ribasim-NL/issues/152#issue-2535747701
 # Omkeren edges
 edge_ids = [2470, 2468, 2469, 2465, 748, 2476, 2489, 697, 2500, 2487, 2440]
 
 for edge_id in edge_ids:
     model.reverse_edge(edge_id=edge_id)
 
-# toeoegen Donge
+# %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2428677846
+# Toevoegen Donge
 basin_node = model.basin.add(
     Node(geometry=drop_z(hydroobject_gdf.at[13091, "geometry"].boundary.geoms[0])), tables=basin_data
 )
