@@ -16987,7 +16987,7 @@ packages:
   timestamp: 1598024297745
 - kind: pypi
   name: ribasim
-  version: 2024.10.0
+  version: 2024.11.0
   path: ../Ribasim/python/ribasim
   sha256: c48692687129085ad19256cbf54c8df9853f6259b31997cc4a282fde86072751
   requires_dist:
