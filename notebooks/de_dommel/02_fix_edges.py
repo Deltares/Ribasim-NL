@@ -1,12 +1,13 @@
 # %%
 import geopandas as gpd
+
 from ribasim_nl import CloudStorage, Model, Network
 
 cloud = CloudStorage()
 
 
 # %% load model
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_model_network", "model.toml")
 model = Model.read(ribasim_toml)
 
 # %% network from HydroObjects
@@ -15,13 +16,13 @@ if network_gpkg.exists():
     network = Network.from_network_gpkg(network_gpkg)
 else:
     network = Network.from_lines_gpkg(
-        cloud.joinpath("DeDommel", "verwerkt", "2_voorbewerking", "hydamo.gpkg"), layer="hydroobject"
+        cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject"
     )
 
     network.to_file(network_gpkg)
 # %% edges follow HydroObjects
 model.reset_edge_geometry()
-node_df = model.node_table().df.set_index("node_id")
+node_df = model.node_table().df
 data = []
 for row in model.edge.df.itertuples():
     try:
@@ -58,4 +59,5 @@ for row in model.edge.df.itertuples():
 gpd.GeoDataFrame(data, crs=28992).to_file("rare_edges.gpkg")
 
 # %% write model
-# model.write(ribasim_toml)
+ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_edges", "model.toml")
+model.write(ribasim_toml)

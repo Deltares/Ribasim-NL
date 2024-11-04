@@ -2,8 +2,9 @@
 import geopandas as gpd
 from ribasim import Node
 from ribasim.nodes import user_demand
-from ribasim_nl import CloudStorage, Model, Network
 from shapely.geometry import LineString, Point
+
+from ribasim_nl import CloudStorage, Model, Network
 
 
 def add_demand(

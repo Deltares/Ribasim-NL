@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import geopandas as gpd
 from ribasim import Model
 
 
@@ -26,7 +27,7 @@ def check_node_connectivity(row, node_df, tolerance=1.0) -> bool:
 
 def check_internal_basin(row, edge_df) -> bool:
     if row.node_type == "Basin":
-        return row.node_id not in edge_df.from_node_id.to_numpy()
+        return row.name not in edge_df.from_node_id.to_numpy()
     else:
         return False
 
@@ -68,6 +69,31 @@ class NetworkValidator:
         mask = self.node_df.apply(lambda row: check_internal_basin(row, self.edge_df), axis=1)
         return self.node_df[mask]
 
+    def node_invalid_connectivity(self, tolerance: float = 1.0):
+        """Check if node_from and node_to are correct on edge"""
+        node_df = self.node_df
+        invalid_edges_df = self.edge_incorrect_connectivity()
+        invalid_nodes = []
+        for row in invalid_edges_df.itertuples():
+            geoms = row.geometry.boundary.geoms
+
+            for idx, attr in ((0, "from_node_id"), (1, "to_node_id")):
+                node_id = getattr(row, attr)
+                point = geoms[idx]
+                if node_id in node_df.index:
+                    if point.distance(node_df.at[node_id, "geometry"]) > tolerance:
+                        invalid_nodes += [{"node_id": node_id, "geometry": point}]
+                else:
+                    invalid_nodes += [{"node_id": node_id, "geometry": point}]
+
+        if invalid_nodes:
+            df = gpd.GeoDataFrame(invalid_nodes, crs=node_df.crs)
+            df.drop_duplicates(inplace=True)
+        else:
+            df = gpd.GeoDataFrame({"node_id": []}, geometry=gpd.GeoSeries(), crs=node_df.crs)
+
+        return df
+
     def edge_duplicated(self):
         """Check if the `from_node_id` and `to_node_id` in the edge-table is duplicated"""
         return self.edge_df[self.edge_df.duplicated(subset=["from_node_id", "to_node_id"], keep=False)]
@@ -81,7 +107,7 @@ class NetworkValidator:
 
     def edge_incorrect_from_node(self):
         """Check if the `from_node_type` in edge-table in matches the `node_type` of the corresponding node in the node-table"""
-        node_df = self.node_df.set_index("node_id")
+        node_df = self.node_df
         mask = ~self.edge_df.apply(
             lambda row: node_df.at[row["from_node_id"], "node_type"] == row["from_node_type"]
             if row["from_node_id"] in node_df.index
@@ -92,7 +118,7 @@ class NetworkValidator:
 
     def edge_incorrect_to_node(self):
         """Check if the `to_node_type` in edge-table in matches the `node_type` of the corresponding node in the node-table"""
-        node_df = self.node_df.set_index("node_id")
+        node_df = self.node_df
         mask = ~self.edge_df.apply(
             lambda row: node_df.at[row["to_node_id"], "node_type"] == row["to_node_type"]
             if row["to_node_id"] in node_df.index
@@ -103,7 +129,7 @@ class NetworkValidator:
 
     def edge_incorrect_connectivity(self):
         """Check if the geometries of the `from_node_id` and `to_node_id` are on the start and end vertices of the edge-geometry within tolerance (default=1m)"""
-        node_df = self.node_df.set_index("node_id")
+        node_df = self.node_df
         mask = self.edge_df.apply(
             lambda row: check_node_connectivity(row=row, node_df=node_df, tolerance=self.tolerance), axis=1
         )
@@ -112,5 +138,5 @@ class NetworkValidator:
 
     def edge_incorrect_type_connectivity(self, from_node_type="ManningResistance", to_node_type="LevelBoundary"):
         """Check edges that contain wrong connectivity"""
-        mask = (self.edge_df.from_node_type == from_node_type) & (self.edge_df.to_node_type == to_node_type)
+        mask = (self.model.edge_from_node_type == from_node_type) & (self.model.edge_to_node_type == to_node_type)
         return self.edge_df[mask]

@@ -2,13 +2,8 @@ import os
 import shutil
 
 import geopandas as gpd
-
-# import matplotlib.pyplot as plt
-# import numpy as np
 import pandas as pd
 import ribasim
-
-# from ribasim import Model
 
 
 class Control:
@@ -176,7 +171,7 @@ class Control:
             average_last_values = last_24_hours["level"].mean()
             actual_last_value = group["level"].iloc[-1]
 
-            # Calculate the deviation in cm
+            # Calculate the deviation
             deviation = abs(actual_last_value - average_last_values)
 
             # Determine if it's stationary (deviation <= .11 cm)
@@ -208,7 +203,7 @@ class Control:
             data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG")
 
         # copy checks_symbology file from old dir to new dir
-        output_controle_qlr_path = r"../../../../Data_overig/QGIS_qlr/output_controle.qlr"
+        output_controle_qlr_path = r"../../../../../Data_overig/QGIS_qlr/output_controle.qlr"
         shutil.copy(src=output_controle_qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
         return

@@ -1,0 +1,17 @@
+---
+title: "Main watersystem"
+---
+
+All files are in [`notebooks/rijkswaterstaat`](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/rijkswaterstaat) are numbered in order of execution.
+
+# 1_bathymetrie.py
+In this script we merge data from Baseline (version j23_6-v1, non-public) with grids from [bathymetrie-Nederland](https://maps.rijkswaterstaat.nl/geoweb55/index.html?viewer=Bathymetrie_Nederland) to one 5x5m GeoTiff.
+
+We combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland.
+For the mask we use Top10NL waterdelen and manually filled a boolean column `baseline`.
+
+::: {layout-ncol=2}
+![Bathymetry mask](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_mask.png)
+
+![Bathymetry](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_result.png)
+:::

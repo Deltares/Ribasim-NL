@@ -1,14 +1,18 @@
 from pathlib import Path
 from typing import Literal
 
+import geopandas as gpd
+import networkx as nx
 import pandas as pd
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.geometry.edge import NodeData
-from shapely.geometry import LineString, Point
+from ribasim.validation import flow_edge_neighbor_amount as edge_amount
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.geometry import split_basin
 
 
 def read_arrow(filepath: Path) -> pd.DataFrame:
@@ -19,12 +23,10 @@ def read_arrow(filepath: Path) -> pd.DataFrame:
 
 
 def node_properties_to_table(table, node_properties, node_id):
-    if isinstance(node_id, int):
-        node_id = [node_id]
     # update DataFrame
     table_node_df = getattr(table, "node").df
     for column, value in node_properties.items():
-        table_node_df.loc[table_node_df.node_id.isin(node_id), [column]] = value
+        table_node_df.loc[node_id, [column]] = value
 
 
 class BasinResults(BaseModel):
@@ -49,8 +51,12 @@ class Model(Model):
         return self._basin_results
 
     @property
+    def graph(self):
+        return nx.from_pandas_edgelist(self.edge.df[["from_node_id", "to_node_id"]], "from_node_id", "to_node_id")
+
+    @property
     def next_node_id(self):
-        return self.node_table().df.node_id.max() + 1
+        return self.node_table().df.index.max() + 1
 
     def find_node_id(self, ds_node_id=None, us_node_id=None, **kwargs) -> int:
         """Find a node_id by it's properties"""
@@ -87,15 +93,43 @@ class Model(Model):
     @property
     def unassigned_basin_area(self):
         """Get unassigned basin area"""
-        return self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.node_id)]
+        return self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.index)]
 
     @property
     def basin_node_without_area(self):
         """Get basin node without area"""
-        return self.basin.node.df[~self.basin.node.df.node_id.isin(self.basin.area.df.node_id)]
+        return self.basin.node.df[~self.basin.node.df.index.isin(self.basin.area.df.node_id)]
+
+    def upstream_node_id(self, node_id: int):
+        """Get upstream node_id(s)"""
+        return self.edge.df.set_index("to_node_id").loc[node_id].from_node_id
+
+    def upstream_profile(self, node_id: int):
+        """Get upstream basin-profile"""
+        upstream_node_id = self.upstream_node_id(node_id)
+
+        node_type = self.node_table().df.loc[upstream_node_id].node_type
+        if node_type != "Basin":
+            raise ValueError(f"Upstream node_type is not a Basin, but {node_type}")
+        else:
+            return self.basin.profile[upstream_node_id]
+
+    def downstream_node_id(self, node_id: int):
+        """Get downstream node_id(s)"""
+        return self.edge.df.set_index("from_node_id").loc[node_id].to_node_id
+
+    def downstream_profile(self, node_id: int):
+        """Get upstream basin-profile"""
+        downstream_node_id = self.downstream_node_id(node_id)
+
+        node_type = self.node_table().df.loc[downstream_node_id].node_type
+        if node_type != "Basin":
+            raise ValueError(f"Upstream node_type is not a Basin, but {node_type}")
+        else:
+            return self.basin.profile[downstream_node_id]
 
     def get_node_type(self, node_id: int):
-        return self.node_table().df.set_index("node_id").at[node_id, "node_type"]
+        return self.node_table().df.at[node_id, "node_type"]
 
     def get_node(self, node_id: int):
         """Return model-node by node_id"""
@@ -113,7 +147,10 @@ class Model(Model):
         for attr in table.model_fields.keys():
             df = getattr(table, attr).df
             if df is not None:
-                getattr(table, attr).df = df[df.node_id != node_id]
+                if node_id in df.columns:
+                    getattr(table, attr).df = df[df.node_id != node_id]
+                else:
+                    getattr(table, attr).df = df[df.index != node_id]
 
         if remove_edges and (self.edge.df is not None):
             for row in self.edge.df[self.edge.df.from_node_id == node_id].itertuples():
@@ -125,23 +162,33 @@ class Model(Model):
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
 
+        # remove from used node-ids so we can add it again in the same table
+        if node_id in table._parent._used_node_ids:
+            table._parent._used_node_ids.node_ids.remove(node_id)
+
     def update_node(self, node_id, node_type, data, node_properties: dict = {}):
-        """Update a node type and/or data"""
-        # get existing network node_type
-        existing_node_type = self.node_table().df.set_index("node_id").at[node_id, "node_type"]
+        existing_node_type = self.node_table().df.at[node_id, "node_type"]
 
         # read existing table
         table = getattr(self, pascal_to_snake_case(existing_node_type))
 
         # save node, so we can add it later
-        node_dict = table.node.df[table.node.df["node_id"] == node_id].iloc[0].to_dict()
+        node_dict = table.node.df.loc[node_id].to_dict()
         node_dict.pop("node_type")
+        node_dict["node_id"] = node_id
 
         # remove node from all tables
         for attr in table.model_fields.keys():
             df = getattr(table, attr).df
             if df is not None:
-                getattr(table, attr).df = df[df.node_id != node_id]
+                if "node_id" in df.columns:
+                    getattr(table, attr).df = df[df.node_id != node_id]
+                else:
+                    getattr(table, attr).df = df[df.index != node_id]
+
+        # remove from used node-ids so we can add it again in the same table
+        if node_id in table._parent._used_node_ids:
+            table._parent._used_node_ids.node_ids.remove(node_id)
 
         # add to table
         table = getattr(self, pascal_to_snake_case(node_type))
@@ -154,10 +201,6 @@ class Model(Model):
         # complete node_properties
         node_properties = {**node_properties, **node_dict}
         node_properties_to_table(table, node_properties, node_id)
-
-        # change type in edge table
-        self.edge.df.loc[self.edge.df["from_node_id"] == node_id, ["from_node_type"]] = node_type
-        self.edge.df.loc[self.edge.df["to_node_id"] == node_id, ["to_node_type"]] = node_type
 
     def add_control_node(
         self,
@@ -212,23 +255,22 @@ class Model(Model):
         for _to_node_id in to_node_id:
             self.edge.add(table[node_id], self.get_node(_to_node_id))
 
-    def reverse_edge(self, from_node_id: int, to_node_id: int):
+    def reverse_edge(self, from_node_id: int | None = None, to_node_id: int | None = None, edge_id: int | None = None):
         """Reverse an edge"""
         if self.edge.df is not None:
-            # get original edge-data
-            df = self.edge.df.copy()
-            df.loc[:, ["edge_id"]] = df.index
-            df = df.set_index(["from_node_id", "to_node_id"], drop=False)
-            edge_data = dict(df.loc[from_node_id, to_node_id])
-            edge_id = edge_data["edge_id"]
+            if edge_id is None:
+                # get original edge-data
+                df = self.edge.df.copy()
+                df.loc[:, ["edge_id"]] = df.index
+                df = df.set_index(["from_node_id", "to_node_id"], drop=False)
+                edge_data = dict(df.loc[from_node_id, to_node_id])
+                edge_id = edge_data["edge_id"]
+            else:
+                edge_data = dict(self.edge.df.loc[edge_id])
 
             # revert node ids
             self.edge.df.loc[edge_id, ["from_node_id"]] = edge_data["to_node_id"]
             self.edge.df.loc[edge_id, ["to_node_id"]] = edge_data["from_node_id"]
-
-            # revert node types
-            self.edge.df.loc[edge_id, ["from_node_type"]] = edge_data["to_node_type"]
-            self.edge.df.loc[edge_id, ["to_node_type"]] = edge_data["from_node_type"]
 
             # revert geometry
             self.edge.df.loc[edge_id, ["geometry"]] = edge_data["geometry"].reverse()
@@ -249,6 +291,25 @@ class Model(Model):
                 for node_id in [from_node_id, to_node_id]:
                     if node_id not in self.edge.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
                         self.remove_node(node_id)
+
+    def remove_edges(self, edge_ids: list[int]):
+        if self.edge.df is not None:
+            self.edge.df = self.edge.df[~self.edge.df.index.isin(edge_ids)]
+
+    def move_node(self, node_id: int, geometry: Point):
+        node_type = self.node_table().df.at[node_id, "node_type"]
+
+        # read existing table
+        table = getattr(self, pascal_to_snake_case(node_type))
+
+        # update geometry
+        table.node.df.loc[node_id, ["geometry"]] = geometry
+
+        # reset all edges
+        edge_ids = self.edge.df[
+            (self.edge.df.from_node_id == node_id) | (self.edge.df.to_node_id == node_id)
+        ].index.to_list()
+        self.reset_edge_geometry(edge_ids=edge_ids)
 
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""
@@ -282,7 +343,7 @@ class Model(Model):
         """
         if self.basin.node.df is not None:
             if self.basin.area.df is not None:
-                basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.node_id)]
+                basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.index)]
 
                 for row in basin_area_df.itertuples():
                     if method == "within":
@@ -299,23 +360,231 @@ class Model(Model):
                         ValueError(f"Supported methods are 'within' or 'closest', got '{method}'.")
 
                     # check if basin_nodes within area are not yet assigned an area
-                    basin_df = basin_df[~basin_df.node_id.isin(self.basin.area.df.node_id)]
+                    basin_df = basin_df[~basin_df.index.isin(self.basin.area.df.node_id)]
 
                     # if we have one node left we are done
                     if len(basin_df) == 1:
-                        self.basin.area.df.loc[row.Index, ["node_id"]] = basin_df.iloc[0].node_id
+                        self.basin.area.df.loc[row.Index, ["node_id"]] = basin_df.index[0]
             else:
                 raise ValueError("Assign Basin Area to your model first")
         else:
             raise ValueError("Assign a Basin Node to your model first")
 
     def reset_edge_geometry(self, edge_ids: list | None = None):
-        node_df = self.node_table().df.set_index("node_id")
+        node_df = self.node_table().df
         if edge_ids is not None:
             df = self.edge.df[self.edge.df.index.isin(edge_ids)]
         else:
             df = self.edge.df
 
         for row in df.itertuples():
-            geometry = LineString([node_df.at[row.from_node_id, "geometry"], node_df.at[row.to_node_id, "geometry"]])
+            from_point = Point(node_df.at[row.from_node_id, "geometry"].x, node_df.at[row.from_node_id, "geometry"].y)
+            to_point = Point(node_df.at[row.to_node_id, "geometry"].x, node_df.at[row.to_node_id, "geometry"].y)
+            geometry = LineString([from_point, to_point])
             self.edge.df.loc[row.Index, ["geometry"]] = geometry
+
+    @property
+    def edge_from_node_type(self):
+        node_df = self.node_table().df
+        return self.edge.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+
+    @property
+    def edge_to_node_type(self):
+        node_df = self.node_table().df
+        return self.edge.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+
+    def split_basin(self, line: LineString, basin_id: int | None = None):
+        if self.basin.area.df is None:
+            raise ValueError("provide basin / area table first")
+
+        line_centre = line.interpolate(0.5, normalized=True)
+        if basin_id is not None:
+            basin_area_df = self.basin.area.df.loc[self.basin.area.df.node_id == basin_id]
+        basin_area_df = self.basin.area.df[self.basin.area.df.contains(line_centre)]
+
+        if len(basin_area_df) != 1:
+            raise ValueError("Overlapping basin-areas at cut_line")
+
+        # get all we need
+        basin_fid = int(basin_area_df.iloc[0].name)
+        basin_geometry = basin_area_df.iloc[0].geometry
+        self.basin.area.df = self.basin.area.df[self.basin.area.df.index != basin_fid]
+
+        # get the polygon to cut
+        basin_geoms = list(basin_geometry.geoms)
+        cut_idx = next(idx for idx, i in enumerate(basin_geoms) if i.contains(line_centre))
+
+        # split it
+        right_basin_poly, left_basin_poly = split_basin(basin_geoms[cut_idx], line).geoms
+
+        # concat left-over polygons to the right-side
+        right_basin_poly = [right_basin_poly]
+        left_basin_poly = [left_basin_poly]
+
+        for idx, geom in enumerate(basin_geoms):
+            if idx != cut_idx:
+                if geom.distance(right_basin_poly[0]) < geom.distance(left_basin_poly[0]):
+                    right_basin_poly += [geom]
+                else:
+                    left_basin_poly += [geom]
+
+        right_basin_poly = MultiPolygon(right_basin_poly)
+        left_basin_poly = MultiPolygon(left_basin_poly)
+
+        for poly in [right_basin_poly, left_basin_poly]:
+            if self.basin.node.df.geometry.within(poly).any():
+                node_ids = self.basin.node.df[self.basin.node.df.geometry.within(poly)].index.to_list()
+                if len(node_ids) == 1:
+                    if node_ids[0] in self.basin.area.df.node_id.to_numpy():
+                        self.basin.area.df.loc[self.basin.area.df.node_id.isin(node_ids), ["geometry"]] = poly
+                    else:
+                        self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
+                            "node_id": node_ids[0],
+                            "geometry": poly,
+                        }
+                else:
+                    self.basin.area.df.loc[self.basin.area.df.index.max() + 1, ["geometry"]] = poly
+            else:
+                self.basin.area.df.loc[self.basin.area.df.index.max() + 1, ["geometry"]] = poly
+
+        if self.basin.area.df.crs is None:
+            self.basin.area.df.crs = self.crs
+
+    def redirect_edge(self, edge_id: int, from_node_id: int | None = None, to_node_id: int | None = None):
+        if self.edge.df is not None:
+            if from_node_id is not None:
+                self.edge.df.loc[edge_id, ["from_node_id"]] = from_node_id
+            if to_node_id is not None:
+                self.edge.df.loc[edge_id, ["to_node_id"]] = to_node_id
+
+        self.reset_edge_geometry(edge_ids=[edge_id])
+
+    def merge_basins(self, basin_id: int, to_basin_id: int, are_connected=True):
+        for node_id in (basin_id, to_basin_id):
+            if node_id not in self.basin.node.df.index:
+                raise ValueError(f"{node_id} is not a basin")
+
+        if are_connected:
+            paths = [i for i in nx.all_shortest_paths(self.graph, basin_id, to_basin_id) if len(i) == 3]
+
+            if len(paths) == 0:
+                raise ValueError(f"basin {basin_id} not a direct neighbor of basin {to_basin_id}")
+
+            # remove flow-node and connected edges
+            for path in paths:
+                self.remove_node(path[1], remove_edges=True)
+
+        # get a complete edge-list to modify
+        edge_ids = self.edge.df[self.edge.df.from_node_id == basin_id].index.to_list()
+        edge_ids += self.edge.df[self.edge.df.to_node_id == basin_id].index.to_list()
+
+        # correct edge from and to attributes
+        self.edge.df.loc[self.edge.df.from_node_id == basin_id, "from_node_id"] = to_basin_id
+        self.edge.df.loc[self.edge.df.to_node_id == basin_id, "to_node_id"] = to_basin_id
+
+        # reset edge geometries
+        self.reset_edge_geometry(edge_ids=edge_ids)
+
+        # merge area if basin has any assigned to it
+        if basin_id in self.basin.area.df.node_id.to_numpy():
+            poly = self.basin.area.df.set_index("node_id").at[basin_id, "geometry"]
+
+            # if to_basin_id has area we union both areas
+            if to_basin_id in self.basin.area.df.node_id.to_numpy():
+                poly = poly.union(self.basin.area.df.set_index("node_id").at[to_basin_id, "geometry"])
+                if isinstance(poly, Polygon):
+                    poly = MultiPolygon([poly])
+                self.basin.area.df.loc[self.basin.area.df.node_id == to_basin_id, ["geometry"]] = poly
+
+            # else we add a record to basin
+            else:
+                if isinstance(poly, Polygon):
+                    poly = MultiPolygon([poly])
+                self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {"node_id": to_basin_id, "geometry": poly}
+
+        # finally we remove the basin
+        self.remove_node(basin_id)
+
+        if self.basin.area.df.crs is None:
+            self.basin.area.df.crs = self.crs
+
+    def invalid_topology_at_node(self, edge_type: str = "flow") -> gpd.GeoDataFrame:
+        df_graph = self.edge.df
+        df_node = self.node_table().df
+        # Join df_edge with df_node to get to_node_type
+        df_graph = df_graph.join(df_node[["node_type"]], on="from_node_id", how="left", rsuffix="_from")
+        df_graph = df_graph.rename(columns={"node_type": "from_node_type"})
+
+        df_graph = df_graph.join(df_node[["node_type"]], on="to_node_id", how="left", rsuffix="_to")
+        df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
+        df_node = self.node_table().df
+
+        """Check if the neighbor amount of the two nodes connected by the given edge meet the minimum requirements."""
+        errors = []
+
+        # filter graph by edge type
+        df_graph = df_graph.loc[df_graph["edge_type"] == edge_type]
+
+        # count occurrence of "from_node" which reflects the number of outneighbors
+        from_node_count = (
+            df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")  # type: ignore
+        )
+
+        # append from_node_count column to from_node_id and from_node_type
+        from_node_info = (
+            df_graph[["from_node_id", "from_node_type"]]
+            .drop_duplicates()
+            .merge(from_node_count, on="from_node_id", how="left")
+        )
+        from_node_info = from_node_info[["from_node_id", "from_node_count", "from_node_type"]]
+
+        # add the node that is not the upstream of any other nodes
+        from_node_info = self._add_source_sink_node(df_node["node_type"], from_node_info, "from")
+
+        # loop over all the "from_node" and check if they have enough outneighbor
+        for _, row in from_node_info.iterrows():
+            # from node's outneighbor
+            if row["from_node_count"] < edge_amount[row["from_node_type"]][2]:
+                node_id = row["from_node_id"]
+                errors += [
+                    {
+                        "geometry": df_node.at[node_id, "geometry"],
+                        "node_id": node_id,
+                        "node_type": df_node.at[node_id, "node_type"],
+                        "exception": f"must have at least {edge_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})",
+                    }
+                ]
+
+        # count occurrence of "to_node" which reflects the number of inneighbors
+        to_node_count = (
+            df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")  # type: ignore
+        )
+
+        # append to_node_count column to result
+        to_node_info = (
+            df_graph[["to_node_id", "to_node_type"]].drop_duplicates().merge(to_node_count, on="to_node_id", how="left")
+        )
+        to_node_info = to_node_info[["to_node_id", "to_node_count", "to_node_type"]]
+
+        # add the node that is not the downstream of any other nodes
+        to_node_info = self._add_source_sink_node(df_node["node_type"], to_node_info, "to")
+
+        # loop over all the "to_node" and check if they have enough inneighbor
+        for _, row in to_node_info.iterrows():
+            if row["to_node_count"] < edge_amount[row["to_node_type"]][0]:
+                node_id = row["to_node_id"]
+                errors += [
+                    {
+                        "geometry": df_node.at[node_id, "geometry"],
+                        "node_id": node_id,
+                        "node_type": df_node.at[node_id, "node_type"],
+                        "exception": f"must have at least {edge_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})",
+                    }
+                ]
+
+        if len(errors) > 0:
+            return gpd.GeoDataFrame(errors, crs=self.crs).set_index("node_id")
+        else:
+            return gpd.GeoDataFrame(
+                [], columns=["node_id", "node_type", "exception"], geometry=gpd.GeoSeries(crs=self.crs)
+            ).set_index("node_id")

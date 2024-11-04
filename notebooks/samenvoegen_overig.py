@@ -1,9 +1,10 @@
 # %%
 import geopandas as gpd
 import pandas as pd
+from shapely.geometry import MultiPolygon
+
 from ribasim_nl import CloudStorage
 from ribasim_nl.geometry import drop_z
-from shapely.geometry import MultiPolygon
 
 # %%
 cloud = CloudStorage()
