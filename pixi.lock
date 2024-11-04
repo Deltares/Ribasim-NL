@@ -4165,6 +4165,16 @@ packages:
   - pytest ; extra == 'tests'
   requires_python: '>=3.10'
   editable: true
+- kind: pypi
+  name: bokeh-helpers
+  version: 0.1.0
+  path: src/bokeh_helpers
+  sha256: 4c427e6caa50c97d621c7387f257a1f3bc2fd87e136485ddc28f6e658aa99d61
+  requires_dist:
+  - bokeh>3
+  - pytest ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
 - kind: conda
   name: branca
   version: 0.7.2
@@ -7057,6 +7067,16 @@ packages:
   - pkg:pypi/httpx?source=hash-mapping
   size: 65085
   timestamp: 1724778453275
+- kind: pypi
+  name: hydamo
+  version: 0.1.0
+  path: src/hydamo
+  sha256: 8981c9d89f3f7f7dd48c6c5cf14396677feed3971cc661e63f398f3b57ae6f4c
+  requires_dist:
+  - geopandas
+  - pytest ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
 - kind: pypi
   name: hydamo
   version: 0.1.0
@@ -14720,6 +14740,24 @@ packages:
   - pytest ; extra == 'tests'
   requires_python: '>=3.10'
   editable: true
+- kind: pypi
+  name: peilbeheerst-model
+  version: 0.1.0
+  path: src/peilbeheerst_model
+  sha256: 9ec22544800123361c4449542c548c1e3739a3f8d9d5bbe2f91a8d50d304fac5
+  requires_dist:
+  - fiona
+  - geopandas
+  - matplotlib
+  - networkx
+  - numpy
+  - pandas
+  - pydantic
+  - shapely
+  - tqdm
+  - pytest ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
 - kind: conda
   name: pexpect
   version: 4.9.0
@@ -16989,9 +17027,9 @@ packages:
   timestamp: 1598024297745
 - kind: pypi
   name: ribasim
-  version: 2024.10.0
+  version: 2024.11.0
   path: ../Ribasim/python/ribasim
-  sha256: c48692687129085ad19256cbf54c8df9853f6259b31997cc4a282fde86072751
+  sha256: ba8a6a24955e974dd0d7ae81ad59546134417f48eabce10cb280ac5f8c3290db
   requires_dist:
   - geopandas
   - matplotlib
@@ -17010,6 +17048,7 @@ packages:
   - pytest-cov ; extra == 'all'
   - pytest-xdist ; extra == 'all'
   - ribasim-testmodels ; extra == 'all'
+  - teamcity-messages ; extra == 'all'
   - xugrid ; extra == 'all'
   - jinja2 ; extra == 'delwaq'
   - networkx ; extra == 'delwaq'
@@ -17019,6 +17058,7 @@ packages:
   - pytest-cov ; extra == 'tests'
   - pytest-xdist ; extra == 'tests'
   - ribasim-testmodels ; extra == 'tests'
+  - teamcity-messages ; extra == 'tests'
   requires_python: '>=3.10'
   editable: true
 - kind: conda
@@ -17049,6 +17089,16 @@ packages:
   - pkg:pypi/ribasim?source=hash-mapping
   size: 225176
   timestamp: 1728473039990
+- kind: pypi
+  name: ribasim-nl
+  version: 0.1.0
+  path: src/ribasim_nl
+  sha256: c88a53d538c83ac90850bab1b6312861cccdd0308477e30cc3d8879643db57c0
+  requires_dist:
+  - geopandas
+  - pytest ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
 - kind: pypi
   name: ribasim-nl
   version: 0.1.0
