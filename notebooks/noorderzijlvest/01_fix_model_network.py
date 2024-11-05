@@ -1,8 +1,6 @@
 # %%
-import geopandas as gpd
 import numpy as np
 import pandas as pd
-from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
@@ -14,34 +12,6 @@ short_name = "nzv"
 
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{short_name}.toml")
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-
-pump_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "5_D_HYDRO_export", "gemalen", "Noorderzijlvest_gemalen.shp"),
-    fid_as_index=True,
-)
-pump_gdf["node_type"] = "Pump"
-pump_gdf["meta_object_type"] = "pump"
-
-culvert_gdf = gpd.read_file(
-    cloud.joinpath(
-        authority, "verwerkt", "5_D_HYDRO_export", "duikersifonhevel", "Noorderzijlvest_duikersifonhevel.shp"
-    ),
-    fid_as_index=True,
-)
-
-culvert_gdf["node_type"] = "Outlet"
-culvert_gdf["meta_object_type"] = "weir"
-
-weir_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "5_D_HYDRO_export", "stuwen", "Noorderzijlvest_stuwen.shp"),
-    fid_as_index=True,
-)
-
-weir_gdf["node_type"] = "Outlet"
-weir_gdf["meta_object_type"] = "weir"
-
-structures_gdf = pd.concat([pump_gdf, culvert_gdf, weir_gdf], ignore_index=True)
-
 
 # %% read model
 model = Model.read(ribasim_toml)
@@ -66,45 +36,15 @@ outlet_data = outlet.Static(flow_rate=[100])
 pump_data = pump.Static(flow_rate=[10])
 
 # %%
+# %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
-# toevoegen missende kunstwerken
+# 76 edges bij opgeheven nodes verwijderen
 mask = model.edge.df.to_node_id.isin(model.node_table().df.index) & model.edge.df.from_node_id.isin(
     model.node_table().df.index
 )
 missing_edges_df = model.edge.df[~mask]
 
-
-missing_edges_df.loc[:, ["point_from"]] = missing_edges_df.geometry.apply(lambda x: x.boundary.geoms[0])
-missing_edges_df.loc[:, ["point_to"]] = missing_edges_df.geometry.apply(lambda x: x.boundary.geoms[1])
-
-missing_nodes_df = network_validator.node_invalid_connectivity()
-
-# %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
-
-# 38 ontbrekende knopen toevoegen
-for row in missing_nodes_df.itertuples():
-    # row = next(missing_nodes_df.itertuples())
-    structure = structures_gdf.loc[structures_gdf.distance(row.geometry).idxmin()]
-    table = getattr(model, structure.node_type.lower())
-    if structure.node_type == "Pump":
-        model_node = model.pump.add(
-            Node(geometry=row.geometry, name=structure["Name"], meta_object_type=structure["meta_object_type"]),
-            tables=[pump_data],
-        )
-    elif structure.node_type == "Outlet":
-        model_node = model.outlet.add(
-            Node(geometry=row.geometry, name=structure["Name"], meta_object_type=structure["meta_object_type"]),
-            tables=[outlet_data],
-        )
-
-    # update edge_table
-    model.edge.df.loc[
-        missing_edges_df[(missing_edges_df["point_from"].distance(row.geometry) < 1)].index, ["from_node_id"]
-    ] = model_node.node_id
-
-    model.edge.df.loc[
-        missing_edges_df[(missing_edges_df["point_to"].distance(row.geometry) < 1)].index, ["to_node_id"]
-    ] = model_node.node_id
+model.edge.df = model.edge.df[~model.edge.df.index.isin(missing_edges_df.index)]
 
 # %%
 # basin-profielen updaten
