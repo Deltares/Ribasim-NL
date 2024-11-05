@@ -1,7 +1,6 @@
 # %%
 import numpy as np
 import pandas as pd
-from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
@@ -46,23 +45,33 @@ outlet_data = outlet.Static(flow_rate=[100])
 model.edge.df.drop_duplicates(inplace=True)
 
 
+# %%
+model.remove_edges(edge_ids=[2677])
+for node_id in [52, 53, 2056, 2053, 2042]:
+    model.remove_node(node_id, remove_edges=True)
+
+model.edge.add(model.tabulated_rating_curve[924], model.level_boundary[51])
+model.edge.add(model.tabulated_rating_curve[937], model.level_boundary[51])
+model.edge.add(model.level_boundary[38], model.outlet[85])
+
+
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2444112017
 # toevoegen ontbrekende basins
 
-basin_edges_df = network_validator.edge_incorrect_connectivity()
-basin_nodes_df = network_validator.node_invalid_connectivity()
+# basin_edges_df = network_validator.edge_incorrect_connectivity()
+# basin_nodes_df = network_validator.node_invalid_connectivity()
 
-for row in basin_nodes_df.itertuples():
-    # maak basin-node
-    basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
+# for row in basin_nodes_df.itertuples():
+#     # maak basin-node
+#     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
-    # update edge_table
-    model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
-        basin_node.node_id
-    )
-    model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
-        basin_node.node_id
-    )
+#     # update edge_table
+#     model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+#         basin_node.node_id
+#     )
+#     model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+#         basin_node.node_id
+#     )
 
 # EINDE ISSUES
 
