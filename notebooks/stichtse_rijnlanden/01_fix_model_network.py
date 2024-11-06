@@ -268,13 +268,13 @@ model.basin.area.df = pd.concat([model.basin.area.df, new_basin_area_df])
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457597461
 
 # Basins toevoegen met nieuwe_areas_voor_opvulling
-
 new_basin_area_df = extra_area_df[extra_area_df.samenvoegen_met_basin_area_fid.isna()].reset_index()[["geometry"]]
 new_basin_area_df["node_id"] = None
 new_basin_area_df.index += model.basin.area.df.index.max() + 1
 new_basin_area_df.index.name = "fid"
 model.basin.area.df = pd.concat([model.basin.area.df, new_basin_area_df])
 
+# Mergen van nieuwe basin / area's met de toegewezen basin / area fid
 for basin_id, df in extra_area_df[extra_area_df.samenvoegen_met_basin_area_fid.notna()].groupby(
     "samenvoegen_met_basin_area_fid"
 ):
@@ -282,10 +282,102 @@ for basin_id, df in extra_area_df[extra_area_df.samenvoegen_met_basin_area_fid.n
         df.union_all()
     )
 
-# assign node_ids
+# Vlakken zonder node mergen met de juiste vlakken mét node
+for merge_fid, with_fid in [[591, 589], [599, 364], [300, 74], [611, 605], [28, 20]]:
+    model.basin.area.df.loc[with_fid, "geometry"] = model.basin.area.df.at[with_fid, "geometry"].union(
+        model.basin.area.df.at[merge_fid, "geometry"]
+    )
+    model.basin.area.df = model.basin.area.df[model.basin.area.df.index != merge_fid]
+
+# 2 niet aansluitende vlakken "exploden" toekennen aan de juiste nodes bij Nieuwegein geinoord
+geoms = [i for i in model.basin.area.df.at[154, "geometry"].geoms if i.area > 100]
+model.basin.area.df.loc[606, "geometry"] = model.basin.area.df.at[606, "geometry"].union(geoms[0])
+model.basin.area.df.at[154, "geometry"] = MultiPolygon([geoms[1]])
+
+# Handmatig fixen van verkeerd toegewezen node_ids aan areas
+model.basin.area.df.loc[9, "node_id"] = 2084
+model.basin.area.df.loc[604, "node_id"] = 1855
+model.basin.area.df.loc[436, "node_id"] = 1854
+model.basin.area.df.loc[244, "node_id"] = 2075
+model.basin.area.df.loc[289, "node_id"] = 1518
+model.basin.area.df.loc[154, "node_id"] = 1944
+
+# Een aantal basins mergen
+model.merge_basins(basin_id=2018, to_basin_id=1922)
+model.merge_basins(basin_id=1630, to_basin_id=1415, are_connected=False)
+model.merge_basins(basin_id=1633, to_basin_id=2090, are_connected=False)
+model.merge_basins(basin_id=1382, to_basin_id=2090, are_connected=False)
+
+
+# 2x een basin area met niet aansluitende vlakken "exploden" en toekennen aan de juiste nodes (gelijk aan Nieuwegein Geinoord)
+missing_geoms = []
+geoms = list(model.basin.area.df.at[91, "geometry"].geoms)
+model.basin.area.df.loc[91, "geometry"] = geoms[0]
+
+missing_geoms += [geoms[1]]
+geoms = list(model.basin.area.df.at[259, "geometry"].geoms)
+model.basin.area.df.loc[259, "geometry"] = geoms[1]
+missing_geoms += [geoms[0]]
+
+df = gpd.GeoDataFrame(data=[], geometry=gpd.GeoSeries(missing_geoms, crs=model.crs))
+df.index.name = "fid"
+df.index += model.basin.area.df.index.max() + 1
+model.basin.area.df = pd.concat([model.basin.area.df, df])
+
+# automatisch geometetrisch toekennen van knoop-ids aan area op basis van geometrie (within, closest witin)
 model.fix_unassigned_basin_area()
 model.fix_unassigned_basin_area(method="closest")
 model.fix_unassigned_basin_area()
+
+# bufferen met 0.1 en -0.1 om slivers op te lossen
+model.basin.area.df.loc[:, "geometry"] = model.basin.area.df.buffer(0.1).buffer(-0.1)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2459498845
+
+# Edge-richtingen omdraaien
+for edge_id in [
+    30,
+    31,
+    32,
+    40,
+    65,
+    147,
+    173,
+    176,
+    215,
+    261,
+    262,
+    288,
+    289,
+    551,
+    576,
+    582,
+    724,
+    770,
+    792,
+    798,
+    853,
+    893,
+    1079,
+    1085,
+    1091,
+    1098,
+    1644,
+    1708,
+    2105,
+    2643,
+    2652,
+    2659,
+    2669,
+    2678,
+    2684,
+]:
+    model.reverse_edge(edge_id=edge_id)
+
+
+# fix 2 incorrecte edges
+model.edge.df.loc[916, "from_node_id"] = 1363
+model.edge.df.loc[1330, "from_node_id"] = 1365
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457447764
 
@@ -297,15 +389,15 @@ model.fix_unassigned_basin_area()
 # %%
 # corrigeren knoop-topologie
 
-# # ManningResistance bovenstrooms LevelBoundary naar Outlet
-# for row in network_validator.edge_incorrect_type_connectivity().itertuples():
-#     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
 
-# # Inlaten van ManningResistance naar Outlet
-# for row in network_validator.edge_incorrect_type_connectivity(
-#     from_node_type="LevelBoundary", to_node_type="ManningResistance"
-# ).itertuples():
-#     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
 
 
 ## UPDATEN STATIC TABLES
@@ -378,9 +470,21 @@ df = pd.DataFrame(
 df.index.name = "fid"
 model.flow_boundary.static.df = df
 
+# %%
+# outlets updaten
+length = len(model.outlet.node.df)
+df = pd.DataFrame(
+    {
+        "node_id": model.outlet.node.df.index.to_list(),
+        "flow_rate": [10.0] * length,
+    }
+)
+df.index.name = "fid"
+model.outlet.static.df = df
+
 
 #  %% write model
-model.use_validation = False
+model.use_validation = True
 model.write(ribasim_toml)
 
 # %%
