@@ -14706,10 +14706,12 @@ packages:
   name: peilbeheerst-model
   version: 0.1.0
   path: src/peilbeheerst_model
-  sha256: e8c270f68d683c802990a8bb905cd665fd327b33e1d17bf3e01dfe9c49ec335e
+  sha256: 9ec22544800123361c4449542c548c1e3739a3f8d9d5bbe2f91a8d50d304fac5
   requires_dist:
+  - fiona
   - geopandas
   - matplotlib
+  - networkx
   - numpy
   - pandas
   - pydantic
@@ -16989,7 +16991,7 @@ packages:
   name: ribasim
   version: 2024.11.0
   path: ../Ribasim/python/ribasim
-  sha256: c48692687129085ad19256cbf54c8df9853f6259b31997cc4a282fde86072751
+  sha256: ba8a6a24955e974dd0d7ae81ad59546134417f48eabce10cb280ac5f8c3290db
   requires_dist:
   - geopandas
   - matplotlib
@@ -17008,6 +17010,7 @@ packages:
   - pytest-cov ; extra == 'all'
   - pytest-xdist ; extra == 'all'
   - ribasim-testmodels ; extra == 'all'
+  - teamcity-messages ; extra == 'all'
   - xugrid ; extra == 'all'
   - jinja2 ; extra == 'delwaq'
   - networkx ; extra == 'delwaq'
@@ -17017,6 +17020,7 @@ packages:
   - pytest-cov ; extra == 'tests'
   - pytest-xdist ; extra == 'tests'
   - ribasim-testmodels ; extra == 'tests'
+  - teamcity-messages ; extra == 'tests'
   requires_python: '>=3.10'
   editable: true
 - kind: conda
