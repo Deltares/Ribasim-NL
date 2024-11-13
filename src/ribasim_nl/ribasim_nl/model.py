@@ -90,6 +90,26 @@ class Model(Model):
         else:
             return node_ids[0]
 
+    def get_object_by_coordinate(self, point, tolerance):
+        node_df = self.node_table().df
+        node_distance = node_df.distance(point).sort_values()
+
+        if (node_distance < tolerance).any():
+            node_id = node_distance.idxmin()
+            geometry = node_df.at[node_id, "geometry"]
+            return int(node_id), geometry
+        else:
+            area_df = self.basin.area.df[self.basin.area.df.contains(point)]
+            if area_df.empty:
+                return None, None
+            else:
+                if len(area_df) > 1:
+                    area_df.loc[:, "area"] = area_df.geometry.area
+                    area_df.sort_values(by="area", inplace=True)
+                node_id = area_df.iloc[0].node_id
+                geometry = area_df.iloc[0].geometry
+                return int(node_id), geometry
+
     @property
     def unassigned_basin_area(self):
         """Get unassigned basin area"""
