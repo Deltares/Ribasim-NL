@@ -114,9 +114,11 @@ for node_id in [729, 730, 1990, 1962]:
     model.remove_node(node_id, remove_edges=True)
 
 
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2431933060
 # Omkeren edgerichting
-for edge_id in [131, 398, 406, 495, 513, 515, 894]:
+for edge_id in [131, 398, 407, 495, 513, 515, 894]:
     model.reverse_edge(edge_id=edge_id)
+
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2422164355
 
@@ -232,6 +234,13 @@ df = pd.DataFrame(
 )
 df.index.name = "fid"
 model.tabulated_rating_curve.static.df = df
+
+
+# %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2431933060
+node_ids = [280, 335, 373, 879]
+model.tabulated_rating_curve.static.df.loc[
+    model.tabulated_rating_curve.static.df.node_id.isin([280, 335, 373, 879]), "active"
+] = False
 
 
 # %%
