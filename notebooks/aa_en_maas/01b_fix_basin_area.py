@@ -1,6 +1,7 @@
 # %% Import Libraries and Initialize Variables
 import geopandas as gpd
 import pandas as pd
+from ribasim.nodes import level_boundary
 
 from ribasim_nl import CloudStorage, Model
 
@@ -10,9 +11,8 @@ authority_name = "AaenMaas"
 model_short_name = "aam"
 
 # Define the path to the Ribasim model configuration file
-ribasim_model_path = cloud_storage.joinpath(
-    authority_name, "modellen", f"{authority_name}_fix_model_network", f"{model_short_name}.toml"
-)
+ribasim_model_dir = cloud_storage.joinpath(authority_name, "modellen", f"{authority_name}_fix_model_network")
+ribasim_model_path = ribasim_model_dir / f"{model_short_name}.toml"
 model = Model.read(ribasim_model_path)
 
 
@@ -135,6 +135,9 @@ final_basins_gdf = merged_gdf.set_index("node_id").dissolve(by="node_id", aggfun
 final_basins_gdf.rename(columns={"code": "meta_code_waterbeheerder"}, inplace=True)
 final_basins_gdf.to_file("basins_noholes.gpkg", layer="basins_noholes")
 
+final_basins_gdf.index.name = "fid"
+model.basin.area.df = final_basins_gdf
+
 # %% Check Differences in Node_ID Between Initial and Final Models
 final_node_ids = final_basins_gdf["node_id"]
 model_node_ids = model.basin.area.df["node_id"]
@@ -144,4 +147,19 @@ missing_gdf = pd.concat([missing_in_model, missing_in_final])
 
 if "fid" in missing_gdf.columns:
     missing_gdf = missing_gdf.rename(columns={"fid": "new_fid_name"})
+
+# %% merge_basins
+for row in basin_node_edits_gdf[basin_node_edits_gdf["merge_to_node_id"].notna()].itertuples():
+    if pd.isna(row.connected):
+        are_connected = False
+    else:
+        are_connected = row.connected
+    model.merge_basins(basin_id=row.node_id, to_basin_id=row.merge_to_node_id, are_connected=are_connected)
+
+# %% change node_type
+for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notna()].itertuples():
+    if row.change_to_node_type:
+        model.update_node(row.node_id, row.change_to_node_type, data=[level_boundary.Static(level=[0])])
+
+model.write(ribasim_model_dir.with_stem("AaenMaas_fix_model_area") / "aam.toml")
 # %%

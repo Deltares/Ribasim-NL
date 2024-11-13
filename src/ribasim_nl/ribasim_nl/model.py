@@ -7,6 +7,7 @@ import pandas as pd
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.geometry.edge import NodeData
+from ribasim.nodes import level_boundary
 from ribasim.validation import flow_edge_neighbor_amount as edge_amount
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
@@ -460,9 +461,14 @@ class Model(Model):
         self.reset_edge_geometry(edge_ids=[edge_id])
 
     def merge_basins(self, basin_id: int, to_basin_id: int, are_connected=True):
-        for node_id in (basin_id, to_basin_id):
-            if node_id not in self.basin.node.df.index:
-                raise ValueError(f"{node_id} is not a basin")
+        # for node_id in (basin_id, to_basin_id):
+        if basin_id not in self.basin.node.df.index:
+            raise ValueError(f"{basin_id} is not a basin")
+        to_node_type = self.node_table().df.at[to_basin_id, "node_type"]
+        if to_node_type not in ["Basin", "FlowBoundary", "LevelBoundary"]:
+            raise ValueError(
+                f'{to_basin_id} not of valid type: {to_node_type} not in ["Basin", "FlowBoundary", "LevelBoundary"]'
+            )
 
         if are_connected:
             paths = [i for i in nx.all_shortest_paths(self.graph, basin_id, to_basin_id) if len(i) == 3]
@@ -486,27 +492,35 @@ class Model(Model):
         self.reset_edge_geometry(edge_ids=edge_ids)
 
         # merge area if basin has any assigned to it
-        if basin_id in self.basin.area.df.node_id.to_numpy():
-            poly = self.basin.area.df.set_index("node_id").at[basin_id, "geometry"]
+        if to_node_type == "Basin":
+            if basin_id in self.basin.area.df.node_id.to_numpy():
+                poly = self.basin.area.df.set_index("node_id").at[basin_id, "geometry"]
 
-            # if to_basin_id has area we union both areas
-            if to_basin_id in self.basin.area.df.node_id.to_numpy():
-                poly = poly.union(self.basin.area.df.set_index("node_id").at[to_basin_id, "geometry"])
-                if isinstance(poly, Polygon):
-                    poly = MultiPolygon([poly])
-                self.basin.area.df.loc[self.basin.area.df.node_id == to_basin_id, ["geometry"]] = poly
+                # if to_basin_id has area we union both areas
+                if to_basin_id in self.basin.area.df.node_id.to_numpy():
+                    poly = poly.union(self.basin.area.df.set_index("node_id").at[to_basin_id, "geometry"])
+                    if isinstance(poly, Polygon):
+                        poly = MultiPolygon([poly])
+                    self.basin.area.df.loc[self.basin.area.df.node_id == to_basin_id, ["geometry"]] = poly
 
-            # else we add a record to basin
-            else:
-                if isinstance(poly, Polygon):
-                    poly = MultiPolygon([poly])
-                self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {"node_id": to_basin_id, "geometry": poly}
+                # else we add a record to basin
+                else:
+                    if isinstance(poly, Polygon):
+                        poly = MultiPolygon([poly])
+                    self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
+                        "node_id": to_basin_id,
+                        "geometry": poly,
+                    }
+
+            if self.basin.area.df.crs is None:
+                self.basin.area.df.crs = self.crs
+
+        # if node type is flow_boundary, we change type to LevelBoundary
+        if to_node_type == "FlowBoundary":
+            self.update_node(to_basin_id, "LevelBoundary", data=[level_boundary.Static(level=[0.0])])
 
         # finally we remove the basin
         self.remove_node(basin_id)
-
-        if self.basin.area.df.crs is None:
-            self.basin.area.df.crs = self.crs
 
     def invalid_topology_at_node(self, edge_type: str = "flow") -> gpd.GeoDataFrame:
         df_graph = self.edge.df
