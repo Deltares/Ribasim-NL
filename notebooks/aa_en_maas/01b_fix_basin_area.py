@@ -15,10 +15,6 @@ ribasim_model_dir = cloud_storage.joinpath(authority_name, "modellen", f"{author
 ribasim_model_path = ribasim_model_dir / f"{model_short_name}.toml"
 model = Model.read(ribasim_model_path)
 
-model.basin.area.df = model.basin.area.df.loc[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
-model.basin.area.df.to_parquet("model_basin_removed.parquet")
-model_basin = model.basin.area.df
-
 # %% Load Input Geospatial Files
 drainage_units_path = cloud_storage.joinpath(
     authority_name,
@@ -38,13 +34,20 @@ drainage_units_johnny_gdf = gpd.read_file(drainage_units_path, fid_as_index=True
 
 # Load Ribasim model basin areas
 ribasim_areas_path = cloud_storage.joinpath(authority_name, "verwerkt", "4_ribasim", "areas.gpkg")
-ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True)
+ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="areas")
 
 # Load node edit data
-basin_node_edits_path = cloud_storage.joinpath(
-    authority_name, "modellen", "AaenMaas_fix_model_network", "basin_node_edits.gpkg"
-)
-basin_node_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True)
+basin_node_edits_path = cloud_storage.joinpath(authority_name, "verwerkt", "model_edits.gpkg")
+basin_node_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_node")
+basin_area_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_area")
+
+# replace unassigned basin area with baisn_area_edits
+# 770 - 43 = 727
+model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
+# 727 + 28 = 755
+df = basin_area_edits_gdf[basin_area_edits_gdf["to_node_id"].notna()]
+df.loc[:, ["node_id"]] = df["to_node_id"].astype("int32")
+model.basin.area.df = pd.concat([model.basin.area.df, df[["node_id", "geometry"]]])
 
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
@@ -107,7 +110,7 @@ basin_area_update = combined_basin_areas_gdf.merge(
     suffixes=("", "_unassigned"),
 )
 # Step 7: Finalize missing `node_id` values from unassigned units
-basin_area_update["node_id"] = basin_area_update["node_id"].fillna(basin_area_update["node_id_unassigned"])
+basin_area_update.loc[:, ["node_id"]] = basin_area_update["node_id"].fillna(basin_area_update["node_id_unassigned"])
 basin_area_update.drop(columns=["node_id_unassigned"], inplace=True)
 
 # %% If there are still nodata basins they are removed by assigning Nearest Basin ID
@@ -124,18 +127,20 @@ if not null_node_rows.empty:
         distance_col="distance",
     )
     basin_area_update.loc[basin_area_update["node_id"].isnull(), "node_id"] = nearest_basin["node_id_right"]
-
+basin_area_update.to_file("basin_area_update.gpkg", layer="basin_area_update")
 # %% Based on basin_node_edits.gpkg, areas are assigned the Ribasim node_id that is in the file
-basin_node_edits_notnull_gdf = basin_node_edits_gdf[basin_node_edits_gdf["add_area_code"].notna()]
+basin_node_edits_notnull_gdf = basin_node_edits_gdf[basin_node_edits_gdf["to_area_code"].notna()]
 merged_gdf = basin_area_update.merge(
-    basin_node_edits_notnull_gdf[["add_area_code", "node_id"]], how="left", left_on="code", right_on="add_area_code"
+    basin_node_edits_notnull_gdf[["to_area_code", "node_id", "code"]],
+    how="left",
+    left_on="code",
+    right_on="to_area_code",
 )
 merged_gdf["node_id"] = merged_gdf["node_id_y"].combine_first(merged_gdf["node_id_x"])
-merged_gdf.drop(columns=["node_id_x", "node_id_y", "add_area_code"], inplace=True)
+merged_gdf.drop(columns=["node_id_x", "node_id_y"], inplace=True)
 
 # Dissolve geometries by `node_id` and save final GeoDataFrame
-final_basins_gdf = merged_gdf.set_index("node_id").dissolve(by="node_id", aggfunc={"code": "first"}).reset_index()
-final_basins_gdf.rename(columns={"code": "meta_code_waterbeheerder"}, inplace=True)
+final_basins_gdf = merged_gdf.set_index("node_id").dissolve(by="node_id").reset_index()
 final_basins_gdf.to_file("basins_noholes.gpkg", layer="basins_noholes")
 
 final_basins_gdf.index.name = "fid"
