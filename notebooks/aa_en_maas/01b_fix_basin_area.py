@@ -15,6 +15,9 @@ ribasim_model_dir = cloud_storage.joinpath(authority_name, "modellen", f"{author
 ribasim_model_path = ribasim_model_dir / f"{model_short_name}.toml"
 model = Model.read(ribasim_model_path)
 
+model.basin.area.df = model.basin.area.df.loc[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
+model.basin.area.df.to_parquet("model_basin_removed.parquet")
+model_basin = model.basin.area.df
 
 # %% Load Input Geospatial Files
 drainage_units_path = cloud_storage.joinpath(
