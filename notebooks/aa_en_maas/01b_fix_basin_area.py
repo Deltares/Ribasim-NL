@@ -165,4 +165,5 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
         model.update_node(row.node_id, row.change_to_node_type, data=[level_boundary.Static(level=[0])])
 
 model.write(ribasim_model_dir.with_stem("AaenMaas_fix_model_area") / "aam.toml")
+model.report_basin_area()
 # %%

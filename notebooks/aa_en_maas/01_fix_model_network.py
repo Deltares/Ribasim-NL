@@ -286,5 +286,6 @@ model.flow_boundary.static.df = df
 #  %% write model
 model.use_validation = True
 model.write(ribasim_toml)
+model.report_basin_area()
 
 # %%

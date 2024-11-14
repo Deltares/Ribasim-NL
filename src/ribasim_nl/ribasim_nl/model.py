@@ -312,6 +312,13 @@ class Model(Model):
         ].index.to_list()
         self.reset_edge_geometry(edge_ids=edge_ids)
 
+    def report_basin_area(self):
+        gpkg = self.filepath.with_name("basin_node_area_errors.gpkg")
+        self.unassigned_basin_area.to_file(gpkg, layer="unassigned_basin_area")
+
+        unassigned_basin_node = self.basin.node.df[~self.basin.node.df.index.isin(self.basin.area.df.node_id)]
+        unassigned_basin_node.to_file(gpkg, layer="unassigned_basin_node")
+
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""
         # only works when basin area are defined
