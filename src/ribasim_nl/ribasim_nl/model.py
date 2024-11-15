@@ -7,13 +7,36 @@ import pandas as pd
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.geometry.edge import NodeData
-from ribasim.nodes import level_boundary
+from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
 from ribasim.validation import flow_edge_neighbor_amount as edge_amount
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.geometry import split_basin
+
+manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
+level_data = level_boundary.Static(level=[0])
+
+
+class default_tables:
+    basin = [
+        basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
+        basin.Static(
+            drainage=[0.0],
+            potential_evaporation=[0.001 / 86400],
+            infiltration=[0.0],
+            precipitation=[0.005 / 86400],
+        ),
+        basin.State(level=[0]),
+    ]
+    outlet = [outlet.Static(flow_rate=[100])]
+    manning_data = [manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])]
+    level_data = [level_boundary.Static(level=[0])]
+    tabulated_rating_curve = [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10])]
+
+
+DEFAULT_TABLES = default_tables()
 
 
 def read_arrow(filepath: Path) -> pd.DataFrame:
@@ -148,7 +171,7 @@ class Model(Model):
         for attr in table.model_fields.keys():
             df = getattr(table, attr).df
             if df is not None:
-                if node_id in df.columns:
+                if "node_id" in df.columns:
                     getattr(table, attr).df = df[df.node_id != node_id]
                 else:
                     getattr(table, attr).df = df[df.index != node_id]
@@ -297,6 +320,34 @@ class Model(Model):
         if self.edge.df is not None:
             self.edge.df = self.edge.df[~self.edge.df.index.isin(edge_ids)]
 
+    def add_and_connect_node(self, from_basin_id, to_basin_id, geometry, node_type, tables=None, **kwargs):
+        # define node properties
+        if "name" in kwargs.keys():
+            name = kwargs["name"]
+            kwargs.pop("name")
+        else:
+            name = ""
+        node_properties = {k if k.startswith("meta_") else f"meta_{k}": v for k, v in kwargs.items()}
+
+        # define tables, defaults if None
+        if tables is None:
+            tables = getattr(DEFAULT_TABLES, pascal_to_snake_case(node_type))
+
+        # add node
+        node = getattr(self, pascal_to_snake_case(node_type)).add(
+            Node(geometry=geometry, name=name, **node_properties), tables=tables
+        )
+
+        # add edges from and to node
+        self.edge.add(self.basin[from_basin_id], node)
+        self.edge.add(node, self.basin[to_basin_id])
+
+    def reverse_direction_at_node(self, node_id):
+        for edge_id in self.edge.df[
+            (self.edge.df.from_node_id == node_id) | (self.edge.df.to_node_id == node_id)
+        ].index:
+            self.reverse_edge(edge_id=edge_id)
+
     def move_node(self, node_id: int, geometry: Point):
         node_type = self.node_table().df.at[node_id, "node_type"]
 
@@ -318,6 +369,11 @@ class Model(Model):
 
         unassigned_basin_node = self.basin.node.df[~self.basin.node.df.index.isin(self.basin.area.df.node_id)]
         unassigned_basin_node.to_file(gpkg, layer="unassigned_basin_node")
+
+    def report_internal_basins(self):
+        gpkg = self.filepath.with_name("internal_basins.gpkg")
+        df = self.basin.node.df[~self.basin.node.df.index.isin(self.edge.df.from_node_id)]
+        df.to_file(gpkg)
 
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""
@@ -477,7 +533,7 @@ class Model(Model):
                 f'{to_basin_id} not of valid type: {to_node_type} not in ["Basin", "FlowBoundary", "LevelBoundary"]'
             )
 
-        if are_connected:
+        if are_connected and (to_node_type != "FlowBoundary"):
             paths = [i for i in nx.all_shortest_paths(self.graph, basin_id, to_basin_id) if len(i) == 3]
 
             if len(paths) == 0:
@@ -494,6 +550,11 @@ class Model(Model):
         # correct edge from and to attributes
         self.edge.df.loc[self.edge.df.from_node_id == basin_id, "from_node_id"] = to_basin_id
         self.edge.df.loc[self.edge.df.to_node_id == basin_id, "to_node_id"] = to_basin_id
+
+        # remove self-connecting edge in case we merge to flow-boundary
+        if to_node_type == "FlowBoundary":
+            mask = (self.edge.df.from_node_id == to_basin_id) & (self.edge.df.to_node_id == to_basin_id)
+            self.edge.df = self.edge.df[~mask]
 
         # reset edge geometries
         self.reset_edge_geometry(edge_ids=edge_ids)

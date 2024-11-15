@@ -302,8 +302,10 @@ df = pd.DataFrame(
 df.index.name = "fid"
 model.flow_boundary.static.df = df
 
+model.fix_unassigned_basin_area()
 
 #  %% write model
 model.write(ribasim_toml)
-
+model.report_basin_area()
+model.report_internal_basins()
 # %%

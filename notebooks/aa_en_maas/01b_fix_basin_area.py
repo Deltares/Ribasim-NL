@@ -41,6 +41,8 @@ ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="
 basin_node_edits_path = cloud_storage.joinpath(authority_name, "verwerkt", "model_edits.gpkg")
 basin_node_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_node")
 basin_area_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_area")
+internal_basin_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="internal_basins")
+
 
 # replace unassigned basin area with baisn_area_edits
 # 770 - 43 = 727
@@ -160,14 +162,32 @@ if "fid" in missing_gdf.columns:
 # %% merge_basins
 for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
     if pd.isna(row.connected):
-        are_connected = False
+        are_connected = True
     else:
         are_connected = row.connected
     model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
 
+mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
+for row in internal_basin_edits_gdf[mask].itertuples():
+    if pd.isna(row.connected):
+        are_connected = True
+    else:
+        are_connected = row.connected
+    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
 
-# TODO: bug in edge at flow_boundary
-model.edge.df = model.edge.df[model.edge.df.from_node_id != model.edge.df.to_node_id]
+# %% add and connect nodes
+for row in internal_basin_edits_gdf[internal_basin_edits_gdf.add_object.notna()].itertuples():
+    from_basin_id = row.node_id
+    to_basin_id = row.to_node_id
+    if row.add_object == "stuw":
+        node_type = "TabulatedRatingCurve"
+    model.add_and_connect_node(
+        from_basin_id, int(to_basin_id), geometry=row.geometry, node_type=node_type, name=row.add_object_name
+    )
+
+# %% reverse direction at node
+for row in internal_basin_edits_gdf[internal_basin_edits_gdf["reverse_direction"]].itertuples():
+    model.reverse_direction_at_node(node_id=row.node_id)
 
 # %% change node_type
 for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notna()].itertuples():
@@ -219,4 +239,5 @@ model.tabulated_rating_curve.static.df = df
 
 model.write(ribasim_model_dir.with_stem("AaenMaas_fix_model_area") / "aam.toml")
 model.report_basin_area()
+model.report_internal_basins()
 # %%
