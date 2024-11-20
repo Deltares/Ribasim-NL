@@ -45,3 +45,5 @@ gdf_out["shortest_path"] = gdf_out["shortest_path"].apply(lambda geom: dumps(geo
 gdf_out.to_file(verwerkt_dir / "shortest_path.gpkg", driver="GPKG")
 
 # cloud.upload_verwerkt(waterschap)
+
+# %%
