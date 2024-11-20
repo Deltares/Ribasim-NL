@@ -24,7 +24,7 @@ waterschap2 = "AGV"
 cloud = CloudStorage()
 cloud.download_verwerkt(waterschap)
 cloud.download_verwerkt("Rijkswaterstaat")
-cloud.download_basisgegevens()
+cloud.download_basisgegevens(bronnen=["RWS_waterschaps_grenzen"])  # only download subdirectory of the basisgegevens
 
 # %%
 verwerkt_dir = cloud.joinpath(waterschap, "verwerkt")
