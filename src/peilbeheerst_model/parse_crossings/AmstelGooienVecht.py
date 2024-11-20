@@ -10,7 +10,7 @@ waterschap_struct = waterschap_data[waterschap]
 cloud = CloudStorage()
 verwerkt_dir = cloud.joinpath(waterschap, "verwerkt")
 cloud.download_verwerkt(waterschap)
-cloud.download_basisgegevens()
+cloud.download_basisgegevens(bronnen=["KRW"])
 
 # %%
 
@@ -36,3 +36,5 @@ else:
 # %%
 
 cloud.upload_verwerkt(waterschap)
+
+# %%
