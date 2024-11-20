@@ -29,7 +29,7 @@ for waterschap, waterschap_struct in waterschap_data.items():
     init_settings = waterschap_struct["init"]
     init_settings["logfile"] = pathlib.Path(init_settings["output_path"]).with_suffix(".log")
 
-    if waterschap not in ["HHNK"]:
+    if waterschap not in ["AmstelGooienVecht"]:
         continue
 
     # if pathlib.Path(init_settings["output_path"]).exists() and "crossings_hydroobject" in fiona.listlayers(init_settings["output_path"]):
@@ -127,3 +127,5 @@ fig2.savefig("reduction_results.jpeg", bbox_inches="tight")
 
 print(pd.DataFrame(reduction_results, index=waterschappen))
 print(pd.DataFrame(network_results, index=waterschappen))
+
+# %%
