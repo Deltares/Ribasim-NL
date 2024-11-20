@@ -113,4 +113,6 @@ network.WriteResults(model=model, checks=checks)
 
 # %%
 
-# cloud.upload_verwerkt(waterschap)
+cloud.upload_verwerkt(waterschap)
+
+# %%
