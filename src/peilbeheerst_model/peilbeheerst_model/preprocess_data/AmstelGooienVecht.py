@@ -33,6 +33,8 @@ dump_path = (
     aangeleverd_dir / "aanlevering_6maart24/data dump 6 maart LHM AGV.zip!/data dump 6 maart LHM AGV/"
 ).as_posix()
 
+dump_path_peilgebied = (aangeleverd_dir / "verbeterde_LHM_gebieden_geactualiseerd/").as_posix()
+
 verwerkt_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -88,7 +90,7 @@ AVG["gemaal"] = gpd.read_file(dump_path + "/Gemaal.shp")
 
 AVG["duikersifonhevel"] = gpd.read_file(dump_path + "/DuikerSifonHevel.shp")
 AVG["hydroobject"] = gpd.read_file(dump_path + "/LHM_hydrovakken.shp")
-AVG["peilgebied"] = gpd.read_file(dump_path + "/LHM_gebieden.shp")
+AVG["peilgebied"] = gpd.read_file(dump_path_peilgebied + "/LHM_gebieden.shp").to_crs(crs="EPSG:28992")
 
 
 AVG["peilgebied"].loc[AVG["peilgebied"].zomer == 0, "zomer"] = np.nan
@@ -145,8 +147,8 @@ AVG["duikersifonhevel"] = AVG["duikersifonhevel"][["code", "geometry"]]
 AVG["duikersifonhevel"].loc[:, "nen3610id"] = "dummy_nen3610id_duikersifonhevel_" + AVG[
     "duikersifonhevel"
 ].index.astype(str)
-AVG['duikersifonhevel']['globalid'] = 'dummy_globalid_duikersifonhevel_' + AVG['duikersifonhevel'].index.astype(str)
-AVG['duikersifonhevel'] = gpd.GeoDataFrame(AVG['duikersifonhevel']).to_crs('epsg:28992')
+AVG["duikersifonhevel"]["globalid"] = "dummy_globalid_duikersifonhevel_" + AVG["duikersifonhevel"].index.astype(str)
+AVG["duikersifonhevel"] = gpd.GeoDataFrame(AVG["duikersifonhevel"]).to_crs("epsg:28992")
 
 # hydroobject
 AVG["hydroobject"] = AVG["hydroobject"][["geometry"]]
@@ -167,11 +169,12 @@ AVG["peilgebied"]["code"] = AVG["peilgebied"]["GAFNAAM"]
 AVG["peilgebied"]["geometry"] = AVG["peilgebied"]["geometry"]
 AVG["peilgebied"]["nen3610id"] = "dummy_nen3610id_peilgebied_" + AVG["peilgebied"].index.astype(str)
 AVG["peilgebied"]["globalid"] = "dummy_globalid_peilgebied_" + AVG["peilgebied"].index.astype(str)
+AVG["peilgebied"]["waterhoogte"] = AVG["peilgebied"].streefpeil
 
-AVG['streefpeil'] = AVG['peilgebied'][['waterhoogte', 'globalid']]
-AVG['streefpeil']['code'] = 'dummy_code_streefpeil_' + AVG['streefpeil'].index.astype(str)
-AVG['streefpeil']['geometry'] = None
-AVG['streefpeil'] = gpd.GeoDataFrame(AVG['streefpeil'], geometry = 'geometry')
+AVG["streefpeil"] = AVG["peilgebied"][["waterhoogte", "globalid"]]
+AVG["streefpeil"]["code"] = "dummy_code_streefpeil_" + AVG["streefpeil"].index.astype(str)
+AVG["streefpeil"]["geometry"] = None
+AVG["streefpeil"] = gpd.GeoDataFrame(AVG["streefpeil"], geometry="geometry")
 
 AVG["peilgebied"] = AVG["peilgebied"][["code", "nen3610id", "globalid", "geometry"]]
 AVG["peilgebied"] = gpd.GeoDataFrame(AVG["peilgebied"]).to_crs("epsg:28992")
