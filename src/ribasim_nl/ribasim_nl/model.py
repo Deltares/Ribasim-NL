@@ -1,9 +1,11 @@
+# %%
 from pathlib import Path
 from typing import Literal
 
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
+import shapely
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.geometry.edge import NodeData
@@ -31,8 +33,10 @@ class default_tables:
         basin.State(level=[0]),
     ]
     outlet = [outlet.Static(flow_rate=[100])]
-    manning_data = [manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])]
-    level_data = [level_boundary.Static(level=[0])]
+    manning_resistance = [
+        manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
+    ]
+    level_boundary = [level_boundary.Static(level=[0])]
     tabulated_rating_curve = [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10])]
 
 
@@ -190,7 +194,7 @@ class Model(Model):
         if node_id in table._parent._used_node_ids:
             table._parent._used_node_ids.node_ids.remove(node_id)
 
-    def update_node(self, node_id, node_type, data, node_properties: dict = {}):
+    def update_node(self, node_id, node_type, data: list | None = None, node_properties: dict = {}):
         existing_node_type = self.node_table().df.at[node_id, "node_type"]
 
         # read existing table
@@ -216,6 +220,8 @@ class Model(Model):
 
         # add to table
         table = getattr(self, pascal_to_snake_case(node_type))
+        if data is None:
+            data = getattr(DEFAULT_TABLES, pascal_to_snake_case(node_type))
         table.add(Node(**node_dict), data)
 
         # sanitize node_dict
@@ -341,6 +347,35 @@ class Model(Model):
         # add edges from and to node
         self.edge.add(self.basin[from_basin_id], node)
         self.edge.add(node, self.basin[to_basin_id])
+
+    def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs):
+        # define node properties
+        if "name" in kwargs.keys():
+            name = kwargs["name"]
+            kwargs.pop("name")
+        else:
+            name = ""
+
+        node_properties = {k if k.startswith("meta_") else f"meta_{k}": v for k, v in kwargs.items()}
+
+        # define tables, defaults if None
+        if tables is None:
+            tables = getattr(DEFAULT_TABLES, pascal_to_snake_case(node_type))
+
+        # add outlet
+        node = getattr(self, pascal_to_snake_case(node_type)).add(
+            Node(geometry=geometry, name=name, **node_properties), tables=tables
+        )
+
+        # add edges from and to node
+        self.edge.add(self.basin[basin_id], node)
+        edge_geometry = self.edge.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
+
+        # add boundary
+        geometry = shapely.affinity.scale(edge_geometry, xfact=1.05, yfact=1.05, origin="center").boundary.geoms[1]
+        # geometry = edge_geometry.interpolate(1.05, normalized=True)
+        boundary_node = self.level_boundary.add(Node(geometry=geometry), tables=DEFAULT_TABLES.level_boundary)
+        self.edge.add(node, boundary_node)
 
     def reverse_direction_at_node(self, node_id):
         for edge_id in self.edge.df[

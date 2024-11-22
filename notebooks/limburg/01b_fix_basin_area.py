@@ -18,89 +18,90 @@ network_validator = NetworkValidator(model)
 # Load node edit data
 basin_node_edits_path = cloud_storage.joinpath(authority_name, "verwerkt", "model_edits.gpkg")
 basin_node_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_node")
-basin_area_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_area")
-internal_basin_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="internal_basin_node")
+rename_basin_area_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="rename_basin_area")
+add_basin_area_gdf = gpd.read_file(basin_node_edits_path, layer="add_basin_area")
+connect_basins_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="connect_basins")
+reverse_edge_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="reverse_edge")
+add_basin_outlet_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="add_basin_outlet")
 
+# %%
+# rename node-ids
+df = rename_basin_area_gdf.set_index("ribasim_fid")
+model.basin.area.df.loc[df.index, ["node_id"]] = df["to_node_id"].astype("int32")
+
+# %%add basin area
+add_basin_area_gdf.index += model.basin.area.df.index.max() + 1
+add_basin_area_gdf.index.name = "fid"
+model.basin.area.df = pd.concat([model.basin.area.df, add_basin_area_gdf])
 
 # %% merge_basins
-for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
+
+# merge basins
+selection_df = basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()]
+for row in selection_df.itertuples():
     if pd.isna(row.connected):
         are_connected = True
     else:
         are_connected = row.connected
     model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
 
-# mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
-# for row in internal_basin_edits_gdf[mask].itertuples():
-#     if pd.isna(row.connected):
-#         are_connected = True
-#     else:
-#         are_connected = row.connected
-#     model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+# %% reverse edges
 
-# # %% add and connect nodes
-# for row in internal_basin_edits_gdf[internal_basin_edits_gdf.add_object.notna()].itertuples():
-#     from_basin_id = row.node_id
-#     to_basin_id = row.to_node_id
-#     if row.add_object == "stuw":
-#         node_type = "TabulatedRatingCurve"
-#     model.add_and_connect_node(
-#         from_basin_id, int(to_basin_id), geometry=row.geometry, node_type=node_type, name=row.add_object_name
-#     )
-
-# # %% reverse direction at node
-# for row in internal_basin_edits_gdf[internal_basin_edits_gdf["reverse_direction"]].itertuples():
-#     model.reverse_direction_at_node(node_id=row.node_id)
-
-# # %% change node_type
-# for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notna()].itertuples():
-#     if row.change_to_node_type:
-#         model.update_node(row.node_id, row.change_to_node_type, data=[level_boundary.Static(level=[0])])
+# reverse edges
+for edge_id in reverse_edge_gdf.edge_id:
+    model.reverse_edge(edge_id=edge_id)
 
 
-# # %% corrigeren knoop-topologie
-# outlet_data = outlet.Static(flow_rate=[100])
-# # ManningResistance bovenstrooms LevelBoundary naar Outlet
-# for row in network_validator.edge_incorrect_type_connectivity().itertuples():
-#     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
+# %% change node_type
 
-# # Inlaten van ManningResistance naar Outlet
-# for row in network_validator.edge_incorrect_type_connectivity(
-#     from_node_type="LevelBoundary", to_node_type="ManningResistance"
-# ).itertuples():
-#     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
+# change node type
+selection_df = basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].notna()]
+for row in basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].notna()].itertuples():
+    if row.change_node_type:
+        model.update_node(node_id=row.node_id, node_type=row.change_node_type)
 
+# %% remove nodes
 
-# # %%
-# # basin-profielen/state updaten
-# df = pd.DataFrame(
-#     {
-#         "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
-#         "level": [0.0, 1.0] * len(model.basin.node.df),
-#         "area": [0.01, 1000.0] * len(model.basin.node.df),
-#     }
-# )
-# df.index.name = "fid"
-# model.basin.profile.df = df
+# remove nodes
+for node_id in basin_node_edits_gdf[basin_node_edits_gdf["remove_node_id"].notna()].node_id:
+    model.remove_node(node_id=node_id, remove_edges=True)
 
-# df = model.basin.profile.df.groupby("node_id")[["level"]].max().reset_index()
-# df.index.name = "fid"
-# model.basin.state.df = df
+# %% add and connect basins
 
+# add and connect basins
+for row in connect_basins_gdf.itertuples():
+    from_basin_id = row.node_id
+    to_basin_id = row.to_node_id
+    if row.add_object == "duikersifonhevel":
+        node_type = "TabulatedRatingCurve"
+    model.add_and_connect_node(
+        from_basin_id, int(to_basin_id), geometry=row.geometry, node_type=node_type, name=row.add_object_name
+    )
 
-# # tabulated_rating_curves updaten
-# df = pd.DataFrame(
-#     {
-#         "node_id": np.repeat(model.tabulated_rating_curve.node.df.index.to_numpy(), 2),
-#         "level": [0.0, 5] * len(model.tabulated_rating_curve.node.df),
-#         "flow_rate": [0, 0.1] * len(model.tabulated_rating_curve.node.df),
-#     }
-# )
-# df.index.name = "fid"
-# model.tabulated_rating_curve.static.df = df
+# %% add basin outlet
 
+# add basin outlet
+for row in add_basin_outlet_gdf.itertuples():
+    basin_id = row.node_id
+    if row.add_object == "duikersifonhevel":
+        node_type = "TabulatedRatingCurve"
+    model.add_basin_outlet(basin_id, geometry=row.geometry, node_type=node_type, name=row.add_object_name)
 
+# %% corrigeren knoop-topologie
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet")
+
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet")
+
+# %%
+model.use_validation = False
 model.write(ribasim_model_dir.with_stem(f"{authority_name}_fix_model_area") / f"{model_short_name}.toml")
 model.report_basin_area()
 model.report_internal_basins()
+
 # %%

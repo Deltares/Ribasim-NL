@@ -260,3 +260,5 @@ model.edge.df.index.name = "edge_id"
 ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_model_network", "model.toml")
 
 model.write(ribasim_toml)
+model.report_basin_area()
+model.report_internal_basins()
