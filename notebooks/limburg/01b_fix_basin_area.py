@@ -16,13 +16,17 @@ model = Model.read(ribasim_model_path)
 network_validator = NetworkValidator(model)
 
 # Load node edit data
-basin_node_edits_path = cloud_storage.joinpath(authority_name, "verwerkt", "model_edits.gpkg")
-basin_node_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_node")
-rename_basin_area_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="rename_basin_area")
-add_basin_area_gdf = gpd.read_file(basin_node_edits_path, layer="add_basin_area")
-connect_basins_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="connect_basins")
-reverse_edge_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="reverse_edge")
-add_basin_outlet_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="add_basin_outlet")
+model_edits_url = cloud_storage.joinurl(authority_name, "verwerkt", "model_edits.gpkg")
+model_edits_path = cloud_storage.joinpath(authority_name, "verwerkt", "model_edits.gpkg")
+if not model_edits_path.exists():
+    cloud_storage.download_file(model_edits_url)
+
+basin_node_edits_gdf = gpd.read_file(model_edits_path, fid_as_index=True, layer="unassigned_basin_node")
+rename_basin_area_gdf = gpd.read_file(model_edits_path, fid_as_index=True, layer="rename_basin_area")
+add_basin_area_gdf = gpd.read_file(model_edits_path, layer="add_basin_area")
+connect_basins_gdf = gpd.read_file(model_edits_path, fid_as_index=True, layer="connect_basins")
+reverse_edge_gdf = gpd.read_file(model_edits_path, fid_as_index=True, layer="reverse_edge")
+add_basin_outlet_gdf = gpd.read_file(model_edits_path, fid_as_index=True, layer="add_basin_outlet")
 
 # %%
 # rename node-ids
@@ -86,6 +90,14 @@ for row in add_basin_outlet_gdf.itertuples():
     if row.add_object == "duikersifonhevel":
         node_type = "TabulatedRatingCurve"
     model.add_basin_outlet(basin_id, geometry=row.geometry, node_type=node_type, name=row.add_object_name)
+
+# %% weggooien basin areas zonder node
+
+df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
+df = df.dissolve(by="node_id").reset_index()
+df.index.name = "fid"
+model.basin.area.df = df
+
 
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
