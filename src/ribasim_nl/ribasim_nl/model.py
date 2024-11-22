@@ -384,6 +384,11 @@ class Model(Model):
         ].index:
             self.reverse_edge(edge_id=edge_id)
 
+    def update_basin_area(self, node_id: int, basin_area_fid: int | None = None):
+        if basin_area_fid is None:
+            basin_area_fid = self.basin.area.df.index.max() + 1
+        self.basin.area.df.loc[basin_area_fid, ["node_id"]] = node_id
+
     def move_node(self, node_id: int, geometry: Point):
         node_type = self.node_table().df.at[node_id, "node_type"]
 
@@ -558,6 +563,13 @@ class Model(Model):
                 self.edge.df.loc[edge_id, ["to_node_id"]] = to_node_id
 
         self.reset_edge_geometry(edge_ids=[edge_id])
+
+    def remove_unassigned_basin_area(self):
+        df = self.basin.area.df[~self.basin.area.df.index.isin(self.unassigned_basin_area.index)]
+        if self.basin.area.df.node_id.duplicated().any():
+            df = df.dissolve(by="node_id").reset_index()
+            df.index.name = "fid"
+            self.basin.area.df = df
 
     def merge_basins(
         self,

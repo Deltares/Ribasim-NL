@@ -9,8 +9,10 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_2024_6_3", "model.toml")
-database_gpkg = ribasim_toml.with_name("database.gpkg")
+authority = "BrabantseDelta"
+short_name = "wbd"
+
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{short_name}.toml")
 
 
 basin_data = [
