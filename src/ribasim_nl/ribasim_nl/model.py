@@ -1,4 +1,5 @@
 # %%
+import warnings
 from pathlib import Path
 from typing import Literal
 
@@ -558,37 +559,51 @@ class Model(Model):
 
         self.reset_edge_geometry(edge_ids=[edge_id])
 
-    def merge_basins(self, basin_id: int, to_basin_id: int, are_connected=True):
-        # for node_id in (basin_id, to_basin_id):
-        if basin_id not in self.basin.node.df.index:
-            raise ValueError(f"{basin_id} is not a basin")
-        to_node_type = self.node_table().df.at[to_basin_id, "node_type"]
+    def merge_basins(
+        self,
+        basin_id: int | None = None,
+        node_id: int | None = None,
+        to_node_id: int | None = None,
+        to_basin_id: int | None = None,
+        are_connected=True,
+    ):
+        if basin_id is not None:
+            warnings.warn("basin_id is deprecated, use node_id instead", DeprecationWarning)
+            node_id = basin_id
+
+        if to_basin_id is not None:
+            warnings.warn("to_basin_id is deprecated, use to_node_id instead", DeprecationWarning)
+            to_node_id = to_basin_id
+
+        if node_id not in self.basin.node.df.index:
+            raise ValueError(f"{node_id} is not a basin")
+        to_node_type = self.node_table().df.at[to_node_id, "node_type"]
         if to_node_type not in ["Basin", "FlowBoundary", "LevelBoundary"]:
             raise ValueError(
-                f'{to_basin_id} not of valid type: {to_node_type} not in ["Basin", "FlowBoundary", "LevelBoundary"]'
+                f'{to_node_id} not of valid type: {to_node_type} not in ["Basin", "FlowBoundary", "LevelBoundary"]'
             )
 
         if are_connected and (to_node_type != "FlowBoundary"):
-            paths = [i for i in nx.all_shortest_paths(self.graph, basin_id, to_basin_id) if len(i) == 3]
+            paths = [i for i in nx.all_shortest_paths(self.graph, node_id, to_node_id) if len(i) == 3]
 
             if len(paths) == 0:
-                raise ValueError(f"basin {basin_id} not a direct neighbor of basin {to_basin_id}")
+                raise ValueError(f"basin {node_id} not a direct neighbor of basin {to_node_id}")
 
             # remove flow-node and connected edges
             for path in paths:
                 self.remove_node(path[1], remove_edges=True)
 
         # get a complete edge-list to modify
-        edge_ids = self.edge.df[self.edge.df.from_node_id == basin_id].index.to_list()
-        edge_ids += self.edge.df[self.edge.df.to_node_id == basin_id].index.to_list()
+        edge_ids = self.edge.df[self.edge.df.from_node_id == node_id].index.to_list()
+        edge_ids += self.edge.df[self.edge.df.to_node_id == node_id].index.to_list()
 
         # correct edge from and to attributes
-        self.edge.df.loc[self.edge.df.from_node_id == basin_id, "from_node_id"] = to_basin_id
-        self.edge.df.loc[self.edge.df.to_node_id == basin_id, "to_node_id"] = to_basin_id
+        self.edge.df.loc[self.edge.df.from_node_id == node_id, "from_node_id"] = to_node_id
+        self.edge.df.loc[self.edge.df.to_node_id == node_id, "to_node_id"] = to_node_id
 
         # remove self-connecting edge in case we merge to flow-boundary
         if to_node_type == "FlowBoundary":
-            mask = (self.edge.df.from_node_id == to_basin_id) & (self.edge.df.to_node_id == to_basin_id)
+            mask = (self.edge.df.from_node_id == to_node_id) & (self.edge.df.to_node_id == to_node_id)
             self.edge.df = self.edge.df[~mask]
 
         # reset edge geometries
@@ -596,22 +611,22 @@ class Model(Model):
 
         # merge area if basin has any assigned to it
         if to_node_type == "Basin":
-            if basin_id in self.basin.area.df.node_id.to_numpy():
-                poly = self.basin.area.df.set_index("node_id").at[basin_id, "geometry"]
+            if node_id in self.basin.area.df.node_id.to_numpy():
+                poly = self.basin.area.df.set_index("node_id").at[node_id, "geometry"]
 
-                # if to_basin_id has area we union both areas
-                if to_basin_id in self.basin.area.df.node_id.to_numpy():
-                    poly = poly.union(self.basin.area.df.set_index("node_id").at[to_basin_id, "geometry"])
+                # if to_node_id has area we union both areas
+                if to_node_id in self.basin.area.df.node_id.to_numpy():
+                    poly = poly.union(self.basin.area.df.set_index("node_id").at[to_node_id, "geometry"])
                     if isinstance(poly, Polygon):
                         poly = MultiPolygon([poly])
-                    self.basin.area.df.loc[self.basin.area.df.node_id == to_basin_id, ["geometry"]] = poly
+                    self.basin.area.df.loc[self.basin.area.df.node_id == to_node_id, ["geometry"]] = poly
 
                 # else we add a record to basin
                 else:
                     if isinstance(poly, Polygon):
                         poly = MultiPolygon([poly])
                     self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
-                        "node_id": to_basin_id,
+                        "node_id": to_node_id,
                         "geometry": poly,
                     }
 
@@ -620,10 +635,10 @@ class Model(Model):
 
         # if node type is flow_boundary, we change type to LevelBoundary
         if to_node_type == "FlowBoundary":
-            self.update_node(to_basin_id, "LevelBoundary", data=[level_boundary.Static(level=[0.0])])
+            self.update_node(to_node_id, "LevelBoundary", data=[level_boundary.Static(level=[0.0])])
 
         # finally we remove the basin
-        self.remove_node(basin_id)
+        self.remove_node(node_id)
 
     def invalid_topology_at_node(self, edge_type: str = "flow") -> gpd.GeoDataFrame:
         df_graph = self.edge.df

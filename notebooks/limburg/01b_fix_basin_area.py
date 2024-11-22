@@ -111,9 +111,7 @@ for row in network_validator.edge_incorrect_type_connectivity(
     model.update_node(row.to_node_id, "Outlet")
 
 # %%
-model.use_validation = False
-model.write(ribasim_model_dir.with_stem(f"{authority_name}_fix_model_area") / f"{model_short_name}.toml")
+model.use_validation = True
+ribasim_model_dir = ribasim_model_dir.with_stem(f"{authority_name}_fix_model_area")
 model.report_basin_area()
 model.report_internal_basins()
-
-# %%
