@@ -1,9 +1,4 @@
-import sys
-
 from outlets import case1, case2
-
-sys.path.append("peilbeheerst_model")
-
 
 # # Case 1
 
