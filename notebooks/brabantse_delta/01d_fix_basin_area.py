@@ -57,26 +57,45 @@ for row in network_validator.edge_incorrect_type_connectivity(
 
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
+# Create the overlay of areas
 combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
+
+# Ensure geometry consistency
 combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
+
+# Calculate area for each geometry
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
+
+# Separate rows with and without node_id
 non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
 
+# Find largest area node_ids for each code
 largest_area_node_ids = non_null_basin_areas_gdf.loc[
     non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
-].reset_index(drop=True)
+]
 
-combined_basin_areas_gdf = combined_basin_areas_gdf.merge(largest_area_node_ids, on="code", how="left")
-combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id_x"]
-combined_basin_areas_gdf.to_file("combined_basin_areas_gdf.gpkg", layer="combined_basin_areas_gdf_0")
-combined_basin_areas_gdf.drop(columns=["node_id_x", "node_id_y"], inplace=True)
-combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates(keep="first")
-combined_basin_areas_gdf.to_file("combined_basin_areas_gdf.gpkg", layer="combined_basin_areas_gdf_1")
-# combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="code").reset_index()
+# Merge largest area node_ids back into the combined DataFrame
+combined_basin_areas_gdf = combined_basin_areas_gdf.merge(
+    largest_area_node_ids, on="code", how="left", suffixes=("", "_largest")
+)
+
+# Fill missing node_id with the largest_area node_id
+combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
+    combined_basin_areas_gdf["node_id_largest"]
+)
+
+# Drop unnecessary columns
+combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
+
+# Remove duplicates if necessary
+combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
+
+# Save to file if needed
 combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
-combined_basin_areas_gdf.to_file("combined_basin_areas_gdf.gpkg", layer="combined_basin_areas_gdf_dis")
+combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
+combined_basin_areas_gdf.index.name = "fid"
 
-
+# %%
 model.basin.area.df = combined_basin_areas_gdf
 
 # %%
