@@ -59,8 +59,6 @@ for row in network_validator.edge_incorrect_type_connectivity(
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
 # Create the overlay of areas
 combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
-
-# Ensure geometry consistency
 combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 # Calculate area for each geometry
@@ -83,14 +81,8 @@ combined_basin_areas_gdf = combined_basin_areas_gdf.merge(
 combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
     combined_basin_areas_gdf["node_id_largest"]
 )
-
-# Drop unnecessary columns
 combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
-
-# Remove duplicates if necessary
 combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
-
-# Save to file if needed
 combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
 combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
 combined_basin_areas_gdf.index.name = "fid"
