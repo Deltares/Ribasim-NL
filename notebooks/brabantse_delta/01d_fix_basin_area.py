@@ -14,6 +14,10 @@ model_short_name = "wbd"
 # Define the path to the Ribasim model configuration file
 ribasim_model_dir = cloud_storage.joinpath(authority_name, "modellen", f"{authority_name}_fix_model_network")
 ribasim_model_path = ribasim_model_dir / f"{model_short_name}.toml"
+
+ribasim_areas_path = cloud_storage.joinpath(authority_name, "verwerkt", "4_ribasim", "areas.gpkg")
+ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="areas")
+
 model = Model.read(ribasim_model_path)
 network_validator = NetworkValidator(model)
 
@@ -50,6 +54,30 @@ for row in network_validator.edge_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet")
+
+# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
+# then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
+combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
+combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
+combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
+non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
+
+largest_area_node_ids = non_null_basin_areas_gdf.loc[
+    non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
+].reset_index(drop=True)
+
+combined_basin_areas_gdf = combined_basin_areas_gdf.merge(largest_area_node_ids, on="code", how="left")
+combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id_x"]
+combined_basin_areas_gdf.to_file("combined_basin_areas_gdf.gpkg", layer="combined_basin_areas_gdf_0")
+combined_basin_areas_gdf.drop(columns=["node_id_x", "node_id_y"], inplace=True)
+combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates(keep="first")
+combined_basin_areas_gdf.to_file("combined_basin_areas_gdf.gpkg", layer="combined_basin_areas_gdf_1")
+# combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="code").reset_index()
+combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
+combined_basin_areas_gdf.to_file("combined_basin_areas_gdf.gpkg", layer="combined_basin_areas_gdf_dis")
+
+
+model.basin.area.df = combined_basin_areas_gdf
 
 # %%
 model.use_validation = True
