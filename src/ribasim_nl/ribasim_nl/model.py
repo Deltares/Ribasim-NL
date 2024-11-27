@@ -389,6 +389,34 @@ class Model(Model):
             basin_area_fid = self.basin.area.df.index.max() + 1
         self.basin.area.df.loc[basin_area_fid, ["node_id"]] = node_id
 
+    def add_basin_area(self, geometry: MultiPolygon, node_id: int | None = None):
+        # if node_id is None, get an available node_id
+        if pd.isna(node_id):
+            basin_df = self.basin.node.df[self.basin.node.df.within(geometry)]
+            if basin_df.empty:
+                raise ValueError("No basin-node within basin area, specify node_id explicitly")
+            elif len(basin_df) > 1:
+                raise ValueError(
+                    f"Multiple basin-nodes within area: {basin_df.index.to_numpy()}. Specify node_id explicitly"
+                )
+            else:
+                node_id = basin_df.index[0]
+        elif node_id not in self.basin.node.df.index:
+            raise ValueError(f"Node_id {node_id} is not a basin")
+
+        # check geometry and promote to mulitpolygon
+        if not geometry.geom_type == "MultiPolygon":
+            if geometry.geom_type == "Polygon":
+                geometry = MultiPolygon([geometry])
+            else:
+                raise ValueError(f"geometry-type {geometry.geom_type} is not valid. Provide (Multi)Polygon instead")
+
+        # if all correct, assign
+        area_df = gpd.GeoDataFrame({"node_id": [node_id], "geometry": [geometry]}, crs=self.crs)
+        area_df.index.name = "fid"
+        area_df.index += self.basin.area.df.index.max() + 1
+        self.basin.area.df = pd.concat([self.basin.area.df, area_df])
+
     def move_node(self, node_id: int, geometry: Point):
         node_type = self.node_table().df.at[node_id, "node_type"]
 
