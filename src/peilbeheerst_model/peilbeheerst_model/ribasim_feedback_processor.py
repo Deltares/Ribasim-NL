@@ -11,7 +11,6 @@ from shapely.geometry import LineString, Point
 # Mapping between feedback form and model names
 mapping = {
     "Basin": "basin",
-    "FractionalFlow": "fractional_flow",
     "TabulatedRatingCurve": "tabulated_rating_curve",
     "Pump": "pump",
     "Outlet": "outlet",

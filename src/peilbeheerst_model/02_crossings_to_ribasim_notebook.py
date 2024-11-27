@@ -77,7 +77,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -174,7 +173,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -271,7 +269,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -369,7 +366,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -464,7 +460,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -562,7 +557,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -678,7 +672,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -776,7 +769,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -877,7 +869,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()
@@ -974,7 +965,6 @@ manning_resistance_node, manning_resistance_static = network.manning_resistance(
 terminal_node = network.terminal()
 
 # linear_resistance = network.linear_resistance()
-# fractional_flow = network.fractional_flow()
 # outlet = network.outlet()
 # discrete_control = network.discrete_control()
 # pid_control = network.pid_control()

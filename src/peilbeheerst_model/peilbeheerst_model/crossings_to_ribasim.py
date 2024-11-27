@@ -1148,17 +1148,6 @@ class RibasimNetwork:
 
         return manning_resistance_node, manning_resistance_static
 
-    def fractional_flow(self):
-        """_summary_
-
-        Returns
-        -------
-        _type_
-            _description_
-        """
-        fractional_flow = ribasim.FractionalFlow(static=pd.DataFrame(data={"node_id": [], "fraction": []}))
-        return fractional_flow
-
     def terminal(self):
         """_summary_
 
@@ -1258,7 +1247,6 @@ class RibasimNetwork:
         flow_boundary=None,
         linear_resistance=None,
         manning_resistance=None,
-        fractional_flow=None,
         terminal=None,
         outlet=None,
         discrete_control=None,
@@ -1285,8 +1273,6 @@ class RibasimNetwork:
         linear_resistance : _type_, optional
             _description_, by default None
         manning_resistance : _type_, optional
-            _description_, by default None
-        fractional_flow : _type_, optional
             _description_, by default None
         terminal : _type_, optional
             _description_, by default None
@@ -1319,7 +1305,6 @@ class RibasimNetwork:
             level_boundary=level_boundary,
             #                               linear_resistance=linear_resistance,
             manning_resistance=manning_resistance,
-            #                               fractional_flow=fractional_flow,
             #                               outlet=outlet,
             #                               discrete_control=discrete_control,
             #                               pid_control=pid_control,

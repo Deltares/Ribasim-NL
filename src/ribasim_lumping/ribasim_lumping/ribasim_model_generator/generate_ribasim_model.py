@@ -177,10 +177,6 @@ def generate_ribasim_linear_resistances(linearresistance_static: gpd.GeoDataFram
     return ribasim.LinearResistance(static=linearresistance_static)
 
 
-def generate_ribasim_fractional_flows():
-    return ribasim.FractionalFlow()
-
-
 def generate_ribasim_terminals():
     return ribasim.Terminal()
 
@@ -269,8 +265,6 @@ def generate_ribasim_model(
         linearresistance_static=tables["linearresistance_static"],
     )
 
-    fractions_flows = generate_ribasim_fractional_flows()
-
     terminals = generate_ribasim_terminals()
 
     discrete_controls = generate_ribasim_discrete_controls()
@@ -300,7 +294,6 @@ def generate_ribasim_model(
         outlet=ribasim_outlets,
         tabulated_rating_curve=ribasim_tabulated_rating_curve,
         manning_resistance=ribasim_manning_resistance,
-        fractional_flow=fractions_flows,
         linear_resistance=linear_resistances,
         terminal=terminals,
         discrete_control=discrete_controls,
