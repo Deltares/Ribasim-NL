@@ -34,9 +34,8 @@ df = rename_basin_area_gdf.set_index("ribasim_fid")
 model.basin.area.df.loc[df.index, ["node_id"]] = df["to_node_id"].astype("int32")
 
 # %%add basin area
-add_basin_area_gdf.index += model.basin.area.df.index.max() + 1
-add_basin_area_gdf.index.name = "fid"
-model.basin.area.df = pd.concat([model.basin.area.df, add_basin_area_gdf])
+for row in add_basin_area_gdf.itertuples():
+    model.add_basin_area(node_id=row.node_id, geometry=row.geometry)
 
 # %% merge_basins
 
@@ -110,8 +109,13 @@ for row in network_validator.edge_incorrect_type_connectivity(
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet")
 
+model.remove_unassigned_basin_area()
+
 # %%
 model.use_validation = True
 ribasim_model_dir = ribasim_model_dir.with_stem(f"{authority_name}_fix_model_area")
+model.write(ribasim_model_dir / f"{model_short_name}.toml")
 model.report_basin_area()
 model.report_internal_basins()
+
+# %%
