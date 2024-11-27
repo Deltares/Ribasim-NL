@@ -29,7 +29,7 @@ for action in gpd.list_layers(model_edits_path).name:
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_path, layer=action)
+    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
