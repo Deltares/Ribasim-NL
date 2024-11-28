@@ -327,6 +327,9 @@ class Model(Model):
         if self.edge.df is not None:
             self.edge.df = self.edge.df[~self.edge.df.index.isin(edge_ids)]
 
+    def connect_basins(self, from_basin_id, to_basin_id, node_type, geometry, tables=None, **kwargs):
+        self.add_and_connect_node(from_basin_id, to_basin_id, node_type, geometry, tables=None, **kwargs)
+
     def add_and_connect_node(self, from_basin_id, to_basin_id, geometry, node_type, tables=None, **kwargs):
         # define node properties
         if "name" in kwargs.keys():
