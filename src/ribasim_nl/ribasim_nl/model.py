@@ -330,6 +330,22 @@ class Model(Model):
     def connect_basins(self, from_basin_id, to_basin_id, node_type, geometry, tables=None, **kwargs):
         self.add_and_connect_node(from_basin_id, to_basin_id, node_type, geometry, tables=None, **kwargs)
 
+    def add_basin(self, node_id, geometry, tables=None, **kwargs):
+        # define node properties
+        if "name" in kwargs.keys():
+            name = kwargs["name"]
+            kwargs.pop("name")
+        else:
+            name = ""
+
+        node_properties = {k if k.startswith("meta_") else f"meta_{k}": v for k, v in kwargs.items()}
+
+        # define tables, defaults if None
+        if tables is None:
+            tables = DEFAULT_TABLES.basin
+
+        self.basin.add(Node(node_id=node_id, geometry=geometry, name=name, **node_properties), tables=tables)
+
     def add_and_connect_node(self, from_basin_id, to_basin_id, geometry, node_type, tables=None, **kwargs):
         # define node properties
         if "name" in kwargs.keys():
