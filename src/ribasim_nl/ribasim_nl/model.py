@@ -344,7 +344,7 @@ class Model(Model):
         self.basin.add(Node(node_id=node_id, geometry=geometry, name=name, **node_properties), tables=tables)
 
     def connect_basins(self, from_basin_id, to_basin_id, node_type, geometry, tables=None, **kwargs):
-        self.add_and_connect_node(from_basin_id, to_basin_id, node_type, geometry, tables=None, **kwargs)
+        self.add_and_connect_node(from_basin_id, to_basin_id, node_type, geometry, tables=tables, **kwargs)
 
     def add_and_connect_node(self, from_basin_id, to_basin_id, geometry, node_type, tables=None, **kwargs):
         # define node properties
