@@ -24,7 +24,20 @@ if not model_edits_path.exists():
     cloud_storage.download_file(model_edits_url)
 
 # %%
-for action in gpd.list_layers(model_edits_path).name:
+actions = [
+    "remove_node",
+    "remove_edge",
+    "add_basin",
+    "add_basin_area",
+    "update_basin_area",
+    "merge_basins",
+    "reverse_edge",
+    "move_node",
+    "connect_basins",
+    "update_node",
+]
+actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
+for action in actions:
     print(action)
     # get method and args
     method = getattr(model, action)

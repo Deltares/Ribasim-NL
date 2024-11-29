@@ -10,7 +10,7 @@ import shapely
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.geometry.edge import NodeData
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
+from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
 from ribasim.validation import flow_edge_neighbor_amount as edge_amount
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
@@ -34,6 +34,7 @@ class default_tables:
         basin.State(level=[0]),
     ]
     outlet = [outlet.Static(flow_rate=[100])]
+    pump = [pump.Static(flow_rate=[1])]
     manning_resistance = [
         manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
     ]
@@ -344,7 +345,14 @@ class Model(Model):
         self.basin.add(Node(node_id=node_id, geometry=geometry, name=name, **node_properties), tables=tables)
 
     def connect_basins(self, from_basin_id, to_basin_id, node_type, geometry, tables=None, **kwargs):
-        self.add_and_connect_node(from_basin_id, to_basin_id, node_type, geometry, tables=tables, **kwargs)
+        self.add_and_connect_node(
+            from_basin_id=from_basin_id,
+            to_basin_id=to_basin_id,
+            node_type=node_type,
+            geometry=geometry,
+            tables=tables,
+            **kwargs,
+        )
 
     def add_and_connect_node(self, from_basin_id, to_basin_id, geometry, node_type, tables=None, **kwargs):
         # define node properties
@@ -365,8 +373,8 @@ class Model(Model):
         )
 
         # add edges from and to node
-        self.edge.add(self.basin[from_basin_id], node)
-        self.edge.add(node, self.basin[to_basin_id])
+        self.edge.add(self.get_node(from_basin_id), node)
+        self.edge.add(node, self.get_node(to_basin_id))
 
     def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs):
         # define node properties
