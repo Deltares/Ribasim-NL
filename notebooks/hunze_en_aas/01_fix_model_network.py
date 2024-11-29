@@ -1,6 +1,7 @@
 # %%
 import numpy as np
 import pandas as pd
+from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
@@ -38,6 +39,29 @@ outlet_data = outlet.Static(flow_rate=[100])
 tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow_rate=[0, 0.1])
 
 # HIER KOMEN ISSUES
+
+# %%
+# Verwijderen duplicate edges
+model.edge.df.drop_duplicates(inplace=True)
+
+# %%
+# toevoegen ontbrekende basins
+
+basin_edges_df = network_validator.edge_incorrect_connectivity()
+basin_nodes_df = network_validator.node_invalid_connectivity()
+
+for row in basin_nodes_df.itertuples():
+    # maak basin-node
+    basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
+
+    # update edge_table
+    model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+        basin_node.node_id
+    )
+    model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+        basin_node.node_id
+    )
+
 
 # EINDE ISSUES
 
