@@ -619,6 +619,11 @@ class Model(Model):
 
         self.reset_edge_geometry(edge_ids=[edge_id])
 
+    def deactivate_node(self, node_id: int):
+        node_type = self.get_node_type(node_id)
+        df = getattr(self, pascal_to_snake_case(node_type)).static.df
+        df.loc[df.node_id == node_id, ["active"]] = False
+
     def remove_unassigned_basin_area(self):
         df = self.basin.area.df[~self.basin.area.df.index.isin(self.unassigned_basin_area.index)]
         if self.basin.area.df.node_id.duplicated().any():

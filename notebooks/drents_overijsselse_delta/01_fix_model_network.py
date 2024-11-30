@@ -1,4 +1,6 @@
 # %%
+import inspect
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -27,6 +29,13 @@ duikersifonhevel_gdf = gpd.read_file(
 split_line_gdf = gpd.read_file(
     cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg"), layer="split_basins", fid_as_index=True
 )
+
+# Load node edit data
+model_edits_url = cloud.joinurl(authority, "verwerkt", "model_edits.gpkg")
+model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+if not model_edits_path.exists():
+    cloud.download_file(model_edits_url)
+
 
 # level_boundary_gdf = gpd.read_file(
 #     cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg"), layer="level_boundary", fid_as_index=True
@@ -309,31 +318,22 @@ model.merge_basins(basin_id=2374, to_basin_id=1585, are_connected=True)
 
 model.merge_basins(basin_id=2559, to_basin_id=2337, are_connected=False)
 
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382572457
-
-# Administratie basin node_id in node_table en Basin / Area correct maken
-# model.fix_unassigned_basin_area()
-# model.fix_unassigned_basin_area(method="closest", distance=100)
-# model.fix_unassigned_basin_area()
-
-# model.unassigned_basin_area.to_file("unassigned_basins.gpkg")
-# model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
 
 # %%
 # corrigeren knoop-topologie
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-# for row in network_validator.edge_incorrect_type_connectivity().itertuples():
-#     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
+for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet")
 
-# # Inlaten van ManningResistance naar Outlet
-# for row in network_validator.edge_incorrect_type_connectivity(
-#     from_node_type="LevelBoundary", to_node_type="ManningResistance"
-# ).itertuples():
-#     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet")
 
 
-# # buffer out small slivers
+# buffer out small slivers
 # model.basin.area.df.loc[:, ["geometry"]] = (
 #     model.basin.area.df.buffer(0.1)
 #     .buffer(-0.1)
@@ -397,8 +397,37 @@ df.index.name = "fid"
 model.manning_resistance.static.df = df
 
 
+# %%
+
+# update from layers
+actions = [
+    "add_basin",
+    "redirect_edge",
+    "merge_basins",
+    "reverse_edge",
+    "update_node",
+    "deactivate_node",
+    "remove_node",
+    "move_node",
+]
+
+actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+
 #  %% write model
-model.use_validation = False
+model.use_validation = True
 model.write(ribasim_toml)
+
+model.invalid_topology_at_node().to_file(ribasim_toml.with_name("invalid_topology_at_connector_nodes.gpkg"))
 
 # %%
