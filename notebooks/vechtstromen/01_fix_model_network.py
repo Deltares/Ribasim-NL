@@ -1025,5 +1025,6 @@ model.basin.node.df[~model.basin.node.df.index.isin(model.basin.area.df.node_id)
 
 # model.use_validation = True
 model.write(ribasim_toml)
-
+model.report_basin_area()
+model.report_internal_basins()
 # %%

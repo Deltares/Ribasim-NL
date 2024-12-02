@@ -12,14 +12,20 @@ def within_distance(row, gdf, tolerance=1.0) -> bool:
 def check_node_connectivity(row, node_df, tolerance=1.0) -> bool:
     invalid = True
 
+    # handle zero-length edges
+    if row.geometry.length == 0:
+        point_from = point_to = row.geometry.centroid
+    else:
+        point_from, point_to = row.geometry.boundary.geoms
+
     # check if from_node_id is valid
     if row.from_node_id in node_df.index:
-        distance = row.geometry.boundary.geoms[0].distance(node_df.at[row.from_node_id, "geometry"])
+        distance = point_from.distance(node_df.at[row.from_node_id, "geometry"])
         invalid = distance > tolerance
 
     # if valid, check if to_node_id is valid
     if (not invalid) and (row.to_node_id in node_df.index):
-        distance = row.geometry.boundary.geoms[1].distance(node_df.at[row.to_node_id, "geometry"])
+        distance = point_to.distance(node_df.at[row.to_node_id, "geometry"])
         invalid = distance > tolerance
 
     return invalid

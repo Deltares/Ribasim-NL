@@ -15,6 +15,7 @@ cloud = CloudStorage()
 # %% RWS-HWS
 model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "hws")
 toml_file = model_path / "hws.toml"
+database_gpkg = toml_file.with_name("database.gpkg")
 rws_model = Model.read(toml_file)
 
 # %% DeDommel
