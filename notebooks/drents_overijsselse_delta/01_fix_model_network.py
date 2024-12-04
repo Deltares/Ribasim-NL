@@ -401,6 +401,7 @@ model.manning_resistance.static.df = df
 
 # update from layers
 actions = [
+    "add_basin_area",
     "add_basin",
     "redirect_edge",
     "merge_basins",
