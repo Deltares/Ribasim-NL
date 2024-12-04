@@ -9,6 +9,7 @@ import networkx as nx
 import pandas as pd
 from geopandas import GeoDataFrame, GeoSeries
 from networkx import DiGraph, Graph, NetworkXNoPath, shortest_path, traversal
+from shapely import force_2d
 from shapely.geometry import LineString, Point, box
 from shapely.ops import snap, split
 
@@ -90,6 +91,11 @@ class Network:
         # explode to LineString
         elif "MultiLineString" in geom_types:
             self.lines_gdf = self.lines_gdf.explode(index_parts=False)
+
+        # remove z-coordinates
+        self.lines_gdf.loc[:, "geometry"] = gpd.GeoSeries(
+            force_2d(self.lines_gdf.geometry.array), crs=self.lines_gdf.crs
+        )
 
     @classmethod
     def from_lines_gpkg(cls, gpkg_file: str | Path, layer: str | None = None, **kwargs):
@@ -494,9 +500,16 @@ class Network:
             return shortest_path(self.graph_undirected, node_from, node_to, weight=weight)
 
     def get_links(self, node_from, node_to, directed=True, weight="length"):
-        path = self.get_path(node_from, node_to, directed, weight)
+        # get path and edges on path
+        path = self.get_path(node_from, node_to, directed=directed, weight=weight)
         edges_on_path = list(zip(path[:-1], path[1:]))
-        return self.links.set_index(["node_from", "node_to"]).loc[edges_on_path]
+
+        try:
+            return self.links.set_index(["node_from", "node_to"]).loc[edges_on_path]
+        except KeyError:  # if path only undirected we need to fix edges_on_path
+            idx = self.links.set_index(["node_from", "node_to"]).index
+            edges_on_path = [i if i in idx else (i[1], i[0]) for i in edges_on_path]
+            return self.links.set_index(["node_from", "node_to"]).loc[edges_on_path]
 
     def subset_links(self, nodes_from, nodes_to):
         gdf = pd.concat([self.get_links(node_from, node_to) for node_from, node_to in product(nodes_from, nodes_to)])
