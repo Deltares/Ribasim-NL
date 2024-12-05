@@ -3,7 +3,6 @@ import os
 import pathlib
 import warnings
 
-import load_ribasim  # noqa: F401
 import pandas as pd
 import ribasim
 import ribasim.nodes

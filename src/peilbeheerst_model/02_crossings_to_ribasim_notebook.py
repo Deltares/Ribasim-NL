@@ -1,6 +1,4 @@
-import sys
 import warnings
-from pathlib import Path
 
 import pandas as pd
 import ribasim
@@ -12,14 +10,6 @@ warnings.filterwarnings("ignore")  # Let op!!!!!!!!!!!!!! Waarschuwingen worden 
 
 
 ribasim.__version__
-
-
-# load ribasim_nl
-module_path = Path.cwd() / "../ribasim_nl/"
-sys.path.append(str(module_path))
-
-# load crossings_to_ribasim.py
-sys.path.append("peilbeheerst_model")
 
 
 # # Amstel, Gooi en Vecht
