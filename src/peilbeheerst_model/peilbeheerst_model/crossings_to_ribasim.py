@@ -891,7 +891,6 @@ class RibasimNetwork:
         # fill in the other columns
         edge["edge_type"] = "flow"
         edge["name"] = None
-        edge["subnetwork_id"] = None
         edge["geometry"] = self.edges["line_geom"]
 
         # comply to Ribasim 2024.11
