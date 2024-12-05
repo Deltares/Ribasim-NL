@@ -45,7 +45,21 @@ for authority in WATER_AUTHORITIES:
 
     # add Edge_Data
     sheet = workbook.sheets["Edge_Data"]
-    df = model.edge.df.reset_index()[["edge_id", "name", "from_node_id", "to_node_id", "edge_type", "subnetwork_id"]]
+    df = model.edge.df
+    df.loc[:, "from_node_type"] = model.edge_from_node_type
+    df.loc[:, "to_node_type"] = model.edge_to_node_type
+    df = model.edge.df.reset_index()[
+        [
+            "edge_id",
+            "name",
+            "from_node_type",
+            "from_node_id",
+            "to_node_type",
+            "to_node_id",
+            "edge_type",
+            "subnetwork_id",
+        ]
+    ]
     sheet.range("A2").value = df.to_numpy()
 
     # write copy for authority
