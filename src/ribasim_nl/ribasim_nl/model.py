@@ -633,6 +633,28 @@ class Model(Model):
             df.index.name = "fid"
             self.basin.area.df = df
 
+    def explode_basin_area(self, remove_z=True):
+        df = self.basin.area.df.explode().reset_index(drop=True)
+        df.index.name = "fid"
+        self.basin.area.df = df
+
+        if remove_z:
+            self.basin.area.df.loc[:, "geometry"] = gpd.GeoSeries(
+                shapely.force_2d(self.basin.area.df.geometry.array), crs=self.basin.area.df.crs
+            )
+
+    def remove_basin_area(self, geometry):
+        geometry = shapely.force_2d(geometry)
+        if isinstance(geometry, MultiPolygon):
+            polygons = list(geometry.geoms)
+        elif isinstance(geometry, Polygon):
+            polygons = [geometry]
+        else:
+            raise TypeError("geometry cannot be removed, is not a (Multi)Polygon")
+
+        mask = self.basin.area.df.geometry.apply(lambda x: any(x.equals(i) for i in polygons))
+        self.basin.area.df = self.basin.area.df[~mask]
+
     def merge_basins(
         self,
         basin_id: int | None = None,

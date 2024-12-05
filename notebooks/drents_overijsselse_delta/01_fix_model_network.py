@@ -398,9 +398,11 @@ model.manning_resistance.static.df = df
 
 
 # %%
+model.explode_basin_area()  # all multipolygons to singles
 
 # update from layers
 actions = [
+    "remove_basin_area",
     "add_basin_area",
     "add_basin",
     "redirect_edge",
