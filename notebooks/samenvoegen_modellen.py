@@ -252,19 +252,6 @@ for idx, model in enumerate(models):
         readme += f"""
     **{model["authority"]}**: {model["model"]} ({model_version.version})"""
 
-# %% color
-# color_cycle = itertools.cycle(Category10[10])
-# lhm_model.basin.area.df.loc[
-#     lhm_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil",
-#     "meta_streefpeil",
-# ] = None
-# lhm_model.basin.area.df.loc[:, "meta_streefpeil"] = lhm_model.basin.area.df[
-#     "meta_streefpeil"
-# ].astype(float)
-
-# lhm_model.basin.area.df.loc[:, "meta_color"] = [
-#     next(color_cycle) for _ in range(len(lhm_model.basin.area.df))
-# ]
 
 # %%
 print("write lhm model")

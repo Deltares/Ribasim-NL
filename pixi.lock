@@ -442,6 +442,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-wm-0.4.2-hb711507_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xerces-c-3.2.5-h988505b_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xkeyboard-config-2.43-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/xlwings-0.33.4-py312h7900ff3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libice-1.1.1-hb9d3cd8_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libsm-1.2.4-he73a12e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libx11-1.8.10-h4f16b4b_0.conda
@@ -481,6 +482,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/aom-3.9.1-hf036a51_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/appdirs-1.4.4-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/appnope-0.1.4-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/appscript-1.3.0-py312hde3c1db_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/argon2-cffi-23.1.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/argon2-cffi-bindings-21.2.0-py312hb553811_5.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/arrow-1.3.0-pyhd8ed1ab_0.conda
@@ -704,6 +706,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-openmp-19.1.4-ha54dae1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvmlite-0.43.0-py312hcc8fd36_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/locket-1.0.0-pyhd8ed1ab_0.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/lxml-5.3.0-py312h4feaf87_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/lz4-4.3.3-py312h83408cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/lz4-c-1.9.4-hf0c8a7f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/lzo-2.10-h10d778d_1001.conda
@@ -872,6 +875,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/x265-3.5-hbb4e6a2_3.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/xarray-2024.11.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/xerces-c-3.2.5-h197e74d_2.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/xlwings-0.33.4-py312hb401068_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/xorg-libxau-1.0.11-h00291cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/xorg-libxdmcp-1.1.5-h00291cd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/xugrid-0.12.1-pyhd8ed1ab_0.conda
@@ -1285,6 +1289,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/x265-3.5-h2d74725_3.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/xarray-2024.11.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/xerces-c-3.2.5-he0c23c2_2.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/xlwings-0.33.4-py312h2e8e312_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/xorg-libxau-1.0.11-h0e40799_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/xorg-libxdmcp-1.1.5-h0e40799_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/xugrid-0.12.1-pyhd8ed1ab_0.conda
@@ -1744,6 +1749,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-wm-0.4.2-hb711507_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xerces-c-3.2.5-h988505b_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xkeyboard-config-2.43-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/xlwings-0.33.4-py312h7900ff3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libice-1.1.1-hb9d3cd8_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libsm-1.2.4-he73a12e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libx11-1.8.10-h4f16b4b_0.conda
@@ -1784,6 +1790,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/aom-3.9.1-hf036a51_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/appdirs-1.4.4-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/appnope-0.1.4-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/appscript-1.3.0-py312hde3c1db_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/argon2-cffi-23.1.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/argon2-cffi-bindings-21.2.0-py312hb553811_5.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/arrow-1.3.0-pyhd8ed1ab_0.conda
@@ -2007,6 +2014,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-openmp-19.1.4-ha54dae1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvmlite-0.43.0-py312hcc8fd36_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/locket-1.0.0-pyhd8ed1ab_0.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/lxml-5.3.0-py312h4feaf87_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/lz4-4.3.3-py312h83408cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/lz4-c-1.9.4-hf0c8a7f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/lzo-2.10-h10d778d_1001.conda
@@ -2174,6 +2182,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/x265-3.5-hbb4e6a2_3.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/xarray-2024.11.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/xerces-c-3.2.5-h197e74d_2.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/xlwings-0.33.4-py312hb401068_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/xorg-libxau-1.0.11-h00291cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/xorg-libxdmcp-1.1.5-h00291cd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/xugrid-0.12.1-pyhd8ed1ab_0.conda
@@ -2587,6 +2596,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/x265-3.5-h2d74725_3.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/xarray-2024.11.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/xerces-c-3.2.5-he0c23c2_2.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/xlwings-0.33.4-py312h2e8e312_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/xorg-libxau-1.0.11-h0e40799_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/xorg-libxdmcp-1.1.5-h0e40799_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/xugrid-0.12.1-pyhd8ed1ab_0.conda
@@ -2828,6 +2838,24 @@ packages:
   - pkg:pypi/appnope?source=hash-mapping
   size: 10241
   timestamp: 1707233195627
+- kind: conda
+  name: appscript
+  version: 1.3.0
+  build: py312hde3c1db_0
+  subdir: osx-64
+  url: https://conda.anaconda.org/conda-forge/osx-64/appscript-1.3.0-py312hde3c1db_0.conda
+  sha256: 4b730025a22510de399d412c86b63dd40a61e60e07227b083f9370c2d1243653
+  md5: 16b1cec30fe32451f1a2c72976d40ab2
+  depends:
+  - __osx >=10.9
+  - lxml >=4.7.1
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  license: Public Domain
+  purls:
+  - pkg:pypi/appscript?source=hash-mapping
+  size: 166574
+  timestamp: 1729580107578
 - kind: conda
   name: argon2-cffi
   version: 23.1.0
@@ -13177,6 +13205,27 @@ packages:
   size: 8250
   timestamp: 1650660473123
 - kind: conda
+  name: lxml
+  version: 5.3.0
+  build: py312h4feaf87_2
+  build_number: 2
+  subdir: osx-64
+  url: https://conda.anaconda.org/conda-forge/osx-64/lxml-5.3.0-py312h4feaf87_2.conda
+  sha256: 4e6c79df93b27024435763d6216cc11d423b28bd01c676246f86a69c1c691846
+  md5: d1d2583ce9c06e63bf90a5c523e30ab0
+  depends:
+  - __osx >=10.13
+  - libxml2 >=2.12.7,<3.0a0
+  - libxslt >=1.1.39,<2.0a0
+  - libzlib >=1.3.1,<2.0a0
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  license: BSD-3-Clause and MIT-CMU
+  purls:
+  - pkg:pypi/lxml?source=hash-mapping
+  size: 1194243
+  timestamp: 1730194714394
+- kind: conda
   name: lz4
   version: 4.3.3
   build: py312h0608a1d_1
@@ -14103,7 +14152,7 @@ packages:
   sha256: df5d4365b724cf81b8c6a7312509d0c22386097011ad1abe274afd5e9d3bbc5f
   requires_dist:
   - numpy>=1.24 ; extra == 'default'
-  - scipy>=1.10,!=1.11.0,!=1.11.1 ; extra == 'default'
+  - scipy!=1.11.0,!=1.11.1,>=1.10 ; extra == 'default'
   - matplotlib>=3.7 ; extra == 'default'
   - pandas>=2.0 ; extra == 'default'
   - changelist==0.5 ; extra == 'developer'
@@ -19880,6 +19929,60 @@ packages:
   purls: []
   size: 389475
   timestamp: 1727840188958
+- kind: conda
+  name: xlwings
+  version: 0.33.4
+  build: py312h2e8e312_0
+  subdir: win-64
+  url: https://conda.anaconda.org/conda-forge/win-64/xlwings-0.33.4-py312h2e8e312_0.conda
+  sha256: 47842133ecd7a17d671f5a06bb4724ab8cfd02f88b5f606a17eea19ef3a9d327
+  md5: 78e4937784b3033a92805744f68a5ad6
+  depends:
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  - pywin32
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/xlwings?source=hash-mapping
+  size: 1268684
+  timestamp: 1732365098367
+- kind: conda
+  name: xlwings
+  version: 0.33.4
+  build: py312h7900ff3_0
+  subdir: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/xlwings-0.33.4-py312h7900ff3_0.conda
+  sha256: 0235c6d5c8f8f65bb0842e09472df67eea1484beef97369ff971ec690767a902
+  md5: a2792e91957f6f9a62b14d7e75ee77ff
+  depends:
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/xlwings?source=hash-mapping
+  size: 939450
+  timestamp: 1732364869337
+- kind: conda
+  name: xlwings
+  version: 0.33.4
+  build: py312hb401068_0
+  subdir: osx-64
+  url: https://conda.anaconda.org/conda-forge/osx-64/xlwings-0.33.4-py312hb401068_0.conda
+  sha256: f8e86a0ba6ebedf2168caace974f5e1abbc9804887fd1d3ca7c3692ee6798390
+  md5: 7f1cae62da4fceb51131be562cf7d57d
+  depends:
+  - appscript >=1.0.1
+  - psutil >=2.0
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/xlwings?source=hash-mapping
+  size: 942090
+  timestamp: 1732364881987
 - kind: conda
   name: xorg-libice
   version: 1.1.1
