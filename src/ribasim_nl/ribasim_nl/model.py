@@ -413,10 +413,28 @@ class Model(Model):
         ].index:
             self.reverse_edge(edge_id=edge_id)
 
-    def update_basin_area(self, node_id: int, basin_area_fid: int | None = None):
-        if basin_area_fid is None:
-            basin_area_fid = self.basin.area.df.index.max() + 1
-        self.basin.area.df.loc[basin_area_fid, ["node_id"]] = node_id
+    def select_basin_area(self, geometry):
+        geometry = shapely.force_2d(geometry)
+        if isinstance(geometry, MultiPolygon):
+            polygons = list(geometry.geoms)
+        elif isinstance(geometry, Polygon):
+            polygons = [geometry]
+        else:
+            raise TypeError("geometry cannot be used for selection, is not a (Multi)Polygon")
+
+        mask = self.basin.area.df.geometry.apply(lambda x: any(x.equals(i) for i in polygons))
+
+        if not mask.any():
+            raise ValueError("Not any basin area equals input geometry")
+        return mask
+
+    def update_basin_area(self, node_id: int, geometry: Polygon | MultiPolygon, basin_area_fid: int | None = None):
+        if pd.isna(basin_area_fid):
+            mask = self.select_basin_area(geometry)
+        else:
+            mask = self.basin.area.df.index == basin_area_fid
+
+        self.basin.area.df.loc[mask, ["node_id"]] = node_id
 
     def add_basin_area(self, geometry: MultiPolygon, node_id: int | None = None):
         # if node_id is None, get an available node_id
@@ -644,15 +662,7 @@ class Model(Model):
             )
 
     def remove_basin_area(self, geometry):
-        geometry = shapely.force_2d(geometry)
-        if isinstance(geometry, MultiPolygon):
-            polygons = list(geometry.geoms)
-        elif isinstance(geometry, Polygon):
-            polygons = [geometry]
-        else:
-            raise TypeError("geometry cannot be removed, is not a (Multi)Polygon")
-
-        mask = self.basin.area.df.geometry.apply(lambda x: any(x.equals(i) for i in polygons))
+        mask = self.select_basin_area(geometry)
         self.basin.area.df = self.basin.area.df[~mask]
 
     def merge_basins(
