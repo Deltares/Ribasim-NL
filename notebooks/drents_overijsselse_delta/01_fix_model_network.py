@@ -403,15 +403,16 @@ model.explode_basin_area()  # all multipolygons to singles
 # update from layers
 actions = [
     "remove_basin_area",
+    "merge_basins",
+    "update_node",
     "add_basin_area",
     "add_basin",
+    "update_basin_area",
     "redirect_edge",
-    "merge_basins",
     "reverse_edge",
-    "update_node",
     "deactivate_node",
-    "remove_node",
     "move_node",
+    "remove_node",
 ]
 
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
