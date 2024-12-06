@@ -3,14 +3,20 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-FIND_POST_FIXES = ["parameterized", "fix_model_area", "fix_model_network"]
+FIND_POST_FIXES = ["bergend", "fix_model_area", "fix_model_network"]
+SELECTION = []
 
 
 def get_model_dir(authority, post_fix):
     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
 
 
-for authority in cloud.water_authorities:
+if len(SELECTION) == 0:
+    authorities = cloud.water_authorities
+else:
+    authorities = SELECTION
+
+for authority in authorities:
     # find model directory
     model_dir = next(
         (
