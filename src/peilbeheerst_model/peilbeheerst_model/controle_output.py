@@ -24,9 +24,11 @@ class Control:
 
     def read_model_output(self):
         df_basin = pd.read_feather(self.path_basin_output)
+        df_edge = pd.read_feather(self.path_edge_output) 
         model = ribasim.model.Model(filepath=self.path_ribasim_toml)
 
         self.df_basin = df_basin
+        self.df_edge = df_edge
         self.model = model
         control_dict = {}
 
@@ -52,13 +54,13 @@ class Control:
             initial_final_level_df["initial_level"] - initial_final_level_df["final_level"]
         )
 
-        initial_final_level_df["final_level_within_target"] = (
-            True  # final level within target level (deviate max 20 cm from streefpeil) is default True ...
-        )
-        initial_final_level_df.loc[
-            (initial_final_level_df["difference_level"] > 0.2) | (initial_final_level_df["difference_level"] < -0.2),
-            "final_level_within_target",
-        ] = False  # ... but set to False if the criteria is not met
+        # initial_final_level_df["final_level_within_target"] = (
+        #     True  # final level within target level (deviate max 20 cm from streefpeil) is default True ...
+        # )
+        # initial_final_level_df.loc[
+        #     (initial_final_level_df["difference_level"] > 0.2) | (initial_final_level_df["difference_level"] < -0.2),
+        #     "final_level_within_target",
+        # ] = False  # ... but set to False if the criteria is not met
 
         # retrieve the geometries
         initial_final_level_df["geometry"] = initial_final_level_df.merge(
@@ -77,27 +79,33 @@ class Control:
             by=["level", "node_id"], ascending=True
         ).copy()  # sort all node_id's based on the level
 
-        min_basin_level_df = basin_level.drop_duplicates(subset="node_id", keep="first").reset_index(
+        min_basin_level = basin_level.drop_duplicates(subset="node_id", keep="first").reset_index(
             drop=True
         )  # pick the FIRST sample, which are the minimum water levels
-        min_max_basin_level_df = min_basin_level_df[["node_id", "level", "time"]]
-        min_max_basin_level_df = min_max_basin_level_df.rename(columns={"level": "min_level", "time": "min_level_time"})
-
-        max_basin_level_df = basin_level.drop_duplicates(subset="node_id", keep="last").reset_index(
-            drop=True
-        )  # pick the LAST sample, which are the maximum water levels
-        max_basin_level_df = max_basin_level_df[["level", "time"]]
-        min_max_basin_level_df["max_level"] = max_basin_level_df["level"]
-        min_max_basin_level_df["max_level_time"] = max_basin_level_df["time"]
+        min_basin_level = min_basin_level[["node_id", "level", "time"]]
+        min_basin_level = min_basin_level.rename(columns={"level": "min_level", "time": "min_level_time"})
 
         # retrieve the geometries
-        min_max_basin_level_df["geometry"] = min_max_basin_level_df.merge(
-            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        )["geometry"]
+        min_basin_level = min_basin_level.merge(
+            self.model.basin.node.df[['geometry']], left_on="node_id", right_index=True, suffixes=("", "model_"))
+        
+        max_basin_level = basin_level.drop_duplicates(subset="node_id", keep="last").reset_index(
+            drop=True
+        )  # pick the LAST sample, which are the maximum water levels
+        max_basin_level = max_basin_level[["node_id", "level", "time"]]
+        max_basin_level["max_level"] = max_basin_level["level"]
+        max_basin_level["max_level_time"] = max_basin_level["time"]
 
-        min_max_basin_level_df = gpd.GeoDataFrame(min_max_basin_level_df, geometry="geometry")
+        # retrieve the geometries
+        max_basin_level = max_basin_level.merge(
+            self.model.basin.node.df[['geometry']], left_on="node_id", right_index=True, suffixes=("", "model_"))
 
-        control_dict["min_max_level"] = min_max_basin_level_df
+        #convert to geopandas
+        min_basin_level = gpd.GeoDataFrame(min_basin_level, geometry="geometry")
+        max_basin_level = gpd.GeoDataFrame(max_basin_level, geometry="geometry")
+
+        control_dict["min_level"] = min_basin_level
+        control_dict["max_level"] = max_basin_level
 
         return control_dict
 
@@ -138,35 +146,6 @@ class Control:
 
         return control_dict
 
-    # def stationary(self, control_dict):
-    #     def is_stationary(group):
-    #         group = group.sort_values(by='time')
-    #         #extract the required levels of the -4:-1 timestamps
-    #         last_values = group['level'].iloc[-4:-1]
-    #         average_last_values = last_values.mean()
-    #         actual_last_value = group['level'].iloc[-1]
-
-    #         #calculate the deviation
-    #         deviation = abs((actual_last_value - average_last_values) / average_last_values)
-
-    #         #determine if it's stationary
-    #         stationary = deviation <= 0.02
-    #         return stationary
-
-    #     stationary_gdf = gpd.GeoDataFrame()
-    #     stationary_gdf['node_id'] = self.df_basin.node_id
-    #     stationary_gdf['stationary'] = self.df_basin.groupby('node_id').apply(is_stationary).reset_index(level=0, drop=True)
-    #     stationary_gdf = stationary_gdf.dropna()
-    #     #retrieve the geometries
-    #     stationary_gdf['geometry'] = pd.merge(left = stationary_gdf,
-    #                                           right = self.model.basin.node.df,
-    #                                           on = 'node_id',
-    #                                           suffixes = ('', 'model_'))['geometry']
-
-    #     control_dict['stationary'] = gpd.GeoDataFrame(stationary_gdf, geometry = 'geometry')
-
-    #     return control_dict
-
     def stationary(self, control_dict):
         def is_stationary(group):
             group = group.sort_values(by="time")
@@ -183,8 +162,8 @@ class Control:
             # Calculate the deviation
             deviation = abs(actual_last_value - average_last_values)
 
-            # Determine if it's stationary (deviation <= .11 cm)
-            stationary = deviation <= 0.001
+            # Determine if it's stationary (deviation <= 1 cm)
+            stationary = deviation <= 0.01
             return stationary
 
         stationary_gdf = gpd.GeoDataFrame()
@@ -192,6 +171,7 @@ class Control:
         stationary_gdf["stationary"] = (
             self.df_basin.groupby("node_id").apply(is_stationary).reset_index(level=0, drop=True)
         )
+
         stationary_gdf = stationary_gdf.dropna()
 
         # Retrieve the geometries
@@ -203,13 +183,42 @@ class Control:
 
         return control_dict
 
-    # def inspect_individual_basins(self, data):
-
+    def find_stationary_flow(self, control_dict, n_hours_mean=24):
+        df_edge = self.df_edge.copy()
+        df_edge['time'] = pd.to_datetime(df_edge['time']) #convert to time column
+    
+        df_edge = df_edge.sort_values(by=["time", "edge_id"], ascending=True).copy() #sort values, just in case
+        last_time = df_edge['time'].max() #retireve max time value
+        time_threshold = last_time - pd.Timedelta(hours=n_hours_mean) #determine the time threshold, likely 24 hours
+        
+        df_edge_24h = df_edge[df_edge['time'] >= time_threshold].copy() #seelct above the threshold
+        
+        # Group by 'edge_id' and calculate the average flow rate over the last 24 hours
+        df_edge_avg = df_edge_24h.groupby('edge_id', as_index=False).agg({
+            'flow_rate': 'mean', #take the mean, as the pumps may not show stationairy results in one timestep
+            'from_node_id': 'first', #remains the same for each timestep
+            'to_node_id': 'first', #remains the same for each timestep
+            'time': 'first'  #remains the same for each timestep
+        })
+        
+        # Merge the geometry from edges_ribasim to df_edge_avg to retrieve the geometries
+        edges_ribasim = self.model.edge.df.copy()
+        df_edge_avg = df_edge_avg.merge(right=edges_ribasim[['from_node_id', 'to_node_id', 'geometry']],
+                                        on=['from_node_id', 'to_node_id'],
+                                        how='left')
+        
+        df_edge_avg = gpd.GeoDataFrame(df_edge_avg).set_crs(crs='EPSG:28992')
+        control_dict["flow"] = df_edge_avg
+        
+        return control_dict
+        
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():
-            print(key)
-            data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG")
+            data[str(key)].to_file(output_path + ".gpkg", 
+                                   layer=str(key), 
+                                   driver="GPKG", 
+                                   mode='w')
 
         # copy checks_symbology file from old dir to new dir
         output_controle_qlr_path = Path(__file__).parent.joinpath("data", "output_controle.qlr")
@@ -220,9 +229,10 @@ class Control:
     def run_all(self):
         control_dict = self.read_model_output()
         control_dict = self.initial_final_level(control_dict)
-        control_dict = self.min_max_level(control_dict)
+        # control_dict = self.min_max_level(control_dict)
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
+        # control_dict = self.find_stationary_flow(control_dict)
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
         return control_dict
