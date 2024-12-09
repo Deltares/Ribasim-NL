@@ -574,7 +574,11 @@ class Model(Model):
         return self.edge.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
     def split_basin(
-        self, line: LineString | None = None, basin_id: int | None = None, geometry: LineString | None = None
+        self,
+        line: LineString | None = None,
+        basin_id: int | None = None,
+        geometry: LineString | None = None,
+        assign_unique_node: bool = True,
     ):
         if geometry is None:
             if line is None:
@@ -591,16 +595,23 @@ class Model(Model):
         # if basin_id is supplied, we select by that first
         if basin_id is not None:
             basin_area_df = self.basin.area.df.loc[self.basin.area.df.node_id == basin_id]
+            basin_area_df = basin_area_df[basin_area_df.intersects(geometry)]
+            if len(basin_area_df) > 1:
+                mask = ~(
+                    basin_area_df.contains(geometry.boundary.geoms[0])
+                    | basin_area_df.contains(geometry.boundary.geoms[1])
+                )
+                basin_area_df = basin_area_df[mask]
 
-        # find basins intersecting line
-        basin_area_df = self.basin.area.df[self.basin.area.df.intersects(geometry)]
+        else:
+            basin_area_df = self.basin.area.df[self.basin.area.df.contains(geometry.interpolate(0.5, normalized=True))]
 
         if len(basin_area_df) == 0:
             raise ValueError("No basin-areas intersecting cut_line")
         elif len(basin_area_df) > 1:
             raise ValueError("Multiple Overlapping basin-areas intersecting cut_line")
 
-        # get all we need
+        # get all we need and remove area from basin.area.df
         basin_fid = int(basin_area_df.iloc[0].name)
         basin_geometry = basin_area_df.iloc[0].geometry
         self.basin.area.df = self.basin.area.df[self.basin.area.df.index != basin_fid]
@@ -626,21 +637,22 @@ class Model(Model):
         right_basin_poly = MultiPolygon(right_basin_poly)
         left_basin_poly = MultiPolygon(left_basin_poly)
 
+        # add polygons to area
         for poly in [right_basin_poly, left_basin_poly]:
-            if self.basin.node.df.geometry.within(poly).any():
-                node_ids = self.basin.node.df[self.basin.node.df.geometry.within(poly)].index.to_list()
-                if len(node_ids) == 1:
-                    if node_ids[0] in self.basin.area.df.node_id.to_numpy():
-                        self.basin.area.df.loc[self.basin.area.df.node_id.isin(node_ids), ["geometry"]] = poly
-                    else:
-                        self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
-                            "node_id": node_ids[0],
-                            "geometry": poly,
-                        }
-                else:
-                    self.basin.area.df.loc[self.basin.area.df.index.max() + 1, ["geometry"]] = poly
-            else:
-                self.basin.area.df.loc[self.basin.area.df.index.max() + 1, ["geometry"]] = poly
+            # by default we assign provided basin_id
+            kwargs = {
+                "node_id": basin_id,
+                "geometry": poly,
+            }
+
+            # we override node_id to a unique basin-node within area if that is specified
+            if assign_unique_node:
+                if self.basin.node.df.geometry.within(poly).any():
+                    node_ids = self.basin.node.df[self.basin.node.df.geometry.within(poly)].index.to_list()
+                    if node_ids[0] not in self.basin.area.df.node_id.to_numpy():
+                        kwargs["node_id"] = node_ids[0]
+
+            self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = kwargs
 
         if self.basin.area.df.crs is None:
             self.basin.area.df.crs = self.crs

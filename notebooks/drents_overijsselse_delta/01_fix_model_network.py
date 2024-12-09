@@ -160,7 +160,7 @@ model.edge.add(model.pump[701], basin_node)
 # Aansluiten NW boezem op Fryslan
 
 # basin /area 1681 op te knippen nabij basin 1717 (rode lijn)
-model.split_basin(split_line_gdf.at[14, "geometry"])
+model.split_basin(geometry=split_line_gdf.at[14, "geometry"])
 model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1717]
 
 # basin 1682 te veranderen in een LevelBoundary
@@ -403,6 +403,7 @@ model.explode_basin_area()  # all multipolygons to singles
 # update from layers
 actions = [
     "remove_basin_area",
+    "split_basin",
     "merge_basins",
     "update_node",
     "add_basin_area",
@@ -431,7 +432,7 @@ for action in actions:
 
 
 #  %% write model
-model.use_validation = True
+model.use_validation = False
 model.write(ribasim_toml)
 
 model.invalid_topology_at_node().to_file(ribasim_toml.with_name("invalid_topology_at_connector_nodes.gpkg"))
