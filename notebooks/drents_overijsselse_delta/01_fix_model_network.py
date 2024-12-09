@@ -432,7 +432,7 @@ for action in actions:
 
 
 #  %% write model
-model.use_validation = False
+model.use_validation = True
 model.write(ribasim_toml)
 
 model.invalid_topology_at_node().to_file(ribasim_toml.with_name("invalid_topology_at_connector_nodes.gpkg"))
