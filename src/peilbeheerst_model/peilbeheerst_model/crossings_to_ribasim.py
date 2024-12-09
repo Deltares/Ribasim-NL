@@ -1632,7 +1632,6 @@ class RibasimNetwork:
         model.basin.state.df["meta_categorie"] = (
             "doorgaand"  # set initially all basins to be a regular peilgebied (= peilgebied_cat 0, or 'bergend')
         )
-        # # model.basin.state.df.loc[model.basin.state.df.node_type == 'Basin', 'meta_categorie'] = 0 #set only the basins to regular peilgebieden
 
         basin_nodes = (
             model.basin.state.df.copy()
@@ -1644,7 +1643,7 @@ class RibasimNetwork:
         points_within = gpd.sjoin(
             basin_nodes, checks["boezem"], how="inner", predicate="within"
         )  # find the basins which are within a peilgebied (found in the checks)
-        model.basin.state.df.meta_categorie.loc[points_within.index - 1] = (
+        model.basin.state.df.meta_categorie.loc[points_within.index] = (
             "hoofdwater"  # set these basins to become peilgebied_cat == 1, or 'doorgaand'
         )
 
@@ -1659,18 +1658,30 @@ class RibasimNetwork:
         pump_function = coupled_crossings_pump.merge(model.pump.node.df, on="geometry", suffixes=("", "_duplicate"))[
             ["node_id", "func_afvoer", "func_aanvoer", "func_circulatie"]
         ]
-        # display(pump_function)
         coupled_pump_function = model.pump.static.df.merge(pump_function, left_on="node_id", right_on="node_id")
+        coupled_pump_function = coupled_pump_function.rename(columns={"func_afvoer":"meta_func_afvoer", 
+                                                                      "func_aanvoer":"meta_func_aanvoer", 
+                                                                      "func_circulatie":"meta_func_circulatie"})
+        coupled_pump_function.index.name = 'fid'
+        coupled_pump_function = coupled_pump_function.drop_duplicates(subset='node_id')
+        
 
+        #deze koppelen aan temp_pump_static
+        temp_pump_static = model.pump.static.df.copy() 
+        temp_pump_static = temp_pump_static.merge(right=coupled_pump_function[['node_id', 'meta_func_afvoer', 'meta_func_aanvoer', 'meta_func_circulatie']],
+                                                  on='node_id',
+                                                  how='left')
+        temp_pump_static.index.name = 'fid'
+        model.pump.static.df = temp_pump_static
+        
         # add the coupled_pump_function column per column to the model.pump.static.df
-        func_afvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_afvoer"]
-        func_aanvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_aanvoer"]
+        # func_afvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[["node_id", "func_afvoer"]]
+        # func_aanvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[["node_id", "func_aanvoer"]]
+        # func_circulatie = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[["node_id", "func_circulatie"]]
 
-        func_circulatie = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_circulatie"]
-
-        model.pump.static.df["meta_func_afvoer"] = func_afvoer
-        model.pump.static.df["meta_func_aanvoer"] = func_aanvoer
-        model.pump.static.df["meta_func_circulatie"] = func_circulatie
+        # model.pump.static.df["meta_func_aanvoer"] = func_aanvoer
+        # model.pump.static.df["meta_func_afvoer"] = func_afvoer
+        # model.pump.static.df["meta_func_circulatie"] = func_circulatie
 
         ### add the peilgebied_cat flag to the edges as well ###
         # first assign all edges to become 'bergend'. Adjust the boezem edges later.
@@ -1682,6 +1693,14 @@ class RibasimNetwork:
             (model.edge.df.from_node_id.isin(nodeids_boezem)) | (model.edge.df.to_node_id.isin(nodeids_boezem)),
             "meta_categorie",
         ] = "hoofdwater"
+
+        #some pumps do not have a func afvoer/aanvoer/circulatie yet (occurs rarely though)
+        model.pump.static.df['meta_func_afvoer'].fillna(value=False)
+        model.pump.static.df['meta_func_aanvoer'].fillna(value=False)
+        model.pump.static.df['meta_func_circulatie'].fillna(value=False)
+
+        # if the function is not known, then choose func_afvoer
+        model.pump.static.df.loc[(model.pump.static.df['meta_func_afvoer'] == False) & (model.pump.static.df['meta_func_aanvoer'] == False) & (model.pump.static.df['meta_func_circulatie'] == False), 'meta_func_aanvoer'] = True
 
         ### add a random color to the basins ###
         color_cycle = itertools.cycle(Category10[10])
