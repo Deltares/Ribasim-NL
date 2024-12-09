@@ -62,7 +62,7 @@ def reset_static_tables(model):
         df = pd.DataFrame(
             {
                 "node_id": model.outlet.node.df.index.to_numpy(),
-                "flow_rate": [0.1] * len(model.outlet.node.df),
+                "flow_rate": [5.0] * len(model.outlet.node.df),
             }
         )
         df.index.name = "fid"
