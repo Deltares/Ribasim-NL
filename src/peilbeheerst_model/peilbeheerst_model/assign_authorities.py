@@ -91,12 +91,12 @@ class AssignAuthorities:
 
     def embed_authorities_in_model(self, ribasim_model, waterschap, authority_borders):
         # create a temp copy of the level boundary df
-        temp_LB_node = ribasim_model.level_boundary.node.df.copy()
+        temp_LB_node = ribasim_model.level_boundary.node.df.copy().reset_index()
         temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry"]]
         ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df[["node_id", "level"]]
 
         # perform a spatial join
-        joined = gpd.sjoin(temp_LB_node, authority_borders, how="left", op="intersects")
+        joined = gpd.sjoin(temp_LB_node, authority_borders, how="left", predicate="intersects")
 
         # #find whether the LevelBoundary flows inward and outward the waterschap
         FB_inward = ribasim_model.edge.df.loc[ribasim_model.edge.df.from_node_id.isin(joined.node_id.values)].copy()
@@ -133,8 +133,20 @@ class AssignAuthorities:
         temp_LB_node = temp_LB_node.drop_duplicates(subset="node_id").reset_index(drop=True)
 
         # place the meta categories to the static table
-        ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df.merge(
+        LB_static = ribasim_model.level_boundary.static.df.merge(
             right=temp_LB_node[["node_id", "meta_from_authority", "meta_to_authority"]], on="node_id", how="left"
         ).reset_index(drop=True)
-
+        LB_static.index.name = 'fid'
+        ribasim_model.level_boundary.static.df = LB_static
+        
         return ribasim_model
+
+
+
+
+
+
+
+
+
+
