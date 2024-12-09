@@ -22,8 +22,18 @@ Getest (u kunt simuleren): Nee
 download_latest_model = True
 upload_model = False
 
-RESET_TABLES = ["AaenMaas", "HunzeenAas", "DrentsOverijsselseDelta", "Vechtstromen"]
-
+RESET_TABLES = [
+    "AaenMaas",
+    "BrabantseDelta",
+    "DrentsOverijsselseDelta",
+    "HunzeenAas",
+    "Limburg",
+    "Noorderzijlvest",
+    "RijnenIJssel",
+    "StichtseRijnlanden",
+    "ValleienVeluwe",
+    "Vechtstromen",
+]
 models = [
     {
         "authority": "Rijkswaterstaat",
