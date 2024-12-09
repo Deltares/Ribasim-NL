@@ -66,6 +66,7 @@ shapely = ">=2"
 tomli = "*"
 tomli-w = "*"
 types-requests = "*"
+xlwings = "*"
 xugrid = "*"
 
 [feature.common.pypi-dependencies]

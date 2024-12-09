@@ -1,10 +1,10 @@
 # %% Import Libraries and Initialize Variables
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 from ribasim.nodes import level_boundary, outlet
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.reset_static_tables import reset_static_tables
 
 # Initialize cloud storage and set authority/model parameters
 cloud_storage = CloudStorage()
@@ -209,32 +209,7 @@ for row in network_validator.edge_incorrect_type_connectivity(
 
 
 # %%
-# basin-profielen/state updaten
-df = pd.DataFrame(
-    {
-        "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
-        "level": [0.0, 1.0] * len(model.basin.node.df),
-        "area": [0.01, 1000.0] * len(model.basin.node.df),
-    }
-)
-df.index.name = "fid"
-model.basin.profile.df = df
-
-df = model.basin.profile.df.groupby("node_id")[["level"]].max().reset_index()
-df.index.name = "fid"
-model.basin.state.df = df
-
-
-# tabulated_rating_curves updaten
-df = pd.DataFrame(
-    {
-        "node_id": np.repeat(model.tabulated_rating_curve.node.df.index.to_numpy(), 2),
-        "level": [0.0, 5] * len(model.tabulated_rating_curve.node.df),
-        "flow_rate": [0, 0.1] * len(model.tabulated_rating_curve.node.df),
-    }
-)
-df.index.name = "fid"
-model.tabulated_rating_curve.static.df = df
+model = reset_static_tables(model)
 
 
 model.write(ribasim_model_dir.with_stem("AaenMaas_fix_model_area") / "aam.toml")

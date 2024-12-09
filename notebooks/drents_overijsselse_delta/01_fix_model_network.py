@@ -160,7 +160,7 @@ model.edge.add(model.pump[701], basin_node)
 # Aansluiten NW boezem op Fryslan
 
 # basin /area 1681 op te knippen nabij basin 1717 (rode lijn)
-model.split_basin(split_line_gdf.at[14, "geometry"])
+model.split_basin(geometry=split_line_gdf.at[14, "geometry"])
 model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1717]
 
 # basin 1682 te veranderen in een LevelBoundary
@@ -398,17 +398,22 @@ model.manning_resistance.static.df = df
 
 
 # %%
+model.explode_basin_area()  # all multipolygons to singles
 
 # update from layers
 actions = [
-    "add_basin",
-    "redirect_edge",
+    "remove_basin_area",
+    "split_basin",
     "merge_basins",
-    "reverse_edge",
     "update_node",
+    "add_basin_area",
+    "add_basin",
+    "update_basin_area",
+    "redirect_edge",
+    "reverse_edge",
     "deactivate_node",
-    "remove_node",
     "move_node",
+    "remove_node",
 ]
 
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
@@ -418,6 +423,8 @@ for action in actions:
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}

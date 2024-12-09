@@ -132,7 +132,9 @@ class Model(Model):
 
     def upstream_node_id(self, node_id: int):
         """Get upstream node_id(s)"""
-        return self.edge.df.set_index("to_node_id").loc[node_id].from_node_id
+        _df = self.edge.df.set_index("to_node_id")
+        if node_id in _df.index:
+            return _df.loc[node_id].from_node_id
 
     def upstream_profile(self, node_id: int):
         """Get upstream basin-profile"""
@@ -411,10 +413,28 @@ class Model(Model):
         ].index:
             self.reverse_edge(edge_id=edge_id)
 
-    def update_basin_area(self, node_id: int, basin_area_fid: int | None = None):
-        if basin_area_fid is None:
-            basin_area_fid = self.basin.area.df.index.max() + 1
-        self.basin.area.df.loc[basin_area_fid, ["node_id"]] = node_id
+    def select_basin_area(self, geometry):
+        geometry = shapely.force_2d(geometry)
+        if isinstance(geometry, MultiPolygon):
+            polygons = list(geometry.geoms)
+        elif isinstance(geometry, Polygon):
+            polygons = [geometry]
+        else:
+            raise TypeError("geometry cannot be used for selection, is not a (Multi)Polygon")
+
+        mask = self.basin.area.df.geometry.apply(lambda x: any(x.equals(i) for i in polygons))
+
+        if not mask.any():
+            raise ValueError("Not any basin area equals input geometry")
+        return mask
+
+    def update_basin_area(self, node_id: int, geometry: Polygon | MultiPolygon, basin_area_fid: int | None = None):
+        if pd.isna(basin_area_fid):
+            mask = self.select_basin_area(geometry)
+        else:
+            mask = self.basin.area.df.index == basin_area_fid
+
+        self.basin.area.df.loc[mask, ["node_id"]] = node_id
 
     def add_basin_area(self, geometry: MultiPolygon, node_id: int | None = None):
         # if node_id is None, get an available node_id
@@ -553,19 +573,45 @@ class Model(Model):
         node_df = self.node_table().df
         return self.edge.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
-    def split_basin(self, line: LineString, basin_id: int | None = None):
+    def split_basin(
+        self,
+        line: LineString | None = None,
+        basin_id: int | None = None,
+        geometry: LineString | None = None,
+        assign_unique_node: bool = True,
+    ):
+        if geometry is None:
+            if line is None:
+                raise ValueError("geometry cannot be None")
+            else:
+                DeprecationWarning("value `line` in split_basin funtion is deprecated. Use `geometry` in stead.")
+                line = geometry
+
         if self.basin.area.df is None:
             raise ValueError("provide basin / area table first")
 
-        line_centre = line.interpolate(0.5, normalized=True)
+        line_centre = geometry.interpolate(0.5, normalized=True)
+
+        # if basin_id is supplied, we select by that first
         if basin_id is not None:
             basin_area_df = self.basin.area.df.loc[self.basin.area.df.node_id == basin_id]
-        basin_area_df = self.basin.area.df[self.basin.area.df.contains(line_centre)]
+            basin_area_df = basin_area_df[basin_area_df.intersects(geometry)]
+            if len(basin_area_df) > 1:
+                mask = ~(
+                    basin_area_df.contains(geometry.boundary.geoms[0])
+                    | basin_area_df.contains(geometry.boundary.geoms[1])
+                )
+                basin_area_df = basin_area_df[mask]
 
-        if len(basin_area_df) != 1:
-            raise ValueError("Overlapping basin-areas at cut_line")
+        else:
+            basin_area_df = self.basin.area.df[self.basin.area.df.contains(geometry.interpolate(0.5, normalized=True))]
 
-        # get all we need
+        if len(basin_area_df) == 0:
+            raise ValueError("No basin-areas intersecting cut_line")
+        elif len(basin_area_df) > 1:
+            raise ValueError("Multiple Overlapping basin-areas intersecting cut_line")
+
+        # get all we need and remove area from basin.area.df
         basin_fid = int(basin_area_df.iloc[0].name)
         basin_geometry = basin_area_df.iloc[0].geometry
         self.basin.area.df = self.basin.area.df[self.basin.area.df.index != basin_fid]
@@ -575,7 +621,7 @@ class Model(Model):
         cut_idx = next(idx for idx, i in enumerate(basin_geoms) if i.contains(line_centre))
 
         # split it
-        right_basin_poly, left_basin_poly = split_basin(basin_geoms[cut_idx], line).geoms
+        right_basin_poly, left_basin_poly = split_basin(basin_geoms[cut_idx], geometry).geoms
 
         # concat left-over polygons to the right-side
         right_basin_poly = [right_basin_poly]
@@ -591,21 +637,22 @@ class Model(Model):
         right_basin_poly = MultiPolygon(right_basin_poly)
         left_basin_poly = MultiPolygon(left_basin_poly)
 
+        # add polygons to area
         for poly in [right_basin_poly, left_basin_poly]:
-            if self.basin.node.df.geometry.within(poly).any():
-                node_ids = self.basin.node.df[self.basin.node.df.geometry.within(poly)].index.to_list()
-                if len(node_ids) == 1:
-                    if node_ids[0] in self.basin.area.df.node_id.to_numpy():
-                        self.basin.area.df.loc[self.basin.area.df.node_id.isin(node_ids), ["geometry"]] = poly
-                    else:
-                        self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
-                            "node_id": node_ids[0],
-                            "geometry": poly,
-                        }
-                else:
-                    self.basin.area.df.loc[self.basin.area.df.index.max() + 1, ["geometry"]] = poly
-            else:
-                self.basin.area.df.loc[self.basin.area.df.index.max() + 1, ["geometry"]] = poly
+            # by default we assign provided basin_id
+            kwargs = {
+                "node_id": basin_id,
+                "geometry": poly,
+            }
+
+            # we override node_id to a unique basin-node within area if that is specified
+            if assign_unique_node:
+                if self.basin.node.df.geometry.within(poly).any():
+                    node_ids = self.basin.node.df[self.basin.node.df.geometry.within(poly)].index.to_list()
+                    if node_ids[0] not in self.basin.area.df.node_id.to_numpy():
+                        kwargs["node_id"] = node_ids[0]
+
+            self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = kwargs
 
         if self.basin.area.df.crs is None:
             self.basin.area.df.crs = self.crs
@@ -630,6 +677,20 @@ class Model(Model):
             df = df.dissolve(by="node_id").reset_index()
             df.index.name = "fid"
             self.basin.area.df = df
+
+    def explode_basin_area(self, remove_z=True):
+        df = self.basin.area.df.explode().reset_index(drop=True)
+        df.index.name = "fid"
+        self.basin.area.df = df
+
+        if remove_z:
+            self.basin.area.df.loc[:, "geometry"] = gpd.GeoSeries(
+                shapely.force_2d(self.basin.area.df.geometry.array), crs=self.basin.area.df.crs
+            )
+
+    def remove_basin_area(self, geometry):
+        mask = self.select_basin_area(geometry)
+        self.basin.area.df = self.basin.area.df[~mask]
 
     def merge_basins(
         self,
