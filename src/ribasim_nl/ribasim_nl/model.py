@@ -573,17 +573,32 @@ class Model(Model):
         node_df = self.node_table().df
         return self.edge.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
-    def split_basin(self, line: LineString, basin_id: int | None = None):
+    def split_basin(
+        self, line: LineString | None = None, basin_id: int | None = None, geometry: LineString | None = None
+    ):
+        if geometry is None:
+            if line is None:
+                raise ValueError("geometry cannot be None")
+            else:
+                DeprecationWarning("value `line` in split_basin funtion is deprecated. Use `geometry` in stead.")
+                line = geometry
+
         if self.basin.area.df is None:
             raise ValueError("provide basin / area table first")
 
-        line_centre = line.interpolate(0.5, normalized=True)
+        line_centre = geometry.interpolate(0.5, normalized=True)
+
+        # if basin_id is supplied, we select by that first
         if basin_id is not None:
             basin_area_df = self.basin.area.df.loc[self.basin.area.df.node_id == basin_id]
-        basin_area_df = self.basin.area.df[self.basin.area.df.contains(line_centre)]
 
-        if len(basin_area_df) != 1:
-            raise ValueError("Overlapping basin-areas at cut_line")
+        # find basins intersecting line
+        basin_area_df = self.basin.area.df[self.basin.area.df.intersects(geometry)]
+
+        if len(basin_area_df) == 0:
+            raise ValueError("No basin-areas intersecting cut_line")
+        elif len(basin_area_df) > 1:
+            raise ValueError("Multiple Overlapping basin-areas intersecting cut_line")
 
         # get all we need
         basin_fid = int(basin_area_df.iloc[0].name)
@@ -595,7 +610,7 @@ class Model(Model):
         cut_idx = next(idx for idx, i in enumerate(basin_geoms) if i.contains(line_centre))
 
         # split it
-        right_basin_poly, left_basin_poly = split_basin(basin_geoms[cut_idx], line).geoms
+        right_basin_poly, left_basin_poly = split_basin(basin_geoms[cut_idx], geometry).geoms
 
         # concat left-over polygons to the right-side
         right_basin_poly = [right_basin_poly]
