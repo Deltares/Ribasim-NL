@@ -370,7 +370,6 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
             "to_node_id",
             "edge_type",
             "name",
-            "subnetwork_id",
             "geometry",
             "meta_from_node_type",
             "meta_to_node_type",
