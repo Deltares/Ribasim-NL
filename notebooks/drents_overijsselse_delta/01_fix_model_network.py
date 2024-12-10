@@ -405,15 +405,16 @@ actions = [
     "remove_basin_area",
     "split_basin",
     "merge_basins",
+    "add_basin",
     "update_node",
     "add_basin_area",
-    "add_basin",
     "update_basin_area",
     "redirect_edge",
     "reverse_edge",
     "deactivate_node",
     "move_node",
     "remove_node",
+    "connect_basins",
 ]
 
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
@@ -430,9 +431,10 @@ for action in actions:
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
-
+# remove unassigned basin area
+model.fix_unassigned_basin_area()
 #  %% write model
-model.use_validation = True
+model.use_validation = False
 model.write(ribasim_toml)
 
 model.invalid_topology_at_node().to_file(ribasim_toml.with_name("invalid_topology_at_connector_nodes.gpkg"))
