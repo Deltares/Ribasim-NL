@@ -9,10 +9,9 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 
-authority = "BrabantseDelta"
-short_name = "wbd"
+authority = "DeDommel"
 
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{short_name}.toml")
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", "model.toml")
 
 
 basin_data = [
@@ -205,7 +204,7 @@ df = network_validator.edge_incorrect_type_connectivity(
 for node_id in df.from_node_id:
     model.update_node(node_id, "Outlet", [outlet.Static(flow_rate=[100])])
 
-# # see: https://github.com/Deltares/Ribasim-NL/issues/132
+# see: https://github.com/Deltares/Ribasim-NL/issues/132
 model.basin.area.df.loc[model.basin.area.df.duplicated("node_id"), ["node_id"]] = -1
 model.basin.area.df.reset_index(drop=True, inplace=True)
 model.basin.area.df.index.name = "fid"
