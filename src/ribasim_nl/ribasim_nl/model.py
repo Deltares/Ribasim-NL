@@ -60,7 +60,7 @@ def node_properties_to_table(table, node_properties, node_id):
         table_node_df.loc[node_id, [column]] = value
 
 
-class BasinResults(BaseModel):
+class Results(BaseModel):
     filepath: Path
     _df = None
 
@@ -72,15 +72,23 @@ class BasinResults(BaseModel):
 
 
 class Model(Model):
-    _basin_results: BasinResults | None = None
+    _basin_results: Results | None = None
+    _basin_outstate: Results | None = None
     _graph: nx.Graph | None = None
 
     @property
     def basin_results(self):
         if self._basin_results is None:
             filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
-            self._basin_results = BasinResults(filepath=filepath)
+            self._basin_results = Results(filepath=filepath)
         return self._basin_results
+
+    @property
+    def basin_outstate(self):
+        if self._basin_outstate is None:
+            filepath = self.filepath.parent.joinpath(self.results_dir, "basin_state.arrow").absolute().resolve()
+            self._basin_outstate = Results(filepath=filepath)
+        return self._basin_outstate
 
     @property
     def graph(self):
@@ -99,13 +107,28 @@ class Model(Model):
         return self.node_table().df.index.max() + 1
 
     def run(self, stream_output=True, returncode=True):
-        """_summary_
+        """Run your Ribasim model
 
         Args:
             stream_output (bool, optional): stream output in IDE. Defaults to True.
             returncode (bool, optional): return returncode after running model. Defaults to True.
         """
         return run(self.filepath, stream_output=stream_output, returncode=returncode)
+
+    def update_state(self, time_stamp: pd.Timestamp | None = None):
+        """Update basin.state with results or final basin_state (outstate)
+
+        Args:
+            time_stamp (pd.Timestamp | None, optional): Timestamp in results to update basin.state with . Defaults to None.
+        """
+        if time_stamp is None:
+            self.basin.state = self.basin_outstate.df
+        else:
+            df = self.basin_results.df.loc[time_stamp][["node_id", "level"]]
+            df.reset_index(inplace=True, drop=True)
+            df.index += 1
+            df.index.name = "fid"
+            self.basin.state = df
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
     def _upstream_nodes(self, node_id):

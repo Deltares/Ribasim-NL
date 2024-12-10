@@ -195,6 +195,14 @@ for idx, model in enumerate(models):
     # read model
     ribasim_model = Model.read(model_path)
 
+    # run model
+    if not ribasim_model.basin_outstate.filepath.exists():
+        print("run model to update state")
+        returncode = ribasim_model.run()
+        if returncode != 0:
+            raise Exception("model won't run successfully!")
+        ribasim_model.update_state()
+
     # add meta_waterbeheerder
     for node_type in ribasim_model.node_table().df.node_type.unique():
         ribasim_node = getattr(ribasim_model, pascal_to_snake_case(node_type))
