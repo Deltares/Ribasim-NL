@@ -367,6 +367,7 @@ for action in actions:
 
 # remove unassigned basin area
 model.fix_unassigned_basin_area()
+model.remove_unassigned_basin_area()
 
 model = reset_static_tables(model)
 #  %% write model
