@@ -122,13 +122,13 @@ class Model(Model):
             time_stamp (pd.Timestamp | None, optional): Timestamp in results to update basin.state with . Defaults to None.
         """
         if time_stamp is None:
-            self.basin.state = self.basin_outstate.df
+            df = self.basin_outstate.df
         else:
             df = self.basin_results.df.loc[time_stamp][["node_id", "level"]]
             df.reset_index(inplace=True, drop=True)
-            df.index += 1
-            df.index.name = "fid"
-            self.basin.state = df
+        df.index += 1
+        df.index.name = "fid"
+        self.basin.state.df = df
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
     def _upstream_nodes(self, node_id):

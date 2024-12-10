@@ -195,13 +195,18 @@ for idx, model in enumerate(models):
     # read model
     ribasim_model = Model.read(model_path)
 
+    # TODO: make sure this isn't needed next round!
+    if model["authority"] in RESET_TABLES:
+        ribasim_model.remove_unassigned_basin_area()
+        ribasim_model = reset_static_tables(ribasim_model)
+
     # run model
     if not ribasim_model.basin_outstate.filepath.exists():
         print("run model to update state")
         returncode = ribasim_model.run()
         if returncode != 0:
             raise Exception("model won't run successfully!")
-        ribasim_model.update_state()
+    ribasim_model.update_state()
 
     # add meta_waterbeheerder
     for node_type in ribasim_model.node_table().df.node_type.unique():
@@ -211,11 +216,6 @@ for idx, model in enumerate(models):
     if idx == 0:
         lhm_model = ribasim_model
     else:
-        # TODO: make sure this isn't needed next round!
-        if model["authority"] in RESET_TABLES:
-            ribasim_model.remove_unassigned_basin_area()
-            ribasim_model = reset_static_tables(ribasim_model)
-
         lhm_model = concat([lhm_model, ribasim_model])
         readme += f"""
 **{model["authority"]}**: {model["model"]} ({model_version.version})"""
