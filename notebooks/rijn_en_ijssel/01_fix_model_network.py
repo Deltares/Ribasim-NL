@@ -1,11 +1,10 @@
 # %%
 import geopandas as gpd
-import numpy as np
-import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.reset_static_tables import reset_static_tables
 
 cloud = CloudStorage()
 
@@ -150,61 +149,10 @@ for row in network_validator.edge_incorrect_type_connectivity(
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
 
-# %%
-# basin-profielen/state updaten
-df = pd.DataFrame(
-    {
-        "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
-        "level": [0.0, 1.0] * len(model.basin.node.df),
-        "area": [0.01, 1000.0] * len(model.basin.node.df),
-    }
-)
-df.index.name = "fid"
-model.basin.profile.df = df
+# %% Reset static tables
 
-df = model.basin.profile.df.groupby("node_id")[["level"]].max().reset_index()
-df.index.name = "fid"
-model.basin.state.df = df
-
-# %%
-# tabulated_rating_curves updaten
-df = pd.DataFrame(
-    {
-        "node_id": np.repeat(model.tabulated_rating_curve.node.df.index.to_numpy(), 2),
-        "level": [0.0, 5] * len(model.tabulated_rating_curve.node.df),
-        "flow_rate": [0, 0.1] * len(model.tabulated_rating_curve.node.df),
-    }
-)
-df.index.name = "fid"
-model.tabulated_rating_curve.static.df = df
-
-
-# %%
-
-# level_boundaries updaten
-df = pd.DataFrame(
-    {
-        "node_id": model.level_boundary.node.df.index.to_list(),
-        "level": [0.0] * len(model.level_boundary.node.df),
-    }
-)
-df.index.name = "fid"
-model.level_boundary.static.df = df
-
-# %%
-# manning_resistance updaten
-length = len(model.manning_resistance.node.df)
-df = pd.DataFrame(
-    {
-        "node_id": model.manning_resistance.node.df.index.to_list(),
-        "length": [100.0] * length,
-        "manning_n": [100.0] * length,
-        "profile_width": [100.0] * length,
-        "profile_slope": [100.0] * length,
-    }
-)
-df.index.name = "fid"
-model.manning_resistance.static.df = df
+# Reset static tables
+model = reset_static_tables(model)
 
 #  %% write model
 # model.use_validation = False
