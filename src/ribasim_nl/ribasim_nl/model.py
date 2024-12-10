@@ -17,6 +17,7 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.geometry import split_basin
+from ribasim_nl.run_model import run
 
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
@@ -96,6 +97,15 @@ class Model(Model):
     @property
     def next_node_id(self):
         return self.node_table().df.index.max() + 1
+
+    def run(self, stream_output=True, returncode=True):
+        """_summary_
+
+        Args:
+            stream_output (bool, optional): stream output in IDE. Defaults to True.
+            returncode (bool, optional): return returncode after running model. Defaults to True.
+        """
+        return run(self.filepath, stream_output=stream_output, returncode=returncode)
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
     def _upstream_nodes(self, node_id):
