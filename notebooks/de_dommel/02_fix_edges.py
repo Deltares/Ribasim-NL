@@ -56,8 +56,8 @@ for row in model.edge.df.itertuples():
         data += [row]
         continue
 
-gpd.GeoDataFrame(data, crs=28992).to_file("rare_edges.gpkg")
+out_dir = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_edges")
+gpd.GeoDataFrame(data, crs=28992).to_file(out_dir / "rare_edges.gpkg")
 
 # %% write model
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_edges", "model.toml")
-model.write(ribasim_toml)
+model.write(out_dir / "model.toml")
