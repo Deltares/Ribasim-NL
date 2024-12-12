@@ -754,7 +754,7 @@ class Model(Model):
             )
 
         if are_connected and (to_node_type != "FlowBoundary"):
-            paths = [i for i in nx.all_shortest_paths(self.graph, node_id, to_node_id) if len(i) == 3]
+            paths = [i for i in nx.all_shortest_paths(nx.Graph(self.graph), node_id, to_node_id) if len(i) == 3]
 
             if len(paths) == 0:
                 raise ValueError(f"basin {node_id} not a direct neighbor of basin {to_node_id}")
