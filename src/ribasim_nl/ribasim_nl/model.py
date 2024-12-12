@@ -754,6 +754,7 @@ class Model(Model):
             )
 
         if are_connected and (to_node_type != "FlowBoundary"):
+            self._graph = None  # set self._graph to None, so it will regenerate on currend edge-table
             paths = [i for i in nx.all_shortest_paths(nx.Graph(self.graph), node_id, to_node_id) if len(i) == 3]
 
             if len(paths) == 0:
