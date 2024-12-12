@@ -785,17 +785,17 @@ class Model(Model):
             if node_id in self.basin.area.df.node_id.to_numpy():
                 poly = self.basin.area.df.set_index("node_id").at[node_id, "geometry"]
 
+                if isinstance(poly, Polygon):
+                    poly = MultiPolygon([poly])
+
                 # if to_node_id has area we union both areas
-                if to_node_id in self.basin.area.df.node_id.to_numpy():
+                if len(self.basin.area.df.loc[self.basin.area.df.node_id == to_node_id]) == 1:
                     poly = poly.union(self.basin.area.df.set_index("node_id").at[to_node_id, "geometry"])
-                    if isinstance(poly, Polygon):
-                        poly = MultiPolygon([poly])
+
                     self.basin.area.df.loc[self.basin.area.df.node_id == to_node_id, ["geometry"]] = poly
 
                 # else we add a record to basin
                 else:
-                    if isinstance(poly, Polygon):
-                        poly = MultiPolygon([poly])
                     self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
                         "node_id": to_node_id,
                         "geometry": poly,
