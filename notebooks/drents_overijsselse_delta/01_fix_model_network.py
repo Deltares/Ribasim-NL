@@ -25,20 +25,22 @@ duikersifonhevel_gdf = gpd.read_file(
     layer="duikersifonhevel",
 )
 
-split_line_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg"), layer="split_basins", fid_as_index=True
-)
-
 # Load node edit data
 model_edits_url = cloud.joinurl(authority, "verwerkt", "model_edits.gpkg")
 model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 if not model_edits_path.exists():
     cloud.download_file(model_edits_url)
 
+# Load node edit data
+fix_user_data_url = cloud.joinurl(authority, "verwerkt", "fix_user_data.gpkg")
+fix_user_data_path = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
+if not fix_user_data_path.exists():
+    cloud.download_file(fix_user_data_url)
 
-# level_boundary_gdf = gpd.read_file(
-#     cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg"), layer="level_boundary", fid_as_index=True
-# )
+split_line_gdf = gpd.read_file(
+    cloud.joinpath(authority, "verwerkt", fix_user_data_path), layer="split_basins", fid_as_index=True
+)
+
 
 # %% read model
 model = Model.read(ribasim_toml)
