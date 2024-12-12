@@ -890,3 +890,6 @@ class Model(Model):
             return gpd.GeoDataFrame(
                 [], columns=["node_id", "node_type", "exception"], geometry=gpd.GeoSeries(crs=self.crs)
             ).set_index("node_id")
+
+
+# %%
