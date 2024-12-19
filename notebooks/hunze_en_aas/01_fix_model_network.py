@@ -101,10 +101,12 @@ model.explode_basin_area()
 model.fix_unassigned_basin_area()
 
 # %%
+
 actions = [
     "remove_basin_area",
     "remove_node",
     "add_basin",
+    "update_node",
     "add_basin_area",
     "update_basin_area",
     "reverse_edge",
@@ -112,7 +114,6 @@ actions = [
     "merge_basins",
     "move_node",
     "connect_basins",
-    "update_node",
     "deactivate_node",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
@@ -161,6 +162,8 @@ combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
 combined_basin_areas_gdf.index.name = "fid"
 
 model.basin.area.df = combined_basin_areas_gdf
+
+model.remove_unassigned_basin_area()
 
 #  %% write model
 model.use_validation = True

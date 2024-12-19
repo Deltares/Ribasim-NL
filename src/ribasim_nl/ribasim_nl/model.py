@@ -713,7 +713,7 @@ class Model(Model):
         if self.basin.area.df.node_id.duplicated().any():
             df = df.dissolve(by="node_id").reset_index()
             df.index.name = "fid"
-            self.basin.area.df = df
+        self.basin.area.df = df
 
     def explode_basin_area(self, remove_z=True):
         df = self.basin.area.df.explode().reset_index(drop=True)
