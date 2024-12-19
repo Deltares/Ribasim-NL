@@ -8,17 +8,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 WATER_AUTHORITIES = [
-    "AaenMaas",
-    "BrabantseDelta",
-    "DeDommel",
     "DrentsOverijsselseDelta",
-    "HunzeenAas",
-    "Limburg",
-    "Noorderzijlvest",
-    "RijnenIJssel",
-    "StichtseRijnlanden",
-    "ValleienVeluwe",
-    "Vechtstromen",
 ]
 
 FEEDBACK_XLS = cloud.joinpath("Basisgegevens", "feedbackformulier", "Feedback Formulier.xlsx")
