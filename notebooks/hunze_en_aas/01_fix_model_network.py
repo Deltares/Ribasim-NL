@@ -27,6 +27,10 @@ model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 if not model_edits_path.exists():
     cloud.download_file(model_edits_url)
 
+# Load area file to fill basin area holes
+ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
+ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="areas")
+
 
 # %% some stuff we'll need again
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -90,15 +94,22 @@ for row in network_validator.edge_incorrect_type_connectivity(
 
 # Reset static tables
 model = reset_static_tables(model)
+# fix unassigned basin area
+model.fix_unassigned_basin_area()
+model.explode_basin_area()
+# fix unassigned basin area
+model.fix_unassigned_basin_area()
 
 # %%
 actions = [
+    "remove_basin_area",
     "remove_node",
     "add_basin",
     "add_basin_area",
     "update_basin_area",
-    "merge_basins",
     "reverse_edge",
+    "redirect_edge",
+    "merge_basins",
     "move_node",
     "connect_basins",
     "update_node",
@@ -117,8 +128,42 @@ for action in actions:
         method(**kwargs)
 
 
+# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
+# then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
+# Create the overlay of areas
+combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
+combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
+
+# Calculate area for each geometry
+combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
+
+# Separate rows with and without node_id
+non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
+
+# Find largest area node_ids for each code
+largest_area_node_ids = non_null_basin_areas_gdf.loc[
+    non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
+]
+
+# Merge largest area node_ids back into the combined DataFrame
+combined_basin_areas_gdf = combined_basin_areas_gdf.merge(
+    largest_area_node_ids, on="code", how="left", suffixes=("", "_largest")
+)
+
+# Fill missing node_id with the largest_area node_id
+combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
+    combined_basin_areas_gdf["node_id_largest"]
+)
+combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
+combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
+combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
+combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
+combined_basin_areas_gdf.index.name = "fid"
+
+model.basin.area.df = combined_basin_areas_gdf
+
 #  %% write model
-model.use_validation = False
+model.use_validation = True
 model.write(ribasim_toml)
 model.invalid_topology_at_node().to_file(ribasim_toml.with_name("invalid_topology_at_connector_nodes.gpkg"))
 model.report_basin_area()
