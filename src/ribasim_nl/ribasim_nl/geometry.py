@@ -1,9 +1,10 @@
+# %%
 """Functions to apply on a shapely.geometry"""
 
 from typing import get_type_hints
 
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon
-from shapely.ops import polygonize, polylabel
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
+from shapely.ops import polygonize, polylabel, snap, split
 
 from ribasim_nl.generic import _validate_inputs
 
@@ -193,3 +194,57 @@ def edge(point_from: Point, point_to: Point) -> LineString:
     if point_to.has_z:
         point_to = Point(point_to.x, point_to.y)
     return LineString((point_from, point_to))
+
+
+def project_point(line: LineString, point: Point, tolerance: float = 1) -> Point:
+    """Projects a point to a LineString
+
+    Args:
+        line (LineString): LineString to project point on
+        point (Point): Point to project on LineString
+        tolerance (float): Tolerance of point to line
+
+    Returns
+    -------
+        Point: Projected Point
+    """
+    if point.distance(line) > tolerance:
+        raise ValueError(f"point > {tolerance} from line ({point.distance(line)})")
+    return line.interpolate(line.project(point))
+
+
+def split_line(line: LineString, point: Point, tolerance: float = 0.1) -> MultiLineString | LineString:
+    """Split a line into a 2 geometry multiline
+
+    Args:
+        line (LineString): input line
+        point (Point): point to split on
+        tolerance (float, optional): tolerance of point to line. Defaults to 0.1.
+
+    Returns
+    -------
+        MultiLineString | LineString: in case LineString is split, return MultiLineString with 2 LineStrings
+    """
+    # if point is within tolerance of line.boundary we don't split
+    if line.boundary.distance(point) < tolerance:
+        return line
+
+    # try if a normal split works
+    result = split(line, point)
+    if len(list(result.geoms)) == 2:
+        return MultiLineString(result)
+
+    # if not, we try it again
+    else:
+        # project the point on the line, checking if it's not too far of first
+        point = project_point(line, point, tolerance)
+
+        # we snap the line to the point so it will have the point coordinate
+        line = snap(line, point, 1e-8)
+
+        # now we should be able to split
+        result = split(line, point)
+        if len(list(result.geoms)) == 2:
+            return MultiLineString(result)
+        else:
+            return line
