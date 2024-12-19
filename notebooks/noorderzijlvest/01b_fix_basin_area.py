@@ -50,21 +50,10 @@ for row in lines_gdf.itertuples():
         split_lines = split(line, snap_point)
 
         lines_gdf.loc[row.Index, ["geometry"]] = split_lines
-# # split lines at points
-# for point in points:
-#     line_idx = lines_gdf.distance(point).idxmin()
-#     line = lines_gdf.at[line_idx, "geometry"]
-#     if line.has_z:
-#         line = drop_z(line)
-#     line = split_line(line=line, point=point, tolerance=0.1)
-#     lines_gdf.loc[line_idx, ["geometry"]] = line
 
 lines_gdf = lines_gdf.explode(index_parts=False, ignore_index=True)
 lines_gdf.crs = 28992
-lines_gdf.to_file("lines_out.gpkg", index=True, fid="fid")
-
 network = Network(lines_gdf.copy())
-network.lines_gdf.to_file("lines_out2.gpkg")
 network.to_file(cloud_storage.joinpath(authority_name, "verwerkt", "network.gpkg"))
 
 # %% add snap_point to he_df
@@ -111,7 +100,16 @@ if not model_edits_path.exists():
     cloud_storage.download_file(model_edits_url)
 
 
-for action in gpd.list_layers(model_edits_path).name.to_list():
+for action in [
+    "merge_basins",
+    "remove_node",
+    "update_node",
+    "reverse_edge",
+    "connect_basins",
+    "move_node",
+    "add_basin",
+    "remove_edge",
+]:
     print(action)
     # get method and args
     method = getattr(model, action)
@@ -238,14 +236,27 @@ for node_id, df in he_df[he_df["node_id"].notna()].groupby("node_id"):
     streefpeil = df["OPVAFWZP"].min()
 
     data += [{"node_id": node_id, "meta_streefpeil": streefpeil, "geometry": geometry}]
-df = pd.concat(
-    [gpd.GeoDataFrame(data, crs=model.crs), gpd.read_file(model_edits_path, layer="add_basin_area")], ignore_index=True
-)
+
+df = gpd.GeoDataFrame(data, crs=model.crs)
 df.loc[:, "geometry"] = df.buffer(0.1).buffer(-0.1)
 df.index.name = "fid"
 model.basin.area.df = df
 
+for action in ["remove_basin_area", "add_basin_area"]:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+model.remove_unassigned_basin_area()
+
 # %%
+
 model.write(ribasim_model_dir.with_stem(f"{authority_name}_fix_model_area") / f"{model_short_name}.toml")
 model.report_basin_area()
 model.report_internal_basins()
