@@ -9,10 +9,10 @@ import networkx as nx
 import pandas as pd
 from geopandas import GeoDataFrame, GeoSeries
 from networkx import DiGraph, Graph, NetworkXNoPath, shortest_path, traversal
-from shapely import force_2d
 from shapely.geometry import LineString, Point, box
 from shapely.ops import snap, split
 
+from ribasim_nl.geometry import drop_z, split_line
 from ribasim_nl.styles import add_styles_to_geopackage
 
 logger = logging.getLogger(__name__)
@@ -93,9 +93,8 @@ class Network:
             self.lines_gdf = self.lines_gdf.explode(index_parts=False)
 
         # remove z-coordinates
-        self.lines_gdf.loc[:, "geometry"] = gpd.GeoSeries(
-            force_2d(self.lines_gdf.geometry.array), crs=self.lines_gdf.crs
-        )
+        if self.lines_gdf.has_z.any():
+            self.lines_gdf.loc[:, "geometry"] = self.lines_gdf.geometry.apply(lambda x: drop_z(x) if x.has_z else x)
 
     @classmethod
     def from_lines_gpkg(cls, gpkg_file: str | Path, layer: str | None = None, **kwargs):
@@ -471,7 +470,7 @@ class Network:
 
             # add edges
             self.graph.remove_edge(node_from, node_to)
-            us_geometry, ds_geometry = split(snap(edge_geometry, node_geometry, 0.01), node_geometry).geoms
+            us_geometry, ds_geometry = split_line(edge_geometry, node_geometry).geoms
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
@@ -650,7 +649,7 @@ class Network:
             raise ValueError(f"{path} is not a GeoPackage, please provide a file with extention 'gpkg'")
 
         # write nodes and links
-        self.nodes.to_file(path, layer="nodes", engine="pyogrio")
+        self.nodes[["geometry", "type"]].to_file(path, layer="nodes", engine="pyogrio")
         self.links.to_file(path, layer="links", engine="pyogrio")
         # add styles
         add_styles_to_geopackage(path)
