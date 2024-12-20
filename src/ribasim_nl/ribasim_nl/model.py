@@ -746,7 +746,7 @@ class Model(Model):
         if self.basin.area.df.node_id.duplicated().any():
             df = df.dissolve(by="node_id").reset_index()
             df.index.name = "fid"
-            self.basin.area.df = df
+        self.basin.area.df = df
 
     def explode_basin_area(self, remove_z=True):
         df = self.basin.area.df.explode().reset_index(drop=True)
@@ -787,7 +787,8 @@ class Model(Model):
             )
 
         if are_connected and (to_node_type != "FlowBoundary"):
-            paths = [i for i in nx.all_shortest_paths(self.graph, node_id, to_node_id) if len(i) == 3]
+            self._graph = None  # set self._graph to None, so it will regenerate on currend edge-table
+            paths = [i for i in nx.all_shortest_paths(nx.Graph(self.graph), node_id, to_node_id) if len(i) == 3]
 
             if len(paths) == 0:
                 raise ValueError(f"basin {node_id} not a direct neighbor of basin {to_node_id}")
@@ -817,17 +818,17 @@ class Model(Model):
             if node_id in self.basin.area.df.node_id.to_numpy():
                 poly = self.basin.area.df.set_index("node_id").at[node_id, "geometry"]
 
+                if isinstance(poly, Polygon):
+                    poly = MultiPolygon([poly])
+
                 # if to_node_id has area we union both areas
-                if to_node_id in self.basin.area.df.node_id.to_numpy():
+                if len(self.basin.area.df.loc[self.basin.area.df.node_id == to_node_id]) == 1:
                     poly = poly.union(self.basin.area.df.set_index("node_id").at[to_node_id, "geometry"])
-                    if isinstance(poly, Polygon):
-                        poly = MultiPolygon([poly])
+
                     self.basin.area.df.loc[self.basin.area.df.node_id == to_node_id, ["geometry"]] = poly
 
                 # else we add a record to basin
                 else:
-                    if isinstance(poly, Polygon):
-                        poly = MultiPolygon([poly])
                     self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
                         "node_id": to_node_id,
                         "geometry": poly,
@@ -923,3 +924,6 @@ class Model(Model):
             return gpd.GeoDataFrame(
                 [], columns=["node_id", "node_type", "exception"], geometry=gpd.GeoSeries(crs=self.crs)
             ).set_index("node_id")
+
+
+# %%

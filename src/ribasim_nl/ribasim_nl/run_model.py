@@ -1,7 +1,10 @@
-# %%
 import os
 import subprocess
 from pathlib import Path
+
+# TODO: add ribasim_exe so it can be used if ribasim is not part of env path
+# TODO: check if ribasim is in path, stop if not and ribasim_exe is not provided
+# TODO: raise FileNotFoundError if toml_path does not exist. User
 
 
 def run(

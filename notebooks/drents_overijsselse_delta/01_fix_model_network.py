@@ -25,20 +25,22 @@ duikersifonhevel_gdf = gpd.read_file(
     layer="duikersifonhevel",
 )
 
-split_line_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg"), layer="split_basins", fid_as_index=True
-)
-
 # Load node edit data
 model_edits_url = cloud.joinurl(authority, "verwerkt", "model_edits.gpkg")
 model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 if not model_edits_path.exists():
     cloud.download_file(model_edits_url)
 
+# Load node edit data
+fix_user_data_url = cloud.joinurl(authority, "verwerkt", "fix_user_data.gpkg")
+fix_user_data_path = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
+if not fix_user_data_path.exists():
+    cloud.download_file(fix_user_data_url)
 
-# level_boundary_gdf = gpd.read_file(
-#     cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg"), layer="level_boundary", fid_as_index=True
-# )
+split_line_gdf = gpd.read_file(
+    cloud.joinpath(authority, "verwerkt", fix_user_data_path), layer="split_basins", fid_as_index=True
+)
+
 
 # %% read model
 model = Model.read(ribasim_toml)
@@ -339,15 +341,16 @@ actions = [
     "remove_basin_area",
     "split_basin",
     "merge_basins",
+    "add_basin",
     "update_node",
     "add_basin_area",
-    "add_basin",
     "update_basin_area",
     "redirect_edge",
     "reverse_edge",
     "deactivate_node",
     "move_node",
     "remove_node",
+    "connect_basins",
 ]
 
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
@@ -364,16 +367,16 @@ for action in actions:
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
+# remove unassigned basin area
+model.fix_unassigned_basin_area()
+model.remove_unassigned_basin_area()
 
-# %% Reset static tables
-
-# Reset static tables
 model = reset_static_tables(model)
-
 #  %% write model
 model.use_validation = True
 model.write(ribasim_toml)
 
 model.invalid_topology_at_node().to_file(ribasim_toml.with_name("invalid_topology_at_connector_nodes.gpkg"))
-
+model.report_basin_area()
+model.report_internal_basins()
 # %%

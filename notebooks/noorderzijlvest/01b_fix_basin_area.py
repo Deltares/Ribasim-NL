@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from networkx import all_shortest_paths, shortest_path
 from shapely.geometry import MultiLineString
+from shapely.ops import snap, split
 
 from ribasim_nl import CloudStorage, Model, Network
 
@@ -32,9 +33,27 @@ lines_gdf = gpd.read_file(
     cloud_storage.joinpath(
         authority_name, "verwerkt", "5_D_HYDRO_export", "hydroobjecten", "Noorderzijlvest_hydroobjecten.shp"
     ),
+    use_fid_as_indes=True,
 )
+
+points = (
+    model.node_table().df[model.node_table().df.node_type.isin(["TabulatedRatingCurve", "Outlet", "Pump"])].geometry
+)
+
+for row in lines_gdf.itertuples():
+    line = row.geometry
+    snap_points = points[points.distance(line) < 0.1]
+    snap_points = snap_points[snap_points.distance(line.boundary) > 0.1]
+    if not snap_points.empty:
+        snap_point = snap_points.union_all()
+        line = snap(line, snap_point, 1e-8)
+        split_lines = split(line, snap_point)
+
+        lines_gdf.loc[row.Index, ["geometry"]] = split_lines
+
+lines_gdf = lines_gdf.explode(index_parts=False, ignore_index=True)
 lines_gdf.crs = 28992
-network = Network(lines_gdf)
+network = Network(lines_gdf.copy())
 network.to_file(cloud_storage.joinpath(authority_name, "verwerkt", "network.gpkg"))
 
 # %% add snap_point to he_df
@@ -64,6 +83,9 @@ he_outlet_df.loc[:, "HEIDENT"] = he_df["HEIDENT"]
 he_outlet_df.set_index("HEIDENT", inplace=True)
 he_df.set_index("HEIDENT", inplace=True)
 
+# niet altijd ligt de coordinaat goed
+he_outlet_df.loc["GPGKST0470", ["geometry"]] = model.manning_resistance[892].geometry
+
 he_outlet_df.to_file(cloud_storage.joinpath(authority_name, "verwerkt", "HydrologischeEenheden_v45_outlets.gpkg"))
 
 # %% Edit network
@@ -78,7 +100,16 @@ if not model_edits_path.exists():
     cloud_storage.download_file(model_edits_url)
 
 
-for action in gpd.list_layers(model_edits_path).name.to_list():
+for action in [
+    "merge_basins",
+    "remove_node",
+    "update_node",
+    "reverse_edge",
+    "connect_basins",
+    "move_node",
+    "add_basin",
+    "remove_edge",
+]:
     print(action)
     # get method and args
     method = getattr(model, action)
@@ -118,9 +149,7 @@ he_df.loc[mask, "node_id"] = he_df[mask]["KWKuit"].apply(lambda x: find_basin_id
 def get_network_node(point):
     node = network.move_node(point, max_distance=1, align_distance=10)
     if node is None:
-        node = network.add_node(point, max_distance=1)
-    if node is None:
-        node = network.nodes.distance(point).idxmin()
+        node = network.add_node(point, max_distance=1, align_distance=10)
     return node
 
 
@@ -184,7 +213,7 @@ for node_id in model.basin.node.df.index:
                 )
                 model.edge.df.loc[mask, ["geometry"]] = edge
 
-    mask = he_df.node_id.isna() & (he_outlet_df.distance(MultiLineString(data)) < 1)
+    mask = he_df.node_id.isna() & (he_outlet_df.distance(MultiLineString(data)) < 0.75)
     he_df.loc[mask, ["node_id"]] = node_id
 
 # %% add last missings
@@ -201,23 +230,34 @@ for row in he_df[he_df["node_id"].isna()].itertuples():
     he_df.loc[row.Index, ["node_id"]] = basin_node_id
 
 
-# %% renew model Basin Area
-
-# based on actions above we update the Basin / Area table:
-# basins we found on KWKuit defined in the he-table
-
 data = []
 for node_id, df in he_df[he_df["node_id"].notna()].groupby("node_id"):
     geometry = df.union_all()
     streefpeil = df["OPVAFWZP"].min()
 
     data += [{"node_id": node_id, "meta_streefpeil": streefpeil, "geometry": geometry}]
+
 df = gpd.GeoDataFrame(data, crs=model.crs)
 df.loc[:, "geometry"] = df.buffer(0.1).buffer(-0.1)
 df.index.name = "fid"
 model.basin.area.df = df
 
+for action in ["remove_basin_area", "add_basin_area"]:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+model.remove_unassigned_basin_area()
+
 # %%
+
 model.write(ribasim_model_dir.with_stem(f"{authority_name}_fix_model_area") / f"{model_short_name}.toml")
 model.report_basin_area()
+model.report_internal_basins()
 # %%
