@@ -106,14 +106,9 @@ class Model(Model):
     def next_node_id(self):
         return self.node_table().df.index.max() + 1
 
-    def run(self, stream_output=True, returncode=True):
-        """Run your Ribasim model
-
-        Args:
-            stream_output (bool, optional): stream output in IDE. Defaults to True.
-            returncode (bool, optional): return returncode after running model. Defaults to True.
-        """
-        return run(self.filepath, stream_output=stream_output, returncode=returncode)
+    def run(self, **kwargs):
+        """Run your Ribasim model"""
+        return run(self.filepath, **kwargs)
 
     def update_state(self, time_stamp: pd.Timestamp | None = None):
         """Update basin.state with results or final basin_state (outstate)
