@@ -2,13 +2,13 @@ import os
 import subprocess
 from pathlib import Path
 
-# TODO: add ribasim_exe so it can be used if ribasim is not part of env path
 # TODO: check if ribasim is in path, stop if not and ribasim_exe is not provided
 # TODO: raise FileNotFoundError if toml_path does not exist. User
 
 
 def run(
     toml_path: Path,
+    ribasim_exe: Path | None = None,
     stream_output: bool = True,
     returncode: bool = True,
 ):
@@ -16,15 +16,24 @@ def run(
 
     Args:
         toml_path (Path): path to your ribasim toml-file
+        ribasim_exe (Path): path to ribasim exe-file
         stream_output (bool, optional): stream output in IDE. Defaults to False.
         returncode (bool, optional): return return code after running model. Defaults to True.
 
     """
     env = os.environ.copy()
 
+    # use exe_path if not None (and check if exists)
+    if ribasim_exe is not None:
+        args = [Path(ribasim_exe).as_posix(), toml_path.as_posix()]
+        if not ribasim_exe.exists():
+            raise FileNotFoundError(f"{ribasim_exe} does not exist!")
+    else:
+        args = ["ribasim", toml_path.as_posix()]
+
     input = ""
     proc = subprocess.Popen(
-        ["ribasim", toml_path.as_posix()],
+        args,
         cwd=toml_path.parent.as_posix(),
         env=env,
         stdin=subprocess.PIPE,
