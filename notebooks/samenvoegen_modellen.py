@@ -3,9 +3,8 @@ from datetime import datetime
 
 import ribasim
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
 from ribasim_nl.case_conversions import pascal_to_snake_case
-from ribasim_nl.concat import concat
 from ribasim_nl.reset_static_tables import reset_static_tables
 
 # %%
@@ -34,6 +33,32 @@ RESET_TABLES = [
     "ValleienVeluwe",
     "Vechtstromen",
 ]
+
+INDEX_PREFIXES = {
+    "HollandseDelta": 40,
+    "Zuiderzeeland": 37,
+    "HollandsNoorderkwartier": 12,
+    "Rivierenland": 9,
+    "Delfland": 15,
+    "AaenMaas": 38,
+    "WetterskipFryslan": 2,
+    "Noorderzijlvest": 34,
+    "BrabantseDelta": 25,
+    "HunzeenAas": 33,
+    "Scheldestromen": 42,
+    "Vechtstromen": 44,
+    "RijnenIJssel": 7,
+    "ValleienVeluwe": 43,
+    "SchielandendeKrimpenerwaard": 39,
+    "StichtseRijnlanden": 14,
+    "DeDommel": 27,
+    "Limburg": 60,
+    "DrentsOverijsselseDelta": 59,
+    "Rijnland": 13,
+    "AmstelGooienVecht": 11,
+    "Rijkswaterstaat": 80,
+}
+
 models = [
     {
         "authority": "Rijkswaterstaat",
@@ -213,10 +238,18 @@ for idx, model in enumerate(models):
         ribasim_node = getattr(ribasim_model, pascal_to_snake_case(node_type))
         ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = model["authority"]
 
+    # reset index of RWS model so we get subsequent ids
+    if model["authority"] == "Rijkswaterstaat":
+        ribasim_model = reset_index(ribasim_model)
+
+    # prefix index so ids will be unique
+    ribasim_model = prefix_index(model=ribasim_model, prefix_id=INDEX_PREFIXES[model["authority"]])
+
     if idx == 0:
         lhm_model = ribasim_model
     else:
-        lhm_model = concat([lhm_model, ribasim_model])
+        # concat and do not mess with original_index as it has been preserved
+        lhm_model = concat([lhm_model, ribasim_model], keep_original_index=True)
         readme += f"""
 **{model["authority"]}**: {model["model"]} ({model_version.version})"""
 

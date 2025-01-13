@@ -5,13 +5,15 @@ from ribasim_nl import reset_index
 from ribasim_nl.case_conversions import pascal_to_snake_case
 
 
-def concat(models: list[Model]) -> Model:
+def concat(models: list[Model], keep_original_index: bool = False) -> Model:
     """Concat existing models to one Ribasim-model
 
     Parameters
     ----------
     models : list[Model]
         List with ribasim.Model
+    keep_original_index: bool
+        Boolean for keeping original index. If not indices will be reset to avoid duplicate indices
 
     Returns
     -------
@@ -19,13 +21,17 @@ def concat(models: list[Model]) -> Model:
         concatenated ribasim.Model
     """
     # models will be concatenated to first model.
-    model = reset_index(models[0])
+    if not keep_original_index:
+        model = reset_index(models[0])
+    else:
+        model = models[0]
 
     # concat all other models into model
     for merge_model in models[1:]:
-        # reset index of mergemodel, node_start is max node_id
-        node_start = model.node_table().df.index.max() + 1
-        merge_model = reset_index(merge_model, node_start)
+        if not keep_original_index:
+            # reset index of mergemodel, node_start is max node_id
+            node_start = model.node_table().df.index.max() + 1
+            merge_model = reset_index(merge_model, node_start)
 
         # concat edges
         edge_df = pd.concat([model.edge.df, merge_model.edge.df], ignore_index=True)
