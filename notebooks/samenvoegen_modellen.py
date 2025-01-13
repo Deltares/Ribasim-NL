@@ -34,6 +34,7 @@ RESET_TABLES = [
     "Vechtstromen",
 ]
 
+# https://www.aquo.nl/index.php/Imwa_sim_1.0/doc/codelijst/waterbeheerder
 INDEX_PREFIXES = {
     "HollandseDelta": 40,
     "Zuiderzeeland": 37,
