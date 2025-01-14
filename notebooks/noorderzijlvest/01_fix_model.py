@@ -26,16 +26,24 @@ model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 
-for path in (he_shp, he_snap_shp, lines_shp, model_edits_path):
+for path in (he_shp, he_snap_shp, lines_shp, model_edits_path, ribasim_dir):
     url = cloud.joinurl(*path.relative_to(cloud.data_dir).parts)
-
     # check if file exists on remote, if not raise for status
     r = requests.head(url, auth=cloud.auth)
     r.raise_for_status()
 
     # check if file exists local, if not download
     if not path.exists():
-        cloud.download_file(path)
+        print(f"download data for {path}")
+
+        if path.suffix == ".shp":  # with shapes we are to download the parent
+            path = path.parent
+            url = cloud.joinurl(*path.relative_to(cloud.data_dir).parts)
+
+        if cloud.content(url):
+            cloud.download_content(url)
+        else:
+            cloud.download_file(url)
 
 ribasim_toml = ribasim_dir / "model.toml"
 
