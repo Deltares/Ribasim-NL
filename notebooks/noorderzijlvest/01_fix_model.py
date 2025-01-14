@@ -1,38 +1,57 @@
-# %% Import Libraries and Initialize Variables
+# %%
 import inspect
 
 import geopandas as gpd
 import pandas as pd
+import requests
 from networkx import all_shortest_paths, shortest_path
+from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from shapely.geometry import MultiLineString
 from shapely.ops import snap, split
 
-from ribasim_nl import CloudStorage, Model, Network
+from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
+from ribasim_nl.reset_static_tables import reset_static_tables
 
-# Initialize cloud storage and set authority/model parameters
-cloud_storage = CloudStorage()
-authority_name = "Noorderzijlvest"
-model_short_name = "nzv"
+cloud = CloudStorage()
 
-# Define the path to the Ribasim model configuration file
-ribasim_model_dir = cloud_storage.joinpath(authority_name, "modellen", f"{authority_name}_fix_model_network")
-ribasim_model_path = ribasim_model_dir / f"{model_short_name}.toml"
-model = Model.read(ribasim_model_path)
+authority = "Noorderzijlvest"
+short_name = "nzv"
+
+he_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20241113", "HydrologischeEenheden_v45.shp")
+he_snap_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20241113", "HE_v45_snappingpoints.shp")
+lines_shp = cloud.joinpath(
+    authority, "verwerkt", "5_D_HYDRO_export", "hydroobjecten", "Noorderzijlvest_hydroobjecten.shp"
+)
+model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir.joinpath(f"{short_name}.toml")
+database_gpkg = ribasim_toml.with_name("database.gpkg")
+
+for path in (he_shp, he_snap_shp, lines_shp, model_edits_path):
+    url = cloud.joinurl(*path.relative_to(cloud.data_dir).parts)
+
+    # check if file exists on remote, if not raise for status
+    r = requests.head(url, auth=cloud.auth)
+    r.raise_for_status()
+
+    # check if file exists local, if not download
+    if not path.exists():
+        cloud.download_file(path)
+
+# %% read model
+model = Model.read(ribasim_toml)
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
+network_validator = NetworkValidator(model)
 
 # read hydrologische eenheden
-he_df = gpd.read_file(
-    cloud_storage.joinpath(authority_name, "verwerkt", "1_ontvangen_data", "20241113", "HydrologischeEenheden_v45.shp"),
-)
+he_df = gpd.read_file(he_shp)
 he_df.loc[:, "node_id"] = pd.Series()
 
-he_snap_df = gpd.read_file(
-    cloud_storage.joinpath(authority_name, "verwerkt", "1_ontvangen_data", "20241113", "HE_v45_snappingpoints.shp"),
-)
+he_snap_df = gpd.read_file(he_snap_shp)
 
 lines_gdf = gpd.read_file(
-    cloud_storage.joinpath(
-        authority_name, "verwerkt", "5_D_HYDRO_export", "hydroobjecten", "Noorderzijlvest_hydroobjecten.shp"
-    ),
+    lines_shp,
     use_fid_as_indes=True,
 )
 
@@ -54,7 +73,41 @@ for row in lines_gdf.itertuples():
 lines_gdf = lines_gdf.explode(index_parts=False, ignore_index=True)
 lines_gdf.crs = 28992
 network = Network(lines_gdf.copy())
-network.to_file(cloud_storage.joinpath(authority_name, "verwerkt", "network.gpkg"))
+network.to_file(cloud.joinpath(authority, "verwerkt", "network.gpkg"))
+
+
+# %% some stuff we'll need again
+manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
+level_data = level_boundary.Static(level=[0])
+
+basin_data = [
+    basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
+    basin.Static(
+        drainage=[0.0],
+        potential_evaporation=[0.001 / 86400],
+        infiltration=[0.0],
+        precipitation=[0.005 / 86400],
+    ),
+    basin.State(level=[0]),
+]
+outlet_data = outlet.Static(flow_rate=[100])
+pump_data = pump.Static(flow_rate=[10])
+
+# %%
+# %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
+
+# 76 edges bij opgeheven nodes verwijderen
+mask = model.edge.df.to_node_id.isin(model.node_table().df.index) & model.edge.df.from_node_id.isin(
+    model.node_table().df.index
+)
+missing_edges_df = model.edge.df[~mask]
+
+model.edge.df = model.edge.df[~model.edge.df.index.isin(missing_edges_df.index)]
+
+# %% Reset static tables
+
+# Reset static tables
+model = reset_static_tables(model)
 
 # %% add snap_point to he_df
 
@@ -86,19 +139,12 @@ he_df.set_index("HEIDENT", inplace=True)
 # niet altijd ligt de coordinaat goed
 he_outlet_df.loc["GPGKST0470", ["geometry"]] = model.manning_resistance[892].geometry
 
-he_outlet_df.to_file(cloud_storage.joinpath(authority_name, "verwerkt", "HydrologischeEenheden_v45_outlets.gpkg"))
+he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt", "HydrologischeEenheden_v45_outlets.gpkg"))
 
 # %% Edit network
 
 # We modify the network:
 # merge basins in Lauwersmeer
-
-# Load node edit data
-model_edits_url = cloud_storage.joinurl(authority_name, "verwerkt", "model_edits.gpkg")
-model_edits_path = cloud_storage.joinpath(authority_name, "verwerkt", "model_edits.gpkg")
-if not model_edits_path.exists():
-    cloud_storage.download_file(model_edits_url)
-
 
 for action in [
     "merge_basins",
@@ -255,9 +301,8 @@ for action in ["remove_basin_area", "add_basin_area"]:
 
 model.remove_unassigned_basin_area()
 
-# %%
-
-model.write(ribasim_model_dir.with_stem(f"{authority_name}_fix_model_area") / f"{model_short_name}.toml")
+#  %% write model
+model.use_validation = True
+model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
-# %%
