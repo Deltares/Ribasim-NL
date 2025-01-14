@@ -25,8 +25,6 @@ lines_shp = cloud.joinpath(
 model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
-ribasim_toml = ribasim_dir.joinpath(f"{short_name}.toml")
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 
 for path in (he_shp, he_snap_shp, lines_shp, model_edits_path):
     url = cloud.joinurl(*path.relative_to(cloud.data_dir).parts)
@@ -38,6 +36,8 @@ for path in (he_shp, he_snap_shp, lines_shp, model_edits_path):
     # check if file exists local, if not download
     if not path.exists():
         cloud.download_file(path)
+
+ribasim_toml = ribasim_dir / "model.toml"
 
 # %% read model
 model = Model.read(ribasim_toml)
