@@ -501,7 +501,7 @@ class Model(Model):
 
         self.basin.area.df.loc[mask, ["node_id"]] = node_id
 
-    def add_basin_area(self, geometry: MultiPolygon, node_id: int | None = None):
+    def add_basin_area(self, geometry: MultiPolygon, node_id: int | None = None, meta_streefpeil: float | None = None):
         # if node_id is None, get an available node_id
         if pd.isna(node_id):
             basin_df = self.basin.node.df[self.basin.node.df.within(geometry)]
@@ -524,7 +524,10 @@ class Model(Model):
                 raise ValueError(f"geometry-type {geometry.geom_type} is not valid. Provide (Multi)Polygon instead")
 
         # if all correct, assign
-        area_df = gpd.GeoDataFrame({"node_id": [node_id], "geometry": [geometry]}, crs=self.crs)
+        data = {"node_id": [node_id], "geometry": [geometry]}
+        if meta_streefpeil is not None:
+            data = {**data, "meta_streefpeil": [meta_streefpeil]}
+        area_df = gpd.GeoDataFrame(data, crs=self.crs)
         area_df.index.name = "fid"
         area_df.index += self.basin.area.df.index.max() + 1
         self.basin.area.df = pd.concat([self.basin.area.df, area_df])
