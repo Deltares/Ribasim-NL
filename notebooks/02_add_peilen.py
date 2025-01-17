@@ -62,24 +62,25 @@ def process_basin_model(params):
         if overlapping_peilgebieden.empty:
             overlapping_peilgebieden = peilgebieden[peilgebieden.geometry.intersects(basin_geometry)]
 
-        current_basin = basins_gdf[basins_gdf["node_id"] == node_id]
+        current_basin = basins_gdf[basins_gdf["node_id"] == node_id].copy()
 
         # Perform the overlay with the basin to get linked areas and calculate the intersection_area
         linked = gpd.overlay(overlapping_peilgebieden, current_basin, how="intersection", keep_geom_type=False)
-        linked["intersection_area"] = linked.geometry.area
+        current_basin.loc[:, "area"] = current_basin.geometry.area
+        # Now calculate the intersection area
 
+        linked["intersection_area"] = linked.geometry.area
+        linked["intersection_area_fraction"] = linked["intersection_area"] / current_basin["area"].iloc[0]
         # Ensure linked_filtered is initialized and contains valid data
         linked_filtered = None
-
         # Take the minimum GPGZMRPL from the peilgebied with a structure. The intersection_area should be at least 50m2
         if not linked.empty:
             linked_filtered = (
-                linked[linked["intersection_area"] > 50]
+                linked.loc[linked["intersection_area_fraction"] > 0.025]
                 .dropna(subset=[target_level])
                 .sort_values(by=[target_level])
                 .drop_duplicates(keep="first")
             )
-
         # Check if linked_filtered is empty or invalid
         if linked_filtered is None or linked_filtered.empty:
             # For now, take the first valid entry from linked
@@ -120,7 +121,7 @@ params_list = [
         "GPGIDENT",
         "DrentsOverijsselseDelta_fix_model_network",
     ),
-    ("AaenMaas", "aam", "downloads/WS_PEILGEBIEDPolygon.shp", None, "ZOMERPEIL", "CODE", "AaenMaas_fix_model_area"),
+    ("AaenMaas", "aam", "downloads/WS_PEILGEBIEDPolygon.shp", None, "ZOMERPEIL", "CODE", "AaenMaas_fix_model_network"),
     (
         "BrabantseDelta",
         "wbd",
@@ -128,7 +129,7 @@ params_list = [
         "peilgebiedpraktijk",
         "WS_ZOMERPEIL",
         "CODE",
-        "BrabantseDelta_fix_model_area",
+        "BrabantseDelta_fix_model_network",
     ),
     (
         "StichtseRijnlanden",
@@ -137,7 +138,7 @@ params_list = [
         None,
         "WS_ZP",
         "WS_PGID",
-        "StichtseRijnlanden_fix_model_area",
+        "StichtseRijnlanden_fix_model_network",
     ),
     (
         "ValleienVeluwe",
@@ -146,7 +147,7 @@ params_list = [
         "peilgebiedpraktijk",
         "ws_max_peil",
         "code",
-        "ValleienVeluwe_fix_model_area",
+        "ValleienVeluwe_fix_model_network",
     ),
     (
         "Vechtstromen",
@@ -155,7 +156,7 @@ params_list = [
         None,
         "GPGZMRPL",
         "GPGIDENT",
-        "Vechtstromen_fix_model_area",
+        "Vechtstromen_fix_model_network",
     ),
 ]
 
