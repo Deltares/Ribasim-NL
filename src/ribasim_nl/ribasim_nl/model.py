@@ -1,6 +1,5 @@
 # %%
 import warnings
-from collections import deque
 from pathlib import Path
 from typing import Literal
 
@@ -17,8 +16,10 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import split_basin
 from ribasim_nl.run_model import run
+from ribasim_nl.upstream import upstream_nodes
 
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
@@ -95,13 +96,30 @@ class Model(Model):
     def graph(self):
         # create a DiGraph from edge-table
         if self._graph is None:
-            self._graph = nx.from_pandas_edgelist(
+            graph = nx.from_pandas_edgelist(
                 df=self.edge.df[["from_node_id", "to_node_id"]],
                 source="from_node_id",
                 target="to_node_id",
                 create_using=nx.DiGraph,
             )
+            if "meta_function" not in self.node_table().df.columns:
+                node_attributes = {node_id: {"function": ""} for node_id in self.node_table().df.index}
+            else:
+                node_attributes = (
+                    self.node_table()
+                    .df.rename(columns={"meta_function": "function"})[["function"]]
+                    .to_dict(orient="index")
+                )
+            nx.set_node_attributes(graph, node_attributes)
+
+            self._graph = graph
+
         return self._graph
+
+    @property
+    def reset_graph(self):
+        self._graph = None
+        return self.graph
 
     @property
     def next_node_id(self):
@@ -127,54 +145,30 @@ class Model(Model):
         self.basin.state.df = df
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
-    # def _upstream_nodes(self, node_id):
-    #     # get upstream nodes
-    #     return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
+    def _upstream_nodes(self, node_id, **kwargs):
+        # get upstream nodes
+        #     return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
+        return upstream_nodes(graph=self.graph, node_id=node_id, **kwargs)
 
-    def _upstream_nodes(self, node_id):
-        visited = set()  # To keep track of visited nodes
-        upstream_nodes = set()  # To store the result
-
-        # BFS using a deque
-        queue = deque([node_id])
-
-        while queue:
-            current_node = queue.popleft()
-
-            # Avoid re-visiting nodes
-            if current_node in visited:
-                continue
-            visited.add(current_node)
-
-            # Check predecessors (upstream neighbors)
-            for predecessor in self.graph.predecessors(current_node):
-                if predecessor not in visited:
-                    upstream_nodes.add(predecessor)
-
-                    # Stop traversal if 'uitlaat' is True
-                    if not self.graph.nodes[predecessor].get("function", "inlet"):
-                        queue.append(predecessor)
-
-        return upstream_nodes
-
-    def _downstream_nodes(self, node_id):
+    def _downstream_nodes(self, node_id, **kwargs):
         # get downstream nodes
-        return list(nx.traversal.bfs_tree(self.graph, node_id))
+        return downstream_nodes(graph=self.graph, node_id=node_id, **kwargs)
+        # return list(nx.traversal.bfs_tree(self.graph, node_id))
 
-    def get_upstream_basins(self, node_id):
+    def get_upstream_basins(self, node_id, **kwargs):
         # get upstream basin area
-        upstream_node_ids = self._upstream_nodes(node_id)
+        upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
         return self.basin.area.df[self.basin.area.df.node_id.isin(upstream_node_ids)]
 
-    def get_upstream_edges(self, node_id):
+    def get_upstream_edges(self, node_id, **kwargs):
         # get upstream edges
-        upstream_node_ids = self._upstream_nodes(node_id)
+        upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
         mask = self.edge.df.from_node_id.isin(upstream_node_ids[1:]) & self.edge.df.to_node_id.isin(upstream_node_ids)
         return self.edge.df[mask]
 
-    def get_downstream_edges(self, node_id):
+    def get_downstream_edges(self, node_id, **kwargs):
         # get upstream edges
-        downstream_node_ids = self._downstream_nodes(node_id)
+        downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
         mask = self.edge.df.from_node_id.isin(downstream_node_ids) & self.edge.df.to_node_id.isin(
             downstream_node_ids[1:]
         )

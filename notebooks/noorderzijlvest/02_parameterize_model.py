@@ -35,15 +35,38 @@ ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f
 model = Model.read(ribasim_toml)
 
 start_time = time.time()
-# %%
-# parameterize
+# %% add functions
 
+# functions
+
+# update function - column
 for node_type in ["Pump", "Outlet"]:
-    # start with an empty static_df with the correct columns and meta_code_waterbeheerder
-    static_df = empty_static_df(model=model, node_type=node_type, meta_columns=["meta_code_waterbeheerder"])
+    table = getattr(model, pascal_to_snake_case(node_type)).node
+    if node_type in static_data_sheets:
+        # add node_id to static_data
+        static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type).set_index("code")
+        static_data = static_data[static_data.index.isin(table.df["meta_code_waterbeheerder"])]
+        static_data.loc[:, "node_id"] = (
+            table.df.reset_index().set_index("meta_code_waterbeheerder").loc[static_data.index].node_id
+        )
+        static_data.set_index("node_id", inplace=True)
 
+        # add function to node via categorie
+        for row in defaults_df.itertuples():
+            category = row.Index
+            function = row.function
+            static_data.loc[static_data["categorie"] == category, "meta_function"] = function
+
+        table.df.loc[static_data.index, "meta_function"] = static_data["meta_function"]
+
+
+# %% parameterize
+for node_type in ["Pump", "Outlet"]:
     # update on static_table
     if node_type in static_data_sheets:
+        # start with an empty static_df with the correct columns and meta_code_waterbeheerder
+        static_df = empty_static_df(model=model, node_type=node_type, meta_columns=["meta_code_waterbeheerder"])
+
         static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type).set_index("code")
 
         # in case there is more defined in static_data than in the model
@@ -63,7 +86,6 @@ for node_type in ["Pump", "Outlet"]:
         static_df.reset_index(inplace=True)
 
     # update-function from defaults
-
     for row in defaults_df.itertuples():
         category = row.Index
         mask = static_df["meta_categorie"] == category
@@ -79,7 +101,10 @@ for node_type in ["Pump", "Outlet"]:
                 flow_rate = np.array(
                     [
                         round_to_significant_digits(
-                            model.get_upstream_basins(node_id).area.sum() * flow_rate_mm_per_day / 1000 / 86400
+                            model.get_upstream_basins(node_id, stop_at_inlet=True).area.sum()
+                            * flow_rate_mm_per_day
+                            / 1000
+                            / 86400
                         )
                         for node_id in static_df[mask][sub_mask].node_id
                     ],
