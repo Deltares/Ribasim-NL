@@ -44,6 +44,7 @@ ipykernel = "*"
 jupyterlab = "*"
 matplotlib = "*"
 mypy = "*"
+networkx = ">=3.4"
 openpyxl = "*"
 pandas = "*"
 pandas-stubs = "*"
@@ -56,7 +57,7 @@ pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-python = ">=3.9"
+python = ">=3.11"
 quarto = "*"
 quartodoc = "*"
 rasterstats = "*"
@@ -79,7 +80,7 @@ ribasim_nl = { path = "src/ribasim_nl", editable = true }
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 
 [feature.prod.dependencies]
-ribasim = "==2024.11.0"
+ribasim = "==2025.1.0"
 
 [environments]
 default = { features = ["common", "prod"] }
