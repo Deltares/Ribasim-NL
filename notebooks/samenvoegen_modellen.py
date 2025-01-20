@@ -4,6 +4,7 @@ from datetime import datetime
 import ribasim
 
 from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
+from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.reset_static_tables import reset_static_tables
 
@@ -33,32 +34,6 @@ RESET_TABLES = [
     "ValleienVeluwe",
     "Vechtstromen",
 ]
-
-# https://www.aquo.nl/index.php/Imwa_sim_1.0/doc/codelijst/waterbeheerder
-INDEX_PREFIXES = {
-    "HollandseDelta": 40,
-    "Zuiderzeeland": 37,
-    "HollandsNoorderkwartier": 12,
-    "Rivierenland": 9,
-    "Delfland": 15,
-    "AaenMaas": 38,
-    "WetterskipFryslan": 2,
-    "Noorderzijlvest": 34,
-    "BrabantseDelta": 25,
-    "HunzeenAas": 33,
-    "Scheldestromen": 42,
-    "Vechtstromen": 44,
-    "RijnenIJssel": 7,
-    "ValleienVeluwe": 43,
-    "SchielandendeKrimpenerwaard": 39,
-    "StichtseRijnlanden": 14,
-    "DeDommel": 27,
-    "Limburg": 60,
-    "DrentsOverijsselseDelta": 59,
-    "Rijnland": 13,
-    "AmstelGooienVecht": 11,
-    "Rijkswaterstaat": 80,
-}
 
 models = [
     {
@@ -244,7 +219,7 @@ for idx, model in enumerate(models):
         ribasim_model = reset_index(ribasim_model)
 
     # prefix index so ids will be unique
-    ribasim_model = prefix_index(model=ribasim_model, prefix_id=INDEX_PREFIXES[model["authority"]])
+    ribasim_model = prefix_index(model=ribasim_model, prefix_id=waterbeheercode[model["authority"]])
 
     if idx == 0:
         lhm_model = ribasim_model
