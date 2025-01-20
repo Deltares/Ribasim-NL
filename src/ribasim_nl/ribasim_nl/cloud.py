@@ -432,3 +432,25 @@ class CloudStorage:
         self.upload_content(model_version_dir)
 
         return ModelVersion(model, today.year, today.month, revision)
+
+    def synchronize(self, filepaths: list[Path], check_on_remote: bool = True):
+        for path in filepaths:
+            path = Path(path)
+            url = self.joinurl(*path.relative_to(self.data_dir).parts)
+            # check if file exists on remote, if not raise for status
+            if check_on_remote:
+                r = requests.head(url, auth=self.auth)
+                r.raise_for_status()
+
+            # check if file exists local, if not download
+            if not path.exists():
+                print(f"download data for {path}")
+
+                if path.suffix == ".shp":  # with shapes we are to download the parent
+                    path = path.parent
+                    url = self.joinurl(*path.relative_to(self.data_dir).parts)
+
+                if self.content(url):
+                    self.download_content(url)
+                else:
+                    self.download_file(url)
