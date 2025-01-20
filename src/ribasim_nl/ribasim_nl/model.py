@@ -1,5 +1,6 @@
 # %%
 import warnings
+from collections import deque
 from pathlib import Path
 from typing import Literal
 
@@ -126,9 +127,35 @@ class Model(Model):
         self.basin.state.df = df
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
+    # def _upstream_nodes(self, node_id):
+    #     # get upstream nodes
+    #     return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
+
     def _upstream_nodes(self, node_id):
-        # get upstream nodes
-        return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
+        visited = set()  # To keep track of visited nodes
+        upstream_nodes = set()  # To store the result
+
+        # BFS using a deque
+        queue = deque([node_id])
+
+        while queue:
+            current_node = queue.popleft()
+
+            # Avoid re-visiting nodes
+            if current_node in visited:
+                continue
+            visited.add(current_node)
+
+            # Check predecessors (upstream neighbors)
+            for predecessor in self.graph.predecessors(current_node):
+                if predecessor not in visited:
+                    upstream_nodes.add(predecessor)
+
+                    # Stop traversal if 'uitlaat' is True
+                    if not self.graph.nodes[predecessor].get("function", "inlet"):
+                        queue.append(predecessor)
+
+        return upstream_nodes
 
     def _downstream_nodes(self, node_id):
         # get downstream nodes
