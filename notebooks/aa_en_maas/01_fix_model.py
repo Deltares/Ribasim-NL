@@ -1,4 +1,6 @@
 # %%
+from pathlib import Path
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -534,3 +536,11 @@ model.use_validation = True
 model.write(ribasim_fix_toml)
 model.report_basin_area()
 model.report_internal_basins()
+
+# %% Test run model
+
+model = Model.read(ribasim_fix_toml)
+model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+
+
+# %%
