@@ -63,6 +63,7 @@ def download_from_pdok(force_update: bool = False, upload_to_cloud_storage: bool
         upload_to_cloud_storage (bool, optional): upload to CloudStorage. Defaults to False.
     """
     # get atom-feed
+    print(f"Downloading GKW-data from {PDOK_URL}")
     response = requests.get(PDOK_URL)
     response.raise_for_status()
 
@@ -103,7 +104,7 @@ def get_gkw_source_dir() -> Path | None:
     if dirs:
         return [i for i in GKW_ROOT_PATH.glob("*") if i.is_dir][-1]
     else:
-        print("No GKW-data local, download latest using 'download_from_pdok()'")
+        print("No GKW-data local, download latest using 'download_from_cloud()' or 'download_from_pdok()'")
         return None
 
 
@@ -120,6 +121,7 @@ def get_gkw_source_url() -> str | None:
 def download_from_cloud() -> Path | None:
     """Download latest GKW-data from CloudStorage. Return local Path after download"""
     url = get_gkw_source_url()
+    print(f"Downloading GKW-data from {url}")
     if url is None:
         return None
     else:
