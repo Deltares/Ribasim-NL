@@ -121,7 +121,7 @@ params_list = [
         "GPGIDENT",
         "DrentsOverijsselseDelta_fix_model_network",
     ),
-    ("AaenMaas", "aam", "downloads/WS_PEILGEBIEDPolygon.shp", None, "ZOMERPEIL", "CODE", "AaenMaas_fix_model_network"),
+    ("AaenMaas", "aam", "downloads/WS_PEILGEBIEDPolygon.shp", None, "ZOMERPEIL", "CODE", "AaenMaas_fix_model_area"),
     (
         "BrabantseDelta",
         "wbd",
@@ -129,7 +129,7 @@ params_list = [
         "peilgebiedpraktijk",
         "WS_ZOMERPEIL",
         "CODE",
-        "BrabantseDelta_fix_model_network",
+        "BrabantseDelta_fix_model_area",
     ),
     (
         "StichtseRijnlanden",
@@ -138,7 +138,7 @@ params_list = [
         None,
         "WS_ZP",
         "WS_PGID",
-        "StichtseRijnlanden_fix_model_network",
+        "StichtseRijnlanden_fix_model_area",
     ),
     (
         "ValleienVeluwe",
@@ -147,7 +147,7 @@ params_list = [
         "peilgebiedpraktijk",
         "ws_max_peil",
         "code",
-        "ValleienVeluwe_fix_model_network",
+        "ValleienVeluwe_fix_model_area",
     ),
     (
         "Vechtstromen",
@@ -156,7 +156,7 @@ params_list = [
         None,
         "GPGZMRPL",
         "GPGIDENT",
-        "Vechtstromen_fix_model_network",
+        "Vechtstromen_fix_model_area",
     ),
 ]
 
