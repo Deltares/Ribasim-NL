@@ -97,19 +97,27 @@ for node_type in ["Pump", "Outlet"]:
             # fill nan with flow_rate_mm_day if provided
 
             if not pd.isna(row.flow_rate_mm_per_day):
-                flow_rate_mm_per_day = row.flow_rate_mm_per_day
-                flow_rate = np.array(
-                    [
-                        round_to_significant_digits(
-                            model.get_upstream_basins(node_id, stop_at_inlet=True).area.sum()
-                            * flow_rate_mm_per_day
-                            / 1000
-                            / 86400
-                        )
-                        for node_id in static_df[mask][sub_mask].node_id
-                    ],
-                    dtype=float,
-                )
+                unit_conversion = row.flow_rate_mm_per_day / 1000 / 86400
+                if row.function == "outlet":
+                    flow_rate = np.array(
+                        [
+                            round_to_significant_digits(
+                                model.get_upstream_basins(node_id, stop_at_inlet=True).area.sum() * unit_conversion
+                            )
+                            for node_id in static_df[mask][sub_mask].node_id
+                        ],
+                        dtype=float,
+                    )
+                elif row.function == "inlet":
+                    flow_rate = np.array(
+                        [
+                            round_to_significant_digits(
+                                model.get_downstream_basins(node_id, stop_at_outlet=True).area.sum() * unit_conversion
+                            )
+                            for node_id in static_df[mask][sub_mask].node_id
+                        ],
+                        dtype=float,
+                    )
                 static_df.loc[indices, "flow_rate"] = flow_rate
             elif not pd.isna(row.flow_rate):
                 static_df.loc[indices, "flow_rate"] = row.flow_rate

@@ -3,7 +3,7 @@ from collections import deque
 import networkx as nx
 
 
-def downstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_outlet=True):
+def downstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_outlet: bool = False):
     """Efficiently find all downstream nodes in a directed graph starting from a given node,
     stopping traversal at nodes stopping at the next outlet.
 
@@ -37,7 +37,7 @@ def downstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_outlet=True):
                 node_ids.add(successor)
 
                 # Stop traversal if 'function' is 'outlet'
-                if (not graph.nodes[successor].get("function", "outlet")) | (not stop_at_outlet):
+                if (not stop_at_outlet) | (not graph.nodes[successor].get("function") == "outlet"):
                     queue.append(successor)
 
     return node_ids

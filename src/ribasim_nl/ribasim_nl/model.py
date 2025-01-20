@@ -160,6 +160,11 @@ class Model(Model):
         upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
         return self.basin.area.df[self.basin.area.df.node_id.isin(upstream_node_ids)]
 
+    def get_downstream_basins(self, node_id, **kwargs):
+        # get upstream basin area
+        downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
+        return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
+
     def get_upstream_edges(self, node_id, **kwargs):
         # get upstream edges
         upstream_node_ids = self._upstream_nodes(node_id, **kwargs)

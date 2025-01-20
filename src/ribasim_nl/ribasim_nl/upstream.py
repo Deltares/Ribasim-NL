@@ -1,3 +1,4 @@
+# %%
 from collections import deque
 
 import networkx as nx
@@ -37,7 +38,7 @@ def upstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_inlet: bool = False)
                 node_ids.add(predecessor)
 
                 # Stop traversal if 'function' is 'inlet'
-                if (not graph.nodes[predecessor].get("function", "inlet")) | (not stop_at_inlet):
+                if (not stop_at_inlet) | (not graph.nodes[predecessor].get("function") == "inlet"):
                     queue.append(predecessor)
 
     return node_ids
