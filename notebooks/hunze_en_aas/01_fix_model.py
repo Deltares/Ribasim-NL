@@ -14,21 +14,21 @@ cloud = CloudStorage()
 authority = "HunzeenAas"
 name = "hea"
 
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{name}.toml")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
+ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
+model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+
+cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_path, model_edits_path])
 
 # %% read model
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
 # Load node edit data
-model_edits_url = cloud.joinurl(authority, "verwerkt", "model_edits.gpkg")
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-if not model_edits_path.exists():
-    cloud.download_file(model_edits_url)
-
 # Load area file to fill basin area holes
-ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
+
 ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="areas")
 
 
@@ -172,6 +172,5 @@ model.report_internal_basins()
 
 # %%
 # %% Test run model
-
-model = Model.read(ribasim_toml)
-model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+result = model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+assert result == 0

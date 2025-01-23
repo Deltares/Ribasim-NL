@@ -11,7 +11,14 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 authority = "DeDommel"
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", "model.toml")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir / "model.toml"
+area_shp = cloud.joinpath("DeDommel", "verwerkt", "watervlakken", "LWW_2023_A_water_vlak_V.shp")
+areas_gpkg = cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "areas.gpkg")
+hydamo_gpkg = cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg")
+q_data_gpkg = cloud.joinpath("DeDommel", "verwerkt", "1_ontvangen_data", "Geodata", "data_Q42018.gpkg")
+
+cloud.synchronize(filepaths=[ribasim_dir, area_shp, areas_gpkg, hydamo_gpkg, q_data_gpkg])
 
 basin_data = [
     basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
@@ -30,7 +37,7 @@ model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
 # TODO file not in the cloud
-area_gdf = gpd.read_file(cloud.joinpath("DeDommel", "verwerkt", "watervlakken", "LWW_2023_A_water_vlak_V.shp"))
+area_gdf = gpd.read_file(area_shp)
 
 # %% verwijder duplicated edges
 
@@ -70,7 +77,7 @@ for row in network_validator.edge_incorrect_connectivity().itertuples():
         meta_object_type = "openwater"
     if row.to_node_id == 14:
         gdf = gpd.read_file(
-            cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg"),
+            hydamo_gpkg,
             layer="duikersifonhevel",
             engine="pyogrio",
             fid_as_index=True,
@@ -137,7 +144,7 @@ for from_node_id, to_node_id in [[616, 1032], [1030, 616], [393, 1242], [1852, 3
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2292050862
 
 gdf = gpd.read_file(
-    cloud.joinpath("DeDommel", "verwerkt", "1_ontvangen_data", "Geodata", "data_Q42018.gpkg"),
+    q_data_gpkg,
     layer="HydroObject",
     engine="pyogrio",
     fid_as_index=True,
@@ -163,7 +170,7 @@ if not network_validator.node_internal_basin().empty:
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2367724440
 gdf = gpd.read_file(
-    cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg"),
+    hydamo_gpkg,
     layer="stuw",
     fid_as_index=True,
 )
@@ -181,7 +188,7 @@ kst_node = model.outlet.add(
 
 
 gdf = gpd.read_file(
-    cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg"),
+    hydamo_gpkg,
     layer="hydroobject",
     engine="pyogrio",
     fid_as_index=True,
@@ -224,9 +231,7 @@ basin_polygon = model.basin.area.df.union_all()
 holes = [Polygon(interior) for polygon in basin_polygon.buffer(10).buffer(-10).geoms for interior in polygon.interiors]
 geoseries = gpd.GeoSeries(holes, crs=28992)
 
-drainage_areas_df = gpd.read_file(
-    cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "areas.gpkg"), layer="drainage_areas"
-)
+drainage_areas_df = gpd.read_file(areas_gpkg, layer="drainage_areas")
 
 drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
 
@@ -332,8 +337,6 @@ model.report_basin_area()
 model.report_internal_basins()
 
 # %% Test run model
-
-model = Model.read(ribasim_fix_toml)
-model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
-
+result = model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+assert result == 0
 # %%
