@@ -55,8 +55,6 @@ model.edge.df.drop_duplicates(inplace=True)
 # Toevoegen ontbrekende basins (oplossen topologie)
 basin_edges_df = network_validator.edge_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
-basin_edges_df.to_file("basin_edges.gpkg")
-basin_nodes_df.to_file("basin_nodes.gpkg")
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
