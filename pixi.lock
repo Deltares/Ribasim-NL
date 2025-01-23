@@ -11644,20 +11644,20 @@ packages:
   timestamp: 1598024297745
 - pypi: ../Ribasim/python/ribasim
   name: ribasim
-  version: 2025.1.0
-  sha256: bc76f0d6b28e203efbaa6ced5c6e7c542e2304e784989ec6c3152a516cd1c041
+  version: 2024.11.0
+  sha256: ba8a6a24955e974dd0d7ae81ad59546134417f48eabce10cb280ac5f8c3290db
   requires_dist:
-  - geopandas>=1.0
-  - matplotlib>=3.7
-  - numpy>=1.25
-  - pandas>=2.0
+  - geopandas
+  - matplotlib
+  - numpy
+  - pandas
   - pandera>=0.20
-  - pyarrow>=17.0
-  - pydantic>=2.0
-  - pyogrio>=0.8
+  - pyarrow
+  - pydantic~=2.0
+  - pyogrio
   - shapely>=2.0
-  - tomli-w>=1.0
-  - tomli>=2.0
+  - tomli
+  - tomli-w
   - jinja2 ; extra == 'all'
   - networkx ; extra == 'all'
   - pytest ; extra == 'all'
@@ -11675,7 +11675,7 @@ packages:
   - pytest-xdist ; extra == 'tests'
   - ribasim-testmodels ; extra == 'tests'
   - teamcity-messages ; extra == 'tests'
-  requires_python: '>=3.11'
+  requires_python: '>=3.10'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/ribasim-2025.1.0-pyhd8ed1ab_0.conda
   sha256: 67804f3024f7d3b020a34ddbfef75892ac338bdb443bc52e9014cc10190a1f88

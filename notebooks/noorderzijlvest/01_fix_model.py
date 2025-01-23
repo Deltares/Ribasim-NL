@@ -10,6 +10,7 @@ from shapely.ops import snap, split
 
 from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 
 cloud = CloudStorage()
@@ -306,10 +307,21 @@ node_columns = model.basin.node.columns() + ["meta_code_waterbeheerder", "meta_c
 model.outlet.node.df.loc[:, "meta_code_waterbeheerder"] = model.outlet.node.df.name
 model.pump.node.df.loc[:, "meta_code_waterbeheerder"] = model.pump.node.df.name
 
+df = get_data_from_gkw(authority="Noorderzijlvest", layers=["gemaal", "stuw", "sluis"])
+df.set_index("code", inplace=True)
+names = df["naam"]
+names.loc["KSL011"] = "R.J. Cleveringensluizen"
+
 # remove names and clean columns
 for node_type in model.node_table().df.node_type.unique():
     table = getattr(model, pascal_to_snake_case(node_type))
-    table.node.df.name = ""
+
+    if "meta_code_waterbeheerder" in table.node.df.columns:
+        table.node.df.loc[:, "name"] = table.node.df["meta_code_waterbeheerder"].apply(
+            lambda x: names[x] if x in names.index.to_numpy() else ""
+        )
+    else:
+        table.node.df.name = ""
     columns = [col for col in table.node.df.columns if col in node_columns]
     table.node.df = table.node.df[columns]
 
