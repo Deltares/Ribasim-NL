@@ -1,4 +1,7 @@
 # %%
+import inspect
+from pathlib import Path
+
 import geopandas as gpd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
@@ -10,18 +13,20 @@ from ribasim_nl.reset_static_tables import reset_static_tables
 cloud = CloudStorage()
 
 authority = "ValleienVeluwe"
-short_name = "venv"
+name = "venv"
 
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{short_name}.toml")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-split_line_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg"), layer="split_basins", fid_as_index=True
-)
+fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+
+cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg])
 
 # %% read model
 model = Model.read(ribasim_toml)
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model_network", f"{short_name}.toml")
 network_validator = NetworkValidator(model)
+split_line_gdf = gpd.read_file(fix_user_data_gpkg, layer="split_basins", fid_as_index=True)
 
 # %% some stuff we'll need again
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -152,11 +157,52 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 # Reset static tables
 model = reset_static_tables(model)
 
+# %%
+actions = [
+    "remove_node",
+    "remove_edge",
+    "add_basin",
+    "add_basin_area",
+    "update_basin_area",
+    "merge_basins",
+    "reverse_edge",
+    "move_node",
+    "connect_basins",
+    "update_node",
+]
+actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+# remove unassigned basin area
+model.remove_unassigned_basin_area()
+
+# %% corrigeren knoop-topologie
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet")
+
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet")
+
 
 #  %% write model
-# model.use_validation = True
-model.write(ribasim_toml)
+model.use_validation = True
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.report_basin_area()
 model.report_internal_basins()
 
 # %%
+result = model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+assert result == 0
