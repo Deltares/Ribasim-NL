@@ -13,10 +13,10 @@ cloud = CloudStorage()
 authority = "DeDommel"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-area_shp = cloud.joinpath("DeDommel", "verwerkt", "watervlakken", "LWW_2023_A_water_vlak_V.shp")
-areas_gpkg = cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "areas.gpkg")
-hydamo_gpkg = cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg")
-q_data_gpkg = cloud.joinpath("DeDommel", "verwerkt", "1_ontvangen_data", "Geodata", "data_Q42018.gpkg")
+area_shp = cloud.joinpath(authority, "verwerkt", "watervlakken", "LWW_2023_A_water_vlak_V.shp")
+areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+q_data_gpkg = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Geodata", "data_Q42018.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, area_shp, areas_gpkg, hydamo_gpkg, q_data_gpkg])
 
@@ -331,8 +331,8 @@ model.basin.area.df = area_df
 model.edge.df.reset_index(drop=True, inplace=True)
 model.edge.df.index.name = "edge_id"
 
-ribasim_fix_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
-model.write(ribasim_fix_toml)
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
+model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
 
