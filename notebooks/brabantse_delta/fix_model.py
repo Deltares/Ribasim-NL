@@ -14,26 +14,21 @@ cloud = CloudStorage()
 
 authority = "BrabantseDelta"
 name = "wbd"
-
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{name}.toml")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
+hydamo_gpkg = cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 
-ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="areas")
-
-# Load node edit data
-model_edits_url = cloud.joinurl(authority, "verwerkt", "model_edits.gpkg")
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-if not model_edits_path.exists():
-    cloud.download_file(model_edits_url)
+cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_gpkg, hydamo_gpkg, model_edits_gpkg])
 
 # %% read model and hydroobject
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
-hydroobject_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject", fid_as_index=True
-)
+hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
+ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
 
 # %% some stuff we'll need again
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -104,12 +99,12 @@ for row in network_validator.edge_incorrect_type_connectivity(
 model = reset_static_tables(model)
 
 # %%
-for action in gpd.list_layers(model_edits_path).name:
+for action in gpd.list_layers(model_edits_gpkg).name:
     print(action)
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+    df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
@@ -171,8 +166,7 @@ model.report_internal_basins()
 
 # %%#
 # Test run model
-
-model = Model.read(ribasim_toml)
-model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+result = model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+assert result == 0
 
 # %%
