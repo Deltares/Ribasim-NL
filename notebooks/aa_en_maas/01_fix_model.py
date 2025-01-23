@@ -16,29 +16,36 @@ authority = "AaenMaas"
 name = "aam"
 
 # %% Check if model exist, otherwise download
-model_url = cloud.joinurl(authority, "modellen", f"{authority}_2024_6_3")
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", "model.toml")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+afwateringseenheden_shp = cloud.joinpath(
+    authority,
+    "verwerkt",
+    "1_ontvangen_data",
+    "Na_levering_202404",
+    "afwateringseenheden_WAM",
+    "Afwateringseenheden.shp",
+)
+af_aanvoergebied_shp = cloud.joinpath(authority, "aangeleverd", "Eerste_levering", "AfvoergebiedAanvoergebied.shp")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 
-if not ribasim_toml.exists():
-    cloud.download_content(model_url)
-
-if ribasim_toml.exists():  # get a name version to differentiate QGIS layergroup
-    ribasim_toml.with_name(f"{name}.toml").write_text(ribasim_toml.read_text())
-
-
+cloud.synchronize(
+    filepaths=[
+        ribasim_dir,
+        ribasim_areas_gpkg,
+        afwateringseenheden_shp,
+        hydamo_gpkg,
+        af_aanvoergebied_shp,
+        model_edits_gpkg,
+    ]
+)
 # %%
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
-
-verwerkt_dir = cloud.joinpath(authority, "verwerkt")
-verwerkt_dir.mkdir(exist_ok=True)
-
-modelfouten_gpkg = cloud.joinpath(authority, "verwerkt", "modelfouten.gpkg")
-
-hydroobject_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject", fid_as_index=True
-)
+hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 
 # %% some stuff we'll need again
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -295,30 +302,18 @@ df = pd.DataFrame(
 df.index.name = "fid"
 model.flow_boundary.static.df = df
 
-# %% fix basin area
-drainage_units_path = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "1_ontvangen_data",
-    "Na_levering_202404",
-    "afwateringseenheden_WAM",
-    "Afwateringseenheden.shp",
-)
-drainage_units_gdf = gpd.read_file(drainage_units_path, fid_as_index=True)
+# %% read
+drainage_units_gdf = gpd.read_file(
+    afwateringseenheden_shp, fid_as_index=True
+)  # Deze afwateringseenheden wordt gebruikt voor vullen gaten
+drainage_units_johnny_gdf = gpd.read_file(
+    af_aanvoergebied_shp, fid_as_index=True
+)  # Indien gaten niet met bovenstaande data kunnen worden gevuld dan proberen met deze
+ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
 
-# Load alternative drainage data
-drainage_units_path = cloud.joinpath(authority, "aangeleverd", "Eerste_levering", "AfvoergebiedAanvoergebied.shp")
-drainage_units_johnny_gdf = gpd.read_file(drainage_units_path, fid_as_index=True)
-
-# Load Ribasim model basin areas
-ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="areas")
-
-# Load node edit data
-basin_node_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-basin_node_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_node")
-basin_area_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="unassigned_basin_area")
-internal_basin_edits_gdf = gpd.read_file(basin_node_edits_path, fid_as_index=True, layer="internal_basins")
+basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="unassigned_basin_node")
+basin_area_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="unassigned_basin_area")
+internal_basin_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="internal_basins")
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
 
 df = basin_area_edits_gdf[basin_area_edits_gdf["to_node_id"].notna()]
@@ -487,16 +482,15 @@ for row in network_validator.edge_incorrect_type_connectivity(
 
 
 # %%
-ribasim_fix_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model = reset_static_tables(model)
 model.use_validation = True
-model.write(ribasim_fix_toml)
+model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
 
 # %% Test run model
-
-model = Model.read(ribasim_fix_toml)
-model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+result = model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+assert result == 0
 
 # %%
