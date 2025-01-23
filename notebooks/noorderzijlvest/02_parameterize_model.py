@@ -1,5 +1,7 @@
 # %%
 import time
+from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -24,8 +26,6 @@ static_data_xlsx = cloud.joinpath(
     "parameters",
     "static_data.xlsx",
 )
-static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
-defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0)
 
 
 # read model
@@ -34,15 +34,25 @@ defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
 model = Model.read(ribasim_toml)
 
-start_time = time.time()
+
 # %% add functions
-
 # functions
+def add_function_to_nodes(model: Model, node_type: Literal["Pump", "Outlet"], static_data_xlsx: Path) -> Model:
+    """Add function-column 'meta_function' to ribasim.Model node table using an Excel spreadsheet with data.
 
-# update function - column
-for node_type in ["Pump", "Outlet"]:
-    table = getattr(model, pascal_to_snake_case(node_type)).node
+    Args:
+        model (Model): Ribasim model
+        node_type (Literal["Pump", "Outlet"]): Either "Pump" or "Outlet".
+        static_data_xlsx (Path): Excel spreadsheet with node_types
+
+    Returns
+    -------
+        Model: updated model
+    """
+    static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
+    # update function - column
     if node_type in static_data_sheets:
+        table = getattr(model, pascal_to_snake_case(node_type)).node
         # add node_id to static_data
         static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type).set_index("code")
         static_data = static_data[static_data.index.isin(table.df["meta_code_waterbeheerder"])]
@@ -52,6 +62,7 @@ for node_type in ["Pump", "Outlet"]:
         static_data.set_index("node_id", inplace=True)
 
         # add function to node via categorie
+        defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0)
         for row in defaults_df.itertuples():
             category = row.Index
             function = row.function
@@ -59,21 +70,41 @@ for node_type in ["Pump", "Outlet"]:
 
         table.df.loc[static_data.index, "meta_function"] = static_data["meta_function"]
 
+    return model
 
-# %% parameterize
-for node_type in ["Pump", "Outlet"]:
-    # update on static_table
+
+def create_static_df(
+    model: Model,
+    node_type: Literal["Pump", "Outlet"],
+    static_data_xlsx: Path | None = None,
+    code_column: str = "meta_code_waterbeheerder",
+) -> pd.DataFrame:
+    """Create static df and update from Excel spreadsheet.
+
+    Args:
+        model (Model): Ribasim model
+        node_type (Literal["Pump", "Outlet"]): Either "Pump" or "Outlet".
+        static_data_xlsx (Path): Excel spreadsheet with node_types
+
+    Returns
+    -------
+        pd.DataFrame DataFrame in format of static table (ignoring NoData)
+    """
+    # start with an empty static_df with the correct columns and meta_code_waterbeheerder
+    static_df = empty_static_df(model=model, node_type=node_type, meta_columns=[code_column])
+
+    # update data with static data in Excel
+    static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
     if node_type in static_data_sheets:
-        # start with an empty static_df with the correct columns and meta_code_waterbeheerder
-        static_df = empty_static_df(model=model, node_type=node_type, meta_columns=["meta_code_waterbeheerder"])
+        static_df = empty_static_df(model=model, node_type=node_type, meta_columns=[code_column])
 
         static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type).set_index("code")
 
         # in case there is more defined in static_data than in the model
-        static_data = static_data[static_data.index.isin(static_df["meta_code_waterbeheerder"])]
+        static_data = static_data[static_data.index.isin(static_df[code_column])]
 
         # update-function from static_data in Excel
-        static_data.loc[:, "node_id"] = static_df.set_index("meta_code_waterbeheerder").loc[static_data.index].node_id
+        static_data.loc[:, "node_id"] = static_df.set_index(code_column).loc[static_data.index].node_id
         static_data.columns = [i if i in static_df.columns else f"meta_{i}" for i in static_data.columns]
         static_data = static_data.set_index("node_id")
 
@@ -85,7 +116,22 @@ for node_type in ["Pump", "Outlet"]:
             static_df.loc[series.index.to_numpy(), col] = series
         static_df.reset_index(inplace=True)
 
+    return static_df
+
+
+def defaults_to_static_df(static_df: pd.DataFrame, static_data_xlsx: Path) -> pd.DataFrame:
+    """Fill nodata in static table with defaults.
+
+    Args:
+        static_df (pd.DataFrame): DataFrame in format of static table (with nodata)
+        static_data_xlsx (Path): Excel containing defaults table
+
+    Returns
+    -------
+        pd.DataFrame: DataFrame in format of static table
+    """
     # update-function from defaults
+    defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0)
     for row in defaults_df.itertuples():
         category = row.Index
         mask = static_df["meta_categorie"] == category
@@ -122,7 +168,7 @@ for node_type in ["Pump", "Outlet"]:
             elif not pd.isna(row.flow_rate):
                 static_df.loc[indices, "flow_rate"] = row.flow_rate
             else:
-                raise ValueError(f"Can't set flow_rate for node_ids {static_df.loc[indices, "node_id"].to_numpy()}")
+                raise ValueError(f"Can't set flow_rate for node_ids {static_df.loc[indices, 'node_id'].to_numpy()}")
 
         # min_upstream_level
         sub_mask = static_df[mask]["min_upstream_level"].isna()
@@ -150,7 +196,27 @@ for node_type in ["Pump", "Outlet"]:
             ).round(2)
             static_df.reset_index(inplace=True)
 
-    # sanitize df
+    return static_df
+
+
+start_time = time.time()
+
+# %% add (meta_)function to node-table
+for node_type in ["Pump", "Outlet"]:
+    model = add_function_to_nodes(model=model, static_data_xlsx=static_data_xlsx, node_type=node_type)
+
+# %% add static_data to static-tables and fill nan with defaults
+for node_type in ["Pump", "Outlet"]:
+    # create static table from Excel data
+    static_df = create_static_df(
+        model=model,
+        node_type=node_type,
+        static_data_xlsx=static_data_xlsx,
+        code_column="meta_code_waterbeheerder",
+    )
+    # fill with defaults
+    static_df = defaults_to_static_df(static_df=static_df, static_data_xlsx=static_data_xlsx)
+    # sanitize df and update model
     static_df.drop(columns=["meta_code_waterbeheerder"], inplace=True)
     getattr(model, pascal_to_snake_case(node_type)).static.df = static_df
 
