@@ -1,5 +1,6 @@
 # %%
 import inspect
+from pathlib import Path
 
 import geopandas as gpd
 from ribasim import Node
@@ -12,9 +13,9 @@ from ribasim_nl.reset_static_tables import reset_static_tables
 cloud = CloudStorage()
 
 authority = "DrentsOverijsselseDelta"
-short_name = "dod"
+name = "dod"
 
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{short_name}.toml")
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{name}.toml")
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydroobject_gdf = gpd.read_file(
     cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject", fid_as_index=True
@@ -44,7 +45,7 @@ split_line_gdf = gpd.read_file(
 
 # %% read model
 model = Model.read(ribasim_toml)
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model_network", f"{short_name}.toml")
+
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
@@ -374,9 +375,12 @@ model.remove_unassigned_basin_area()
 model = reset_static_tables(model)
 #  %% write model
 model.use_validation = True
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
-
-model.invalid_topology_at_node().to_file(ribasim_toml.with_name("invalid_topology_at_connector_nodes.gpkg"))
 model.report_basin_area()
 model.report_internal_basins()
 # %%
+# %% Test run model
+
+model = Model.read(ribasim_toml)
+model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))

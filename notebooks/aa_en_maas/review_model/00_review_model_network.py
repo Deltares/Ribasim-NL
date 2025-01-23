@@ -6,10 +6,10 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 
-authority = "DrentsOverijsselseDelta"
-short_name = "dod"
+authority = "AaenMaas"
+short_name = "aam"
 
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model_network", f"{short_name}.toml")
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{short_name}.toml")
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 
 model = Model.read(ribasim_toml)
@@ -24,8 +24,6 @@ modelfouten_gpkg = cloud.joinpath(authority, "verwerkt", "modelfouten.gpkg")
 
 duplicated_edges = len(model.edge.df[model.edge.df.duplicated()])
 model.edge.df.drop_duplicates(inplace=True)
-
-model.fix_unassigned_basin_area()
 
 # %% wegschrijven fouten
 

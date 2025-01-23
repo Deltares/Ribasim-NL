@@ -13,7 +13,7 @@ from ribasim_nl.reset_static_tables import reset_static_tables
 cloud = CloudStorage()
 
 authority = "AaenMaas"
-short_name = "aam"
+name = "aam"
 
 # %% Check if model exist, otherwise download
 model_url = cloud.joinurl(authority, "modellen", f"{authority}_2024_6_3")
@@ -23,8 +23,8 @@ database_gpkg = ribasim_toml.with_name("database.gpkg")
 if not ribasim_toml.exists():
     cloud.download_content(model_url)
 
-if ribasim_toml.exists():  # get a short_name version to differentiate QGIS layergroup
-    ribasim_toml.with_name(f"{short_name}.toml").write_text(ribasim_toml.read_text())
+if ribasim_toml.exists():  # get a name version to differentiate QGIS layergroup
+    ribasim_toml.with_name(f"{name}.toml").write_text(ribasim_toml.read_text())
 
 
 # %%
@@ -39,50 +39,6 @@ modelfouten_gpkg = cloud.joinpath(authority, "verwerkt", "modelfouten.gpkg")
 hydroobject_gdf = gpd.read_file(
     cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject", fid_as_index=True
 )
-
-ribasim_fix_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model_network", f"{short_name}.toml")
-
-
-# %% verwijderen duplicated edges
-
-duplicated_edges = len(model.edge.df[model.edge.df.duplicated()])
-model.edge.df.drop_duplicates(inplace=True)
-
-# %% wegschrijven fouten
-
-# niet-bestaande fouten
-mask = model.edge.df.to_node_id.isin(model.node_table().df.index) & model.edge.df.from_node_id.isin(
-    model.node_table().df.index
-)
-
-edge_mist_node_df = model.edge.df[~mask]
-model.edge.df = model.edge.df[mask]
-
-mask = model.edge.df.geometry.length == 0
-model.edge.df[mask].centroid.to_file(modelfouten_gpkg, layer="edge_zonder_lengte")
-model.edge.df = model.edge.df[~mask]
-
-# niet-gekoppelde areas
-model.basin.area.df[~model.basin.area.df.node_id.isin(model.basin.node.df.index)].to_file(
-    modelfouten_gpkg, layer="area_niet_een_basin"
-)
-
-model.basin.node.df[~model.basin.node.df.index.isin(model.basin.area.df.node_id)].to_file(
-    modelfouten_gpkg, layer="basin_zonder_area"
-)
-
-# ontbrekende basins
-network_validator.node_invalid_connectivity().to_file(modelfouten_gpkg, layer="node_mist")
-pd.concat([network_validator.edge_incorrect_connectivity(), edge_mist_node_df]).to_file(
-    modelfouten_gpkg, layer="ege_mist_node"
-)
-
-# nodes met verkeerde richting
-
-model.invalid_topology_at_node().to_file(modelfouten_gpkg, layer="node_met_verkeerde_instroom_uitstroom_egde")
-
-
-network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -531,6 +487,7 @@ for row in network_validator.edge_incorrect_type_connectivity(
 
 
 # %%
+ribasim_fix_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model = reset_static_tables(model)
 model.use_validation = True
 model.write(ribasim_fix_toml)
@@ -541,6 +498,5 @@ model.report_internal_basins()
 
 model = Model.read(ribasim_fix_toml)
 model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
-
 
 # %%
