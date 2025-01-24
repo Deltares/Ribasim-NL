@@ -18,6 +18,7 @@ from shapely.geometry.base import BaseGeometry
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import split_basin
+from ribasim_nl.parametrization.parameterize import Parameterize
 from ribasim_nl.run_model import run
 from ribasim_nl.upstream import upstream_nodes
 
@@ -77,6 +78,14 @@ class Model(Model):
     _basin_results: Results | None = None
     _basin_outstate: Results | None = None
     _graph: nx.Graph | None = None
+    _parameterize: Parameterize | None = None
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._parameterize = Parameterize(model=self)
+
+    def parameterize(self, **kwargs):
+        self._parameterize.run(**kwargs)
 
     @property
     def basin_results(self):

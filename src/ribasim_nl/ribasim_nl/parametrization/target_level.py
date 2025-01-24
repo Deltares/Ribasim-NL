@@ -1,6 +1,6 @@
 import pandas as pd
 
-from ribasim_nl import Model
+from ribasim_nl.model import Model
 
 
 def upstream_target_levels(

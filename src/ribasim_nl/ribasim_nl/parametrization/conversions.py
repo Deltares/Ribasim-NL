@@ -45,8 +45,11 @@ def round_to_precision(number: float, precision: float | int):
         return number
 
     number = Decimal(str(number))
-    precision = Decimal(str(precision))
-    rounded = (number / precision).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * precision
+    if precision == 0:
+        rounded = (number).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    else:
+        precision = Decimal(str(precision))
+        rounded = (number / precision).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * precision
 
     return float(rounded)
 
