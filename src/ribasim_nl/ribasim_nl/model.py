@@ -650,7 +650,7 @@ class Model(Model):
                 raise ValueError("geometry cannot be None")
             else:
                 DeprecationWarning("value `line` in split_basin funtion is deprecated. Use `geometry` in stead.")
-                line = geometry
+                geometry = line
 
         if self.basin.area.df is None:
             raise ValueError("provide basin / area table first")

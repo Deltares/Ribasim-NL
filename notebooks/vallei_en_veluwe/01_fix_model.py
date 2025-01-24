@@ -1,6 +1,5 @@
 # %%
 import inspect
-from pathlib import Path
 
 import geopandas as gpd
 from ribasim import Node
@@ -198,9 +197,10 @@ for row in network_validator.edge_incorrect_type_connectivity(
 #  %% write model
 model.use_validation = True
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
+model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
 
 # %%
-result = model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+result = model.run()
 assert result == 0

@@ -1,6 +1,5 @@
 # %%
 import inspect
-from pathlib import Path
 
 import geopandas as gpd
 from ribasim import Node
@@ -379,4 +378,4 @@ model.report_internal_basins()
 # %% Test run model
 
 model = Model.read(ribasim_toml)
-model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+model.run()

@@ -23,9 +23,15 @@ def run(
     """
     env = os.environ.copy()
 
+    toml_path = Path(toml_path)
+
+    if not toml_path.exists():
+        raise FileNotFoundError(f"{toml_path} does not exist!")
+
     # use exe_path if not None (and check if exists)
     if ribasim_exe is not None:
-        args = [Path(ribasim_exe).as_posix(), toml_path.as_posix()]
+        ribasim_exe = Path(ribasim_exe)
+        args = [ribasim_exe.as_posix(), toml_path.as_posix()]
         if not ribasim_exe.exists():
             raise FileNotFoundError(f"{ribasim_exe} does not exist!")
     else:

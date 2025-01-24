@@ -1,5 +1,4 @@
 # %%
-from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -337,6 +336,6 @@ model.report_basin_area()
 model.report_internal_basins()
 
 # %% Test run model
-result = model.run(ribasim_exe=Path("c:\\ribasim_dev\\ribasim.exe"))
+result = model.run()
 assert result == 0
 # %%
