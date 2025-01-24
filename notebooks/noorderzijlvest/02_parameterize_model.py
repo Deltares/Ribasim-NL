@@ -14,12 +14,16 @@ static_data_xlsx = cloud.joinpath(
     "parameters",
     "static_data.xlsx",
 )
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
+ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
+# you need the excel, but the model should be local-only by running 01_fix_model.py
+cloud.synchronize(filepaths=[static_data_xlsx])
+cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %%
 
 # read
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
 model = Model.read(ribasim_toml)
 
 start_time = time.time()
@@ -33,8 +37,3 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)
-
-# %%
-
-# test-run
-assert model.run() == 0
