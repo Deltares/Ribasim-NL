@@ -160,7 +160,7 @@ model.basin.area.df = combined_basin_areas_gdf
 
 #  %% write model
 model.use_validation = True
-ribasim_fix_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
