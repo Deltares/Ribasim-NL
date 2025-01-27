@@ -14,7 +14,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import split
 from shapely.wkt import dumps
 
-from peilbeheerst_model import waterschap_data
+from peilbeheerst_model.waterschappen import waterschap_data
 
 # ### Define functions
 # 1. splitting functions
