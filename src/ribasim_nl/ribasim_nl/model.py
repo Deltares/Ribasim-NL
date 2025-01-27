@@ -16,8 +16,11 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import split_basin
+from ribasim_nl.parametrization.parameterize import Parameterize
 from ribasim_nl.run_model import run
+from ribasim_nl.upstream import upstream_nodes
 
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
@@ -75,6 +78,14 @@ class Model(Model):
     _basin_results: Results | None = None
     _basin_outstate: Results | None = None
     _graph: nx.Graph | None = None
+    _parameterize: Parameterize | None = None
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._parameterize = Parameterize(model=self)
+
+    def parameterize(self, **kwargs):
+        self._parameterize.run(**kwargs)
 
     @property
     def basin_results(self):
@@ -94,13 +105,30 @@ class Model(Model):
     def graph(self):
         # create a DiGraph from edge-table
         if self._graph is None:
-            self._graph = nx.from_pandas_edgelist(
+            graph = nx.from_pandas_edgelist(
                 df=self.edge.df[["from_node_id", "to_node_id"]],
                 source="from_node_id",
                 target="to_node_id",
                 create_using=nx.DiGraph,
             )
+            if "meta_function" not in self.node_table().df.columns:
+                node_attributes = {node_id: {"function": ""} for node_id in self.node_table().df.index}
+            else:
+                node_attributes = (
+                    self.node_table()
+                    .df.rename(columns={"meta_function": "function"})[["function"]]
+                    .to_dict(orient="index")
+                )
+            nx.set_node_attributes(graph, node_attributes)
+
+            self._graph = graph
+
         return self._graph
+
+    @property
+    def reset_graph(self):
+        self._graph = None
+        return self.graph
 
     @property
     def next_node_id(self):
@@ -126,28 +154,35 @@ class Model(Model):
         self.basin.state.df = df
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
-    def _upstream_nodes(self, node_id):
+    def _upstream_nodes(self, node_id, **kwargs):
         # get upstream nodes
-        return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
+        #     return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
+        return upstream_nodes(graph=self.graph, node_id=node_id, **kwargs)
 
-    def _downstream_nodes(self, node_id):
+    def _downstream_nodes(self, node_id, **kwargs):
         # get downstream nodes
-        return list(nx.traversal.bfs_tree(self.graph, node_id))
+        return downstream_nodes(graph=self.graph, node_id=node_id, **kwargs)
+        # return list(nx.traversal.bfs_tree(self.graph, node_id))
 
-    def get_upstream_basins(self, node_id):
+    def get_upstream_basins(self, node_id, **kwargs):
         # get upstream basin area
-        upstream_node_ids = self._upstream_nodes(node_id)
+        upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
         return self.basin.area.df[self.basin.area.df.node_id.isin(upstream_node_ids)]
 
-    def get_upstream_edges(self, node_id):
+    def get_downstream_basins(self, node_id, **kwargs):
+        # get upstream basin area
+        downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
+        return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
+
+    def get_upstream_edges(self, node_id, **kwargs):
         # get upstream edges
-        upstream_node_ids = self._upstream_nodes(node_id)
+        upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
         mask = self.edge.df.from_node_id.isin(upstream_node_ids[1:]) & self.edge.df.to_node_id.isin(upstream_node_ids)
         return self.edge.df[mask]
 
-    def get_downstream_edges(self, node_id):
+    def get_downstream_edges(self, node_id, **kwargs):
         # get upstream edges
-        downstream_node_ids = self._downstream_nodes(node_id)
+        downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
         mask = self.edge.df.from_node_id.isin(downstream_node_ids) & self.edge.df.to_node_id.isin(
             downstream_node_ids[1:]
         )
@@ -501,7 +536,7 @@ class Model(Model):
 
         self.basin.area.df.loc[mask, ["node_id"]] = node_id
 
-    def add_basin_area(self, geometry: MultiPolygon, node_id: int | None = None):
+    def add_basin_area(self, geometry: MultiPolygon, node_id: int | None = None, meta_streefpeil: float | None = None):
         # if node_id is None, get an available node_id
         if pd.isna(node_id):
             basin_df = self.basin.node.df[self.basin.node.df.within(geometry)]
@@ -524,7 +559,10 @@ class Model(Model):
                 raise ValueError(f"geometry-type {geometry.geom_type} is not valid. Provide (Multi)Polygon instead")
 
         # if all correct, assign
-        area_df = gpd.GeoDataFrame({"node_id": [node_id], "geometry": [geometry]}, crs=self.crs)
+        data = {"node_id": [node_id], "geometry": [geometry]}
+        if meta_streefpeil is not None:
+            data = {**data, "meta_streefpeil": [meta_streefpeil]}
+        area_df = gpd.GeoDataFrame(data, crs=self.crs)
         area_df.index.name = "fid"
         area_df.index += self.basin.area.df.index.max() + 1
         self.basin.area.df = pd.concat([self.basin.area.df, area_df])
