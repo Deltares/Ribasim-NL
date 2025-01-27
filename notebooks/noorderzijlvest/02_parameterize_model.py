@@ -1,6 +1,7 @@
 # %%
 import time
 
+from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
@@ -37,3 +38,14 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)
+
+# %%
+
+# run model
+exit_code = model.run()
+assert exit_code == 0
+
+# %%
+controle_output = Control(ribasim_toml=ribasim_toml)
+indicators = controle_output.run_all()
+# %%

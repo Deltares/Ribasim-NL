@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -7,11 +8,19 @@ import ribasim
 
 
 class Control:
-    def __init__(self, work_dir):
-        self.work_dir = work_dir
-        self.path_basin_output = os.path.join(work_dir, "results", "basin.arrow")
-        self.path_ribasim_toml = os.path.join(work_dir, "ribasim.toml")
-        self.path_control_dict_path = os.path.join(work_dir, "results", "output_controle")
+    def __init__(self, work_dir=None, ribasim_toml=None):
+        if (work_dir is None) and (ribasim_toml is None):
+            raise ValueError("provide either work_dir or ribasim_toml")
+        else:
+            if ribasim_toml is not None:
+                self.path_ribasim_toml = ribasim_toml
+                self.work_dir = Path(ribasim_toml).parent
+            else:
+                self.path_ribasim_toml = os.path.join(work_dir, "ribasim.toml")
+                self.work_dir = work_dir
+
+        self.path_basin_output = os.path.join(self.work_dir, "results", "basin.arrow")
+        self.path_control_dict_path = os.path.join(self.work_dir, "results", "output_controle")
 
     def read_model_output(self):
         df_basin = pd.read_feather(self.path_basin_output)
@@ -203,7 +212,7 @@ class Control:
             data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG")
 
         # copy checks_symbology file from old dir to new dir
-        output_controle_qlr_path = r"../../../../../Data_overig/QGIS_qlr/output_controle.qlr"
+        output_controle_qlr_path = Path(__file__).parent.joinpath("data", "output_controle.qlr")
         shutil.copy(src=output_controle_qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
         return
