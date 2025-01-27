@@ -12,39 +12,35 @@ from ribasim_nl.reset_static_tables import reset_static_tables
 cloud = CloudStorage()
 
 authority = "DrentsOverijsselseDelta"
-short_name = "dod"
+name = "dod"
 
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3", f"{short_name}.toml")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-hydroobject_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject", fid_as_index=True
+hydroobject_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+duikersifonhevel_gpkg = cloud.joinpath(authority, "aangeleverd", "Aanlevering_202311", "HyDAMO_WM_20231117.gpkg")
+
+
+model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+fix_user_data_path = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
+
+cloud.synchronize(
+    filepaths=[ribasim_dir, hydroobject_gpkg, duikersifonhevel_gpkg, model_edits_path, fix_user_data_path]
 )
+
 duikersifonhevel_gdf = gpd.read_file(
-    cloud.joinpath(authority, "aangeleverd", "Aanlevering_202311", "HyDAMO_WM_20231117.gpkg"),
+    duikersifonhevel_gpkg,
     fid_as_index=True,
     layer="duikersifonhevel",
 )
 
-# Load node edit data
-model_edits_url = cloud.joinurl(authority, "verwerkt", "model_edits.gpkg")
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-if not model_edits_path.exists():
-    cloud.download_file(model_edits_url)
-
-# Load node edit data
-fix_user_data_url = cloud.joinurl(authority, "verwerkt", "fix_user_data.gpkg")
-fix_user_data_path = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
-if not fix_user_data_path.exists():
-    cloud.download_file(fix_user_data_url)
-
-split_line_gdf = gpd.read_file(
-    cloud.joinpath(authority, "verwerkt", fix_user_data_path), layer="split_basins", fid_as_index=True
-)
+split_line_gdf = gpd.read_file(fix_user_data_path, layer="split_basins", fid_as_index=True)
+hydroobject_gdf = gpd.read_file(hydroobject_gpkg, layer="hydroobject", fid_as_index=True)
 
 
 # %% read model
 model = Model.read(ribasim_toml)
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model_network", f"{short_name}.toml")
+
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
@@ -374,9 +370,12 @@ model.remove_unassigned_basin_area()
 model = reset_static_tables(model)
 #  %% write model
 model.use_validation = True
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
-
-model.invalid_topology_at_node().to_file(ribasim_toml.with_name("invalid_topology_at_connector_nodes.gpkg"))
 model.report_basin_area()
 model.report_internal_basins()
 # %%
+# %% Test run model
+
+model = Model.read(ribasim_toml)
+model.run()

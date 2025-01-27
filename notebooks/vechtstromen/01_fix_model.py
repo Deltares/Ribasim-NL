@@ -1,4 +1,6 @@
 # %%
+import inspect
+
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
@@ -7,28 +9,29 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import nearest_points
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
-from ribasim_nl.geometry import edge, split_basin, split_basin_multi_polygon
+from ribasim_nl.geometry import drop_z, edge, split_basin, split_basin_multi_polygon
 from ribasim_nl.reset_static_tables import reset_static_tables
 
 cloud = CloudStorage()
+authority = "Vechtstromen"
+name = "vechtstromen"
+cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("Vechtstromen", "modellen", "Vechtstromen_2024_6_3", "vechtstromen.toml")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-hydroobject_gdf = gpd.read_file(
-    cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject", fid_as_index=True
-)
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
 
-split_line_gdf = gpd.read_file(
-    cloud.joinpath("Vechtstromen", "verwerkt", "fix_user_data.gpkg"), layer="split_basins", fid_as_index=True
-)
+cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg])
 
-level_boundary_gdf = gpd.read_file(
-    cloud.joinpath("Vechtstromen", "verwerkt", "fix_user_data.gpkg"), layer="level_boundary", fid_as_index=True
-)
+# %%
+hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
+split_line_gdf = gpd.read_file(fix_user_data_gpkg, layer="split_basins", fid_as_index=True)
+level_boundary_gdf = gpd.read_file(fix_user_data_gpkg, layer="level_boundary", fid_as_index=True)
 
-# %% read model
 model = Model.read(ribasim_toml)
-ribasim_toml = cloud.joinpath("Vechtstromen", "modellen", "Vechtstromen_fix_model_network", "vechtstromen.toml")
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
@@ -47,6 +50,9 @@ basin_data = [
 ]
 outlet_data = outlet.Static(flow_rate=[100])
 
+
+# # drop z in basin.nodes, zodat we hieronder geen crashes meer krijgen.
+model.basin.node.df.loc[:, "geometry"] = model.basin.node.df.geometry.apply(drop_z)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385111465
 
@@ -576,9 +582,10 @@ model.edge.add(
 line = split_line_gdf.at[5, "geometry"]
 model.split_basin(line=line)
 manning_node = model.manning_resistance.add(
-    Node(geometry=line.intersection(hydroobject_gdf.at[6866, "geometry"])), tables=[manning_data]
+    Node(geometry=drop_z(line.intersection(hydroobject_gdf.at[6866, "geometry"]))), tables=[manning_data]
 )
 
+model.basin.node.df.loc[1909, "geometry"] = drop_z(model.basin[1909].geometry)
 model.edge.add(model.basin[1909], manning_node)
 model.edge.add(manning_node, model.basin[1539], geometry=edge(manning_node.geometry, model.basin[1539].geometry))
 
@@ -592,7 +599,7 @@ model.split_basin(line=line)
 manning_node = model.manning_resistance.add(
     Node(geometry=line.intersection(hydroobject_gdf.at[6879, "geometry"])), tables=[manning_data]
 )
-
+model.basin.node.df.loc[1881, "geometry"] = drop_z(model.basin[1881].geometry)
 model.edge.add(model.basin[1881], manning_node)
 model.edge.add(manning_node, model.basin[2181], geometry=edge(manning_node.geometry, model.basin[2181].geometry))
 
@@ -711,12 +718,12 @@ model.remove_node(1294, remove_edges=True)
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391740603
 
 # Merge basin 2225 met 2304
-model.merge_basins(2225, 2304)
+model.merge_basins(basin_id=2225, to_node_id=2304)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391815016
 
 # Wetteringe als laterale inflow
-model.merge_basins(2231, 1853)
+model.merge_basins(basin_id=2231, to_node_id=1853)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391750536
 
@@ -786,68 +793,68 @@ model.edge.add(
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391984234
 
 # Merge basin 2261 in basin 1698
-model.merge_basins(2261, 1698)
-model.remove_node(390, remove_edges=True)
+model.merge_basins(basin_id=2261, to_node_id=1698)
+# model.remove_node(390, remove_edges=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391995841
 
 # Merge basin 2260 met basin 1645
-model.merge_basins(2260, 1645)
+model.merge_basins(basin_id=2260, to_node_id=1645)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392010526
 # Merge basin 2220 met basin 1371
-model.merge_basins(2220, 1371, are_connected=False)
+model.merge_basins(basin_id=2220, to_node_id=1371, are_connected=False)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392017041
 
 # Kanaal Almelo Nordhorn bij Almelo
-model.merge_basins(2219, 1583, are_connected=False)
-model.merge_basins(2209, 1583, are_connected=False)
+model.merge_basins(basin_id=2219, to_node_id=1583, are_connected=False)
+model.merge_basins(basin_id=2209, to_node_id=1583, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392022887
 
 # Merge basin 2203 met 2227
-model.merge_basins(2203, 2227, are_connected=False)
+model.merge_basins(basin_id=2203, to_node_id=2227, are_connected=False)
 model.remove_node(1219, remove_edges=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392026739
 
 # Merge basin 2014 met 2144
-model.merge_basins(2014, 2144)
+model.merge_basins(basin_id=2014, to_node_id=2144)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392030268
 
 # Merge basin 1696 met 1411
-model.merge_basins(1696, 1411)
+model.merge_basins(basin_id=1696, to_node_id=1411)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392037263
 
 # Merge basin 2264 met 1459
-model.merge_basins(2264, 1459)
+model.merge_basins(basin_id=2264, to_node_id=1459)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392043973
 
 # Merge basin 2212 en 2310
-model.merge_basins(2212, 2310)
+model.merge_basins(basin_id=2212, to_node_id=2310)
 poly = model.basin.area.df.at[59, "geometry"].union(model.basin.area.df.set_index("node_id").at[2310, "geometry"])
 model.basin.area.df.loc[model.basin.area.df.node_id == 2310, ["geometry"]] = MultiPolygon([poly])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392048684
 
 # Merge basin 2253 in basin 2228
-model.merge_basins(2253, 2228)
+model.merge_basins(basin_id=2253, to_node_id=2228)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392052379
 
 # Merge basin 2221 in basin 1634
-model.merge_basins(2221, 1634)
+model.merge_basins(basin_id=2221, to_node_id=1634)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392076634
 
 # Verbinding rondwaterleiding / Lennelwaterleiding herstellen
-model.merge_basins(1859, 2235, are_connected=False)
+model.merge_basins(basin_id=1859, to_node_id=2235, are_connected=False)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382572457
 
@@ -855,8 +862,6 @@ model.merge_basins(1859, 2235, are_connected=False)
 model.fix_unassigned_basin_area()
 model.fix_unassigned_basin_area(method="closest", distance=100)
 model.fix_unassigned_basin_area()
-
-model.unassigned_basin_area.to_file("unassigned_basins.gpkg")
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
 
 # %%
@@ -881,11 +886,7 @@ basin_polygon = model.basin.area.df.union_all()
 holes = [Polygon(interior) for interior in basin_polygon.buffer(10).buffer(-10).interiors]
 holes_df = gpd.GeoSeries(holes, crs=28992)
 holes_df.index = holes_df.index + 1
-holes_df.to_file(
-    "holes.gpkg",
-    index=True,
-    fid="fid",
-)
+
 # splitsen Alemelo-Nordhorn / Overijsselskanaal. Overijsselskanaal zit in HWS
 line = split_line_gdf.at[12, "geometry"]
 idx = holes_df[holes_df.intersects(line)].index[0]
@@ -907,12 +908,6 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 2115, ["geometry"]] = pol
 
 # de rest gaan we automatisch vullen
 holes_df = holes_df[~holes_df.index.isin([10, 22, 29, 32, 38, 39, 41])]
-
-holes_df.to_file(
-    "holes.gpkg",
-    index=True,
-    fid="fid",
-)
 
 drainage_areas_df = gpd.read_file(
     cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "areas.gpkg"), layer="drainage_areas"
@@ -965,14 +960,42 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 # Reset static tables
 model = reset_static_tables(model)
 
+
+# %%
+for action in gpd.list_layers(model_edits_gpkg).name:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+# remove unassigned basin area
+model.remove_unassigned_basin_area()
+
+# %% corrigeren knoop-topologie
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet")
+
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.edge_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet")
+
 #  %% write model
 
 model.basin.area.df.loc[:, ["meta_area"]] = model.basin.area.df.area
-model.basin.node.df[~model.basin.node.df.index.isin(model.basin.area.df.node_id)].to_file("missing_areas.gpkg")
-
-
-# model.use_validation = True
+model.use_validation = True
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
+
 # %%
+result = model.run()
+assert result == 0
