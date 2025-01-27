@@ -1,12 +1,5 @@
 [
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Ribasim-NL",
-    "section": "",
-    "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
-  },
-  {
     "objectID": "workflow/main-watersystem.html",
     "href": "workflow/main-watersystem.html",
     "title": "Main watersystem",
@@ -16,6 +9,13 @@
       "Workflows",
       "Main watersystem"
     ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Ribasim-NL",
+    "section": "",
+    "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
   },
   {
     "objectID": "reference/HyDAMO.html",
@@ -30,41 +30,6 @@
     "title": "HyDAMO",
     "section": "",
     "text": "Name\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values={},\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/possibly_intersecting.html",
-    "href": "reference/possibly_intersecting.html",
-    "title": "possibly_intersecting",
-    "section": "",
-    "text": "possibly_intersecting(dataframebounds, geometry, buffer=0)\nEfficiently determine possibly intersecting geometries using a bounding box.\nFinding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
-  },
-  {
-    "objectID": "reference/possibly_intersecting.html#parameters",
-    "href": "reference/possibly_intersecting.html#parameters",
-    "title": "possibly_intersecting",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
-  },
-  {
-    "objectID": "reference/index.html",
-    "href": "reference/index.html",
-    "title": "API Reference",
-    "section": "",
-    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\n\n\n\n\n\n\nRibasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
-  },
-  {
-    "objectID": "reference/index.html#hydamo",
-    "href": "reference/index.html#hydamo",
-    "title": "API Reference",
-    "section": "",
-    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’."
-  },
-  {
-    "objectID": "reference/index.html#ribasim-nl",
-    "href": "reference/index.html#ribasim-nl",
-    "title": "API Reference",
-    "section": "",
-    "text": "Ribasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
   },
   {
     "objectID": "reference/find_nearest_branch.html",
@@ -116,27 +81,6 @@
     "text": "Name\nDescription\n\n\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes={},\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
   },
   {
-    "objectID": "reference/CloudStorage.html",
-    "href": "reference/CloudStorage.html",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "CloudStorage(\n    self,\n    data_dir=RIBASIM_NL_DATA_DIR,\n    user=RIBASIM_NL_CLOUD_USER,\n    url=BASE_URL,\n    password=RIBASIM_NL_CLOUD_PASS,\n)\nConnect a local ’data_dir` to cloud-storage.\n\n\n\n\n\nName\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)\n\n\n\n\n\n\n\n\n\nName\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=[], overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(url, overwrite=False)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\n\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\n\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
-  },
-  {
-    "objectID": "reference/CloudStorage.html#attributes",
-    "href": "reference/CloudStorage.html#attributes",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)"
-  },
-  {
-    "objectID": "reference/CloudStorage.html#methods",
-    "href": "reference/CloudStorage.html#methods",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=[], overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(url, overwrite=False)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\n\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\n\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
-  },
-  {
     "objectID": "reference/read_style.html",
     "href": "reference/read_style.html",
     "title": "read_style",
@@ -158,15 +102,60 @@
     "text": "Name\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
   },
   {
-    "objectID": "workflow/level-controlled.html",
-    "href": "workflow/level-controlled.html",
-    "title": "Level controlled",
+    "objectID": "reference/possibly_intersecting.html",
+    "href": "reference/possibly_intersecting.html",
+    "title": "possibly_intersecting",
     "section": "",
-    "text": "Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under src/peilbeheerst_model. The paths below are relative to this path.\n\nRun the preprocessing scripts. One script per water board, path: peilbeheerst_model/preprocess_data/\nRun the postprocessing script. One script per water board, path: peilbeheerst_model/postprocess_data/\nRun the crossings script. One script, path: 01_parse_crossings.ipynb. Moving to one script per water board under peilbeheerst_model/parse_crossings/.\nRun shortest paths scripts. One script per water board, path: Shortest_path/\nRun crossings to Ribasim script. One script, all water boards are below each other, path: 02_crossings_to_ribasim_notebook.ipynb. Moving to one script per water board under peilbeheerst_model/crossings_to_ribasim/.\nRun parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: Parametrize/AmstelGooienVecht_parametrize.ipynb\n\nWe originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as AmstelGooienVecht_parametrize.ipynb.\nFinally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.",
-    "crumbs": [
-      "Workflows",
-      "Level controlled"
-    ]
+    "text": "possibly_intersecting(dataframebounds, geometry, buffer=0)\nEfficiently determine possibly intersecting geometries using a bounding box.\nFinding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
+  },
+  {
+    "objectID": "reference/possibly_intersecting.html#parameters",
+    "href": "reference/possibly_intersecting.html#parameters",
+    "title": "possibly_intersecting",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
+  },
+  {
+    "objectID": "reference/CloudStorage.html",
+    "href": "reference/CloudStorage.html",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "CloudStorage(\n    self,\n    data_dir=RIBASIM_NL_DATA_DIR,\n    user=RIBASIM_NL_CLOUD_USER,\n    url=BASE_URL,\n    password=RIBASIM_NL_CLOUD_PASS,\n)\nConnect a local ’data_dir` to cloud-storage.\n\n\n\n\n\nName\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)\n\n\n\n\n\n\n\n\n\nName\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=[], overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(url, overwrite=False)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\n\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\n\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
+  },
+  {
+    "objectID": "reference/CloudStorage.html#attributes",
+    "href": "reference/CloudStorage.html#attributes",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)"
+  },
+  {
+    "objectID": "reference/CloudStorage.html#methods",
+    "href": "reference/CloudStorage.html#methods",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=[], overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(url, overwrite=False)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\n\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\n\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
+  },
+  {
+    "objectID": "reference/index.html",
+    "href": "reference/index.html",
+    "title": "API Reference",
+    "section": "",
+    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\n\n\n\n\n\n\nRibasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
+  },
+  {
+    "objectID": "reference/index.html#hydamo",
+    "href": "reference/index.html#hydamo",
+    "title": "API Reference",
+    "section": "",
+    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’."
+  },
+  {
+    "objectID": "reference/index.html#ribasim-nl",
+    "href": "reference/index.html#ribasim-nl",
+    "title": "API Reference",
+    "section": "",
+    "text": "Ribasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
   },
   {
     "objectID": "cloudstorage.html",
@@ -223,5 +212,16 @@
     "title": "Cloud storage",
     "section": "",
     "text": "authority = \"Rijkswaterstaat\"\ncloud_storage.uploaded_models(authority) # to see which models have been uploaded\n\ncloud_storage.upload_model(authority, model=\"ijsselmeer\") # to upload a new version of the `ijsselmeermodel`."
+  },
+  {
+    "objectID": "workflow/level-controlled.html",
+    "href": "workflow/level-controlled.html",
+    "title": "Level controlled",
+    "section": "",
+    "text": "Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under src/peilbeheerst_model. The paths below are relative to this path.\n\nRun the preprocessing scripts. One script per water board, path: peilbeheerst_model/preprocess_data/\nRun the postprocessing script. One script per water board, path: peilbeheerst_model/postprocess_data/\nRun the crossings script. One script, path: 01_parse_crossings.ipynb. Moving to one script per water board under peilbeheerst_model/parse_crossings/.\nRun shortest paths scripts. One script per water board, path: Shortest_path/\nRun crossings to Ribasim script. One script, all water boards are below each other, path: 02_crossings_to_ribasim_notebook.ipynb. Moving to one script per water board under peilbeheerst_model/crossings_to_ribasim/.\nRun parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: Parametrize/AmstelGooienVecht_parametrize.ipynb\n\nWe originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as AmstelGooienVecht_parametrize.ipynb.\nFinally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.",
+    "crumbs": [
+      "Workflows",
+      "Level controlled"
+    ]
   }
 ]
