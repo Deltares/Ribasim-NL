@@ -1,4 +1,5 @@
 # import pathlib
+import itertools
 import json
 import os
 import shutil
@@ -11,20 +12,13 @@ import numpy as np
 import pandas as pd
 import ribasim
 import tqdm.auto as tqdm
+from bokeh.palettes import Category10
 from shapely.geometry import LineString
 
 from ribasim_nl import CloudStorage
 
 
 def get_current_max_nodeid(ribasim_model):
-    # max_ids = [1]
-    # for k, v in ribasim_model.__dict__.items():
-    #     if hasattr(v, 'node') and "node_id" in v.node.df.columns.tolist():
-    #         if len(v.node.df.node_id) > 0:
-    #             mid = int(v.node.df.node_id.max())
-    #             max_ids.append(mid)
-    # max_id = max(max_ids)
-
     with warnings.catch_warnings():
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node_table().df
@@ -124,13 +118,6 @@ def insert_standard_profile(
 
     # due to the bergende basin, the surface area has been doubled. Correct this.
     ribasim_model.basin.profile.df.area /= 2
-
-    # # The newly created (storage) basins do not have a correct initial level yet. Fix this as well.
-    # initial_level = ribasim_model.basin.profile.df.copy()
-    # initial_level = initial_level.drop_duplicates(subset="node_id", keep="last")
-    # ribasim_model.basin.state.df["level"] = ribasim_model.basin.state.df.merge(right=initial_level, on="node_id")[
-    #     "level_y"
-    # ]
     return
 
 
@@ -318,7 +305,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     nodes_FlowBoundary = nodes_FlowBoundary.set_index("node_id", drop=True)
     nodes_FlowBoundary = nodes_FlowBoundary[["node_type", "geometry", "meta_old_node_id"]]
 
-    nodes_LevelBoundary = nodes_FlowBoundary.copy(deep=True)  # for clarity
+    nodes_LevelBoundary = nodes_FlowBoundary.copy(deep=True)  # switch for clarity from Flow to Level
 
     # supplement the LB.node table
     new_LB_node = pd.concat(
@@ -339,7 +326,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
         nodes_LevelBoundary.index.copy()
     )  # nodes_LevelBoundary["meta_node_id"].copy()  # as these nodes were initially FlowBoundaries, they always flow into the model, not out. Thus, is always the starting point (=from_node_id)
     edges_LB["meta_from_node_type"] = "LevelBoundary"
-    edges_LB["to_node_id"] = nodes_LevelBoundary["meta_old_node_id"].values.to_numpy()
+    edges_LB["to_node_id"] = nodes_LevelBoundary["meta_old_node_id"].to_numpy()
     edges_LB["meta_to_node_type"] = "TabulatedRatingCurve"
     edges_LB["meta_categorie"] = "doorgaand"
 
@@ -394,13 +381,6 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
 
 
 def add_outlets(ribasim_model, delta_crest_level=0.10):
-    # select all TRC's which are inlaten
-    # display(ribasim_model.tabulated_rating_curve.static.df)
-    # TRC_naar_OL = ribasim_model.tabulated_rating_curve.static.df.loc[
-    #     ribasim_model.tabulated_rating_curve.static.df.meta_type_verbinding == "Inlaat"
-    # ]
-
-    # update: change all TRC's to Outlets
     # TRC_naar_OL = ribasim_model.tabulated_rating_curve.static.df.copy() #aanpassing RB 11 oktober
     TRC_naar_OL = ribasim_model.tabulated_rating_curve.node.df.copy()
     TRC_naar_OL = TRC_naar_OL.reset_index()  # convert the node_id index to a regular column
@@ -424,7 +404,8 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     # clean the df for clarity. Next, add the levels to the outlet df
     target_level = target_level[["node_id_x", "level"]]
     target_level.rename(columns={"level": "meta_min_crest_level", "node_id_x": "node_id"}, inplace=True)
-
+    target_level = target_level.sort_values(by=['node_id'])
+    
     outlet = target_level.copy(deep=True)
     outlet["meta_min_crest_level"] -= (
         delta_crest_level  # the peil of the boezem is allowed to lower with this much before no water will flow through the outlet, to prevent
@@ -450,7 +431,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     # remove the TRC's nodes
     ribasim_model.tabulated_rating_curve.node.df = ribasim_model.tabulated_rating_curve.node.df.loc[
         ~ribasim_model.tabulated_rating_curve.node.df.meta_node_id.isin(outlet.meta_node_id)
-    ]  # .reset_index(drop=True)
+    ]  
     ribasim_model.tabulated_rating_curve.static = ribasim_model.tabulated_rating_curve.static.df.loc[
         ribasim_model.tabulated_rating_curve.static.df.node_id.isin(
             ribasim_model.tabulated_rating_curve.node.df.index.to_numpy()
@@ -459,9 +440,6 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
 
     # replace the from_node_type and the to_node_type in the edge table
     ribasim_model.edge.df = ribasim_model.edge.df.replace(to_replace="TabulatedRatingCurve", value="Outlet")
-
-    # ribasim_model.edge.df.loc[ribasim_model.edge.df.from_node_id.isin(outlet.node_id), "from_node_type"] = "Outlet"
-    # ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id.isin(outlet.node_id), "to_node_type"] = "Outlet"
 
     return
 
@@ -922,6 +900,26 @@ def identify_node_meta_categorie(ribasim_model):
     nodes_to_boundary = ribasim_model.edge.df.loc[
         ribasim_model.edge.df.meta_to_node_type == "LevelBoundary", "from_node_id"
     ]
+    
+    #some pumps do not have a function yet, as they may have been changed due to the feedback forms. Set it to afvoer.
+    # Check for rows where all three specified columns are NaN and set 'meta_func_afvoer' to 1
+    ribasim_model.pump.static.df.loc[
+        ribasim_model.pump.static.df[['meta_func_afvoer', 'meta_func_aanvoer', 'meta_func_circulatie']].isna().all(axis=1),
+        'meta_func_afvoer'
+    ] = 1
+
+    #if the function is both aanvoer and afvoer, then set aanvoer to False
+    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df['meta_func_afvoer'] == 1) & (ribasim_model.pump.static.df['meta_func_aanvoer'] == 1), 'meta_func_aanvoer'] = 0
+    
+
+    #fill in the nan values
+    ribasim_model.pump.static.df['meta_func_afvoer'].fillna(0, inplace=True)
+    ribasim_model.pump.static.df['meta_func_aanvoer'].fillna(0, inplace=True)
+    ribasim_model.pump.static.df['meta_func_circulatie'].fillna(0, inplace=True)
+
+
+
+    # ribasim_model.pump.static.dfmeta_func_afvoer	meta_func_aanvoer	meta_func_circulatie
 
     # identify the INlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
     ribasim_model.outlet.static.df.loc[
@@ -1142,10 +1140,14 @@ def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
     check_for_nans_in_columns(outlet, "outlet")
     check_for_nans_in_columns(pump, "pump")
 
+    print('Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.')
+    pump.flow_rate = pump.flow_rate.fillna(value=0.1234)
+    
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
     ribasim_model.pump.static.df = pump
 
+    
     return
 
 
@@ -1692,7 +1694,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
     return
 
 
-def clean_tables(ribasim_model):
+def clean_tables(ribasim_model, waterschap):
     """Only retain node_id's which are present in the .node table."""
     # Basin
     basin_ids = ribasim_model.basin.node.df.loc[
@@ -1822,19 +1824,19 @@ def clean_tables(ribasim_model):
         ribasim_model.basin.static.df.duplicated(subset="node_id")
     ]
     if len(duplicated_static_basin) > 0:
-        print("\nFollowing indexes are duplicated in the basin.static table:", duplicated_static_basin)
+        print("\nFollowing indexes are duplicated in the basin.static table:\n", duplicated_static_basin)
 
     # check for duplicated indexes in the outlet static tables
     duplicated_static_outlet = ribasim_model.outlet.static.df.loc[
         ribasim_model.outlet.static.df.duplicated(subset="node_id")
     ]
     if len(duplicated_static_outlet) > 0:
-        print("\nFollowing indexes are duplicated in the outlet.static table:", duplicated_static_outlet)
+        print("\nFollowing indexes are duplicated in the outlet.static table:\n", duplicated_static_outlet)
 
     # check for duplicated indexes in the pump static tables
     duplicated_static_pump = ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.duplicated(subset="node_id")]
     if len(duplicated_static_pump) > 0:
-        print("\nFollowing indexes are duplicated in the pump.static table:", duplicated_static_pump)
+        print("\nFollowing indexes are duplicated in the pump.static table:\n", duplicated_static_pump)
 
     # check for duplicated indexes in the manning_resistance static tables
     duplicated_static_manning_resistance = ribasim_model.manning_resistance.static.df.loc[
@@ -1842,7 +1844,7 @@ def clean_tables(ribasim_model):
     ]
     if len(duplicated_static_manning_resistance) > 0:
         print(
-            "\nFollowing indexes are duplicated in the manning_resistance.static table:",
+            "\nFollowing indexes are duplicated in the manning_resistance.static table:\n",
             duplicated_static_manning_resistance,
         )
 
@@ -1852,9 +1854,45 @@ def clean_tables(ribasim_model):
     ]
     if len(duplicated_static_level_boundary) > 0:
         print(
-            "\nFollowing indexes are duplicated in the level_boundary.static table:", duplicated_static_level_boundary
+            "\nFollowing indexes are duplicated in the level_boundary.static table:\n", duplicated_static_level_boundary
         )
 
+    #check if node_ids in the edge table are not present in the node table
+    edge = ribasim_model.edge.df.copy()
+    missing_from_node_id = edge.loc[~edge.from_node_id.isin(combined_df.node_id.to_numpy())]
+    missing_to_node_id = edge.loc[~edge.to_node_id.isin(combined_df.node_id.to_numpy())]
+    missing_edges = combined_df.loc[(~combined_df.node_id.isin(edge.from_node_id)) & (~combined_df.node_id.isin(edge.to_node_id))]
+
+    if len(missing_from_node_id)>0:
+        print("\nFollowing from_node_id's in the edge table do not exist:\n", missing_from_node_id)
+    if len(missing_to_node_id)>0:
+        print("\nFollowing to_node_id's in the edge table do not exist:\n", missing_to_node_id)
+    if len(missing_edges)>0:
+        print("\nFollowing node_ids are not connected to any edges:\n", missing_edges)
+
+    #set crs
+    ribasim_model.basin.node.df = gpd.GeoDataFrame(ribasim_model.basin.node.df.set_crs(crs='EPSG:28992'))
+    ribasim_model.tabulated_rating_curve.node.df = gpd.GeoDataFrame(ribasim_model.tabulated_rating_curve.node.df.set_crs(crs='EPSG:28992'))
+    ribasim_model.outlet.node.df = gpd.GeoDataFrame(ribasim_model.outlet.node.df.set_crs(crs='EPSG:28992'))
+    ribasim_model.pump.node.df = gpd.GeoDataFrame(ribasim_model.pump.node.df.set_crs(crs='EPSG:28992'))
+    ribasim_model.manning_resistance.node.df = gpd.GeoDataFrame(ribasim_model.manning_resistance.node.df.set_crs(crs='EPSG:28992'))
+    ribasim_model.level_boundary.node.df = gpd.GeoDataFrame(ribasim_model.level_boundary.node.df.set_crs(crs='EPSG:28992'))
+    ribasim_model.flow_boundary.node.df = gpd.GeoDataFrame(ribasim_model.flow_boundary.node.df.set_crs(crs='EPSG:28992'))
+    ribasim_model.terminal.node.df = gpd.GeoDataFrame(ribasim_model.terminal.node.df.set_crs(crs='EPSG:28992'))
+
+    #section below as asked by D2HYDRO
+
+    # #add category in the .node table
+    basin_node = ribasim_model.basin.node.df.merge(right=ribasim_model.basin.state.df[['node_id', 'meta_categorie']],
+                                                                    how='left',
+                                                                    left_on='meta_node_id',
+                                                                    right_on='node_id')
+    basin_node = basin_node.set_index('node_id') #change index
+    ribasim_model.basin.node.df = basin_node #replace the df
+    
+    #add waterschap name, remove meta_node_id
+    ribasim_model.basin.node.df['meta_waterbeheerder'] = waterschap
+    ribasim_model.basin.node.df = ribasim_model.basin.node.df.drop(columns='meta_node_id')
     return
 
 
@@ -1978,6 +2016,308 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
         ribasim_model.pump.static = structure_static
 
     return
+
+
+
+
+# def checks(ribasim_model):
+#     checks = {}
+#     checks['boezem'] = ribasim_model.basin.area.df.merge(ribasim_model.basin.state.df[['node_id', 'meta_categorie']],
+#                                                  on='node_id',
+#                                                  how='left')
+#     checks['boezem'] = checks['boezem'].loc[checks['boezem']['meta_categorie'] == 'hoofdwater'].reset_index(drop=True)
+#     checks['boezem']['peilgebied_cat'] = 1
+
+#     basin_nodes = (
+#         ribasim_model.basin.state.df.copy()
+#     )  # .loc[ribasim_model.basin.state.df['node_type'] == 'Basin'] #select all basins
+#     # ribasim_model.basin.node.df.index += 1 #RB: outcommented plus one
+#     basin_nodes["geometry"] = ribasim_model.basin.node.df.geometry  # add geometry column
+#     basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry="geometry")  # convert from pd go gpd
+
+#     points_within = gpd.sjoin(
+#         basin_nodes, checks["boezem"], how="inner", predicate="within"
+#     )  # find the basins which are within a peilgebied (found in the checks)
+#     boezem_nodes = ribasim_model.basin.state.df.node_id.loc[points_within.index]
+
+#     # the boezem nodes have been identified. Now determine the five different categories.
+
+#     # determine from and to boezem nodes
+#     nodes_from_boezem = ribasim_model.edge.df.loc[
+#         ribasim_model.edge.df.from_node_id.isin(boezem_nodes)
+#     ]  # select ALL NODES which originate FROM the boezem
+#     nodes_to_boezem = ribasim_model.edge.df.loc[
+#         ribasim_model.edge.df.to_node_id.isin(boezem_nodes)
+#     ]  # select ALL NODES which go TO the boezem
+
+#     # inlaten_TRC
+#     inlaten_TRC = nodes_from_boezem.loc[
+#         (nodes_from_boezem.meta_to_node_type == "TabulatedRatingCurve")
+#         | (nodes_from_boezem.meta_to_node_type == "Outlet")
+#     ]
+#     inlaten_TRC = inlaten_TRC["to_node_id"]
+#     inlaten_TRC = ribasim_model.tabulated_rating_curve.node.df.loc[
+#         ribasim_model.tabulated_rating_curve.node.df.index.isin(inlaten_TRC)  # df.node_id --> df.index
+#     ]
+
+#     # add the outlets if this code is already ran before
+#     if ribasim_model.outlet.node.df is not None:
+#         inlaten_outlet = ribasim_model.outlet.node.df.loc[ribasim_model.outlet.node.df.index.isin(inlaten_TRC)]
+#         inlaten_TRC = pd.concat([inlaten_TRC, inlaten_outlet])
+
+#     inlaten_TRC["meta_type_verbinding"] = "Inlaat"
+
+#     # inlaten_gemalen
+#     inlaten_gemalen = nodes_from_boezem.loc[nodes_from_boezem.meta_to_node_type == "Pump"]
+#     inlaten_gemalen = inlaten_gemalen["to_node_id"]
+#     inlaten_gemalen = ribasim_model.pump.node.df.loc[
+#         ribasim_model.pump.node.df.index.isin(inlaten_gemalen)
+#     ]  # df.node_id --> df.index
+#     inlaten_gemalen["meta_type_verbinding"] = "Inlaat"
+
+#     # inlaten_flowboundary
+#     inlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "FlowBoundary"]
+#     inlaten_flowboundary = inlaten_flowboundary["from_node_id"]
+#     inlaten_flowboundary = ribasim_model.flow_boundary.node.df.loc[
+#         ribasim_model.flow_boundary.node.df.index.isin(inlaten_flowboundary)  # df.node_id --> df.index
+#     ]
+#     inlaten_flowboundary["meta_type_verbinding"] = "Inlaat boundary"
+
+#     # uitlaten_TRC
+#     uitlaten_TRC = nodes_to_boezem.loc[
+#         (nodes_to_boezem.meta_from_node_type == "TabulatedRatingCurve")
+#         | (nodes_to_boezem.meta_from_node_type == "Outlet")
+#     ]
+#     uitlaten_TRC = uitlaten_TRC["from_node_id"]
+#     uitlaten_TRC = ribasim_model.tabulated_rating_curve.node.df.loc[
+#         ribasim_model.tabulated_rating_curve.node.df.index.isin(uitlaten_TRC)  # df.node_id --> df.index
+#     ]
+
+#     # uitlaten_gemalen
+#     uitlaten_gemalen = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "Pump"]
+#     uitlaten_gemalen = uitlaten_gemalen["from_node_id"]
+#     uitlaten_gemalen = ribasim_model.pump.node.df.loc[
+#         ribasim_model.pump.node.df.index.isin(uitlaten_gemalen)
+#     ]  # df.node_id --> df.index
+#     uitlaten_gemalen["meta_type_verbinding"] = "Uitlaat"
+
+#     # add the outlets if this code is already ran before
+#     if ribasim_model.outlet.node.df is not None:
+#         uitlaten_outlet = ribasim_model.outlet.node.df.loc[ribasim_model.outlet.node.df.index.isin(uitlaten_TRC)]
+#         uitlaten_TRC = pd.concat([uitlaten_TRC, uitlaten_outlet])
+
+#     uitlaten_TRC["meta_type_verbinding"] = "Uitlaat"
+
+#     # uitlaten_flowboundary
+#     uitlaten_flowboundary = nodes_to_boezem.loc[nodes_to_boezem.meta_from_node_type == "FlowBoundary"]
+#     uitlaten_flowboundary = uitlaten_flowboundary["from_node_id"]
+#     uitlaten_flowboundary = ribasim_model.flow_boundary.node.df.loc[
+#         ribasim_model.flow_boundary.node.df.index.isin(uitlaten_flowboundary)  # df.node_id --> df.index
+#     ]
+#     uitlaten_flowboundary["meta_type_verbinding"] = "Inlaat boundary"
+
+#     inlaten_uitlaten = pd.concat(
+#         [inlaten_TRC, inlaten_gemalen, inlaten_flowboundary, uitlaten_TRC, uitlaten_gemalen, uitlaten_flowboundary]
+#     )
+
+
+#     # repeat for the boezems which are connected with the buitenwater.
+#     # this has to be done for the FlowBoundary, LevelBoundary and Terminal
+#     # for both from_boezem as well as to_boezem
+
+#     # the difference here is that the boundary nodes are not 'connecting nodes'
+#     # we first need to identify the connecting nodes, such as TRC and pumps, which originate from the boundaries
+#     # after that has been done, these nodes should be filtered based on whether they are connected with the nodes_from/to_boezem
+#     # BCN = Boundary Connection Nodes
+#     condition_BCN_to_pump = nodes_from_boezem.meta_to_node_type == "Pump"
+#     condition_BCN_to_TRC = nodes_from_boezem.meta_to_node_type == "TabulatedRatingCurve"
+#     condition_BCN_to_outlet = nodes_from_boezem.meta_to_node_type == "Outlet"
+#     condition_BCN_from_pump = nodes_to_boezem.meta_from_node_type == "Pump"
+#     condition_BCN_from_TRC = nodes_to_boezem.meta_from_node_type == "TabulatedRatingCurve"
+#     condition_BCN_from_outlet = nodes_to_boezem.meta_from_node_type == "Outlet"
+
+#     BCN_from = nodes_from_boezem.loc[
+#         condition_BCN_to_pump | condition_BCN_to_TRC | condition_BCN_to_outlet
+#     ]  # retrieve the BCN from the boezems in both ways (this line: from)
+#     BCN_to = nodes_to_boezem.loc[
+#         condition_BCN_from_pump | condition_BCN_from_TRC | condition_BCN_from_outlet
+#     ]  # retrieve the BCN to the boezems in both ways (this line: to)
+
+#     # BCN_FROM
+#     # collect the nodes in from_node_id (step 1), and insert them again in the to_node_id (step 2)
+#     # By doing so, a filter can be applied on the FROM_node_id with the boundary nodes (step 3).
+#     BCN_from = BCN_from.to_node_id  # step 1
+#     BCN_from = ribasim_model.edge.df.loc[ribasim_model.edge.df.from_node_id.isin(BCN_from)]  # step 2
+#     BCN_from = BCN_from.loc[
+#         (BCN_from.meta_to_node_type == "FlowBoundary")
+#         | (BCN_from.meta_to_node_type == "LevelBoundary")
+#         | (BCN_from.meta_to_node_type == "Terminal")
+#     ]
+
+#     # look the node ids up in each table.
+#     BCN_from_TRC = ribasim_model.tabulated_rating_curve.node.df.loc[
+#         ribasim_model.tabulated_rating_curve.node.df.index.isin(BCN_from.from_node_id)  # df.node_id --> df.index
+#     ]
+#     BCN_from_pump = ribasim_model.pump.node.df.loc[
+#         ribasim_model.pump.node.df.index.isin(BCN_from.from_node_id)
+#     ]  # df.node_id --> df.index
+
+#     if ribasim_model.outlet.node.df is not None:
+#         BCN_from_outlet = ribasim_model.outlet.node.df.loc[
+#             ribasim_model.outlet.node.df.index.isin(BCN_from)
+#         ]  # df.node_id --> df.index
+#         BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump, BCN_from_outlet])
+#     else:
+#         BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump])
+#     BCN_from["meta_type_verbinding"] = "Uitlaat boundary"
+
+#     # BCN_TO
+#     # collect the nodes in from_node_id (step 1), and insert them again in the to_node_id (step 2)
+#     # By doing so, a filter can be applied on the FROM_node_id with the boundary nodes (step 3).
+#     BCN_to = BCN_to.from_node_id  # step 1
+#     BCN_to = ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id.isin(BCN_to)]  # step 2
+#     BCN_to = BCN_to.loc[
+#         (BCN_to.meta_from_node_type == "FlowBoundary")
+#         | (BCN_to.meta_from_node_type == "LevelBoundary")
+#         | (BCN_to.meta_from_node_type == "Terminal")
+#     ]
+#     BCN_to["meta_type_verbinding"] = "Inlaat boundary"
+
+#     # look the node ids up in each table.
+#     BCN_to_TRC = ribasim_model.tabulated_rating_curve.node.df.loc[
+#         ribasim_model.tabulated_rating_curve.node.df.index.isin(BCN_to.to_node_id)  # df.node_id --> df.index
+#     ]
+#     BCN_to_pump = ribasim_model.pump.node.df.loc[
+#         ribasim_model.pump.node.df.index.isin(BCN_to.to_node_id)
+#     ]  # df.node_id --> df.index
+
+#     if ribasim_model.outlet.node.df is not None:
+#         BCN_to_outlet = ribasim_model.outlet.node.df.loc[ribasim_model.outlet.node.df.index.isin(BCN_to)]  # df.node_id --> df.index
+#         BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump, BCN_to_outlet])
+#     else:
+#         BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump])
+#     BCN_to["meta_type_verbinding"] = "Inlaat boundary"
+
+#     inlaten_uitlaten = pd.concat([inlaten_uitlaten, BCN_from, BCN_to])
+#     inlaten_uitlaten = inlaten_uitlaten.reset_index(drop=True)
+#     inlaten_uitlaten = gpd.GeoDataFrame(inlaten_uitlaten, geometry="geometry", crs="EPSG:28992")
+#     checks["inlaten_uitlaten_boezems"] = inlaten_uitlaten
+
+#     return checks
+
+# def add_missing_meta_data(ribasim_model, checks, post_processed_data, crossings):
+#     # ### insert meta_data of the peilgebied_category ###
+#     ribasim_model.basin.state.df["meta_categorie"] = (
+#         "doorgaand"  # set initially all basins to be a regular peilgebied (= peilgebied_cat 0, or 'bergend')
+#     )
+
+#     basin_nodes = (
+#         ribasim_model.basin.state.df.copy()
+#     )  # .loc[ribasim_model.basin.state.df['node_type'] == 'Basin'] #select all basins
+#     # ribasim_model.basin.node.df.index += 1
+#     basin_nodes["geometry"] = ribasim_model.basin.node.df.geometry  # add geometry column
+#     basin_nodes = gpd.GeoDataFrame(basin_nodes, geometry="geometry")  # convert from pd go gpd
+
+#     points_within = gpd.sjoin(
+#         basin_nodes, checks["boezem"], how="inner", predicate="within"
+#     )  # find the basins which are within a peilgebied (found in the checks)
+#     ribasim_model.basin.state.df.meta_categorie.loc[points_within.index] = (
+#         "hoofdwater"  # set these basins to become peilgebied_cat == 1, or 'doorgaand'
+#     )
+
+#     ### insert meta_data of the gemaal type ###
+#     # crossings_pump = crossings['gemaal'].loc[~crossings['gemaal'].code.isna()][["node_id", "gemaal", "geometry"]]
+#     # coupled_crossings_pump = crossings_pump.merge(
+#     #     post_processed_data["gemaal"][["globalid", "func_afvoer", "func_aanvoer", "func_circulatie"]],
+#     #     left_on="gemaal",
+#     #     right_on="globalid",
+#     # )
+
+#     pump_function = crossings['gemaal'].merge(ribasim_model.pump.node.df.reset_index(), on="geometry", suffixes=("", "_duplicate"))[
+#         ["node_id", "func_afvoer", "func_aanvoer", "func_circulatie"]
+#     ]
+#     coupled_pump_function = ribasim_model.pump.static.df.merge(pump_function, left_on="node_id", right_on="node_id")
+
+#     # add the coupled_pump_function column per column to the ribasim_model.pump.static.df
+#     func_afvoer = ribasim_model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_afvoer"]
+#     func_aanvoer = ribasim_model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_aanvoer"]
+
+#     func_circulatie = ribasim_model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")["func_circulatie"]
+
+#     ribasim_model.pump.static.df["meta_func_afvoer"] = func_afvoer
+#     ribasim_model.pump.static.df["meta_func_aanvoer"] = func_aanvoer
+#     ribasim_model.pump.static.df["meta_func_circulatie"] = func_circulatie
+
+#     ### add the peilgebied_cat flag to the edges as well ###
+#     # first assign all edges to become 'bergend'. Adjust the boezem edges later.
+#     ribasim_model.edge.df["meta_categorie"] = "doorgaand"
+
+#     # find the basins which are boezems
+#     nodeids_boezem = ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df.meta_categorie == "hoofdwater", "node_id"]
+#     ribasim_model.edge.df.loc[
+#         (ribasim_model.edge.df.from_node_id.isin(nodeids_boezem)) | (ribasim_model.edge.df.to_node_id.isin(nodeids_boezem)),
+#         "meta_categorie",
+#     ] = "hoofdwater"
+
+#     #some pumps do not have a func afvoer/aanvoer/circulatie yet (occurs rarely though)
+#     ribasim_model.pump.static.df['meta_func_afvoer'].fillna(value=False)
+#     ribasim_model.pump.static.df['meta_func_aanvoer'].fillna(value=False)
+#     ribasim_model.pump.static.df['meta_func_circulatie'].fillna(value=False)
+
+#     # if the function is not known, then choose func_afvoer
+#     ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df['meta_func_afvoer'] == False) & (ribasim_model.pump.static.df['meta_func_aanvoer'] == False) & (ribasim_model.pump.static.df['meta_func_circulatie'] == False), 'meta_func_afvoer'] = True
+
+#     # #if the function is both aanvoer and afvoer, then set aanvoer to False
+#     # ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df['meta_func_afvoer'] == True) & (ribasim_model.pump.static.df['meta_func_aanvoer'] == True), 'meta_func_aanvoer'] = False
+
+#     # ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df['meta_func_afvoer'] == 1) & (ribasim_model.pump.static.df['meta_func_aanvoer'] == 1), 'meta_func_aanvoer'] = 0
+    
+#     ### add a random color to the basins ###
+#     color_cycle = itertools.cycle(Category10[10])
+#     color_list = []
+#     for _ in range(len(ribasim_model.basin.area.df)):
+#         color_list.append(next(color_cycle))
+
+#     # Add the color_list as a new column to the DataFrame
+#     ribasim_model.basin.area.df["meta_color"] = color_list
+
+#     ########################################################################
+#     # add meta data whether some nodes are connected with a boezem.
+#     # This is important as i.e. these TRC's will be converted to Outlets
+#     # merge each table with a part of the checks['inlaten_uitlaten'] dataframe
+
+#     # TabulatedRatingCurve
+#     ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.merge(
+#         checks["inlaten_uitlaten_boezems"][["meta_type_verbinding"]],
+#         left_index=True,
+#         right_index=True,
+#         # left_on=["node_id"],
+#         # right_on=["node_id"],
+#         how="left",
+#     )
+
+#     # Pump
+#     ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(
+#         checks["inlaten_uitlaten_boezems"][["meta_type_verbinding"]],
+#         left_index=True,
+#         right_index=True,
+#         # left_on=["node_id"],
+#         # right_on=["node_id"],
+#         how="left",
+#     )
+
+#     # FlowBoundary
+#     ribasim_model.flow_boundary.static.df = ribasim_model.flow_boundary.static.df.merge(
+#         checks["inlaten_uitlaten_boezems"][["meta_type_verbinding"]],
+#         left_index=True,
+#         right_index=True,
+#         # left_on=["node_id"],
+#         # right_on=["node_id"],
+#         how="left",
+#     )
+
+#     return ribasim_model
+
 
 
 ##################### Recycle bin ##########################
