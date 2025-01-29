@@ -1745,7 +1745,81 @@ class RibasimNetwork:
             # right_on=["node_id"],
             how="left",
         )
+        return model
+        
+    def add_relevant_names(self, model, post_processed_data, crossings):
+        '''Add relevant names based on the meta_name column.'''
+        #gemaal
+        #step 1a: retrieve the coordinates of the pumps in the pump .node table
+        #step 1b: retrieve the coordinates of the pumps in the crossings table
+        #step 2: these coordinates should be the same as the coordinates in the crossings. Merge the globalids
+        #step 3: merge the meta_name based on the globalid
+        #step 4: replace the globalids for the meta_name
 
+        #step 1a: retrieve the coordinates of the pumps in the pump .node table
+        coordinates_gemaal_ribasim = model.pump.node.df[['geometry']].copy().reset_index()
+        
+        #step 1b: retrieve the coordinates of the pumps in the crossings table
+        coordinates_gemaal_crossings = crossings.loc[~crossings.gemaal.isna()]
+        coordinates_gemaal_crossings = coordinates_gemaal_crossings.rename(columns={'gemaal':'globalid'})
+        
+        #step 2: these coordinates should be the same as the coordinates in the crossings. Merge the globalids
+        coordinates_gemaal_ribasim = coordinates_gemaal_ribasim.merge(right=coordinates_gemaal_crossings[['geometry', 'globalid']],
+                                                      how='left',
+                                                      on='geometry')
+        
+        #step 3: merge the meta_name based on the globalid
+        coordinates_gemaal_ribasim = coordinates_gemaal_ribasim.merge(right=post_processed_data['gemaal'][['globalid', 'meta_name']],
+                                                                      on='globalid',
+                                                                      how='left')
+        coordinates_gemaal_ribasim = coordinates_gemaal_ribasim.set_index('node_id')
+        
+        #step 4: replace the globalids for the meta_name
+        pump_node = model.pump.node.df.copy()
+        pump_node = pump_node.drop(columns='name')
+        pump_node = pump_node.merge(right=coordinates_gemaal_ribasim[['meta_name']],
+                                    left_index=True,
+                                    right_index=True,
+                                    how='left')
+        pump_node = pump_node.rename(columns={'meta_name':'name'})
+        pump_node = pump_node.drop_duplicates()
+        model.pump.node.df = pump_node
+        
+
+        #aggregation areas (AA)
+        #step 1a: retrieve the coordinates of the aggregation areas in the basin.area table
+        #step 1b: retrieve the coordinates of the aggregation areas in the post processed table
+        #step 2: these coordinates should be the same as the coordinates in the basin.area. Merge the globalids        
+        #merge with the basin_node table 
+
+
+        #step 1a: retrieve the coordinates of the aggregation areas in the basin.area table
+        coordinates_AA_ribasim = model.basin.area.df[['node_id', 'geometry']].copy()
+
+        #step 1b: retrieve the coordinates of the aggregation areas in the post processed table
+        coordinates_AA_PP = post_processed_data['aggregation_areas']
+        
+        #step 2: these coordinates should be the same as the coordinates in the basin.area. Merge the globalids        
+        coordinates_AA_ribasim = coordinates_AA_ribasim.merge(right=post_processed_data['aggregation_areas'][['meta_name', 'geometry']],
+                                                              how='left',
+                                                              on='geometry')
+        
+        #fix column names
+        coordinates_AA_ribasim = coordinates_AA_ribasim.rename(columns={'meta_name':'name'})
+        
+        #merge with the basin_node table 
+        coordinates_AA_ribasim = coordinates_AA_ribasim.set_index('node_id')[['name']]
+        coordinates_AA_ribasim = model.basin.node.df.merge(right=coordinates_AA_ribasim,
+                                                           left_index=True,
+                                                           right_index=True,
+                                                           how='left',
+                                                           suffixes=('_to_remove', ''))
+        
+        coordinates_AA_ribasim = coordinates_AA_ribasim.drop(columns='name_to_remove')
+        coordinates_AA_ribasim = coordinates_AA_ribasim.drop_duplicates()
+
+        model.basin.node.df = coordinates_AA_ribasim
+        
         return model
 
     def store_data(data, output_path):
