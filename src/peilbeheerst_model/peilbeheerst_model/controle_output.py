@@ -213,7 +213,14 @@ class Control:
                                    mode='w')
 
         # copy checks_symbology file from old dir to new dir
+        #define path
         output_controle_qlr_path = r"../../../../../Data_overig/QGIS_qlr/output_controle.qlr"
+
+        #delete old .qlr file (overwriting does apparently not work due to permission rights)
+        if os.path.exists(os.path.join(self.work_dir, "results", "output_controle.qlr")):
+            os.remove(os.path.join(self.work_dir, "results", "output_controle.qlr"))
+
+        #copy .qlr file
         shutil.copy(src=output_controle_qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
         return
