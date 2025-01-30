@@ -1712,11 +1712,11 @@ class RibasimNetwork:
         # ] = True
 
         model.pump.static.df.loc[
-        (~model.pump.static.df["meta_func_afvoer"].astype(bool))
-        & (~model.pump.static.df["meta_func_aanvoer"].astype(bool))
-        & (~model.pump.static.df["meta_func_circulatie"].astype(bool)),
-        'meta_func_afvoer'] = True
-
+            (~model.pump.static.df["meta_func_afvoer"].astype(bool))
+            & (~model.pump.static.df["meta_func_aanvoer"].astype(bool))
+            & (~model.pump.static.df["meta_func_circulatie"].astype(bool)),
+            "meta_func_afvoer",
+        ] = True
 
         ### add a random color to the basins ###
         color_cycle = itertools.cycle(Category10[10])
