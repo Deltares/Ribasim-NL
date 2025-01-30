@@ -9,6 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pydantic
+import pyogrio
 import shapely.ops
 import tqdm.auto as tqdm
 from shapely.geometry import LineString, MultiLineString, MultiPoint, Point, Polygon
@@ -600,14 +601,33 @@ class ParseCrossings:
 
         # Write the input files (some with minor modifications)
         for layer, df in self.df_gpkg.items():
-            df.to_file(output_path, layer=layer)
+            # df.to_file(output_path, layer=layer)
+
+            pyogrio.write_dataframe(
+                df,
+                output_path,
+                layer=str(layer),
+                driver="GPKG",
+                promote_to_multi=False,
+            )
 
         # Write supplied output files
         df_hydro.to_file(output_path, layer="crossings_hydroobject")
         if df_filter is not None:
-            df_filter.to_file(output_path, layer=f"crossings_{filterlayer}")
+            # df_filter.to_file(output_path, layer=f"crossings_{filterlayer}")
+            pyogrio.write_dataframe(
+                df_filter, output_path, layer=f"crossings_{filterlayer}", driver="GPKG", promote_to_multi=False
+            )
+
         if df_hydro_filter is not None:
-            df_hydro_filter.to_file(output_path, layer="crossings_hydroobject_filtered")
+            # df_hydro_filter.to_file(output_path, layer="crossings_hydroobject_filtered")
+            pyogrio.write_dataframe(
+                df_hydro_filter,
+                output_path,
+                layer="crossings_hydroobject_filtered",
+                driver="GPKG",
+                promote_to_multi=False,
+            )
 
     @pydantic.validate_call(config={"strict": True})
     def _classify_from_to_peilgebieden(self, pfrom: str | None, pto: str | None) -> tuple[str, str]:
