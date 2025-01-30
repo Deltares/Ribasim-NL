@@ -1721,13 +1721,20 @@ class RibasimNetwork:
         model.pump.static.df["meta_func_aanvoer"].fillna(value=False)
         model.pump.static.df["meta_func_circulatie"].fillna(value=False)
 
-        # if the function is not known, then choose func_afvoer
+        # # if the function is not known, then choose func_afvoer
+        # model.pump.static.df.loc[
+        #     (model.pump.static.df["meta_func_afvoer"] == False)
+        #     & (model.pump.static.df["meta_func_aanvoer"] == False)
+        #     & (model.pump.static.df["meta_func_circulatie"] == False),
+        #     "meta_func_afvoer",
+        # ] = True
+
         model.pump.static.df.loc[
-            (model.pump.static.df["meta_func_afvoer"] != True)
-            & (model.pump.static.df["meta_func_aanvoer"] != True)
-            & (model.pump.static.df["meta_func_circulatie"] != True),
-            "meta_func_afvoer",
-        ] = True
+        (~model.pump.static.df["meta_func_afvoer"].astype(bool))
+        & (~model.pump.static.df["meta_func_aanvoer"].astype(bool))
+        & (~model.pump.static.df["meta_func_circulatie"].astype(bool)),
+        'meta_func_afvoer'] = True
+
 
         ### add a random color to the basins ###
         color_cycle = itertools.cycle(Category10[10])
