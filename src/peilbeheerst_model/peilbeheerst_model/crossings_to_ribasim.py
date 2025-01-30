@@ -1705,10 +1705,10 @@ class RibasimNetwork:
 
         # if the function is not known, then choose func_afvoer
         model.pump.static.df.loc[
-            (model.pump.static.df["meta_func_afvoer"] == False)
-            & (model.pump.static.df["meta_func_aanvoer"] == False)
-            & (model.pump.static.df["meta_func_circulatie"] == False),
-            "meta_func_aanvoer",
+            (model.pump.static.df["meta_func_afvoer"] != True)
+            & (model.pump.static.df["meta_func_aanvoer"] != True)
+            & (model.pump.static.df["meta_func_circulatie"] != True),
+            "meta_func_afvoer",
         ] = True
 
         ### add a random color to the basins ###
@@ -1794,16 +1794,12 @@ class RibasimNetwork:
         model.pump.node.df = pump_node
 
         # aggregation areas (AA)
-        # step 1a: retrieve the coordinates of the aggregation areas in the basin.area table
-        # step 1b: retrieve the coordinates of the aggregation areas in the post processed table
+        # step 1: retrieve the coordinates of the aggregation areas in the basin.area table
         # step 2: these coordinates should be the same as the coordinates in the basin.area. Merge the globalids
         # merge with the basin_node table
 
-        # step 1a: retrieve the coordinates of the aggregation areas in the basin.area table
+        # step 1: retrieve the coordinates of the aggregation areas in the basin.area table
         coordinates_AA_ribasim = model.basin.area.df[["node_id", "geometry"]].copy()
-
-        # step 1b: retrieve the coordinates of the aggregation areas in the post processed table
-        coordinates_AA_PP = post_processed_data["aggregation_areas"]
 
         # step 2: these coordinates should be the same as the coordinates in the basin.area. Merge the globalids
         coordinates_AA_ribasim = coordinates_AA_ribasim.merge(
