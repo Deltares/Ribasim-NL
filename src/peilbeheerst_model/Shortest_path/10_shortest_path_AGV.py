@@ -44,6 +44,6 @@ gdf_out = gpd.GeoDataFrame(pd.concat(gdf_crossings_out))
 gdf_out["shortest_path"] = gdf_out["shortest_path"].apply(lambda geom: dumps(geom) if geom is not None else None)
 gdf_out.to_file(verwerkt_dir / "shortest_path.gpkg", driver="GPKG")
 
-# cloud.upload_verwerkt(waterschap)
+cloud.upload_verwerkt(waterschap)
 
 # %%
