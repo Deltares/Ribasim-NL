@@ -9,6 +9,7 @@
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyogrio
 
 from peilbeheerst_model.general_functions import read_gpkg_layers
 from ribasim_nl import CloudStorage
@@ -126,9 +127,19 @@ if remove_cat_2:
 
 output_gpkg_path = verwerkt_dir / "postprocessed.gpkg"
 
+# for key in AVG.keys():
+#     print(key)
+#     AVG[str(key)].to_file(output_gpkg_path, layer=str(key), driver="GPKG")
+
 for key in AVG.keys():
-    print(key)
-    AVG[str(key)].to_file(output_gpkg_path, layer=str(key), driver="GPKG")
+    pyogrio.write_dataframe(
+        AVG[key],
+        output_gpkg_path,
+        layer=str(key),
+        driver="GPKG",
+        promote_to_multi=False,
+    )
+
 
 cloud.upload_verwerkt(waterschap)
 # %%
