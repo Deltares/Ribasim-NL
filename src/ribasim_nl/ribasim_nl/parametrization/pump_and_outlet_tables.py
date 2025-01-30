@@ -76,7 +76,7 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
 
         # flow_rate; all in sub_mask == True needs to be filled
         sub_mask = static_df[mask]["flow_rate"].isna()
-        indices = sub_mask.index.to_numpy()
+        indices = sub_mask[sub_mask].index.to_numpy()
         if sub_mask.any():
             # fill nan with flow_rate_mm_day if provided
 
