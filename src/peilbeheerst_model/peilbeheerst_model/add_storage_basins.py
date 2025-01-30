@@ -100,8 +100,7 @@ class AddStorageBasins:
         manning_static["manning_n"] = 0.02
         manning_static["profile_width"] = 2.0
         manning_static["profile_slope"] = 3.0
-        manning_static["meta_categorie"] = 'bergend'
-        
+        manning_static["meta_categorie"] = "bergend"
 
         # create the edges table which goes from the bergende basin to the ManningResistance (MR)
         edge_bergend_MR = pd.DataFrame()

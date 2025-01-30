@@ -136,17 +136,7 @@ class AssignAuthorities:
         LB_static = ribasim_model.level_boundary.static.df.merge(
             right=temp_LB_node[["node_id", "meta_from_authority", "meta_to_authority"]], on="node_id", how="left"
         ).reset_index(drop=True)
-        LB_static.index.name = 'fid'
+        LB_static.index.name = "fid"
         ribasim_model.level_boundary.static.df = LB_static
-        
+
         return ribasim_model
-
-
-
-
-
-
-
-
-
-

@@ -1,5 +1,4 @@
 # import pathlib
-import itertools
 import json
 import os
 import shutil
@@ -12,10 +11,8 @@ import numpy as np
 import pandas as pd
 import ribasim
 import tqdm.auto as tqdm
-from bokeh.palettes import Category10
-from shapely.geometry import LineString
-
 from ribasim_nl import CloudStorage
+from shapely.geometry import LineString
 
 
 def get_current_max_nodeid(ribasim_model):
@@ -404,8 +401,8 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     # clean the df for clarity. Next, add the levels to the outlet df
     target_level = target_level[["node_id_x", "level"]]
     target_level.rename(columns={"level": "meta_min_crest_level", "node_id_x": "node_id"}, inplace=True)
-    target_level = target_level.sort_values(by=['node_id'])
-    
+    target_level = target_level.sort_values(by=["node_id"])
+
     outlet = target_level.copy(deep=True)
     outlet["meta_min_crest_level"] -= (
         delta_crest_level  # the peil of the boezem is allowed to lower with this much before no water will flow through the outlet, to prevent
@@ -431,7 +428,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     # remove the TRC's nodes
     ribasim_model.tabulated_rating_curve.node.df = ribasim_model.tabulated_rating_curve.node.df.loc[
         ~ribasim_model.tabulated_rating_curve.node.df.meta_node_id.isin(outlet.meta_node_id)
-    ]  
+    ]
     ribasim_model.tabulated_rating_curve.static = ribasim_model.tabulated_rating_curve.static.df.loc[
         ribasim_model.tabulated_rating_curve.static.df.node_id.isin(
             ribasim_model.tabulated_rating_curve.node.df.index.to_numpy()
@@ -900,24 +897,27 @@ def identify_node_meta_categorie(ribasim_model):
     nodes_to_boundary = ribasim_model.edge.df.loc[
         ribasim_model.edge.df.meta_to_node_type == "LevelBoundary", "from_node_id"
     ]
-    
-    #some pumps do not have a function yet, as they may have been changed due to the feedback forms. Set it to afvoer.
+
+    # some pumps do not have a function yet, as they may have been changed due to the feedback forms. Set it to afvoer.
     # Check for rows where all three specified columns are NaN and set 'meta_func_afvoer' to 1
     ribasim_model.pump.static.df.loc[
-        ribasim_model.pump.static.df[['meta_func_afvoer', 'meta_func_aanvoer', 'meta_func_circulatie']].isna().all(axis=1),
-        'meta_func_afvoer'
+        ribasim_model.pump.static.df[["meta_func_afvoer", "meta_func_aanvoer", "meta_func_circulatie"]]
+        .isna()
+        .all(axis=1),
+        "meta_func_afvoer",
     ] = 1
 
-    #if the function is both aanvoer and afvoer, then set aanvoer to False
-    ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df['meta_func_afvoer'] == 1) & (ribasim_model.pump.static.df['meta_func_aanvoer'] == 1), 'meta_func_aanvoer'] = 0
-    
+    # if the function is both aanvoer and afvoer, then set aanvoer to False
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df["meta_func_afvoer"] == 1)
+        & (ribasim_model.pump.static.df["meta_func_aanvoer"] == 1),
+        "meta_func_aanvoer",
+    ] = 0
 
-    #fill in the nan values
-    ribasim_model.pump.static.df['meta_func_afvoer'].fillna(0, inplace=True)
-    ribasim_model.pump.static.df['meta_func_aanvoer'].fillna(0, inplace=True)
-    ribasim_model.pump.static.df['meta_func_circulatie'].fillna(0, inplace=True)
-
-
+    # fill in the nan values
+    ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0, inplace=True)
+    ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0, inplace=True)
+    ribasim_model.pump.static.df["meta_func_circulatie"].fillna(0, inplace=True)
 
     # ribasim_model.pump.static.dfmeta_func_afvoer	meta_func_aanvoer	meta_func_circulatie
 
@@ -1140,14 +1140,13 @@ def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
     check_for_nans_in_columns(outlet, "outlet")
     check_for_nans_in_columns(pump, "pump")
 
-    print('Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.')
+    print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
     pump.flow_rate = pump.flow_rate.fillna(value=0.1234)
-    
+
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
     ribasim_model.pump.static.df = pump
 
-    
     return
 
 
@@ -1857,42 +1856,54 @@ def clean_tables(ribasim_model, waterschap):
             "\nFollowing indexes are duplicated in the level_boundary.static table:\n", duplicated_static_level_boundary
         )
 
-    #check if node_ids in the edge table are not present in the node table
+    # check if node_ids in the edge table are not present in the node table
     edge = ribasim_model.edge.df.copy()
     missing_from_node_id = edge.loc[~edge.from_node_id.isin(combined_df.node_id.to_numpy())]
     missing_to_node_id = edge.loc[~edge.to_node_id.isin(combined_df.node_id.to_numpy())]
-    missing_edges = combined_df.loc[(~combined_df.node_id.isin(edge.from_node_id)) & (~combined_df.node_id.isin(edge.to_node_id))]
+    missing_edges = combined_df.loc[
+        (~combined_df.node_id.isin(edge.from_node_id)) & (~combined_df.node_id.isin(edge.to_node_id))
+    ]
 
-    if len(missing_from_node_id)>0:
+    if len(missing_from_node_id) > 0:
         print("\nFollowing from_node_id's in the edge table do not exist:\n", missing_from_node_id)
-    if len(missing_to_node_id)>0:
+    if len(missing_to_node_id) > 0:
         print("\nFollowing to_node_id's in the edge table do not exist:\n", missing_to_node_id)
-    if len(missing_edges)>0:
+    if len(missing_edges) > 0:
         print("\nFollowing node_ids are not connected to any edges:\n", missing_edges)
 
-    #set crs
-    ribasim_model.basin.node.df = gpd.GeoDataFrame(ribasim_model.basin.node.df.set_crs(crs='EPSG:28992'))
-    ribasim_model.tabulated_rating_curve.node.df = gpd.GeoDataFrame(ribasim_model.tabulated_rating_curve.node.df.set_crs(crs='EPSG:28992'))
-    ribasim_model.outlet.node.df = gpd.GeoDataFrame(ribasim_model.outlet.node.df.set_crs(crs='EPSG:28992'))
-    ribasim_model.pump.node.df = gpd.GeoDataFrame(ribasim_model.pump.node.df.set_crs(crs='EPSG:28992'))
-    ribasim_model.manning_resistance.node.df = gpd.GeoDataFrame(ribasim_model.manning_resistance.node.df.set_crs(crs='EPSG:28992'))
-    ribasim_model.level_boundary.node.df = gpd.GeoDataFrame(ribasim_model.level_boundary.node.df.set_crs(crs='EPSG:28992'))
-    ribasim_model.flow_boundary.node.df = gpd.GeoDataFrame(ribasim_model.flow_boundary.node.df.set_crs(crs='EPSG:28992'))
-    ribasim_model.terminal.node.df = gpd.GeoDataFrame(ribasim_model.terminal.node.df.set_crs(crs='EPSG:28992'))
+    # set crs
+    ribasim_model.basin.node.df = gpd.GeoDataFrame(ribasim_model.basin.node.df.set_crs(crs="EPSG:28992"))
+    ribasim_model.tabulated_rating_curve.node.df = gpd.GeoDataFrame(
+        ribasim_model.tabulated_rating_curve.node.df.set_crs(crs="EPSG:28992")
+    )
+    ribasim_model.outlet.node.df = gpd.GeoDataFrame(ribasim_model.outlet.node.df.set_crs(crs="EPSG:28992"))
+    ribasim_model.pump.node.df = gpd.GeoDataFrame(ribasim_model.pump.node.df.set_crs(crs="EPSG:28992"))
+    ribasim_model.manning_resistance.node.df = gpd.GeoDataFrame(
+        ribasim_model.manning_resistance.node.df.set_crs(crs="EPSG:28992")
+    )
+    ribasim_model.level_boundary.node.df = gpd.GeoDataFrame(
+        ribasim_model.level_boundary.node.df.set_crs(crs="EPSG:28992")
+    )
+    ribasim_model.flow_boundary.node.df = gpd.GeoDataFrame(
+        ribasim_model.flow_boundary.node.df.set_crs(crs="EPSG:28992")
+    )
+    ribasim_model.terminal.node.df = gpd.GeoDataFrame(ribasim_model.terminal.node.df.set_crs(crs="EPSG:28992"))
 
-    #section below as asked by D2HYDRO
+    # section below as asked by D2HYDRO
 
     # #add category in the .node table
-    basin_node = ribasim_model.basin.node.df.merge(right=ribasim_model.basin.state.df[['node_id', 'meta_categorie']],
-                                                                    how='left',
-                                                                    left_on='meta_node_id',
-                                                                    right_on='node_id')
-    basin_node = basin_node.set_index('node_id') #change index
-    ribasim_model.basin.node.df = basin_node #replace the df
-    
-    #add waterschap name, remove meta_node_id
-    ribasim_model.basin.node.df['meta_waterbeheerder'] = waterschap
-    ribasim_model.basin.node.df = ribasim_model.basin.node.df.drop(columns='meta_node_id')
+    basin_node = ribasim_model.basin.node.df.merge(
+        right=ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
+        how="left",
+        left_on="meta_node_id",
+        right_on="node_id",
+    )
+    basin_node = basin_node.set_index("node_id")  # change index
+    ribasim_model.basin.node.df = basin_node  # replace the df
+
+    # add waterschap name, remove meta_node_id
+    ribasim_model.basin.node.df["meta_waterbeheerder"] = waterschap
+    ribasim_model.basin.node.df = ribasim_model.basin.node.df.drop(columns="meta_node_id")
     return
 
 
@@ -2016,8 +2027,6 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
         ribasim_model.pump.static = structure_static
 
     return
-
-
 
 
 # def checks(ribasim_model):
@@ -2271,7 +2280,7 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
 #     # ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df['meta_func_afvoer'] == True) & (ribasim_model.pump.static.df['meta_func_aanvoer'] == True), 'meta_func_aanvoer'] = False
 
 #     # ribasim_model.pump.static.df.loc[(ribasim_model.pump.static.df['meta_func_afvoer'] == 1) & (ribasim_model.pump.static.df['meta_func_aanvoer'] == 1), 'meta_func_aanvoer'] = 0
-    
+
 #     ### add a random color to the basins ###
 #     color_cycle = itertools.cycle(Category10[10])
 #     color_list = []
@@ -2317,7 +2326,6 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
 #     )
 
 #     return ribasim_model
-
 
 
 ##################### Recycle bin ##########################

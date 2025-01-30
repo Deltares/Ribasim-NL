@@ -24,7 +24,7 @@ class Control:
 
     def read_model_output(self):
         df_basin = pd.read_feather(self.path_basin_output)
-        df_edge = pd.read_feather(self.path_edge_output) 
+        df_edge = pd.read_feather(self.path_edge_output)
         model = ribasim.model.Model(filepath=self.path_ribasim_toml)
 
         self.df_basin = df_basin
@@ -87,8 +87,9 @@ class Control:
 
         # retrieve the geometries
         min_basin_level = min_basin_level.merge(
-            self.model.basin.node.df[['geometry']], left_on="node_id", right_index=True, suffixes=("", "model_"))
-        
+            self.model.basin.node.df[["geometry"]], left_on="node_id", right_index=True, suffixes=("", "model_")
+        )
+
         max_basin_level = basin_level.drop_duplicates(subset="node_id", keep="last").reset_index(
             drop=True
         )  # pick the LAST sample, which are the maximum water levels
@@ -98,9 +99,10 @@ class Control:
 
         # retrieve the geometries
         max_basin_level = max_basin_level.merge(
-            self.model.basin.node.df[['geometry']], left_on="node_id", right_index=True, suffixes=("", "model_"))
+            self.model.basin.node.df[["geometry"]], left_on="node_id", right_index=True, suffixes=("", "model_")
+        )
 
-        #convert to geopandas
+        # convert to geopandas
         min_basin_level = gpd.GeoDataFrame(min_basin_level, geometry="geometry")
         max_basin_level = gpd.GeoDataFrame(max_basin_level, geometry="geometry")
 
@@ -185,50 +187,51 @@ class Control:
 
     def find_stationary_flow(self, control_dict, n_hours_mean=24):
         df_edge = self.df_edge.copy()
-        df_edge['time'] = pd.to_datetime(df_edge['time']) #convert to time column
-    
-        df_edge = df_edge.sort_values(by=["time", "edge_id"], ascending=True).copy() #sort values, just in case
-        last_time = df_edge['time'].max() #retireve max time value
-        time_threshold = last_time - pd.Timedelta(hours=n_hours_mean) #determine the time threshold, likely 24 hours
-        
-        df_edge_24h = df_edge[df_edge['time'] >= time_threshold].copy() #seelct above the threshold
-        
+        df_edge["time"] = pd.to_datetime(df_edge["time"])  # convert to time column
+
+        df_edge = df_edge.sort_values(by=["time", "edge_id"], ascending=True).copy()  # sort values, just in case
+        last_time = df_edge["time"].max()  # retireve max time value
+        time_threshold = last_time - pd.Timedelta(hours=n_hours_mean)  # determine the time threshold, likely 24 hours
+
+        df_edge_24h = df_edge[df_edge["time"] >= time_threshold].copy()  # seelct above the threshold
+
         # Group by 'edge_id' and calculate the average flow rate over the last 24 hours
-        df_edge_avg = df_edge_24h.groupby('edge_id', as_index=False).agg({
-            'flow_rate': 'mean', #take the mean, as the pumps may not show stationairy results in one timestep
-            'from_node_id': 'first', #remains the same for each timestep
-            'to_node_id': 'first', #remains the same for each timestep
-            'time': 'first'  #remains the same for each timestep
-        })
-        
+        df_edge_avg = df_edge_24h.groupby("edge_id", as_index=False).agg(
+            {
+                "flow_rate": "mean",  # take the mean, as the pumps may not show stationairy results in one timestep
+                "from_node_id": "first",  # remains the same for each timestep
+                "to_node_id": "first",  # remains the same for each timestep
+                "time": "first",  # remains the same for each timestep
+            }
+        )
+
         # Merge the geometry from edges_ribasim to df_edge_avg to retrieve the geometries
         edges_ribasim = self.model.edge.df.copy()
-        df_edge_avg = df_edge_avg.merge(right=edges_ribasim[['from_node_id', 'to_node_id', 'geometry']],
-                                        on=['from_node_id', 'to_node_id'],
-                                        how='left')
-        
-        df_edge_avg = gpd.GeoDataFrame(df_edge_avg).set_crs(crs='EPSG:28992')
+        df_edge_avg = df_edge_avg.merge(
+            right=edges_ribasim[["from_node_id", "to_node_id", "geometry"]],
+            on=["from_node_id", "to_node_id"],
+            how="left",
+        )
+
+        df_edge_avg = gpd.GeoDataFrame(df_edge_avg).set_crs(crs="EPSG:28992")
         control_dict["flow"] = df_edge_avg
-        
+
         return control_dict
-        
+
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():
-            data[str(key)].to_file(output_path + ".gpkg", 
-                                   layer=str(key), 
-                                   driver="GPKG", 
-                                   mode='w')
+            data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG", mode="w")
 
         # copy checks_symbology file from old dir to new dir
-        #define path
+        # define path
         output_controle_qlr_path = r"../../../../../Data_overig/QGIS_qlr/output_controle.qlr"
 
-        #delete old .qlr file (overwriting does apparently not work due to permission rights)
+        # delete old .qlr file (overwriting does apparently not work due to permission rights)
         if os.path.exists(os.path.join(self.work_dir, "results", "output_controle.qlr")):
             os.remove(os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
-        #copy .qlr file
+        # copy .qlr file
         shutil.copy(src=output_controle_qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
         return
