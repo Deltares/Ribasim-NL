@@ -2,6 +2,7 @@
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
+import pyogrio
 
 
 def read_gpkg_layers(gpkg_path, engine="fiona", print_var=False):
@@ -55,28 +56,39 @@ def show_layers_and_columns(waterschap):
         print()
 
 
+# def store_data(waterschap, output_gpkg_path):
+#     """
+#     Store Geospatial Data to a GeoPackage (GPKG) File.
+
+#     Parameters
+#     ----------
+#         waterschap (dict): A dictionary containing GeoDataFrames to be stored in the GPKG file.
+#         output_gpkg_path (str): The file path (including the file name without extension) to save the GPKG file.
+
+#     Returns
+#     -------
+#         None
+
+#     This function stores geospatial data from a dictionary of GeoDataFrames into a GeoPackage (GPKG) file.
+
+#     Parameters
+#     ----------
+#     - waterschap: A dictionary where the keys represent layer names, and the values are GeoDataFrames.
+#     - output_gpkg_path: The file path for the output GPKG file. The '.gpkg' extension is added automatically.
+#     """
+#     for key in waterschap.keys():
+#         waterschap[str(key)].to_file(output_gpkg_path + ".gpkg", layer=str(key), driver="GPKG")
+
+
 def store_data(waterschap, output_gpkg_path):
-    """
-    Store Geospatial Data to a GeoPackage (GPKG) File.
-
-    Parameters
-    ----------
-        waterschap (dict): A dictionary containing GeoDataFrames to be stored in the GPKG file.
-        output_gpkg_path (str): The file path (including the file name without extension) to save the GPKG file.
-
-    Returns
-    -------
-        None
-
-    This function stores geospatial data from a dictionary of GeoDataFrames into a GeoPackage (GPKG) file.
-
-    Parameters
-    ----------
-    - waterschap: A dictionary where the keys represent layer names, and the values are GeoDataFrames.
-    - output_gpkg_path: The file path for the output GPKG file. The '.gpkg' extension is added automatically.
-    """
     for key in waterschap.keys():
-        waterschap[str(key)].to_file(output_gpkg_path + ".gpkg", layer=str(key), driver="GPKG")
+        pyogrio.write_dataframe(
+            waterschap[key],
+            output_gpkg_path + ".gpkg",
+            layer=str(key),
+            driver="GPKG",
+            promote_to_multi=False,
+        )
 
 
 def overlapping_peilgebieden(waterschap_peilgebieden):
