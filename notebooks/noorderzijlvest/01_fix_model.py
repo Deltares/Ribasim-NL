@@ -11,7 +11,7 @@ from shapely.ops import snap, split
 from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
-from ribasim_nl.sanitize_node_table import stanitize_node_table
+from ribasim_nl.sanitize_node_table import sanitize_node_table
 
 cloud = CloudStorage()
 
@@ -301,16 +301,18 @@ for row in model.node_table().df[model.node_table().df.node_type == "TabulatedRa
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # get a name series from GKW-data
-df = get_data_from_gkw(authority="Noorderzijlvest", layers=["gemaal", "stuw", "sluis"])
+df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
 df.set_index("code", inplace=True)
 names = df["naam"]
 names.loc["KSL011"] = "R.J. Cleveringensluizen"
 
-stanitize_node_table(
+sanitize_node_table(
     model,
     meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
-    copy_columns={"name": "meta_code_waterbeheerder"},
-    copy_in_tables=["Outlet", "Pump"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["LevelBoundary", "FlowBoundary", "Basin", "ManningResistance"], "columns": {"name": ""}},
+    ],
     names=names,
 )
 
