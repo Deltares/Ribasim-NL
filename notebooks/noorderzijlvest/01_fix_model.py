@@ -9,9 +9,9 @@ from shapely.geometry import MultiLineString
 from shapely.ops import snap, split
 
 from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
+from ribasim_nl.sanitize_node_table import stanitize_node_table
 
 cloud = CloudStorage()
 
@@ -300,31 +300,19 @@ for row in model.node_table().df[model.node_table().df.node_type == "TabulatedRa
     node_id = row.Index
     model.update_node(node_id=node_id, node_type="Outlet")
 
-# %% sanitize node-tables
-node_columns = model.basin.node.columns() + ["meta_code_waterbeheerder", "meta_categorie"]
-
-# name to code
-model.outlet.node.df.loc[:, "meta_code_waterbeheerder"] = model.outlet.node.df.name
-model.pump.node.df.loc[:, "meta_code_waterbeheerder"] = model.pump.node.df.name
-
+# get a name series from GKW-data
 df = get_data_from_gkw(authority="Noorderzijlvest", layers=["gemaal", "stuw", "sluis"])
 df.set_index("code", inplace=True)
 names = df["naam"]
 names.loc["KSL011"] = "R.J. Cleveringensluizen"
 
-# remove names and clean columns
-for node_type in model.node_table().df.node_type.unique():
-    table = getattr(model, pascal_to_snake_case(node_type))
-
-    if "meta_code_waterbeheerder" in table.node.df.columns:
-        table.node.df.loc[:, "name"] = table.node.df["meta_code_waterbeheerder"].apply(
-            lambda x: names[x] if x in names.index.to_numpy() else ""
-        )
-    else:
-        table.node.df.name = ""
-    columns = [col for col in table.node.df.columns if col in node_columns]
-    table.node.df = table.node.df[columns]
-
+stanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    copy_columns={"name": "meta_code_waterbeheerder"},
+    copy_in_tables=["Outlet", "Pump"],
+    names=names,
+)
 
 #  %% write model
 model.use_validation = True
