@@ -2,6 +2,7 @@
 import pandas as pd
 
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.parametrization.empty_table import empty_table_df
 from ribasim_nl.streefpeilen import add_streefpeil
 
 cloud = CloudStorage()
@@ -21,7 +22,9 @@ model = Model.read(ribasim_toml)
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/WS_PEILGEBIEDPolygon.shp")
 cloud.synchronize(filepaths=[peilgebieden_path])
 
-add_streefpeil(model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="ZOMERPEIL", code="CODE")
+_ = add_streefpeil(
+    model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="ZOMERPEIL", code="CODE"
+)
 
 
 # %%
@@ -70,11 +73,26 @@ static_data_xlsx = cloud.joinpath(
     "parameters",
     "static_data_template.xlsx",
 )
-static_data_xlsx.parent.mkdir(exist_ok=True)
+if static_data_xlsx.exists():
+    static_data_xlsx.unlink()
+else:
+    static_data_xlsx.parent.mkdir(exist_ok=True, parents=True)
 
+defaults_df.to_excel(static_data_xlsx, sheet_name="defaults")
+
+with pd.ExcelWriter(static_data_xlsx, mode="a", if_sheet_exists="replace") as xlsx_writer:
+    # Pump, Outlet
+    columns = ["flow_rate", "min_upstream_level", "max_downstream_level"]
+    extra_columns = ["categorie", "opmerking_waterbeheerder"]
+    for node_type in ["Pump", "Outlet"]:
+        df = empty_table_df(
+            model=model, table_type="Static", node_type=node_type, meta_columns=["meta_code_waterbeheerder"]
+        ).set_index("meta_code_waterbeheerder")
+        for col in extra_columns:
+            df[col] = pd.Series()
+        df[columns + extra_columns].to_excel(xlsx_writer, sheet_name=node_type)
 # %%
 
-# write
+# write model
 
 model.write(ribasim_toml)
-defaults_df.to_excel(static_data_xlsx, sheet_name="defaults")
