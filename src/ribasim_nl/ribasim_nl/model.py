@@ -9,7 +9,6 @@ import pandas as pd
 import shapely
 from pydantic import BaseModel
 from ribasim import Model, Node
-from ribasim.geometry.edge import NodeData
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
 from ribasim.validation import flow_edge_neighbor_amount as edge_amount
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
@@ -594,7 +593,7 @@ class Model(Model):
         df = self.basin.node.df[~self.basin.node.df.index.isin(self.edge.df.from_node_id)]
         df.to_file(gpkg)
 
-    def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
+    def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None):
         """Find the closest basin_node."""
         # only works when basin area are defined
         if self.basin.area.df is None:
