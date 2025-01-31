@@ -8,8 +8,6 @@ from ribasim_nl import Model
 
 
 def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target_level: str, code: str):
-    authority = model.filepath.parents[2].name
-    print(authority)
     # synchronize files
 
     # Check if the layername is provided and the peilgebieden_path is a GPKG file
