@@ -24,12 +24,17 @@ def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"],
     if node_type in static_data_sheets:
         table = getattr(model, pascal_to_snake_case(node_type)).node
         # add node_id to static_data
-        static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type).set_index("code")
-        static_data = static_data[static_data.index.isin(table.df["meta_code_waterbeheerder"])]
-        static_data.loc[:, "node_id"] = (
-            table.df.reset_index().set_index("meta_code_waterbeheerder").loc[static_data.index].node_id
-        )
-        static_data.set_index("node_id", inplace=True)
+        static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type)
+        if "node_id" not in static_data.columns:
+            static_data.set_index("code", inplace=True)
+            static_data = static_data[static_data.index.isin(table.df["meta_code_waterbeheerder"])]
+            static_data.loc[:, "node_id"] = (
+                table.df.reset_index().set_index("meta_code_waterbeheerder").loc[static_data.index].node_id
+            )
+            static_data.set_index("node_id", inplace=True)
+        else:
+            static_data.set_index("node_id", inplace=True)
+            static_data = static_data[static_data.index.isin(table.df.index.to_numpy())]
 
         # add function to node via categorie
         defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0)
