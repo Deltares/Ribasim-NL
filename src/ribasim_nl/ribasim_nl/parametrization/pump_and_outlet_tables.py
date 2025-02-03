@@ -35,15 +35,22 @@ def create_static_df(
     if static_data_xlsx is not None:
         static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
         if node_type in static_data_sheets:
-            static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type).set_index("code")
+            # in case node_id doesn't exist in the Excel-table
+            static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type)
+            if "node_id" not in static_data.columns:
+                static_data.set_index("code", inplace=True)
 
-            # in case there is more defined in static_data than in the model
-            static_data = static_data[static_data.index.isin(static_df[code_column])]
+                # in case there is more defined in static_data than in the model
+                static_data = static_data[static_data.index.isin(static_df[code_column])]
 
-            # update-function from static_data in Excel
-            static_data.loc[:, "node_id"] = static_df.set_index(code_column).loc[static_data.index].node_id
+                # update-function from static_data in Excel
+                static_data.loc[:, "node_id"] = static_df.set_index(code_column).loc[static_data.index].node_id
+            else:
+                # in case there is more defined in static_data than in the model
+                static_data = static_data[static_data.node_id.isin(static_df["node_id"])]
+
             static_data.columns = [i if i in static_df.columns else f"meta_{i}" for i in static_data.columns]
-            static_data = static_data.set_index("node_id")
+            static_data.set_index("node_id", inplace=True)
 
             static_df.set_index("node_id", inplace=True)
             for col in static_data.columns:
