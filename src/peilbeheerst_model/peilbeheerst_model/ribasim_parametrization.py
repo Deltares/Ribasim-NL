@@ -959,6 +959,7 @@ def identify_node_meta_categorie(ribasim_model):
         ),
         "meta_categorie",
     ] = "Reguliere stuw"
+
     ribasim_model.pump.static.df.loc[
         ~(
             (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
@@ -1017,6 +1018,7 @@ def identify_node_meta_categorie(ribasim_model):
         & (ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem)),  # to
         "meta_categorie",
     ] = "Uitlaat buitenwater boezem, stuw"
+
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
@@ -1142,68 +1144,6 @@ def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
 
     print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
     pump.flow_rate = pump.flow_rate.fillna(value=0.1234)
-
-    # place the df's back in the ribasim_model
-    ribasim_model.outlet.static.df = outlet
-    ribasim_model.pump.static.df = pump
-
-    return
-
-
-def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
-    sturing = load_model_settings(f"sturing_{waterschap}.json")  # load the waterschap specific sturing
-
-    # create empty columns for the sturing
-    ribasim_model.outlet.static.df["min_upstream_level"] = np.nan
-    ribasim_model.outlet.static.df["max_downstream_level"] = np.nan
-    ribasim_model.outlet.static.df["max_flow_rate"] = np.nan
-    ribasim_model.outlet.static.df["flow_rate"] = np.nan
-
-    ribasim_model.pump.static.df["min_upstream_level"] = np.nan
-    ribasim_model.pump.static.df["max_downstream_level"] = np.nan
-    ribasim_model.pump.static.df["max_flow_rate"] = np.nan
-    ribasim_model.pump.static.df["flow_rate"] = np.nan
-
-    # make a temp copy to reduce line length, place it later again in the model
-    outlet = ribasim_model.outlet.static.df.copy()
-    pump = ribasim_model.pump.static.df.copy()
-
-    # for each different outlet and pump type, determine the min an max upstream and downstream level
-    for types, settings in sturing.items():
-        # Extract values for each setting
-        upstream_level_offset = settings["upstream_level_offset"]
-        downstream_level_offset = settings["downstream_level_offset"]
-        max_flow_rate = settings["max_flow_rate"]
-
-        # Update the min_upstream_level and max_downstream_level in the OUTLET dataframe
-        outlet.loc[outlet.meta_categorie == types, "min_upstream_level"] = (
-            outlet.meta_from_level - upstream_level_offset
-        )
-        outlet.loc[outlet.meta_categorie == types, "max_downstream_level"] = (
-            outlet.meta_to_level + downstream_level_offset
-        )
-        outlet.loc[outlet.meta_categorie == types, "flow_rate"] = max_flow_rate
-
-        # Update the min_upstream_level and max_downstream_level in the PUMP dataframe. can be done within the same loop, as the meta_categorie is different for the outlet and pump
-        pump.loc[pump.meta_categorie == types, "min_upstream_level"] = pump.meta_from_level - upstream_level_offset
-        pump.loc[pump.meta_categorie == types, "max_downstream_level"] = pump.meta_to_level + downstream_level_offset
-        pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
-
-    # outlet['flow_rate'] = outlet['max_flow_rate']
-    # pump['flow_rate'] = pump['max_flow_rate']
-
-    # raise warning if there are np.nan in the columns
-    def check_for_nans_in_columns(
-        df, outlet_or_pump, columns_to_check=["min_upstream_level", "max_downstream_level", "flow_rate", "flow_rate"]
-    ):
-        if df[columns_to_check].isnull().values.any():
-            warnings.warn(
-                f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
-                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}"
-            )
-
-    check_for_nans_in_columns(outlet, "outlet")
-    check_for_nans_in_columns(pump, "pump")
 
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
