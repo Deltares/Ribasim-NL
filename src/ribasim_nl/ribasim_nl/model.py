@@ -9,9 +9,19 @@ import pandas as pd
 import shapely
 from pydantic import BaseModel
 from ribasim import Model, Node
-from ribasim.geometry.edge import NodeData
+
+try:
+    from ribasim.geometry.edge import NodeData
+except ImportError:
+    from ribasim.geometry.link import NodeData
+
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
-from ribasim.validation import flow_edge_neighbor_amount as edge_amount
+
+try:
+    from ribasim.validation import flow_edge_neighbor_amount as edge_amount
+except ImportError:
+    from ribasim.validation import flow_link_neighbor_amount as edge_amount
+
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
