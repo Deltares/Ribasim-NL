@@ -88,8 +88,12 @@ with pd.ExcelWriter(static_data_xlsx, mode="a", if_sheet_exists="replace") as xl
         df = empty_table_df(
             model=model, table_type="Static", node_type=node_type, meta_columns=["meta_code_waterbeheerder"]
         ).set_index("meta_code_waterbeheerder")
-        for col in extra_columns:
-            df[col] = pd.Series()
+        df.index.name = "code"
+        if node_type == "Pump":
+            df["categorie"] = "Afvoergemaal"
+        if node_type == "Outlet":
+            df["categorie"] = "Uitlaat"
+        df["opmerking_waterbeheerder"] = ""
         df[columns + extra_columns].to_excel(xlsx_writer, sheet_name=node_type)
 # %%
 
