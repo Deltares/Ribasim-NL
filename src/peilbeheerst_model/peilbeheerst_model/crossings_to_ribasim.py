@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 import ribasim
 from bokeh.palettes import Category10
-from ribasim_nl import CloudStorage
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.wkt import loads
+
+from ribasim_nl import CloudStorage
 
 
 class CrossingsToRibasim:

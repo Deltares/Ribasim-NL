@@ -11,8 +11,9 @@ import numpy as np
 import pandas as pd
 import ribasim
 import tqdm.auto as tqdm
-from ribasim_nl import CloudStorage
 from shapely.geometry import LineString
+
+from ribasim_nl import CloudStorage
 
 
 def get_current_max_nodeid(ribasim_model):
