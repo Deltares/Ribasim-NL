@@ -235,5 +235,3 @@ model.report_basin_area()
 model.report_internal_basins()
 
 # %%
-result = model.run()
-assert result == 0

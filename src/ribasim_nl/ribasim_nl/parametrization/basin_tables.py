@@ -1,3 +1,4 @@
+# %%
 import pandas as pd
 
 from ribasim_nl.model import Model

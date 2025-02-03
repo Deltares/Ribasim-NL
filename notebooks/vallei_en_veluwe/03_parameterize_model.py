@@ -4,8 +4,8 @@ import time
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
-authority = "AaenMaas"
-short_name = "aam"
+authority = "ValleienVeluwe"
+short_name = "venv"
 
 
 static_data_xlsx = cloud.joinpath(

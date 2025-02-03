@@ -1,3 +1,4 @@
+# %%
 from pathlib import Path
 
 import geopandas as gpd
@@ -26,9 +27,9 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
     model.basin.area.df["meta_code_waterbeheerder"] = model.basin.area.df["meta_code_waterbeheerder"].astype(str)
 
     # Ensure 'meta_streefpeil' exists in the dataframe as float
-    if "meta_streefpeil" not in model.basin.area.df.columns:
-        model.basin.area.df["meta_streefpeil"] = np.nan
-    model.basin.area.df["meta_streefpeil"] = model.basin.area.df["meta_streefpeil"].astype(float)
+    if "meta_streefpeil" in model.basin.area.df.columns:
+        model.basin.area.df.drop(columns="meta_streefpeil", inplace=True)
+    model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
     # Prepare basin geometries
     basins_gdf = gpd.GeoDataFrame(model.basin.area.df, geometry=model.basin.area.df["geometry"], crs=peilgebieden.crs)
