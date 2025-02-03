@@ -211,7 +211,9 @@ class Control:
         return control_dict
 
     def flow_situation(self, control_dict: dict, n_last_hours: int = 10) -> dict:
-        """Determine whether the flow conditions are representative for drought-conditions, or for
+        """Determin flow situation.
+
+        Determine whether the flow conditions are representative for drought-conditions, or for
         flood-conditions. Drought-conditions would see an inflow from the main water system into
         the polders; flood-conditions would see an outflow from the polders into the main water
         system.
@@ -258,8 +260,7 @@ class Control:
         return control_dict
 
     def flow_main_water_system(self, control_dict: dict, n_last_hours: int = 10) -> dict:
-        """Highlight the edges that can be considered part of the main water system and mark them
-        as outflow ('afvoer') or inflow ('aanvoer').
+        """Highlight the edges that can be considered part of the main water system and mark them as outflow ('afvoer') or inflow ('aanvoer').
 
         :param control_dict: colection of geopandas-dataframes containing control data.
         :param n_last_hours: number of hours to average over, defaults to 10.
