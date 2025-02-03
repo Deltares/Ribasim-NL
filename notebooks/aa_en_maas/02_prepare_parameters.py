@@ -82,19 +82,19 @@ defaults_df.to_excel(static_data_xlsx, sheet_name="defaults")
 
 with pd.ExcelWriter(static_data_xlsx, mode="a", if_sheet_exists="replace") as xlsx_writer:
     # Pump, Outlet
-    columns = ["flow_rate", "min_upstream_level", "max_downstream_level"]
+    columns = ["node_id", "name", "code", "flow_rate", "min_upstream_level", "max_downstream_level"]
     extra_columns = ["categorie", "opmerking_waterbeheerder"]
     for node_type in ["Pump", "Outlet"]:
         df = empty_table_df(
-            model=model, table_type="Static", node_type=node_type, meta_columns=["meta_code_waterbeheerder"]
-        ).set_index("meta_code_waterbeheerder")
-        df.index.name = "code"
+            model=model, table_type="Static", node_type=node_type, meta_columns=["meta_code_waterbeheerder", "name"]
+        )
+        df.rename(columns={"meta_code_waterbeheerder": "code"}, inplace=True)
         if node_type == "Pump":
             df["categorie"] = "Afvoergemaal"
         if node_type == "Outlet":
             df["categorie"] = "Uitlaat"
         df["opmerking_waterbeheerder"] = ""
-        df[columns + extra_columns].to_excel(xlsx_writer, sheet_name=node_type)
+        df[columns + extra_columns].to_excel(xlsx_writer, sheet_name=node_type, index=False)
 # %%
 
 # write model
