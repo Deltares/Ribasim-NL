@@ -114,7 +114,7 @@ class StaticData(BaseModel):
         setattr(self, pascal_to_snake_case(node_type), df)
         return getattr(self, pascal_to_snake_case(node_type))
 
-    def add_series(self, node_type, series):
+    def add_series(self, node_type, series, fill_na: bool = False):
         col = series.index.name
 
         # get dataframe
@@ -127,6 +127,8 @@ class StaticData(BaseModel):
 
         # mask table where row in series and set data
         mask = df[col].isin(series.index)
+        if fill_na:
+            mask = mask & df[series.name].isna()
         df.loc[mask, series.name] = series[df[mask][col]].to_numpy()
 
     def write(self):
@@ -173,6 +175,6 @@ class StaticData(BaseModel):
 
                 ws.column_dimensions[col_letter].width = max_length + 2  # Add some padding
 
-            # Save the modified file
-            wb.save(self.xlsx_path)
+        # Save the modified file
+        wb.save(self.xlsx_path)
         wb.close()
