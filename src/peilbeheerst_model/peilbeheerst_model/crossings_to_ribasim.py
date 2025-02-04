@@ -962,8 +962,6 @@ class RibasimNetwork:
         basin_node["meta_node_id"] = basin_node["node_id"].copy().astype(int)
         basin_area["meta_node_id"] = basin_area["node_id"].copy().astype(int)
         basin_node = basin_node.set_index("node_id")
-        # basin_area = basin_area.set_index('node_id')
-
         return basin_node, basin_profile, basin_static, basin_state, basin_area
 
     def tabulated_rating_curve(self):
@@ -1679,15 +1677,6 @@ class RibasimNetwork:
         temp_pump_static.index.name = "fid"
         model.pump.static.df = temp_pump_static
 
-        # add the coupled_pump_function column per column to the model.pump.static.df
-        # func_afvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[["node_id", "func_afvoer"]]
-        # func_aanvoer = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[["node_id", "func_aanvoer"]]
-        # func_circulatie = model.pump.static.df.merge(coupled_pump_function, on="node_id", how="left")[["node_id", "func_circulatie"]]
-
-        # model.pump.static.df["meta_func_aanvoer"] = func_aanvoer
-        # model.pump.static.df["meta_func_afvoer"] = func_afvoer
-        # model.pump.static.df["meta_func_circulatie"] = func_circulatie
-
         ### add the peilgebied_cat flag to the edges as well ###
         # first assign all edges to become 'bergend'. Adjust the boezem edges later.
         model.edge.df["meta_categorie"] = "doorgaand"
@@ -1705,13 +1694,6 @@ class RibasimNetwork:
         model.pump.static.df["meta_func_circulatie"].fillna(value=False)
 
         # # if the function is not known, then choose func_afvoer
-        # model.pump.static.df.loc[
-        #     (model.pump.static.df["meta_func_afvoer"] == False)
-        #     & (model.pump.static.df["meta_func_aanvoer"] == False)
-        #     & (model.pump.static.df["meta_func_circulatie"] == False),
-        #     "meta_func_afvoer",
-        # ] = True
-
         model.pump.static.df.loc[
             (~model.pump.static.df["meta_func_afvoer"].astype(bool))
             & (~model.pump.static.df["meta_func_aanvoer"].astype(bool))

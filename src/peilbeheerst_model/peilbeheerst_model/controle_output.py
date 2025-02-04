@@ -54,14 +54,6 @@ class Control:
             initial_final_level_df["initial_level"] - initial_final_level_df["final_level"]
         )
 
-        # initial_final_level_df["final_level_within_target"] = (
-        #     True  # final level within target level (deviate max 20 cm from streefpeil) is default True ...
-        # )
-        # initial_final_level_df.loc[
-        #     (initial_final_level_df["difference_level"] > 0.2) | (initial_final_level_df["difference_level"] < -0.2),
-        #     "final_level_within_target",
-        # ] = False  # ... but set to False if the criteria is not met
-
         # retrieve the geometries
         initial_final_level_df["geometry"] = initial_final_level_df.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
@@ -239,10 +231,10 @@ class Control:
     def run_all(self):
         control_dict = self.read_model_output()
         control_dict = self.initial_final_level(control_dict)
-        # control_dict = self.min_max_level(control_dict)
+        control_dict = self.min_max_level(control_dict)
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
-        # control_dict = self.find_stationary_flow(control_dict)
+        control_dict = self.find_stationary_flow(control_dict)
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
         return control_dict
