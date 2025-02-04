@@ -108,7 +108,7 @@ class RibasimFeedbackProcessor:
 
         try:
             for index, row in self.df.iterrows():
-                logging.info(f"Processing row: {index+7}")
+                logging.info(f"Processing row: {index + 7}")
                 try:
                     if row["Actie"] == "Verwijderen":
                         self.remove_node(row)
@@ -498,8 +498,6 @@ class RibasimFeedbackProcessor:
             print("The function of the pumps have been updated.")
 
     def run(self):
-        # if self.waterschap == "Hollandse Delta" or self.waterschap == "HollandseDelta":
-        #     self.special_preprocessing_for_hollandse_delta()
         self.process_model()
         self.save_feedback()
         if not self.use_validation:
@@ -508,18 +506,3 @@ class RibasimFeedbackProcessor:
         self.update_target_levels()
         self.functie_gemalen()
         self.write_ribasim_model()
-
-
-# # Example usage
-# name = "Jerom Aerts (HKV)"
-# waterschap = "Hollandse_Delta"
-# versie = "2024_11_0"
-
-# feedback_excel = r"C:\Users\Aerts\Desktop\RIBASIM Project\feedback_formulier_HollandseDelta.xlsx"
-# feedback_excel_processed = r"C:\Users\Aerts\Desktop\RIBASIM Project\Ribasim_feedback\V1_formulieren_verwerkt\test.xlsx"
-
-# ribasim_toml = r"C:\Users\Aerts\Desktop\RIBASIM Project\HollandseDelta_boezemmodel_2024_10_0\ribasim.toml"
-# output_folder = r"C:\Users\Aerts\Desktop\RIBASIM Project\output_test"
-
-# processor = RibasimFeedbackProcessor(name, waterschap, versie, feedback_excel, ribasim_toml, output_folder, feedback_excel_processed)
-# model = processor.run()
