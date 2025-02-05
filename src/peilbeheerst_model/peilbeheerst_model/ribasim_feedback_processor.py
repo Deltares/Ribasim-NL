@@ -230,6 +230,10 @@ class RibasimFeedbackProcessor:
                                 new_row_df["meta_node_id"] = node_id
                                 new_row_df.index.name = "fid"
 
+                                # drop unused columns to avoid a warning
+                                df_value_static = df_value_static.dropna(axis=1, how="all")
+                                new_row_df = new_row_df.dropna(axis=1, how="all")
+
                                 df_value_static = pd.concat([df_value_static, new_row_df], ignore_index=True)
                                 df_value_static.index.name = "fid"
                                 sub_value.df = df_value_static.copy()
@@ -360,6 +364,10 @@ class RibasimFeedbackProcessor:
                                 new_row_df = pd.DataFrame([last_row])
                                 new_row_df["meta_node_id"] = node_id
                                 new_row_df.index.name = "fid"
+
+                                # drop unused columns to avoid a warning
+                                df_value_static = df_value_static.dropna(axis=1, how="all")
+                                new_row_df = new_row_df.dropna(axis=1, how="all")
 
                                 df_value_static = pd.concat([df_value_static, new_row_df], ignore_index=True)
                                 df_value_static.index.name = "fid"
