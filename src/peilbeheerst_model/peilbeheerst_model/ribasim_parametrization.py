@@ -105,9 +105,12 @@ def insert_standard_profile(
     bergende_nodes["meta_categorie"] = "bergend"
 
     # add the found profiles in the table
-    profile_total = profile_total.loc[profile_total.meta_categorie != "bergend"].reset_index(
-        drop=True
-    )  # remove bergende profiles, as they will be added here below
+    profile_total = profile_total.loc[profile_total.meta_categorie != "bergend"].reset_index(drop=True)
+    # drop unused columns to avoid a warning
+    profile_total = profile_total.dropna(axis=1, how="all")
+    bergende_nodes = bergende_nodes.dropna(axis=1, how="all")
+
+    # remove bergende profiles, as they will be added here below
     profile_total = pd.concat([profile_total, bergende_nodes[["node_id", "level", "area", "meta_categorie"]]])
     profile_total = profile_total.sort_values(by=["node_id", "level"]).reset_index(drop=True)
 
