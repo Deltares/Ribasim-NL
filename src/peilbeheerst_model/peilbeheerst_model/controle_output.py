@@ -56,10 +56,11 @@ class Control:
             initial_final_level_df["initial_level"] - initial_final_level_df["final_level"]
         )
 
-        # retrieve the geometries
-        initial_final_level_df["geometry"] = initial_final_level_df.merge(
+        # Retrieve the geometries
+        initial_final_level_df = initial_final_level_df.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        )["geometry"].set_geometry("geometry")
+        )
+        initial_final_level_df = initial_final_level_df.set_geometry("geometry")
 
         initial_final_level_df = gpd.GeoDataFrame(initial_final_level_df, geometry="geometry")
 
@@ -131,10 +132,8 @@ class Control:
         relative_error_sum = basin_error.groupby("node_id")["relative_error"].sum().reset_index()
         error_gdf["summed_error"] = relative_error_sum["relative_error"]
 
-        # retrieve the geometries
-        error_gdf["geometry"] = error_gdf.merge(self.model.basin.node.df, on="node_id", suffixes=("", "model_"))[
-            "geometry"
-        ]
+        error_gdf = error_gdf.merge(self.model.basin.node.df, on="node_id", suffixes=("", "model_"))
+        error_gdf = error_gdf.set_geometry("geometry")
 
         error_gdf = gpd.GeoDataFrame(error_gdf, geometry="geometry")
 

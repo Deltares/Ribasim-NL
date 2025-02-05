@@ -63,7 +63,7 @@ class AssignAuthorities:
     def clip_and_buffer(self, ws_grenzen, RWS_grenzen):
         """Clips the waterboard boundaries by removing the RWS areas and applies a buffer to the remaining polygons."""
         # Remove the RWS area in each WS
-        ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how="symmetric_difference")
+        ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how="symmetric_difference", keep_geom_type=True)
         ws_grenzen_cut_out.dropna(subset="area", inplace=True)
 
         # add a name to the RWS area
@@ -120,13 +120,13 @@ class AssignAuthorities:
         )
 
         # #replace the current waterschaps name in the joined layer to NaN, and drop those
-        joined["naam"].replace(to_replace=waterschap, value=np.nan, inplace=True)
+        joined["naam"] = joined["naam"].replace(to_replace=waterschap, value=np.nan)
         joined = joined.dropna(subset="naam").reset_index(drop=True)
 
         # now fill the meta_from_authority and meta_to_authority columns. As they already contain the correct position of the current waterschap, the remaining 'naam' will be placed correctly as well
         temp_LB_node = temp_LB_node.merge(right=joined[["node_id", "naam"]], on="node_id", how="left")
-        temp_LB_node.meta_from_authority.fillna(temp_LB_node["naam"], inplace=True)
-        temp_LB_node.meta_to_authority.fillna(temp_LB_node["naam"], inplace=True)
+        temp_LB_node["meta_from_authority"] = temp_LB_node["meta_from_authority"].fillna(temp_LB_node["naam"])
+        temp_LB_node["meta_to_authority"] = temp_LB_node["meta_to_authority"].fillna(temp_LB_node["naam"])
 
         # only select the relevant columns
         temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry", "meta_from_authority", "meta_to_authority"]]

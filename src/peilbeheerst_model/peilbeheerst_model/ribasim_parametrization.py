@@ -233,7 +233,7 @@ def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
     # third, implement the LevelBoundary static
     nodes_Terminals = nodes_Terminals.reset_index()
     LB_static = nodes_Terminals[["node_id"]]
-    LB_static["level"] = default_level
+    LB_static.loc[:, "level"] = default_level
     LB_combined = pd.concat([ribasim_model.level_boundary.static.df, LB_static])
     LB_combined = LB_combined.drop_duplicates(subset="node_id").sort_values(by="node_id").reset_index(drop=True)
     ribasim_model.level_boundary.static = LB_combined
@@ -271,14 +271,14 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     #     [ribasim_model.tabulated_rating_curve.node.df, nodes_TRC_FlowBoundary]
     # ).reset_index(drop=True)
 
-    # also supplement the TRC.static table. Create dummy Q(h)-relations
-    TRC_LB1 = nodes_FlowBoundary[["meta_node_id"]]
-    TRC_LB1["level"] = 0
-    TRC_LB1["flow_rate"] = 0
+    # Also supplement the TRC.static table. Create dummy Q(h)-relations
+    TRC_LB1 = nodes_FlowBoundary[["meta_node_id"]].copy()
+    TRC_LB1.loc[:, "level"] = 0
+    TRC_LB1.loc[:, "flow_rate"] = 0
 
-    TRC_LB2 = nodes_FlowBoundary[["meta_node_id"]]
-    TRC_LB2["level"] = 1
-    TRC_LB2["flow_rate"] = 1
+    TRC_LB2 = nodes_FlowBoundary[["meta_node_id"]].copy()
+    TRC_LB2.loc[:, "level"] = 1
+    TRC_LB2.loc[:, "flow_rate"] = 1
 
     TRC_LB = pd.concat([TRC_LB1, TRC_LB2])
     TRC_LB = TRC_LB.sort_values(by=["node_id", "level"]).reset_index(drop=True)
@@ -912,46 +912,48 @@ def identify_node_meta_categorie(ribasim_model):
     ] = 1
 
     # if the function is both aanvoer and afvoer, then set aanvoer to False
-    ribasim_model.pump.static.df.loc[
-        (ribasim_model.pump.static.df["meta_func_afvoer"] == 1)
-        & (ribasim_model.pump.static.df["meta_func_aanvoer"] == 1),
-        "meta_func_aanvoer",
-    ] = 0
+    mask = (ribasim_model.pump.static.df["meta_func_afvoer"] == 1) & (
+        ribasim_model.pump.static.df["meta_func_aanvoer"] == 1
+    )
+
+    ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
 
     # fill in the nan values
-    ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0, inplace=True)
-    ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0, inplace=True)
-    ribasim_model.pump.static.df["meta_func_circulatie"].fillna(0, inplace=True)
+    ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0)
+    ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0)
+    ribasim_model.pump.static.df["meta_func_circulatie"] = ribasim_model.pump.static.df["meta_func_circulatie"].fillna(
+        0
+    )
 
-    # identify the INlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
-    ribasim_model.outlet.static.df.loc[
-        ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem), "meta_categorie"
-    ] = "Inlaat boezem, stuw"
-    ribasim_model.pump.static.df.loc[
-        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
-        "meta_categorie",
-    ] = "Inlaat boezem, afvoer gemaal"
-    ribasim_model.pump.static.df.loc[
-        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
-        "meta_categorie",
-    ] = "Inlaat boezem, aanvoer gemaal"
+    # Convert the column to string type
+    ribasim_model.outlet.static.df["meta_categorie"] = ribasim_model.outlet.static.df["meta_categorie"].astype("string")
+    ribasim_model.pump.static.df["meta_categorie"] = ribasim_model.outlet.static.df["meta_categorie"].astype("string")
 
-    # identify the UITlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
-    ribasim_model.outlet.static.df.loc[
-        ribasim_model.outlet.static.df.node_id.isin(nodes_to_boezem), "meta_categorie"
-    ] = "Uitlaat boezem, stuw"
-    ribasim_model.pump.static.df.loc[
-        (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
-        "meta_categorie",
-    ] = "Uitlaat boezem, afvoer gemaal"
-    ribasim_model.pump.static.df.loc[
-        (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
-        "meta_categorie",
-    ] = "Uitlaat boezem, aanvoer gemaal"
+    # Identify the INlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
+    inlet_outlet_nodes = ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem)
+    inlet_pump_nodes_afvoer = ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem) & (
+        ribasim_model.pump.static.df.meta_func_aanvoer == 0
+    )
+    inlet_pump_nodes_aanvoer = ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem) & (
+        ribasim_model.pump.static.df.meta_func_aanvoer != 0
+    )
+
+    ribasim_model.outlet.static.df.loc[inlet_outlet_nodes, "meta_categorie"] = "Inlaat boezem, stuw"
+    ribasim_model.pump.static.df.loc[inlet_pump_nodes_afvoer, "meta_categorie"] = "Inlaat boezem, afvoer gemaal"
+    ribasim_model.pump.static.df.loc[inlet_pump_nodes_aanvoer, "meta_categorie"] = "Inlaat boezem, aanvoer gemaal"
+
+    # Identify the UITlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
+    outlet_outlet_nodes = ribasim_model.outlet.static.df.node_id.isin(nodes_to_boezem)
+    outlet_pump_nodes_afvoer = ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem) & (
+        ribasim_model.pump.static.df.meta_func_aanvoer == 0
+    )
+    outlet_pump_nodes_aanvoer = ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem) & (
+        ribasim_model.pump.static.df.meta_func_aanvoer != 0
+    )
+
+    ribasim_model.outlet.static.df.loc[outlet_outlet_nodes, "meta_categorie"] = "Uitlaat boezem, stuw"
+    ribasim_model.pump.static.df.loc[outlet_pump_nodes_afvoer, "meta_categorie"] = "Uitlaat boezem, afvoer gemaal"
+    ribasim_model.pump.static.df.loc[outlet_pump_nodes_aanvoer, "meta_categorie"] = "Uitlaat boezem, aanvoer gemaal"
 
     # identify the outlets and pumps at the regular peilgebieden
     ribasim_model.outlet.static.df.loc[
@@ -1076,9 +1078,11 @@ def identify_node_meta_categorie(ribasim_model):
     ] = "Boezem boezem, aanvoer gemaal"
 
     # some pumps have been added due to the feedback form. Assume all these nodes are afvoer gemalen
-    ribasim_model.pump.static.df.meta_func_afvoer.fillna(value=1.0, inplace=True)
-    ribasim_model.pump.static.df.meta_func_aanvoer.fillna(value=0.0, inplace=True)
-    ribasim_model.pump.static.df.meta_func_circulatie.fillna(value=0.0, inplace=True)
+    ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].fillna(1.0)
+    ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0.0)
+    ribasim_model.pump.static.df["meta_func_circulatie"] = ribasim_model.pump.static.df["meta_func_circulatie"].fillna(
+        0.0
+    )
 
     return
 
