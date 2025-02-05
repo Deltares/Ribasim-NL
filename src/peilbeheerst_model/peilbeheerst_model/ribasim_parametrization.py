@@ -609,41 +609,43 @@ def set_tabulated_rating_curves_boundaries(ribasim_model, level_increase=0.1, fl
 
 def create_sufficient_Qh_relation_points(ribasim_model):
     """There are more TRC nodes than defined in the static table. Identify the nodes which occur less than twice in the table, and create a (for now) dummy relation. Also delete the TRC in the static table if it doesnt occur in the node table"""
-    # #get rid of all TRC's static rows which do not occur in the node table (assuming the node table is the groundtruth)
-    # TRC_nodes = ribasim_model.tabulated_rating_curve.node.df.node_id.values
-    # ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.loc[ribasim_model.tabulated_rating_curve.static.df.node_id.isin(TRC_nodes)]
+    # get rid of all TRC's static rows which do not occur in the node table (assuming the node table is the groundtruth)
+    TRC_nodes = ribasim_model.tabulated_rating_curve.node.df.node_id.values
+    ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.loc[
+        ribasim_model.tabulated_rating_curve.static.df.node_id.isin(TRC_nodes)
+    ]
 
-    # #put all TRC's nodes on one pile. So both the static as well as the node df
-    # TRC_pile = pd.concat([ribasim_model.tabulated_rating_curve.static.df['node_id'],
-    #                       ribasim_model.tabulated_rating_curve.node.df['node_id']])
+    # each node_id should occur at least three times in the pile (once because of the node, twice because of the Qh relation)
+    node_id_counts = ribasim_model.tabulated_rating_curve.static.df["node_id"].value_counts()
 
-    # #each node_id should occur at least three times in the pile (once because of the node, twice because of the Qh relation)
-    # node_id_counts = ribasim_model.tabulated_rating_curve.static.df['node_id'].value_counts()
+    # select all nodes which occur less than 3 times
+    unique_node_ids = node_id_counts[node_id_counts < 3].index
 
-    # #select all nodes which occur less than 3 times
-    # unique_node_ids = node_id_counts[node_id_counts < 3].index
+    # create new Qh relations
+    zero_flow = ribasim_model.tabulated_rating_curve.static.df[
+        ribasim_model.tabulated_rating_curve.static.df["node_id"].isin(unique_node_ids)
+    ]
+    one_flow = zero_flow.copy()
+    zero_flow.flow_rate = 0  # set flow rate to 0 if on target level
+    one_flow.level += 1  # set level 1 meter higher where it discharges 1 m3/s
 
-    # #create new Qh relations
-    # zero_flow = ribasim_model.tabulated_rating_curve.static.df[ribasim_model.tabulated_rating_curve.static.df['node_id'].isin(unique_node_ids)]
-    # one_flow = zero_flow.copy()
-    # zero_flow.flow_rate = 0 #set flow rate to 0 if on target level
-    # one_flow.level += 1 #set level 1 meter higher where it discharges 1 m3/s
+    # remove old Qh points
+    ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.loc[
+        ~ribasim_model.tabulated_rating_curve.static.df["node_id"].isin(unique_node_ids)
+    ]
 
-    # #remove old Qh points
-    # ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.loc[~ribasim_model.tabulated_rating_curve.static.df['node_id'].isin(unique_node_ids)]
+    # add the new Qh points back in the df
+    ribasim_model.tabulated_rating_curve.static.df = pd.concat(
+        [ribasim_model.tabulated_rating_curve.static.df, zero_flow, one_flow]
+    )
+    # drop duplicates, sort and reset index
+    ribasim_model.tabulated_rating_curve.static.df.drop_duplicates(subset=["node_id", "level"], inplace=True)
+    ribasim_model.tabulated_rating_curve.static.df.sort_values(by=["node_id", "level", "flow_rate"], inplace=True)
+    ribasim_model.tabulated_rating_curve.node.df.sort_values(by=["node_id"], inplace=True)
+    ribasim_model.tabulated_rating_curve.static.df.reset_index(drop=True, inplace=True)
 
-    # #add the new Qh points back in the df
-    # ribasim_model.tabulated_rating_curve.static.df = pd.concat([ribasim_model.tabulated_rating_curve.static.df,
-    #                                                             zero_flow,
-    #                                                             one_flow])
-    # #drop duplicates, sort and reset index
-    # ribasim_model.tabulated_rating_curve.static.df.drop_duplicates(subset = ['node_id', 'level'], inplace = True)
-    # ribasim_model.tabulated_rating_curve.static.df.sort_values(by=['node_id', 'level', 'flow_rate'], inplace = True)
-    # ribasim_model.tabulated_rating_curve.node.df.sort_values(by=['node_id'], inplace = True)
-    # ribasim_model.tabulated_rating_curve.static.df.reset_index(drop = True, inplace = True)
-
-    # print(len(TRC_nodes))
-    # print(len(ribasim_model.tabulated_rating_curve.static.df.node_id.unique()))
+    print(len(TRC_nodes))
+    print(len(ribasim_model.tabulated_rating_curve.static.df.node_id.unique()))
 
     return
 
@@ -656,46 +658,42 @@ def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml):
     ribasim_model.write(path_ribasim_toml)
 
 
-def write_ribasim_model_GoodCloud(
-    ribasim_model, path_ribasim_toml, waterschap, modeltype="boezemmodel", include_results=True
-):
-    # copy the results folder from the "updated" folder to the "Ribasim_networks" folder
-    results_source = f"../../../../../Ribasim_updated_models/{waterschap}/modellen/{waterschap}_parametrized/results"
-    parametrized_location = (
-        f"../../../../../Ribasim_networks/Waterschappen/{waterschap}/modellen/{waterschap}_parametrized"
+def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_results=True):
+    """Write Ribasim model locally and to the GoodCloud.
+
+    Copy the work_dir to the "modellen" dir, as it is required to maintain the same folder structure locally as well as the GoodCloud.
+    Also clear the directory of modellen/parametereized, as there may be old results in it.
+    The log file of the feedback form is not included to avoid cluttering.'
+    """
+    destination_path = os.path.join(
+        os.getenv("RIBASIM_NL_DATA_DIR"), waterschap, "modellen", f"{waterschap}_parameterized/"
     )
 
-    if not os.path.exists(parametrized_location):
-        os.makedirs(parametrized_location)
+    # clear the modellen/parameterized dir
+    if os.path.exists(destination_path):
+        shutil.rmtree(destination_path)  # Remove the entire directory
+    os.makedirs(destination_path)  # Recreate the empty folder
 
-    # If the destination folder of the results already exists, remove it
-    print(os.path.join(parametrized_location, "results"))
-    if os.path.exists(os.path.join(parametrized_location, "results")):
-        shutil.rmtree(os.path.join(parametrized_location, "results"))
+    # copy the work_dir to the "modellen" dir to maintain the same folder structure locally as well as on the 'GoodCloud'
+    shutil.copytree(work_dir, destination_path, dirs_exist_ok=True)
 
-    # copy the results to the Ribasim_networks folder
-    shutil.copytree(results_source, os.path.join(parametrized_location, "results"))
-
-    # copy the model to the Ribasim_networks folder
-    parametrized_location = os.path.join(parametrized_location, "ribasim.toml")
-    ribasim_model.write(
-        parametrized_location
-    )  # write to the "Ribasim_networks" folder (will NOT be overwritten at each upload)
-
-    path_goodcloud_password = "../../../../../Data_overig/password_goodcloud.txt"
-    with open(path_goodcloud_password) as file:
-        password = file.read()
+    # it is not necessary to inlcude the log file of the feedback forms. Delete it
+    for file in os.listdir(destination_path):
+        file_path = os.path.join(destination_path, file)
+        if file.endswith(".log") and os.path.isfile(file_path):
+            os.remove(file_path)
 
     cloud_storage = CloudStorage(
-        password=password,
-        data_dir=r"../../../../../Ribasim_networks/Waterschappen/",
+        password=os.getenv("RIBASIM_NL_CLOUD_PASS"),  # password stored in system env
+        data_dir=os.getenv("RIBASIM_NL_DATA_DIR"),  # datadir stored in system env
     )
 
+    # Upload to waterschap/modellen/model_name instead of waterschap/verwerkt
     cloud_storage.upload_model(
-        authority=waterschap, model=waterschap + "_parametrized", include_results=include_results
+        authority=waterschap, model=waterschap + "_parameterized", include_results=include_results
     )
 
-    print(f"The model of waterboard {waterschap} has been uploaded to the goodcloud in the directory of {modeltype}!")
+    print(f"The model of waterboard {waterschap} has been uploaded to the goodcloud!")
     return
 
 
