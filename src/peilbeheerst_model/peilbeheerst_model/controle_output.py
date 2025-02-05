@@ -8,7 +8,7 @@ import ribasim
 
 
 class Control:
-    def __init__(self, work_dir=None, ribasim_toml=None):
+    def __init__(self, qlr_path, work_dir=None, ribasim_toml=None):
         if (work_dir is None) and (ribasim_toml is None):
             raise ValueError("provide either work_dir or ribasim_toml")
         else:
@@ -19,7 +19,9 @@ class Control:
                 self.path_ribasim_toml = os.path.join(work_dir, "ribasim.toml")
                 self.work_dir = work_dir
 
+        self.qlr_path = qlr_path
         self.path_basin_output = os.path.join(self.work_dir, "results", "basin.arrow")
+        self.path_edge_output = os.path.join(self.work_dir, "results", "flow.arrow")
         self.path_control_dict_path = os.path.join(self.work_dir, "results", "output_controle")
 
     def read_model_output(self):
@@ -216,15 +218,12 @@ class Control:
             data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG", mode="w")
 
         # copy checks_symbology file from old dir to new dir
-        # define path
-        output_controle_qlr_path = r"../../../../../Data_overig/QGIS_qlr/output_controle.qlr"
-
         # delete old .qlr file (overwriting does apparently not work due to permission rights)
         if os.path.exists(os.path.join(self.work_dir, "results", "output_controle.qlr")):
             os.remove(os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
         # copy .qlr file
-        shutil.copy(src=output_controle_qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
+        shutil.copy(src=self.qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
         return
 
