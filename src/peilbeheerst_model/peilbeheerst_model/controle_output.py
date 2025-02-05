@@ -59,7 +59,7 @@ class Control:
         # retrieve the geometries
         initial_final_level_df["geometry"] = initial_final_level_df.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        )["geometry"]
+        )["geometry"].set_geometry("geometry")
 
         initial_final_level_df = gpd.GeoDataFrame(initial_final_level_df, geometry="geometry")
 
