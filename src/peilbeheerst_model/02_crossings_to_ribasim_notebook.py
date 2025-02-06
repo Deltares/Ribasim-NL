@@ -1,16 +1,6 @@
-import warnings
-
-import pandas as pd
-import ribasim
-from crossings_to_ribasim import *
 from ribasim import Model
 
-pd.set_option("display.max_columns", None)
-warnings.filterwarnings("ignore")  # Let op!!!!!!!!!!!!!! Waarschuwingen worden genegeerd
-
-
-ribasim.__version__
-
+from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
 
 # # Amstel, Gooi en Vecht
 
@@ -102,6 +92,7 @@ model.terminal.node.df = terminal_node
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
@@ -169,35 +160,35 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge = edge
+model.edge.df = edge
 
-model.basin.node = basin_node
+model.basin.node.df = basin_node
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node = pump_node
+model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.level_boundary.node = level_boundary_node
-model.level_boundary.static = level_boundary_static
-
-model.flow_boundary.node = flow_boundary_node
-model.flow_boundary.static = flow_boundary_static
-
-model.manning_resistance.node = manning_resistance_node
+model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.terminal.node = terminal_node
+model.level_boundary.node.df = level_boundary_node
+model.level_boundary.static = level_boundary_static
 
+model.flow_boundary.node.df = flow_boundary_node
+model.flow_boundary.static = flow_boundary_static
+
+model.terminal.node.df = terminal_node
 
 # add checks and metadata
-checks = network.check(post_processed_data=post_processed_data, crossings=crossings)
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+# model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
@@ -266,34 +257,35 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge = edge
+model.edge.df = edge
 
-model.basin.node = basin_node
+model.basin.node.df = basin_node
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node = pump_node
+model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.level_boundary.node = level_boundary_node
-model.level_boundary.static = level_boundary_static
-
-model.flow_boundary.node = flow_boundary_node
-model.flow_boundary.static = flow_boundary_static
-
-model.manning_resistance.node = manning_resistance_node
+model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.terminal.node = terminal_node
+model.level_boundary.node.df = level_boundary_node
+model.level_boundary.static = level_boundary_static
+
+model.flow_boundary.node.df = flow_boundary_node
+model.flow_boundary.static = flow_boundary_static
+
+model.terminal.node.df = terminal_node
 
 # add checks and metadata
-checks = network.check(post_processed_data=post_processed_data, crossings=crossings)
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
@@ -363,31 +355,35 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge = edge
+model.edge.df = edge
 
-model.basin.node = basin_node
+model.basin.node.df = basin_node
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node = pump_node
+model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.level_boundary.node = level_boundary_node
+model.manning_resistance.node.df = manning_resistance_node
+model.manning_resistance.static = manning_resistance_static
+
+model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node = flow_boundary_node
+model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
 
-model.terminal.node = terminal_node
+model.terminal.node.df = terminal_node
 
 # add checks and metadata
-checks = network.check(model=model, post_processed_data=post_processed_data, crossings=crossings)
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
@@ -457,35 +453,35 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge = edge
+model.edge.df = edge
 
-model.basin.node = basin_node
+model.basin.node.df = basin_node
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-
-model.pump.node = pump_node
+model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.level_boundary.node = level_boundary_node
-model.level_boundary.static = level_boundary_static
-
-model.flow_boundary.node = flow_boundary_node
-model.flow_boundary.static = flow_boundary_static
-
-model.manning_resistance.node = manning_resistance_node
+model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.terminal.node = terminal_node
+model.level_boundary.node.df = level_boundary_node
+model.level_boundary.static = level_boundary_static
+
+model.flow_boundary.node.df = flow_boundary_node
+model.flow_boundary.static = flow_boundary_static
+
+model.terminal.node.df = terminal_node
 
 # add checks and metadata
-checks = network.check(post_processed_data=post_processed_data, crossings=crossings, model=model)
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+# model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
@@ -554,52 +550,35 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge = edge
+model.edge.df = edge
 
-model.basin.node = basin_node
+model.basin.node.df = basin_node
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node = pump_node
+model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.level_boundary.node = level_boundary_node
-model.level_boundary.static = level_boundary_static
-
-model.flow_boundary.node = flow_boundary_node
-model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node = terminal_node
-
-# add checks and metadata
-checks = network.check(post_processed_data=post_processed_data, crossings=crossings)
-model = network.add_meta_data(model, checks, post_processed_data, crossings)
-
-# write the result
-network.WriteResults(model=model, checks=checks)
-
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
-model.tabulated_rating_curve.static = tabulated_rating_curve_static
-
-model.level_boundary.node = level_boundary_node
-model.level_boundary.static = level_boundary_static
-
-model.flow_boundary.node = flow_boundary_node
-model.flow_boundary.static = flow_boundary_static
-
-model.manning_resistance.node = manning_resistance_node
+model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.terminal.node = terminal_node
+model.level_boundary.node.df = level_boundary_node
+model.level_boundary.static = level_boundary_static
+
+model.flow_boundary.node.df = flow_boundary_node
+model.flow_boundary.static = flow_boundary_static
+
+model.terminal.node.df = terminal_node
 
 # add checks and metadata
-checks = network.check(post_processed_data=post_processed_data, crossings=crossings)
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
@@ -697,6 +676,7 @@ model.terminal.node.df = terminal_node
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
@@ -750,7 +730,6 @@ network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_c
 
 edge = network.edge()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
-
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
 level_boundary_node, level_boundary_static = network.level_boundary()
@@ -766,40 +745,38 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge = edge
+model.edge.df = edge
 
-model.basin.node = basin_node
+model.basin.node.df = basin_node
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node = pump_node
+model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.level_boundary.node = level_boundary_node
-model.level_boundary.static = level_boundary_static
-
-model.flow_boundary.node = flow_boundary_node
-model.flow_boundary.static = flow_boundary_static
-
-model.manning_resistance.node = manning_resistance_node
+model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.terminal.node = terminal_node
+model.level_boundary.node.df = level_boundary_node
+model.level_boundary.static = level_boundary_static
+
+model.flow_boundary.node.df = flow_boundary_node
+model.flow_boundary.static = flow_boundary_static
+
+model.terminal.node.df = terminal_node
 
 # add checks and metadata
-checks = network.check(model=model, post_processed_data=post_processed_data, crossings=crossings)
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+# model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
-
-
-model.tabulated_rating_curve.static
 
 
 # # Wetterskip
@@ -866,34 +843,52 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge = edge
+edge = network.edge()
+basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
+pump_node, pump_static = network.pump()
+tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
+level_boundary_node, level_boundary_static = network.level_boundary()
+flow_boundary_node, flow_boundary_static = network.flow_boundary()
+manning_resistance_node, manning_resistance_static = network.manning_resistance()
+terminal_node = network.terminal()
 
-model.basin.node = basin_node
+# linear_resistance = network.linear_resistance()
+# outlet = network.outlet()
+# discrete_control = network.discrete_control()
+# pid_control = network.pid_control()
+
+# insert the individual model modules in an actual model
+model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
+
+model.edge.df = edge
+
+model.basin.node.df = basin_node
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node = pump_node
+model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.level_boundary.node = level_boundary_node
-model.level_boundary.static = level_boundary_static
-
-model.flow_boundary.node = flow_boundary_node
-model.flow_boundary.static = flow_boundary_static
-
-model.manning_resistance.node = manning_resistance_node
+model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.terminal.node = terminal_node
+model.level_boundary.node.df = level_boundary_node
+model.level_boundary.static = level_boundary_static
+
+model.flow_boundary.node.df = flow_boundary_node
+model.flow_boundary.static = flow_boundary_static
+
+model.terminal.node.df = terminal_node
 
 # add checks and metadata
-checks = network.check(model=model, post_processed_data=post_processed_data, crossings=crossings)
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
+model = network.add_relevant_names(model, post_processed_data, crossings)
 
 # write the result
 network.WriteResults(model=model, checks=checks)
@@ -962,33 +957,129 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge = edge
+model.edge.df = edge
 
-model.basin.node = basin_node
+model.basin.node.df = basin_node
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node = pump_node
+model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node = tabulated_rating_curve_node
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.level_boundary.node = level_boundary_node
-model.level_boundary.static = level_boundary_static
-
-model.flow_boundary.node = flow_boundary_node
-model.flow_boundary.static = flow_boundary_static
-
-model.manning_resistance.node = manning_resistance_node
+model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.terminal.node = terminal_node
+model.level_boundary.node.df = level_boundary_node
+model.level_boundary.static = level_boundary_static
+
+model.flow_boundary.node.df = flow_boundary_node
+model.flow_boundary.static = flow_boundary_static
+
+model.terminal.node.df = terminal_node
 
 # add checks and metadata
-checks = network.check(model=model, post_processed_data=post_processed_data, crossings=crossings)
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
+model = network.add_meta_data(model, checks, post_processed_data, crossings)
+model = network.add_relevant_names(model, post_processed_data, crossings)
+
+# write the result
+network.WriteResults(model=model, checks=checks)
+
+
+# ## Noorderzijlvest
+
+
+model_characteristics = {
+    # model description
+    "waterschap": "Noorderzijlvest",
+    "modelname": "20241024_test",
+    "modeltype": "boezemmodel",
+    # define paths
+    "path_postprocessed_data": r"../../../../Data_postprocessed/Waterschappen/Noorderzijlvest/Noorderzijlvest.gpkg",
+    "path_crossings": "../../../../Data_crossings/Noorderzijlvest/crossings_v0.gpkg",
+    "path_boezem": None,
+    "path_Pdrive": None,
+    "path_goodcloud_password": "../../../../Data_overig/password_goodcloud.txt",
+    # apply filters
+    "crossings_layer": "crossings_hydroobject_filtered",
+    "in_use": True,
+    "agg_links_in_use": False,
+    "agg_areas_in_use": False,
+    "aggregation": False,
+    # data storage settings
+    "write_Pdrive": False,
+    "write_Zdrive": True,
+    "write_goodcloud": True,
+    "write_checks": True,
+    "write_symbology": True,
+    # numerical settings
+    "solver": None,
+    "logging": None,
+    "starttime": "2024-01-01 00:00:00",
+    "endtime": "2024-01-02 00:00:00",
+}
+
+waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
+
+post_processed_data, crossings = waterboard.read_files()
+post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
+crossings = waterboard.assign_node_ids(crossings)
+edges = waterboard.create_edges(crossings)
+nodes, edges = waterboard.create_nodes(crossings, edges)
+edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+
+# create individual model parts of the network
+network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+
+edge = network.edge()
+basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
+pump_node, pump_static = network.pump()
+tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
+level_boundary_node, level_boundary_static = network.level_boundary()
+flow_boundary_node, flow_boundary_static = network.flow_boundary()
+manning_resistance_node, manning_resistance_static = network.manning_resistance()
+terminal_node = network.terminal()
+
+# linear_resistance = network.linear_resistance()
+# outlet = network.outlet()
+# discrete_control = network.discrete_control()
+# pid_control = network.pid_control()
+
+# insert the individual model modules in an actual model
+model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
+
+model.edge.df = edge
+
+model.basin.node.df = basin_node
+model.basin.profile = basin_profile
+model.basin.static = basin_static
+model.basin.state = basin_state
+model.basin.area = basin_area
+
+model.pump.node.df = pump_node
+model.pump.static = pump_static
+
+model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
+model.tabulated_rating_curve.static = tabulated_rating_curve_static
+
+model.manning_resistance.node.df = manning_resistance_node
+model.manning_resistance.static = manning_resistance_static
+
+model.level_boundary.node.df = level_boundary_node
+model.level_boundary.static = level_boundary_static
+
+model.flow_boundary.node.df = flow_boundary_node
+model.flow_boundary.static = flow_boundary_static
+
+model.terminal.node.df = terminal_node
+
+# add checks and metadata
+checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
 model = network.add_meta_data(model, checks, post_processed_data, crossings)
 
 # write the result
