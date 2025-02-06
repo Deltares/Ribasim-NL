@@ -29,7 +29,15 @@ mapping = {
 
 class RibasimFeedbackProcessor:
     def __init__(
-        self, name, waterschap, versie, feedback_excel, ribasim_toml, output_folder, feedback_excel_processed=None
+        self,
+        name,
+        waterschap,
+        versie,
+        feedback_excel,
+        ribasim_toml,
+        output_folder,
+        feedback_excel_processed=None,
+        use_validation=True,
     ):
         self.name = name
         self.waterschap = waterschap
@@ -38,6 +46,7 @@ class RibasimFeedbackProcessor:
         self.ribasim_toml = ribasim_toml
         self.output_folder = output_folder
         self.feedback_excel_processed = feedback_excel_processed or feedback_excel.replace(".xlsx", "_processed.xlsx")
+        self.use_validation = use_validation
 
         self.df = self.load_feedback(feedback_excel)
         self.df_node_types = self.load_node_type(feedback_excel)
@@ -73,8 +82,8 @@ class RibasimFeedbackProcessor:
     def get_current_max_nodeid(self):
         max_ids = []
         for k, v in self.model.__dict__.items():
-            if hasattr(v, "node") and "node_id" in v.node.df.columns.tolist():
-                mid = v.node.df.node_id.max()
+            if hasattr(v, "node") and not v.node.df.index.empty:
+                mid = v.node.df.index.max()
                 if not np.isnan(mid):
                     max_ids.append(int(mid))
 
@@ -86,12 +95,6 @@ class RibasimFeedbackProcessor:
 
     def write_ribasim_model(self):
         outputdir = Path(self.output_folder)
-        # modelcase_dir = Path(f'updated_{self.waterschap.lower()}')
-
-        # full_path = outputdir / modelcase_dir
-        # full_path.mkdir(parents=True, exist_ok=True)
-
-        # print(self.output_folder)
         self.model.write(outputdir / "ribasim.toml")
 
     def update_dataframe_with_new_node_ids(self, node_id_map):
@@ -105,7 +108,7 @@ class RibasimFeedbackProcessor:
 
         try:
             for index, row in self.df.iterrows():
-                logging.info(f"Processing row: {index+7}")
+                logging.info(f"Processing row: {index + 7}")
                 try:
                     if row["Actie"] == "Verwijderen":
                         self.remove_node(row)
@@ -139,193 +142,106 @@ class RibasimFeedbackProcessor:
             logging.info(f"Node ID: {node_id}")
             value = getattr(self.model, key, None)
 
-            # Identify the discrete control node before removing any edges
-            discrete_control_id = None
-            if key == "pump":
-                # Find the discrete control node connected to this pump
-                for index, edge in self.model.edge.df.iterrows():
-                    if edge["from_node_id"] == node_id or edge["to_node_id"] == node_id:
-                        connected_node_id = (
-                            edge["to_node_id"] if edge["from_node_id"] == node_id else edge["from_node_id"]
-                        )
-                        connected_node_type = self.df_node_types.loc[connected_node_id].node_type
-                        if connected_node_type == "DiscreteControl":  # Check for DiscreteControl type
-                            discrete_control_id = connected_node_id
-                            break
-
+            # Remove the Node
             if value is not None:
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
                         if hasattr(sub_value, "df") and sub_value.df is not None:
                             if not sub_value.df.empty:
-                                filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
-                                sub_value.df = filtered_df
+                                if sub_key == "node":
+                                    filtered_df = sub_value.df[sub_value.df.index != node_id]
+                                    sub_value.df = filtered_df
+                                if sub_key == "static":
+                                    filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                                    sub_value.df = filtered_df
 
-                                logging.info(f"Removed node (and edges) with Node Type: {key} and Node ID: {node_id}")
-
+            # Remove the Edges
             rows_to_remove = self.model.edge.df[
                 (self.model.edge.df["from_node_id"] == node_id) | (self.model.edge.df["to_node_id"] == node_id)
             ].index
             self.model.edge.df = self.model.edge.df.drop(rows_to_remove)
 
-            if discrete_control_id is not None:
-                # Remove the discrete control node
-                key = "discrete_control"
-                value = getattr(self.model, key, None)
-                if value is not None and hasattr(value, "__dict__"):
-                    for sub_key, sub_value in value.__dict__.items():
-                        if hasattr(sub_value, "df") and sub_value.df is not None:
-                            if not sub_value.df.empty:
-                                filtered_df = sub_value.df[sub_value.df["node_id"] != discrete_control_id]
-                                sub_value.df = filtered_df
-
-                                logging.info(f"Removed discrete control node with Node ID: {discrete_control_id}")
-
-                # Remove edges connected to the discrete control node
-                rows_to_remove = self.model.edge.df[
-                    (self.model.edge.df["from_node_id"] == discrete_control_id)
-                    | (self.model.edge.df["to_node_id"] == discrete_control_id)
-                ].index
-                self.model.edge.df = self.model.edge.df.drop(rows_to_remove)
-                logging.info(f"Removed edges connected to discrete control node with Node ID: {discrete_control_id}")
-
+            # Log status
             logging.info(f"Successfully removed node with Node ID: {node_id}, Action: Verwijderen")
+
             return rows_to_remove
 
         except Exception as e:
             logging.error(f"Error removing node {row['Node ID']}: {e}")
 
-    # def add_discrete_control_node_for_pump(self, pump_node_id, pump_geometry):
-    #     logging.info(f"Adding DiscreteControl node for Pump Node ID: {pump_node_id}")
-
-    #     control_states = ["off", "on"]
-    #     dfs_pump = ribasim_model.pump.static.df
-
-    #     if "control_state" not in dfs_pump.columns.tolist() or pd.isna(dfs_pump.control_state).all():
-    #         dfs_pump_list = []
-    #         for control_state in control_states:
-    #             df_pump = ribasim_model.pump.static.df.copy()
-    #             df_pump["control_state"] = control_state
-    #             if control_state == "off":
-    #                 df_pump["flow_rate"] = 0.0
-    #             dfs_pump_list.append(df_pump)
-    #         dfs_pump = pd.concat(dfs_pump_list, ignore_index=True)
-    #         ribasim_model.pump.static.df = dfs_pump
-
-    #     cur_max_nodeid = self.get_current_max_nodeid()
-
-    #     if cur_max_nodeid < 90000:
-    #         new_nodeid = 90000 + cur_max_nodeid + 1
-    #     else:
-    #         new_nodeid = cur_max_nodeid + 1
-
-    #     basin = self.model.edge.df[
-    #         ((self.model.edge.df["to_node_id"] == pump_node_id) | (self.model.edge.df["from_node_id"] == pump_node_id))
-    #         & ((self.model.edge.df["from_node_type"] == "Basin") | (self.model.edge.df["to_node_type"] == "Basin"))
-    #     ]
-    #     assert len(basin) >= 1
-    #     basin = basin.iloc[0, :].copy()
-    #     if basin["from_node_type"] == "Basin":
-    #         compound_variable_id = basin["from_node_id"]
-    #         listen_node_id = basin["from_node_id"]
-    #     else:
-    #         compound_variable_id = basin["to_node_id"]
-    #         listen_node_id = basin["to_node_id"]
-
-    #     df_streefpeilen = self.model.basin.area.df.set_index("node_id")
-    #     assert df_streefpeilen.index.is_unique
-
-    #     try:
-    #         self.model.discrete_control.add(
-    #             Node(new_nodeid, pump_geometry),
-    #             [
-    #                 discrete_control.Variable(
-    #                     compound_variable_id=compound_variable_id,
-    #                     listen_node_type=["Basin"],
-    #                     listen_node_id=listen_node_id,
-    #                     variable=["level"],
-    #                 ),
-    #                 discrete_control.Condition(
-    #                     compound_variable_id=compound_variable_id,
-    #                     greater_than=[df_streefpeilen.at[listen_node_id, "meta_streefpeil"]],
-    #                 ),
-    #                 discrete_control.Logic(
-    #                     truth_state=["F", "T"],
-    #                     control_state=control_states,
-    #                 ),
-    #             ],
-    #         )
-    #         logging.info(f"Added DiscreteControl Node with ID: {new_nodeid}")
-    #     except Exception as e:
-    #         logging.error(f"Error adding DiscreteControl Node: {e}")
-
-    #     try:
-    #         self.model.edge.add(self.model.discrete_control[new_nodeid], self.model.pump[pump_node_id])
-    #         logging.info(
-    #             f"Added control edge from DiscreteControl Node ID: {new_nodeid} to Pump Node ID: {pump_node_id}"
-    #         )
-    #     except Exception as e:
-    #         logging.error(f"Error adding control edge: {e}")
-
-    #     new_node_type_row = pd.DataFrame(
-    #         [
-    #             {
-    #                 "fid": np.nan,
-    #                 "name": np.nan,
-    #                 "node_type": "discrete_control",
-    #                 "subnetwork_id": np.nan,
-    #             }
-    #         ],
-    #         index=[new_nodeid],
-    #     )
-
-    #     self.df_node_types = pd.concat([self.df_node_types, new_node_type_row])
-
-    #     logging.info(
-    #         f"Added DiscreteControl node with Node ID: {new_nodeid} at the same location as Pump with Node ID: {pump_node_id}"
-    #     )
-    #     logging.info(f"Added control edge from DiscreteControl Node ID: {new_nodeid} to Pump Node ID: {pump_node_id}")
-
     def add_node(self, row):
         try:
-            if pd.isna(row["Node Type.1"]):
-                logging.warning(f"Skipping row with NaN values: {row}")
-                return None
-
+            key = row["Node Type.1"]
+            key = mapping.get(key, None)
             max_id = self.get_current_max_nodeid()
             node_id = max_id + 1
             logging.info(f"Node ID: {node_id}")
-            key = row["Node Type.1"]
-            key = mapping.get(key, None)
-
             value = getattr(self.model, key, None)
+
+            # Add the Node
             if value is not None:
-                pump_geometry = None
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
                         if sub_key == "time" or sub_key == "subgrid":
                             continue
                         else:
-                            sub_value = getattr(value, sub_key, None)
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.error(f"Sub value for key '{sub_key}' is None or has no DataFrame")
+                                logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
                                 continue
-                            df_value = sub_value.df.copy()
-                            last_row = df_value.iloc[-1].copy()
-                            last_row["node_id"] = node_id
-                            if "geometry" in last_row:
-                                x_coord = row["Coordinaat X"]
-                                y_coord = row["Coordinaat Y"]
-                                last_row["geometry"] = Point(x_coord, y_coord)
-                                pump_geometry = last_row["geometry"]
-                            for col in last_row.index:
-                                if col.startswith("meta_"):
-                                    last_row[col] = np.nan
-                            new_row_df = pd.DataFrame([last_row])
-                            df_value = pd.concat([df_value, new_row_df], ignore_index=True)
-                            sub_value.df = df_value
+
+                            if sub_key == "node":
+                                sub_value = getattr(value, sub_key, None)
+                                df_value = sub_value.df.copy()
+                                last_row = df_value.iloc[-1].copy()
+
+                                last_row.name = node_id
+                                if "geometry" in last_row:
+                                    x_coord = row["Coordinaat X"]
+                                    y_coord = row["Coordinaat Y"]
+                                    last_row["geometry"] = Point(x_coord, y_coord)
+
+                                for col in last_row.index:
+                                    if col.startswith("meta_"):
+                                        last_row[col] = np.nan
+
+                                new_row_df = pd.DataFrame([last_row])
+                                new_row_df["meta_node_id"] = node_id
+
+                                df_value = pd.concat([df_value, new_row_df], ignore_index=False)
+                                df_value.index.name = "node_id"
+                                sub_value.df = df_value.copy()
+
+                            if sub_key == "static":
+                                sub_value = getattr(value, sub_key, None)
+                                df_value_static = sub_value.df.copy()
+                                last_row = df_value_static.iloc[-1].copy()
+
+                                last_row["node_id"] = node_id
+                                if "geometry" in last_row:
+                                    x_coord = row["Coordinaat X"]
+                                    y_coord = row["Coordinaat Y"]
+                                    last_row["geometry"] = Point(x_coord, y_coord)
+
+                                for col in last_row.index:
+                                    if col.startswith("meta_"):
+                                        last_row[col] = np.nan
+
+                                new_row_df = pd.DataFrame([last_row])
+                                new_row_df["meta_node_id"] = node_id
+                                new_row_df.index.name = "fid"
+
+                                # drop unused columns to avoid a warning
+                                df_value_static = df_value_static.dropna(axis=1, how="all")
+                                new_row_df = new_row_df.dropna(axis=1, how="all")
+
+                                df_value_static = pd.concat([df_value_static, new_row_df], ignore_index=True)
+                                df_value_static.index.name = "fid"
+                                sub_value.df = df_value_static.copy()
+
+                # Add the Edges
                 if key in ["level_boundary", "flow_boundary", "terminal"]:
                     new_node = getattr(self.model, key, None)[node_id]
+
                     if pd.notna(row["Node ID A"]):
                         node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
                         node_type_a = mapping[node_type_a]
@@ -363,10 +279,6 @@ class RibasimFeedbackProcessor:
 
                 logging.info(f"Successfully added node with Node ID: {node_id}, Action: Toevoegen")
 
-                # Add a DiscreteControl node at the same location as the pump and connect it
-                if key == "pump" and pump_geometry is not None:
-                    self.add_discrete_control_node_for_pump(node_id, pump_geometry)
-
         except Exception as e:
             logging.error(f"Error adding node at row {row.name}: {e}")
 
@@ -377,72 +289,31 @@ class RibasimFeedbackProcessor:
             key = mapping[key]
             node_id = int(row["Node ID.2"])
             logging.info(f"Node ID: {node_id}")
-            node_id_old = node_id
+            # node_id_old = node_id
             value = getattr(self.model, key, None)
-            pump_geometry = None
 
+            # Get old geometry and remove Node
             if value is not None:
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
-                        if hasattr(sub_value, "df") and sub_value.df is not None:
-                            if not sub_value.df.empty:
-                                if (
-                                    "geometry" in sub_value.df
-                                    and not sub_value.df[sub_value.df["node_id"] == node_id].empty
-                                ):
-                                    geometry_old = sub_value.df[sub_value.df["node_id"] == node_id].geometry.iloc[0]
-                                    pump_geometry = geometry_old
-                                    filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
-                                    sub_value.df = filtered_df
-                                else:
-                                    filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
-                                    sub_value.df = filtered_df
+                        if sub_key == "time" or sub_key == "subgrid":
+                            continue
+                        else:
+                            if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
+                                logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
+                                continue
 
-            # Remove discrete control if the old node was a pump
-            if key == "pump":
-                # Identify the discrete control node before removing any edges
-                discrete_control_id = None
-                for index, edge in self.model.edge.df.iterrows():
-                    if edge["from_node_id"] == node_id or edge["to_node_id"] == node_id:
-                        connected_node_id = (
-                            edge["to_node_id"] if edge["from_node_id"] == node_id else edge["from_node_id"]
-                        )
-                        connected_node_type = self.df_node_types.loc[connected_node_id].node_type
-                        if connected_node_type == "DiscreteControl":  # Check for DiscreteControl type
-                            discrete_control_id = connected_node_id
-                            break
+                        if "geometry" in sub_value.df:
+                            if sub_key == "node":
+                                geometry_old = sub_value.df[sub_value.df.index == node_id].geometry.iloc[0]
+                                filtered_df = sub_value.df[sub_value.df.index != node_id]
+                                sub_value.df = filtered_df
 
-                # Remove edges connected to the pump node
-                rows_to_remove = self.model.edge.df[
-                    (self.model.edge.df["from_node_id"] == node_id) | (self.model.edge.df["to_node_id"] == node_id)
-                ].index
-                self.model.edge.df = self.model.edge.df.drop(rows_to_remove)
+                            if sub_key == "static":
+                                geometry_old = sub_value.df[sub_value.df["node_id"] == node_id].geometry.iloc[0]
+                                filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                                sub_value.df = filtered_df
 
-                # Remove the discrete control node if it exists
-                if discrete_control_id is not None:
-                    key = "discrete_control"
-                    value = getattr(self.model, key, None)
-                    if value is not None and hasattr(value, "__dict__"):
-                        for sub_key, sub_value in value.__dict__.items():
-                            if hasattr(sub_value, "df") and sub_value.df is not None:
-                                if not sub_value.df.empty:
-                                    filtered_df = sub_value.df[sub_value.df["node_id"] != discrete_control_id]
-                                    sub_value.df = filtered_df
-                                    logging.info(f"Removed discrete control node with Node ID: {discrete_control_id}")
-
-                    # Remove edges connected to the discrete control node
-                    rows_to_remove = self.model.edge.df[
-                        (self.model.edge.df["from_node_id"] == discrete_control_id)
-                        | (self.model.edge.df["to_node_id"] == discrete_control_id)
-                    ].index
-                    self.model.edge.df = self.model.edge.df.drop(rows_to_remove)
-                    logging.info(
-                        f"Removed edges connected to discrete control node with Node ID: {discrete_control_id}"
-                    )
-
-            # Get the new node type and add the node
-            max_id = self.get_current_max_nodeid()
-            node_id = max_id + 1
             key = row["Nieuw Node Type"]
             key = mapping.get(key, None)
             value = getattr(self.model, key, None)
@@ -450,69 +321,75 @@ class RibasimFeedbackProcessor:
             if value is not None:
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
-                        if sub_key == "time":
+                        if sub_key == "time" or sub_key == "subgrid":
                             continue
                         else:
-                            sub_value = getattr(value, sub_key, None)
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
+                                logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
                                 continue
-                            df_value = sub_value.df.copy()
-                            last_row = df_value.iloc[-1].copy()
-                            last_row["node_id"] = node_id
-                            if "geometry" in last_row:
-                                last_row["geometry"] = geometry_old if "geometry_old" in locals() else None
-                            for col in last_row.index:
-                                if col.startswith("meta_"):
-                                    last_row[col] = np.nan
-                            new_row_df = pd.DataFrame([last_row])
-                            df_value = pd.concat([df_value, new_row_df], ignore_index=True)
-                            sub_value.df = df_value
 
-            # Adjust edges
-            rows_to_remove = self.model.edge.df[
-                (self.model.edge.df["from_node_id"] == node_id_old) | (self.model.edge.df["to_node_id"] == node_id_old)
+                            if sub_key == "node":
+                                sub_value = getattr(value, sub_key, None)
+                                df_value = sub_value.df.copy()
+                                last_row = df_value.iloc[-1].copy()
+
+                                last_row.name = node_id
+                                if "geometry" in last_row:
+                                    last_row["geometry"] = geometry_old if "geometry_old" in locals() else None
+
+                                for col in last_row.index:
+                                    if col.startswith("meta_"):
+                                        last_row[col] = np.nan
+
+                                new_row_df = pd.DataFrame([last_row])
+                                new_row_df["meta_node_id"] = node_id
+
+                                df_value = pd.concat([df_value, new_row_df], ignore_index=False)
+                                df_value.index.name = "node_id"
+                                sub_value.df = df_value.copy()
+
+                            if sub_key == "static":
+                                sub_value = getattr(value, sub_key, None)
+                                df_value_static = sub_value.df.copy()
+                                last_row = df_value_static.iloc[-1].copy()
+
+                                last_row["node_id"] = node_id
+                                if "geometry" in last_row:
+                                    last_row["geometry"] = geometry_old if "geometry_old" in locals() else None
+
+                                for col in last_row.index:
+                                    if col.startswith("meta_"):
+                                        last_row[col] = np.nan
+
+                                new_row_df = pd.DataFrame([last_row])
+                                new_row_df["meta_node_id"] = node_id
+                                new_row_df.index.name = "fid"
+
+                                # drop unused columns to avoid a warning
+                                df_value_static = df_value_static.dropna(axis=1, how="all")
+                                new_row_df = new_row_df.dropna(axis=1, how="all")
+
+                                df_value_static = pd.concat([df_value_static, new_row_df], ignore_index=True)
+                                df_value_static.index.name = "fid"
+                                sub_value.df = df_value_static.copy()
+
+            # Adjust edges meta_node_type
+            rows_to_update = self.model.edge.df[
+                (self.model.edge.df["from_node_id"] == node_id) | (self.model.edge.df["to_node_id"] == node_id)
             ]
-            if len(rows_to_remove) == 1:
-                for idx, edge_row in rows_to_remove.iterrows():
-                    if edge_row["to_node_id"] == node_id_old:
-                        node_type_a = edge_row["from_node_type"]
-                        node_id_a = edge_row["from_node_id"]
-                        rows_to_remove = rows_to_remove.index
-                        self.model.edge.df = self.model.edge.df.drop(rows_to_remove)
-                        new_node = getattr(self.model, key, None)[node_id]
-                        node_a = getattr(self.model, mapping[node_type_a], None)[int(node_id_a)]
-                        self.model.edge.add(node_a, new_node)
-                    if edge_row["from_node_id"] == node_id_old:
-                        node_type_b = edge_row["to_node_type"]
-                        node_id_b = edge_row["to_node_id"]
-                        rows_to_remove = rows_to_remove.index
-                        self.model.edge.df = self.model.edge.df.drop(rows_to_remove)
-                        new_node = getattr(self.model, key, None)[node_id]
-                        node_b = getattr(self.model, mapping[node_type_b], None)[int(node_id_b)]
-                        self.model.edge.add(new_node, node_b)
-            if len(rows_to_remove) > 1:
-                for idx, edge_row in rows_to_remove.iterrows():
-                    if edge_row["to_node_id"] == node_id_old:
-                        node_type_a = edge_row["from_node_type"]
-                        node_id_a = edge_row["from_node_id"]
-                    if edge_row["from_node_id"] == node_id_old:
-                        node_type_b = edge_row["to_node_type"]
-                        node_id_b = edge_row["to_node_id"]
-                rows_to_remove = rows_to_remove.index
-                self.model.edge.df = self.model.edge.df.drop(rows_to_remove)
-                new_node = getattr(self.model, key, None)[node_id]
-                node_a = getattr(self.model, mapping[node_type_a], None)[int(node_id_a)]
-                node_b = getattr(self.model, mapping[node_type_b], None)[int(node_id_b)]
-                self.model.edge.add(node_a, new_node)
-                self.model.edge.add(new_node, node_b)
 
-            # Add discrete control if the new node is a pump
-            if key == "pump" and pump_geometry is not None:
-                self.add_discrete_control_node_for_pump(node_id, pump_geometry)
+            for idx, edge_row in rows_to_update.iterrows():
+                if edge_row["to_node_id"] == node_id:
+                    # Update the meta_node_type for the to_node
+                    self.model.edge.df.at[idx, "meta_to_node_type"] = key
 
-            logging.info(
-                f"Successfully adjusted node with old Node ID: {node_id_old}, new Node ID: {node_id}, Action: Aanpassen"
-            )
+                if edge_row["from_node_id"] == node_id:
+                    # Update the meta_node_type for the from_node
+                    self.model.edge.df.at[idx, "meta_from_node_type"] = key
+
+            logging.info(f"Successfully updated meta_node_type for edges related to Node ID: {node_id}")
+
+            logging.info(f"Successfully adjusted node with old Node ID: {node_id}, Action: Aanpassen")
             return node_id
 
         except Exception:
@@ -523,13 +400,14 @@ class RibasimFeedbackProcessor:
         try:
             node_a = int(node_id_map.get(row["Node ID A.1"], row["Node ID A.1"]))
             node_b = int(node_id_map.get(row["Node ID B.1"], row["Node ID B.1"]))
-            print(node_a, node_b)
+
             df_row_a_b = self.model.edge.df[
                 (self.model.edge.df["from_node_id"] == node_a) & (self.model.edge.df["to_node_id"] == node_b)
             ]
             df_row_b_a = self.model.edge.df[
                 (self.model.edge.df["from_node_id"] == node_b) & (self.model.edge.df["to_node_id"] == node_a)
             ]
+
             if df_row_a_b.empty and df_row_b_a.empty:
                 logging.error(f"Edge not found between Node A: {node_a} and Node B: {node_b} at index {row}")
                 return
@@ -580,24 +458,59 @@ class RibasimFeedbackProcessor:
         self.df["Versie"] = self.versie
         self.df.to_excel(self.feedback_excel_processed, index=False)
 
+    def update_target_levels(self):
+        # read sheet with the updated the target levels
+        df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
+        df_TL = df_TL.sort_values(by=["Basin node_id"]).reset_index(drop=True)
+        if len(df_TL) > 0:  # if the sheet is filled in, proceed
+            # print warning if there are non existing basins
+            existing_basins = self.model.basin.node.df.index.to_numpy()
+            non_existing_basins = df_TL.loc[~df_TL["Basin node_id"].isin(existing_basins)]
+            if len(non_existing_basins) > 0:
+                print("Warning! Following basins do not exist:\n", non_existing_basins, "\n")
+
+            # update streefpeilen in the .state table
+            self.model.basin.state.df.loc[
+                self.model.basin.state.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "level"
+            ] = df_TL.Streefpeil.astype(float).to_numpy()
+
+            # update streefpeilen in the .area table
+            self.model.basin.area.df.loc[
+                self.model.basin.area.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "meta_streefpeil"
+            ] = df_TL.Streefpeil.astype(float).to_numpy()
+            print("The target levels (streefpeilen) have been updated.")
+
+    def functie_gemalen(self):
+        # read sheet with the updated the pump functions
+        df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0)
+
+        if len(df_FG) > 0:  # if the sheet is filled in, proceed
+            # print warning if there are non existing pumps
+            existing_pumps = self.model.pump.node.df.index.to_numpy()
+            non_existing_pumps = df_FG.loc[~df_FG["Pump node_id"].isin(existing_pumps)]
+            if len(non_existing_pumps) > 0:
+                print("Warning! Following pumps do not exist:\n", non_existing_pumps, "\n")
+
+            # determine the function provided in the feedback form
+            afvoer_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.contains("fvoer")]
+            aanvoer_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.contains("nvoer")]
+
+            # change the meta_func columns
+            self.model.pump.static.df.loc[
+                self.model.pump.static.df.node_id.isin(afvoer_pumps["Pump node_id"]), "meta_func_afvoer"
+            ] = 1
+            self.model.pump.static.df.loc[
+                self.model.pump.static.df.node_id.isin(aanvoer_pumps["Pump node_id"]), "meta_func_aanvoer"
+            ] = 1
+
+            print("The function of the pumps have been updated.")
+
     def run(self):
-        if self.waterschap == "Hollandse Delta":
-            self.special_preprocessing_for_hollandse_delta()
         self.process_model()
         self.save_feedback()
+        if not self.use_validation:
+            self.model.use_validation = self.use_validation
+
+        self.update_target_levels()
+        self.functie_gemalen()
         self.write_ribasim_model()
-
-
-# # Voorbeeld gebruik
-# name = "Jerom Aerts (HKV)"
-# waterschap = "HHSK"
-# versie = "2024_6_1"
-
-# feedback_excel = r"C:\Users\Aerts\Desktop\RIBASIM Project\Verwerken_Feedback\formulieren\feedback_formulier_HHSK_RB.xlsx"
-# feedback_excel_processed = r"C:\Users\Aerts\Desktop\RIBASIM Project\Verwerken_Feedback\verwerkte_formulieren\feedback_formulier_RB_HHSK_processed.xlsx"
-
-# ribasim_toml = r"C:\Users\Aerts\Desktop\RIBASIM Project\Verwerken_Feedback\modellen\SchielandendeKrimpenerwaard_boezemmodel_2024_6_1\ribasim.toml"
-# output_folder = r"C:\Users\Aerts\Desktop\RIBASIM Project\Verwerken_Feedback\verwerkte_modellen"
-
-# processor = RibasimFeedbackProcessor(name, waterschap, versie, feedback_excel, ribasim_toml, output_folder, feedback_excel_processed)
-# processor.run()

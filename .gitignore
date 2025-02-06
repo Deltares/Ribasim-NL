@@ -30,3 +30,5 @@ src/peilbeheerst_model/.vscode
 /src/peilbeheerst_model/01_test_parse_crossings.ipynb
 
 notebooks/rijkswaterstaat/plots/
+/src/peilbeheerst_model/peilbeheerst_model/Oud
+/src/peilbeheerst_model/ribasim

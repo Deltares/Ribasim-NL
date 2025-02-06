@@ -1,6 +1,5 @@
 import os
 import shutil
-from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -8,21 +7,12 @@ import ribasim
 
 
 class Control:
-    def __init__(self, qlr_path, work_dir=None, ribasim_toml=None):
-        if (work_dir is None) and (ribasim_toml is None):
-            raise ValueError("provide either work_dir or ribasim_toml")
-        else:
-            if ribasim_toml is not None:
-                self.path_ribasim_toml = ribasim_toml
-                self.work_dir = Path(ribasim_toml).parent
-            else:
-                self.path_ribasim_toml = os.path.join(work_dir, "ribasim.toml")
-                self.work_dir = work_dir
-
-        self.qlr_path = qlr_path
-        self.path_basin_output = os.path.join(self.work_dir, "results", "basin.arrow")
-        self.path_edge_output = os.path.join(self.work_dir, "results", "flow.arrow")
-        self.path_control_dict_path = os.path.join(self.work_dir, "results", "output_controle")
+    def __init__(self, work_dir):
+        self.work_dir = work_dir
+        self.path_basin_output = os.path.join(work_dir, "results", "basin.arrow")
+        self.path_edge_output = os.path.join(work_dir, "results", "flow.arrow")
+        self.path_ribasim_toml = os.path.join(work_dir, "ribasim.toml")
+        self.path_control_dict_path = os.path.join(work_dir, "results", "output_controle")
 
     def read_model_output(self):
         df_basin = pd.read_feather(self.path_basin_output)
@@ -56,11 +46,18 @@ class Control:
             initial_final_level_df["initial_level"] - initial_final_level_df["final_level"]
         )
 
-        # Retrieve the geometries
-        initial_final_level_df = initial_final_level_df.merge(
+        # initial_final_level_df["final_level_within_target"] = (
+        #     True  # final level within target level (deviate max 20 cm from streefpeil) is default True ...
+        # )
+        # initial_final_level_df.loc[
+        #     (initial_final_level_df["difference_level"] > 0.2) | (initial_final_level_df["difference_level"] < -0.2),
+        #     "final_level_within_target",
+        # ] = False  # ... but set to False if the criteria is not met
+
+        # retrieve the geometries
+        initial_final_level_df["geometry"] = initial_final_level_df.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        )
-        initial_final_level_df = initial_final_level_df.set_geometry("geometry")
+        )["geometry"]
 
         initial_final_level_df = gpd.GeoDataFrame(initial_final_level_df, geometry="geometry")
 
@@ -132,8 +129,10 @@ class Control:
         relative_error_sum = basin_error.groupby("node_id")["relative_error"].sum().reset_index()
         error_gdf["summed_error"] = relative_error_sum["relative_error"]
 
-        error_gdf = error_gdf.merge(self.model.basin.node.df, on="node_id", suffixes=("", "model_"))
-        error_gdf = error_gdf.set_geometry("geometry")
+        # retrieve the geometries
+        error_gdf["geometry"] = error_gdf.merge(self.model.basin.node.df, on="node_id", suffixes=("", "model_"))[
+            "geometry"
+        ]
 
         error_gdf = gpd.GeoDataFrame(error_gdf, geometry="geometry")
 
@@ -211,28 +210,131 @@ class Control:
 
         return control_dict
 
+    def flow_situation(self, control_dict: dict, n_last_hours: int = 10) -> dict:
+        """Determin flow situation.
+
+        Determine whether the flow conditions are representative for drought-conditions, or for
+        flood-conditions. Drought-conditions would see an inflow from the main water system into
+        the polders; flood-conditions would see an outflow from the polders into the main water
+        system.
+
+        :param control_dict: colection of geopandas-dataframes containing control data.
+        :param n_last_hours: number of hours to average over, defaults to 10.
+
+        :type control_dict: dict
+        :type n_last_hours: int, optional
+
+        :return: updated collection of geopandas-dataframes
+        :rtype: dict
+        """
+        # create a copy of edge-data to prevent overwriting original data
+        df_edge = self.df_edge.copy(deep=True)
+
+        # sort data based on time to select last `n_last_hours` for further processing
+        df_edge["time"] = pd.to_datetime(df_edge["time"])
+        tc = df_edge["time"].max() - pd.Timedelta(hours=n_last_hours)
+        df_edge.sort_values(by=["time", "edge_id"], ascending=True, inplace=True)
+        df_edge = df_edge[df_edge["time"] >= tc]
+
+        # group by `edge_id` and calculate the average flow rate over the last `n_last_hours` hours
+        grouped = df_edge.groupby("edge_id", as_index=False).agg(
+            {
+                "flow_rate": "mean",
+                "from_node_id": "first",
+                "to_node_id": "first",
+                "time": "first",
+            }
+        )
+
+        # merge geometries of edges from Ribasim-model
+        rib_edge = self.model.edge.df.copy(deep=True)
+        grouped = grouped.merge(
+            right=rib_edge[["from_node_id", "to_node_id", "geometry"]], on=["from_node_id", "to_node_id"], how="left"
+        )
+
+        # set coordinate system
+        grouped = gpd.GeoDataFrame(grouped).set_crs(crs="EPSG:28992")
+
+        # update `control_dict`
+        control_dict["inout"] = grouped.copy(deep=True)
+        return control_dict
+
+    def flow_main_water_system(self, control_dict: dict, n_last_hours: int = 10) -> dict:
+        """Highlight the edges that can be considered part of the main water system and mark them as outflow ('afvoer') or inflow ('aanvoer').
+
+        :param control_dict: colection of geopandas-dataframes containing control data.
+        :param n_last_hours: number of hours to average over, defaults to 10.
+
+        :type control_dict: dict
+        :type n_last_hours: int, optional
+
+        :return: updated collection of geopandas-dataframes
+        :rtype: dict
+        """
+        # create a copy of edge-data to prevent overwriting of original data
+        df_edge = self.df_edge.copy(deep=True)
+
+        # select relevant edges
+        df_edge = df_edge[
+            (df_edge["meta_categorie"] == "hoofdwater")
+            | (df_edge["meta_from_node_type"] == "LevelBoundary")
+            | (df_edge["meta_to_node_type"] == "LevelBoundary")
+        ]
+
+        # sort data based on time to select last `n_last_hours` hours for further processing
+        df_edge["time"] = pd.to_datetime(df_edge["time"])
+        tc = df_edge["time"].max() - pd.Timedelta(hours=n_last_hours)
+        df_edge.sort_values(by=["time", "edge_id"], ascending=True, inplace=True)
+        df_edge = df_edge[df_edge["time"] >= tc]
+
+        # group by `edge_id` and calculate the average flow rate over the last `n_last_hours` hours
+        grouped = df_edge.groupby("edge_id", as_index=True).agg(
+            {
+                "flow_rate": "mean",
+                "from_node_id": "first",
+                "to_node_id": "first",
+                "time": "first",
+            }
+        )
+
+        # merge geometries of edges from Ribasim-model
+        rib_edge = self.model.edge.df.copy(deep=True)
+        grouped = grouped.merge(
+            right=rib_edge[["from_node_id", "to_node_id", "geometry"]], on=["from_node_id", "to_node_id"], how="left"
+        )
+
+        # set coordinate system
+        grouped = gpd.GeoDataFrame(grouped).set_crs(crs="EPSG:28992")
+
+        # update `control_dict`
+        control_dict["inout"] = grouped.copy(deep=True)
+        return control_dict
+
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():
             data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG", mode="w")
 
         # copy checks_symbology file from old dir to new dir
+        # define path
+        output_controle_qlr_path = r"../../../../../Data_overig/QGIS_qlr/output_controle.qlr"
+
         # delete old .qlr file (overwriting does apparently not work due to permission rights)
         if os.path.exists(os.path.join(self.work_dir, "results", "output_controle.qlr")):
             os.remove(os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
         # copy .qlr file
-        shutil.copy(src=self.qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
+        shutil.copy(src=output_controle_qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
 
         return
 
     def run_all(self):
         control_dict = self.read_model_output()
         control_dict = self.initial_final_level(control_dict)
-        control_dict = self.min_max_level(control_dict)
+        # control_dict = self.min_max_level(control_dict)
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
-        control_dict = self.find_stationary_flow(control_dict)
+        # control_dict = self.find_stationary_flow(control_dict)
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
         return control_dict
