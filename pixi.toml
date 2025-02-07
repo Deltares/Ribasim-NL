@@ -69,6 +69,7 @@ tomli-w = "*"
 types-requests = "*"
 xlwings = "*"
 xugrid = "*"
+pixi-pycharm = ">=0.0.8,<0.0.9"
 
 [pypi-dependencies]
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
