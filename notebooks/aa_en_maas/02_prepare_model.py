@@ -134,21 +134,48 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 # BASIN
 static_data.reset_data_frame(node_type="Basin")
 
+# fill streefpeil from ds min_upstream_level
+node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
+
+ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
+ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
+ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
+
+ds_levels = pd.concat([static_data.basin, static_data.outlet], ignore_index=True).set_index("node_id")[
+    "min_upstream_level"
+]
+ds_levels.dropna(inplace=True)
+ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
+ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
+
+levels = ds_node_ids.apply(lambda x: ds_levels[x])
+streefpeil = levels.groupby(levels.index).min()
+streefpeil.name = "streefpeil"
+streefpeil.index.name = "node_id"
+static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+
 # get all nodata streefpeilen with their profile_ids and levels
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
 levels = [damo_profiles.get_profile_level(profile_id) for profile_id in profile_ids]
 
-# update static_data
+# # update static_data
 profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), name="profielid")
 static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
-# update model basin-data
+# # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
-model.basin.area.df.loc[node_ids, "meta_streefpeil"] = streefpeil
-model.basin.area.df.loc[node_ids, "meta_profiellijnid"] = profielid
+
+streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
+model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
+profiellijnid = static_data.basin.set_index("node_id")["profielid"]
+model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
+
+model.basin.area.df.reset_index(drop=False, inplace=True)
+model.basin.area.df.index += 1
+model.basin.area.df.index.name = "fid"
 
 # %%
 
@@ -156,3 +183,5 @@ model.basin.area.df.loc[node_ids, "meta_profiellijnid"] = profielid
 static_data.write()
 
 model.write(ribasim_toml)
+
+# %%

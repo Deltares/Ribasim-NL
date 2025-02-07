@@ -1,7 +1,6 @@
 import geopandas as gpd
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
-from shapely.geometry import box
 
 from ribasim_nl import Model, Network
 
@@ -31,27 +30,13 @@ class DAMOProfiles(BaseModel):
 
         # clip points by water area's
         if self.water_area_df is not None:
-            self.water_area_df = self.water_area_df[
-                self.water_area_df.intersects(box(*self.profile_line_df.total_bounds))
-            ]
-
-    def filter_by_water_area(self, profile_points, profile_line):
-        apply_filter = False
-        if self.water_area_df is not None:
-            water_area_poly = self.water_area_df[self.water_area_df.intersects(profile_line.geometry)].union_all()
-            if profile_points.within(water_area_poly).any():
-                apply_filter = True
-
-        if apply_filter:
-            return profile_points[profile_points.within(water_area_poly)]
-        else:
-            return profile_points
+            sjoined = self.profile_point_df.sjoin(self.water_area_df, how="left", predicate="within")
+            self.profile_point_df["within_water"] = ~sjoined.index_right.isna()
 
     def get_profile_level(self, profile_id, statistic="max"):
-        profile_line = self.profile_line_df.set_index("globalid").loc[profile_id]
         profile_points = self.profile_point_df.set_index("profiellijnid").loc[profile_id]
-        profile_points = self.filter_by_water_area(profile_points, profile_line)
-
+        if profile_points.within_water.any():
+            profile_points = profile_points[profile_points.within_water]
         return getattr(profile_points.geometry.z, statistic)()
 
     def get_profile_id(self, node_id, statistic="max"):
