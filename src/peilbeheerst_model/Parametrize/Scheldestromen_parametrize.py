@@ -167,7 +167,7 @@ ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.d
 # See email 6/12/2024 Janna Schoonakker to change the level of this specific level boundary
 ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2
 
-# add Outlet
+# add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # add control, based on the meta_categorie
