@@ -72,7 +72,7 @@ timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
 default_level = -0.42  # default LevelBoundary level
 
-# Process the feedback form
+# process the feedback form
 name = "HKV"
 processor = RibasimFeedbackProcessor(
     name,
@@ -202,7 +202,7 @@ ribasim_model.endtime = endtime
 ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
-# run Model
+# run model
 ribasim_param.tqdm_subprocess(
     ["C:/ribasim_windows/ribasim/ribasim.exe", ribasim_work_dir_model_toml], print_other=False, suffix="init"
 )
