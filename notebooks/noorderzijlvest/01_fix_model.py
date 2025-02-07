@@ -270,9 +270,13 @@ for row in he_df[he_df["node_id"].isna()].itertuples():
 data = []
 for node_id, df in he_df[he_df["node_id"].notna()].groupby("node_id"):
     geometry = df.union_all()
-    streefpeil = df["OPVAFWZP"].min()
+    df.sort_values("OPVAFWZP", inplace=True)
+    streefpeil = df.iloc[0].OPVAFWZP
+    code = df.iloc[0].GPGIDENT
 
-    data += [{"node_id": node_id, "meta_streefpeil": streefpeil, "geometry": geometry}]
+    data += [
+        {"node_id": node_id, "meta_streefpeil": streefpeil, "meta_code_waterbeheerder": code, "geometry": geometry}
+    ]
 
 df = gpd.GeoDataFrame(data, crs=model.crs)
 df.loc[:, "geometry"] = df.buffer(0.1).buffer(-0.1)
