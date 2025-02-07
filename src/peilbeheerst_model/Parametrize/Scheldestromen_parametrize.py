@@ -115,16 +115,16 @@ ribasim_param.insert_standard_profile(
 # add an TRC and edges to the newly created level boundary
 new_node_id = ribasim_param.get_current_max_nodeid(ribasim_model=ribasim_model) + 1
 
-level_boundary = ribasim_model.level_boundary.add(
+level_boundary_node = ribasim_model.level_boundary.add(
     Node(new_node_id, Point(74861, 382484)), [level_boundary.Static(level=[default_level])]
 )
 
-tabulated_rating_curve = ribasim_model.tabulated_rating_curve.add(
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(new_node_id + 1, Point(74504, 382443)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.edge.add(ribasim_model.basin[133], tabulated_rating_curve)
-ribasim_model.edge.add(tabulated_rating_curve, level_boundary)
+ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
 
 # add the meta_node_id for the newly created TRC
 ribasim_model.tabulated_rating_curve.node.df["meta_node_id"] = ribasim_model.tabulated_rating_curve.node.df[
