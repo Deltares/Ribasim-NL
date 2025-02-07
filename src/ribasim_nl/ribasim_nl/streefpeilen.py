@@ -2,7 +2,6 @@
 from pathlib import Path
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 
 from ribasim_nl import Model
@@ -23,8 +22,7 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
 
     # Ensure 'meta_code_waterbeheerder' exists in the dataframe as string
     if "meta_code_waterbeheerder" not in model.basin.area.df.columns:
-        model.basin.area.df["meta_code_waterbeheerder"] = np.nan
-    model.basin.area.df["meta_code_waterbeheerder"] = model.basin.area.df["meta_code_waterbeheerder"].astype(str)
+        model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
     # Ensure 'meta_streefpeil' exists in the dataframe as float
     if "meta_streefpeil" in model.basin.area.df.columns:
@@ -87,4 +85,3 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
             model.basin.area.df.loc[model.basin.area.df.node_id == node_id, ["meta_code_waterbeheerder"]] = (
                 linked_filtered.iloc[0][code]
             )
-    return model

@@ -1,5 +1,7 @@
 import geopandas as gpd
+import pandas as pd
 from pydantic import BaseModel, ConfigDict
+from shapely.geometry import box
 
 from ribasim_nl import Model, Network
 
@@ -10,12 +12,28 @@ class DAMOProfiles(BaseModel):
     profile_point_df: gpd.GeoDataFrame
     water_area_df: gpd.GeoDataFrame | None = None
     network: Network | None = None
+    profile_id_col: str = "meta_profielid_waterbeheerder"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __post_init__(self):
+    def model_post_init(self, __context):
         if self.network is None:
             self.network = Network(lines_gdf=self.model.edge.df)
+
+        # in principle globalid in line should be in profiellijnid of point. In case they don't match we clean in 2 directions
+        self.profile_line_df = self.profile_line_df[
+            self.profile_line_df.globalid.isin(self.profile_point_df.profiellijnid.to_numpy())
+        ]
+
+        self.profile_point_df = self.profile_point_df[
+            self.profile_point_df.profiellijnid.isin(self.profile_line_df.globalid.to_numpy())
+        ]
+
+        # clip points by water area's
+        if self.water_area_df is not None:
+            self.water_area_df = self.water_area_df[
+                self.water_area_df.intersects(box(*self.profile_line_df.total_bounds))
+            ]
 
     def filter_by_water_area(self, profile_points, profile_line):
         apply_filter = False
@@ -25,50 +43,35 @@ class DAMOProfiles(BaseModel):
                 apply_filter = True
 
         if apply_filter:
-            return profile_points[profile_points.within(water_area_poly)].geometry.z.max()
+            return profile_points[profile_points.within(water_area_poly)]
         else:
-            return profile_points.geometry.z.max()
+            return profile_points
 
-    def upstream_levels(self, node_ids):
-        return [self.upstream_level(node_id) for node_id in node_ids]
+    def get_profile_level(self, profile_id, statistic="max"):
+        profile_line = self.profile_line_df.set_index("globalid").loc[profile_id]
+        profile_points = self.profile_point_df.set_index("profiellijnid").loc[profile_id]
+        profile_points = self.filter_by_water_area(profile_points, profile_line)
 
-    def upstream_level(self, node_id):
-        result = None
-        to_point = self.model.node_table().df.at[node_id, "geometry"]
-        from_node_id = self.model.upstream_node_id(node_id)
-        from_point = self.model.node_table().df.at[from_node_id, "geometry"]
-        # %get us_edge
-        distance = self.network.nodes.distance(from_point)
-        if distance.min() < 0.1:
-            node_from = distance.idxmin()
+        return getattr(profile_points.geometry.z, statistic)()
+
+    def get_profile_id(self, node_id, statistic="max"):
+        node_type = self.model.get_node_type(node_id)
+        if node_type == "Basin":
+            profile_ids = self.model.edge.df[
+                (self.model.edge.df.from_node_id == node_id) | (self.model.edge.df.to_node_id == node_id)
+            ][self.profile_id_col].to_numpy()
+            levels = [self.get_profile_level(profile_id, statistic) for profile_id in profile_ids]
+            return pd.Series(levels, index=profile_ids).idxmin()  # use pandas to get the profileid with min level
         else:
-            node_from = self.network.add_node(from_point, max_distance=10, align_distance=1)
+            return self.model.edge.df[self.model.edge.df.to_node_id == node_id].iloc[0][self.profile_id_col]
 
-        # get or add node_to
-        distance = self.network.nodes.distance(to_point)
-        if distance.min() < 0.1:
-            node_to = distance.idxmin()
+    def get_node_level(self, node_id, statistic="max"):
+        node_type = self.model.get_node_type(node_id)
+        if node_type == "Basin":
+            profile_ids = self.model.edge.df[
+                (self.model.edge.df.from_node_id == node_id) | (self.model.edge.df.to_node_id == node_id)
+            ][self.profile_id_col].to_numpy()
+            return min(self.get_profile_level(profile_id, statistic) for profile_id in profile_ids)
         else:
-            node_to = self.network.add_node(to_point, max_distance=10, align_distance=1)
-
-        if (node_from is not None) and (node_to is not None):
-            # get line geometry
-            geometry = self.network.get_line(node_from, node_to)
-            # get us_profile
-            profile_select_df = self.profile_line_df[self.profile_line_df.intersects(geometry)]
-
-            if not profile_select_df.empty:
-                profile_line = self.profile_line_df.loc[
-                    profile_select_df.geometry.apply(lambda x: geometry.project(x.intersection(geometry))).idxmax()
-                ]
-
-                profile_points = self.profile_point_df[self.profile_point_df.profiellijnid == profile_line.globalid]
-
-                result = self.filter_by_water_area(profile_points, profile_line)
-        if result is None:
-            profile_line = self.profile_line_df.loc[self.profile_line_df.distance(to_point).idxmin()]
-            profile_points = self.profile_point_df[self.profile_point_df.profiellijnid == profile_line.globalid]
-
-            result = self.filter_by_water_area(profile_points, profile_line)
-
-        return result
+            profile_id = self.model.edge.df[self.model.edge.df.to_node_id == node_id].iloc[0][self.profile_id_col]
+            return self.get_profile_level(profile_id, statistic)

@@ -77,6 +77,7 @@ class StaticData(BaseModel):
     description_list: list = description
     outlet: pd.DataFrame | None = None
     pump: pd.DataFrame | None = None
+    basin: pd.DataFrame | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -96,21 +97,47 @@ class StaticData(BaseModel):
         return df[["sheet", "kolom", "beschrijving"]]
 
     def reset_data_frame(self, node_type):
-        columns = ["node_id", "name", "code", "flow_rate", "min_upstream_level", "max_downstream_level"]
-        extra_columns = ["categorie", "opmerking_waterbeheerder"]
-        df = empty_table_df(
-            model=self.model,
-            table_type="Static",
-            node_type=node_type,
-            meta_columns=["meta_code_waterbeheerder", "name"],
-        )
-        df.rename(columns={"meta_code_waterbeheerder": "code"}, inplace=True)
-        if node_type == "Pump":
-            df["categorie"] = "Afvoergemaal"
-        if node_type == "Outlet":
-            df["categorie"] = "Uitlaat"
-        df["opmerking_waterbeheerder"] = ""
-        df = df[columns + extra_columns]
+        if node_type in ["Pump", "Outlet"]:
+            columns = ["node_id", "name", "code", "flow_rate", "min_upstream_level", "max_downstream_level"]
+            extra_columns = ["categorie", "opmerking_waterbeheerder"]
+            df = empty_table_df(
+                model=self.model,
+                table_type="Static",
+                node_type=node_type,
+                meta_columns=["meta_code_waterbeheerder", "name"],
+            )
+            df.rename(columns={"meta_code_waterbeheerder": "code"}, inplace=True)
+            if node_type == "Pump":
+                df["categorie"] = "Afvoergemaal"
+            if node_type == "Outlet":
+                df["categorie"] = "Uitlaat"
+            df["opmerking_waterbeheerder"] = ""
+            df = df[columns + extra_columns]
+        elif node_type == "Basin":
+            df = empty_table_df(
+                model=self.model,
+                table_type="Static",
+                node_type=node_type,
+                meta_columns=["meta_categorie"],
+            )
+            df.set_index("node_id", inplace=True)
+
+            # add meta_code_waterbeheerder
+            area_df = self.model.basin.area.df.set_index("node_id")
+            mask = area_df.meta_code_waterbeheerder.notna()
+            df.loc[mask[mask].index, "code_peilgebied"] = area_df[mask]["meta_code_waterbeheerder"]
+
+            # add streefpeil
+            area_df = self.model.basin.area.df.set_index("node_id")
+            mask = area_df.meta_streefpeil.notna()
+            df.loc[mask[mask].index, "streefpeil"] = area_df[mask]["meta_streefpeil"]
+
+            # add profielid
+            df["profielid"] = pd.Series(dtype=str)
+
+            # sanitize
+            df.rename(columns={"meta_categorie": "categorie"}, inplace=True)
+            df = df.reset_index(drop=False)[["node_id", "categorie", "code_peilgebied", "profielid", "streefpeil"]]
         setattr(self, pascal_to_snake_case(node_type), df)
         return getattr(self, pascal_to_snake_case(node_type))
 
@@ -142,7 +169,7 @@ class StaticData(BaseModel):
         self.description.to_excel(self.xlsx_path, sheet_name="beschrijving", index=False)
         with pd.ExcelWriter(self.xlsx_path, mode="a", if_sheet_exists="replace") as xlsx_writer:
             self.defaults.to_excel(xlsx_writer, sheet_name="defaults")
-            for node_type in ["Pump", "Outlet"]:
+            for node_type in ["Pump", "Outlet", "Basin"]:
                 df = getattr(self, pascal_to_snake_case(node_type))
                 if df is None:
                     df = self.reset_data_frame(node_type=node_type)
