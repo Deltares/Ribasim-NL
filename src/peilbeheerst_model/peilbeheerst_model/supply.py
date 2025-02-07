@@ -15,9 +15,6 @@ import geopandas as gpd
 import pandas as pd
 import ribasim
 
-# set GDAL-data
-os.environ["GDAL_DATA"] = r"C:\Users\Hendrickx\AppData\Local\miniforge3\envs\ribasim-env\Library\share\gdal"
-
 
 def _load_model(model: str | ribasim.Model) -> ribasim.Model:
     """Load Ribasim model.

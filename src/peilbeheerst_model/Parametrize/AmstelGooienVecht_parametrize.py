@@ -11,10 +11,12 @@ from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
+from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
+from peilbeheerst_model.supply import SupplyOutlet
 from ribasim_nl import CloudStorage
 
 # model settings
@@ -35,6 +37,9 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle.qlr")
+aanvoer_path = cloud.joinpath(
+    waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "afvoergebiedaanvoergebied.gpkg"
+)
 
 cloud.synchronize(
     filepaths=[ribasim_base_model_dir, FeedbackFormulier_path, ws_grenzen_path, RWS_grenzen_path, qlr_path]
@@ -275,7 +280,21 @@ ribasim_model.level_boundary.static.df.loc[
     ribasim_model.level_boundary.static.df.node_id == 931, "meta_to_authority"
 ] = "Rijkswaterstaat"
 
-# Write model output
+# ## Set 'aanvoer'-settings
+aanvoergebieden = supply.special_load_geometry(
+    f_geometry=aanvoer_path, method="inverse", layers=("afvoergebiedaanvoergebied", "afwateringsgebied")
+)
+# label basins as 'aanvoergebied'
+sb = supply.SupplyBasin(ribasim_model, aanvoergebieden)
+sb.exec()
+sb.set_aanvoer_on(38)
+# label outlets as 'aanvoerkunstwerk'
+so = SupplyOutlet(sb.model)
+so.exec()
+# reset ribasim model
+ribasim_model = so.model
+
+# ## Write model output
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime
