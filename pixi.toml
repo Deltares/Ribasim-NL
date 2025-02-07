@@ -34,7 +34,7 @@ test-ribasim_nl-cov = "pytest --numprocesses=auto --cov=ribasim_nl --cov-report=
 test-peilbeheerst_model-cov = "pytest --numprocesses=auto --cov=peilbeheerst_model --cov-report=xml --cov-report=term-missing src/peilbeheerst_model/tests"
 tests = { depends-on = ["lint", "test-hydamo", "test-ribasim_nl"] }
 
-[feature.common.dependencies]
+[dependencies]
 bokeh = ">=3.0"
 contextily = "*"
 fiona = "*"
@@ -70,7 +70,7 @@ types-requests = "*"
 xlwings = "*"
 xugrid = "*"
 
-[feature.common.pypi-dependencies]
+[pypi-dependencies]
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
@@ -83,5 +83,5 @@ ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 ribasim = "==2025.1.0"
 
 [environments]
-default = { features = ["common", "prod"] }
-dev = { features = ["common", "dev"] }
+default = ["prod"]
+dev = ["dev"]

@@ -63,7 +63,7 @@ class AssignAuthorities:
     def clip_and_buffer(self, ws_grenzen, RWS_grenzen):
         """Clips the waterboard boundaries by removing the RWS areas and applies a buffer to the remaining polygons."""
         # Remove the RWS area in each WS
-        ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how="symmetric_difference")
+        ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how="symmetric_difference", keep_geom_type=True)
         ws_grenzen_cut_out.dropna(subset="area", inplace=True)
 
         # add a name to the RWS area
@@ -91,12 +91,12 @@ class AssignAuthorities:
 
     def embed_authorities_in_model(self, ribasim_model, waterschap, authority_borders):
         # create a temp copy of the level boundary df
-        temp_LB_node = ribasim_model.level_boundary.node.df.copy()
+        temp_LB_node = ribasim_model.level_boundary.node.df.copy().reset_index()
         temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry"]]
         ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df[["node_id", "level"]]
 
         # perform a spatial join
-        joined = gpd.sjoin(temp_LB_node, authority_borders, how="left", op="intersects")
+        joined = gpd.sjoin(temp_LB_node, authority_borders, how="left", predicate="intersects")
 
         # #find whether the LevelBoundary flows inward and outward the waterschap
         FB_inward = ribasim_model.edge.df.loc[ribasim_model.edge.df.from_node_id.isin(joined.node_id.values)].copy()
@@ -120,21 +120,23 @@ class AssignAuthorities:
         )
 
         # #replace the current waterschaps name in the joined layer to NaN, and drop those
-        joined["naam"].replace(to_replace=waterschap, value=np.nan, inplace=True)
+        joined["naam"] = joined["naam"].replace(to_replace=waterschap, value=np.nan)
         joined = joined.dropna(subset="naam").reset_index(drop=True)
 
         # now fill the meta_from_authority and meta_to_authority columns. As they already contain the correct position of the current waterschap, the remaining 'naam' will be placed correctly as well
         temp_LB_node = temp_LB_node.merge(right=joined[["node_id", "naam"]], on="node_id", how="left")
-        temp_LB_node.meta_from_authority.fillna(temp_LB_node["naam"], inplace=True)
-        temp_LB_node.meta_to_authority.fillna(temp_LB_node["naam"], inplace=True)
+        temp_LB_node["meta_from_authority"] = temp_LB_node["meta_from_authority"].fillna(temp_LB_node["naam"])
+        temp_LB_node["meta_to_authority"] = temp_LB_node["meta_to_authority"].fillna(temp_LB_node["naam"])
 
         # only select the relevant columns
         temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry", "meta_from_authority", "meta_to_authority"]]
         temp_LB_node = temp_LB_node.drop_duplicates(subset="node_id").reset_index(drop=True)
 
         # place the meta categories to the static table
-        ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df.merge(
+        LB_static = ribasim_model.level_boundary.static.df.merge(
             right=temp_LB_node[["node_id", "meta_from_authority", "meta_to_authority"]], on="node_id", how="left"
         ).reset_index(drop=True)
+        LB_static.index.name = "fid"
+        ribasim_model.level_boundary.static.df = LB_static
 
         return ribasim_model
