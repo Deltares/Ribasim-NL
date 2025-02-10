@@ -14,6 +14,7 @@ import typing
 import geopandas as gpd
 import pandas as pd
 import ribasim
+from mypy.types_utils import AnyType
 
 
 def _load_model(model: str | ribasim.Model) -> ribasim.Model:
@@ -457,53 +458,91 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     """Loading geometry data in a non-straightforward way.
 
     Included special methods are:
-     -  'inverse':  Subtract 'afvoer'-only geometries from total set of geometries to retrieve the
-                    'aanvoer'-only geometries. The 'inverse'-method requires the definition of at
-                    least one additional layer or file, and the total set of geometries (i.e., both
-                    'aanvoer' and 'afvoer') is provided in the `f_geometry`-argument. In case of a
-                    *.gpkg-file, the main/total geometry is given by the first layer in the
-                    `layers`-argument [optional]. Otherwise, additional files must be provided
-                    using the `extra_files`-argument [optional]. These additional files (or non-
-                    first layers) are subtracted from the main/total geometry
-     -  'merge':    Merge multiple geometries to create the overall 'aanvoer'-geometry. Note that
-                    the `f_geometry` still requires a geometry file and additional files are
-                    provided using the `extra_files` argument [optional], or by providing multiple
-                    layers using the `layers`-argument [optional].
+     -  'extract':
+        Extract 'aanvoer'-geometries from within a single geometry-file/-layer. This reflects the occurrence of
+        labelling geometries as 'aanvoer' within a single `geopandas.GeoDataFrame`, where one column provides the
+        information on this labelling. This method requires the optional argument `key`, which gives the key/column-name
+        of the `geopandas.GeoDataFrame`-column in which the 'aanvoer'-flag is stored (optionally provided by a specific
+        value using the optional argument `value`).
+
+     -  'inverse':
+        Subtract 'afvoer'-only geometries from total set of geometries to retrieve the 'aanvoer'-only geometries. The
+        'inverse'-method requires the definition of at least one additional layer or file, and the total set of
+        geometries (i.e., both 'aanvoer' and 'afvoer') is provided in the `f_geometry`-argument. In case of a *.gpkg-/
+        *.gdb-file, the main/total geometry is given by the first layer in the `layers`-argument [optional]. Otherwise,
+        additional files must be provided using the `extra_files`-argument [optional]. These additional files (or non-
+        first layers) are subtracted from the main/total geometry.
+
+     -  'merge':
+        Merge multiple geometries to create the overall 'aanvoer'-geometry. Note that the `f_geometry` still requires a
+        geometry file and additional files are provided using the `extra_files` argument [optional], or by providing
+        multiple layers using the `layers`-argument [optional].
 
     :param f_geometry: geometry file
     :param method: loading method
-        options: {'inverse', 'merge'}
+        options: {'extract', 'inverse', 'merge'}
+
     :key extra_files: additional geometry files, defaults to None
-    :key layers: geometry layers from a *.gpkg-file, defaults to None
+        [relevant for `method`={'inverse', 'merge'} with `f_geometry`={'*.shp'}]
+    :key key: key/column-label marking 'aanvoer'-geometries, defaults to None
+        [required for `method`={'extract'}]
+    :key layer: geometry layer from a *.gpkg-/*.gdb-file, defaults to None
+        [relevant for `method`={'extract'} with `f_geometry`={'*.gpkg', '*.gdb'}]
+    :key layers: geometry layers from a *.gpkg-/*.gdb-file, defaults to None
+        [relevant for `method`={'inverse', 'merge'} with `f_geometry`={'*.gpkg', '*.gdb'}]
+    :key value: value of 'aanvoer'-geometries, defaults to True
+        [relevant for `method`={'extract'}]
 
     :type f_geometry: str
     :type method: str
-    :type extra_files: sequence[str]
-    :type layers: sequence[str]
+    :type extra_files: sequence[str], optional
+    :type key: str, optional
+    :type layer: str, optional
+    :type layers: sequence[str], optional
+    :type value: any, optional
 
-    :return: geometry with 'aanvoergebieden'
+    :return: 'aanvoer'-geometries
     :rtype: geopandas.GeoDataFrame
 
     :raise NotImplementedError: if `method` is not implemented
     :raise NotImplementedError: if file-extension is not implemented
     :raise ValueError: if additional *.shp-files are required but not provided
     :raise ValueError: if the provided number of files exceeds the maximum allowed for the method
-    :raise ValueError: if no layers of the *.gpkg-file are provided
-    :raise ValueError: if not enough layers of the *.gpkg are provided
+    :raise ValueError: if no layers of the *.gpkg-/*.gdb-file are provided
+    :raise ValueError: if not enough layers of the *.gpkg-/*.gdb-file are provided
     """
-    f_geometry = str(f_geometry)
+    # optional arguments
+    kw_extra_files: typing.Sequence[str] = kwargs.get("extra_files")
+    kw_key: str = kwargs.get("key")
+    kw_layer: str = kwargs.get("layer")
+    kw_layers: typing.Sequence[str] = kwargs.get("layers")
+    kw_value: AnyType = kwargs.get("value", True)
 
-    def _load_multiple_geometries(max_files: int = None) -> list[gpd.GeoDataFrame]:
+    def _load_multiple_geometries(
+        file: str, extra_files: typing.Sequence[str] = None, layers: typing.Sequence[str] = None, max_files: int = None
+    ) -> list[gpd.GeoDataFrame]:
         """Load multiple geometries.
 
+        :param file: geometry file
+        :param extra_files: additional geometry files, defaults to None
+        :param layers: geometry layers from a *.gpkg-/*.gdb-file, defaults to None
         :param max_files: set a maximum number of files to be loaded, defaults to None
+
+        :type file: str
+        :type extra_files: sequence[str], optional
+        :type layers: sequence[str], optional
         :type max_files: int, optional
 
         :return: list of geometry-data
         :rtype: list[geopandas.GeoDataFrame]
+
+        :raise NotImplementedError: if file-extension is not implemented
+        :raise ValueError: if additional *.shp-files are required but not provided
+        :raise ValueError: if the provided number of files exceeds the maximum allowed for the method
+        :raise ValueError: if no layers of the *.gpkg-/*.gdb-file are provided
+        :raise ValueError: if not enough layers of the *.gpkg-/*.gdb-file are provided
         """
-        if f_geometry.endswith(".shp"):
-            extra_files: typing.Sequence[str] = kwargs.get("extra_files")
+        if file.endswith(".shp"):
             if extra_files is None:
                 msg = "Additional *.shp-files are required"
                 if max_files is not None:
@@ -517,10 +556,9 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
                 )
                 raise ValueError(msg)
 
-            geometries = [gpd.read_file(f_geometry)] + [gpd.read_file(file) for file in extra_files]
+            geometries = [gpd.read_file(file)] + [gpd.read_file(f) for f in extra_files]
 
-        elif f_geometry.endswith(".gpkg") or f_geometry.endswith(".gdb"):
-            layers: typing.Sequence[str] = kwargs.get("layers")
+        elif file.endswith(".gpkg") or file.endswith(".gdb"):
             if layers is None:
                 msg = "Geopackage-layers not specified;"
                 if max_files is not None:
@@ -533,33 +571,88 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
                 )
                 raise ValueError(msg)
 
-            geometries = [gpd.read_file(f_geometry, layer=layer) for layer in layers]
+            geometries = [gpd.read_file(file, layer=m) for m in layers]
 
         else:
-            msg = f"File-type not suppoerted: {f_geometry}"
+            msg = f"File-type not supported: {file}"
             raise NotImplementedError(msg)
 
         return geometries
 
     # TODO: Allow multiple 'afvoer'-geometries
     def _inverse_geometry(total: gpd.GeoDataFrame, afvoer: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-        """Extract 'aanvoergebieden' as the inverse of 'afvoergebieden'."""
+        """Extract 'aanvoer'-geometries as the inverse of 'afvoer'-geometries.
+
+        :param total: total geometry
+        :param afvoer: 'afvoer'-geometry
+
+        :type total: geopandas.GeoDataFrame
+        :type afvoer: geopandas.GeoDataFrame
+
+        :return: 'aanvoer'-geometry
+        :rtype: geopandas.GeoDataFrame
+        """
         out = total["geometry"].union_all()
-        for geom in afvoer["geometry"].tolist():
-            out = out.difference(geom)
+        for g in afvoer["geometry"].tolist():
+            out = out.difference(g)
         return gpd.GeoDataFrame({"label": "aanvoergebied", "geometry": out}, index=[0], crs="EPSG:28992")
 
     # TODO: Merging of geometries is not yet tested properly
-    def _merge_geometry(*geometries: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-        """Merge the 'aanvoergebieden' as specified by multiple files/layers/etc."""
-        out = gpd.GeoDataFrame(pd.concat(geometries, ignore_index=True))
+    def _merge_geometry(*geometry: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        """Merge the 'aanvoergebieden' as specified by multiple files/layers/etc.
+
+        :param geometry: 'aanvoer'-geometry
+        :type geometry: geopandas.GeoDataFrame
+
+        :return: 'aanvoer'-geometry
+        :rtype: geopandas.GeoDataFrame
+        """
+        out = gpd.GeoDataFrame(pd.concat(geometry, ignore_index=True))
         return out
 
+    def _extract_geometry(file: str, key: str, value: AnyType = True, layer: str = None) -> gpd.GeoDataFrame:
+        """Extract 'aanvoergebieden' as labelled within the geopandas.GeoDataFrame.
+
+        :param file: geometry-file
+        :param key: key/column-label marking 'aanvoer'-geometries
+        :param value: value of 'aanvoer'-geometries, defaults to True
+        :param layer: geometry layer from a *.gpkg-/*.gdb-file, defaults to None
+
+        :type file: str
+        :type key: str
+        :type value: any, optional
+        :type layer: str, optional
+
+        :return: 'aanvoergebied'-geometry
+        :rtype: geopandas.GeoDataFrame
+
+        :raise ValueError: if `key`-argument is `None`.
+        """
+        if key is None:
+            msg = f"A key/column-name must be provided to extract the geometry; {key} given."
+            raise ValueError(msg)
+
+        gdf = _load_geometry(file, layer=layer)
+        if isinstance(value, bool):
+            out = gdf[gdf[key]]
+        else:
+            out = gdf[gdf[key] == value]
+        return out
+
+    # execute special load-method
     match method:
         case "inverse":
-            return _inverse_geometry(*_load_multiple_geometries(max_files=2))
+            return _inverse_geometry(
+                *_load_multiple_geometries(
+                    file=str(f_geometry), extra_files=kw_extra_files, layers=kw_layers, max_files=2
+                )
+            )
         case "merge":
-            return _merge_geometry(*_load_multiple_geometries())
+            return _merge_geometry(
+                *_load_multiple_geometries(file=str(f_geometry), extra_files=kw_extra_files, layers=kw_layers)
+            )
+        case "extract":
+            return _extract_geometry(str(f_geometry), kw_key, value=kw_value, layer=kw_layer)
         case _:
             msg = f"Unknown special method: {method}"
             raise NotImplementedError(msg)
