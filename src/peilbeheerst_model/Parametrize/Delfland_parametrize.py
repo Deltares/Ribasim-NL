@@ -8,6 +8,7 @@ import ribasim
 import ribasim.nodes
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
+from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -31,9 +32,19 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle.qlr")
+aanvoer_path = cloud.joinpath(
+    waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "Delfland_aanvoergebiedafvoergebied.gdb"
+)
 
 cloud.synchronize(
-    filepaths=[ribasim_base_model_dir, FeedbackFormulier_path, ws_grenzen_path, RWS_grenzen_path, qlr_path]
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+    ]
 )
 
 # download the feedback forms, overwrite the old ones
@@ -163,6 +174,19 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # last formating of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# set 'aanvoer'-settings
+aanvoergebieden = supply.special_load_geometry(
+    f_geometry=aanvoer_path, method="inverse", layers=("Aanvoergebied_Afvoergebied_polders", "Afwateringsgebieden_onv")
+)
+# label basins as 'aanvoergebied'
+sb = supply.SupplyBasin(ribasim_model, aanvoergebieden)
+sb.exec()
+# label outlets as 'aanvoerkunstwerk'
+so = supply.SupplyOutlet(sb.model)
+so.exec()
+# reset ribasim model
+ribasim_model = so.model
 
 # set numerical settings
 # write model output

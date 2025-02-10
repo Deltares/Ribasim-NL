@@ -59,7 +59,7 @@ def _load_geometry(geometry: str | gpd.GeoDataFrame, **kwargs) -> gpd.GeoDataFra
     if isinstance(geometry, str):
         if geometry.endswith(".shp"):
             data = gpd.read_file(geometry)
-        elif geometry.endswith(".gpkg"):
+        elif geometry.endswith(".gpkg") or geometry.endswith(".gdb"):
             layer: str = kwargs.get("layer")
             data = gpd.read_file(geometry, layer=layer)
         else:
@@ -166,7 +166,7 @@ class SupplyBasin:
         :type df: pandas.DataFrame
         """
         if "meta_aanvoer" not in df.columns:
-            msg = 'DataFrame is missing the "meta_aanvoer"-column: ' "Run it through `SupplyBasin.exec()` first."
+            msg = 'DataFrame is missing the "meta_aanvoer"-column: Run it through `SupplyBasin.exec()` first.'
             raise KeyError(msg)
 
     def __modify_aanvoer(self, bool_supply: bool, *node_id: int) -> pd.DataFrame:
@@ -519,7 +519,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
 
             geometries = [gpd.read_file(f_geometry)] + [gpd.read_file(file) for file in extra_files]
 
-        elif f_geometry.endswith(".gpkg"):
+        elif f_geometry.endswith(".gpkg") or f_geometry.endswith(".gdb"):
             layers: typing.Sequence[str] = kwargs.get("layers")
             if layers is None:
                 msg = "Geopackage-layers not specified;"
