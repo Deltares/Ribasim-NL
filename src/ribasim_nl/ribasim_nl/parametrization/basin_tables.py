@@ -1,3 +1,4 @@
+# %%
 import pandas as pd
 
 from ribasim_nl.model import Model
@@ -24,6 +25,9 @@ def update_basin_static(
     if evaporation_mm_per_day is not None:
         evaporation = area * (evaporation_mm_per_day * 0.001 / 86400)  # m3/s
         static_df.loc[:, "evaporation"] = evaporation[static_df.node_id].to_numpy()
+
+    # add to static df
+    model.basin.static.df = static_df
 
 
 def update_basin_profile(

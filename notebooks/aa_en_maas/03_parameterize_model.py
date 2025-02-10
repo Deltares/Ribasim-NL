@@ -5,22 +5,23 @@ from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
-authority = "Noorderzijlvest"
-short_name = "nzv"
+authority = "AaenMaas"
+short_name = "aam"
 
+run_model = True
 
 static_data_xlsx = cloud.joinpath(
-    "Noorderzijlvest",
+    authority,
     "verwerkt",
     "parameters",
     "static_data.xlsx",
 )
-ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-# you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx])
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+# # you need the excel, but the model should be local-only by running 01_fix_model.py
+# cloud.synchronize(filepaths=[static_data_xlsx])
+# cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %%
 
@@ -42,10 +43,11 @@ model.write(ribasim_toml)
 # %%
 
 # run model
-exit_code = model.run()
-assert exit_code == 0
+if run_model:
+    exit_code = model.run()
+    assert exit_code == 0
 
-# %%
-controle_output = Control(ribasim_toml=ribasim_toml)
-indicators = controle_output.run_all()
+    # # %%
+    controle_output = Control(ribasim_toml=ribasim_toml)
+    indicators = controle_output.run_all()
 # %%
