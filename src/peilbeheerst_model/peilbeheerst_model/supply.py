@@ -44,12 +44,11 @@ def _load_geometry(geometry: str | gpd.GeoDataFrame, **kwargs) -> gpd.GeoDataFra
     geometry to the `SupplyBasin`-object (as `geometry`).
 
     :param geometry: file/path to geometry data
-    :param kwargs: optional arguments
-        layer: geopackage layer, defaults to None
+
+    :key layer: geopackage layer, defaults to None
 
     :type geometry: str, geopandas.GeoDataFrame
-    :type kwargs: optional
-        layer: str
+    :type layer: str, optional
 
     :return: geometry data
     :rtype: geopandas.GeoDataFrame
