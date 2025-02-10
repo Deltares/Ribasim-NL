@@ -42,7 +42,14 @@ aanvoer_path = cloud.joinpath(
 )
 
 cloud.synchronize(
-    filepaths=[ribasim_base_model_dir, FeedbackFormulier_path, ws_grenzen_path, RWS_grenzen_path, qlr_path]
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+    ]
 )
 
 # download the Feedback Formulieren, overwrite the old ones

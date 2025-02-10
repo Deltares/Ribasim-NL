@@ -491,6 +491,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     :raise ValueError: if no layers of the *.gpkg-file are provided
     :raise ValueError: if not enough layers of the *.gpkg are provided
     """
+    f_geometry = str(f_geometry)
 
     def _load_multiple_geometries(max_files: int = None) -> list[gpd.GeoDataFrame]:
         """Load multiple geometries.
