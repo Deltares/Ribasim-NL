@@ -512,6 +512,8 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     :raise ValueError: if not enough layers of the *.gpkg-/*.gdb-file are provided
     """
     # optional arguments
+    export_modified_geo_data: bool = kwargs.get("export", True)
+    export_settings: dict = kwargs.get("export_settings", {})
     kw_extra_files: typing.Sequence[str] = kwargs.get("extra_files")
     kw_key: str = kwargs.get("key")
     kw_layer: str = kwargs.get("layer")
@@ -642,17 +644,28 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     # execute special load-method
     match method:
         case "inverse":
-            return _inverse_geometry(
+            geometry = _inverse_geometry(
                 *_load_multiple_geometries(
                     file=str(f_geometry), extra_files=kw_extra_files, layers=kw_layers, max_files=2
                 )
             )
         case "merge":
-            return _merge_geometry(
+            geometry = _merge_geometry(
                 *_load_multiple_geometries(file=str(f_geometry), extra_files=kw_extra_files, layers=kw_layers)
             )
         case "extract":
-            return _extract_geometry(str(f_geometry), kw_key, value=kw_value, layer=kw_layer)
+            geometry = _extract_geometry(str(f_geometry), kw_key, value=kw_value, layer=kw_layer)
         case _:
             msg = f"Unknown special method: {method}"
             raise NotImplementedError(msg)
+
+    # export 'aanvoer'-geometry
+    if export_modified_geo_data:
+        exp_dir: str = export_settings.get("export_directory", os.path.dirname(f_geometry))
+        exp_file: str = export_settings.get("export_filename", "aanvoer_mod.shp")
+        _file = os.path.join(exp_dir, exp_file)
+        geometry.to_file(_file)
+        print(f"Modified 'aanvoer'-geometry exported as {_file}")
+
+    # return 'aanvoer'-geometry
+    return geometry
