@@ -8,6 +8,7 @@ cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
+run_model = True
 
 static_data_xlsx = cloud.joinpath(
     authority,
@@ -42,10 +43,11 @@ model.write(ribasim_toml)
 # %%
 
 # run model
-exit_code = model.run()
-assert exit_code == 0
+if run_model:
+    exit_code = model.run()
+    assert exit_code == 0
 
-# # %%
-controle_output = Control(ribasim_toml=ribasim_toml)
-indicators = controle_output.run_all()
+    # # %%
+    controle_output = Control(ribasim_toml=ribasim_toml)
+    indicators = controle_output.run_all()
 # %%
