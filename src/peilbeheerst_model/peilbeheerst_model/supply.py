@@ -673,3 +673,8 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
 
     # return 'aanvoer'-geometry
     return geometry
+
+
+if __name__ == "__main__":
+    f = r"C:\Users\Hendrickx\Documents\PR4750\RIBASIM_NL_DATA_DIR\WetterskipFryslan\aangeleverd\Na_levering\Wateraanvoer\MIPWA_20230907WF.gpkg"
+    gdf = special_load_geometry(f, "extract", layer="DAMO_W_AfvoergebiedAanvoergebied", key="functieGebied", value=2)
