@@ -13,6 +13,7 @@ from ribasim_nl.parametrization.pump_and_outlet_tables import update_pump_outlet
 class Parameterize(BaseModel):
     model: Model
     static_data_xlsx: Path | None = None
+    profiles_gpkg: Path | None = None
     precipitation_mm_per_day: int | None = None
     evaporation_mm_per_day: int | None = None
 
@@ -37,7 +38,7 @@ class Parameterize(BaseModel):
             )
 
         # ManningResistance
-        update_manning_resistance_static(self.model)
+        update_manning_resistance_static(self.model, profiles_gpkg=self.profiles_gpkg)
 
         # Basin profile and state
         update_basin_profile(model=self.model)
