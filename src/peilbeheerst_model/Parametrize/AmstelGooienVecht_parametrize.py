@@ -16,7 +16,6 @@ from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from peilbeheerst_model.supply import SupplyOutlet
 from ribasim_nl import CloudStorage
 
 # model settings
@@ -291,7 +290,7 @@ sb = supply.SupplyBasin(ribasim_model, aanvoergebieden)
 sb.exec()
 sb.set_aanvoer_on(38)
 # label outlets as 'aanvoerkunstwerk'
-so = SupplyOutlet(sb.model)
+so = supply.SupplyOutlet(sb.model)
 so.exec()
 # reset ribasim model
 ribasim_model = so.model
