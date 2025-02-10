@@ -88,7 +88,9 @@ min_upstream_level.index.name = "code"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # from DAMO HOOGSTEDOO
-min_upstream_level = gpd.read_file(stuwen_shp).set_index("CODE")["HOOGSTEDOO"]
+hoogste = gpd.read_file(stuwen_shp).set_index("CODE")["HOOGSTEDOO"]
+laagste = gpd.read_file(stuwen_shp).set_index("CODE")["LAAGSTEDOO"]
+min_upstream_level = laagste + (hoogste - laagste) * 0.75
 min_upstream_level.name = "min_upstream_level"
 min_upstream_level.index.name = "code"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
