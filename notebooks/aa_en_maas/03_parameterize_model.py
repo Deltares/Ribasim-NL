@@ -10,12 +10,10 @@ short_name = "aam"
 
 run_model = True
 
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data.xlsx",
-)
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+static_data_xlsx = parameters_dir / "static_data_template.xlsx"
+profiles_gpkg = parameters_dir / "profiles.gpkg"
+
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
@@ -31,7 +29,7 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
+model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%

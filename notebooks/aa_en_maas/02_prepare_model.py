@@ -19,12 +19,9 @@ short_name = "aam"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data_template.xlsx",
-)
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+static_data_xlsx = parameters_dir / "static_data_template.xlsx"
+profiles_gpkg = parameters_dir / "profiles.gpkg"
 
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/WS_PEILGEBIEDPolygon.shp")
 stuwen_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Na_levering_20240418", "stuwen.shp")
@@ -44,6 +41,7 @@ damo_profiles = DAMOProfiles(
     profile_point_df=gpd.read_file(aam_data_gpkg, layer="profielpunt"),
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
 )
+damo_profiles.process_profiles().to_file(profiles_gpkg)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
