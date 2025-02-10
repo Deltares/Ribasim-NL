@@ -8,7 +8,7 @@ cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
-run_model = True
+run_model = False
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
@@ -37,6 +37,12 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)
+
+model.outlet.node.df.loc[
+    model.outlet.static.df[
+        model.outlet.static.df.min_upstream_level < model.outlet.static.df.max_downstream_level
+    ].node_id.to_numpy()
+].to_file(ribasim_toml.with_name("invalid_outlets.gpkg"))
 
 # %%
 
