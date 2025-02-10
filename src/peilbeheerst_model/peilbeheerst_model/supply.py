@@ -482,6 +482,9 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     :param method: loading method
         options: {'extract', 'inverse', 'merge'}
 
+    :key export: export 'aanvoer'-geometry after modifications, defaults to True
+    :key export_directory: directory to export the 'aanvoer'-geometry to, defaults to `f_geometry`'s directory
+    :key export_filename: filename of the 'aanvoer'-geometry, defaults to 'aanvoer_mod.shp'
     :key extra_files: additional geometry files, defaults to None
         [relevant for `method`={'inverse', 'merge'} with `f_geometry`={'*.shp'}]
     :key key: key/column-label marking 'aanvoer'-geometries, defaults to None
@@ -495,6 +498,9 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
 
     :type f_geometry: str
     :type method: str
+    :type export: bool, optional
+    :type export_directory: str, optional
+    :type export_filename: str, optional
     :type extra_files: sequence[str], optional
     :type key: str, optional
     :type layer: str, optional
@@ -513,7 +519,8 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     """
     # optional arguments
     export_modified_geo_data: bool = kwargs.get("export", True)
-    export_settings: dict = kwargs.get("export_settings", {})
+    export_directory: str = kwargs.get("export_directory", os.path.dirname(f_geometry))
+    export_filename: str = kwargs.get("export_filename", "aanvoer_mod.shp")
     kw_extra_files: typing.Sequence[str] = kwargs.get("extra_files")
     kw_key: str = kwargs.get("key")
     kw_layer: str = kwargs.get("layer")
@@ -661,9 +668,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
 
     # export 'aanvoer'-geometry
     if export_modified_geo_data:
-        exp_dir: str = export_settings.get("export_directory", os.path.dirname(f_geometry))
-        exp_file: str = export_settings.get("export_filename", "aanvoer_mod.shp")
-        _file = os.path.join(exp_dir, exp_file)
+        _file = os.path.join(export_directory, export_filename)
         geometry.to_file(_file)
         print(f"Modified 'aanvoer'-geometry exported as {_file}")
 
