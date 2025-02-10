@@ -12,6 +12,7 @@ from ribasim.nodes import level_boundary, tabulated_rating_curve
 from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
+from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -35,9 +36,17 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle.qlr")
+aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "WSS_aanvoergebieden.shp")
 
 cloud.synchronize(
-    filepaths=[ribasim_base_model_dir, FeedbackFormulier_path, ws_grenzen_path, RWS_grenzen_path, qlr_path]
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+    ]
 )
 
 # download the feedback forms, overwrite the old ones
@@ -123,7 +132,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(new_node_id + 1, Point(74504, 382443)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(ribasim_model.basin[133], tabulated_rating_curve)
+ribasim_model.edge.add(ribasim_model.basin[133], tabulated_rating_curve_node)
 ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
 
 # add the meta_node_id for the newly created TRC
@@ -193,6 +202,16 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# set 'aanvoer'-settings
+# label basins as 'aanvoergebied'
+sb = supply.SupplyBasin(ribasim_model, str(aanvoer_path))
+sb.exec()
+# label outlets as 'aanvoerkunstwerk'
+so = supply.SupplyOutlet(sb.model)
+so.exec()
+# reset ribasim model
+ribasim_model = so.model
 
 # set numerical settings
 # write model output
