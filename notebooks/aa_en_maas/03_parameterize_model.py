@@ -1,6 +1,8 @@
 # %%
 import time
 
+import pandas as pd
+
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 
@@ -43,6 +45,10 @@ model.outlet.node.df.loc[
         model.outlet.static.df.min_upstream_level < model.outlet.static.df.max_downstream_level
     ].node_id.to_numpy()
 ].to_file(ribasim_toml.with_name("invalid_outlets.gpkg"))
+
+model.outlet.static.df.loc[
+    model.outlet.static.df.min_upstream_level < model.outlet.static.df.max_downstream_level, "min_upstream_level"
+] = pd.NA
 
 # %%
 
