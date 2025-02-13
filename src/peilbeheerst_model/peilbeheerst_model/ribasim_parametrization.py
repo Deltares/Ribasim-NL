@@ -1094,7 +1094,9 @@ def load_model_settings(file_path):
 
 
 def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
-    sturing = load_model_settings(f"sturing_{waterschap}.json")  # load the waterschap specific sturing
+    sturing = load_model_settings(
+        f"src/peilbeheerst_model/Parametrize/sturing_{waterschap}.json"
+    )  # load the waterschap specific sturing
 
     # create empty columns for the sturing
     ribasim_model.outlet.static.df["min_upstream_level"] = np.nan
