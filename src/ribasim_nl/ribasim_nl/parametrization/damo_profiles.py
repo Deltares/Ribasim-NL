@@ -12,6 +12,7 @@ class DAMOProfiles(BaseModel):
     water_area_df: gpd.GeoDataFrame | None = None
     network: Network | None = None
     profile_id_col: str = "meta_profielid_waterbeheerder"
+    profile_line_id_col: str = "globalid"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -21,11 +22,15 @@ class DAMOProfiles(BaseModel):
 
         # in principle globalid in line should be in profiellijnid of point. In case they don't match we clean in 2 directions
         self.profile_line_df = self.profile_line_df[
-            self.profile_line_df.globalid.isin(self.profile_point_df.profiellijnid.to_numpy())
+            self.profile_line_df[self.profile_line_id_col].isin(self.profile_point_df.profiellijnid.to_numpy())
         ]
 
+        # explode multipoints
+        if "MultiPoint" in self.profile_point_df.geometry.type.unique():
+            self.profile_point_df = self.profile_point_df.explode()
+
         self.profile_point_df = self.profile_point_df[
-            self.profile_point_df.profiellijnid.isin(self.profile_line_df.globalid.to_numpy())
+            self.profile_point_df.profiellijnid.isin(self.profile_line_df[self.profile_line_id_col].to_numpy())
         ]
 
         # clip points by water area's
@@ -75,13 +80,19 @@ class DAMOProfiles(BaseModel):
             else:
                 df.loc[:, "elevation"] = df[elevation_col]
 
-            geometry = self.profile_line_df.set_index("globalid").at[profiel_id, "geometry"]
+            geometry = self.profile_line_df.set_index(self.profile_line_id_col).at[profiel_id, "geometry"]
 
             # compute stuff from points
             bottom_level = df["elevation"].min()
             invert_level = df["elevation"].max()
             water_level = df[df.within_water]["elevation"].max()
             depth = max(water_level - bottom_level, min_profile_depth)
+
+            # fix codevolgnummer if it is messed-up
+            if df.codevolgnummer.duplicated().any():
+                df["distance_on_line"] = [geometry.project(i) for i in df.geometry]
+                df.sort_values("distance_on_line", inplace=True)
+                df.loc[:, "codevolgnummer"] = [i + 1 for i in range(len(df))]
 
             # estimate width at water_level from codevolgnummer
             df.set_index("codevolgnummer", inplace=True)
