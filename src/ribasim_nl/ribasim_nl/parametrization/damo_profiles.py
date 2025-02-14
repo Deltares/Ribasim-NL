@@ -20,6 +20,9 @@ class DAMOProfiles(BaseModel):
         if self.network is None:
             self.network = Network(lines_gdf=self.model.edge.df)
 
+        # drop duplicated profile-lines
+        self.profile_line_df.drop_duplicates(self.profile_line_id_col, inplace=True)
+
         # in principle globalid in line should be in profiellijnid of point. In case they don't match we clean in 2 directions
         self.profile_line_df = self.profile_line_df[
             self.profile_line_df[self.profile_line_id_col].isin(self.profile_point_df.profiellijnid.to_numpy())
