@@ -13,6 +13,7 @@ import ribasim
 import tqdm.auto as tqdm
 from shapely.geometry import LineString
 
+from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage
 
 
@@ -1084,7 +1085,63 @@ def identify_node_meta_categorie(ribasim_model):
         0.0
     )
 
-    return
+
+def set_aanvoer_flags(
+    ribasim_model: str | ribasim.Model, aanvoer_regions: str | gpd.GeoDataFrame, **kwargs
+) -> ribasim.Model:
+    """
+    Set the 'aanvoer'-flags for both basins and outlets, grouping the whole pipeline in a single method.
+
+    :param ribasim_model: Ribasim model, or file/path to a Ribasim model
+    :param aanvoer_regions: geometry data of 'aanvoergebieden', or file/path to this geometry data
+
+    :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to None
+    :key basin_aanvoer_off: basin node-IDs to manually set 'aanvoer' to False, defaults to None
+    :key outlet_aanvoer_on: outlet node-IDs to manually set 'aanvoer' to True, defaults to None
+    :key outlet_aanvoer_off: outlet node-IDs to manually set 'aanvoer' to False, defaults to None
+    :key overruling_enabled: in case a basin can be supplied directly from the 'hoofdwatersysteem', other supply-routes
+        are "overruled", i.e., removed, defaults to True
+
+    :type ribasim_model: str, ribasim.Model
+    :type aanvoer_regions: str, geopandas.GeoDataFrame
+    :type basin_aanvoer_on: tuple, optional
+    :type basin_aanvoer_off: tuple, optional
+    :type outlet_aanvoer_on: tuple, optional
+    :type outlet_aanvoer_off: tuple, optional
+    :type overruling_enabled: bool, optional
+    """
+    # manual 'aanvoer'-flagging
+    _aanvoer_keys = "basin_aanvoer_on", "basin_aanvoer_off", "outlet_aanvoer_on", "outlet_aanvoer_off"
+    for k, v in kwargs.items():
+        if k in _aanvoer_keys and isinstance(v, int):
+            kwargs[k] = (v,)  # added flexibility of optional input
+
+    # optional arguments
+    basin_aanvoer_on: tuple = kwargs.get("basin_aanvoer_on", ())
+    basin_aanvoer_off: tuple = kwargs.get("basin_aanvoer_off", ())
+    outlet_aanvoer_on: tuple = kwargs.get("outlet_aanvoer_on", ())
+    outlet_aanvoer_off: tuple = kwargs.get("outlet_aanvoer_off", ())
+    overruling_enabled: bool = kwargs.pop("overruling_enabled", True)
+
+    # label basins as 'aanvoergebied'
+    sb = supply.SupplyBasin(ribasim_model, aanvoer_regions)
+    sb.exec()
+    if basin_aanvoer_on:
+        sb.set_aanvoer_on(*basin_aanvoer_on)
+    if basin_aanvoer_off:
+        sb.set_aanvoer_off(*basin_aanvoer_off)
+
+    # label outlets as 'aanvoerkunstwerk'
+    so = supply.SupplyOutlet(sb.model)
+    so.exec(overruling_enabled=overruling_enabled)
+    if outlet_aanvoer_on:
+        so.set_aanvoer_on(*outlet_aanvoer_on)
+    if outlet_aanvoer_off:
+        so.set_aanvoer_off(*outlet_aanvoer_off)
+
+    # reset ribasim model
+    ribasim_model = so.model
+    return ribasim_model
 
 
 def load_model_settings(file_path):
@@ -1093,7 +1150,12 @@ def load_model_settings(file_path):
     return settings
 
 
-def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
+def determine_min_upstream_max_downstream_levels(
+    ribasim_model: ribasim.Model,
+    waterschap: str,
+    aanvoer_upstream_offset: float = 0.04,
+    aanvoer_downstream_offset: float = 0,
+) -> None:
     sturing = load_model_settings(f"sturing_{waterschap}.json")  # load the waterschap specific sturing
 
     # create empty columns for the sturing
@@ -1111,7 +1173,12 @@ def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
     outlet = ribasim_model.outlet.static.df.copy()
     pump = ribasim_model.pump.static.df.copy()
 
-    # for each different outlet and pump type, determine the min an max upstream and downstream level
+    # check 'aanvoer'-flagging of outlets
+    if "meta_aanvoer" not in outlet.columns:
+        msg = 'Outlets are missing the "aanvoer"-flag. Please execute the `supply`-based preparations first.'
+        raise KeyError(msg)
+
+    # for each different outlet and pump type, determine the min and max upstream and downstream level
     for types, settings in sturing.items():
         # Extract values for each setting
         upstream_level_offset = settings["upstream_level_offset"]
@@ -1119,11 +1186,17 @@ def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
         max_flow_rate = settings["max_flow_rate"]
 
         # Update the min_upstream_level and max_downstream_level in the OUTLET dataframe
-        outlet.loc[outlet.meta_categorie == types, "min_upstream_level"] = (
+        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"] is False), "min_upstream_level"] = (
             outlet.meta_from_level - upstream_level_offset
         )
-        outlet.loc[outlet.meta_categorie == types, "max_downstream_level"] = (
+        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"] is True), "min_upstream_level"] = (
+            outlet.meta_from_level - aanvoer_upstream_offset
+        )
+        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"] is False), "max_downstream_level"] = (
             outlet.meta_to_level + downstream_level_offset
+        )
+        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"] is True), "max_downstream_level"] = (
+            outlet.meta_to_level + aanvoer_downstream_offset
         )
         outlet.loc[outlet.meta_categorie == types, "flow_rate"] = max_flow_rate
 
@@ -1154,8 +1227,6 @@ def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
     ribasim_model.pump.static.df = pump
-
-    return
 
 
 def add_discrete_control(ribasim_model, waterschap, default_level):

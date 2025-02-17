@@ -115,6 +115,7 @@ class SupplyBasin:
         basin_areas = self.basin_areas
         areas = basin_areas.merge(nodes_in_polygons[["node_id", "meta_aanvoer"]], how="left", on="node_id")
         basin_areas["meta_aanvoer"] = areas["meta_aanvoer"]
+        basin_areas.dropna(inplace=True)
 
         # updated data: basin areas
         self.basin_areas = basin_areas.copy(deep=True)
@@ -275,9 +276,9 @@ class SupplyWork(abc.ABC):
         return self.model.basin.area.df.copy(deep=True)
 
     @property
-    def basin_nodes(self) -> gpd.GeoDataFrame:
-        """Ribasim basin nodes."""
-        return self.model.basin.node.df.copy(deep=True)
+    def basin_states(self) -> pd.DataFrame:
+        """Ribasim basin states."""
+        return self.model.basin.state.df.copy(deep=True)
 
     @property
     def level_boundaries(self) -> gpd.GeoDataFrame:
@@ -315,7 +316,7 @@ class SupplyWork(abc.ABC):
 
         # getting model data
         basin_areas = self.basin_areas.set_index("node_id")
-        basin_nodes = self.basin_nodes
+        basin_states = self.basin_states
         statics = self.get_statics()
         boundaries = self.level_boundaries
 
@@ -328,7 +329,7 @@ class SupplyWork(abc.ABC):
         if overruling_enabled:
             remove_nodes = set()
             # collect all nodes that are considered part of the 'hoofdwatersysteem'
-            main_water_system_node_ids = [*basin_nodes[basin_nodes["meta_categorie"] == "hoofdwater"].index] + [
+            main_water_system_node_ids = [*basin_states[basin_states["meta_categorie"] == "hoofdwater"].index] + [
                 *boundaries.index
             ]
             # only consider basins and works that are considered for the 'aanvoer'-situation
