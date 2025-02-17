@@ -236,6 +236,7 @@ ribasim_param.identify_node_meta_categorie(ribasim_model)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
+# TODO: Implement 'aanvoer'-cases/modifications here-ish.
 
 # Manning resistance
 # there is a MR without geometry and without edges for some reason

@@ -588,7 +588,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
         return geometries
 
     # TODO: Allow multiple 'afvoer'-geometries
-    def _inverse_geometry(total: gpd.GeoDataFrame, afvoer: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    def _inverse_geometry(total: gpd.GeoDataFrame, *afvoer: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         """Extract 'aanvoer'-geometries as the inverse of 'afvoer'-geometries.
 
         :param total: total geometry
@@ -601,8 +601,9 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
         :rtype: geopandas.GeoDataFrame
         """
         out = total["geometry"].union_all()
-        for g in afvoer["geometry"].tolist():
-            out = out.difference(g)
+        for g in afvoer:
+            union = g["geometry"].union_all()
+            out = out.difference(union)
         return gpd.GeoDataFrame({"label": "aanvoergebied", "geometry": out}, index=[0], crs="EPSG:28992")
 
     # TODO: Merging of geometries is not yet tested properly
@@ -673,8 +674,3 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
 
     # return 'aanvoer'-geometry
     return geometry
-
-
-if __name__ == "__main__":
-    f = r"C:\Users\Hendrickx\Documents\PR4750\RIBASIM_NL_DATA_DIR\WetterskipFryslan\aangeleverd\Na_levering\Wateraanvoer\MIPWA_20230907WF.gpkg"
-    gdf = special_load_geometry(f, "extract", layer="DAMO_W_AfvoergebiedAanvoergebied", key="functieGebied", value=2)
