@@ -1,15 +1,14 @@
 # %%
 import time
-from datetime import timedelta
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
-authority = "StichtseRijnlanden"
-short_name = "hdsr"
+authority = "HunzeenAas"
+short_name = "hea"
 run_model = True
-run_period = timedelta(days=10)
+run_period = None
 static_data_xlsx = cloud.joinpath(
     authority,
     "verwerkt",

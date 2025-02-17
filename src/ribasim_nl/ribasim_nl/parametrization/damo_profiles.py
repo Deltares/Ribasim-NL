@@ -16,7 +16,7 @@ class DAMOProfiles(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def model_post_init(self, __context):
+    def __post_init__(self, __context):
         if self.network is None:
             self.network = Network(lines_gdf=self.model.edge.df)
 
@@ -35,6 +35,9 @@ class DAMOProfiles(BaseModel):
         self.profile_point_df = self.profile_point_df[
             self.profile_point_df.profiellijnid.isin(self.profile_line_df[self.profile_line_id_col].to_numpy())
         ]
+
+        # drop nan profile.geometries
+        self.profile_line_df = self.profile_line_df[~self.profile_line_df.geometry.isna()]
 
         # clip points by water area's
         if self.water_area_df is not None:
