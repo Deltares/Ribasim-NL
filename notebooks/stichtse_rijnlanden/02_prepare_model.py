@@ -1,5 +1,6 @@
 # %%
 import geopandas as gpd
+import pandas as pd
 
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.link_geometries import fix_link_geometries
@@ -60,14 +61,47 @@ else:
 # %%
 
 # add streefpeilen
+peilgebieden_path_editted = peilgebieden_path.with_name(f"{peilgebieden_path.stem}_bewerkt.gpkg")
+if not peilgebieden_path_editted.exists():
+    df = gpd.read_file(peilgebieden_path)
+
+    # LBW_A_069 has 999 bovenpeil
+    mask = df["WS_BP"] == 999
+    df.loc[mask, "WS_BP"] = pd.NA
+
+    # fill with zomerpeil
+    df["streefpeil"] = df["WS_ZP"]
+
+    # if nodata, fill with vastpeil
+    mask = df["streefpeil"].isna()
+    df.loc[mask, "streefpeil"] = df[mask]["WS_VP"]
+
+    # if nodata and onderpeil is nodata, fill with bovenpeil
+    mask = df["streefpeil"].isna() & df["WS_OP"].isna()
+    df.loc[mask, "streefpeil"] = df[mask]["WS_BP"]
+
+    # if nodata and bovenpeil is nodata, fill with onderpeil
+    mask = df["streefpeil"].isna() & df["WS_BP"].isna()
+    df.loc[mask, "streefpeil"] = df[mask]["WS_OP"]
+
+    # if nodata fill with bovenpeil + onderpeil / 2
+    mask = df["streefpeil"].isna()
+    df.loc[mask, "streefpeil"] = (df[mask]["WS_OP"] + df[mask]["WS_BP"]) / 2
+
+    df[df["streefpeil"].notna()].to_file(peilgebieden_path_editted)
+
+
 add_streefpeil(
-    model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="GPGZMRPL", code="GPGIDENT"
+    model=model,
+    peilgebieden_path=peilgebieden_path_editted,
+    layername=None,
+    target_level="streefpeil",
+    code="WS_PGID",
 )
 
-# model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.6
-# model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] = model.basin.area.df.set_index(
-#     "node_id"
-# ).at[1769, "meta_streefpeil"]
+model.basin.area.df.loc[model.basin.area.df.node_id.isin([1963, 2015]), "meta_streefpeil"] = (
+    model.basin.area.df.set_index("node_id").at[2016, "meta_streefpeil"]
+)
 
 
 # %%
