@@ -482,7 +482,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     :param method: loading method
         options: {'extract', 'inverse', 'merge'}
 
-    :key export: export 'aanvoer'-geometry after modifications, defaults to True
+    :key export: export 'aanvoer'-geometry after modifications, defaults to False
     :key export_directory: directory to export the 'aanvoer'-geometry to, defaults to `f_geometry`'s directory
     :key export_filename: filename of the 'aanvoer'-geometry, defaults to 'aanvoer_mod.shp'
     :key extra_files: additional geometry files, defaults to None
@@ -518,8 +518,8 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     :raise ValueError: if not enough layers of the *.gpkg-/*.gdb-file are provided
     """
     # optional arguments
-    export_modified_geo_data: bool = kwargs.get("export", True)
-    export_directory: str = kwargs.get("export_directory", os.path.dirname(f_geometry))
+    export_modified_geo_data: bool = kwargs.get("export", False)
+    export_directory: str = kwargs.get("export_directory")
     export_filename: str = kwargs.get("export_filename", "aanvoer_mod.shp")
     kw_extra_files: typing.Sequence[str] = kwargs.get("extra_files")
     kw_key: str = kwargs.get("key")
@@ -669,6 +669,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
 
     # export 'aanvoer'-geometry
     if export_modified_geo_data:
+        export_directory = export_directory or os.path.dirname(f_geometry)
         _file = os.path.join(export_directory, export_filename)
         geometry.to_file(_file)
         print(f"Modified 'aanvoer'-geometry exported as {_file}")

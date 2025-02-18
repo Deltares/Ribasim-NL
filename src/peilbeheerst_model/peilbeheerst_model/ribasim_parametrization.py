@@ -1095,6 +1095,7 @@ def set_aanvoer_flags(
     :param ribasim_model: Ribasim model, or file/path to a Ribasim model
     :param aanvoer_regions: geometry data of 'aanvoergebieden', or file/path to this geometry data
 
+    :key aanvoer_enabled: 'aanvoer'-settings are enabled, defaults to True
     :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to None
     :key basin_aanvoer_off: basin node-IDs to manually set 'aanvoer' to False, defaults to None
     :key outlet_aanvoer_on: outlet node-IDs to manually set 'aanvoer' to True, defaults to None
@@ -1104,6 +1105,7 @@ def set_aanvoer_flags(
 
     :type ribasim_model: str, ribasim.Model
     :type aanvoer_regions: str, geopandas.GeoDataFrame
+    :type aanvoer_enabled: bool, optional
     :type basin_aanvoer_on: tuple, optional
     :type basin_aanvoer_off: tuple, optional
     :type outlet_aanvoer_on: tuple, optional
@@ -1117,11 +1119,18 @@ def set_aanvoer_flags(
             kwargs[k] = (v,)  # added flexibility of optional input
 
     # optional arguments
+    aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
     basin_aanvoer_on: tuple = kwargs.get("basin_aanvoer_on", ())
     basin_aanvoer_off: tuple = kwargs.get("basin_aanvoer_off", ())
     outlet_aanvoer_on: tuple = kwargs.get("outlet_aanvoer_on", ())
     outlet_aanvoer_off: tuple = kwargs.get("outlet_aanvoer_off", ())
     overruling_enabled: bool = kwargs.pop("overruling_enabled", True)
+
+    # skip 'aanvoer'-flagging
+    if not aanvoer_enabled:
+        ribasim_model.basin.area.df["meta_aanvoer"] = False
+        ribasim_model.outlet.static.df["meta_aanvoer"] = False
+        return ribasim_model
 
     # label basins as 'aanvoergebied'
     sb = supply.SupplyBasin(ribasim_model, aanvoer_regions)
@@ -1186,16 +1195,16 @@ def determine_min_upstream_max_downstream_levels(
         max_flow_rate = settings["max_flow_rate"]
 
         # Update the min_upstream_level and max_downstream_level in the OUTLET dataframe
-        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"] is False), "min_upstream_level"] = (
+        outlet.loc[(outlet.meta_categorie == types) & (~outlet["meta_aanvoer"]), "min_upstream_level"] = (
             outlet.meta_from_level - upstream_level_offset
         )
-        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"] is True), "min_upstream_level"] = (
+        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"]), "min_upstream_level"] = (
             outlet.meta_from_level - aanvoer_upstream_offset
         )
-        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"] is False), "max_downstream_level"] = (
+        outlet.loc[(outlet.meta_categorie == types) & (~outlet["meta_aanvoer"]), "max_downstream_level"] = (
             outlet.meta_to_level + downstream_level_offset
         )
-        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"] is True), "max_downstream_level"] = (
+        outlet.loc[(outlet.meta_categorie == types) & (outlet["meta_aanvoer"]), "max_downstream_level"] = (
             outlet.meta_to_level + aanvoer_downstream_offset
         )
         outlet.loc[outlet.meta_categorie == types, "flow_rate"] = max_flow_rate
@@ -1204,9 +1213,6 @@ def determine_min_upstream_max_downstream_levels(
         pump.loc[pump.meta_categorie == types, "min_upstream_level"] = pump.meta_from_level - upstream_level_offset
         pump.loc[pump.meta_categorie == types, "max_downstream_level"] = pump.meta_to_level + downstream_level_offset
         pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
-
-    # outlet['flow_rate'] = outlet['max_flow_rate']
-    # pump['flow_rate'] = pump['max_flow_rate']
 
     # raise warning if there are np.nan in the columns
     def check_for_nans_in_columns(
