@@ -875,13 +875,16 @@ def validate_basin_area(model):
     return
 
 
-def identify_node_meta_categorie(ribasim_model):
+def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     """
     Identify the meta_categorie of each Outlet, Pump and LevelBoundary.
 
     It checks whether they are inlaten en uitlaten from a boezem, buitenwater or just regular peilgebieden.
     This will determine the rules of the control nodes.
     """
+    # optional arguments
+    aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
+
     # create new columsn to store the meta categorie of each node
     ribasim_model.outlet.static.df["meta_categorie"] = np.nan
     ribasim_model.pump.static.df["meta_categorie"] = np.nan
@@ -912,12 +915,15 @@ def identify_node_meta_categorie(ribasim_model):
         "meta_func_afvoer",
     ] = 1
 
+    # TODO: Remove this patch once dual-functionality is implemented in ribasim
     # if the function is both aanvoer and afvoer, then set aanvoer to False
     mask = (ribasim_model.pump.static.df["meta_func_afvoer"] == 1) & (
         ribasim_model.pump.static.df["meta_func_aanvoer"] == 1
     )
-
-    ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
+    if aanvoer_enabled:
+        ribasim_model.pump.static.df.loc[mask, "meta_func_afvoer"] = 0
+    else:
+        ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
 
     # fill in the nan values
     ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0)

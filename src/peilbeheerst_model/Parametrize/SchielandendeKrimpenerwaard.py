@@ -17,6 +17,8 @@ from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
 
+AANVOER_CONDITIONS: bool = True
+
 # model settings
 waterschap = "SchielandendeKrimpenerwaard"
 base_model_versie = "2024_12_1"
@@ -259,8 +261,8 @@ add_storage_basins.create_bergende_basins()
 
 # set static forcing
 forcing_dict = {
-    "precipitation": ribasim_param.convert_mm_day_to_m_sec(10),
-    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(0),
+    "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
+    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
     "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
     "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
 }
@@ -288,11 +290,20 @@ ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.d
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+# prepare 'aanvoergebieden'
+if AANVOER_CONDITIONS:
+    aanvoergebieden = supply._load_geometry(aanvoer_path, layer="afvoergebiedaanvoergebied")
+else:
+    aanvoergebieden = None
+
 # add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model)
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=False)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
+ribasim_param.set_aanvoer_flags(
+    ribasim_model, aanvoergebieden, basin_aanvoer_off=104, aanvoer_enabled=AANVOER_CONDITIONS
+)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
@@ -307,16 +318,16 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
-# set 'aanvoer'-settings
-# label basins as 'aanvoergebied'
-sb = supply.SupplyBasin(ribasim_model, str(aanvoer_path), layer="afvoergebiedaanvoergebied")
-sb.exec()
-sb.set_aanvoer_off(104)
-# label outlets as 'aanvoerkunstwerk'
-so = supply.SupplyOutlet(sb.model)
-so.exec()
-# reset ribasim model
-ribasim_model = so.model
+# # set 'aanvoer'-settings
+# # label basins as 'aanvoergebied'
+# sb = supply.SupplyBasin(ribasim_model, str(aanvoer_path), layer="afvoergebiedaanvoergebied")
+# sb.exec()
+# sb.set_aanvoer_off(104)
+# # label outlets as 'aanvoerkunstwerk'
+# so = supply.SupplyOutlet(sb.model)
+# so.exec()
+# # reset ribasim model
+# ribasim_model = so.model
 
 # set numerical settings
 # write model output
