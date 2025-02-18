@@ -316,7 +316,7 @@ class SupplyWork(abc.ABC):
 
         # getting model data
         basin_areas = self.basin_areas.set_index("node_id")
-        basin_states = self.basin_states
+        basin_states = self.basin_states.set_index("node_id")
         statics = self.get_statics()
         boundaries = self.level_boundaries
 
@@ -329,9 +329,10 @@ class SupplyWork(abc.ABC):
         if overruling_enabled:
             remove_nodes = set()
             # collect all nodes that are considered part of the 'hoofdwatersysteem'
-            main_water_system_node_ids = [*basin_states[basin_states["meta_categorie"] == "hoofdwater"].index] + [
-                *boundaries.index
-            ]
+            main_water_system_node_ids = (
+                basin_states[basin_states["meta_categorie"] == "hoofdwater"].index.to_list()
+                + boundaries.index.to_list()
+            )
             # only consider basins and works that are considered for the 'aanvoer'-situation
             basin_sel = basin_areas[basin_areas["meta_aanvoer"]].index
             works_sel = statics.loc[statics["meta_aanvoer"], ["node_id", "meta_from_node_id", "meta_to_node_id"]]
