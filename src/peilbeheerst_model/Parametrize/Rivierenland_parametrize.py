@@ -79,7 +79,7 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = 0.60  # default LevelBoundary level, +- level at Kinderdijk
+default_level = 12.6 if AANVOER_CONDITIONS else 0.60  # default LevelBoundary level, +- level at Kinderdijk
 
 # process the feedback form
 name = "HKV"

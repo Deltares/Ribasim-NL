@@ -348,7 +348,7 @@ class SupplyWork(abc.ABC):
                 else:
                     basin_sub[t].append(i)
                 # remove 'kunstwerk'-IDs that are flowing TO the 'hoofdwatersysteem'
-                if t in main_water_system_node_ids:
+                if t in main_water_system_node_ids and f not in main_water_system_node_ids:
                     remove_nodes.add(i)
             # collect 'kunstwerk'-IDs that should no longer be considered for the 'aanvoer'-situation
             for k, v in basin_main.items():

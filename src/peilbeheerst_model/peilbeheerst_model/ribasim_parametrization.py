@@ -926,11 +926,9 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
         ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
 
     # fill in the nan values
-    ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0)
-    ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0)
-    ribasim_model.pump.static.df["meta_func_circulatie"] = ribasim_model.pump.static.df["meta_func_circulatie"].fillna(
-        0
-    )
+    ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0, inplace=True)
+    ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0, inplace=True)
+    ribasim_model.pump.static.df["meta_func_circulatie"].fillna(0, inplace=True)
 
     # Convert the column to string type
     ribasim_model.outlet.static.df["meta_categorie"] = ribasim_model.outlet.static.df["meta_categorie"].astype("string")
