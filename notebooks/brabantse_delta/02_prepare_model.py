@@ -10,8 +10,8 @@ from ribasim_nl.parametrization.target_level import upstream_target_levels
 from ribasim_nl.streefpeilen import add_streefpeil
 
 cloud = CloudStorage()
-authority = "HunzeenAas"
-short_name = "hea"
+authority = "BrabantseDelta"
+short_name = "wbd"
 
 # %% files
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
@@ -24,7 +24,7 @@ link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 profielen_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20230606_HyDAMO_Onze-PROF-Tabs-Definitief.gpkg")
-peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/peilgebieden.gpkg")
+peilgebieden_path = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
 
 cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
@@ -70,17 +70,13 @@ else:
 
 # add streefpeilen
 
-
 add_streefpeil(
     model=model,
     peilgebieden_path=peilgebieden_path,
-    layername=None,
-    target_level="gpgzmrpl",
-    code="gpgident",
+    layername="peilgebiedpraktijk",
+    target_level="WS_ZOMERPEIL",
+    code="CODE",
 )
-
-model.basin.area.df.loc[model.basin.area.df.node_id == 1583, "meta_streefpeil"] = 1.55
-model.basin.area.df.loc[model.basin.area.df.node_id == 1583, "meta_code_waterbeheerder"] = "GPG-W-01961"
 
 # %%
 # OUTLET

@@ -16,7 +16,7 @@ class DAMOProfiles(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __post_init__(self, __context):
+    def model_post_init(self, __context):
         if self.network is None:
             self.network = Network(lines_gdf=self.model.edge.df)
 
