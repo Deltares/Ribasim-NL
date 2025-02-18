@@ -14,6 +14,7 @@ cloud = CloudStorage()
 
 authority = "HunzeenAas"
 name = "hea"
+run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -164,7 +165,9 @@ model.basin.area.df = combined_basin_areas_gdf
 
 model.remove_unassigned_basin_area()
 
+# %%
 
+# Sanitize node_table
 for node_id in model.tabulated_rating_curve.node.df.index:
     model.update_node(node_id=node_id, node_type="Outlet")
 
@@ -173,6 +176,11 @@ for node_id in model.manning_resistance.node.df[
     model.manning_resistance.node.df["meta_object_type"] == "duikersifonhevel"
 ].index:
     model.update_node(node_id=node_id, node_type="Outlet")
+
+
+# basins and outlets we've added do not have category, we fill with hoofdwater
+model.basin.node.df.loc[model.basin.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.outlet.node.df.loc[model.outlet.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
@@ -199,5 +207,6 @@ model.report_internal_basins()
 
 # %%
 # %% Test run model
-result = model.run()
-assert result == 0
+if run_model:
+    result = model.run()
+    assert result == 0

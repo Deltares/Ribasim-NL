@@ -9,6 +9,7 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import nearest_points
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.geometry import drop_z, edge, split_basin, split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -990,6 +991,11 @@ for node_id in model.manning_resistance.node.df[
     model.manning_resistance.node.df["meta_object_type"] == "duikersifonhevel"
 ].index:
     model.update_node(node_id=node_id, node_type="Outlet")
+
+# nodes we've added do not have category, we fill with hoofdwater
+for node_type in model.node_table().df.node_type.unique():
+    table = getattr(model, pascal_to_snake_case(node_type)).node
+    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])

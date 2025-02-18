@@ -10,8 +10,8 @@ from ribasim_nl.parametrization.target_level import upstream_target_levels
 from ribasim_nl.streefpeilen import add_streefpeil
 
 cloud = CloudStorage()
-authority = "Vechtstromen"
-short_name = "vechtstromen"
+authority = "RijnenIJssel"
+short_name = "wrij"
 
 # %% files
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
