@@ -23,7 +23,7 @@ profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
-profielen_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20230606_HyDAMO_Onze-PROF-Tabs-Definitief.gpkg")
+damo_profiles_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
 
@@ -42,24 +42,24 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("edge_id")
     model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
-    model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
-        "meta_profielid_waterbeheerder"
-    ]
+    if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
+        model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+            "meta_profielid_waterbeheerder"
+        ]
 else:
     network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"))
-    profile_line_df = gpd.read_file(profielen_gpkg, layer="profiellijn")
-    profile_point_df = gpd.read_file(profielen_gpkg, layer="profielpunt")
     damo_profiles = DAMOProfiles(
         model=model,
         network=network,
-        profile_line_df=profile_line_df,
-        profile_point_df=profile_point_df,
+        profile_line_df=gpd.read_file(damo_profiles_gpkg, layer="profiellijn"),
+        profile_point_df=gpd.read_file(damo_profiles_gpkg, layer="profielpunt"),
         water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
+        profile_line_id_col="code",
     )
     profiles_df = damo_profiles.process_profiles()
     profiles_df.to_file(profiles_gpkg)
+    add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
     fix_link_geometries(model, network)
-    add_link_profile_ids(model, profiles=damo_profiles)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
 # %%
@@ -69,12 +69,31 @@ else:
 # %%
 
 # add streefpeilen
+peilgebieden_path_editted = peilgebieden_path.parent.joinpath("peilgebieden_bewerkt.gpkg")
+
+
+df = gpd.read_file(peilgebieden_path, layer="peilgebiedpraktijk")
+
+# fill with zomerpeil
+df["streefpeil"] = df["WS_ZOMERPEIL"]
+
+# if nodata, fill with vastpeil
+mask = df["streefpeil"].isna()
+df.loc[mask, "streefpeil"] = df[mask]["WS_VAST_PEIL"]
+
+# if nodata and onderpeil is nodata, fill with bovenpeil
+mask = df["streefpeil"].isna()
+df.loc[mask, "streefpeil"] = df[mask]["WS_MAXIMUM"]
+
+# write
+df[df["streefpeil"].notna()].to_file(peilgebieden_path_editted)
+
 
 add_streefpeil(
     model=model,
-    peilgebieden_path=peilgebieden_path,
-    layername="peilgebiedpraktijk",
-    target_level="WS_ZOMERPEIL",
+    peilgebieden_path=peilgebieden_path_editted,
+    layername=None,
+    target_level="streefpeil",
     code="CODE",
 )
 
