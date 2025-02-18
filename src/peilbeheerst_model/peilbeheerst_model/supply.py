@@ -54,7 +54,7 @@ def _load_geometry(geometry: str | gpd.GeoDataFrame, **kwargs) -> gpd.GeoDataFra
     :rtype: geopandas.GeoDataFrame
     """
     if isinstance(geometry, gpd.GeoDataFrame):
-        return geometry.copy(deep=True)
+        return geometry.copy(deep=True)  # type: ignore
 
     if isinstance(geometry, str):
         if geometry.endswith(".shp"):
@@ -87,7 +87,7 @@ class SupplyBasin:
         :type kwargs: optional
         """
         self._model = _load_model(model)
-        self._geometry = _load_geometry(geometry, **kwargs)
+        self._geometry = _load_geometry(geometry, **kwargs)  # type: ignore
 
     def __call__(self) -> pd.DataFrame:
         """Shortcut to execute labelling basins as 'aanvoergebied.'
@@ -243,7 +243,7 @@ class SupplyWork(abc.ABC):
         :return: 'kunstwerk'-statics
         :rtype: pandas.DataFrame
         """
-        return self.exec(**kwargs)
+        return self.exec(**kwargs)  # type: ignore
 
     def _load_model(self, model: str | ribasim.Model) -> ribasim.Model:
         """Load and check Ribasim model.

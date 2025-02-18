@@ -1130,7 +1130,8 @@ def set_aanvoer_flags(
     basin_aanvoer_off: tuple = kwargs.get("basin_aanvoer_off", ())
     outlet_aanvoer_on: tuple = kwargs.get("outlet_aanvoer_on", ())
     outlet_aanvoer_off: tuple = kwargs.get("outlet_aanvoer_off", ())
-    overruling_enabled: bool = kwargs.pop("overruling_enabled", True)
+    overruling_enabled: bool = kwargs.get("overruling_enabled", True)
+    load_geometry_kw: dict = kwargs.get("load_geometry_kw", {})
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
@@ -1139,7 +1140,7 @@ def set_aanvoer_flags(
         return ribasim_model
 
     # label basins as 'aanvoergebied'
-    sb = supply.SupplyBasin(ribasim_model, aanvoer_regions)
+    sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)  # type: ignore
     sb.exec()
     if basin_aanvoer_on:
         sb.set_aanvoer_on(*basin_aanvoer_on)
