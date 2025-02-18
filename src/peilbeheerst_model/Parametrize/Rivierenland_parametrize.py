@@ -79,7 +79,7 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = 12.6 if AANVOER_CONDITIONS else 0.60  # default LevelBoundary level, +- level at Kinderdijk
+default_level = 12.4 if AANVOER_CONDITIONS else 0.60  # default LevelBoundary level, +- level at Kinderdijk
 
 # process the feedback form
 name = "HKV"
@@ -239,6 +239,9 @@ ribasim_model.level_boundary.static.df.level = default_level
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+# change the control of the pump at Linge
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 990, "meta_func_aanvoer"] = 1
+
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
@@ -250,6 +253,7 @@ ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 355
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 280, "meta_categorie"] = (
     "Inlaat boezem, afvoer gemaal"
 )
+
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
