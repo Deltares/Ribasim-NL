@@ -2053,5 +2053,3 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
         ribasim_model.outlet.static = structure_static
     elif "ump" in node:
         ribasim_model.pump.static = structure_static
-
-    return
