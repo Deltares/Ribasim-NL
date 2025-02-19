@@ -1,4 +1,5 @@
-"""Parameterisation of water board: Amstel, Gooi en Vecht."""
+# %%
+# """Parameterisation of water board: Amstel, Gooi en Vecht."""
 
 import datetime
 import os
@@ -37,7 +38,12 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 )
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle.qlr")
+
+if AANVOER_CONDITIONS:
+    qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_aanvoer.qlr")
+else:
+    qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle.qlr")
+
 aanvoer_path = cloud.joinpath(
     waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "afvoergebiedaanvoergebied.gpkg"
 )
@@ -98,6 +104,8 @@ processor = RibasimFeedbackProcessor(
     use_validation=True,
 )
 processor.run()
+
+# %%
 
 # load model
 with warnings.catch_warnings():
@@ -306,6 +314,7 @@ ribasim_param.tqdm_subprocess(
     ["C:/ribasim_windows/ribasim/ribasim.exe", ribasim_work_dir_model_toml], print_other=False, suffix="init"
 )
 
+# %%
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_all()
@@ -317,3 +326,5 @@ ribasim_param.write_ribasim_model_GoodCloud(
     waterschap=waterschap,
     include_results=True,
 )
+
+# %%
