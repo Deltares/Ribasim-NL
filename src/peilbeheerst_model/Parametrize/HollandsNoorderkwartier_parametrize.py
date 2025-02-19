@@ -16,6 +16,8 @@ from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
 
+AANVOER_CONDITIONS: bool = True
+
 # model settings
 waterschap = "HollandsNoorderkwartier"
 base_model_versie = "2024_12_0"
@@ -34,7 +36,8 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle.qlr")
-aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "bestand?")
+# TODO: Enable once geodata of the 'aanvoergebieden' has been delivered, also in the `cloud.synchronize()`-call
+# aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraanvoer")
 
 cloud.synchronize(
     filepaths=[
@@ -43,7 +46,7 @@ cloud.synchronize(
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
-        aanvoer_path,
+        # aanvoer_path,
     ]
 )
 
@@ -181,8 +184,8 @@ add_storage_basins.create_bergende_basins()
 
 # set static forcing
 forcing_dict = {
-    "precipitation": ribasim_param.convert_mm_day_to_m_sec(10),
-    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(0),
+    "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
+    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
     "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
     "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
 }
@@ -203,9 +206,10 @@ ribasim_model.level_boundary.static.df.level = default_level
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model)
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
+ribasim_param.set_aanvoer_flags(ribasim_model, None, aanvoer_enabled=AANVOER_CONDITIONS)
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
@@ -220,9 +224,6 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
-
-# set 'aanvoer'-settings
-# TODO: Aanvoer-settings
 
 # set numerical settings
 # write model output
