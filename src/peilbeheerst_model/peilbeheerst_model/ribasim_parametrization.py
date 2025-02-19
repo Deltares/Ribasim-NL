@@ -1137,6 +1137,10 @@ def set_aanvoer_flags(
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
         return ribasim_model
 
+    # all is 'aanvoergebied'
+    if aanvoer_regions is None:
+        aanvoer_regions = ribasim_model.basin.area.df.reset_index()
+
     # label basins as 'aanvoergebied'
     sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)  # type: ignore
     sb.exec()
