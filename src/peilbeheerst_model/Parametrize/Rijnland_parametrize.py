@@ -14,6 +14,8 @@ from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
 
+AANVOER_CONDITIONS: bool = True
+
 # model settings
 waterschap = "Rijnland"
 base_model_versie = "2024_12_3"
@@ -75,7 +77,7 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = -2  # default LevelBoundary level
+default_level = 2  # default LevelBoundary level
 
 # process the feedback form
 name = "HKV"
@@ -125,8 +127,8 @@ add_storage_basins.create_bergende_basins()
 
 # set static forcing
 forcing_dict = {
-    "precipitation": ribasim_param.convert_mm_day_to_m_sec(10),
-    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(0),
+    "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
+    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
     "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
     "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
 }
@@ -146,10 +148,17 @@ ribasim_model.level_boundary.static.df.level = default_level
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+# prepare 'aanvoergebieden'
+if AANVOER_CONDITIONS:
+    aanvoergebieden = supply.special_load_geometry(f_geometry=aanvoer_path, method="extract", key="aanvoer", value=1)
+else:
+    aanvoergebieden = None
+
 # add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model)
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
+ribasim_param.set_aanvoer_flags(ribasim_model, aanvoergebieden, aanvoer_enabled=AANVOER_CONDITIONS)
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
@@ -164,17 +173,6 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
-
-# set 'aanvoer'-settings
-aanvoergebieden = supply.special_load_geometry(f_geometry=aanvoer_path, method="extract", key="aanvoer", value=1)
-# label basins as 'aanvoergebied'
-sb = supply.SupplyBasin(ribasim_model, aanvoergebieden)
-sb.exec()
-# label outlets as 'aanvoerkunstwerk'
-so = supply.SupplyOutlet(sb.model)
-so.exec()
-# reset ribasim model
-ribasim_model = so.model
 
 # set numerical settings
 # write model output
