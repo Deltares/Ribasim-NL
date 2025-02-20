@@ -313,11 +313,10 @@ class Control:
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
         control_dict = self.find_stationary_flow(control_dict)
-        if self.wateraanvoer:
-            control_dict = self.water_aanvoer_areas(control_dict)
-            control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
-            control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
-            control_dict = self.water_aanvoer_outlets(control_dict)
+        control_dict = self.water_aanvoer_areas(control_dict)
+        control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
+        control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
+        control_dict = self.water_aanvoer_outlets(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
