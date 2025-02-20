@@ -122,72 +122,48 @@ ribasim_model.merge_basins(node_id=913, to_node_id=95)  # 1420 m2
 ribasim_model.merge_basins(node_id=1162, to_node_id=142, are_connected=False)  # 1921 m2
 ribasim_model.merge_basins(node_id=673, to_node_id=89)  # 2050 m2
 ribasim_model.merge_basins(node_id=1115, to_node_id=96)  # 2112 m2
+ribasim_model.merge_basins(node_id=1060, to_node_id=26)  # boezem like area, caused wl difference
+ribasim_model.merge_basins(node_id=1083, to_node_id=73)  # boezem like area, caused wl difference
+ribasim_model.merge_basins(node_id=782, to_node_id=399, are_connected=False)  # basin with open water connection
+ribasim_model.merge_basins(node_id=819, to_node_id=387)  # small forest like area without hydroobjects in the data
+ribasim_model.merge_basins(node_id=979, to_node_id=985)  # boezem like area, caused wl difference
+ribasim_model.merge_basins(node_id=862, to_node_id=1137)  # enclave
+ribasim_model.merge_basins(node_id=1142, to_node_id=573)  # enclave
+ribasim_model.merge_basins(node_id=1137, to_node_id=730, are_connected=False)  # enclave
+ribasim_model.merge_basins(node_id=1132, to_node_id=274, are_connected=False)  # enclave
+ribasim_model.merge_basins(node_id=660, to_node_id=500)  # missing streefpeil
+ribasim_model.merge_basins(node_id=893, to_node_id=895)  # missing streefpeil at Vlieland
 
-# small basins at polder in the South with water level deviations
+
+# %%# # small basins at polder in the South with water level deviations
 ribasim_model.merge_basins(node_id=796, to_node_id=153)  # Willem Jongma
-ribasim_model.merge_basins(node_id=867, to_node_id=869, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=869, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=925, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=918, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=950, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=951, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=1159, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=1109, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=805, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=1113, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=863, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=1160, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=853, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=792, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=924, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=872, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=955, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=917, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=956, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=963, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=1112, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=923, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=1075, to_node_id=153, are_connected=False)  # Willem Jongma
-ribasim_model.merge_basins(node_id=1146, to_node_id=153, are_connected=False)  # Willem Jongma
+ribasim_model.merge_basins(node_id=867, to_node_id=869, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=869, to_node_id=925, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=925, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=918, to_node_id=950, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=950, to_node_id=951, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=951, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1159, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1109, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=805, to_node_id=1113, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1113, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=863, to_node_id=1112, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1160, to_node_id=792, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=924, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=872, to_node_id=992, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=955, to_node_id=917, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=917, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=956, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=963, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1112, to_node_id=792, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=792, to_node_id=853, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=923, to_node_id=853, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1075, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1146, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=853, to_node_id=153, are_connected=True)  # Willem Jongsma
 
 # remove undeleted nodes from the Willem Jongma polder
-nodes_WJ = [
-    2426,
-    2605,
-    2995,
-    3091,
-    3462,
-    3534,
-    3597,
-    3868,
-    3874,
-    4050,
-    4054,
-    4142,
-    4143,
-    4144,
-    4145,
-    4146,
-    4147,
-    4148,
-    4149,
-    4150,
-    4151,
-    4152,
-    4153,
-    4154,
-    4155,
-    4156,
-    4158,
-    4159,
-    4160,
-    4161,
-    4162,
-]  # 13122, 13301, 13787, 14293, 14570
-
-for node_id_WJ in nodes_WJ:
-    ribasim_model.remove_node(node_id=node_id_WJ, remove_edges=True)
-
+# %%#
 ribasim_model.merge_basins(node_id=1074, to_node_id=254)  # 3753 m2
 ribasim_model.merge_basins(node_id=1128, to_node_id=458, are_connected=False)  # 4315 m2
 ribasim_model.merge_basins(node_id=1108, to_node_id=87)  # 4564 m2
@@ -200,6 +176,18 @@ ribasim_model.merge_basins(node_id=945, to_node_id=589)  # MR 10114 numerically 
 ribasim_model.merge_basins(node_id=1050, to_node_id=561)  # MR 10575 numerically unstable, increase size
 ribasim_model.merge_basins(node_id=1004, to_node_id=261)  # MR 10529 numerically unstable, increase size
 ribasim_model.merge_basins(node_id=49, to_node_id=1015)  # MR 9574 numerically unstable, increase size
+
+
+# %%#
+# some from and to nodes are the same due to the merging, fix it
+same_from_to = ribasim_model.edge.df.copy(deep=True)
+same_from_to = same_from_to.loc[
+    same_from_to.from_node_id == same_from_to.to_node_id, "from_node_id"
+]  # selecting either from_node_id or to_node_id, as they are the same
+
+for node_id_WJ in same_from_to:
+    ribasim_model.remove_node(node_id=node_id_WJ, remove_edges=True)
+
 
 ribasim_param.validate_basin_area(ribasim_model)
 
