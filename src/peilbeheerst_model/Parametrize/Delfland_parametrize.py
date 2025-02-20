@@ -78,7 +78,7 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = -0.42  # default LevelBoundary level
+default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary level
 
 # process the feedback form
 name = "HKV"
@@ -119,6 +119,23 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
+# change gemaal function Brielse Meer to aanvoer. Find node_id first, as it is added in the feedback form
+BrielseMeerNodes = ribasim_model.edge.df.loc[
+    ribasim_model.edge.df.from_node_id == 98, "to_node_id"
+]  # array of all values from basin 98
+BrielseMeerAanvoerPump = ribasim_model.edge.df.loc[
+    (ribasim_model.edge.df.from_node_id.isin(BrielseMeerNodes)) & (ribasim_model.edge.df.to_node_id == 10),
+    "from_node_id",
+]
+
+# convert Brielse Meer from afvoer to aanvoer
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id.isin(BrielseMeerAanvoerPump), "meta_func_afvoer"
+] = 0
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id.isin(BrielseMeerAanvoerPump), "meta_func_aanvoer"
+] = 1
+
 # insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
     ribasim_model,
@@ -156,10 +173,6 @@ ribasim_model.level_boundary.static.df.level = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
-
-# change the control of the pump at Brielse Meer
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 461, "meta_func_afvoer"] = 0
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 461, "meta_func_aanvoer"] = 1
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)

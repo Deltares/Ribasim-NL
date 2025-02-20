@@ -222,10 +222,11 @@ add_storage_basins = AddStorageBasins(
 
 add_storage_basins.create_bergende_basins()
 
+# TODO: Create a stable model for 'aanvoer'-conditions with E=10
 # set static forcing
 forcing_dict = {
     "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
-    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
+    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(0.1 if AANVOER_CONDITIONS else 0),
     "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
     "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
 }
