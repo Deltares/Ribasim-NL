@@ -116,6 +116,8 @@ ribasim_param.validate_basin_area(ribasim_model)
 # %% Model specific tweaks
 ribasim_model.merge_basins(node_id=149, to_node_id=21)  # too small basin
 ribasim_model.merge_basins(node_id=559, to_node_id=120)  # small basin + deviations
+ribasim_model.merge_basins(node_id=7, to_node_id=54)  # small basin causes numerical instabilities
+ribasim_model.merge_basins(node_id=720, to_node_id=54)  # small basin causes numerical instabilities
 
 
 # %% change unknown streefpeilen to a default streefpeil
@@ -252,6 +254,20 @@ ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
+# add gemaal and LB at the Voornse Meer
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+
+pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(64555, 439130)), [pump.Static(flow_rate=[0.1])])
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(new_node_id, Point(64560, 439130)), [level_boundary.Static(level=[default_level])]
+)
+
+ribasim_model.edge.add(ribasim_model.basin[801], pump_node)
+ribasim_model.edge.add(pump_node, level_boundary_node)
+
+ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
+ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
+ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
 # %% change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
