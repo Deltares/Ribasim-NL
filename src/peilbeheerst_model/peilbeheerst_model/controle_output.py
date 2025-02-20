@@ -8,7 +8,7 @@ import ribasim
 
 
 class Control:
-    def __init__(self, qlr_path, work_dir=None, ribasim_toml=None):
+    def __init__(self, qlr_path, wateraanvoer, work_dir=None, ribasim_toml=None):
         if (work_dir is None) and (ribasim_toml is None):
             raise ValueError("provide either work_dir or ribasim_toml")
         else:
@@ -20,6 +20,7 @@ class Control:
                 self.work_dir = work_dir
 
         self.qlr_path = qlr_path
+        self.wateraanvoer = wateraanvoer
         self.path_basin_output = os.path.join(self.work_dir, "results", "basin.arrow")
         self.path_edge_output = os.path.join(self.work_dir, "results", "flow.arrow")
         self.path_control_dict_path = os.path.join(self.work_dir, "results", "output_controle")
@@ -312,10 +313,11 @@ class Control:
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
         control_dict = self.find_stationary_flow(control_dict)
-        control_dict = self.water_aanvoer_areas(control_dict)
-        control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
-        control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
-        control_dict = self.water_aanvoer_outlets(control_dict)
+        if self.wateraanvoer:
+            control_dict = self.water_aanvoer_areas(control_dict)
+            control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
+            control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
+            control_dict = self.water_aanvoer_outlets(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
