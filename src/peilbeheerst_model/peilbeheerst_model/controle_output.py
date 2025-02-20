@@ -8,7 +8,7 @@ import ribasim
 
 
 class Control:
-    def __init__(self, qlr_path, wateraanvoer, work_dir=None, ribasim_toml=None):
+    def __init__(self, qlr_path, work_dir=None, ribasim_toml=None):
         if (work_dir is None) and (ribasim_toml is None):
             raise ValueError("provide either work_dir or ribasim_toml")
         else:
@@ -20,7 +20,6 @@ class Control:
                 self.work_dir = work_dir
 
         self.qlr_path = qlr_path
-        self.wateraanvoer = wateraanvoer
         self.path_basin_output = os.path.join(self.work_dir, "results", "basin.arrow")
         self.path_edge_output = os.path.join(self.work_dir, "results", "flow.arrow")
         self.path_control_dict_path = os.path.join(self.work_dir, "results", "output_controle")
