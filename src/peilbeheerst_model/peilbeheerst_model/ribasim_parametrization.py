@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import warnings
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -1159,6 +1160,9 @@ def set_aanvoer_flags(
 
 
 def load_model_settings(file_path):
+    script_path = Path(__file__)  # Get the path to the current python file
+    file_path = script_path.parent.parent / "Parametrize" / file_path  # Correct the path to the JSON file
+
     with open(file_path) as file:
         settings = json.load(file)
     return settings
