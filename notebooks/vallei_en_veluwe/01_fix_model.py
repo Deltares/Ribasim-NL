@@ -7,13 +7,16 @@ from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
+from ribasim_nl.sanitize_node_table import sanitize_node_table
 
 cloud = CloudStorage()
 
 authority = "ValleienVeluwe"
 name = "venv"
 
+# %% Check if model exist, otherwise download
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
@@ -194,6 +197,36 @@ for row in network_validator.edge_incorrect_type_connectivity(
     model.update_node(row.to_node_id, "Outlet")
 
 
+# %% sanitize node-table
+# TabulatedRatingCurve to Outlet
+for row in model.node_table().df[model.node_table().df.node_type == "TabulatedRatingCurve"].itertuples():
+    node_id = row.Index
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# basins and outlets we've added do not have category, we fill with hoofdwater
+# model.basin.node.df.loc[model.basin.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+# model.outlet.node.df.loc[model.outlet.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+
+# somehow Sluis Engelen (beheerregister AAM) has been named Henriettesluis
+# model.outlet.node.df.loc[model.outlet.node.df.name == "Henriëttesluis", "name"] = "AKW855"
+
+# name-column contains the code we want to keep, meta_name the name we want to have
+df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
+df.set_index("code", inplace=True)
+names = df["naam"]
+
+sanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["LevelBoundary", "FlowBoundary"], "columns": {"meta_name": "name"}},
+        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
+    ],
+    names=names,
+)
+
+
 #  %% write model
 model.use_validation = True
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
@@ -202,5 +235,3 @@ model.report_basin_area()
 model.report_internal_basins()
 
 # %%
-result = model.run()
-assert result == 0

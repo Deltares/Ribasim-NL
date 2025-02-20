@@ -7,7 +7,9 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
+from ribasim_nl.sanitize_node_table import sanitize_node_table
 
 cloud = CloudStorage()
 
@@ -147,7 +149,7 @@ model.remove_node(4, remove_edges=True)
 model.redirect_edge(edge_id=2018, to_node_id=1950)
 
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[4825, "geometry"].boundary.geoms[0], name="Spuisluis Crèvecoeur"),
+    Node(geometry=hydroobject_gdf.at[4825, "geometry"].boundary.geoms[0], name="AKW839"),
     tables=[outlet_data],
 )
 
@@ -194,7 +196,7 @@ model.edge.add(outlet_node, model.level_boundary[26])
 
 # Toevoegen basin bij Oude Zuid-Willemsvaart
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[3174, "geometry"].boundary.geoms[0], name="Sluis 9"), tables=[outlet_data]
+    Node(geometry=hydroobject_gdf.at[3174, "geometry"].boundary.geoms[0], name="20301"), tables=[outlet_data]
 )
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[6499, "geometry"].boundary.geoms[0]), tables=basin_data)
 model.redirect_edge(edge_id=2102, to_node_id=outlet_node.node_id)
@@ -478,6 +480,35 @@ for row in network_validator.edge_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
+
+# %% sanitize node-table
+# TabulatedRatingCurve to Outlet
+for row in model.node_table().df[model.node_table().df.node_type == "TabulatedRatingCurve"].itertuples():
+    node_id = row.Index
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# basins and outlets we've added do not have category, we fill with hoofdwater
+model.basin.node.df.loc[model.basin.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.outlet.node.df.loc[model.outlet.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+
+# somehow Sluis Engelen (beheerregister AAM) has been named Henriettesluis
+model.outlet.node.df.loc[model.outlet.node.df.name == "Henriëttesluis", "name"] = "AKW855"
+
+# name-column contains the code we want to keep, meta_name the name we want to have
+df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
+df.set_index("code", inplace=True)
+names = df["naam"]
+
+sanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["LevelBoundary", "FlowBoundary"], "columns": {"meta_name": "name"}},
+        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
+    ],
+    names=names,
+)
 
 
 # %%

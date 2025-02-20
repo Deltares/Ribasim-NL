@@ -470,6 +470,10 @@ class Network:
 
             # add edges
             self.graph.remove_edge(node_from, node_to)
+            split_result = split_line(edge_geometry, node_geometry)
+            if isinstance(split_result, LineString):
+                logger.warning(f"Splitting edge: {edge_id} resulted in a single LineString)")
+                return None
             us_geometry, ds_geometry = split_line(edge_geometry, node_geometry).geoms
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
