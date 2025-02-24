@@ -1,6 +1,10 @@
 # pixi environments
 .pixi
 
+# VSCode/PyCharm-environments
+.vscode
+.idea
+
 .ipynb_checkpoints
 # Byte-compiled / optimized / DLL files
 __pycache__/
