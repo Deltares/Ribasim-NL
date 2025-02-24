@@ -6,7 +6,6 @@ from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
-from ribasim_nl.parametrization.target_level import upstream_target_levels
 
 cloud = CloudStorage()
 authority = "DeDommel"
@@ -74,10 +73,10 @@ else:
 # OUTLET.min_upstream_level
 # from basin streefpeil
 static_data.reset_data_frame(node_type="Outlet")
-min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.outlet.node_id)
-min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-min_upstream_level.name = "min_upstream_level"
-static_data.add_series(node_type="Outlet", series=min_upstream_level)
+# min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.outlet.node_id)
+# min_upstream_level = min_upstream_level[min_upstream_level.notna()]
+# min_upstream_level.name = "min_upstream_level"
+# static_data.add_series(node_type="Outlet", series=min_upstream_level)
 
 
 # %%
@@ -87,10 +86,10 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level)
 # PUMP.min_upstream_level
 # from basin streefpeil
 static_data.reset_data_frame(node_type="Pump")
-min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.pump.node_id)
-min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-min_upstream_level.name = "min_upstream_level"
-static_data.add_series(node_type="Pump", series=min_upstream_level)
+# min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.pump.node_id)
+# min_upstream_level = min_upstream_level[min_upstream_level.notna()]
+# min_upstream_level.name = "min_upstream_level"
+# static_data.add_series(node_type="Pump", series=min_upstream_level)
 
 
 # %%

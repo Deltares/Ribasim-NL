@@ -124,13 +124,18 @@ class StaticData(BaseModel):
 
             # add meta_code_waterbeheerder
             area_df = self.model.basin.area.df.set_index("node_id")
-            mask = area_df.meta_code_waterbeheerder.notna()
-            df.loc[mask[mask].index, "code_peilgebied"] = area_df[mask]["meta_code_waterbeheerder"]
+            if "meta_code_waterbeheerder" in area_df.columns:
+                mask = area_df.meta_code_waterbeheerder.notna()
+                df.loc[mask[mask].index, "code_peilgebied"] = area_df[mask]["meta_code_waterbeheerder"]
+            else:
+                df.loc[:, "code_peilgebied"] = pd.Series(dtype=str)
 
             # add streefpeil
-            area_df = self.model.basin.area.df.set_index("node_id")
-            mask = area_df.meta_streefpeil.notna()
-            df.loc[mask[mask].index, "streefpeil"] = area_df[mask]["meta_streefpeil"]
+            if "meta_code_waterbeheerder" in area_df.columns:
+                mask = area_df.meta_streefpeil.notna()
+                df.loc[mask[mask].index, "streefpeil"] = area_df[mask]["meta_streefpeil"]
+            else:
+                df.loc[:, "streefpeil"] = pd.Series(dtype=float)
 
             # add profielid
             df["profielid"] = pd.Series(dtype=str)

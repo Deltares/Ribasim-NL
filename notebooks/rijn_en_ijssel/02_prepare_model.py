@@ -6,8 +6,6 @@ from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
-from ribasim_nl.parametrization.target_level import upstream_target_levels
-from ribasim_nl.streefpeilen import add_streefpeil
 
 cloud = CloudStorage()
 authority = "RijnenIJssel"
@@ -24,14 +22,10 @@ link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
 
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
-profielpunt_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalevering_20240920/Meting_profielpunt_wvs.shp")
-profiellijn_shp = cloud.joinpath(
-    authority, "verwerkt/1_ontvangen_data/nalevering_20240920/meting_profiellijn_soort_profiel_wsv.shp"
-)
-peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/peilgebieden_voormalig_velt_en_vecht.gpkg")
+profielen_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/wrij_profielen.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
+cloud.synchronize(filepaths=[top10NL_gpkg, profielen_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -51,21 +45,19 @@ if link_geometries_gpkg.exists():
     ]
 else:
     network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"))
-    profile_line_df = gpd.read_file(profiellijn_shp).to_crs(28992)
-    profile_point_df = gpd.read_file(profielpunt_shp).to_crs(28992)
-    profile_point_df.rename(columns={"METINGPROF": "profiellijnid", "CODEVOLGNU": "codevolgnummer"}, inplace=True)
+    profile_line_df = gpd.read_file(profielen_gpkg, layer="profiellijn")
+    profile_point_df = gpd.read_file(profielen_gpkg, layer="profielpunt")
     damo_profiles = DAMOProfiles(
         model=model,
         network=network,
         profile_line_df=profile_line_df,
         profile_point_df=profile_point_df,
         water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
-        profile_line_id_col="GLOBALID",
     )
     profiles_df = damo_profiles.process_profiles()
     profiles_df.to_file(profiles_gpkg)
     fix_link_geometries(model, network)
-    add_link_profile_ids(model, profiles=damo_profiles, id_col="GLOBALID")
+    add_link_profile_ids(model, profiles=damo_profiles)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
 # %%
@@ -76,25 +68,16 @@ else:
 
 # add streefpeilen
 
-
-add_streefpeil(
-    model=model,
-    peilgebieden_path=peilgebieden_path,
-    layername=None,
-    target_level="GPGZMRPL",
-    code="GPGIDENT",
-)
-
 # %%
 # OUTLET
 
 # OUTLET.min_upstream_level
 # from basin streefpeil
 static_data.reset_data_frame(node_type="Outlet")
-min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.outlet.node_id)
-min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-min_upstream_level.name = "min_upstream_level"
-static_data.add_series(node_type="Outlet", series=min_upstream_level)
+# min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.outlet.node_id)
+# min_upstream_level = min_upstream_level[min_upstream_level.notna()]
+# min_upstream_level.name = "min_upstream_level"
+# static_data.add_series(node_type="Outlet", series=min_upstream_level)
 
 
 # %%
@@ -104,10 +87,10 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level)
 # PUMP.min_upstream_level
 # from basin streefpeil
 static_data.reset_data_frame(node_type="Pump")
-min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.pump.node_id)
-min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-min_upstream_level.name = "min_upstream_level"
-static_data.add_series(node_type="Pump", series=min_upstream_level)
+# min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.pump.node_id)
+# min_upstream_level = min_upstream_level[min_upstream_level.notna()]
+# min_upstream_level.name = "min_upstream_level"
+# static_data.add_series(node_type="Pump", series=min_upstream_level)
 
 
 # %%
