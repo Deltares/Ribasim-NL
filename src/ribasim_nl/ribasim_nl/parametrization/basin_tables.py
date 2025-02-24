@@ -29,6 +29,9 @@ def update_basin_static(
     # add to static df
     model.basin.static.df = static_df
 
+    # add to static df
+    model.basin.static.df = static_df
+
 
 def update_basin_profile(
     model: Model,
