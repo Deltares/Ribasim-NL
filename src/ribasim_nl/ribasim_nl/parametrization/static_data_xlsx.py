@@ -41,7 +41,7 @@ description = [
 defaults = {
     "Afvoergemaal": {
         "upstream_level_offset": 0.0,
-        "downstream_level_offset": 0.2,
+        "downstream_level_offset": 0.4,
         "flow_rate": pd.NA,
         "flow_rate_mm_per_day": 15,
         "function": "outlet",
@@ -55,7 +55,7 @@ defaults = {
     },
     "Uitlaat": {
         "upstream_level_offset": 0.0,
-        "downstream_level_offset": 0.3,
+        "downstream_level_offset": pd.NA,
         "flow_rate": pd.NA,
         "flow_rate_mm_per_day": 50,
         "function": "outlet",
@@ -124,13 +124,18 @@ class StaticData(BaseModel):
 
             # add meta_code_waterbeheerder
             area_df = self.model.basin.area.df.set_index("node_id")
-            mask = area_df.meta_code_waterbeheerder.notna()
-            df.loc[mask[mask].index, "code_peilgebied"] = area_df[mask]["meta_code_waterbeheerder"]
+            if "meta_code_waterbeheerder" in area_df.columns:
+                mask = area_df.meta_code_waterbeheerder.notna()
+                df.loc[mask[mask].index, "code_peilgebied"] = area_df[mask]["meta_code_waterbeheerder"]
+            else:
+                df.loc[:, "code_peilgebied"] = pd.Series(dtype=str)
 
             # add streefpeil
-            area_df = self.model.basin.area.df.set_index("node_id")
-            mask = area_df.meta_streefpeil.notna()
-            df.loc[mask[mask].index, "streefpeil"] = area_df[mask]["meta_streefpeil"]
+            if "meta_code_waterbeheerder" in area_df.columns:
+                mask = area_df.meta_streefpeil.notna()
+                df.loc[mask[mask].index, "streefpeil"] = area_df[mask]["meta_streefpeil"]
+            else:
+                df.loc[:, "streefpeil"] = pd.Series(dtype=float)
 
             # add profielid
             df["profielid"] = pd.Series(dtype=str)
