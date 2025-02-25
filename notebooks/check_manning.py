@@ -27,7 +27,9 @@ flow_rate = 5.213921445 (m3/s)
 
 Should yield a dh of ~1 meter over two basins (slope = 0.001) according to the manning equation
 
-To fully respect manning, we will make sure the model is fully uniform under these conditions. So basin profiles we shift exactly 1m
+To fully respect manning, we will make sure the model is fully uniform under these conditions. So for basin profiles:
+- we shift elevation exactly 1 m
+- area table matches the manning-profile * length of canal.
 """
 
 model.flow_boundary.add(node=Node(1, geometry=Point(-10, 0)), tables=[flow_boundary.Static(flow_rate=[5.213921445])])
