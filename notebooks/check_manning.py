@@ -10,6 +10,9 @@ model = Model(starttime="2022-01-01", endtime="2023-01-01", crs="EPSG:28992")
 cloud = CloudStorage()
 ribasim_toml = cloud.joinpath("test_models", "manning_test", "manning.toml")
 ribasim_toml.parent.mkdir(exist_ok=True, parents=True)
+
+error_margin = 0.02
+
 """
 ManningResistance Static:
 - profile_slope = 0.5
@@ -59,4 +62,12 @@ model.write(ribasim_toml)
 
 exit_code = model.run()
 assert exit_code == 0
-model.basin_results.df.loc[model.basin_results.df.index.max()]
+
+final_timestep = model.basin_results.df.index.max()
+df = model.basin_results.df.loc[final_timestep].set_index("node_id")
+delta_h = df.at[2, "level"] - df.at[4, "level"]
+error = 1 - (delta_h / 1)
+
+print(f"error: {error}")
+
+assert error < error_margin
