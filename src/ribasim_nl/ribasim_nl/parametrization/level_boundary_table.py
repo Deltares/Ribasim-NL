@@ -61,6 +61,7 @@ def update_level_boundary_static(
                     us_basins = {model.upstream_node_id(i) for i in us_node_id}
                 else:
                     us_basins = [model.upstream_node_id(us_node_id)]
+                us_basins = [i for i in us_basins if i is not None]
                 us_basins = [i for i in us_basins if model.get_node_type(i) == "Basin"]
                 if len(us_basins) == 0:
                     raise ValueError(f"node_id {node_id} does not have an upstream basin")

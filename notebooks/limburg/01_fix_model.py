@@ -39,6 +39,7 @@ add_basin_area_gdf = gpd.read_file(model_edits_gpkg, layer="add_basin_area")
 connect_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="connect_basins")
 reverse_edge_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_edge")
 add_basin_outlet_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="add_basin_outlet")
+remove_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
 
 
 # %% some stuff we'll need again
@@ -275,6 +276,10 @@ for row in selection_df.itertuples():
 for edge_id in reverse_edge_gdf.edge_id:
     model.reverse_edge(edge_id=edge_id)
 
+
+# %% remove nodes
+for row in remove_node_gdf.itertuples():
+    model.remove_node(node_id=row.node_id, remove_edges=row.remove_edges)
 
 # %% change node_type
 
