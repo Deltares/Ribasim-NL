@@ -214,6 +214,85 @@ class Control:
 
         return control_dict
 
+    def water_aanvoer_areas(self, control_dict):
+        """Retrieve the areas (polygons) of the wateraanvoer gebieden."""
+        aanvoer_areas = self.model.basin.area.df.copy(deep=True)
+        aanvoer_areas["meta_aanvoer"] = (
+            aanvoer_areas["meta_aanvoer"].astype(str).replace({"True": True, "False": False}).fillna(False).astype(bool)
+        )  # convert all strings to booleans
+
+        aanvoer_areas = aanvoer_areas.loc[
+            aanvoer_areas["meta_aanvoer"]
+        ]  # only select the rows where meta_aanvoer == True
+
+        aanvoer_areas = gpd.GeoDataFrame(aanvoer_areas[["node_id", "geometry"]], crs="EPSG:28992")
+        control_dict["aanvoer_areas"] = aanvoer_areas
+
+        return control_dict
+
+    def water_aanvoer_afvoer_basin_nodes(self, control_dict):
+        """Retrieve the nodes (points) of the wateraanvoer gebieden basin, as well as afvoer basin nodes"""
+        aanvoer_areas = self.model.basin.area.df.copy(deep=True)
+        basin_nodes = self.model.basin.node.df.copy(deep=True).reset_index()
+        basin_nodes = basin_nodes.merge(right=aanvoer_areas[["node_id", "meta_aanvoer"]], how="left", on="node_id")
+
+        basin_nodes["meta_aanvoer"] = (
+            basin_nodes["meta_aanvoer"].astype(str).replace({"True": True, "False": False}).fillna(False).astype(bool)
+        )  # convert all strings to booleans
+
+        basin_aanvoer_nodes = basin_nodes.loc[
+            basin_nodes["meta_aanvoer"]
+        ]  # only select the rows where meta_aanvoer == True
+        basin_afvoer_nodes = basin_nodes.loc[
+            ~basin_nodes["meta_aanvoer"]
+        ]  # only select the rows where meta_aanvoer != True
+
+        basin_aanvoer_nodes = gpd.GeoDataFrame(basin_aanvoer_nodes[["node_id", "geometry"]], crs="EPSG:28992")
+        basin_afvoer_nodes = gpd.GeoDataFrame(basin_afvoer_nodes[["node_id", "geometry"]], crs="EPSG:28992")
+
+        control_dict["aanvoer_basin_nodes"] = basin_aanvoer_nodes
+        control_dict["afvoer_basin_nodes"] = basin_afvoer_nodes
+
+        return control_dict
+
+    def water_aanvoer_afvoer_pumps(self, control_dict):
+        """Retrieve the nodes (points) of the wateraan- and afvoer pumps"""
+        aanvoer_afvoer_pumps = self.model.pump.static.df.copy(deep=True)
+        aanvoer_afvoer_pumps_nodes = self.model.pump.node.df.copy(deep=True).reset_index()
+        aanvoer_afvoer_pumps = aanvoer_afvoer_pumps.merge(
+            aanvoer_afvoer_pumps_nodes[["node_id", "geometry"]], on="node_id", how="left"
+        )
+
+        aanvoer_afvoer_pumps = gpd.GeoDataFrame(
+            aanvoer_afvoer_pumps[["node_id", "meta_func_afvoer", "meta_func_aanvoer", "geometry"]], crs="EPSG:28992"
+        )
+        afvoer_pumps = aanvoer_afvoer_pumps.loc[aanvoer_afvoer_pumps.meta_func_afvoer == 1]
+        aanvoer_pumps = aanvoer_afvoer_pumps.loc[aanvoer_afvoer_pumps.meta_func_aanvoer == 1]
+        AanAfvoer_pumps = aanvoer_afvoer_pumps.loc[
+            (aanvoer_afvoer_pumps.meta_func_aanvoer == 1) & (aanvoer_afvoer_pumps.meta_func_afvoer == 1)
+        ]
+
+        control_dict["afvoer_pumps"] = afvoer_pumps
+        control_dict["aanvoer_pumps"] = aanvoer_pumps
+        control_dict["AanAfvoer_pumps"] = AanAfvoer_pumps
+
+        return control_dict
+
+    def water_aanvoer_outlets(self, control_dict):
+        """Retrieve the nodes (points) of the wateraan outlets"""
+        aanvoer_outlets = self.model.outlet.static.df.copy(deep=True)
+        outlet_nodes = self.model.outlet.node.df.copy(deep=True).reset_index()
+        aanvoer_outlets = aanvoer_outlets.merge(
+            outlet_nodes[["node_id", "geometry"]], on="node_id", how="left"
+        )  # merge to retrieve the geoms
+        aanvoer_outlets = aanvoer_outlets.loc[
+            aanvoer_outlets.meta_aanvoer == 1
+        ].reset_index()  # only select the aanvoer nodes
+        aanvoer_outlets = gpd.GeoDataFrame(aanvoer_outlets[["node_id", "geometry"]], crs="EPSG:28992")
+        control_dict["aanvoer_outlets"] = aanvoer_outlets
+
+        return control_dict
+
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():
@@ -236,6 +315,11 @@ class Control:
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
         control_dict = self.find_stationary_flow(control_dict)
+        control_dict = self.water_aanvoer_areas(control_dict)
+        control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
+        control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
+        control_dict = self.water_aanvoer_outlets(control_dict)
+
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
         return control_dict
