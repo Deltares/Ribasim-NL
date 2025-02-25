@@ -482,7 +482,10 @@ class RibasimFeedbackProcessor:
 
     def functie_gemalen(self):
         # read sheet with the updated the pump functions
-        df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0)
+        try:
+            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0)
+        except ValueError:
+            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0)
 
         if len(df_FG) > 0:  # if the sheet is filled in, proceed
             # print warning if there are non existing pumps
