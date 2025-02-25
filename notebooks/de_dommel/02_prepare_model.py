@@ -55,7 +55,7 @@ if link_geometries_gpkg.exists():
             "meta_profielid_waterbeheerder"
         ]
     profiles_df = gpd.read_file(profiles_gpkg)
-    profiles_df.set_index("profiel_id", inplace=True)
+
 
 else:
     profiles_df = damo_profiles.process_profiles()
@@ -64,6 +64,7 @@ else:
     fix_link_geometries(model, network)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
+profiles_df.set_index("profiel_id", inplace=True)
 # %%
 
 # add link profiles
