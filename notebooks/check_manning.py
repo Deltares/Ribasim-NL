@@ -11,6 +11,8 @@ cloud = CloudStorage()
 ribasim_toml = cloud.joinpath("test_models", "manning_test", "manning.toml")
 ribasim_toml.parent.mkdir(exist_ok=True, parents=True)
 
+expeted_dh = 1
+expected_water_level_in_profile = 0.8
 error_margin = 0.02
 
 """
@@ -66,8 +68,16 @@ assert exit_code == 0
 final_timestep = model.basin_results.df.index.max()
 df = model.basin_results.df.loc[final_timestep].set_index("node_id")
 delta_h = df.at[2, "level"] - df.at[4, "level"]
-error = 1 - (delta_h / 1)
+error = abs(expeted_dh - delta_h) / expeted_dh
 
-print(f"error: {error}")
+print(f"dh error: {error}")
+
+assert error < error_margin
+
+
+level = (df.at[2, "level"] + df.at[4, "level"]) / 2
+error = abs(expected_water_level_in_profile - level) / expected_water_level_in_profile
+
+print(f"level error: {error}")
 
 assert error < error_margin
