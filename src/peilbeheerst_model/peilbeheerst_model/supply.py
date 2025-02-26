@@ -188,7 +188,7 @@ class SupplyBasin:
 
         # modify basin nodes 'aanvoer'-label
         for n in node_id:
-            if n not in basin_areas["node_id"]:
+            if n not in basin_areas["node_id"].values:
                 msg = f"Node-ID {n} not found as basin node-ID."
                 raise ValueError(msg)
 

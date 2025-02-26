@@ -28,6 +28,11 @@ mapping = {
 
 
 class RibasimFeedbackProcessor:
+    _basin_aanvoer_on: tuple = None
+    _basin_aanvoer_off: tuple = None
+    _outlet_aanvoer_on: tuple = None
+    _outlet_aanvoer_off: tuple = None
+
     def __init__(
         self,
         name,
@@ -517,3 +522,69 @@ class RibasimFeedbackProcessor:
         self.update_target_levels()
         self.functie_gemalen()
         self.write_ribasim_model()
+
+    def get_basin_aanvoer_corrections(self) -> None:
+        """Extract corrections on basin 'aanvoer'-flagging from the feedback forms."""
+        df = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_basins")
+        aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Basin ID"].to_numpy(dtype=int)
+        afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Basin ID"].to_numpy(dtype=int)
+
+        self._basin_aanvoer_on = tuple(aanvoer_ids)
+        self._basin_aanvoer_off = tuple(afvoer_ids)
+
+    def get_outlet_aanvoer_corrections(self) -> None:
+        """Extract corrections on outlet 'aanvoer'-flagging from the feedback forms."""
+        df = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_outlets")
+        aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Outlet node_id"].to_numpy(dtype=int)
+        afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Outlet node_id"].to_numpy(dtype=int)
+
+        self._outlet_aanvoer_on = tuple(aanvoer_ids)
+        self._outlet_aanvoer_off = tuple(afvoer_ids)
+
+    @property
+    def basin_aanvoer_on(self) -> tuple:
+        """Basin 'aanvoer'-flagging: True
+
+        :return: basin-IDs
+        :rtype: tuple
+        """
+        if self._basin_aanvoer_on is None:
+            self.get_basin_aanvoer_corrections()
+
+        return self._basin_aanvoer_on
+
+    @property
+    def basin_aanvoer_off(self) -> tuple:
+        """Basin 'aanvoer'-flagging: False
+
+        :return: basin-IDs
+        :rtype: tuple
+        """
+        if self._basin_aanvoer_off is None:
+            self.get_basin_aanvoer_corrections()
+
+        return self._basin_aanvoer_off
+
+    @property
+    def outlet_aanvoer_on(self) -> tuple:
+        """Oulet 'aanvoer'-flagging: True
+
+        :return: outlet-IDs
+        :rtype: tuple
+        """
+        if self._outlet_aanvoer_on is None:
+            self.get_outlet_aanvoer_corrections()
+
+        return self._outlet_aanvoer_on
+
+    @property
+    def outlet_aanvoer_off(self) -> tuple:
+        """Outlet 'aanvoer'-flagging: False
+
+        :return: outlet-IDs
+        :rtype: tuple
+        """
+        if self._outlet_aanvoer_off is None:
+            self.get_outlet_aanvoer_corrections()
+
+        return self._outlet_aanvoer_off

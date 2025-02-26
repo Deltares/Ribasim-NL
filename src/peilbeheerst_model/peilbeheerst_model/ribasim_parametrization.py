@@ -15,6 +15,7 @@ import tqdm.auto as tqdm
 from shapely.geometry import LineString
 
 from peilbeheerst_model import supply
+from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
 
 
@@ -1091,14 +1092,19 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     )
 
 
+# TODO: Add the incorporation of the feedback forms (i.e., processor) covering basins, outlets, and pumps
 def set_aanvoer_flags(
-    ribasim_model: str | ribasim.Model, aanvoer_regions: str | gpd.GeoDataFrame, **kwargs
+    ribasim_model: str | ribasim.Model,
+    aanvoer_regions: str | gpd.GeoDataFrame,
+    processer: RibasimFeedbackProcessor,
+    **kwargs,
 ) -> ribasim.Model:
     """
     Set the 'aanvoer'-flags for both basins and outlets, grouping the whole pipeline in a single method.
 
     :param ribasim_model: Ribasim model, or file/path to a Ribasim model
     :param aanvoer_regions: geometry data of 'aanvoergebieden', or file/path to this geometry data
+    :param processer: Ribasim feedback processor object
 
     :key aanvoer_enabled: 'aanvoer'-settings are enabled, defaults to True
     :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to None
@@ -1110,6 +1116,7 @@ def set_aanvoer_flags(
 
     :type ribasim_model: str, ribasim.Model
     :type aanvoer_regions: str, geopandas.GeoDataFrame
+    :type processer: RibasimFeedbackProcessor
     :type aanvoer_enabled: bool, optional
     :type basin_aanvoer_on: tuple, optional
     :type basin_aanvoer_off: tuple, optional
@@ -1145,18 +1152,33 @@ def set_aanvoer_flags(
     # label basins as 'aanvoergebied'
     sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)  # type: ignore
     sb.exec()
+
+    basin_aanvoer_on = set(basin_aanvoer_on) | set(processer.basin_aanvoer_on)
     if basin_aanvoer_on:
         sb.set_aanvoer_on(*basin_aanvoer_on)
+
+    basin_aanvoer_off = set(basin_aanvoer_off) | set(processer.basin_aanvoer_off)
     if basin_aanvoer_off:
         sb.set_aanvoer_off(*basin_aanvoer_off)
 
     # label outlets as 'aanvoerkunstwerk'
     so = supply.SupplyOutlet(sb.model)
     so.exec(overruling_enabled=overruling_enabled)
+
+    outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processer.outlet_aanvoer_on)
     if outlet_aanvoer_on:
         so.set_aanvoer_on(*outlet_aanvoer_on)
+
+    outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processer.outlet_aanvoer_off)
     if outlet_aanvoer_off:
         so.set_aanvoer_off(*outlet_aanvoer_off)
+
+    # # label pumps as 'aanvoerkunstwerk'
+    # sp = supply.SupplyPump(so.model)
+    # if pump_aanvoer_on:
+    #     sp.set_aanvoer_on(*pump_aanvoer_on)
+    # if pump_aanvoer_off:
+    #     sp.set_aanvoer_off(*pump_aanvoer_off)
 
     # reset ribasim model
     ribasim_model = so.model
