@@ -69,18 +69,21 @@ class RibasimFeedbackProcessor:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
-    def load_feedback(self, feedback_excel):
+    @staticmethod
+    def load_feedback(feedback_excel):
         df = pd.read_excel(feedback_excel, sheet_name="Feedback_Formulier", skiprows=7)
         df = df[df["Actie"].notna()]
         return df
 
-    def load_node_type(self, feedback_excel):
+    @staticmethod
+    def load_node_type(feedback_excel):
         df = pd.read_excel(feedback_excel, sheet_name="Node_Data")
         df = df[df["node_id"].notna()]
         df = df.set_index("node_id")
         return df
 
-    def load_ribasim_model(self, ribasim_toml):
+    @staticmethod
+    def load_ribasim_model(ribasim_toml):
         model = ribasim.Model(filepath=ribasim_toml)
         return model
 
