@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import warnings
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -1094,9 +1095,14 @@ def load_model_settings(file_path):
 
 
 def determine_min_upstream_max_downstream_levels(ribasim_model, waterschap):
-    sturing = load_model_settings(
-        f"src/peilbeheerst_model/Parametrize/sturing_{waterschap}.json"
-    )  # load the waterschap specific sturing
+    parametrization_path = Path(__file__)  # path to current script
+    sturing_location = parametrization_path.parent.parent / "Parametrize" / f"sturing_{waterschap}.json"
+
+    sturing = load_model_settings(sturing_location)  # load the waterschap specific sturing
+
+    # sturing = load_model_settings(
+    #     f"src/peilbeheerst_model/Parametrize/sturing_{waterschap}.json"
+    # )  # load the waterschap specific sturing
 
     # create empty columns for the sturing
     ribasim_model.outlet.static.df["min_upstream_level"] = np.nan
