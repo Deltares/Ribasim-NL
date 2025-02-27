@@ -40,7 +40,7 @@ jobs:
           commit-message: Update pixi lockfile
           title: Update pixi lockfile
           path: Ribasim-NL
-          body-path: diff.md
+          body-path: Ribasim-NL/diff.md
           branch: update/pixi-lock
           base: main
           delete-branch: true
