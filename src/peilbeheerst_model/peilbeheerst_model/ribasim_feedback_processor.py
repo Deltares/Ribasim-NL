@@ -528,21 +528,44 @@ class RibasimFeedbackProcessor:
 
     def get_basin_aanvoer_corrections(self) -> None:
         """Extract corrections on basin 'aanvoer'-flagging from the feedback forms."""
-        df = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_basins")
-        aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Basin ID"].to_numpy(dtype=int)
-        afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Basin ID"].to_numpy(dtype=int)
+        sheet_name = "Aan_afvoer_basins"
+        try:
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name)
+        except ValueError:
+            logging.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
+            self._basin_aanvoer_on = ()
+            self._basin_aanvoer_off = ()
+        else:
+            aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Basin ID"].to_numpy(dtype=int)
+            afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Basin ID"].to_numpy(dtype=int)
 
-        self._basin_aanvoer_on = tuple(aanvoer_ids)
-        self._basin_aanvoer_off = tuple(afvoer_ids)
+            self._basin_aanvoer_on = tuple(aanvoer_ids)
+            self._basin_aanvoer_off = tuple(afvoer_ids)
+        finally:
+            logging.warning(
+                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: Make sure that feedback forms will have a sheet-name titled "{sheet_name}"'
+            )
 
     def get_outlet_aanvoer_corrections(self) -> None:
         """Extract corrections on outlet 'aanvoer'-flagging from the feedback forms."""
-        df = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_outlets")
-        aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Outlet node_id"].to_numpy(dtype=int)
-        afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Outlet node_id"].to_numpy(dtype=int)
+        # TODO: Remove this 'missing worksheet'-catch in the future
+        sheet_name = "Aan_afvoer_outlets"
+        try:
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name)
+        except ValueError:
+            logging.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
+            self._outlet_aanvoer_on = ()
+            self._outlet_aanvoer_off = ()
+        else:
+            aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Outlet node_id"].to_numpy(dtype=int)
+            afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Outlet node_id"].to_numpy(dtype=int)
 
-        self._outlet_aanvoer_on = tuple(aanvoer_ids)
-        self._outlet_aanvoer_off = tuple(afvoer_ids)
+            self._outlet_aanvoer_on = tuple(aanvoer_ids)
+            self._outlet_aanvoer_off = tuple(afvoer_ids)
+        finally:
+            logging.warning(
+                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: Make sure that feedback forms will have a sheet-name titled "{sheet_name}"'
+            )
 
     @property
     def basin_aanvoer_on(self) -> tuple:
