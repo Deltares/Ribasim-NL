@@ -248,7 +248,7 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 990, "m
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
 
 # change the control of the outlet at Kinderdijk
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 355, "min_upstream_level"] = 2

@@ -6,7 +6,6 @@ import warnings
 
 import ribasim
 import ribasim.nodes
-from Parametrize.Rijnland_parametrize import aanvoergebieden
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
@@ -262,7 +261,7 @@ else:
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(ribasim_model, aanvoergebieden, aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.set_aanvoer_flags(ribasim_model, aanvoergebieden, processor, aanvoer_enabled=AANVOER_CONDITIONS)
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
