@@ -6,12 +6,15 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
+from ribasim_nl.sanitize_node_table import sanitize_node_table
 
 cloud = CloudStorage()
 
 authority = "HunzeenAas"
 name = "hea"
+run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -162,6 +165,39 @@ model.basin.area.df = combined_basin_areas_gdf
 
 model.remove_unassigned_basin_area()
 
+# %%
+
+# Sanitize node_table
+for node_id in model.tabulated_rating_curve.node.df.index:
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# ManningResistance that are duikersifonhevel to outlet
+for node_id in model.manning_resistance.node.df[
+    model.manning_resistance.node.df["meta_object_type"] == "duikersifonhevel"
+].index:
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+
+# basins and outlets we've added do not have category, we fill with hoofdwater
+model.basin.node.df.loc[model.basin.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.outlet.node.df.loc[model.outlet.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+
+# name-column contains the code we want to keep, meta_name the name we want to have
+df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
+df.set_index("code", inplace=True)
+names = df["naam"]
+
+sanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["Basin", "ManningResistance", "LevelBoundary", "FlowBoundary"], "columns": {"name": ""}},
+    ],
+    names=names,
+)
+
+
 #  %% write model
 model.use_validation = True
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
@@ -171,5 +207,6 @@ model.report_internal_basins()
 
 # %%
 # %% Test run model
-result = model.run()
-assert result == 0
+if run_model:
+    result = model.run()
+    assert result == 0

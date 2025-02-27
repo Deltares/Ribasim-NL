@@ -19,12 +19,9 @@ short_name = "aam"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data_template.xlsx",
-)
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+static_data_xlsx = parameters_dir / "static_data_template.xlsx"
+profiles_gpkg = parameters_dir / "profiles.gpkg"
 
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/WS_PEILGEBIEDPolygon.shp")
 stuwen_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Na_levering_20240418", "stuwen.shp")
@@ -44,6 +41,14 @@ damo_profiles = DAMOProfiles(
     profile_point_df=gpd.read_file(aam_data_gpkg, layer="profielpunt"),
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
 )
+
+if not profiles_gpkg.exists():
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
+else:
+    profiles_df = gpd.read_file(profiles_gpkg)
+
+profiles_df.set_index("profiel_id", inplace=True)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
@@ -58,17 +63,8 @@ add_link_profile_ids(model, profiles=damo_profiles)
 
 # %%
 
-# Basins
 # add streefpeilen
 add_streefpeil(model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="ZOMERPEIL", code="CODE")
-
-
-# %%
-# init static_data from model and defaults
-
-
-# %%
-# init damo_profiles from a whole bunch of data
 
 
 # %%
@@ -90,14 +86,23 @@ min_upstream_level.index.name = "code"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # from DAMO HOOGSTEDOO
-min_upstream_level = gpd.read_file(stuwen_shp).set_index("CODE")["HOOGSTEDOO"]
+hoogste = gpd.read_file(stuwen_shp).set_index("CODE")["HOOGSTEDOO"]
+laagste = gpd.read_file(stuwen_shp).set_index("CODE")["LAAGSTEDOO"]
+min_upstream_level = laagste + (hoogste - laagste) * 0.75
 min_upstream_level.name = "min_upstream_level"
 min_upstream_level.index.name = "code"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # from DAMO profiles
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
-levels = [damo_profiles.get_node_level(node_id) for node_id in node_ids]
+profile_ids = [
+    model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+]
+levels = (
+    profiles_df.loc[profile_ids]["bottom_level"]
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+).to_numpy()
+
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
@@ -117,7 +122,13 @@ static_data.add_series(node_type="Pump", series=min_upstream_level)
 
 # from DAMO profiles
 node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
-levels = [damo_profiles.get_node_level(node_id) for node_id in node_ids]
+profile_ids = [
+    model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+]
+levels = (
+    profiles_df.loc[profile_ids]["bottom_level"]
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+).to_numpy()
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
@@ -157,7 +168,10 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 # get all nodata streefpeilen with their profile_ids and levels
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
-levels = [damo_profiles.get_profile_level(profile_id) for profile_id in profile_ids]
+levels = (
+    profiles_df.loc[profile_ids]["bottom_level"]
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+).to_numpy()
 
 # # update static_data
 profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), name="profielid")

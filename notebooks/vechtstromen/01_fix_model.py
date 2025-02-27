@@ -9,12 +9,16 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import nearest_points
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.geometry import drop_z, edge, split_basin, split_basin_multi_polygon
+from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
+from ribasim_nl.sanitize_node_table import sanitize_node_table
 
 cloud = CloudStorage()
 authority = "Vechtstromen"
 name = "vechtstromen"
+run_model = False
 cloud = CloudStorage()
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
@@ -976,19 +980,41 @@ for action in gpd.list_layers(model_edits_gpkg).name:
 # remove unassigned basin area
 model.remove_unassigned_basin_area()
 
-# %% corrigeren knoop-topologie
-# ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
-    model.update_node(row.from_node_id, "Outlet")
+# %%
 
-# Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
-    from_node_type="LevelBoundary", to_node_type="ManningResistance"
-).itertuples():
-    model.update_node(row.to_node_id, "Outlet")
+# sanitize node-table
+for node_id in model.tabulated_rating_curve.node.df.index:
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# ManningResistance that are duikersifonhevel to outlet
+for node_id in model.manning_resistance.node.df[
+    model.manning_resistance.node.df["meta_object_type"] == "duikersifonhevel"
+].index:
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# nodes we've added do not have category, we fill with hoofdwater
+for node_type in model.node_table().df.node_type.unique():
+    table = getattr(model, pascal_to_snake_case(node_type)).node
+    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+
+# name-column contains the code we want to keep, meta_name the name we want to have
+df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
+df.set_index("code", inplace=True)
+names = df["naam"]
+
+sanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
+        {"node_types": ["LevelBoundary", "FlowBoundary"], "columns": {"meta_name": "name"}},
+    ],
+    names=names,
+)
+
 
 #  %% write model
-
 model.basin.area.df.loc[:, ["meta_area"]] = model.basin.area.df.area
 model.use_validation = True
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
@@ -997,5 +1023,6 @@ model.report_basin_area()
 model.report_internal_basins()
 
 # %%
-result = model.run()
-assert result == 0
+if run_model:
+    result = model.run()
+    assert result == 0
