@@ -1,5 +1,6 @@
 # import pathlib
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -1141,12 +1142,18 @@ def set_aanvoer_flags(
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
+        logging.info("Aanvoer-flagging skipped.")
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
         return ribasim_model
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
+        logging.warning(
+            f'With `aanvoer_regions={aanvoer_regions}`, the whole region is considered an "aanvoergebied". '
+            f"This is a temporary catch and will be deprecated in the future: "
+            f'Make sure that all water boards have a geometry-file from which the "aanvoergebieden" can be deduced.'
+        )
         aanvoer_regions = ribasim_model.basin.area.df.reset_index()
 
     # label basins as 'aanvoergebied'
@@ -1172,13 +1179,6 @@ def set_aanvoer_flags(
     outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processer.outlet_aanvoer_off)
     if outlet_aanvoer_off:
         so.set_aanvoer_off(*outlet_aanvoer_off)
-
-    # # label pumps as 'aanvoerkunstwerk'
-    # sp = supply.SupplyPump(so.model)
-    # if pump_aanvoer_on:
-    #     sp.set_aanvoer_on(*pump_aanvoer_on)
-    # if pump_aanvoer_off:
-    #     sp.set_aanvoer_off(*pump_aanvoer_off)
 
     # reset ribasim model
     ribasim_model = so.model

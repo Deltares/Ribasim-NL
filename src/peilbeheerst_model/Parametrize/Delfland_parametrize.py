@@ -181,6 +181,7 @@ ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(
     ribasim_model,
     str(aanvoer_path),
+    processor,
     load_geometry_kw={"layer": "Aanvoergebied_Afvoergebied_polders"},
     aanvoer_enabled=AANVOER_CONDITIONS,
 )

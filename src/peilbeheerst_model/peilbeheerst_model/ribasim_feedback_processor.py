@@ -434,7 +434,8 @@ class RibasimFeedbackProcessor:
                 self.model.edge.df.at[row_index, "geometry"] = reversed_line
             print(f"Swapped edge direction between Node A: {node_a} and Node B: {node_b}")
             logging.info(
-                f"Successfully swapped edge direction between Node A: {node_a} and Node B: {node_b}, Action: Aanpassen, Adjustment: Stroomrichting Omdraaien"
+                f"Successfully swapped edge direction between Node A: {node_a} and Node B: {node_b}, "
+                f"Action: Aanpassen, Adjustment: Stroomrichting Omdraaien"
             )
         except Exception as e:
             logging.error(f"Error adjusting edge: {e}")
@@ -543,7 +544,8 @@ class RibasimFeedbackProcessor:
             self._basin_aanvoer_off = tuple(afvoer_ids)
         finally:
             logging.warning(
-                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: Make sure that feedback forms will have a sheet-name titled "{sheet_name}"'
+                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: '
+                f'Make sure that feedback forms will have a sheet-name titled "{sheet_name}".'
             )
 
     def get_outlet_aanvoer_corrections(self) -> None:
@@ -564,7 +566,8 @@ class RibasimFeedbackProcessor:
             self._outlet_aanvoer_off = tuple(afvoer_ids)
         finally:
             logging.warning(
-                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: Make sure that feedback forms will have a sheet-name titled "{sheet_name}"'
+                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: '
+                f'Make sure that feedback forms will have a sheet-name titled "{sheet_name}".'
             )
 
     @property
