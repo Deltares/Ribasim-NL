@@ -12,22 +12,34 @@ jobs:
   pixi-update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Ribasim-NL
+        uses: actions/checkout@v4
+        with:
+          path: Ribasim-NL
+      # Ribasim needs to be checked out next to this repo even for the prod environment
+      - name: Checkout Ribasim
+        uses: actions/checkout@v4
+        with:
+          repository: Deltares/Ribasim
+          path: Ribasim
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.3
         with:
+          manifest-path: Ribasim-NL/pixi.toml
           pixi-version: "latest"
           run-install: false
       - name: Update lockfiles
         run: |
           set -o pipefail
           pixi update --json | pixi exec pixi-diff-to-markdown >> diff.md
+        working-directory: Ribasim-NL
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.CI_PR_PAT }}
           commit-message: Update pixi lockfile
           title: Update pixi lockfile
+          path: Ribasim-NL
           body-path: diff.md
           branch: update/pixi-lock
           base: main
