@@ -151,6 +151,8 @@ ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 # prepare 'aanvoergebieden'
 if AANVOER_CONDITIONS:
     aanvoergebieden = supply.special_load_geometry(f_geometry=aanvoer_path, method="extract", key="aanvoer", value=1)
+    # remove double-polygons
+    aanvoergebieden = aanvoergebieden[aanvoergebieden["node_id"] == aanvoergebieden["meta_node_"]]
 else:
     aanvoergebieden = None
 

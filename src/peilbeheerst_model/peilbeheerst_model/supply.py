@@ -107,12 +107,18 @@ class SupplyBasin:
         basin_nodes = self.basin_nodes
         nodes_in_polygons = gpd.sjoin(basin_nodes, self.geometry[["geometry"]], how="left")
 
+        # check for double-polygon matching
+        if len(nodes_in_polygons) != len(basin_nodes):
+            msg = "Basin nodes are possibly double assigned to 'aanvoergebieden', please check the source data."
+            raise ValueError(msg)
+
         # mark basins as 'aanvoergebieden'
         nodes_in_polygons["meta_aanvoer"] = nodes_in_polygons["index_right"].notna()
         nodes_in_polygons.reset_index(inplace=True)
 
         # update basin areas
         basin_areas = self.basin_areas
+
         areas = basin_areas.merge(nodes_in_polygons[["node_id", "meta_aanvoer"]], how="left", on="node_id")
         basin_areas["meta_aanvoer"] = areas["meta_aanvoer"]
         basin_areas.dropna(inplace=True)

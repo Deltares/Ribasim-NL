@@ -1093,7 +1093,6 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     )
 
 
-# TODO: Add the incorporation of the feedback forms (i.e., processor) covering basins, outlets, and pumps
 def set_aanvoer_flags(
     ribasim_model: str | ribasim.Model,
     aanvoer_regions: str | gpd.GeoDataFrame,
