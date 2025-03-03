@@ -324,7 +324,7 @@ class Control:
 
         return control_dict
 
-    def run_aanvoer(self):
+    def run_afvoer(self):
         control_dict = self.read_model_output()
         control_dict = self.initial_final_level(control_dict)
         control_dict = self.min_max_level(control_dict)
