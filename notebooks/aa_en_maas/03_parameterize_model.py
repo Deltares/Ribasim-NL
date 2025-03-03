@@ -47,5 +47,5 @@ if run_model:
 
     # # %%
     controle_output = Control(ribasim_toml=ribasim_toml)
-    indicators = controle_output.run_all()
+    indicators = controle_output.run_aanvoer()
 # %%
