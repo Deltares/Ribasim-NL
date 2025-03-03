@@ -21,10 +21,13 @@ def update_basin_static(
     area = model.basin.area.df.set_index("node_id").geometry.area
     if precipitation_mm_per_day is not None:
         precipitation = area * (precipitation_mm_per_day * 0.001 / 86400)  # m3/s
-        static_df.loc[:, "precipitation"] = precipitation[static_df.node_id].to_numpy()
+        static_df.loc[:, "drainage"] = precipitation[static_df.node_id].to_numpy()
     if evaporation_mm_per_day is not None:
         evaporation = area * (evaporation_mm_per_day * 0.001 / 86400)  # m3/s
-        static_df.loc[:, "evaporation"] = evaporation[static_df.node_id].to_numpy()
+        static_df.loc[:, "infiltration"] = evaporation[static_df.node_id].to_numpy()
+
+    # add to static df
+    model.basin.static.df = static_df
 
     # add to static df
     model.basin.static.df = static_df

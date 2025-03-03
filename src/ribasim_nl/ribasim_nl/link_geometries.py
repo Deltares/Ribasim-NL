@@ -1,6 +1,8 @@
+# %%
 from networkx import NetworkXNoPath
 from shapely.geometry import LineString
 
+from ribasim_nl.geometry import drop_z
 from ribasim_nl.model import Model
 from ribasim_nl.network import Network
 
@@ -31,8 +33,8 @@ def link_geometry_from_hydroobject(model: Model, network: Network, from_node_id,
     """
     geometry = None
 
-    from_point = model.node_table().df.at[from_node_id, "geometry"]
-    to_point = model.node_table().df.at[to_node_id, "geometry"]
+    from_point = drop_z(model.node_table().df.at[from_node_id, "geometry"])
+    to_point = drop_z(model.node_table().df.at[to_node_id, "geometry"])
     # %get us_edge
     distance = network.nodes.distance(from_point)
     if distance.min() < 0.1:

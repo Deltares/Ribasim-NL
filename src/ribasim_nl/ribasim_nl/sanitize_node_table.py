@@ -29,7 +29,11 @@ def sanitize_node_table(
                     table.node.df.loc[:, to_col] = table.node.df.loc[:, from_col]
 
         # add name from code-column
-        if ("meta_code_waterbeheerder" in table.node.df.columns) & (names is not None):
+        if (
+            ("meta_code_waterbeheerder" in table.node.df.columns)
+            & (names is not None)
+            & ("name" not in copy_columns.values())
+        ):
             table.node.df.loc[:, "name"] = table.node.df["meta_code_waterbeheerder"].apply(
                 lambda x: names[x] if x in names.index.to_numpy() else ""
             )

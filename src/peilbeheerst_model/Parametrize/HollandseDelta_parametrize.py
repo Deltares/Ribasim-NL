@@ -1,11 +1,10 @@
+# %%
 """Parameterisation of water board: Hollandse Delta."""
 
 import datetime
 import os
 import warnings
 
-import ribasim
-import ribasim.nodes
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
@@ -14,13 +13,17 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 
 # model settings
 waterschap = "HollandseDelta"
 base_model_versie = "2024_12_3"
+
+
+# %% Connect with the GoodCloud
+
 
 # connect with the GoodCloud
 cloud = CloudStorage()
@@ -64,8 +67,9 @@ ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
 os.makedirs(parameterized, exist_ok=True)
 
-# define variables and model
-# basin area percentage
+# %%## Set Config
+
+# Basin area percentage, define variables and model
 regular_percentage = 10
 boezem_percentage = 90
 unknown_streefpeil = (
@@ -81,7 +85,12 @@ timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
 default_level = 1.24 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary level
 
-# process the feedback form
+default_level = -0.42  # default LevelBoundary level
+
+
+# %% Process the feedback form
+
+
 name = "HKV"
 processor = RibasimFeedbackProcessor(
     name,
@@ -95,16 +104,22 @@ processor = RibasimFeedbackProcessor(
 )
 processor.run()
 
-# load model
+# %% Load Ribasim model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
-# check basin area
+# %% # Parameterization
 ribasim_param.validate_basin_area(ribasim_model)
 
-# model specific tweaks
-# change unknown streefpeilen to a default streefpeil
+# %% Model specific tweaks
+ribasim_model.merge_basins(node_id=149, to_node_id=21)  # too small basin
+ribasim_model.merge_basins(node_id=559, to_node_id=120)  # small basin + deviations
+ribasim_model.merge_basins(node_id=7, to_node_id=54)  # small basin causes numerical instabilities
+ribasim_model.merge_basins(node_id=720, to_node_id=54)  # small basin causes numerical instabilities
+
+
+# %% change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
 ] = str(unknown_streefpeil)
@@ -209,11 +224,76 @@ level_boundary_node = ribasim_model.level_boundary.add(
 ribasim_model.edge.add(ribasim_model.basin[789], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
+# add a TRC and LB to a small harbour
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(new_node_id, Point(103964, 429864)), [level_boundary.Static(level=[default_level])]
+)
+
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(new_node_id + 1, Point(103927.41, 429888.69)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.edge.add(ribasim_model.basin[300], tabulated_rating_curve_node)
+ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
-# change unknown streefpeilen to a default streefpeil
+# add gemaal and LB at the Voornse Meer
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+
+pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(64555, 439130)), [pump.Static(flow_rate=[0.1])])
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(new_node_id, Point(64560, 439130)), [level_boundary.Static(level=[default_level])]
+)
+
+ribasim_model.edge.add(ribasim_model.basin[801], pump_node)
+ribasim_model.edge.add(pump_node, level_boundary_node)
+
+
+# %% changes after samenwerkdag of February
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(new_node_id + 1, Point(110535.2, 421208.5)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.edge.add(ribasim_model.basin[38], tabulated_rating_curve_node)
+ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+
+# TEMP add LB
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(new_node_id, Point(88565, 429038)), [level_boundary.Static(level=[default_level])]
+)
+
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(new_node_id + 1, Point(88566.5, 429040)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[563])
+
+# TEMP add gemaal and LB
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(new_node_id, Point(79312, 424826)), [level_boundary.Static(level=[default_level])]
+)
+
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(new_node_id + 1, Point(79325, 424862)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[26])
+
+ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
+ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
+ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+
+# %% change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
 ] = str(unknown_streefpeil)
@@ -221,8 +301,11 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
-# implement standard profile and a storage basin
-# insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
+
+# %% Implement standard profile and a storage basin
+
+
+# Insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
     ribasim_model,
     unknown_streefpeil=unknown_streefpeil,
@@ -286,7 +369,10 @@ ribasim_model.endtime = datetime.datetime(2025, 1, 1)
 ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
-# run model
+
+# %% Run Model
+
+
 ribasim_param.tqdm_subprocess(
     ["C:/ribasim_windows/ribasim/ribasim.exe", ribasim_work_dir_model_toml], print_other=False, suffix="init"
 )
@@ -302,3 +388,5 @@ ribasim_param.write_ribasim_model_GoodCloud(
     waterschap=waterschap,
     include_results=True,
 )
+
+# %%

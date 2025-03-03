@@ -3,7 +3,6 @@ import geopandas as gpd
 import pandas as pd
 
 from ribasim_nl import CloudStorage, Model, Network
-from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
@@ -12,8 +11,8 @@ from ribasim_nl.parametrization.target_level import upstream_target_levels
 from ribasim_nl.streefpeilen import add_streefpeil
 
 cloud = CloudStorage()
-authority = "AaenMaas"
-short_name = "aam"
+authority = "BrabantseDelta"
+short_name = "wbd"
 
 # %% files
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
@@ -22,50 +21,85 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
+link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
-peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/WS_PEILGEBIEDPolygon.shp")
-stuwen_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Na_levering_20240418", "stuwen.shp")
-aam_data_gpkg = cloud.joinpath(authority, "verwerkt", "2_voorbewerking", "AanpassinghWh", "20230530AaEnMaasData.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+damo_profiles_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
+peilgebieden_path = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_path, stuwen_shp, top10NL_gpkg])
+
+cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
-network = Network(lines_gdf=gpd.read_file(aam_data_gpkg, layer="hydroobject"))
-damo_profiles = DAMOProfiles(
-    model=model,
-    network=network,
-    profile_line_df=gpd.read_file(aam_data_gpkg, layer="profiellijn"),
-    profile_point_df=gpd.read_file(aam_data_gpkg, layer="profielpunt"),
-    water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
-)
 
-if not profiles_gpkg.exists():
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
-else:
-    profiles_df = gpd.read_file(profiles_gpkg)
-
-profiles_df.set_index("profiel_id", inplace=True)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
 # %%
-# Edges
+
+network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"))
+damo_profiles = DAMOProfiles(
+    model=model,
+    network=network,
+    profile_line_df=gpd.read_file(damo_profiles_gpkg, layer="profiellijn"),
+    profile_point_df=gpd.read_file(damo_profiles_gpkg, layer="profielpunt"),
+    water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
+    profile_line_id_col="code",
+)
 
 # fix link geometries
-fix_link_geometries(model, network)
+if link_geometries_gpkg.exists():
+    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("edge_id")
+    model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
+    if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
+        model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+            "meta_profielid_waterbeheerder"
+        ]
+    profiles_df = gpd.read_file(profiles_gpkg).set_index("profiel_id")
+else:
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
+    add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
+    fix_link_geometries(model, network)
+    model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
-# link profiles
-add_link_profile_ids(model, profiles=damo_profiles)
+# %%
+
+# add link profiles
 
 # %%
 
 # add streefpeilen
-add_streefpeil(model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="ZOMERPEIL", code="CODE")
+peilgebieden_path_editted = peilgebieden_path.parent.joinpath("peilgebieden_bewerkt.gpkg")
 
+
+df = gpd.read_file(peilgebieden_path, layer="peilgebiedpraktijk")
+
+# fill with zomerpeil
+df["streefpeil"] = df["WS_ZOMERPEIL"]
+
+# if nodata, fill with vastpeil
+mask = df["streefpeil"].isna()
+df.loc[mask, "streefpeil"] = df[mask]["WS_VAST_PEIL"]
+
+# if nodata and onderpeil is nodata, fill with bovenpeil
+mask = df["streefpeil"].isna()
+df.loc[mask, "streefpeil"] = df[mask]["WS_MAXIMUM"]
+
+# write
+df[df["streefpeil"].notna()].to_file(peilgebieden_path_editted)
+
+
+add_streefpeil(
+    model=model,
+    peilgebieden_path=peilgebieden_path_editted,
+    layername=None,
+    target_level="streefpeil",
+    code="CODE",
+)
 
 # %%
 # OUTLET
@@ -77,21 +111,6 @@ min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.ou
 min_upstream_level = min_upstream_level[min_upstream_level.notna()]
 min_upstream_level.name = "min_upstream_level"
 static_data.add_series(node_type="Outlet", series=min_upstream_level)
-
-# from DAMO WS_STREE_2
-min_upstream_level = gpd.read_file(stuwen_shp).set_index("CODE")["WS_STREE_2"]
-min_upstream_level = min_upstream_level[min_upstream_level != 0]
-min_upstream_level.name = "min_upstream_level"
-min_upstream_level.index.name = "code"
-static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
-
-# from DAMO HOOGSTEDOO
-hoogste = gpd.read_file(stuwen_shp).set_index("CODE")["HOOGSTEDOO"]
-laagste = gpd.read_file(stuwen_shp).set_index("CODE")["LAAGSTEDOO"]
-min_upstream_level = laagste + (hoogste - laagste) * 0.75
-min_upstream_level.name = "min_upstream_level"
-min_upstream_level.index.name = "code"
-static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # from DAMO profiles
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
@@ -129,20 +148,15 @@ levels = (
     profiles_df.loc[profile_ids]["bottom_level"]
     + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
 ).to_numpy()
+
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
 
-## PUMP.flow_rate
-gkw_gemaal_df = get_data_from_gkw(authority=authority, layers=["gemaal"])
-flow_rate = gkw_gemaal_df.set_index("code")["maximalecapaciteit"] / 60  # m3/minuut to m3/s
-flow_rate.name = "flow_rate"
-static_data.add_series(node_type="Pump", series=flow_rate)
-
 
 # %%
 
-# BASIN
+# # BASIN
 static_data.reset_data_frame(node_type="Basin")
 
 # fill streefpeil from ds min_upstream_level
@@ -190,6 +204,7 @@ model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
 model.basin.area.df.reset_index(drop=False, inplace=True)
 model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
+
 
 # %%
 
