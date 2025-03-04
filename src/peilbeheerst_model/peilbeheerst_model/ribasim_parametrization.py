@@ -1249,9 +1249,10 @@ def determine_min_upstream_max_downstream_levels(
         pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
 
     # raise warning if there are np.nan in the columns
-    def check_for_nans_in_columns(
-        df, outlet_or_pump, columns_to_check=["min_upstream_level", "max_downstream_level", "flow_rate", "flow_rate"]
-    ):
+    def check_for_nans_in_columns(df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list = None) -> None:
+        columns_to_check = columns_to_check or ["min_upstream_level", "max_downstream_level", "flow_rate"]
+        assert outlet_or_pump in ("outlet", "pump")
+
         if df[columns_to_check].isnull().values.any():
             warnings.warn(
                 f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
