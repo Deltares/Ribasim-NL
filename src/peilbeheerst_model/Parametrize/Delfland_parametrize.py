@@ -103,8 +103,6 @@ with warnings.catch_warnings():
 ribasim_param.validate_basin_area(ribasim_model)
 
 # model specific tweaks
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
-
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
