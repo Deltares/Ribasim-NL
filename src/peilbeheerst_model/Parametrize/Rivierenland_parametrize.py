@@ -177,7 +177,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 ribasim_model.edge.add(ribasim_model.basin[1], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
-# add outlet and LB from Beneden Merwerde to Sliedrecht
+# add outlet (TRC) and LB from Beneden Merwerde to Sliedrecht
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(113249, 425499)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],

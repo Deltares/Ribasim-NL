@@ -4,7 +4,6 @@ import datetime
 import os
 import warnings
 
-import pandas as pd
 import ribasim
 import ribasim.nodes
 from ribasim import Node
@@ -113,6 +112,21 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
+# add an TRC and edges to the newly created level boundary
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(74861, 382484)), [level_boundary.Static(level=[default_level])]
+)
+
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(74504, 382443)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.tabulated_rating_curve.node.df.loc[tabulated_rating_curve_node.node_id, "meta_node_id"] = (
+    tabulated_rating_curve_node.node_id
+)
+ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[133])
+
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
     ribasim_model,
@@ -120,29 +134,6 @@ ribasim_param.insert_standard_profile(
     regular_percentage=regular_percentage,
     boezem_percentage=boezem_percentage,
     depth_profile=2,
-)
-
-# add an TRC and edges to the newly created level boundary
-new_node_id = ribasim_param.get_current_max_node_id(ribasim_model=ribasim_model) + 1
-
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(74861, 382484)), [level_boundary.Static(level=[default_level])]
-)
-
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(74504, 382443)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[133])
-
-# add the meta_node_id for the newly created TRC
-ribasim_model.tabulated_rating_curve.node.df["meta_node_id"] = ribasim_model.tabulated_rating_curve.node.df[
-    "meta_node_id"
-].fillna(
-    pd.Series(
-        ribasim_model.tabulated_rating_curve.node.df.index, index=ribasim_model.tabulated_rating_curve.node.df.index
-    )
 )
 
 add_storage_basins = AddStorageBasins(
