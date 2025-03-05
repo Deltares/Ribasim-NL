@@ -191,8 +191,6 @@ ribasim_model.edge.add(ribasim_model.basin[1], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
 # add outlet and LB from Beneden Merwerde to Sliedrecht
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
-
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(113249, 425499)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
@@ -202,6 +200,14 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[30])
+
+# add gemaal from maalkom to Lek
+pump_node = ribasim_model.pump.add(Node(geometry=Point(103328, 433720)), [pump.Static(flow_rate=[20])])
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(103328, 433734)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.edge.add(ribasim_model.basin[40], pump_node)
+ribasim_model.edge.add(pump_node, level_boundary_node)
 
 # set meta_node_id
 ribasim_model.level_boundary.node.df["meta_node_id"] = ribasim_model.level_boundary.node.df.index
