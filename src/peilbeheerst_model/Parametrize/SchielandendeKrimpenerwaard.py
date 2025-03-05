@@ -306,7 +306,7 @@ ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waters
 
 # Manning resistance
 # there is a MR without geometry and without edges for some reason
-ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
+ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df.length = 10
@@ -333,10 +333,10 @@ ribasim_param.tqdm_subprocess(
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_all()
 
-# # write model
-# ribasim_param.write_ribasim_model_GoodCloud(
-#     ribasim_model=ribasim_model,
-#     work_dir=work_dir,
-#     waterschap=waterschap,
-#     include_results=True,
-# )
+# write model
+ribasim_param.write_ribasim_model_GoodCloud(
+    ribasim_model=ribasim_model,
+    work_dir=work_dir,
+    waterschap=waterschap,
+    include_results=True,
+)
