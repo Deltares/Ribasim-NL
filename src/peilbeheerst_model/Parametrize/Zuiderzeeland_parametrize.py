@@ -107,48 +107,44 @@ ribasim_param.validate_basin_area(ribasim_model)
 
 # model specific tweaks
 # 1 Add gemaal at blocq van kuffeler
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(143912, 492256)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(143912, 492256)), [level_boundary.Static(level=[default_level])]
 )
 
-pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(143959, 492198)), [pump.Static(flow_rate=[0.1])])
+pump_node = ribasim_model.pump.add(Node(geometry=Point(143959, 492198)), [pump.Static(flow_rate=[0.1])])
 
 ribasim_model.edge.add(ribasim_model.basin[31], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
 # 1 Add gemaal Wortman
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(157201, 501796)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(157201, 501796)), [level_boundary.Static(level=[default_level])]
 )
 
-pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(157251, 501708)), [pump.Static(flow_rate=[0.1])])
+pump_node = ribasim_model.pump.add(Node(geometry=Point(157251, 501708)), [pump.Static(flow_rate=[0.1])])
 
 ribasim_model.edge.add(ribasim_model.basin[31], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
 # Inlaat (hevel) toevoegen
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(193502, 526518)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(193502, 526518)), [level_boundary.Static(level=[default_level])]
 )
 
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(193491, 526526)),
+    Node(geometry=Point(193491, 526526)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[98])
 
 # Inlaat (hevel) toevoegen
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(185725, 533120)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(185725, 533120)), [level_boundary.Static(level=[default_level])]
 )
 
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(185725, 533098)),
+    Node(geometry=Point(185725, 533098)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
@@ -241,10 +237,10 @@ ribasim_param.tqdm_subprocess(
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_all()
 
-# # write model
-# ribasim_param.write_ribasim_model_GoodCloud(
-#     ribasim_model=ribasim_model,
-#     work_dir=work_dir,
-#     waterschap=waterschap,
-#     include_results=True,
-# )
+# write model
+ribasim_param.write_ribasim_model_GoodCloud(
+    ribasim_model=ribasim_model,
+    work_dir=work_dir,
+    waterschap=waterschap,
+    include_results=True,
+)
