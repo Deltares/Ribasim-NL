@@ -221,11 +221,10 @@ add_storage_basins = AddStorageBasins(
 
 add_storage_basins.create_bergende_basins()
 
-# TODO: Create a stable model for 'aanvoer'-conditions with E=10
 # set static forcing
 forcing_dict = {
     "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
-    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(0.1 if AANVOER_CONDITIONS else 0),
+    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
     "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
     "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
 }
@@ -294,10 +293,10 @@ ribasim_param.tqdm_subprocess(
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_all()
 
-# # write model
-# ribasim_param.write_ribasim_model_GoodCloud(
-#     ribasim_model=ribasim_model,
-#     work_dir=work_dir,
-#     waterschap=waterschap,
-#     include_results=True,
-# )
+# write model
+ribasim_param.write_ribasim_model_GoodCloud(
+    ribasim_model=ribasim_model,
+    work_dir=work_dir,
+    waterschap=waterschap,
+    include_results=True,
+)
