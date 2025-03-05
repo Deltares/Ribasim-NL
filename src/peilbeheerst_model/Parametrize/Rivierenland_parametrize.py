@@ -4,8 +4,6 @@ import datetime
 import os
 import warnings
 
-import ribasim
-import ribasim.nodes
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
@@ -14,7 +12,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 
@@ -100,12 +98,15 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
 # model specific tweaks
+# merge basins
+ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
+
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
