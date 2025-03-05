@@ -215,7 +215,7 @@ ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waters
 
 # Manning resistance
 # there is a MR without geometry and without edges for some reason
-ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
+ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df.length = 10
