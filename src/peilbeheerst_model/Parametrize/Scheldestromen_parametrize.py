@@ -123,7 +123,7 @@ ribasim_param.insert_standard_profile(
 )
 
 # add an TRC and edges to the newly created level boundary
-new_node_id = ribasim_param.get_current_max_nodeid(ribasim_model=ribasim_model) + 1
+new_node_id = ribasim_param.get_current_max_node_id(ribasim_model=ribasim_model) + 1
 
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(new_node_id, Point(74861, 382484)), [level_boundary.Static(level=[default_level])]

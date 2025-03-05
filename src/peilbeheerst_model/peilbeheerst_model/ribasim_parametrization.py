@@ -20,10 +20,13 @@ from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcess
 from ribasim_nl import CloudStorage
 
 
-def get_current_max_nodeid(ribasim_model):
+# FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
+#  (e.g., the used 'meta_node_id'-column contains many `<NA>`-values).
+def get_current_max_node_id(ribasim_model: ribasim.Model) -> int:
     with warnings.catch_warnings():
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node_table().df
+
     if len(df_all_nodes) == 0:
         max_id = 1
     else:
@@ -299,7 +302,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
         ribasim_model.flow_boundary.static.df = ribasim_model.flow_boundary.static.df.iloc[0:0]
 
     # up till this point, all FlowBoundaries have been converted to TRC's. Now the actual LevelBoundaries needs to be created
-    max_id = get_current_max_nodeid(ribasim_model)
+    max_id = get_current_max_node_id(ribasim_model)
     nodes_FlowBoundary["meta_old_node_id"] = nodes_FlowBoundary.meta_node_id  # store for later
     nodes_FlowBoundary["node_id"] = max_id + nodes_FlowBoundary.index + 1  # implement new id's
     # nodes_FlowBoundary["node_id"] = nodes_FlowBoundary.meta_node_id.copy()
@@ -471,11 +474,11 @@ def add_discrete_control_nodes(ribasim_model):
 
     for i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
         # Get max nodeid and iterate
-        cur_max_nodeid = get_current_max_nodeid(ribasim_model)
-        if cur_max_nodeid < 90000:
-            new_nodeid = 90000 + cur_max_nodeid + 1  # aanpassen loopt vanaf 90000 +1
+        cur_max_node_id = get_current_max_node_id(ribasim_model)
+        if cur_max_node_id < 90000:
+            new_nodeid = 90000 + cur_max_node_id + 1  # aanpassen loopt vanaf 90000 +1
         else:
-            new_nodeid = cur_max_nodeid + 1
+            new_nodeid = cur_max_node_id + 1
         # print(new_nodeid, end="\r")
 
         # @TODO Ron aangeven in geval van meerdere matches welke basin gepakt moet worden

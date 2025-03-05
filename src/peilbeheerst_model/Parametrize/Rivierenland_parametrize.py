@@ -127,13 +127,8 @@ new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.d
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(new_node_id, Point(136538, 422962)), [level_boundary.Static(level=[default_level])]
 )
-
 pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(136574, 422965)), [pump.Static(flow_rate=[0.1])])
-
-# add static information
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == new_node_id + 1, "meta_func_aanvoer"] = (
-    1  # its a wateraanvoer pump according FW
-)
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == new_node_id + 1, "meta_func_aanvoer"] = 1
 ribasim_model.edge.add(ribasim_model.basin[154], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
@@ -143,9 +138,7 @@ new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.d
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(new_node_id, Point(198612, 434208)), [level_boundary.Static(level=[default_level])]
 )
-
 pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(198568, 434184)), [pump.Static(flow_rate=[0.1])])
-
 ribasim_model.edge.add(level_boundary_node, pump_node)
 ribasim_model.edge.add(pump_node, ribasim_model.basin[115])
 
@@ -155,7 +148,6 @@ new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.d
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(new_node_id, Point(196158, 421051)), [level_boundary.Static(level=[default_level])]
 )
-
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(new_node_id + 1, Point(196147, 421056)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
@@ -169,7 +161,6 @@ new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.d
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(new_node_id, Point(103311, 433732)), [level_boundary.Static(level=[default_level])]
 )
-
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(new_node_id + 1, Point(103315, 433716)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
@@ -199,9 +190,24 @@ level_boundary_node = ribasim_model.level_boundary.add(
 ribasim_model.edge.add(ribasim_model.basin[1], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+# add outlet and LB from Beneden Merwerde to Sliedrecht
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(113249, 425499)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(113249, 425400)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[30])
+
+# set meta_node_id
+ribasim_model.level_boundary.node.df["meta_node_id"] = ribasim_model.level_boundary.node.df.index
+ribasim_model.tabulated_rating_curve.node.df["meta_node_id"] = ribasim_model.tabulated_rating_curve.node.df.index
+ribasim_model.pump.node.df["meta_node_id"] = ribasim_model.pump.node.df.index
+ribasim_model.outlet.node.df["meta_node_id"] = ribasim_model.outlet.node.df.index
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
@@ -288,10 +294,10 @@ ribasim_param.tqdm_subprocess(
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_all()
 
-# # write model
-# ribasim_param.write_ribasim_model_GoodCloud(
-#     ribasim_model=ribasim_model,
-#     work_dir=work_dir,
-#     waterschap=waterschap,
-#     include_results=True,
-# )
+# write model
+ribasim_param.write_ribasim_model_GoodCloud(
+    ribasim_model=ribasim_model,
+    work_dir=work_dir,
+    waterschap=waterschap,
+    include_results=True,
+)
