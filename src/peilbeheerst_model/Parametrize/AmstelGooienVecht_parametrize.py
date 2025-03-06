@@ -265,35 +265,29 @@ assign = AssignAuthorities(
 ribasim_model = assign.assign_authorities()
 
 # 98% of the automatically assigned neighbouring water authorities are correct, fix the remaining 2%
-ribasim_model.level_boundary.static.df.loc[
-    ribasim_model.level_boundary.static.df.node_id == 908, "meta_from_authority"
-] = "HollandsNoorderkwartier"
-ribasim_model.level_boundary.static.df.loc[
-    ribasim_model.level_boundary.static.df.node_id == 2912, "meta_from_authority"
-] = "Rijkswaterstaat"
-ribasim_model.level_boundary.static.df.loc[
-    ribasim_model.level_boundary.static.df.node_id == 907, "meta_to_authority"
-] = "HollandsNoorderkwartier"
-ribasim_model.level_boundary.static.df.loc[
-    ribasim_model.level_boundary.static.df.node_id == 972, "meta_to_authority"
-] = "HollandsNoorderkwartier"
-ribasim_model.level_boundary.static.df.loc[
-    ribasim_model.level_boundary.static.df.node_id == 996, "meta_to_authority"
-] = "Rijnland"
-ribasim_model.level_boundary.static.df.loc[
-    ribasim_model.level_boundary.static.df.node_id == 909, "meta_to_authority"
-] = "Rijkswaterstaat"
-ribasim_model.level_boundary.static.df.loc[
-    ribasim_model.level_boundary.static.df.node_id == 931, "meta_to_authority"
-] = "Rijkswaterstaat"
+from_authority = {908: "HollandsNoorderkwartier", 2912: "Rijkswaterstaat"}
+for k, v in from_authority.items():
+    ribasim_model.level_boundary.static.df.loc[
+        ribasim_model.level_boundary.static.df["node_id"] == k, "meta_from_authority"
+    ] = v
 
-# set numerical settings
+to_authority = {
+    907: "HollandsNoorderkwartier",
+    972: "HollandsNoorderkwartier",
+    996: "Rijnland",
+    909: "Rijkswaterstaat",
+    931: "Rijkswaterstaat",
+}
+for k, v in to_authority.items():
+    ribasim_model.level_boundary.static.df.loc[
+        ribasim_model.level_boundary.static.df["node_id"] == k, "meta_to_authority"
+    ] = v
+
 # write model output
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime
 ribasim_model.solver.saveat = saveat
-
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
