@@ -36,8 +36,9 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
-# TODO: Enable once geodata of the 'aanvoergebieden' has been delivered, also in the `cloud.synchronize()`-call
-# aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraanvoer")
+aanvoer_path = cloud.joinpath(
+    waterschap, "aangeleverd", "Na_levering", "20240618_peilgebieden_en_polders", "Polders_export_2024-06-18.shp"
+)
 
 cloud.synchronize(
     filepaths=[
@@ -46,7 +47,7 @@ cloud.synchronize(
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
-        # aanvoer_path,
+        aanvoer_path,
     ]
 )
 
@@ -205,11 +206,28 @@ ribasim_model.level_boundary.static.df.level = default_level
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+# prepare 'aanvoergebieden'
+basin_aanvoer_off = (
+    48,
+    131,
+    20,
+    180,  # Texel
+    5,
+    75,  # Wieringermeer
+    163,
+    88,
+    46,
+    78,
+    129,  # duinen
+)
+
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(ribasim_model, None, processor, aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.set_aanvoer_flags(
+    ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS, basin_aanvoer_off=basin_aanvoer_off
+)
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
@@ -242,10 +260,10 @@ ribasim_param.tqdm_subprocess(
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_all()
 
-# # write model
-# ribasim_param.write_ribasim_model_GoodCloud(
-#     ribasim_model=ribasim_model,
-#     work_dir=work_dir,
-#     waterschap=waterschap,
-#     include_results=True,
-# )
+# write model
+ribasim_param.write_ribasim_model_GoodCloud(
+    ribasim_model=ribasim_model,
+    work_dir=work_dir,
+    waterschap=waterschap,
+    include_results=True,
+)
