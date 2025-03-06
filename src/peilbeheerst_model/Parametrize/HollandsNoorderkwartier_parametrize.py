@@ -207,19 +207,13 @@ ribasim_model.level_boundary.static.df.level = default_level
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # prepare 'aanvoergebieden'
+# fmt: off
 basin_aanvoer_off = (
-    48,
-    131,
-    20,
-    180,  # Texel
-    5,
-    75,  # Wieringermeer
-    163,
-    88,
-    46,
-    78,
-    129,  # duinen
+    48, 131, 20, 180,  # Texel
+    5, 75,  # Wieringermeer
+    163, 88, 46, 78, 129,  # duinen
 )
+# fmt: on
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
