@@ -7,14 +7,11 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 authority = "ValleienVeluwe"
 short_name = "venv"
+run_model = True
 
-
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data.xlsx",
-)
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+static_data_xlsx = parameters_dir / "static_data_template.xlsx"
+profiles_gpkg = parameters_dir / "profiles.gpkg"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
@@ -32,9 +29,9 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
+model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-
+# model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == 217, "active"] = False
 # %%
 
 # Write model
@@ -44,10 +41,12 @@ model.write(ribasim_toml)
 # %%
 
 # run model
-exit_code = model.run()
-assert exit_code == 0
+if run_model:
+    exit_code = model.run()
+    assert exit_code == 0
 
 # %%
+
 controle_output = Control(ribasim_toml=ribasim_toml)
 indicators = controle_output.run_afvoer()
 # %%
