@@ -191,13 +191,11 @@ ribasim_model.edge.add(ribasim_model.basin[789], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
 # add a TRC and LB to a small harbour
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(103964, 429864)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(103964, 429864)), [level_boundary.Static(level=[default_level])]
 )
-
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(103927.41, 429888.69)),
+    Node(geometry=Point(103927.41, 429888.69)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.edge.add(ribasim_model.basin[300], tabulated_rating_curve_node)
@@ -208,58 +206,51 @@ ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabula
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
 # add gemaal and LB at the Voornse Meer
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
-
-pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(64555, 439130)), [pump.Static(flow_rate=[0.1])])
+pump_node = ribasim_model.pump.add(Node(geometry=Point(64555, 439130)), [pump.Static(flow_rate=[0.1])])
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(64560, 439130)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(64560, 439130)), [level_boundary.Static(level=[default_level])]
 )
-
 ribasim_model.edge.add(ribasim_model.basin[801], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
-
-# %% changes after samenwerkdag of February
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
-
+# changes after samenwerkdag of February
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(110535.2, 421208.5)),
+    Node(geometry=Point(110535.2, 421208.5)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.edge.add(ribasim_model.basin[38], tabulated_rating_curve_node)
 ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
 
 # TEMP add LB
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(88565, 429038)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(88565, 429038)), [level_boundary.Static(level=[default_level])]
 )
 
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(88566.5, 429040)),
+    Node(geometry=Point(88566.5, 429040)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[563])
 
 # TEMP add gemaal and LB
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(79312, 424826)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(79312, 424826)), [level_boundary.Static(level=[default_level])]
 )
 
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(79325, 424862)),
+    Node(geometry=Point(79325, 424862)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[26])
 
+# (re) set 'meta_node_id'
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
-# %% change unknown streefpeilen to a default streefpeil
+# change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
 ] = str(unknown_streefpeil)
@@ -295,6 +286,7 @@ ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_di
 
 # set pump capacity for each pump
 ribasim_model.pump.static.df["flow_rate"] = 0.16667  # 10 kuub per minuut
+
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
