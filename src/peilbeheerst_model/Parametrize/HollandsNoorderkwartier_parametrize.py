@@ -209,7 +209,7 @@ ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 # prepare 'aanvoergebieden'
 # fmt: off
 basin_aanvoer_off = (
-    48, 131, 20, 180,  # Texel
+    48, 131, 20, 180, 111,  # Texel
     5, 75,  # Wieringermeer
     163, 88, 46, 78, 129,  # duinen
 )
