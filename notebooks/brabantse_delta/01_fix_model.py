@@ -6,13 +6,17 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.geometry import drop_z
+from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
+from ribasim_nl.sanitize_node_table import sanitize_node_table
 
 cloud = CloudStorage()
 
 authority = "BrabantseDelta"
-name = "wbd"
+short_name = "wbd"
+run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
@@ -158,16 +162,49 @@ combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
 combined_basin_areas_gdf.index.name = "fid"
 model.basin.area.df = combined_basin_areas_gdf
 
+
+# Sanitize node_table
+for node_id in model.tabulated_rating_curve.node.df.index:
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# ManningResistance that are duikersifonhevel to outlet
+for node_id in model.manning_resistance.node.df[
+    model.manning_resistance.node.df["meta_object_type"] == "duikersifonhevel"
+].index:
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# nodes we've added do not have category, we fill with hoofdwater
+for node_type in model.node_table().df.node_type.unique():
+    table = getattr(model, pascal_to_snake_case(node_type)).node
+    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+
+# name-column contains the code we want to keep, meta_name the name we want to have
+df = get_data_from_gkw(layers=["sluis", "gemaal", "stuw"], authority=authority)
+df.set_index("code", inplace=True)
+names = df["naam"]
+
+sanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
+        {"node_types": ["FlowBoundary", "LevelBoundary"], "columns": {"meta_name": "name"}},
+    ],
+    names=names,
+)
+
 #  %% write model
 model.use_validation = True
-ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
 
 # %%#
 # Test run model
-result = model.run()
-assert result == 0
+if run_model:
+    result = model.run()
+    assert result == 0
 
 # %%

@@ -4,8 +4,6 @@ import datetime
 import os
 import warnings
 
-import ribasim
-import ribasim.nodes
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
@@ -15,7 +13,7 @@ from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 
@@ -75,7 +73,7 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2025, 1, 1)
+endtime = datetime.datetime(2024, 3, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -100,12 +98,103 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
-# check basin area
+# # Parameterization
+
+# %% Nodes
+
+# %%# Basin (characteristics)
+
+# %% Model specific tweaks
+ribasim_model.merge_basins(
+    node_id=1101, to_node_id=342, are_connected=False
+)  # too small basin, caused numerical issues
+ribasim_model.merge_basins(
+    node_id=342, to_node_id=173
+)  # basin 1101 is an enclave-like area, merge it with the surrounding area
+ribasim_model.merge_basins(node_id=1022, to_node_id=297)  # 518 m2
+ribasim_model.merge_basins(node_id=379, to_node_id=262)  # 803 m2
+ribasim_model.merge_basins(node_id=913, to_node_id=95)  # 1420 m2
+ribasim_model.merge_basins(node_id=1162, to_node_id=142, are_connected=False)  # 1921 m2
+ribasim_model.merge_basins(node_id=673, to_node_id=89)  # 2050 m2
+ribasim_model.merge_basins(node_id=1115, to_node_id=96)  # 2112 m2
+ribasim_model.merge_basins(node_id=1060, to_node_id=26)  # boezem like area, caused wl difference
+ribasim_model.merge_basins(node_id=1083, to_node_id=73)  # boezem like area, caused wl difference
+ribasim_model.merge_basins(node_id=782, to_node_id=399, are_connected=False)  # basin with open water connection
+ribasim_model.merge_basins(node_id=819, to_node_id=387)  # small forest like area without hydroobjects in the data
+ribasim_model.merge_basins(node_id=979, to_node_id=985)  # boezem like area, caused wl difference
+ribasim_model.merge_basins(node_id=862, to_node_id=1137)  # enclave
+ribasim_model.merge_basins(node_id=1142, to_node_id=573)  # enclave
+ribasim_model.merge_basins(node_id=1137, to_node_id=730, are_connected=False)  # enclave
+ribasim_model.merge_basins(node_id=1132, to_node_id=274, are_connected=False)  # enclave
+ribasim_model.merge_basins(node_id=660, to_node_id=500)  # missing streefpeil
+ribasim_model.merge_basins(node_id=893, to_node_id=895)  # missing streefpeil at Vlieland
+
+
+# %%# # small basins at polder in the South with water level deviations
+ribasim_model.merge_basins(node_id=796, to_node_id=153)  # Willem Jongma
+ribasim_model.merge_basins(node_id=867, to_node_id=869, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=869, to_node_id=925, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=925, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=918, to_node_id=950, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=950, to_node_id=951, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=951, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1159, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1109, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=805, to_node_id=1113, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1113, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=863, to_node_id=1112, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1160, to_node_id=792, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=924, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=872, to_node_id=992, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=955, to_node_id=917, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=917, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=956, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=963, to_node_id=153, are_connected=True)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1112, to_node_id=792, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=792, to_node_id=853, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=923, to_node_id=853, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1075, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=1146, to_node_id=153, are_connected=False)  # Willem Jongsma
+ribasim_model.merge_basins(node_id=853, to_node_id=153, are_connected=True)  # Willem Jongsma
+
+# remove undeleted nodes from the Willem Jongma polder
+# %%#
+ribasim_model.merge_basins(node_id=1074, to_node_id=254)  # 3753 m2
+ribasim_model.merge_basins(node_id=1128, to_node_id=458, are_connected=False)  # 4315 m2
+ribasim_model.merge_basins(node_id=1108, to_node_id=87)  # 4564 m2
+ribasim_model.merge_basins(node_id=961, to_node_id=463)  # 5032 m2
+ribasim_model.merge_basins(node_id=674, to_node_id=750)  # 5555 m2
+ribasim_model.merge_basins(node_id=1087, to_node_id=89)  # 5715 m2
+ribasim_model.merge_basins(node_id=902, to_node_id=639)  # 5867 m2
+
+ribasim_model.merge_basins(node_id=945, to_node_id=589)  # MR 10114 numerically unstable, increase size
+ribasim_model.merge_basins(node_id=1050, to_node_id=561)  # MR 10575 numerically unstable, increase size
+ribasim_model.merge_basins(node_id=1004, to_node_id=261)  # MR 10529 numerically unstable, increase size
+ribasim_model.merge_basins(node_id=49, to_node_id=1015)  # MR 9574 numerically unstable, increase size
+
+
+# %%#
+# some from and to nodes are the same due to the merging, fix it
+same_from_to = ribasim_model.edge.df.copy(deep=True)
+same_from_to = same_from_to.loc[
+    same_from_to.from_node_id == same_from_to.to_node_id, "from_node_id"
+]  # selecting either from_node_id or to_node_id, as they are the same
+
+for node_id_WJ in same_from_to:
+    ribasim_model.remove_node(node_id=node_id_WJ, remove_edges=True)
+
+
 ribasim_param.validate_basin_area(ribasim_model)
 
-# model specific tweaks
+
+# %% Model specific tweaks
+
+
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+
+
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
@@ -127,7 +216,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(158166, 553915)),
+    Node(new_node_id + 1, Point(158166, 553916)),
     [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
 )
 
@@ -197,16 +286,39 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(new_node_id, Point(170894, 591637)), [level_boundary.Static(level=[default_level])]
 )
 
-pump = ribasim_model.pump.add(Node(new_node_id + 1, Point(170902, 591432)), [pump.Static(flow_rate=[700 / 60])])
+pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(170902, 591432)), [pump.Static(flow_rate=[700 / 60])])
 
-ribasim_model.edge.add(ribasim_model.basin[4], pump)
-ribasim_model.edge.add(pump, level_boundary_node)
+ribasim_model.edge.add(ribasim_model.basin[4], pump_node)
+ribasim_model.edge.add(pump_node, level_boundary_node)
 
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
-# insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
+# %% #Add LB at Vlieland
+new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
+
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(new_node_id, Point(127410, 585808)), [level_boundary.Static(level=[default_level])]
+)
+
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(new_node_id + 1, Point(127030, 585934)),
+    [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
+)
+
+ribasim_model.edge.add(ribasim_model.basin[1148], tabulated_rating_curve_node)
+ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+
+
+ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
+ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
+ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+
+# %% Implement standard profile and a storage basin
+
+
+# Insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
     ribasim_model,
     unknown_streefpeil=unknown_streefpeil,

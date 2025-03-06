@@ -186,8 +186,8 @@ class Network:
                 else:
                     nodes_select = nodes_select[nodes_select.distance(geometry) <= self.tolerance]
 
-                # Only one node. Skip edge. The geometry.length < self.tolerance, so start/end nodes have been dissolved
-                if len(nodes_select) == 1:
+                # Only one or zero node. Skip edge. The geometry.length < self.tolerance, so start/end nodes have been dissolved
+                if len(nodes_select) <= 1:
                     continue
 
                 # More than one node. We order selected nodes by distance from start_node

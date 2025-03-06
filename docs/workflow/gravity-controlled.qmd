@@ -1,0 +1,12 @@
+---
+title: "gravity controlled"
+---
+
+Workflow for deriving and parametizing "gravity controlled systems". They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO.
+You need code in [`src/ribasim_nl`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl).
+
+Under `notebooks` you'll find 3 scrips per water authority, e.g. `notebooks\aa_en_maas`, you can run in sequence.
+
+1. `01_fix_model.py` will "fix" the GIS-models supplied by Sweco in the directories `{authority}_2024_6_3` to valid Ribasim-models in the directory `{authority}_fix_model`
+2. `02_prepare_model.py`will read `{authority}_fix_model` and add `levels` and `flow_rate` to the model and a `static_data.xlsx` that can be reviewed. The model will be written as `{authority}_prepare_model`
+3. `03_parameterized_model.py` will read `{authority}_prepare_model` and `static_data.xlsx` to a model `{authority}_parameterized_model`

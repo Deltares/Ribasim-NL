@@ -323,3 +323,15 @@ class Control:
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
         return control_dict
+
+    def run_afvoer(self):
+        control_dict = self.read_model_output()
+        control_dict = self.initial_final_level(control_dict)
+        control_dict = self.min_max_level(control_dict)
+        control_dict = self.error(control_dict)
+        control_dict = self.stationary(control_dict)
+        control_dict = self.find_stationary_flow(control_dict)
+
+        self.store_data(data=control_dict, output_path=self.path_control_dict_path)
+
+        return control_dict
