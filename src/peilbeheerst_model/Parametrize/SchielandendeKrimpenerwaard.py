@@ -6,6 +6,7 @@ import warnings
 
 import ribasim
 import ribasim.nodes
+from Parametrize.Rijnland_parametrize import aanvoergebieden
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
@@ -263,9 +264,12 @@ ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.d
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # prepare 'aanvoergebieden'
-aanvoergebieden = supply.special_load_geometry(
-    str(aanvoer_path), "extract", layer="peilbesluitgebied", key="statusobject", value="3"
-)
+if AANVOER_CONDITIONS:
+    aanvoergebieden = supply.special_load_geometry(
+        f_geometry=str(aanvoer_path), method="extract", layer="peilbesluitgebied", key="statusobject", value="3"
+    )
+else:
+    aanvoergebieden = None
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
