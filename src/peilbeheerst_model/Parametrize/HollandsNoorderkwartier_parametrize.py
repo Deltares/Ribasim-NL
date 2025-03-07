@@ -115,55 +115,41 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 # add spui Schermerboezem Den Helder (near gemaal Helsdeur)
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
-
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(114728, 551405)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(114728, 551405)), [level_boundary.Static(level=[default_level])]
 )
-
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(new_node_id + 1, Point(114698, 551327)),
+    Node(geometry=Point(114698, 551327)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.edge.add(ribasim_model.basin[3], tabulated_rating_curve_node)
 ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
 
 # add gemaal and LB at boezemgemaal Monnickendam. Zowel af- als aanvoer. Dit blok: aanvoer
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
-
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(131027, 497603)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(131027, 497603)), [level_boundary.Static(level=[default_level])]
 )
-
-pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(130877, 497615)), [pump.Static(flow_rate=[20])])
-
+pump_node = ribasim_model.pump.add(Node(geometry=Point(130877, 497615)), [pump.Static(flow_rate=[20])])
 ribasim_model.edge.add(level_boundary_node, pump_node)
 ribasim_model.edge.add(pump_node, ribasim_model.basin[3])
 
 # add gemaal and LB at boezemgemaal Monnickendam. Zowel af- als aanvoer. Dit blok: afvoer
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
-
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(131027, 497613)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(131027, 497613)), [level_boundary.Static(level=[default_level])]
 )
-
-pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(130877, 497625)), [pump.Static(flow_rate=[20])])
-
+pump_node = ribasim_model.pump.add(Node(geometry=Point(130877, 497625)), [pump.Static(flow_rate=[20])])
 ribasim_model.edge.add(ribasim_model.basin[3], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
 # add gemaal and LB at Waterlandseboezem .
-new_node_id = max(ribasim_model.edge.df.from_node_id.max(), ribasim_model.edge.df.to_node_id.max()) + 1
-
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(new_node_id, Point(132115, 495290)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(132115, 495290)), [level_boundary.Static(level=[default_level])]
 )
-
-pump_node = ribasim_model.pump.add(Node(new_node_id + 1, Point(132040, 495282)), [pump.Static(flow_rate=[10])])
-
+pump_node = ribasim_model.pump.add(Node(geometry=Point(132040, 495282)), [pump.Static(flow_rate=[10])])
 ribasim_model.edge.add(ribasim_model.basin[2], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
+# (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
