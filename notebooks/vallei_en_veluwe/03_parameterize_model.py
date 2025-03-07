@@ -19,6 +19,7 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 # cloud.synchronize(fil
 #
 # aths=[static_data_xlsx])
+
 # cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %%
@@ -31,6 +32,20 @@ start_time = time.time()
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 559, "active"] = False
+# model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == 665, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 212, "flow_rate"] = 50
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 700, "flow_rate"] = 50
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 374, "flow_rate"] = 4
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 583, "flow_rate"] = 10
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 93, "flow_rate"] = 10
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 403, "flow_rate"] = 10
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 405, "flow_rate"] = 10
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 102, "flow_rate"] = 1
+model.pump.static.df.loc[model.pump.static.df.node_id == 242, "active"] = False
+model.pump.static.df.loc[model.pump.static.df.node_id == 612, "active"] = False
+
+
 # model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == 217, "active"] = False
 # %%
 

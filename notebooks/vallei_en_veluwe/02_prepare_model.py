@@ -111,3 +111,5 @@ static_data.write()
 
 # write model
 model.write(ribasim_toml)
+
+# %%
