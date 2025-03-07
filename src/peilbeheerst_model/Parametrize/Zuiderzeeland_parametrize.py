@@ -36,7 +36,7 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
-aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "wateraanvoergebieden.gpkg")
+aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "peilgebieden.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -110,9 +110,7 @@ ribasim_param.validate_basin_area(ribasim_model)
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(143912, 492256)), [level_boundary.Static(level=[default_level])]
 )
-
 pump_node = ribasim_model.pump.add(Node(geometry=Point(143959, 492198)), [pump.Static(flow_rate=[0.1])])
-
 ribasim_model.edge.add(ribasim_model.basin[31], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
@@ -120,9 +118,7 @@ ribasim_model.edge.add(pump_node, level_boundary_node)
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(157201, 501796)), [level_boundary.Static(level=[default_level])]
 )
-
 pump_node = ribasim_model.pump.add(Node(geometry=Point(157251, 501708)), [pump.Static(flow_rate=[0.1])])
-
 ribasim_model.edge.add(ribasim_model.basin[31], pump_node)
 ribasim_model.edge.add(pump_node, level_boundary_node)
 
@@ -130,7 +126,6 @@ ribasim_model.edge.add(pump_node, level_boundary_node)
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(193502, 526518)), [level_boundary.Static(level=[default_level])]
 )
-
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(193491, 526526)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
@@ -142,7 +137,6 @@ ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[98])
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(185725, 533120)), [level_boundary.Static(level=[default_level])]
 )
-
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(185725, 533098)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
@@ -150,6 +144,13 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[116])
 
+# TODO: Own interpretation (GH)
+# change afvoergemaal to aanvoergemaal
+node_ids = 319, 333, 380, 433, 650
+for n in node_ids:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
+
+# (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
@@ -204,7 +205,7 @@ ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(ribasim_model, None, processor, aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
