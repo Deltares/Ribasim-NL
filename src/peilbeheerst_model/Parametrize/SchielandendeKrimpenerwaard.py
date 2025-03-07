@@ -11,6 +11,7 @@ from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
+from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -289,6 +290,11 @@ ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.d
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+# prepare 'aanvoergebieden'
+aanvoergebieden = supply.special_load_geometry(
+    str(aanvoer_path), "extract", layer="peilbesluitgebied", key="statusobject", value="3"
+)
+
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
@@ -296,9 +302,8 @@ ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.set_aanvoer_flags(
     ribasim_model,
-    str(aanvoer_path),
+    aanvoergebieden,
     processor,
-    load_geometry_kw={"layer": "afvoergebiedaanvoergebied"},
     basin_aanvoer_off=104,
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
