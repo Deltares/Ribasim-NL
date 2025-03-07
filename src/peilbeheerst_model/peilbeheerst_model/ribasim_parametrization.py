@@ -932,9 +932,9 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
         ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
 
     # fill in the nan values
-    ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0, inplace=True)
-    ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0, inplace=True)
-    ribasim_model.pump.static.df["meta_func_circulatie"].fillna(0, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_aanvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_circulatie": 0}, inplace=True)
 
     # Convert the column to string type
     ribasim_model.outlet.static.df["meta_categorie"] = ribasim_model.outlet.static.df["meta_categorie"].astype("string")
@@ -1089,11 +1089,9 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     ] = "Boezem boezem, aanvoer gemaal"
 
     # some pumps have been added due to the feedback form. Assume all these nodes are afvoer gemalen
-    ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].fillna(1.0)
-    ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0.0)
-    ribasim_model.pump.static.df["meta_func_circulatie"] = ribasim_model.pump.static.df["meta_func_circulatie"].fillna(
-        0.0
-    )
+    ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 1}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_aanvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_circulatie": 0}, inplace=True)
 
 
 def set_aanvoer_flags(
@@ -1271,7 +1269,7 @@ def determine_min_upstream_max_downstream_levels(
     check_for_nans_in_columns(pump, "pump")
 
     print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
-    pump.flow_rate = pump.flow_rate.fillna(value=0.1234)
+    pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
