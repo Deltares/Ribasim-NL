@@ -1,6 +1,7 @@
 # %%
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
+from ribasim_nl.check_basin_level import add_check_basin_level
 
 cloud = CloudStorage()
 
@@ -30,7 +31,12 @@ for authority in authorities:
     else:
         tomls = list(ribasim_dir.glob("*.toml"))
         assert len(tomls) == 1
-        controle_output = Control(ribasim_toml=tomls[0], qlr_path=qlr_path)
+        ribasim_toml = tomls[0]
+        model = Model.read(ribasim_toml)
+        if "meta_check_basin_level" not in model.basin.node.df.columns:
+            add_check_basin_level(model=model)
+            model.write(ribasim_toml)
+        controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
         indicators = controle_output.run_afvoer()
 
 assert len(missing_models) == 0
