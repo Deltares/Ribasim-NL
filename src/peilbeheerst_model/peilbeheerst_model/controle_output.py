@@ -185,14 +185,21 @@ class Control:
         df_edge = self.df_edge.copy()
         df_edge["time"] = pd.to_datetime(df_edge["time"])  # convert to time column
 
-        df_edge = df_edge.sort_values(by=["time", "edge_id"], ascending=True).copy()  # sort values, just in case
+        if "edge_id" in df_edge.columns:
+            df_edge = df_edge.sort_values(by=["time", "edge_id"], ascending=True).copy()  # sort values, just in case
+        else:
+            df_edge = df_edge.sort_values(by=["time", "link_id"], ascending=True).copy()
         last_time = df_edge["time"].max()  # retireve max time value
         time_threshold = last_time - pd.Timedelta(hours=n_hours_mean)  # determine the time threshold, likely 24 hours
 
         df_edge_24h = df_edge[df_edge["time"] >= time_threshold].copy()  # seelct above the threshold
 
         # Group by 'edge_id' and calculate the average flow rate over the last 24 hours
-        df_edge_avg = df_edge_24h.groupby("edge_id", as_index=False).agg(
+        if "edge_id" in df_edge_24h.columns:
+            grouper = df_edge_24h.groupby("edge_id", as_index=False)
+        else:
+            grouper = df_edge_24h.groupby("link_id", as_index=False)
+        df_edge_avg = grouper.agg(
             {
                 "flow_rate": "mean",  # take the mean, as the pumps may not show stationairy results in one timestep
                 "from_node_id": "first",  # remains the same for each timestep
