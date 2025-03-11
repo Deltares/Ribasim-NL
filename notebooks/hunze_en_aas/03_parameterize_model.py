@@ -1,14 +1,16 @@
 # %%
 import time
+from pathlib import Path
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.check_basin_level import add_check_basin_level
 
 cloud = CloudStorage()
 authority = "HunzeenAas"
 short_name = "hea"
-run_model = True
-run_period = None
+run_model = False
+ribasim_exe = Path(r"c:\\Ribasim_dev\\ribasim.exe")
 static_data_xlsx = cloud.joinpath(
     authority,
     "verwerkt",
@@ -17,6 +19,7 @@ static_data_xlsx = cloud.joinpath(
 )
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
+qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
 # cloud.synchronize(filepaths=[static_data_xlsx])
@@ -35,7 +38,14 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
 
+# %%fixes
+# model.link.df = model.link.df[~model.link.df.index.isin([2488, 967])]
+model.remove_node(node_id=1126, remove_edges=True)
+model.remove_node(node_id=1023, remove_edges=True)
+
+
 # Write model
+add_check_basin_level(model=model)
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)
 
@@ -43,13 +53,10 @@ model.write(ribasim_toml)
 
 # run model
 if run_model:
-    if run_period is not None:
-        model.endtime = model.starttime + run_period
-        model.write(ribasim_toml)
-    exit_code = model.run()
+    exit_code = model.run(ribasim_exe=ribasim_exe)
     assert exit_code == 0
 
 # %%
-controle_output = Control(ribasim_toml=ribasim_toml)
-indicators = controle_output.run_all()
+controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+indicators = controle_output.run_afvoer()
 # %%
