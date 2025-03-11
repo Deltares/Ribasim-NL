@@ -67,7 +67,7 @@ def read_qq_curve(kwk_df):
 
 def read_qhq(verdeling_df):
     df = verdeling_df.loc[verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :]
-    df.columns = ["control_flow_rate", "min_crest_level", "flow_rate_1", "flow_rate_2"]
+    df.columns = ["control_flow_rate", "min_upstream_level", "flow_rate_1", "flow_rate_2"]
 
 
 def read_kwk_properties(kwk_df):
@@ -84,13 +84,13 @@ def read_flow_kwargs(kwk_properties, include_crest_level=False):
         "minimale capaciteit (m3/s)": "min_flow_rate",
     }
     if include_crest_level:
-        mapper["Streefpeil (m +NAP)"] = "min_crest_level"
+        mapper["Streefpeil (m +NAP)"] = "min_upstream_level"
 
     kwargs = kwk_properties.rename(mapper).to_dict()
     if "flow_rate" in kwargs.keys():
         kwargs["max_flow_rate"] = kwargs["flow_rate"]
     kwargs = {
-        k: [v] for k, v in kwargs.items() if k in ["flow_rate", "min_flow_rate", "max_flow_rate", "min_crest_level"]
+        k: [v] for k, v in kwargs.items() if k in ["flow_rate", "min_flow_rate", "max_flow_rate", "min_upstream_level"]
     }
     # kwargs["flow_rate"] = [kwk_properties["Capaciteit (m3/s)"]]
     return kwargs
@@ -130,7 +130,6 @@ def read_pid(control_properties, control_basin_id):
         pid_control.Static(
             listen_node_id=[control_basin_id],
             target=[control_properties["Streefpeil (m+NAP)"]],
-            listen_node_type="Basin",
             proportional=[p],
             integral=[i],
             derivative=[0.0],
@@ -202,7 +201,7 @@ network.overlay(basin_poly_gdf[["basin_id", "geometry"]])  # basin_id toekennen 
 
 # het netwerk om afstanden te bepalen tot
 links_gdf = network.links
-network_union_lines = links_gdf.unary_union
+network_union_lines = links_gdf.union_all()
 
 basin_poly_gdf.set_index("basin_id", inplace=True)  # basin_id is Index
 
@@ -253,7 +252,7 @@ for row in boundary_gdf.itertuples():
     if row.type == "FlowBoundary":
         table = model.flow_boundary
         table.add(
-            Node(node_id, point, name=name),
+            Node(node_id, point, name=name, meta_meetlocatie_code=row.meetlocatie_code),
             [flow_boundary.Static(flow_rate=[row.flow_rate])],
         )
         # zoeken aangrenzende basin
@@ -269,9 +268,6 @@ for row in boundary_gdf.itertuples():
     elif row.type == "Terminal":
         table = model.terminal
         table.add(Node(node_id, point, name=name))
-
-    # toevoegen meta_code
-    table.node.df.loc[table.node.df.node_id == node_id, "meta_meetlocatie_code"] = row.meetlocatie_code
 
 # %% kunsterken toevoegen
 
@@ -324,7 +320,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         # check if code-value is the same in both Excels
         if kwk_properties["Kunstwerkcode"] != row.code:
             raise ValueError(
-                f"code for {row.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties["Kunstwerkcode"]} != {row.code}"
+                f"code for {row.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties['Kunstwerkcode']} != {row.code}"
             )
 
         # prepare static-data for updating node
@@ -358,7 +354,6 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         if ds_basin_id is None:
             print("  verbinden naar dichtsbijzijnde LevelBoundary of Terminal")
             dfs = (getattr(model, i).node.df for i in ["level_boundary", "terminal"])
-            dfs = (i.set_index("node_id") for i in dfs if i is not None)
             df = pd.concat(list(dfs))
             boundary = df.loc[df.distance(point).idxmin()]
             boundary_node_id = boundary.name
@@ -406,7 +401,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
         "Eigenschap"
     ].to_list()
 
-    control_state = [f"{verdeelsleutel}_{idx+1:03d}" for idx in range(len(control_flow_rate))]
+    control_state = [f"{verdeelsleutel}_{idx + 1:03d}" for idx in range(len(control_flow_rate))]
 
     truth_state = [
         "".join(["T"] * i + ["F"] * len(control_flow_rate))[0 : len(control_flow_rate)]
@@ -415,19 +410,20 @@ for verdeelsleutel in VERDEELSLEUTELS:
 
     listen_node_id = (
         model.node_table()
-        .df.set_index("meta_meetlocatie_code")
+        .df.reset_index()
+        .set_index("meta_meetlocatie_code")
         .at[verdeelsleutel_properties["Meetlocatiecode"], "node_id"]
     )
     data = [
         discrete_control.Variable(
             compound_variable_id=1,
             listen_node_id=[listen_node_id],
-            listen_node_type=[model.get_node_type(listen_node_id)],
             variable=["flow_rate"],
         ),
         discrete_control.Condition(
             compound_variable_id=1,
             greater_than=control_flow_rate,
+            condition_id=list(range(1, len(control_flow_rate) + 1)),
             meta_control_state=control_state,
         ),
         discrete_control.Logic(
@@ -452,9 +448,9 @@ for verdeelsleutel in VERDEELSLEUTELS:
         qhq_df = verdeling_df.loc[verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :].iloc[
             :, : len(waterlichamen) + 2
         ]
-        qhq_df.columns = ["control_flow_rate", "min_crest_level"] + waterlichamen
+        qhq_df.columns = ["control_flow_rate", "min_upstream_level"] + waterlichamen
 
-        min_crest_level = qhq_df.min_crest_level.to_list()
+        min_upstream_level = qhq_df.min_upstream_level.to_list()
 
         for waterlichaam in waterlichamen:
             index = waterlichaam[-1]
@@ -499,7 +495,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
                     [
                         outlet.Static(
                             flow_rate=qhq_df[waterlichaam].to_list(),
-                            min_crest_level=min_crest_level,
+                            min_upstream_level=min_upstream_level,
                             control_state=control_state,
                         )
                     ],
@@ -529,7 +525,6 @@ for verdeelsleutel in VERDEELSLEUTELS:
             if ds_basin_id is None:
                 print("  verbinden naar dichtsbijzijnde LevelBoundary of Terminal")
                 dfs = (getattr(model, i).node.df for i in ["level_boundary", "terminal"])
-                dfs = (i.set_index("node_id") for i in dfs if i is not None)
                 df = pd.concat(list(dfs))
                 boundary = df.loc[df.distance(point).idxmin()]
                 boundary_node_id = boundary.name
@@ -565,9 +560,9 @@ for kwk in kwk_topology.itertuples():
     for row in df.itertuples():
         ignore_links += [(row.node_id, kwk.node_id)]
 
-# %% basins
-# for row in basin_poly_gdf[basin_poly_gdf.index == 1].itertuples():
+# %%
 
+# opbouwen basin over het netwerk
 profile_geometries = []
 for row in basin_poly_gdf.itertuples():
     # row = next(i for i in basin_poly_gdf.itertuples() if i.Index == 1)
@@ -593,13 +588,13 @@ for row in basin_poly_gdf.itertuples():
 
     if model.manning_resistance.node.df is not None:
         basin_boundary_nodes = basin_boundary_nodes[
-            ~basin_boundary_nodes.index.isin(model.manning_resistance.node.df.node_id)
+            ~basin_boundary_nodes.index.isin(model.manning_resistance.node.df.index)
         ]
 
     # overige basin_boundary_nodes voorzien van een ManningResistance
     for bbn_row in basin_boundary_nodes.reset_index().itertuples():
         node = Node(bbn_row.node_id, bbn_row.geometry)
-        poly = basin_poly_gdf.loc[[bbn_row.upstream, bbn_row.downstream]].buffer(1).unary_union.buffer(-1)
+        poly = basin_poly_gdf.loc[[bbn_row.upstream, bbn_row.downstream]].buffer(1).union_all().buffer(-1)
         line = LineString(
             [
                 network.nodes.at[bbn_row.node_id, "geometry"],
@@ -671,7 +666,7 @@ for row in basin_poly_gdf.itertuples():
             potential_evaporation=[0.0],
             infiltration=[0.0],
             precipitation=[0.0],
-            urban_runoff=[0.0],
+            # urban_runoff=[0.0],
         ),
         basin.State(level=[max(max(level), 0)]),  # meter waterdiepte, maar minimaal dan NAP
         basin.Area(geometry=[basin_poly_gdf.at[row.Index, "geometry"]]),
@@ -679,7 +674,7 @@ for row in basin_poly_gdf.itertuples():
 
     model.basin.add(basin_node, data)
 
-    nodes_series = model.node_table().df.set_index("node_id")["node_type"].apply(pascal_to_snake_case)
+    nodes_series = model.node_table().df["node_type"].apply(pascal_to_snake_case)
 
     # connect all nodes_from to basin
     for node_id in nodes_from:
@@ -699,10 +694,12 @@ for row in basin_poly_gdf.itertuples():
         )
 
 
-# %% Verbinden overgebleven levelBoundaries zonder kunstwerken (bijv. Westerschelde en Nieuwe Maas)
+# %%
+
+# Verbinden overgebleven levelBoundaries zonder kunstwerken (bijv. Westerschelde en Nieuwe Maas)
 for boundary_node_id in model.level_boundary.node.df[
-    ~model.level_boundary.node.df.node_id.isin(boundary_node_ids)
-].node_id.to_list():
+    ~model.level_boundary.node.df.index.isin(boundary_node_ids)
+].index.to_list():
     level = model.level_boundary.static.df.set_index("node_id").at[boundary_node_id, "level"]
     us_basin_id = network.find_upstream(boundary_node_id, "basin_id", max_iters=50)
 
@@ -715,7 +712,7 @@ for boundary_node_id in model.level_boundary.node.df[
     # toevoegen outlet met oneindig capaciteit en een crest_level op boundary level
     model.outlet.add(
         Node(node_id, network.nodes.at[node_id, "geometry"]),
-        [outlet.Static(flow_rate=[99999], min_crest_level=[level])],
+        [outlet.Static(flow_rate=[99999], min_upstream_level=[level])],
     )
 
     model.edge.add(
@@ -733,6 +730,13 @@ for boundary_node_id in model.level_boundary.node.df[
     boundary_node_ids += [boundary_node_id]
 
 # %%updaten manningResistances
+# Deze knopen zijn verbonden met 1 basin náást een node die wél de juiste basins verbindt.
+# We verwijderen deze knopen.
+# Later kunnen we het stuk bij basins verbeteren
+model.remove_node(node_id=5594, remove_edges=True)
+model.remove_node(node_id=5410, remove_edges=True)
+model.remove_node(node_id=8716, remove_edges=True)
+
 for row in model.manning_resistance.static.df.itertuples():
     edge_to = model.edge.df[model.edge.df["to_node_id"] == row.node_id].iloc[0]
     edge_from = model.edge.df[model.edge.df["from_node_id"] == row.node_id].iloc[0]
@@ -748,6 +752,7 @@ for row in model.manning_resistance.static.df.itertuples():
 # %%wegschrijven model
 print("write ribasim model")
 ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_netwerk", "hws.toml")
+model.use_validation = True
 model.write(ribasim_toml)
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 
