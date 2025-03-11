@@ -78,19 +78,21 @@ def read_kwk_properties(kwk_df):
     return properties
 
 
-def read_flow_kwargs(kwk_properties, include_crest_level=False):
+def read_flow_kwargs(kwk_properties, include_crest_level=True):
     mapper = {
         "Capaciteit (m3/s)": "flow_rate",
         "minimale capaciteit (m3/s)": "min_flow_rate",
+        "Streefpeil (m +NAP)": "min_upstream_level",
+        "Streefpeil benedenstrooms (m +NAP)": "max_downstream_level",
     }
-    if include_crest_level:
-        mapper["Streefpeil (m +NAP)"] = "min_upstream_level"
 
     kwargs = kwk_properties.rename(mapper).to_dict()
     if "flow_rate" in kwargs.keys():
         kwargs["max_flow_rate"] = kwargs["flow_rate"]
     kwargs = {
-        k: [v] for k, v in kwargs.items() if k in ["flow_rate", "min_flow_rate", "max_flow_rate", "min_upstream_level"]
+        k: [v]
+        for k, v in kwargs.items()
+        if k in ["flow_rate", "min_flow_rate", "max_flow_rate", "min_upstream_level", "max_downstream_level"]
     }
     # kwargs["flow_rate"] = [kwk_properties["Capaciteit (m3/s)"]]
     return kwargs
