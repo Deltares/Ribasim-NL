@@ -8,7 +8,7 @@ cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
-run_model = True
+run_model = False
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -33,7 +33,8 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-
+model.remove_node(node_id=1076, remove_edges=True)
+# model.edge.df = model.edge.df[model.edge.df.index != 1198]
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)
@@ -41,6 +42,7 @@ model.write(ribasim_toml)
 # %%
 
 # run model
+
 if run_model:
     exit_code = model.run()
     assert exit_code == 0
