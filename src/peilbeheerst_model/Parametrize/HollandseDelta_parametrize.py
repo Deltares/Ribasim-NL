@@ -101,14 +101,18 @@ with warnings.catch_warnings():
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
-# %% Model specific tweaks
+# model specific tweaks
+# merge small basins into larger basins for numerical stability
 ribasim_model.merge_basins(node_id=149, to_node_id=21)  # too small basin
 ribasim_model.merge_basins(node_id=559, to_node_id=120)  # small basin + deviations
 ribasim_model.merge_basins(node_id=7, to_node_id=54)  # small basin causes numerical instabilities
 ribasim_model.merge_basins(node_id=720, to_node_id=54)  # small basin causes numerical instabilities
+# merge overlapping basins
+ribasim_model.merge_basins(node_id=633, to_node_id=475)
+ribasim_model.merge_basins(node_id=329, to_node_id=325)
 
 
-# %% change unknown streefpeilen to a default streefpeil
+# change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
 ] = str(unknown_streefpeil)
