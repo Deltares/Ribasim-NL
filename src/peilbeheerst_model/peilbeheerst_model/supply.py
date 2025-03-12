@@ -198,7 +198,7 @@ class SupplyBasin:
                 msg = f"Node-ID {n} not found as basin node-ID."
                 raise ValueError(msg)
 
-            basin_areas.loc[basin_areas["node_id"] == n, "meta_aanvoer"] = bool_supply
+            basin_areas.loc[basin_areas["meta_node_id"] == n, "meta_aanvoer"] = bool_supply
             print(f'Basin {n} "meta_aanvoer" set to {bool_supply}')
 
         # updated data: basin nodes
