@@ -170,7 +170,7 @@ ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df.length = 10
-ribasim_model.manning_resistance.static.df.manning_n = 0.001
+ribasim_model.manning_resistance.static.df.manning_n = 0.01
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
