@@ -2023,9 +2023,13 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
     )
     structure_static = structure_static.drop(columns="from_node_id_remove")  # remove redundant column
 
+    # filter the basin state table, in case basins have been converted to Level Boundaries in the FF
+    basin_state = ribasim_model.basin.state.df[["node_id", "level"]].copy()
+    basin_state = basin_state.loc[basin_state.node_id.isin(ribasim_model.basin.node.df.index.values)]
+
     # merge upstream target level to the outlet static table by using the Basins
     structure_static = structure_static.merge(
-        right=ribasim_model.basin.state.df[["node_id", "level"]],
+        right=basin_state,
         left_on="to_node_id",
         right_on="node_id",
         how="left",
