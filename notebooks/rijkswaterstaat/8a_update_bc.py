@@ -66,8 +66,12 @@ monsin_series.name = "flow_rate"
 # %% set FlowBoundary / Time
 
 # get node ids
-lobith_node_id = model.flow_boundary.node.df.set_index("meta_meetlocatie_code").at["LOBH", "node_id"]
-monsin_node_id = model.flow_boundary.node.df.set_index("meta_meetlocatie_code").at["MONS", "node_id"]
+lobith_node_id = (
+    model.flow_boundary.node.df.reset_index(drop=False).set_index("meta_meetlocatie_code").at["LOBH", "node_id"]
+)
+monsin_node_id = (
+    model.flow_boundary.node.df.reset_index(drop=False).set_index("meta_meetlocatie_code").at["MONS", "node_id"]
+)
 
 # set flow boundary timeseries
 lobith_df = pd.DataFrame(lobith_series).reset_index()
@@ -91,9 +95,9 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
 
 # %% update LevelBoundary / Time
 
-node_ids = (
-    model.node_table().df[model.node_table().df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])].node_id.to_numpy()
-)
+node_ids = model.level_boundary.node.df[
+    model.level_boundary.node.df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])
+].index.to_numpy()
 
 time = pd.date_range(model.starttime, model.endtime)
 
@@ -142,7 +146,7 @@ level = [
 ]
 level_cycle_df = pd.DataFrame(
     {
-        "dayofyear": [datetime.strptime(i, "%m-%d").timetuple().tm_yday for i in day_of_year],
+        "dayofyear": [datetime.strptime(f"2023-{i}", "%Y-%m-%d").timetuple().tm_yday for i in day_of_year],
         "level": level,
     }
 ).set_index("dayofyear")

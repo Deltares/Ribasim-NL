@@ -266,7 +266,7 @@ for row in boundary_gdf.itertuples():
             data = [level_boundary.Time(level=level, time=time)]
         else:
             data = [level_boundary.Static(level=[row.level])]
-        table.add(Node(node_id, point, name=name), data)
+        table.add(Node(node_id, point, name=name, meta_meetlocatie_code=row.meetlocatie_code), data)
     elif row.type == "Terminal":
         table = model.terminal
         table.add(Node(node_id, point, name=name))
