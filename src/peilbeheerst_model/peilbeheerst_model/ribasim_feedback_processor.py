@@ -28,6 +28,11 @@ mapping = {
 
 
 class RibasimFeedbackProcessor:
+    _basin_aanvoer_on: tuple = None
+    _basin_aanvoer_off: tuple = None
+    _outlet_aanvoer_on: tuple = None
+    _outlet_aanvoer_off: tuple = None
+
     def __init__(
         self,
         name,
@@ -64,18 +69,21 @@ class RibasimFeedbackProcessor:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
-    def load_feedback(self, feedback_excel):
+    @staticmethod
+    def load_feedback(feedback_excel):
         df = pd.read_excel(feedback_excel, sheet_name="Feedback_Formulier", skiprows=7)
         df = df[df["Actie"].notna()]
         return df
 
-    def load_node_type(self, feedback_excel):
+    @staticmethod
+    def load_node_type(feedback_excel):
         df = pd.read_excel(feedback_excel, sheet_name="Node_Data")
         df = df[df["node_id"].notna()]
         df = df.set_index("node_id")
         return df
 
-    def load_ribasim_model(self, ribasim_toml):
+    @staticmethod
+    def load_ribasim_model(ribasim_toml):
         model = ribasim.Model(filepath=ribasim_toml)
         return model
 
@@ -426,7 +434,8 @@ class RibasimFeedbackProcessor:
                 self.model.edge.df.at[row_index, "geometry"] = reversed_line
             print(f"Swapped edge direction between Node A: {node_a} and Node B: {node_b}")
             logging.info(
-                f"Successfully swapped edge direction between Node A: {node_a} and Node B: {node_b}, Action: Aanpassen, Adjustment: Stroomrichting Omdraaien"
+                f"Successfully swapped edge direction between Node A: {node_a} and Node B: {node_b}, "
+                f"Action: Aanpassen, Adjustment: Stroomrichting Omdraaien"
             )
         except Exception as e:
             logging.error(f"Error adjusting edge: {e}")
@@ -482,7 +491,10 @@ class RibasimFeedbackProcessor:
 
     def functie_gemalen(self):
         # read sheet with the updated the pump functions
-        df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0)
+        try:
+            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0)
+        except ValueError:
+            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0)
 
         if len(df_FG) > 0:  # if the sheet is filled in, proceed
             # print warning if there are non existing pumps
@@ -514,3 +526,94 @@ class RibasimFeedbackProcessor:
         self.update_target_levels()
         self.functie_gemalen()
         self.write_ribasim_model()
+
+    def get_basin_aanvoer_corrections(self) -> None:
+        """Extract corrections on basin 'aanvoer'-flagging from the feedback forms."""
+        sheet_name = "Aan_afvoer_basins"
+        try:
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name)
+        except ValueError:
+            logging.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
+            self._basin_aanvoer_on = ()
+            self._basin_aanvoer_off = ()
+        else:
+            aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Basin ID"].to_numpy(dtype=int)
+            afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Basin ID"].to_numpy(dtype=int)
+
+            self._basin_aanvoer_on = tuple(aanvoer_ids)
+            self._basin_aanvoer_off = tuple(afvoer_ids)
+        finally:
+            logging.warning(
+                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: '
+                f'Make sure that feedback forms will have a sheet-name titled "{sheet_name}".'
+            )
+
+    def get_outlet_aanvoer_corrections(self) -> None:
+        """Extract corrections on outlet 'aanvoer'-flagging from the feedback forms."""
+        # TODO: Remove this 'missing worksheet'-catch in the future
+        sheet_name = "Aan_afvoer_outlets"
+        try:
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name)
+        except ValueError:
+            logging.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
+            self._outlet_aanvoer_on = ()
+            self._outlet_aanvoer_off = ()
+        else:
+            aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Outlet node_id"].to_numpy(dtype=int)
+            afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Outlet node_id"].to_numpy(dtype=int)
+
+            self._outlet_aanvoer_on = tuple(aanvoer_ids)
+            self._outlet_aanvoer_off = tuple(afvoer_ids)
+        finally:
+            logging.warning(
+                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: '
+                f'Make sure that feedback forms will have a sheet-name titled "{sheet_name}".'
+            )
+
+    @property
+    def basin_aanvoer_on(self) -> tuple:
+        """Basin 'aanvoer'-flagging: True
+
+        :return: basin-IDs
+        :rtype: tuple
+        """
+        if self._basin_aanvoer_on is None:
+            self.get_basin_aanvoer_corrections()
+
+        return self._basin_aanvoer_on
+
+    @property
+    def basin_aanvoer_off(self) -> tuple:
+        """Basin 'aanvoer'-flagging: False
+
+        :return: basin-IDs
+        :rtype: tuple
+        """
+        if self._basin_aanvoer_off is None:
+            self.get_basin_aanvoer_corrections()
+
+        return self._basin_aanvoer_off
+
+    @property
+    def outlet_aanvoer_on(self) -> tuple:
+        """Oulet 'aanvoer'-flagging: True
+
+        :return: outlet-IDs
+        :rtype: tuple
+        """
+        if self._outlet_aanvoer_on is None:
+            self.get_outlet_aanvoer_corrections()
+
+        return self._outlet_aanvoer_on
+
+    @property
+    def outlet_aanvoer_off(self) -> tuple:
+        """Outlet 'aanvoer'-flagging: False
+
+        :return: outlet-IDs
+        :rtype: tuple
+        """
+        if self._outlet_aanvoer_off is None:
+            self.get_outlet_aanvoer_corrections()
+
+        return self._outlet_aanvoer_off

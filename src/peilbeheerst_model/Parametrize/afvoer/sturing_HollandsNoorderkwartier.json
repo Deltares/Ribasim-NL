@@ -72,7 +72,7 @@
     "Uitlaat buitenwater peilgebied, afvoer gemaal": {
         "upstream_level_offset": 0,
         "downstream_level_offset": 0.15,
-        "max_flow_rate": 25
+        "max_flow_rate": 100
     },
     "Uitlaat buitenwater peilgebied, aanvoer gemaal": {
         "upstream_level_offset": 0.15,
@@ -102,7 +102,7 @@
     "Uitlaat buitenwater boezem, afvoer gemaal": {
         "upstream_level_offset": 0,
         "downstream_level_offset": 0.3,
-        "max_flow_rate": 25
+        "max_flow_rate": 100
     },
     "Uitlaat buitenwater boezem, aanvoer gemaal": {
         "upstream_level_offset": 0.3,
@@ -112,7 +112,7 @@
     "Boezem boezem, afvoer gemaal": {
         "upstream_level_offset": 0,
         "downstream_level_offset": 0.15,
-        "max_flow_rate": 50
+        "max_flow_rate": 100
     },
     "Boezem boezem, aanvoer gemaal": {
         "upstream_level_offset": 0.15,

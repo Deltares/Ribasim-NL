@@ -1,5 +1,6 @@
 # import pathlib
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -15,13 +16,17 @@ import tqdm.auto as tqdm
 from shapely.geometry import LineString
 
 from peilbeheerst_model import supply
+from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
 
 
-def get_current_max_nodeid(ribasim_model):
+# FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
+#  (e.g., the used 'meta_node_id'-column contains many `<NA>`-values).
+def get_current_max_node_id(ribasim_model: ribasim.Model) -> int:
     with warnings.catch_warnings():
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node_table().df
+
     if len(df_all_nodes) == 0:
         max_id = 1
     else:
@@ -297,7 +302,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
         ribasim_model.flow_boundary.static.df = ribasim_model.flow_boundary.static.df.iloc[0:0]
 
     # up till this point, all FlowBoundaries have been converted to TRC's. Now the actual LevelBoundaries needs to be created
-    max_id = get_current_max_nodeid(ribasim_model)
+    max_id = get_current_max_node_id(ribasim_model)
     nodes_FlowBoundary["meta_old_node_id"] = nodes_FlowBoundary.meta_node_id  # store for later
     nodes_FlowBoundary["node_id"] = max_id + nodes_FlowBoundary.index + 1  # implement new id's
     # nodes_FlowBoundary["node_id"] = nodes_FlowBoundary.meta_node_id.copy()
@@ -469,11 +474,11 @@ def add_discrete_control_nodes(ribasim_model):
 
     for i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
         # Get max nodeid and iterate
-        cur_max_nodeid = get_current_max_nodeid(ribasim_model)
-        if cur_max_nodeid < 90000:
-            new_nodeid = 90000 + cur_max_nodeid + 1  # aanpassen loopt vanaf 90000 +1
+        cur_max_node_id = get_current_max_node_id(ribasim_model)
+        if cur_max_node_id < 90000:
+            new_nodeid = 90000 + cur_max_node_id + 1  # aanpassen loopt vanaf 90000 +1
         else:
-            new_nodeid = cur_max_nodeid + 1
+            new_nodeid = cur_max_node_id + 1
         # print(new_nodeid, end="\r")
 
         # @TODO Ron aangeven in geval van meerdere matches welke basin gepakt moet worden
@@ -927,9 +932,9 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
         ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
 
     # fill in the nan values
-    ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0, inplace=True)
-    ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0, inplace=True)
-    ribasim_model.pump.static.df["meta_func_circulatie"].fillna(0, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_aanvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_circulatie": 0}, inplace=True)
 
     # Convert the column to string type
     ribasim_model.outlet.static.df["meta_categorie"] = ribasim_model.outlet.static.df["meta_categorie"].astype("string")
@@ -1084,21 +1089,23 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     ] = "Boezem boezem, aanvoer gemaal"
 
     # some pumps have been added due to the feedback form. Assume all these nodes are afvoer gemalen
-    ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].fillna(1.0)
-    ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0.0)
-    ribasim_model.pump.static.df["meta_func_circulatie"] = ribasim_model.pump.static.df["meta_func_circulatie"].fillna(
-        0.0
-    )
+    ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 1}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_aanvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_circulatie": 0}, inplace=True)
 
 
 def set_aanvoer_flags(
-    ribasim_model: str | ribasim.Model, aanvoer_regions: str | gpd.GeoDataFrame, **kwargs
+    ribasim_model: str | ribasim.Model,
+    aanvoer_regions: str | gpd.GeoDataFrame,
+    processer: RibasimFeedbackProcessor,
+    **kwargs,
 ) -> ribasim.Model:
     """
     Set the 'aanvoer'-flags for both basins and outlets, grouping the whole pipeline in a single method.
 
     :param ribasim_model: Ribasim model, or file/path to a Ribasim model
     :param aanvoer_regions: geometry data of 'aanvoergebieden', or file/path to this geometry data
+    :param processer: Ribasim feedback processor object
 
     :key aanvoer_enabled: 'aanvoer'-settings are enabled, defaults to True
     :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to None
@@ -1110,6 +1117,7 @@ def set_aanvoer_flags(
 
     :type ribasim_model: str, ribasim.Model
     :type aanvoer_regions: str, geopandas.GeoDataFrame
+    :type processer: RibasimFeedbackProcessor
     :type aanvoer_enabled: bool, optional
     :type basin_aanvoer_on: tuple, optional
     :type basin_aanvoer_off: tuple, optional
@@ -1134,27 +1142,41 @@ def set_aanvoer_flags(
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
+        logging.info("Aanvoer-flagging skipped.")
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
         return ribasim_model
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
+        logging.warning(
+            f'With `aanvoer_regions={aanvoer_regions}`, the whole region is considered an "aanvoergebied". '
+            f"This is a temporary catch and will be deprecated in the future: "
+            f'Make sure that all water boards have a geometry-file from which the "aanvoergebieden" can be deduced.'
+        )
         aanvoer_regions = ribasim_model.basin.area.df.reset_index()
 
     # label basins as 'aanvoergebied'
     sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)  # type: ignore
     sb.exec()
+
+    basin_aanvoer_on = set(basin_aanvoer_on) | set(processer.basin_aanvoer_on)
     if basin_aanvoer_on:
         sb.set_aanvoer_on(*basin_aanvoer_on)
+
+    basin_aanvoer_off = set(basin_aanvoer_off) | set(processer.basin_aanvoer_off)
     if basin_aanvoer_off:
         sb.set_aanvoer_off(*basin_aanvoer_off)
 
     # label outlets as 'aanvoerkunstwerk'
     so = supply.SupplyOutlet(sb.model)
     so.exec(overruling_enabled=overruling_enabled)
+
+    outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processer.outlet_aanvoer_on)
     if outlet_aanvoer_on:
         so.set_aanvoer_on(*outlet_aanvoer_on)
+
+    outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processer.outlet_aanvoer_off)
     if outlet_aanvoer_off:
         so.set_aanvoer_off(*outlet_aanvoer_off)
 
@@ -1233,9 +1255,10 @@ def determine_min_upstream_max_downstream_levels(
         pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
 
     # raise warning if there are np.nan in the columns
-    def check_for_nans_in_columns(
-        df, outlet_or_pump, columns_to_check=["min_upstream_level", "max_downstream_level", "flow_rate", "flow_rate"]
-    ):
+    def check_for_nans_in_columns(df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list = None) -> None:
+        columns_to_check = columns_to_check or ["min_upstream_level", "max_downstream_level", "flow_rate"]
+        assert outlet_or_pump in ("outlet", "pump")
+
         if df[columns_to_check].isnull().values.any():
             warnings.warn(
                 f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
@@ -1246,7 +1269,7 @@ def determine_min_upstream_max_downstream_levels(
     check_for_nans_in_columns(pump, "pump")
 
     print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
-    pump.flow_rate = pump.flow_rate.fillna(value=0.1234)
+    pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
@@ -2000,9 +2023,13 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
     )
     structure_static = structure_static.drop(columns="from_node_id_remove")  # remove redundant column
 
+    # filter the basin state table, in case basins have been converted to Level Boundaries in the FF
+    basin_state = ribasim_model.basin.state.df[["node_id", "level"]].copy()
+    basin_state = basin_state.loc[basin_state.node_id.isin(ribasim_model.basin.node.df.index.values)]
+
     # merge upstream target level to the outlet static table by using the Basins
     structure_static = structure_static.merge(
-        right=ribasim_model.basin.state.df[["node_id", "level"]],
+        right=basin_state,
         left_on="to_node_id",
         right_on="node_id",
         how="left",
