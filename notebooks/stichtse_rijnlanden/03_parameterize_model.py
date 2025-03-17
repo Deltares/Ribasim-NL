@@ -1,13 +1,11 @@
 # %%
 import time
-from pathlib import Path
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.check_basin_level import add_check_basin_level
 
 cloud = CloudStorage()
-ribasim_exe = Path(r"c:\\Ribasim_dev\\ribasim.exe")
 authority = "StichtseRijnlanden"
 short_name = "hdsr"
 run_model = False
@@ -79,14 +77,13 @@ model.solver.maxiters = 100000
 add_check_basin_level(model=model)
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
-# model.endtime = model.starttime + timedelta(days=31)
 model.write(ribasim_toml)
 
 # %%
 
 # run model
 if run_model:
-    exit_code = model.run(ribasim_exe=ribasim_exe)
+    exit_code = model.run()
     assert exit_code == 0
 
 # %%

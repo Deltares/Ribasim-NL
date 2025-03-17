@@ -21,6 +21,7 @@ website:
       contents:
         - workflow/main-watersystem.qmd
         - workflow/level-controlled.qmd
+        - workflow/gravity-controlled.qmd
 
 format:
   html:
