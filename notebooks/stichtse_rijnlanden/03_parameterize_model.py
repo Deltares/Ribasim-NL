@@ -1,13 +1,11 @@
 # %%
 import time
-from pathlib import Path
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.check_basin_level import add_check_basin_level
 
 cloud = CloudStorage()
-ribasim_exe = Path(r"c:\\Ribasim_dev\\ribasim.exe")
 authority = "StichtseRijnlanden"
 short_name = "hdsr"
 run_model = False
@@ -85,7 +83,7 @@ model.write(ribasim_toml)
 
 # run model
 if run_model:
-    exit_code = model.run(ribasim_exe=ribasim_exe)
+    exit_code = model.run()
     assert exit_code == 0
 
 # %%

@@ -1,6 +1,5 @@
 # %%
 import time
-from pathlib import Path
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
@@ -10,7 +9,6 @@ cloud = CloudStorage()
 authority = "HunzeenAas"
 short_name = "hea"
 run_model = False
-ribasim_exe = Path(r"c:\\Ribasim_dev\\ribasim.exe")
 static_data_xlsx = cloud.joinpath(
     authority,
     "verwerkt",
@@ -50,7 +48,7 @@ model.write(ribasim_toml)
 
 # run model
 if run_model:
-    exit_code = model.run(ribasim_exe=ribasim_exe)
+    exit_code = model.run()
     assert exit_code == 0
 
 # %%
