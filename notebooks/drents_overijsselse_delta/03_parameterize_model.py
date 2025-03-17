@@ -3,12 +3,13 @@ import time
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.check_basin_level import add_check_basin_level
 
 cloud = CloudStorage()
 authority = "DrentsOverijsselseDelta"
 short_name = "dod"
 
-run_model = False
+run_model = True
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -36,6 +37,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
+add_check_basin_level(model=model)
 model.write(ribasim_toml)
 
 # %%
