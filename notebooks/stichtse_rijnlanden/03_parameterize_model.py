@@ -79,7 +79,6 @@ model.solver.maxiters = 100000
 add_check_basin_level(model=model)
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
-# model.endtime = model.starttime + timedelta(days=31)
 model.write(ribasim_toml)
 
 # %%
