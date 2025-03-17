@@ -25,6 +25,7 @@ missing_models = []
 missing_runs = []
 
 for authority in authorities:
+    print(authority)
     ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model")
     if not ribasim_dir.exists():
         missing_models += [authority]
