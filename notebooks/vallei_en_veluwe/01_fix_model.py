@@ -18,12 +18,13 @@ name = "venv"
 
 # %% Check if model exist, otherwise download
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
-ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
+
+ribasim_toml = cloud.joinpath(ribasim_dir / "model.toml")
+database_gpkg = cloud.joinpath(ribasim_toml.with_name("database.gpkg"))
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 
-cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg])
+cloud.synchronize(filepaths=[ribasim_dir, database_gpkg, ribasim_toml, fix_user_data_gpkg, model_edits_gpkg])
 
 # %% read model
 model = Model.read(ribasim_toml)
@@ -156,19 +157,22 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 
 # Reset static tables
 model = reset_static_tables(model)
+model.explode_basin_area()
 
 # %%
 actions = [
+    "remove_basin_area",
     "remove_node",
     "remove_edge",
     "add_basin",
     "add_basin_area",
     "update_basin_area",
-    "merge_basins",
     "reverse_edge",
     "move_node",
     "connect_basins",
     "update_node",
+    "merge_basins",
+    "redirect_edge",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 for action in actions:
@@ -181,6 +185,7 @@ for action in actions:
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
+
 
 # remove unassigned basin area
 model.remove_unassigned_basin_area()

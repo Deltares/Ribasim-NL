@@ -871,6 +871,10 @@ class Model(Model):
             if node_id in self.basin.area.df.node_id.to_numpy():
                 poly = self.basin.area.df.set_index("node_id").at[node_id, "geometry"]
 
+                # basin.area.df can have multiple polygons per node_id. In that case we union all polygons
+                if isinstance(poly, pd.Series):
+                    poly = poly.union_all()
+
                 if isinstance(poly, Polygon):
                     poly = MultiPolygon([poly])
 
