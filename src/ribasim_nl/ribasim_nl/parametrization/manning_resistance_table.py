@@ -13,7 +13,7 @@ def update_manning_resistance_static(
     profiles_gpkg: Path | None = None,
     profile_slope: float = 1,
     profile_width: float = 25,
-    manning_n: float = 0.04,
+    manning_n: float = 0.01,
 ):
     """Generate a default manning-table.
 
