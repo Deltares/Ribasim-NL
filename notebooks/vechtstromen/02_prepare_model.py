@@ -65,6 +65,7 @@ if link_geometries_gpkg.exists():
     profiles_df = gpd.read_file(profiles_gpkg)
 else:
     profiles_df = damo_profiles.process_profiles()
+    profiles_df = profiles_df[profiles_df.bottom_level != 0]
     profiles_df.to_file(profiles_gpkg)
     fix_link_geometries(model, network)
     add_link_profile_ids(model, profiles=damo_profiles, id_col="GLOBALID")
@@ -86,6 +87,7 @@ add_streefpeil(
     target_level="GPGZMRPL",
     code="GPGIDENT",
 )
+
 
 # %%
 # OUTLET
@@ -113,10 +115,12 @@ node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node
 profile_ids = [
     model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
-levels = (
-    profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
-).to_numpy()
+# levels = (
+#    profiles_df.loc[profile_ids]["bottom_level"]
+#    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+# ).to_numpy()
+
+levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
@@ -145,7 +149,10 @@ node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.
 profile_ids = [
     model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
-levels = ((profiles_df.loc[profile_ids]["invert_level"] + profiles_df.loc[profile_ids]["bottom_level"]) / 2).to_numpy()
+# levels = ((profiles_df.loc[profile_ids]["invert_level"] + profiles_df.loc[profile_ids]["bottom_level"]) / 2).to_numpy()
+
+# veel bottom levels kloppen niet dus nemen we de invert level -1
+levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
@@ -180,10 +187,13 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 # get all nodata streefpeilen with their profile_ids and levels
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
-levels = (
-    profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
-).to_numpy()
+# levels = (
+#    profiles_df.loc[profile_ids]["bottom_level"]
+#    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+# ).to_numpy()
+
+# Veel bottom_levels kloppen niet, dus we nemen de invert_level -1
+levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
 
 # # update static_data
 profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), name="profielid")
