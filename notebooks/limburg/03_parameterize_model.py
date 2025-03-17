@@ -45,7 +45,7 @@ if run_model:
     exit_code = model.run()
     assert exit_code == 0
 
-    # # %%
-    controle_output = Control(ribasim_toml=ribasim_toml)
-    indicators = controle_output.run_all()
+# # %%
+controle_output = Control(ribasim_toml=ribasim_toml)
+indicators = controle_output.run_afvoer()
 # %%
