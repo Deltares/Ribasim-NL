@@ -93,9 +93,7 @@ add_streefpeil(
 
 # model.basin.area.df.loc[model.basin.area.df.meta_streefpeil == 999, "meta_streefpeil"] = 0.0
 model.basin.area.df.loc[model.basin.area.df.meta_streefpeil > 990, "meta_streefpeil"] = 0.0
-area_df = model.basin.area.df
-area_df.loc[area_df.node_id == 1188, "meta_streefpeil"] = -0.4
-area_df.loc[area_df.node_id == 1048, "meta_streefpeil"] = 12
+
 
 # %%
 

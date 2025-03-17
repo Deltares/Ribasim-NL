@@ -33,6 +33,13 @@ start_time = time.time()
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
+model.merge_basins(basin_id=1054, to_node_id=925)
+model.merge_basins(basin_id=999, to_node_id=1123)
+model.merge_basins(basin_id=1098, to_node_id=865)
+model.merge_basins(basin_id=997, to_node_id=1012)
+model.merge_basins(basin_id=1266, to_node_id=816)
+model.merge_basins(basin_id=976, to_node_id=1111)
+model.merge_basins(basin_id=1021, to_node_id=1090)
 model.basin.profile.df.loc[(model.basin.profile.df.node_id == 1209) & (model.basin.profile.df.area > 0.1), "area"] = (
     10000
 )
@@ -41,12 +48,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 312, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 369, "min_upstream_level"] = 2.85
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 446, "min_upstream_level"] = 2.85
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 576, "min_upstream_level"] = 2.85
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 555, "min_upstream_level"] = 1.7
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 74, "flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 289, "min_upstream_level"] = 12
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 169, "min_upstream_level"] = -0.75
-
-
 # %%
 
 # Write model
