@@ -14,7 +14,7 @@ run_model = True
 authorities = [
     "Noorderzijlvest",
     "HunzeenAas",
-    "DrentsOverijsselseDelta",
+    # "DrentsOverijsselseDelta",
     "AaenMaas",
     "BrabantseDelta",
     "StichtseRijnlanden",
