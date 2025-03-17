@@ -36,10 +36,7 @@ start_time = time.time()
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
-# %%
-
 # %%fixes
-# model.link.df = model.link.df[~model.link.df.index.isin([2488, 967])]
 model.remove_node(node_id=1126, remove_edges=True)
 model.remove_node(node_id=1023, remove_edges=True)
 
