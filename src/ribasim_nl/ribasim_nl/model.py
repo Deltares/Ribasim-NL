@@ -5,6 +5,7 @@ from typing import Literal
 
 import geopandas as gpd
 import networkx as nx
+import numpy as np
 import pandas as pd
 import shapely
 from pydantic import BaseModel
@@ -978,5 +979,20 @@ class Model(Model):
                 [], columns=["node_id", "node_type", "exception"], geometry=gpd.GeoSeries(crs=self.crs)
             ).set_index("node_id")
 
+    def validate_link_source_destination(self):
+        """Check if links exist with reversed source-destination"""
+        df = self.link.df
 
-# %%
+        # on tuples we can easily check duplicates irrespective of order
+        duplicated_links = pd.Series(
+            list(
+                zip(np.minimum(df["from_node_id"], df["to_node_id"]), np.maximum(df["from_node_id"], df["to_node_id"]))
+            ),
+            index=df.index,
+        ).duplicated(keep=False)
+
+        # if links are duplicated in reversed source-destination we raise an Exception
+        if duplicated_links.any():
+            raise ValueError(
+                f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[["link_id", "from_node_id", "to_node_id"]].to_dict(orient="index").values())}"
+            )
