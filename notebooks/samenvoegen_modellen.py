@@ -22,18 +22,7 @@ Getest (u kunt simuleren): Nee
 download_latest_model = True
 upload_model = False
 
-RESET_TABLES = [
-    "AaenMaas",
-    "BrabantseDelta",
-    "DrentsOverijsselseDelta",
-    "HunzeenAas",
-    "Limburg",
-    "Noorderzijlvest",
-    "RijnenIJssel",
-    "StichtseRijnlanden",
-    "ValleienVeluwe",
-    "Vechtstromen",
-]
+RESET_TABLES = []
 
 models = [
     {
@@ -96,21 +85,21 @@ models = [
         "model": "AaenMaas",
         "find_toml": True,
     },
-    {
-        "authority": "BrabantseDelta",
-        "model": "BrabantseDelta",
-        "find_toml": True,
-    },
-    {
-        "authority": "DeDommel",
-        "model": "DeDommel",
-        "find_toml": True,
-    },
-    {
-        "authority": "DrentsOverijsselseDelta",
-        "model": "DrentsOverijsselseDelta",
-        "find_toml": True,
-    },
+    # {
+    #     "authority": "BrabantseDelta",
+    #     "model": "BrabantseDelta",
+    #     "find_toml": True,
+    # },
+    # {
+    #     "authority": "DeDommel",
+    #     "model": "DeDommel",
+    #     "find_toml": True,
+    # },
+    # {
+    #     "authority": "DrentsOverijsselseDelta",
+    #     "model": "DrentsOverijsselseDelta",
+    #     "find_toml": True,
+    # },
     {
         "authority": "HunzeenAas",
         "model": "HunzeenAas",
@@ -141,11 +130,11 @@ models = [
         "model": "ValleienVeluwe",
         "find_toml": True,
     },
-    {
-        "authority": "Vechtstromen",
-        "model": "Vechtstromen",
-        "find_toml": True,
-    },
+    # {
+    #     "authority": "Vechtstromen",
+    #     "model": "Vechtstromen",
+    #     "find_toml": True,
+    # },
 ]
 
 
