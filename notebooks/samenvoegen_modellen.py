@@ -43,52 +43,52 @@ models = [
     },
     {
         "authority": "AmstelGooienVecht",
-        "model": "AmstelGooienVecht_parametrized",
+        "model": "AmstelGooienVecht_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Delfland",
-        "model": "Delfland_parametrized",
+        "model": "Delfland_parameterized",
         "find_toml": True,
     },
     {
         "authority": "HollandseDelta",
-        "model": "HollandseDelta_parametrized",
+        "model": "HollandseDelta_parameterized",
         "find_toml": True,
     },
     {
         "authority": "HollandsNoorderkwartier",
-        "model": "HollandsNoorderkwartier_parametrized",
+        "model": "HollandsNoorderkwartier_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Rijnland",
-        "model": "Rijnland_parametrized",
+        "model": "Rijnland_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Rivierenland",
-        "model": "Rivierenland_parametrized",
+        "model": "Rivierenland_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Scheldestromen",
-        "model": "Scheldestromen_parametrized",
+        "model": "Scheldestromen_parameterized",
         "find_toml": True,
     },
     {
         "authority": "SchielandendeKrimpenerwaard",
-        "model": "SchielandendeKrimpenerwaard_parametrized",
+        "model": "SchielandendeKrimpenerwaard_parameterized",
         "find_toml": True,
     },
     {
         "authority": "WetterskipFryslan",
-        "model": "WetterskipFryslan_parametrized",
+        "model": "WetterskipFryslan_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Zuiderzeeland",
-        "model": "Zuiderzeeland_parametrized",
+        "model": "Zuiderzeeland_parameterized",
         "find_toml": True,
     },
     {
