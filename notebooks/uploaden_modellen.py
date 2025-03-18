@@ -3,8 +3,9 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-FIND_POST_FIXES = ["bergend", "fix_model_area", "fix_model_network"]
+FIND_POST_FIXES = ["parameterized_model"]
 SELECTION = []
+INCLUDE_RESULTS = True
 
 
 def get_model_dir(authority, post_fix):
@@ -37,4 +38,4 @@ for authority in authorities:
         model.write(toml_file)
 
         # create version and upload
-        cloud.upload_model(authority=authority, model=authority)
+        cloud.upload_model(authority=authority, model=authority, include_results=INCLUDE_RESULTS)
