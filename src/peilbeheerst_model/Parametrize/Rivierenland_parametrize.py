@@ -25,9 +25,10 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-FeedbackFormulier_path = cloud.joinpath(
-    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-)
+# FeedbackFormulier_path = cloud.joinpath(
+#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+# )
+FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_Rivierenland.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -41,7 +42,7 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraa
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        FeedbackFormulier_path,
+        # FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -106,6 +107,10 @@ ribasim_param.validate_basin_area(ribasim_model)
 # model specific tweaks
 # merge basins
 ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
+ribasim_model.merge_basins(node_id=63, to_node_id=97, are_connected=True)
+ribasim_model.merge_basins(node_id=69, to_node_id=66, are_connected=True)
+ribasim_model.merge_basins(node_id=131, to_node_id=119, are_connected=True)
+ribasim_model.merge_basins(node_id=212, to_node_id=210, are_connected=True)
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -227,6 +232,36 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(153091, 440360)), [pump.S
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == pump_node.node_id, "meta_func_aanvoer"] = 1
 ribasim_model.edge.add(level_boundary_node, pump_node)
 ribasim_model.edge.add(pump_node, ribasim_model.basin[91])
+
+# Add aanvoer-component of Kuijkgemaal
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(174629, 440132)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(174630, 440132)), [pump.Static(flow_rate=[20])])
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
+ribasim_model.edge.add(level_boundary_node, pump_node)
+ribasim_model.edge.add(pump_node, ribasim_model.basin[94])
+
+# Add Inlaatgemaal van Beuningen
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(158270, 436942)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(158276, 436942)), [pump.Static(flow_rate=[20])])
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
+ribasim_model.edge.add(level_boundary_node, pump_node)
+ribasim_model.edge.add(pump_node, ribasim_model.basin[86])
+
+# Add Inlaatgemaal Bontemorgen
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(164450, 441800)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(164412, 441741)), [pump.Static(flow_rate=[20])])
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
+ribasim_model.edge.add(level_boundary_node, pump_node)
+ribasim_model.edge.add(pump_node, ribasim_model.basin[77])
 
 # (re)set meta_node_id
 ribasim_model.level_boundary.node.df["meta_node_id"] = ribasim_model.level_boundary.node.df.index
