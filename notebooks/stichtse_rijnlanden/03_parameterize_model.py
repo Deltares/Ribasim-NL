@@ -63,7 +63,7 @@ model.merge_basins(basin_id=1960, to_node_id=1855)
 model.merge_basins(basin_id=2044, to_node_id=1850)
 
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
+model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10,, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
