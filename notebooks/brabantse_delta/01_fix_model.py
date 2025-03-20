@@ -98,11 +98,6 @@ for row in network_validator.edge_incorrect_type_connectivity(
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
 
 
-# %% Reset static tables
-
-# Reset static tables
-model = reset_static_tables(model)
-
 # %%
 for action in gpd.list_layers(model_edits_gpkg).name:
     print(action)
@@ -134,6 +129,7 @@ for row in network_validator.edge_incorrect_type_connectivity(
 # by overlapping the Ribasim area file baed on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code.
 # Many nodata areas are removed by this method
+ribasim_areas_gdf.loc[:, "geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
 combined_basin_areas_gdf = gpd.overlay(
     ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
 ).explode()
@@ -161,6 +157,11 @@ combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset
 combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
 combined_basin_areas_gdf.index.name = "fid"
 model.basin.area.df = combined_basin_areas_gdf
+
+# %% Reset static tables
+
+# Reset static tables
+model = reset_static_tables(model)
 
 
 # Sanitize node_table
