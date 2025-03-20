@@ -1,8 +1,8 @@
 # %%
 import pandas as pd
 
-from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.model import Model
 
 
 def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder"):
