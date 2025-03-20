@@ -1,7 +1,7 @@
 # %%
 import pandas as pd
-from ribasim import Model
 
+from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 
 
@@ -31,7 +31,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
                             name="node_id",
                         )
             except KeyError as e:
-                raise KeyError(f"node_id {e} not in {node_type} / {attr} not in node-table")
+                raise KeyError(f"node_id {e} in table {node_type} / {attr} not a node_id node-table")
     return model
 
 
