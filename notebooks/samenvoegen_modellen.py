@@ -211,7 +211,8 @@ for idx, model_spec in enumerate(model_specs):
     try:
         model = prefix_index(model=model, prefix_id=waterbeheercode[model_spec["authority"]])
     except KeyError as e:
-        print(f"Remove model results (and retry) if a node_id in Basin / state is not in node-table.:({e})")
+        print("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
+        raise e
 
     if idx == 0:
         lhm_model = model
