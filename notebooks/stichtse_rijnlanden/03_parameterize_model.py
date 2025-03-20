@@ -63,7 +63,7 @@ model.merge_basins(basin_id=1960, to_node_id=1855)
 model.merge_basins(basin_id=2044, to_node_id=1850)
 
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10,, profiles_gpkg=profiles_gpkg)
+model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
@@ -75,7 +75,8 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "activ
 model.solver.maxiters = 100000
 # Write model
 add_check_basin_level(model=model)
-# model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
+
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)
