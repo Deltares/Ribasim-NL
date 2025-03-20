@@ -317,6 +317,7 @@ basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer=
 basin_area_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="unassigned_basin_area")
 internal_basin_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="internal_basins")
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
+remove_nodes_df = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
 
 df = basin_area_edits_gdf[basin_area_edits_gdf["to_node_id"].notna()]
 df.loc[:, ["node_id"]] = df["to_node_id"].astype("int32")
@@ -470,6 +471,10 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
         model.update_node(row.node_id, row.change_to_node_type, data=[level_boundary.Static(level=[0])])
 
 
+# %% remove_nodes
+for row in remove_nodes_df.itertuples():
+    model.remove_node(node_id=row.node_id, remove_edges=row.remove_edges)
+
 # %% corrigeren knoop-topologie
 outlet_data = outlet.Static(flow_rate=[100])
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
@@ -516,6 +521,7 @@ sanitize_node_table(
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model = reset_static_tables(model)
 model.use_validation = True
+model.validate_link_source_destination()
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()

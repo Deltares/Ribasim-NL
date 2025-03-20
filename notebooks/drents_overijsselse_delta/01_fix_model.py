@@ -410,6 +410,7 @@ sanitize_node_table(
 model.use_validation = True
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
+model.validate_link_source_destination()
 model.report_basin_area()
 model.report_internal_basins()
 # %%
