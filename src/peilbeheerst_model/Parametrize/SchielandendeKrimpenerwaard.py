@@ -6,7 +6,6 @@ import warnings
 
 import ribasim
 import ribasim.nodes
-from Parametrize.Rijnland_parametrize import aanvoergebieden
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
