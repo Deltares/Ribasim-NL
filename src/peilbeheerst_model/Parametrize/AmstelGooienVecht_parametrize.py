@@ -193,10 +193,6 @@ ribasim_param.insert_standard_profile(
     depth_profile=2,
 )
 
-# remove after the feedback forms have been fixed
-ribasim_model.basin.profile.df.loc[ribasim_model.basin.profile.df.index == 559, "area"] = 1
-ribasim_model.basin.profile.df.loc[ribasim_model.basin.profile.df.index == 560, "area"] = 2
-
 add_storage_basins = AddStorageBasins(
     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
 )
