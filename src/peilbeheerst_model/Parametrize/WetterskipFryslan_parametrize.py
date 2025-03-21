@@ -170,19 +170,14 @@ ribasim_model.merge_basins(node_id=49, to_node_id=1015)  # MR 9574 numerically u
 ribasim_model.merge_basins(node_id=470, to_node_id=467, are_connected=True)
 
 # some from and to nodes are the same due to the merging, fix it
-same_from_to = ribasim_model.edge.df.copy(deep=True)
+same_from_to = ribasim_model.link.df.copy(deep=True)
 same_from_to = same_from_to.loc[
     same_from_to.from_node_id == same_from_to.to_node_id, "from_node_id"
 ]  # selecting either from_node_id or to_node_id, as they are the same
 
 # TODO: `same_from_to` is empty, while there are circular node-connections
 for node_id_WJ in same_from_to:
-    ribasim_model.remove_node(node_id=node_id_WJ, remove_edges=True)
-
-# manually patching circular node-connections
-nodes_to_remove = (4103,)
-for n in nodes_to_remove:
-    ribasim_model.remove_node(n, remove_edges=True)
+    ribasim_model.remove_node(node_id=node_id_WJ, remove_links=True)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -210,8 +205,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(158166, 553916)),
     [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
 )
-ribasim_model.edge.add(ribasim_model.basin[89], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[89], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(156824, 552856)), [level_boundary.Static(level=[default_level])]
@@ -220,8 +215,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(156831, 552967)),
     [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
 )
-ribasim_model.edge.add(ribasim_model.basin[861], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[861], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(155989, 563067)), [level_boundary.Static(level=[default_level])]
@@ -230,8 +225,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(156038, 563080)),
     [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
 )
-ribasim_model.edge.add(ribasim_model.basin[149], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[149], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(154647, 567409)), [level_boundary.Static(level=[default_level])]
@@ -240,8 +235,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(154644, 567399)),
     [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
 )
-ribasim_model.edge.add(ribasim_model.basin[149], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[149], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(156173, 576551)), [level_boundary.Static(level=[default_level])]
@@ -250,16 +245,16 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(157109, 576125)),
     [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
 )
-ribasim_model.edge.add(ribasim_model.basin[254], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[254], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # add a zeegemaal
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(170894, 591637)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(170902, 591432)), [pump.Static(flow_rate=[700 / 60])])
-ribasim_model.edge.add(ribasim_model.basin[4], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[4], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add LB at Vlieland
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -269,13 +264,18 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(127030, 585934)),
     [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
 )
-ribasim_model.edge.add(ribasim_model.basin[1148], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[1148], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+
+# remove nodes with the same src and destionation basin
+nodes_to_remove = (4103, 3909, 4086, 4214, 4198, 4209, 4213)
+for n in nodes_to_remove:
+    ribasim_model.remove_node(n, remove_edges=True)
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
@@ -336,7 +336,7 @@ ribasim_param.set_aanvoer_flags(ribasim_model, aanvoergebieden, processor, aanvo
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
-# there is a MR without geometry and without edges for some reason
+# there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node
