@@ -179,11 +179,6 @@ same_from_to = same_from_to.loc[
 for node_id_WJ in same_from_to:
     ribasim_model.remove_node(node_id=node_id_WJ, remove_links=True)
 
-# manually patching circular node-connections
-nodes_to_remove = (4103,)
-for n in nodes_to_remove:
-    ribasim_model.remove_node(n, remove_links=True)
-
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
@@ -276,6 +271,11 @@ ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+
+# remove nodes with the same src and destionation basin
+nodes_to_remove = (4103, 3909, 4086, 4214, 4198, 4209, 4213)
+for n in nodes_to_remove:
+    ribasim_model.remove_node(n, remove_edges=True)
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
