@@ -4,7 +4,7 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
-from ribasim_nl import Model
+from ribasim_nl.model import Model
 
 
 def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target_level: str, code: str):

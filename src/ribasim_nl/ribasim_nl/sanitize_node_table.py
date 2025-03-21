@@ -2,8 +2,8 @@
 
 from pandas import Series
 
-from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.model import Model
 
 
 def sanitize_node_table(

@@ -6,8 +6,8 @@ from openpyxl import load_workbook
 from openpyxl.styles import Border
 from pydantic import BaseModel, ConfigDict
 
-from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.model import Model
 from ribasim_nl.parametrization.empty_table import empty_table_df
 
 description = [
