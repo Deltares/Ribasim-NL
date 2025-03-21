@@ -34,7 +34,7 @@ polygons = {
             shapely.geometry.Polygon([(1.5, 2), (2.5, 2), (2, 0.5)]),
         ]
     },
-    "perfect fit on edge": {
+    "perfect fit on link": {
         "peilgebieden": [
             shapely.geometry.Polygon([(0, 0), (2, 0), (2, 1.5), (0, 1.5)]),
             shapely.geometry.Polygon([(2, 0), (4, 0), (4, 2), (2, 2)]),
@@ -74,12 +74,12 @@ polygons = {
             shapely.geometry.Polygon([(0, 0), (3.4, 0), (3.4, 2), (0, 2)]),
         ]
     },
-    "single cross at edge": {
+    "single cross at link": {
         "peilgebieden": [
             shapely.geometry.Polygon([(0, 0), (3.5, 0), (3.5, 2), (0, 2)]),
         ]
     },
-    "single cross on edge": {
+    "single cross on link": {
         "peilgebieden": [
             shapely.geometry.Polygon([(0, 0), (2, 0), (2, 1.5), (0, 1.5)]),
         ]
@@ -97,7 +97,7 @@ polygons = {
             shapely.geometry.Polygon([(0, 0), (2, 0), (2, 2), (0, 2)]),
         ]
     },
-    "single cross at edge with complete overlap": {
+    "single cross at link with complete overlap": {
         "peilgebieden": [
             shapely.geometry.Polygon([(0, 0), (3.5, 0), (3.5, 2), (0, 2)]),
             shapely.geometry.Polygon([(0, 0), (3.5, 0), (3.5, 2), (0, 2)]),
@@ -326,7 +326,7 @@ if not testdir.exists():
 
 for testlist in tqdm.tqdm([nofilter, withfilter]):
     for test_name, options in testlist.items():
-        polyid = [f"poly_{i+1}" for i in range(len(options["peilgebieden"]))]
+        polyid = [f"poly_{i + 1}" for i in range(len(options["peilgebieden"]))]
         polywl = [float(i + 1) for i in range(len(options["peilgebieden"]))]
         # df_peil = gpd.GeoDataFrame(dict(globalid=polyid, geometry=options["peilgebieden"]), crs="epsg:28992")
         # df_streef = gpd.GeoDataFrame(dict(globalid=polyid, waterhoogte=polywl, geometry=len(options["peilgebieden"]) * [None]), crs="epsg:28992")
@@ -339,7 +339,7 @@ for testlist in tqdm.tqdm([nofilter, withfilter]):
             crs="epsg:28992",
         )
 
-        lineid = [f"line_{i+1}" for i in range(len(options["hydroobjecten"]))]
+        lineid = [f"line_{i + 1}" for i in range(len(options["hydroobjecten"]))]
         df_hydro = gpd.GeoDataFrame({"globalid": lineid, "geometry": options["hydroobjecten"]}, crs="epsg:28992")
 
         if "duikersifonhevel" not in options:
@@ -359,7 +359,7 @@ for testlist in tqdm.tqdm([nofilter, withfilter]):
             df_hydro.to_file(gpkg_path2, layer="hydroobject")
             df_peil.to_file(gpkg_path2, layer="peilgebied")
             df_streef.to_file(gpkg_path2, layer="streefpeil")
-            polyfl = [f"dsh_{i+1}" for i in range(len(options["duikersifonhevel"]))]
+            polyfl = [f"dsh_{i + 1}" for i in range(len(options["duikersifonhevel"]))]
             # df_filter = gpd.GeoDataFrame(dict(globalid=polyfl, geometry=options["duikersifonhevel"]), crs="epsg:28992")
             df_filter = gpd.GeoDataFrame(
                 {"globalid": polyfl, "geometry": options["duikersifonhevel"]}, crs="epsg:28992"
@@ -393,7 +393,7 @@ def make_plot(df_peil, df_hydro, df_streef, df_filter, df_crossings):
             ytext -= 0.05
 
         ax.text(xtext, ytext, f"{row.globalid}, wl={dfs.waterhoogte.at[row.globalid]}m", alpha=0.5)
-        ax.add_patch(Polygon(coords, alpha=0.5, lw=1, facecolor="powderblue", edgecolor="skyblue"))
+        ax.add_patch(Polygon(coords, alpha=0.5, lw=1, facecolor="powderblue", linkcolor="skyblue"))
 
     dfh = df_hydro.explode(index_parts=True)
     for row in dfh.itertuples():
@@ -440,7 +440,7 @@ for i, gpkg_path in enumerate(sorted(testdir.glob("nofilter_*.gpkg"))):
     if gpkg_path.is_file() and gpkg_path.suffix == ".gpkg":
         #         if "butterfly 3b" not in gpkg_path.stem and "polygon within polygon 1" not in gpkg_path.stem:
         #             continue
-        #         if "perfect fit on edge" not in gpkg_path.stem:
+        #         if "perfect fit on link" not in gpkg_path.stem:
         #             continue
         #         if "polygon within polygon 1" not in gpkg_path.stem:
         #             continue
@@ -455,7 +455,7 @@ for i, gpkg_path in enumerate(sorted(testdir.glob("nofilter_*.gpkg"))):
         #         if "nofilter_polygon butterfly 2e" not in gpkg_path.stem and "nofilter_perfect fit star 2" not in gpkg_path.stem:
         #             continue
 
-        print(f"Test {i+1:02d}: {gpkg_path.stem}")
+        print(f"Test {i + 1:02d}: {gpkg_path.stem}")
         cross = ParseCrossings(gpkg_path, disable_progress=True, show_log=True)
         df_crossings = cross.find_crossings_with_peilgebieden(
             "hydroobject", group_stacked=True, filterlayer=None, agg_links=False
@@ -490,7 +490,7 @@ for i, gpkg_path in enumerate(sorted(testdir.glob("withfilter_*.gpkg"))):
         #         if "scheldestromen" not in gpkg_path.stem:
         #             continue
 
-        print(f"Test {i+1:02d}: {gpkg_path.stem}")
+        print(f"Test {i + 1:02d}: {gpkg_path.stem}")
 
         cross = ParseCrossings(gpkg_path, disable_progress=True, show_log=True)
         _, df_filter, df_crossings = cross.find_crossings_with_peilgebieden(

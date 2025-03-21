@@ -61,20 +61,20 @@ for ax in [ax1, ax2]:
     ax.xaxis.grid(False)
 
 waterschappen = []
-network_results = {"Basins": [], "Edges": [], "Peilgebieden": []}
+network_results = {"Basins": [], "Links": [], "Peilgebieden": []}
 # reduction_results = {"initial": [], "in_use": [], "agg_links_in_use": [], "agg_areas_in_use": []}
 reduction_results = {"in_use": [], "agg_links_in_use": [], "agg_areas_in_use": []}
 for waterschap, waterschap_struct in waterschap_data.items():
     init_settings, crossing_settings = waterschap_struct.values()
     df = gpd.read_file(init_settings["output_path"], layer="crossings_hydroobject_filtered")
 
-    basins, edges, peilgebieden = None, None, None
+    basins, links, peilgebieden = None, None, None
     init_cross, cross_inuse, cross_agglinks, cross_aggareas = None, None, None, None
     try:
         sub_df = df[df.agg_areas_in_use].copy()
         all_nodes = np.hstack([sub_df.agg_area_from.to_numpy(), sub_df.agg_area_to.to_numpy()])
         basins = len(np.unique(all_nodes[~pd.isna(all_nodes)]))
-        edges = len(sub_df) * 2
+        links = len(sub_df) * 2
         all_peilgebieden = np.hstack([sub_df.peilgebied_from.to_numpy(), sub_df.peilgebied_to.to_numpy()])
         peilgebieden = len(np.unique(all_peilgebieden[~pd.isna(all_peilgebieden)]))
 
@@ -91,7 +91,7 @@ for waterschap, waterschap_struct in waterschap_data.items():
     reduction_results["agg_areas_in_use"].append(cross_aggareas)
 
     network_results["Basins"].append(basins)
-    network_results["Edges"].append(edges)
+    network_results["Links"].append(links)
     network_results["Peilgebieden"].append(peilgebieden)
     waterschappen.append(waterschap)
 

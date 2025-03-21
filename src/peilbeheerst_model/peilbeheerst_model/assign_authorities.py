@@ -99,8 +99,8 @@ class AssignAuthorities:
         joined = gpd.sjoin(temp_LB_node, authority_borders, how="left", predicate="intersects")
 
         # #find whether the LevelBoundary flows inward and outward the waterschap
-        FB_inward = ribasim_model.edge.df.loc[ribasim_model.edge.df.from_node_id.isin(joined.node_id.values)].copy()
-        FB_outward = ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id.isin(joined.node_id.values)].copy()
+        FB_inward = ribasim_model.link.df.loc[ribasim_model.link.df.from_node_id.isin(joined.node_id.values)].copy()
+        FB_outward = ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id.isin(joined.node_id.values)].copy()
 
         # add the current waterschap name in the correct column
         FB_inward["meta_to_authority"], FB_outward["meta_from_authority"] = waterschap, waterschap

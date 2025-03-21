@@ -1118,7 +1118,7 @@ class ParseCrossings:
                                 len(dfo[dfo.globalid == r.peilgebied_to]) == 0
                                 or len(dfo[dfo.globalid == r.peilgebied_from]) == 0
                             ):
-                                # Edge case where a peilgebied just barely
+                                # Link case where a peilgebied just barely
                                 # touches a line. Because of the negative
                                 # buffer it will not touch anymore. Remove
                                 # this crossing from the group.

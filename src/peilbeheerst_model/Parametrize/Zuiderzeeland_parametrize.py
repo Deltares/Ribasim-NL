@@ -111,16 +111,16 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(143912, 492256)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(143959, 492198)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[31], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[31], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 1 Add gemaal Wortman
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(157201, 501796)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(157251, 501708)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[31], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[31], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # Inlaat (hevel) toevoegen
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -130,8 +130,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(193491, 526526)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[98])
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[98])
 
 # Inlaat (hevel) toevoegen
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -141,8 +141,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(185725, 533098)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[116])
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[116])
 
 # TODO: Own interpretation (GH)
 # change afvoergemaal to aanvoergemaal
@@ -210,7 +210,7 @@ ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aan
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
-# there is a MR without geometry and without edges for some reason
+# there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node

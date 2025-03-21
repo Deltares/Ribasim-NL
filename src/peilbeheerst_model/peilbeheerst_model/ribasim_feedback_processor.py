@@ -131,8 +131,8 @@ class RibasimFeedbackProcessor:
                             if new_node_id is not None:
                                 node_id_map[int(row["Node ID.2"])] = new_node_id
                                 self.df.at[index, "Verwerkt"] = new_node_id
-                        elif row["Verbinding"] == "Edge" and row["Aanpassing"] == "Stroomrichting Omdraaien":
-                            self.adjust_edges(row, node_id_map)
+                        elif row["Verbinding"] == "Link" and row["Aanpassing"] == "Stroomrichting Omdraaien":
+                            self.adjust_links(row, node_id_map)
                 except Exception as e:
                     logging.error(f"Error processing {row['Actie']}, {row['Verbinding']}, at index {index}: {e}")
         finally:
@@ -163,11 +163,11 @@ class RibasimFeedbackProcessor:
                                     filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
                                     sub_value.df = filtered_df
 
-            # Remove the Edges
-            rows_to_remove = self.model.edge.df[
-                (self.model.edge.df["from_node_id"] == node_id) | (self.model.edge.df["to_node_id"] == node_id)
+            # Remove the Links
+            rows_to_remove = self.model.link.df[
+                (self.model.link.df["from_node_id"] == node_id) | (self.model.link.df["to_node_id"] == node_id)
             ].index
-            self.model.edge.df = self.model.edge.df.drop(rows_to_remove)
+            self.model.link.df = self.model.link.df.drop(rows_to_remove)
 
             # Log status
             logging.info(f"Successfully removed node with Node ID: {node_id}, Action: Verwijderen")
@@ -246,7 +246,7 @@ class RibasimFeedbackProcessor:
                                 df_value_static.index.name = "fid"
                                 sub_value.df = df_value_static.copy()
 
-                # Add the Edges
+                # Add the Links
                 if key in ["level_boundary", "flow_boundary", "terminal"]:
                     new_node = getattr(self.model, key, None)[node_id]
 
@@ -254,7 +254,7 @@ class RibasimFeedbackProcessor:
                         node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
                         node_type_a = mapping[node_type_a]
                         node_a = getattr(self.model, node_type_a, None)[int(row["Node ID A"])]
-                        self.model.edge.add(new_node, node_a)
+                        self.model.link.add(new_node, node_a)
                     else:
                         logging.warning(f"'Node ID A' is NaN for node type {key} at index {row.name}")
                 else:
@@ -268,8 +268,8 @@ class RibasimFeedbackProcessor:
                     node_type_b = mapping[node_type_b]
                     node_a = getattr(self.model, node_type_a, None)[int(row["Node ID A"])]
                     node_b = getattr(self.model, node_type_b, None)[int(row["Node ID B"])]
-                    self.model.edge.add(node_a, new_node)
-                    self.model.edge.add(new_node, node_b)
+                    self.model.link.add(node_a, new_node)
+                    self.model.link.add(new_node, node_b)
 
                 new_node_type_row = pd.DataFrame(
                     [
@@ -381,21 +381,21 @@ class RibasimFeedbackProcessor:
                                 df_value_static.index.name = "fid"
                                 sub_value.df = df_value_static.copy()
 
-            # Adjust edges meta_node_type
-            rows_to_update = self.model.edge.df[
-                (self.model.edge.df["from_node_id"] == node_id) | (self.model.edge.df["to_node_id"] == node_id)
+            # Adjust links meta_node_type
+            rows_to_update = self.model.link.df[
+                (self.model.link.df["from_node_id"] == node_id) | (self.model.link.df["to_node_id"] == node_id)
             ]
 
-            for idx, edge_row in rows_to_update.iterrows():
-                if edge_row["to_node_id"] == node_id:
+            for idx, link_row in rows_to_update.iterrows():
+                if link_row["to_node_id"] == node_id:
                     # Update the meta_node_type for the to_node
-                    self.model.edge.df.at[idx, "meta_to_node_type"] = key
+                    self.model.link.df.at[idx, "meta_to_node_type"] = key
 
-                if edge_row["from_node_id"] == node_id:
+                if link_row["from_node_id"] == node_id:
                     # Update the meta_node_type for the from_node
-                    self.model.edge.df.at[idx, "meta_from_node_type"] = key
+                    self.model.link.df.at[idx, "meta_from_node_type"] = key
 
-            logging.info(f"Successfully updated meta_node_type for edges related to Node ID: {node_id}")
+            logging.info(f"Successfully updated meta_node_type for links related to Node ID: {node_id}")
 
             logging.info(f"Successfully adjusted node with old Node ID: {node_id}, Action: Aanpassen")
             return node_id
@@ -404,41 +404,41 @@ class RibasimFeedbackProcessor:
             logging.error(f"Error adjusting node at row: {row}", exc_info=True)
             return None
 
-    def adjust_edges(self, row, node_id_map):
+    def adjust_links(self, row, node_id_map):
         try:
             node_a = int(node_id_map.get(row["Node ID A.1"], row["Node ID A.1"]))
             node_b = int(node_id_map.get(row["Node ID B.1"], row["Node ID B.1"]))
 
-            df_row_a_b = self.model.edge.df[
-                (self.model.edge.df["from_node_id"] == node_a) & (self.model.edge.df["to_node_id"] == node_b)
+            df_row_a_b = self.model.link.df[
+                (self.model.link.df["from_node_id"] == node_a) & (self.model.link.df["to_node_id"] == node_b)
             ]
-            df_row_b_a = self.model.edge.df[
-                (self.model.edge.df["from_node_id"] == node_b) & (self.model.edge.df["to_node_id"] == node_a)
+            df_row_b_a = self.model.link.df[
+                (self.model.link.df["from_node_id"] == node_b) & (self.model.link.df["to_node_id"] == node_a)
             ]
 
             if df_row_a_b.empty and df_row_b_a.empty:
-                logging.error(f"Edge not found between Node A: {node_a} and Node B: {node_b} at index {row}")
+                logging.error(f"Link not found between Node A: {node_a} and Node B: {node_b} at index {row}")
                 return
             if not df_row_a_b.empty:
                 df_row = df_row_a_b
             else:
                 df_row = df_row_b_a
-            self.model.edge.df.loc[df_row.index, ["from_node_id", "to_node_id"]] = self.model.edge.df.loc[
+            self.model.link.df.loc[df_row.index, ["from_node_id", "to_node_id"]] = self.model.link.df.loc[
                 df_row.index, ["to_node_id", "from_node_id"]
             ].to_numpy()
             if "geometry" in df_row.columns:
                 row_index = df_row.index[0]
-                line = self.model.edge.df.loc[row_index].geometry
+                line = self.model.link.df.loc[row_index].geometry
                 reversed_coords = list(line.coords)[::-1]
                 reversed_line = LineString(reversed_coords)
-                self.model.edge.df.at[row_index, "geometry"] = reversed_line
-            print(f"Swapped edge direction between Node A: {node_a} and Node B: {node_b}")
+                self.model.link.df.at[row_index, "geometry"] = reversed_line
+            print(f"Swapped link direction between Node A: {node_a} and Node B: {node_b}")
             logging.info(
-                f"Successfully swapped edge direction between Node A: {node_a} and Node B: {node_b}, "
+                f"Successfully swapped link direction between Node A: {node_a} and Node B: {node_b}, "
                 f"Action: Aanpassen, Adjustment: Stroomrichting Omdraaien"
             )
         except Exception as e:
-            logging.error(f"Error adjusting edge: {e}")
+            logging.error(f"Error adjusting link: {e}")
 
     def special_preprocessing_for_hollandse_delta(self):
         p1 = Proj("epsg:4326")  # WGS84

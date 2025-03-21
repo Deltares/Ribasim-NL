@@ -329,7 +329,7 @@ class SupplyWork(abc.ABC):
         # update statics based on 'meta_to_node_id'-label
         statics["meta_aanvoer"] = statics["meta_to_node_id"].isin(basin_areas[basin_areas["meta_aanvoer"]].index)
         self.set_statics(statics)
-        # TODO: Add option to use edges instead of meta_to_node_id?
+        # TODO: Add option to use links instead of meta_to_node_id?
 
         # overrule statics based on 'meta_from_node_id'-label
         if overruling_enabled:

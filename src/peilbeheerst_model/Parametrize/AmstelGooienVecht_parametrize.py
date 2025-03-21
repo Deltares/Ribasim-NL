@@ -117,16 +117,16 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(125958, 486838)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(ribasim_model.basin[225], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[225], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # add additional pump and LB to ARK
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(129850, 480894)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(129829, 480893)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[229], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[229], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add outlet and LB from ARK-NZK to Loosdrechtse Plassen
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -136,8 +136,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(129097, 468241)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[59])
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[59])
 
 # add outlet to Gooimeer
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -147,16 +147,16 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(146592, 479749)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(ribasim_model.basin[215], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[215], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # add additional pump and LB to ARK
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(129677, 482929)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(129674, 482974)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[228], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[228], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add node overlaat to ARK
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -166,8 +166,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(128913, 470563)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(ribasim_model.basin[69], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[69], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # set all 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
@@ -244,7 +244,7 @@ ribasim_param.set_aanvoer_flags(
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
-# there is a MR without geometry and without edges for some reason
+# there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node

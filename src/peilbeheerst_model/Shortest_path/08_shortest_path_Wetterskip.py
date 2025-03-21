@@ -110,8 +110,8 @@ def component_to_gdf(component, node_geometries):
 def connect_components(graph, node1, node2, node_geometries):
     geom1 = node_geometries[node1]
     geom2 = node_geometries[node2]
-    new_edge_geom = LineString([geom1.coords[0], geom2.coords[0]])
-    graph.add_edge(node1, node2, geometry=new_edge_geom)
+    new_link_geom = LineString([geom1.coords[0], geom2.coords[0]])
+    graph.add_link(node1, node2, geometry=new_link_geom)
 
 
 def find_closest_component_pair(largest_gdf, smaller_gdfs):
@@ -295,15 +295,15 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         for node_id, group in nodes_gdf.groupby("node_id"):
             graph.add_node(node_id, geometry=group.geometry.iat[0])
 
-        # add edges
+        # add links
         line_lookup = gdf_object.geometry
         for idx0, group in nodes_gdf.groupby(level=0):
             node_from, node_to = group.node_id
             line_geom = gdf_object.geometry.at[idx0]
-            graph.add_edge(node_from, node_to, length=line_geom.length, geometry=line_geom)
+            graph.add_link(node_from, node_to, length=line_geom.length, geometry=line_geom)
 
         ### Find distruptions Graph ###
-        # The graph often consists of multiple smaller graphs due to edges not properly connecting with nodes
+        # The graph often consists of multiple smaller graphs due to links not properly connecting with nodes
         # Get lists of compnents (sub-graph)
         print("Find distruptions in Graph")
         components = list(nx.connected_components(graph))
@@ -345,11 +345,11 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                 shortest_path = nx.shortest_path(
                     graph, source=startpoint, target=endpoint, weight="length", method="dijkstra"
                 )
-                edges = []
+                links = []
                 for i in range(0, len(shortest_path) - 1):
-                    edges.append(graph.get_edge_data(shortest_path[i], shortest_path[i + 1])["geometry"])
+                    links.append(graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"])
                 gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = shapely.ops.linemerge(
-                    edges
+                    links
                 )
 
             except nx.NetworkXNoPath as e:
@@ -375,9 +375,9 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                 # Find the closest node in the largest component
                 closest_node_id = largest_component_gdf.iloc[distances.idxmin()].node_id
 
-                # Add edge between not_connected node and closest node in the largest component
+                # Add link between not_connected node and closest node in the largest component
                 # Note: You might want to calculate the LineString geometry connecting these nodes based on your specific requirements
-                graph.add_edge(
+                graph.add_link(
                     nc_node,
                     closest_node_id,
                     geometry=LineString([node_geometries[nc_node], node_geometries[closest_node_id]]),
@@ -388,11 +388,11 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                     shortest_path = nx.shortest_path(
                         graph, source=startpoint, target=endpoint, weight="length", method="dijkstra"
                     )
-                    edges = []
+                    links = []
                     for i in range(0, len(shortest_path) - 1):
-                        edges.append(graph.get_edge_data(shortest_path[i], shortest_path[i + 1])["geometry"])
+                        links.append(graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"])
                     gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = (
-                        shapely.ops.linemerge(edges)
+                        shapely.ops.linemerge(links)
                     )
 
                 except nx.NetworkXNoPath as e:

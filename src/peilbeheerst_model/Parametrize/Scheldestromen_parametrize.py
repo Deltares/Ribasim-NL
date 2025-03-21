@@ -112,7 +112,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
-# add an TRC and edges to the newly created level boundary
+# add an TRC and links to the newly created level boundary
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(74861, 382484)), [level_boundary.Static(level=[default_level])]
 )
@@ -124,8 +124,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.tabulated_rating_curve.node.df.loc[tabulated_rating_curve_node.node_id, "meta_node_id"] = (
     tabulated_rating_curve_node.node_id
 )
-ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[133])
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[133])
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
@@ -186,7 +186,7 @@ ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aan
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
-# there is a MR without geometry and without edges for some reason
+# there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node

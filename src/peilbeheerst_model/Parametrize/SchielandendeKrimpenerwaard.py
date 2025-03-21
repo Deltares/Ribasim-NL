@@ -123,8 +123,8 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(89792, 437301)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(89992, 437341)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[116], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[116], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 2
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -134,64 +134,64 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(92144, 435533)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, ribasim_model.basin[110])
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[110])
 
 # 3
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(95111, 436428)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(95431, 436488)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[157], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[157], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 4
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(95111, 436418)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(95736, 436211)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[143], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[143], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 5 not sure whether this one is correct. FF was not clear
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(94966, 437011)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(94966, 437011)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[25], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[25], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 6
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(92476, 435889)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(92334, 436428)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[142], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[142], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 7
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(104547, 443432)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(104485, 443506)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[19], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[19], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 7
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(104555, 443434)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(104527, 443455)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[2], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[2], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 8
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(102079, 438209)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(102230, 438082)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[29], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[29], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 9, added by RB as it is quiet clear a levelboundary is missing.
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -201,16 +201,16 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(91514, 439286)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(ribasim_model.basin[28], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[28], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # 10. cooperation day 12 dec 2024: Erik suggested adding an additional pump which already exists, but this would prevent two entire basins interacting with eachother if only one basin would get a pump, while this pump discharges both basins
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(89786, 437309)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(89985, 437345)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.edge.add(ribasim_model.basin[115], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[115], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
@@ -254,8 +254,8 @@ ribasim_model.level_boundary.static.df.level = default_level
 
 # test for better afwatering
 ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 728, "level"] = -1.3
-ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id == 728, "meta_categorie"] = "hoofdwater"
-ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id == 728, "meta_to_node_type"] = "LevelBoundary"
+ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id == 728, "meta_categorie"] = "hoofdwater"
+ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id == 728, "meta_to_node_type"] = "LevelBoundary"
 
 # test for better afwatering
 ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 638, "level"] = -0.1
@@ -286,7 +286,7 @@ ribasim_param.set_aanvoer_flags(
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
-# there is a MR without geometry and without edges for some reason
+# there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 
 # lower the difference in waterlevel for each manning node
