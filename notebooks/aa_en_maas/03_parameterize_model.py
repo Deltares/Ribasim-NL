@@ -9,7 +9,7 @@ cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
-run_model = False
+run_model = True
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -35,8 +35,6 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-# model.remove_node(node_id=1076, remove_edges=True)
-# model.edge.df = model.edge.df[model.edge.df.index != 1198]
 # Write model
 
 add_check_basin_level(model=model)
