@@ -981,6 +981,7 @@ class Model(Model):
 
     def validate_link_source_destination(self):
         """Check if links exist with reversed source-destination"""
+        # remove function when this is available: https://github.com/Deltares/Ribasim/issues/2140
         df = self.link.df
 
         # on tuples we can easily check duplicates irrespective of order
