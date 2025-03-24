@@ -9,7 +9,7 @@ ribasim_toml = cloud.joinpath("Noorderzijlvest", "modellen", "Noorderzijlvest_20
 
 
 data = {}
-for prefix in range(23, 100):
+for prefix in range(0, 100):
     # read original model
     model = Model.read(ribasim_toml)
 
