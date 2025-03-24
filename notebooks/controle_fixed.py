@@ -1,8 +1,6 @@
 # %%
 import time
 
-import pandas as pd
-
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.check_basin_level import add_check_basin_level
@@ -16,7 +14,7 @@ run_model = True
 authorities = [
     "Noorderzijlvest",
     "HunzeenAas",
-    "DrentsOverijsselseDelta",
+    # "DrentsOverijsselseDelta",
     "AaenMaas",
     "BrabantseDelta",
     "StichtseRijnlanden",
@@ -54,22 +52,13 @@ for authority in authorities:
         indicators = controle_output.run_afvoer()
 
     # compute statistics
-    large_difference = indicators["initial_final_level"][indicators["initial_final_level"].difference_level.abs() > 1]
-    large_difference = len(
-        large_difference[~large_difference.node_id.isin(indicators["mask_afvoer"].node_id.to_numpy())]
-    )
-
     data += [
         {
             "waterschap": authority,
             "simulatietijd": simulation_time,
             "kleine_basins": len(model.basin.area.df[model.basin.area.df.area < 10000]),
-            "afwijking > 1m": large_difference,
         }
     ]
 
 assert len(missing_models) == 0
 assert len(missing_runs) == 0
-
-
-pd.DataFrame(data).to_excel(cloud.joinpath("model_performance.xlsx"), index=False)
