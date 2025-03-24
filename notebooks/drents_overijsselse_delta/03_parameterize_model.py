@@ -32,13 +32,16 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
+model.update_node(node_id=1401, node_type="Outlet")
+model.parameterize(
+    static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg, max_pump_flow_rate=125
+)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
-model.update_node(node_id=1401, node_type="Outlet")
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, ["active"]] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, ["meta_categorie"]] = "Inlaat"
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 add_check_basin_level(model=model)

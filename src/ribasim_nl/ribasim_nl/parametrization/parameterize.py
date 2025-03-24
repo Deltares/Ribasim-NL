@@ -16,6 +16,7 @@ class Parameterize(BaseModel):
     profiles_gpkg: Path | None = None
     precipitation_mm_per_day: int | None = None
     evaporation_mm_per_day: int | None = None
+    max_pump_flow_rate: float | None = None
 
     def run(self, **kwargs):
         # update class properties
@@ -36,6 +37,10 @@ class Parameterize(BaseModel):
                 static_data_xlsx=self.static_data_xlsx,
                 code_column="meta_code_waterbeheerder",
             )
+
+        if self.max_pump_flow_rate is not None:
+            mask = self.model.pump.static.df.flow_rate > self.max_pump_flow_rate
+            self.model.pump.static.df.loc[mask, "flow_rate"] = self.max_pump_flow_rate
 
         # ManningResistance
         update_manning_resistance_static(self.model, profiles_gpkg=self.profiles_gpkg)
