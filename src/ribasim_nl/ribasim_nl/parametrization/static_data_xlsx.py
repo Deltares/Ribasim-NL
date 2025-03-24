@@ -41,7 +41,7 @@ description = [
 defaults = {
     "Afvoergemaal": {
         "upstream_level_offset": 0.0,
-        "downstream_level_offset": 0.0,
+        "downstream_level_offset": pd.NA,
         "flow_rate": pd.NA,
         "flow_rate_mm_per_day": 15,
         "function": "outlet",

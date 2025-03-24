@@ -38,7 +38,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.remove_node(node_id=1126, remove_edges=True)
 model.remove_node(node_id=1023, remove_edges=True)
 
-
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
 # Write model
 add_check_basin_level(model=model)
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
