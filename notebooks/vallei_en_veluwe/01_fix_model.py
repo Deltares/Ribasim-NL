@@ -158,7 +158,13 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 model = reset_static_tables(model)
 
 # %%
+model.explode_basin_area()  # all multipolygons to singles
+model.basin.area.df.to_file("basin_area.gpkg", layer="model_basin_area")
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
+model.write(ribasim_toml)
+
 actions = [
+    "remove_basin_area",
     "remove_node",
     "remove_edge",
     "add_basin",
@@ -169,6 +175,7 @@ actions = [
     "move_node",
     "connect_basins",
     "update_node",
+    "redirect_edge",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 for action in actions:
@@ -177,6 +184,8 @@ for action in actions:
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
