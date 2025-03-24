@@ -35,7 +35,7 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-model.remove_node(node_id=1076, remove_edges=True)
+# model.remove_node(node_id=1076, remove_edges=True)
 # model.edge.df = model.edge.df[model.edge.df.index != 1198]
 # Write model
 
