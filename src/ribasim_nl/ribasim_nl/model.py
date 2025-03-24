@@ -872,6 +872,11 @@ class Model(Model):
             if node_id in self.basin.area.df.node_id.to_numpy():
                 poly = self.basin.area.df.set_index("node_id").at[node_id, "geometry"]
 
+                # polygon could be a series op polygons
+                if isinstance(poly, pd.Series):
+                    poly = poly.union_all()
+
+                # if it is a polygon we convert it to multipolygon
                 if isinstance(poly, Polygon):
                     poly = MultiPolygon([poly])
 
@@ -995,5 +1000,5 @@ class Model(Model):
         # if links are duplicated in reversed source-destination we raise an Exception
         if duplicated_links.any():
             raise ValueError(
-                f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[["link_id", "from_node_id", "to_node_id"]].to_dict(orient="index").values())}"
+                f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[['link_id', 'from_node_id', 'to_node_id']].to_dict(orient='index').values())}"
             )

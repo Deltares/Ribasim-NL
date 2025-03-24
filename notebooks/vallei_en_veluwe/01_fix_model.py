@@ -175,7 +175,7 @@ actions = [
     "move_node",
     "connect_basins",
     "update_node",
-    "redirect_edge",
+    # "redirect_edge",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 for action in actions:
