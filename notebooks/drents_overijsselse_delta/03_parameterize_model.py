@@ -58,4 +58,5 @@ if run_model:
 # # %%
 controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
 indicators = controle_output.run_afvoer()
+
 # %%
