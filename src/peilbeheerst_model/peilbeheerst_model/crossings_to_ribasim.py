@@ -295,10 +295,10 @@ class CrossingsToRibasim:
 
         return crossings
 
-    def create_edges(self, crossings):
-        """Create edges for Ribasim network
+    def create_links(self, crossings):
+        """Create links for Ribasim network
 
-        Create the edges, based on the peilgebied_from and peilgebied_to
+        Create the links, based on the peilgebied_from and peilgebied_to
         column. Next to the basins ('peilgebied_from' or 'peilgebied_to') it
         also creates a connection at the border of a peilgebied. This is a
         point where a hydroobject crosses the peilgebied border. These nodes
@@ -338,33 +338,33 @@ class CrossingsToRibasim:
         lines_to_coord = lines_to_coord.reset_index(drop=True)
 
         # put all node_id and their corresponding coordinates in a df
-        edges = pd.DataFrame()
-        edges["from"] = lines_from_id
-        edges["to"] = lines_to_id
-        edges["from_coord"] = lines_from_coord
-        edges["to_coord"] = lines_to_coord
+        links = pd.DataFrame()
+        links["from"] = lines_from_id
+        links["to"] = lines_to_id
+        links["from_coord"] = lines_from_coord
+        links["to_coord"] = lines_to_coord
 
         # remove NaN's, as these rows do not contain any coordinates
-        edges = edges.dropna()
-        edges = edges.drop(edges[(edges["from"] == -999) | (edges["to"] == -999)].index)
-        edges = edges.reset_index(drop=True)
+        links = links.dropna()
+        links = links.drop(links[(links["from"] == -999) | (links["to"] == -999)].index)
+        links = links.reset_index(drop=True)
 
         # change the 'Point Z' to a regular 'Point' geometry.
-        edges["from_x"] = edges["from_coord"].apply(lambda geom: geom.x)
-        edges["from_y"] = edges["from_coord"].apply(lambda geom: geom.y)
+        links["from_x"] = links["from_coord"].apply(lambda geom: geom.x)
+        links["from_y"] = links["from_coord"].apply(lambda geom: geom.y)
 
-        edges["to_x"] = edges["to_coord"].apply(lambda geom: geom.x)
-        edges["to_y"] = edges["to_coord"].apply(lambda geom: geom.y)
+        links["to_x"] = links["to_coord"].apply(lambda geom: geom.x)
+        links["to_y"] = links["to_coord"].apply(lambda geom: geom.y)
 
-        edges["from_coord"] = gpd.GeoSeries(gpd.points_from_xy(x=edges["from_x"], y=edges["from_y"]))
-        edges["to_coord"] = gpd.GeoSeries(gpd.points_from_xy(x=edges["to_x"], y=edges["to_y"]))
+        links["from_coord"] = gpd.GeoSeries(gpd.points_from_xy(x=links["from_x"], y=links["from_y"]))
+        links["to_coord"] = gpd.GeoSeries(gpd.points_from_xy(x=links["to_x"], y=links["to_y"]))
 
-        # create the LineStrings (=edges), based on the df with coordinates
-        edges["line_geom"] = edges.apply(lambda row: LineString([row["from_coord"], row["to_coord"]]), axis=1)
+        # create the LineStrings (=links), based on the df with coordinates
+        links["line_geom"] = links.apply(lambda row: LineString([row["from_coord"], row["to_coord"]]), axis=1)
 
-        return edges
+        return links
 
-    def create_nodes(self, crossings, edges):
+    def create_nodes(self, crossings, links):
         """_summary_
 
         Parameters
@@ -522,25 +522,25 @@ class CrossingsToRibasim:
             # nodes_ter["geometry"] = TRC_terminals["geometry"] #copy paste the geometry points of the TRC which go to the terminal
             nodes_ter = nodes_ter.drop_duplicates(subset="node_id")
 
-            # second, properly embed the Terminals in the edges. Fill in the entire df for completion purposes
-            edges_ter = pd.DataFrame()
-            edges_ter["from"] = TRC_terminals.node_id
-            edges_ter["to"] = nodes_ter.node_id.to_numpy()
-            edges_ter["from_coord"] = TRC_terminals["geometry"]
-            edges_ter["to_coord"] = nodes_ter["geometry"].to_numpy()
-            edges_ter["from_x"] = TRC_terminals["geometry"].x
-            edges_ter["from_y"] = TRC_terminals["geometry"].y
-            edges_ter["to_x"] = nodes_ter["geometry"].x.to_numpy()
-            edges_ter["to_y"] = nodes_ter["geometry"].y.to_numpy()
+            # second, properly embed the Terminals in the links. Fill in the entire df for completion purposes
+            links_ter = pd.DataFrame()
+            links_ter["from"] = TRC_terminals.node_id
+            links_ter["to"] = nodes_ter.node_id.to_numpy()
+            links_ter["from_coord"] = TRC_terminals["geometry"]
+            links_ter["to_coord"] = nodes_ter["geometry"].to_numpy()
+            links_ter["from_x"] = TRC_terminals["geometry"].x
+            links_ter["from_y"] = TRC_terminals["geometry"].y
+            links_ter["to_x"] = nodes_ter["geometry"].x.to_numpy()
+            links_ter["to_y"] = nodes_ter["geometry"].y.to_numpy()
 
-            edges_ter["line_geom"] = edges_ter.apply(
+            links_ter["line_geom"] = links_ter.apply(
                 lambda row: LineString([row["from_coord"], row["to_coord"]]), axis=1
             )
-            edges_ter.reset_index(drop=True, inplace=True)
+            links_ter.reset_index(drop=True, inplace=True)
 
-            # append the nodes and the edges to the main df
+            # append the nodes and the links to the main df
             nodes = pd.concat([nodes, nodes_ter]).reset_index(drop=True)
-            edges = pd.concat([edges, edges_ter]).reset_index(drop=True)
+            links = pd.concat([links, links_ter]).reset_index(drop=True)
 
         nodes = nodes.sort_values(by="node_id")
         nodes = nodes.reset_index(drop=True)
@@ -565,29 +565,29 @@ class CrossingsToRibasim:
             # nodes_LB["geometry"] = nodes_pump_LB["geometry"] #copy paste the geometry points of the TRC which go to the terminal
             nodes_LB = nodes_LB.drop_duplicates(subset="node_id")
 
-            # second, properly embed the Terminals in the edges. Fill in the entire df for completion purposes
-            edges_LB = pd.DataFrame()
-            edges_LB["to"] = nodes_pump_LB.node_id
-            edges_LB["from"] = nodes_LB.node_id.to_numpy()
-            edges_LB["to_coord"] = nodes_pump_LB["geometry"]
-            edges_LB["from_coord"] = nodes_LB["geometry"].to_numpy()
-            edges_LB["from_x"] = nodes_pump_LB["geometry"].x.to_numpy()
-            edges_LB["from_y"] = nodes_pump_LB["geometry"].y.to_numpy()
-            edges_LB["to_x"] = nodes_LB["geometry"].x
-            edges_LB["to_y"] = nodes_LB["geometry"].y
+            # second, properly embed the Terminals in the links. Fill in the entire df for completion purposes
+            links_LB = pd.DataFrame()
+            links_LB["to"] = nodes_pump_LB.node_id
+            links_LB["from"] = nodes_LB.node_id.to_numpy()
+            links_LB["to_coord"] = nodes_pump_LB["geometry"]
+            links_LB["from_coord"] = nodes_LB["geometry"].to_numpy()
+            links_LB["from_x"] = nodes_pump_LB["geometry"].x.to_numpy()
+            links_LB["from_y"] = nodes_pump_LB["geometry"].y.to_numpy()
+            links_LB["to_x"] = nodes_LB["geometry"].x
+            links_LB["to_y"] = nodes_LB["geometry"].y
 
-            edges_LB["line_geom"] = edges_LB.apply(lambda row: LineString([row["from_coord"], row["to_coord"]]), axis=1)
-            edges_LB.reset_index(drop=True, inplace=True)
+            links_LB["line_geom"] = links_LB.apply(lambda row: LineString([row["from_coord"], row["to_coord"]]), axis=1)
+            links_LB.reset_index(drop=True, inplace=True)
 
-            # append the nodes and the edges to the main df
+            # append the nodes and the links to the main df
             nodes = pd.concat([nodes, nodes_LB]).reset_index(drop=True)
-            edges = pd.concat([edges, edges_LB]).reset_index(drop=True)
+            links = pd.concat([links, links_LB]).reset_index(drop=True)
 
         nodes.index += 1
 
-        return nodes, edges
+        return nodes, links
 
-    def embed_boezems(self, edges, post_processed_data, crossings):
+    def embed_boezems(self, links, post_processed_data, crossings):
         def discard_duplicate_boezems(boezems):
             temp_boezems = boezems.dropna(subset=["shortest_path"]).copy()
 
@@ -647,14 +647,14 @@ class CrossingsToRibasim:
                 how="left",
             )
 
-            edges_with_correct_SP = edges.merge(
+            links_with_correct_SP = links.merge(
                 temp_crossings,
                 left_on=["from_coord", "to"],
                 right_on=["from_centroid_geometry", "node_id_y"],
                 how="left",
             )
 
-            edges_with_correct_SP = discard_duplicate_boezems(edges_with_correct_SP)
+            links_with_correct_SP = discard_duplicate_boezems(links_with_correct_SP)
 
             # INCORRECT order #######################################
             boezems_df_incorrect_order = boezems.loc[boezems.peilgebied_to.isin(boezem_globalids)]
@@ -667,40 +667,40 @@ class CrossingsToRibasim:
                 how="left",
             )
 
-            edges_with_incorrect_SP = edges.merge(
+            links_with_incorrect_SP = links.merge(
                 temp_crossings,
                 left_on=["to_coord", "from"],
                 right_on=["to_centroid_geometry", "node_id_y"],
                 how="left",
             )
-            edges_with_incorrect_SP = discard_duplicate_boezems(edges_with_incorrect_SP)
+            links_with_incorrect_SP = discard_duplicate_boezems(links_with_incorrect_SP)
 
-            edges_with_correct_SP.drop_duplicates(subset=["from", "to"], inplace=True)
-            edges_with_incorrect_SP.drop_duplicates(subset=["from", "to"], inplace=True)
+            links_with_correct_SP.drop_duplicates(subset=["from", "to"], inplace=True)
+            links_with_incorrect_SP.drop_duplicates(subset=["from", "to"], inplace=True)
 
-            edges_with_correct_SP.reset_index(drop=True, inplace=True)
-            edges_with_incorrect_SP.reset_index(drop=True, inplace=True)
+            links_with_correct_SP.reset_index(drop=True, inplace=True)
+            links_with_incorrect_SP.reset_index(drop=True, inplace=True)
 
-            # add the shortest paths columns to the edges
-            edges.rename(columns={"line_geom": "line_geom_oud"}, inplace=True)
-            edges["line_geom"] = np.nan
+            # add the shortest paths columns to the links
+            links.rename(columns={"line_geom": "line_geom_oud"}, inplace=True)
+            links["line_geom"] = np.nan
 
-            edges_temp_incorrect = edges.merge(
-                edges_with_incorrect_SP, how="left", on=["from", "to"], suffixes=("", "_incorrect_SP")
+            links_temp_incorrect = links.merge(
+                links_with_incorrect_SP, how="left", on=["from", "to"], suffixes=("", "_incorrect_SP")
             )
-            edges.loc[edges_temp_incorrect["shortest_path"].notna(), "line_geom"] = edges_temp_incorrect[
+            links.loc[links_temp_incorrect["shortest_path"].notna(), "line_geom"] = links_temp_incorrect[
                 "shortest_path"
             ]
-            edges_temp_correct = edges.merge(
-                edges_with_correct_SP, how="left", on=["from", "to"], suffixes=("", "_correct_SP")
+            links_temp_correct = links.merge(
+                links_with_correct_SP, how="left", on=["from", "to"], suffixes=("", "_correct_SP")
             )
-            edges.loc[edges_temp_correct["shortest_path"].notna(), "line_geom"] = edges_temp_correct["shortest_path"]
+            links.loc[links_temp_correct["shortest_path"].notna(), "line_geom"] = links_temp_correct["shortest_path"]
 
-            # showcase = edges.loc[edges['to'] == 452]
+            # showcase = links.loc[links['to'] == 452]
             # showcase['line_geom'] = showcase['line_geom'].astype(str).apply(loads) #change string to geometry object
             # gpd.GeoDataFrame(showcase, geometry = 'line_geom').plot()
 
-            # the direction of the edges are correct on administrative level, but not yet on geometric level. Revert the lines.
+            # the direction of the links are correct on administrative level, but not yet on geometric level. Revert the lines.
             reverse_gemaal = crossings.copy()  # create copy of the crossings
             reverse_gemaal = reverse_gemaal.loc[
                 reverse_gemaal.peilgebied_to_original.isin(boezem_globalids)
@@ -711,16 +711,16 @@ class CrossingsToRibasim:
             reverse_gemaal = reverse_gemaal.node_id.unique()  # select the crossings where the lines should be reverted. Revert after changing the string to a geometry object
 
             # add a column if a shortest path is found
-            edges["bool_SP"] = edges["line_geom"]
-            edges["bool_SP"].loc[edges["bool_SP"].isna()] = False
-            # edges["bool_SP"].loc[edges["bool_SP"]] = True
-            edges["bool_SP"].loc[edges["bool_SP"] != False] = True  # noqa: E712
+            links["bool_SP"] = links["line_geom"]
+            links["bool_SP"].loc[links["bool_SP"].isna()] = False
+            # links["bool_SP"].loc[links["bool_SP"]] = True
+            links["bool_SP"].loc[links["bool_SP"] != False] = True  # noqa: E712
 
             # fill the line geoms with the previous geoms if no shortest path is found
-            edges.line_geom = edges.line_geom.fillna(edges.line_geom_oud)
-            edges["line_geom"] = edges["line_geom"].astype(str).apply(loads)  # change string to geometry object
+            links.line_geom = links.line_geom.fillna(links.line_geom_oud)
+            links["line_geom"] = links["line_geom"].astype(str).apply(loads)  # change string to geometry object
 
-            check_SP = edges.loc[edges.bool_SP].copy()
+            check_SP = links.loc[links.bool_SP].copy()
             check_SP["start_SP"] = check_SP["line_geom"].apply(lambda geom: Point(geom.coords[0]))
             check_SP["end_SP"] = check_SP["line_geom"].apply(lambda geom: Point(geom.coords[-1]))
 
@@ -746,76 +746,76 @@ class CrossingsToRibasim:
                 else row["line_geom"],
                 axis=1,
             )
-            edges.update(check_SP)
+            links.update(check_SP)
 
-        return edges
+        return links
 
-    def change_edge(self, edges, from_node_id_to_change, to_node_id_to_change, from_node_id_geom, to_node_id_geom):
+    def change_link(self, links, from_node_id_to_change, to_node_id_to_change, from_node_id_geom, to_node_id_geom):
         # find the geometries to use
-        geometry_of_interest = edges.loc[
-            (edges["from"] == from_node_id_geom) & (edges["to"] == to_node_id_geom), "line_geom"
+        geometry_of_interest = links.loc[
+            (links["from"] == from_node_id_geom) & (links["to"] == to_node_id_geom), "line_geom"
         ]
 
         # replace the found geometry
-        edges.loc[(edges["from"] == from_node_id_to_change) & (edges["to"] == to_node_id_to_change), "line_geom"] = (
+        links.loc[(links["from"] == from_node_id_to_change) & (links["to"] == to_node_id_to_change), "line_geom"] = (
             geometry_of_interest
         )
 
-        return edges
+        return links
 
-    def change_boezems_manually(self, edges):
+    def change_boezems_manually(self, links):
         if self.model_characteristics["waterschap"] == "HollandsNoorderkwartier":
-            edges = self.change_edge(
-                edges, from_node_id_to_change=447, to_node_id_to_change=3, from_node_id_geom=83, to_node_id_geom=447
+            links = self.change_link(
+                links, from_node_id_to_change=447, to_node_id_to_change=3, from_node_id_geom=83, to_node_id_geom=447
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=395, to_node_id_to_change=3, from_node_id_geom=68, to_node_id_geom=395
+            links = self.change_link(
+                links, from_node_id_to_change=395, to_node_id_to_change=3, from_node_id_geom=68, to_node_id_geom=395
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=571, to_node_id_to_change=3, from_node_id_geom=126, to_node_id_geom=571
+            links = self.change_link(
+                links, from_node_id_to_change=571, to_node_id_to_change=3, from_node_id_geom=126, to_node_id_geom=571
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=1287, to_node_id_to_change=3, from_node_id_geom=226, to_node_id_geom=1287
+            links = self.change_link(
+                links, from_node_id_to_change=1287, to_node_id_to_change=3, from_node_id_geom=226, to_node_id_geom=1287
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=911, to_node_id_to_change=3, from_node_id_geom=101, to_node_id_geom=911
+            links = self.change_link(
+                links, from_node_id_to_change=911, to_node_id_to_change=3, from_node_id_geom=101, to_node_id_geom=911
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=383, to_node_id_to_change=3, from_node_id_geom=65, to_node_id_geom=383
+            links = self.change_link(
+                links, from_node_id_to_change=383, to_node_id_to_change=3, from_node_id_geom=65, to_node_id_geom=383
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=817, to_node_id_to_change=3, from_node_id_geom=119, to_node_id_geom=817
+            links = self.change_link(
+                links, from_node_id_to_change=817, to_node_id_to_change=3, from_node_id_geom=119, to_node_id_geom=817
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=366, to_node_id_to_change=3, from_node_id_geom=57, to_node_id_geom=366
+            links = self.change_link(
+                links, from_node_id_to_change=366, to_node_id_to_change=3, from_node_id_geom=57, to_node_id_geom=366
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=717, to_node_id_to_change=3, from_node_id_geom=13, to_node_id_geom=717
+            links = self.change_link(
+                links, from_node_id_to_change=717, to_node_id_to_change=3, from_node_id_geom=13, to_node_id_geom=717
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=487, to_node_id_to_change=3, from_node_id_geom=98, to_node_id_geom=487
+            links = self.change_link(
+                links, from_node_id_to_change=487, to_node_id_to_change=3, from_node_id_geom=98, to_node_id_geom=487
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=481, to_node_id_to_change=3, from_node_id_geom=96, to_node_id_geom=481
+            links = self.change_link(
+                links, from_node_id_to_change=481, to_node_id_to_change=3, from_node_id_geom=96, to_node_id_geom=481
             )
 
-            edges = self.change_edge(
-                edges, from_node_id_to_change=1027, to_node_id_to_change=3, from_node_id_geom=197, to_node_id_geom=1027
+            links = self.change_link(
+                links, from_node_id_to_change=1027, to_node_id_to_change=3, from_node_id_geom=197, to_node_id_geom=1027
             )
 
-        return edges
+        return links
 
-        # edges = self.change_edge(edges,
+        # links = self.change_link(links,
         #                          from_node_id_to_change=,
         #                          to_node_id_to_change=,
         #                          from_node_id_geom=,
@@ -829,20 +829,20 @@ class CrossingsToRibasim:
 
 
 class RibasimNetwork:
-    def __init__(self, nodes, edges, model_characteristics):
+    def __init__(self, nodes, links, model_characteristics):
         """_summary_
 
         Parameters
         ----------
         nodes : _type_
             _description_
-        edges : _type_
+        links : _type_
             _description_
         model_characteristics : _type_
             _description_
         """
         self.nodes = nodes
-        self.edges = edges
+        self.links = links
         self.model_characteristics = model_characteristics
 
     # def node(self):
@@ -865,7 +865,7 @@ class RibasimNetwork:
 
     #     return node
 
-    def edge(self):
+    def link(self):
         """_summary_
 
         Returns
@@ -873,31 +873,31 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        edge = gpd.GeoDataFrame()
+        link = gpd.GeoDataFrame()
 
         # fix the from nodes
-        from_node_type = self.edges.merge(self.nodes, left_on="from", right_on="node_id")["type"].to_numpy()
+        from_node_type = self.links.merge(self.nodes, left_on="from", right_on="node_id")["type"].to_numpy()
 
-        edge["from_node_id"] = self.edges["from"]  # from node ids
-        edge["meta_from_node_type"] = from_node_type
+        link["from_node_id"] = self.links["from"]  # from node ids
+        link["meta_from_node_type"] = from_node_type
 
         # fix the to nodes
-        to_node_type = self.edges.merge(self.nodes, left_on="to", right_on="node_id")["type"].to_numpy()
+        to_node_type = self.links.merge(self.nodes, left_on="to", right_on="node_id")["type"].to_numpy()
 
-        edge["to_node_id"] = self.edges["to"]  # to node ids
-        edge["meta_to_node_type"] = to_node_type
+        link["to_node_id"] = self.links["to"]  # to node ids
+        link["meta_to_node_type"] = to_node_type
 
         # fill in the other columns
-        edge["edge_type"] = "flow"
-        edge["name"] = None
-        edge["geometry"] = self.edges["line_geom"]
+        link["link_type"] = "flow"
+        link["name"] = None
+        link["geometry"] = self.links["line_geom"]
 
         # comply to Ribasim 2024.11
-        edge = edge.reset_index(drop=True)
-        edge["edge_id"] = edge.index.astype(int)
-        edge = edge.set_index("edge_id")
+        link = link.reset_index(drop=True)
+        link["link_id"] = link.index.astype(int)
+        link = link.set_index("link_id")
 
-        return edge
+        return link
 
     def basin(self):
         """_summary_
@@ -1241,7 +1241,7 @@ class RibasimNetwork:
     def create(
         self,
         node=None,
-        edge=None,
+        link=None,
         basin=None,
         pump=None,
         tabulated_rating_curve=None,
@@ -1260,7 +1260,7 @@ class RibasimNetwork:
         ----------
         node : _type_, optional
             _description_, by default None
-        edge : _type_, optional
+        link : _type_, optional
             _description_, by default None
         basin : _type_, optional
             _description_, by default None
@@ -1296,7 +1296,7 @@ class RibasimNetwork:
             + self.model_characteristics["modelname"]
             + "_"
             + self.model_characteristics["modeltype"],
-            network=ribasim.Network(node=node, edge=edge),
+            network=ribasim.Network(node=node, link=link),
             basin=basin,
             flow_boundary=flow_boundary,
             pump=pump,
@@ -1335,8 +1335,8 @@ class RibasimNetwork:
         nodes = self.nodes[["node_id", "type", "geometry"]]
 
         ##### identify the sinks #####
-        unique_first = np.unique(self.edges["from"].astype(int))  # Get the unique nodes from the first column
-        unique_second = np.unique(self.edges["to"].astype(int))  # Get the unique integers from the second column
+        unique_first = np.unique(self.links["from"].astype(int))  # Get the unique nodes from the first column
+        unique_second = np.unique(self.links["to"].astype(int))  # Get the unique integers from the second column
         peilgebied_to_sink = (
             np.setdiff1d(unique_second, unique_first) + 1
         )  # = the basins which are assumed to be Terminals. Plus one due to indexing
@@ -1451,11 +1451,11 @@ class RibasimNetwork:
         # the boezem nodes have been identified. Now determine the five different categories.
 
         # determine from and to boezem nodes
-        nodes_from_boezem = model.edge.df.loc[
-            model.edge.df.from_node_id.isin(boezem_nodes)
+        nodes_from_boezem = model.link.df.loc[
+            model.link.df.from_node_id.isin(boezem_nodes)
         ]  # select ALL NODES which originate FROM the boezem
-        nodes_to_boezem = model.edge.df.loc[
-            model.edge.df.to_node_id.isin(boezem_nodes)
+        nodes_to_boezem = model.link.df.loc[
+            model.link.df.to_node_id.isin(boezem_nodes)
         ]  # select ALL NODES which go TO the boezem
 
         # inlaten_TRC
@@ -1567,7 +1567,7 @@ class RibasimNetwork:
         # collect the nodes in from_node_id (step 1), and insert them again in the to_node_id (step 2)
         # By doing so, a filter can be applied on the FROM_node_id with the boundary nodes (step 3).
         BCN_from = BCN_from.to_node_id  # step 1
-        BCN_from = model.edge.df.loc[model.edge.df.from_node_id.isin(BCN_from)]  # step 2
+        BCN_from = model.link.df.loc[model.link.df.from_node_id.isin(BCN_from)]  # step 2
         BCN_from = BCN_from.loc[
             (BCN_from.meta_to_node_type == "FlowBoundary")
             | (BCN_from.meta_to_node_type == "LevelBoundary")
@@ -1595,7 +1595,7 @@ class RibasimNetwork:
         # collect the nodes in from_node_id (step 1), and insert them again in the to_node_id (step 2)
         # By doing so, a filter can be applied on the FROM_node_id with the boundary nodes (step 3).
         BCN_to = BCN_to.from_node_id  # step 1
-        BCN_to = model.edge.df.loc[model.edge.df.to_node_id.isin(BCN_to)]  # step 2
+        BCN_to = model.link.df.loc[model.link.df.to_node_id.isin(BCN_to)]  # step 2
         BCN_to = BCN_to.loc[
             (BCN_to.meta_from_node_type == "FlowBoundary")
             | (BCN_to.meta_from_node_type == "LevelBoundary")
@@ -1677,14 +1677,14 @@ class RibasimNetwork:
         temp_pump_static.index.name = "fid"
         model.pump.static.df = temp_pump_static
 
-        ### add the peilgebied_cat flag to the edges as well ###
-        # first assign all edges to become 'bergend'. Adjust the boezem edges later.
-        model.edge.df["meta_categorie"] = "doorgaand"
+        ### add the peilgebied_cat flag to the links as well ###
+        # first assign all links to become 'bergend'. Adjust the boezem links later.
+        model.link.df["meta_categorie"] = "doorgaand"
 
         # find the basins which are boezems
         nodeids_boezem = model.basin.state.df.loc[model.basin.state.df.meta_categorie == "hoofdwater", "node_id"]
-        model.edge.df.loc[
-            (model.edge.df.from_node_id.isin(nodeids_boezem)) | (model.edge.df.to_node_id.isin(nodeids_boezem)),
+        model.link.df.loc[
+            (model.link.df.from_node_id.isin(nodeids_boezem)) | (model.link.df.to_node_id.isin(nodeids_boezem)),
             "meta_categorie",
         ] = "hoofdwater"
 
@@ -1862,11 +1862,11 @@ class RibasimNetwork:
             )
             model.write(path_ribasim)
 
-            # print('Edges after writing to Z drive:')
-            # display(model.network.edge.df)
-            # gpd.GeoDataFrame(model.network.edge.df.geometry).plot(color='red')
-            # model.network.edge.df.to_file('zzl_test.gpkg')
-            # model.network.edge.plot()
+            # print('Links after writing to Z drive:')
+            # display(model.network.link.df)
+            # gpd.GeoDataFrame(model.network.link.df.geometry).plot(color='red')
+            # model.network.link.df.to_file('zzl_test.gpkg')
+            # model.network.link.plot()
 
         ##### write the checks #####
         if self.model_characteristics["write_checks"]:

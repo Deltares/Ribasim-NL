@@ -6,8 +6,8 @@ from openpyxl import load_workbook
 from openpyxl.styles import Border
 from pydantic import BaseModel, ConfigDict
 
-from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.model import Model
 from ribasim_nl.parametrization.empty_table import empty_table_df
 
 description = [
@@ -41,7 +41,7 @@ description = [
 defaults = {
     "Afvoergemaal": {
         "upstream_level_offset": 0.0,
-        "downstream_level_offset": 0.4,
+        "downstream_level_offset": pd.NA,
         "flow_rate": pd.NA,
         "flow_rate_mm_per_day": 15,
         "function": "outlet",

@@ -37,7 +37,7 @@ def update_basin_profile(
     model: Model,
     percentages_map: dict = {"hoofdwater": 90, "doorgaand": 10, "bergend": 3},
     default_percentage: int = 10,
-    profile_depth=2,
+    profile_depth=3,
 ):
     # read profile from basin-table
     profile = model.basin.area.df.copy()

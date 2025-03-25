@@ -76,14 +76,14 @@ class AddStorageBasins:
             bergende_node.index.max() + bergende_node.index + 1
         )  # retrieve new max node id for the manning node
 
-        # create edges from the nodes
+        # create links from the nodes
         def create_linestring(row, from_col, to_col):
             return LineString([row[from_col], row[to_col]])
 
-        bergende_node["geometry_edge_bergend_to_MR"] = bergende_node.apply(
+        bergende_node["geometry_link_bergend_to_MR"] = bergende_node.apply(
             create_linestring, axis=1, from_col="geometry_bergend", to_col="geometry_manning"
         )
-        bergende_node["geometry_edge_MR_to_doorgaand"] = bergende_node.apply(
+        bergende_node["geometry_link_MR_to_doorgaand"] = bergende_node.apply(
             create_linestring, axis=1, from_col="geometry_manning", to_col="geometry_doorgaand"
         )
 
@@ -102,40 +102,40 @@ class AddStorageBasins:
         manning_static["profile_slope"] = 3.0
         manning_static["meta_categorie"] = "bergend"
 
-        # create the edges table which goes from the bergende basin to the ManningResistance (MR)
-        edge_bergend_MR = pd.DataFrame()
-        edge_bergend_MR["from_node_id"] = (
+        # create the links table which goes from the bergende basin to the ManningResistance (MR)
+        link_bergend_MR = pd.DataFrame()
+        link_bergend_MR["from_node_id"] = (
             bergende_node.index.copy()
         )  # the index is the bergende node_id, which is the starting point
-        edge_bergend_MR["to_node_id"] = bergende_node.manning_id.to_numpy()  # it goes to the manning node
-        edge_bergend_MR["geometry"] = (
-            bergende_node.geometry_edge_bergend_to_MR.values
-        )  # edge geometry was already created
-        edge_bergend_MR["edge_type"] = "flow"
-        edge_bergend_MR["meta_from_node_type"] = "Basin"  # include metadata
-        edge_bergend_MR["meta_to_node_type"] = "ManningResistance"  # include metadata
-        edge_bergend_MR["meta_categorie"] = "bergend"  # include metadata
+        link_bergend_MR["to_node_id"] = bergende_node.manning_id.to_numpy()  # it goes to the manning node
+        link_bergend_MR["geometry"] = (
+            bergende_node.geometry_link_bergend_to_MR.values
+        )  # link geometry was already created
+        link_bergend_MR["link_type"] = "flow"
+        link_bergend_MR["meta_from_node_type"] = "Basin"  # include metadata
+        link_bergend_MR["meta_to_node_type"] = "ManningResistance"  # include metadata
+        link_bergend_MR["meta_categorie"] = "bergend"  # include metadata
 
         # repeat the same, but then from the ManningResistance (MR) to the doorgaande
-        edge_MR_doorgaand = pd.DataFrame()
-        edge_MR_doorgaand["from_node_id"] = (
+        link_MR_doorgaand = pd.DataFrame()
+        link_MR_doorgaand["from_node_id"] = (
             bergende_node.manning_id.to_numpy()
         )  # the starting point is the ManningResistance node
-        edge_MR_doorgaand["to_node_id"] = bergende_node.doorgaand_id.to_numpy()  # it goes to the doorgaande basin
-        edge_MR_doorgaand["geometry"] = (
-            bergende_node.geometry_edge_MR_to_doorgaand.values
-        )  # edge geometry was already created
-        edge_MR_doorgaand["edge_type"] = "flow"
-        edge_MR_doorgaand["meta_from_node_type"] = "ManningResistance"  # include metadata
-        edge_MR_doorgaand["meta_to_node_type"] = "Basin"  # include metadata
-        edge_MR_doorgaand["meta_categorie"] = "bergend"  # include metadata. This is still bergend.
+        link_MR_doorgaand["to_node_id"] = bergende_node.doorgaand_id.to_numpy()  # it goes to the doorgaande basin
+        link_MR_doorgaand["geometry"] = (
+            bergende_node.geometry_link_MR_to_doorgaand.values
+        )  # link geometry was already created
+        link_MR_doorgaand["link_type"] = "flow"
+        link_MR_doorgaand["meta_from_node_type"] = "ManningResistance"  # include metadata
+        link_MR_doorgaand["meta_to_node_type"] = "Basin"  # include metadata
+        link_MR_doorgaand["meta_categorie"] = "bergend"  # include metadata. This is still bergend.
 
-        # combine the edge tables
-        edge_bergend_all = pd.concat([edge_bergend_MR, edge_MR_doorgaand]).reset_index(drop=True)
-        edge_bergend_all["edge_id"] = (
-            edge_bergend_all.index.copy() + self.ribasim_model.edge.df.index.max() + 1
-        )  # start counting from the highest edge_id
-        edge_bergend_all = edge_bergend_all.set_index("edge_id")
+        # combine the link tables
+        link_bergend_all = pd.concat([link_bergend_MR, link_MR_doorgaand]).reset_index(drop=True)
+        link_bergend_all["link_id"] = (
+            link_bergend_all.index.copy() + self.ribasim_model.link.df.index.max() + 1
+        )  # start counting from the highest link_id
+        link_bergend_all = link_bergend_all.set_index("link_id")
 
         # clean the new node table, update the meta_node_id column
         bergende_node = bergende_node[["node_type", "meta_node_id", "geometry_bergend"]]
@@ -164,7 +164,7 @@ class AddStorageBasins:
             [self.ribasim_model.manning_resistance.static.df, manning_static]
         ).reset_index(drop=True)
 
-        self.ribasim_model.edge.df = pd.concat([self.ribasim_model.edge.df, edge_bergend_all])
+        self.ribasim_model.link.df = pd.concat([self.ribasim_model.link.df, link_bergend_all])
 
     def get_current_max_nodeid(self):
         """Get the current maximum node ID from the model where node_id is stored as an index."""

@@ -207,20 +207,20 @@ class case1:
 
         return model
 
-    def add_edges(self, model):
-        """Add edges between each node."""
-        # add the edges
-        model.edge.add(model.level_boundary[1], model.outlet[5])
-        model.edge.add(model.outlet[5], model.basin[3])
-        model.edge.add(model.basin[3], model.outlet[6])
-        model.edge.add(model.outlet[6], model.basin[4])
-        model.edge.add(model.basin[4], model.pump[7])
-        model.edge.add(model.pump[7], model.level_boundary[2])
+    def add_links(self, model):
+        """Add links between each node."""
+        # add the links
+        model.link.add(model.level_boundary[1], model.outlet[5])
+        model.link.add(model.outlet[5], model.basin[3])
+        model.link.add(model.basin[3], model.outlet[6])
+        model.link.add(model.outlet[6], model.basin[4])
+        model.link.add(model.basin[4], model.pump[7])
+        model.link.add(model.pump[7], model.level_boundary[2])
 
-        # add the edges for the discrete control
-        model.edge.add(model.discrete_control[100], model.outlet[5])
-        model.edge.add(model.discrete_control[101], model.outlet[6])
-        model.edge.add(model.discrete_control[102], model.pump[7])
+        # add the links for the discrete control
+        model.link.add(model.discrete_control[100], model.outlet[5])
+        model.link.add(model.discrete_control[101], model.outlet[6])
+        model.link.add(model.discrete_control[102], model.pump[7])
 
         return model
 
@@ -309,7 +309,7 @@ class case1:
         model = self.add_peilgebieden(model)
         model = self.add_connection_nodes(model)
         model = self.add_discrete_control(model)
-        model = self.add_edges(model)
+        model = self.add_links(model)
 
         if copy:
             return model
@@ -587,23 +587,23 @@ class case2:
 
             # display(df_basin)
 
-    def add_edges(self, model):
-        """Add edges between each node."""
-        # add the edges
-        model.edge.add(model.level_boundary[1], model.outlet[9])
-        model.edge.add(model.outlet[9], model.basin[8])
-        model.edge.add(model.basin[8], model.outlet[10])
-        model.edge.add(model.outlet[10], model.basin[3])
-        model.edge.add(model.basin[8], model.outlet[11])
-        model.edge.add(model.outlet[11], model.basin[4])
-        model.edge.add(model.basin[8], model.pump[12])
-        model.edge.add(model.pump[12], model.level_boundary[2])
+    def add_links(self, model):
+        """Add links between each node."""
+        # add the links
+        model.link.add(model.level_boundary[1], model.outlet[9])
+        model.link.add(model.outlet[9], model.basin[8])
+        model.link.add(model.basin[8], model.outlet[10])
+        model.link.add(model.outlet[10], model.basin[3])
+        model.link.add(model.basin[8], model.outlet[11])
+        model.link.add(model.outlet[11], model.basin[4])
+        model.link.add(model.basin[8], model.pump[12])
+        model.link.add(model.pump[12], model.level_boundary[2])
 
-        # add the edges for the discrete control
-        model.edge.add(model.discrete_control[103], model.outlet[9])
-        model.edge.add(model.discrete_control[104], model.outlet[10])
-        model.edge.add(model.discrete_control[105], model.outlet[11])
-        model.edge.add(model.discrete_control[106], model.pump[12])
+        # add the links for the discrete control
+        model.link.add(model.discrete_control[103], model.outlet[9])
+        model.link.add(model.discrete_control[104], model.outlet[10])
+        model.link.add(model.discrete_control[105], model.outlet[11])
+        model.link.add(model.discrete_control[106], model.pump[12])
 
         return model
 
@@ -612,7 +612,7 @@ class case2:
         model = self.add_peilgebied(self.model)
         model = self.add_connection_nodes(model)
         model = self.add_discrete_control(model)
-        model = self.add_edges(model)
+        model = self.add_links(model)
 
         if copy:
             return model

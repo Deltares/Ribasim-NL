@@ -22,20 +22,9 @@ Getest (u kunt simuleren): Nee
 download_latest_model = True
 upload_model = False
 
-RESET_TABLES = [
-    "AaenMaas",
-    "BrabantseDelta",
-    "DrentsOverijsselseDelta",
-    "HunzeenAas",
-    "Limburg",
-    "Noorderzijlvest",
-    "RijnenIJssel",
-    "StichtseRijnlanden",
-    "ValleienVeluwe",
-    "Vechtstromen",
-]
+RESET_TABLES = []
 
-models = [
+model_specs = [
     {
         "authority": "Rijkswaterstaat",
         "model": "hws",
@@ -43,52 +32,52 @@ models = [
     },
     {
         "authority": "AmstelGooienVecht",
-        "model": "AmstelGooienVecht_parametrized",
+        "model": "AmstelGooienVecht_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Delfland",
-        "model": "Delfland_parametrized",
+        "model": "Delfland_parameterized",
         "find_toml": True,
     },
     {
         "authority": "HollandseDelta",
-        "model": "HollandseDelta_parametrized",
+        "model": "HollandseDelta_parameterized",
         "find_toml": True,
     },
     {
         "authority": "HollandsNoorderkwartier",
-        "model": "HollandsNoorderkwartier_parametrized",
+        "model": "HollandsNoorderkwartier_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Rijnland",
-        "model": "Rijnland_parametrized",
+        "model": "Rijnland_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Rivierenland",
-        "model": "Rivierenland_parametrized",
+        "model": "Rivierenland_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Scheldestromen",
-        "model": "Scheldestromen_parametrized",
+        "model": "Scheldestromen_parameterized",
         "find_toml": True,
     },
     {
         "authority": "SchielandendeKrimpenerwaard",
-        "model": "SchielandendeKrimpenerwaard_parametrized",
+        "model": "SchielandendeKrimpenerwaard_parameterized",
         "find_toml": True,
     },
     {
         "authority": "WetterskipFryslan",
-        "model": "WetterskipFryslan_parametrized",
+        "model": "WetterskipFryslan_parameterized",
         "find_toml": True,
     },
     {
         "authority": "Zuiderzeeland",
-        "model": "Zuiderzeeland_parametrized",
+        "model": "Zuiderzeeland_parameterized",
         "find_toml": True,
     },
     {
@@ -154,80 +143,84 @@ def get_model_path(model, model_version):
 
 
 # %%
-for idx, model in enumerate(models):
-    print(f"{model["authority"]} - {model["model"]}")
+for idx, model_spec in enumerate(model_specs):
+    print(f"{model_spec["authority"]} - {model_spec["model"]}")
 
     # get version
-    if "model_version" in model.keys():
-        model_version = model["model_version"]
+    if "model_version" in model_spec.keys():
+        model_version = model_spec["model_version"]
 
     else:
-        model_versions = [i for i in cloud.uploaded_models(model["authority"]) if i.model == model["model"]]
+        model_versions = [i for i in cloud.uploaded_models(model_spec["authority"]) if i.model == model_spec["model"]]
         if model_versions:
             model_version = sorted(model_versions, key=lambda x: x.sorter)[-1]
         else:
-            raise ValueError(f"No models with name {model["model"]} in the cloud")
+            raise ValueError(f"No models with name {model_spec["model"]} in the cloud")
 
-    model_path = get_model_path(model, model_version)
+    model_path = get_model_path(model_spec, model_version)
 
     # download model if not yet downloaded
     if not model_path.exists():
         if download_latest_model:
             print(f"Downloaden versie: {model_version.version}")
-            url = cloud.joinurl(model["authority"], "modellen", model_version.path_string)
+            url = cloud.joinurl(model_spec["authority"], "modellen", model_version.path_string)
             cloud.download_content(url)
         else:
             model_versions = sorted(model_versions, key=lambda x: x.version, reverse=True)
-            model_paths = (get_model_path(model, i) for i in model_versions)
+            model_paths = (get_model_path(model_spec, i) for i in model_versions)
             model_path = next((i for i in model_paths if i.exists()), None)
             if model_path is None:
-                raise ValueError(f"No models with name {model["model"]} on local drive")
+                raise ValueError(f"No models with name {model_spec["model"]} on local drive")
 
     # find toml
-    if model["find_toml"]:
+    if model_spec["find_toml"]:
         tomls = list(model_path.glob("*.toml"))
         if len(tomls) > 1:
             raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one!")
         else:
             model_path = tomls[0]
     else:
-        model_path = model_path.joinpath(f"{model["model"]}.toml")
+        model_path = model_path.joinpath(f"{model_spec["model"]}.toml")
 
     # read model
-    ribasim_model = Model.read(model_path)
+    model = Model.read(model_path)
 
     # TODO: make sure this isn't needed next round!
-    if model["authority"] in RESET_TABLES:
-        ribasim_model.remove_unassigned_basin_area()
-        ribasim_model = reset_static_tables(ribasim_model)
+    if model_spec["authority"] in RESET_TABLES:
+        model.remove_unassigned_basin_area()
+        model = reset_static_tables(model)
 
     # run model
-    if not ribasim_model.basin_outstate.filepath.exists():
+    if not model.basin_outstate.filepath.exists():
         print("run model to update state")
-        returncode = ribasim_model.run()
+        returncode = model.run()
         if returncode != 0:
             raise Exception("model won't run successfully!")
-    ribasim_model.update_state()
+    model.update_state()
 
     # add meta_waterbeheerder
-    for node_type in ribasim_model.node_table().df.node_type.unique():
-        ribasim_node = getattr(ribasim_model, pascal_to_snake_case(node_type))
-        ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = model["authority"]
+    for node_type in model.node_table().df.node_type.unique():
+        ribasim_node = getattr(model, pascal_to_snake_case(node_type))
+        ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = model_spec["authority"]
 
     # reset index of RWS model so we get subsequent ids
-    if model["authority"] == "Rijkswaterstaat":
-        ribasim_model = reset_index(ribasim_model)
+    if model_spec["authority"] == "Rijkswaterstaat":
+        model = reset_index(model)
 
     # prefix index so ids will be unique
-    ribasim_model = prefix_index(model=ribasim_model, prefix_id=waterbeheercode[model["authority"]])
+    try:
+        model = prefix_index(model=model, prefix_id=waterbeheercode[model_spec["authority"]])
+    except KeyError as e:
+        print("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
+        raise e
 
     if idx == 0:
-        lhm_model = ribasim_model
+        lhm_model = model
     else:
         # concat and do not mess with original_index as it has been preserved
-        lhm_model = concat([lhm_model, ribasim_model], keep_original_index=True)
+        lhm_model = concat([lhm_model, model], keep_original_index=True)
         readme += f"""
-**{model["authority"]}**: {model["model"]} ({model_version.version})"""
+**{model_spec["authority"]}**: {model_spec["model"]} ({model_version.version})"""
 
 
 # %%

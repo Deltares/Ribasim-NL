@@ -8,8 +8,8 @@ import geopandas as gpd
 import pandas as pd
 import requests
 
-from ribasim_nl import CloudStorage
 from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.cloud import CloudStorage
 
 cloud = CloudStorage()
 

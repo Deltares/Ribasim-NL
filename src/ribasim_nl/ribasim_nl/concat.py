@@ -1,8 +1,8 @@
 import pandas as pd
 from ribasim import Model
 
-from ribasim_nl import reset_index
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.reset_index import reset_index
 
 
 def concat(models: list[Model], keep_original_index: bool = False) -> Model:

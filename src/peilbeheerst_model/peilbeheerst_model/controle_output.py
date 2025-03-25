@@ -24,16 +24,16 @@ class Control:
         else:
             self.qlr_path = qlr_path
         self.path_basin_output = os.path.join(self.work_dir, "results", "basin.arrow")
-        self.path_edge_output = os.path.join(self.work_dir, "results", "flow.arrow")
+        self.path_link_output = os.path.join(self.work_dir, "results", "flow.arrow")
         self.path_control_dict_path = os.path.join(self.work_dir, "results", "output_controle")
 
     def read_model_output(self):
         df_basin = pd.read_feather(self.path_basin_output)
-        df_edge = pd.read_feather(self.path_edge_output)
+        df_link = pd.read_feather(self.path_link_output)
         model = ribasim.model.Model(filepath=self.path_ribasim_toml)
 
         self.df_basin = df_basin
-        self.df_edge = df_edge
+        self.df_link = df_link
         self.model = model
         control_dict = {}
 
@@ -182,24 +182,24 @@ class Control:
         return control_dict
 
     def find_stationary_flow(self, control_dict, n_hours_mean=24):
-        df_edge = self.df_edge.copy()
-        df_edge["time"] = pd.to_datetime(df_edge["time"])  # convert to time column
+        df_link = self.df_link.copy()
+        df_link["time"] = pd.to_datetime(df_link["time"])  # convert to time column
 
-        if "edge_id" in df_edge.columns:
-            df_edge = df_edge.sort_values(by=["time", "edge_id"], ascending=True).copy()  # sort values, just in case
+        if "link_id" in df_link.columns:
+            df_link = df_link.sort_values(by=["time", "link_id"], ascending=True).copy()  # sort values, just in case
         else:
-            df_edge = df_edge.sort_values(by=["time", "link_id"], ascending=True).copy()
-        last_time = df_edge["time"].max()  # retireve max time value
+            df_link = df_link.sort_values(by=["time", "link_id"], ascending=True).copy()
+        last_time = df_link["time"].max()  # retireve max time value
         time_threshold = last_time - pd.Timedelta(hours=n_hours_mean)  # determine the time threshold, likely 24 hours
 
-        df_edge_24h = df_edge[df_edge["time"] >= time_threshold].copy()  # seelct above the threshold
+        df_link_24h = df_link[df_link["time"] >= time_threshold].copy()  # seelct above the threshold
 
-        # Group by 'edge_id' and calculate the average flow rate over the last 24 hours
-        if "edge_id" in df_edge_24h.columns:
-            grouper = df_edge_24h.groupby("edge_id", as_index=False)
+        # Group by 'link_id' and calculate the average flow rate over the last 24 hours
+        if "link_id" in df_link_24h.columns:
+            grouper = df_link_24h.groupby("link_id", as_index=False)
         else:
-            grouper = df_edge_24h.groupby("link_id", as_index=False)
-        df_edge_avg = grouper.agg(
+            grouper = df_link_24h.groupby("link_id", as_index=False)
+        df_link_avg = grouper.agg(
             {
                 "flow_rate": "mean",  # take the mean, as the pumps may not show stationairy results in one timestep
                 "from_node_id": "first",  # remains the same for each timestep
@@ -208,16 +208,16 @@ class Control:
             }
         )
 
-        # Merge the geometry from edges_ribasim to df_edge_avg to retrieve the geometries
-        edges_ribasim = self.model.edge.df.copy()
-        df_edge_avg = df_edge_avg.merge(
-            right=edges_ribasim[["from_node_id", "to_node_id", "geometry"]],
+        # Merge the geometry from links_ribasim to df_link_avg to retrieve the geometries
+        links_ribasim = self.model.link.df.copy()
+        df_link_avg = df_link_avg.merge(
+            right=links_ribasim[["from_node_id", "to_node_id", "geometry"]],
             on=["from_node_id", "to_node_id"],
             how="left",
         )
 
-        df_edge_avg = gpd.GeoDataFrame(df_edge_avg).set_crs(crs="EPSG:28992")
-        control_dict["flow"] = df_edge_avg
+        df_link_avg = gpd.GeoDataFrame(df_link_avg).set_crs(crs="EPSG:28992")
+        control_dict["flow"] = df_link_avg
 
         return control_dict
 
@@ -300,6 +300,14 @@ class Control:
 
         return control_dict
 
+    def mask_basins(self, control_dict):
+        if "meta_check_basin_level" in self.model.basin.node.df.columns:
+            control_dict["mask_afvoer"] = self.model.basin.node.df[
+                self.model.basin.node.df["meta_check_basin_level"] == "False"
+            ].reset_index()[["node_id", "geometry"]]
+
+        return control_dict
+
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():
@@ -338,6 +346,7 @@ class Control:
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
         control_dict = self.find_stationary_flow(control_dict)
+        control_dict = self.mask_basins(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 

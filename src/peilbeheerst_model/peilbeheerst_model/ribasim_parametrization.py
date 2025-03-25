@@ -1,5 +1,6 @@
 # import pathlib
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -15,13 +16,17 @@ import tqdm.auto as tqdm
 from shapely.geometry import LineString
 
 from peilbeheerst_model import supply
+from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
 
 
-def get_current_max_nodeid(ribasim_model):
+# FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
+#  (e.g., the used 'meta_node_id'-column contains many `<NA>`-values).
+def get_current_max_node_id(ribasim_model: ribasim.Model) -> int:
     with warnings.catch_warnings():
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node_table().df
+
     if len(df_all_nodes) == 0:
         max_id = 1
     else:
@@ -88,11 +93,11 @@ def insert_standard_profile(
     # find the node_id of the bergende nodes with the doorgaande nodes
     bergende_nodes = profile_total.loc[profile_total.meta_categorie == "bergend"][["node_id"]].reset_index(drop=True)
     bergende_nodes["from_MR_node"] = bergende_nodes.merge(
-        right=ribasim_model.edge.df, left_on="node_id", right_on="from_node_id", how="left"
+        right=ribasim_model.link.df, left_on="node_id", right_on="from_node_id", how="left"
     )["to_node_id"]
 
     bergende_nodes["doorgaande_node"] = bergende_nodes.merge(
-        right=ribasim_model.edge.df, left_on="from_MR_node", right_on="from_node_id", how="left"
+        right=ribasim_model.link.df, left_on="from_MR_node", right_on="from_node_id", how="left"
     )["to_node_id"]
 
     # find the profiles
@@ -240,8 +245,8 @@ def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
     LB_combined = LB_combined.drop_duplicates(subset="node_id").sort_values(by="node_id").reset_index(drop=True)
     ribasim_model.level_boundary.static = LB_combined
 
-    # fourth, update the edges table.
-    ribasim_model.edge.df.replace(to_replace="Terminal", value="LevelBoundary", inplace=True)
+    # fourth, update the links table.
+    ribasim_model.link.df.replace(to_replace="Terminal", value="LevelBoundary", inplace=True)
 
     # fifth, remove all node rows with Terminals
     if len(ribasim_model.terminal.node.df) > 0:
@@ -288,8 +293,8 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
         [ribasim_model.tabulated_rating_curve.static.df, TRC_LB]
     ).reset_index(drop=True)
 
-    # change the FlowBoundaries to TRC in the edges
-    ribasim_model.edge.df.replace(to_replace="FlowBoundary", value="TabulatedRatingCurve", inplace=True)
+    # change the FlowBoundaries to TRC in the links
+    ribasim_model.link.df.replace(to_replace="FlowBoundary", value="TabulatedRatingCurve", inplace=True)
 
     # remove all node rows with FlowBoundaries
     if len(ribasim_model.flow_boundary.node.df) > 0:
@@ -297,7 +302,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
         ribasim_model.flow_boundary.static.df = ribasim_model.flow_boundary.static.df.iloc[0:0]
 
     # up till this point, all FlowBoundaries have been converted to TRC's. Now the actual LevelBoundaries needs to be created
-    max_id = get_current_max_nodeid(ribasim_model)
+    max_id = get_current_max_node_id(ribasim_model)
     nodes_FlowBoundary["meta_old_node_id"] = nodes_FlowBoundary.meta_node_id  # store for later
     nodes_FlowBoundary["node_id"] = max_id + nodes_FlowBoundary.index + 1  # implement new id's
     # nodes_FlowBoundary["node_id"] = nodes_FlowBoundary.meta_node_id.copy()
@@ -325,15 +330,15 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     #     [ribasim_model.level_boundary.static.df, nodes_LevelBoundary[["node_id", "level"]]]
     # ).reset_index(drop=True)
 
-    # the nodes have been created. Now add the edges
-    edges_LB = pd.DataFrame()
-    edges_LB["from_node_id"] = (
+    # the nodes have been created. Now add the links
+    links_LB = pd.DataFrame()
+    links_LB["from_node_id"] = (
         nodes_LevelBoundary.index.copy()
     )  # nodes_LevelBoundary["meta_node_id"].copy()  # as these nodes were initially FlowBoundaries, they always flow into the model, not out. Thus, is always the starting point (=from_node_id)
-    edges_LB["meta_from_node_type"] = "LevelBoundary"
-    edges_LB["to_node_id"] = nodes_LevelBoundary["meta_old_node_id"].to_numpy()
-    edges_LB["meta_to_node_type"] = "TabulatedRatingCurve"
-    edges_LB["meta_categorie"] = "doorgaand"
+    links_LB["meta_from_node_type"] = "LevelBoundary"
+    links_LB["to_node_id"] = nodes_LevelBoundary["meta_old_node_id"].to_numpy()
+    links_LB["meta_to_node_type"] = "TabulatedRatingCurve"
+    links_LB["meta_categorie"] = "doorgaand"
 
     # find the geometries, based on the from and to points
     lines_LB = pd.DataFrame()
@@ -343,23 +348,23 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     def create_linestring(row):
         return LineString([row["from_point"], row["to_point"]])
 
-    # create the linestrings, and plug them into the df of edges_LB
+    # create the linestrings, and plug them into the df of links_LB
     if len(lines_LB) > 0:
         lines_LB["geometry"] = lines_LB.apply(create_linestring, axis=1)
-        # edges_LB["geometry"] = lines_LB["line"]
+        # links_LB["geometry"] = lines_LB["line"]
 
         # merge the geometries to the newtemp
-        edges_LB = edges_LB.merge(right=lines_LB[["geometry"]], left_on="from_node_id", right_index=True, how="left")
+        links_LB = links_LB.merge(right=lines_LB[["geometry"]], left_on="from_node_id", right_index=True, how="left")
 
-    # concat the original edges with the newly created edges of the LevelBoundaries
-    new_edges = pd.concat([ribasim_model.edge.df, edges_LB]).reset_index(drop=True)
-    new_edges["edge_id"] = new_edges.index.copy() + 1
-    new_edges = new_edges[
+    # concat the original links with the newly created links of the LevelBoundaries
+    new_links = pd.concat([ribasim_model.link.df, links_LB]).reset_index(drop=True)
+    new_links["link_id"] = new_links.index.copy() + 1
+    new_links = new_links[
         [
-            "edge_id",
+            "link_id",
             "from_node_id",
             "to_node_id",
-            "edge_type",
+            "link_type",
             "name",
             "geometry",
             "meta_from_node_type",
@@ -367,11 +372,11 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
             "meta_categorie",
         ]
     ]
-    new_edges = new_edges.set_index("edge_id")
-    ribasim_model.edge.df = new_edges
+    new_links = new_links.set_index("link_id")
+    ribasim_model.link.df = new_links
 
-    # replace all 'FlowBoundaries' with 'LevelBoundaries' in the edge table
-    # ribasim_model.edge.df.replace(to_replace='FlowBoundary', value='LevelBoundary', inplace=True)
+    # replace all 'FlowBoundaries' with 'LevelBoundaries' in the link table
+    # ribasim_model.link.df.replace(to_replace='FlowBoundary', value='LevelBoundary', inplace=True)
 
     # create the static table for the
     static_LevelBoundary = nodes_LevelBoundary.reset_index().copy()[["node_id"]]
@@ -398,8 +403,8 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     outlet["max_flow_rate"] = 25
 
     # find the min_crest_level
-    # to do so, find the target levels of the (boezem) connected basins. This has to be done by looking within the edges
-    target_level = TRC_naar_OL.merge(ribasim_model.edge.df, left_on="node_id", right_on="to_node_id", how="left")
+    # to do so, find the target levels of the (boezem) connected basins. This has to be done by looking within the links
+    target_level = TRC_naar_OL.merge(ribasim_model.link.df, left_on="node_id", right_on="to_node_id", how="left")
 
     # the basins of which the target_levels should be retrieved, are stored in the column of from_node_id
     target_level = target_level.merge(
@@ -443,8 +448,8 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
         )
     ].reset_index(drop=True)
 
-    # replace the from_node_type and the to_node_type in the edge table
-    ribasim_model.edge.df = ribasim_model.edge.df.replace(to_replace="TabulatedRatingCurve", value="Outlet")
+    # replace the from_node_type and the to_node_type in the link table
+    ribasim_model.link.df = ribasim_model.link.df.replace(to_replace="TabulatedRatingCurve", value="Outlet")
 
     return
 
@@ -469,20 +474,20 @@ def add_discrete_control_nodes(ribasim_model):
 
     for i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
         # Get max nodeid and iterate
-        cur_max_nodeid = get_current_max_nodeid(ribasim_model)
-        if cur_max_nodeid < 90000:
-            new_nodeid = 90000 + cur_max_nodeid + 1  # aanpassen loopt vanaf 90000 +1
+        cur_max_node_id = get_current_max_node_id(ribasim_model)
+        if cur_max_node_id < 90000:
+            new_nodeid = 90000 + cur_max_node_id + 1  # aanpassen loopt vanaf 90000 +1
         else:
-            new_nodeid = cur_max_nodeid + 1
+            new_nodeid = cur_max_node_id + 1
         # print(new_nodeid, end="\r")
 
         # @TODO Ron aangeven in geval van meerdere matches welke basin gepakt moet worden
         # basin is niet de beste variable name
         # Kan ook level boundary of terminal, dus na & weghalen
         # ["Basin", "LevelBoundary", "Terminal"]
-        basin = ribasim_model.edge.df[
-            ((ribasim_model.edge.df.to_node_id == row.node_id) | (ribasim_model.edge.df.from_node_id == row.node_id))
-            & ((ribasim_model.edge.df.from_node_type == "Basin") | (ribasim_model.edge.df.to_node_type == "Basin"))
+        basin = ribasim_model.link.df[
+            ((ribasim_model.link.df.to_node_id == row.node_id) | (ribasim_model.link.df.from_node_id == row.node_id))
+            & ((ribasim_model.link.df.from_node_type == "Basin") | (ribasim_model.link.df.to_node_type == "Basin"))
         ]
         assert len(basin) >= 1  # In principe altijd 2 (check)
         # Hier wordt hardcoded de eerste gepakt (aanpassen adhv meta_aanvoerafvoer kolom)
@@ -517,7 +522,7 @@ def add_discrete_control_nodes(ribasim_model):
             ],
         )
 
-        ribasim_model.edge.add(ribasim_model.discrete_control[new_nodeid], ribasim_model.pump[row.node_id])
+        ribasim_model.link.add(ribasim_model.discrete_control[new_nodeid], ribasim_model.pump[row.node_id])
 
     return
 
@@ -525,9 +530,9 @@ def add_discrete_control_nodes(ribasim_model):
 def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, LevelBoundary_level=0):
     """Create the Q(h)-relations for each TRC. It starts passing water from target level onwards."""
     # find the originating basin of each TRC
-    target_level = ribasim_model.edge.df.loc[
-        ribasim_model.edge.df.to_node_type == "TabulatedRatingCurve"
-    ]  # select all TRC's. Do this from the edge table, so we can look the basins easily up afterwards
+    target_level = ribasim_model.link.df.loc[
+        ribasim_model.link.df.to_node_type == "TabulatedRatingCurve"
+    ]  # select all TRC's. Do this from the link table, so we can look the basins easily up afterwards
 
     # find the target level
     target_level = pd.merge(
@@ -569,14 +574,14 @@ def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, 
 
 def set_tabulated_rating_curves_boundaries(ribasim_model, level_increase=0.1, flow_rate=40):
     # select the TRC which flow to a Terminal
-    TRC_ter = ribasim_model.edge.df.copy()
+    TRC_ter = ribasim_model.link.df.copy()
     TRC_ter = TRC_ter.loc[
         (TRC_ter.from_node_type == "TabulatedRatingCurve") & (TRC_ter.to_node_type == "Terminal")
     ]  # select the correct nodes
 
     # not all TRC_ter's should be changed, as not all these nodes are in a boezem. Some are just regular peilgebieden. Filter these nodes for numerical stability
     # first, check where they originate from
-    basins_to_TRC_ter = ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id.isin(TRC_ter.from_node_id)]
+    basins_to_TRC_ter = ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id.isin(TRC_ter.from_node_id)]
     basins_to_TRC_ter = basins_to_TRC_ter.loc[
         basins_to_TRC_ter.from_node_type == "Basin"
     ]  # just to be sure its a basin
@@ -774,7 +779,7 @@ def iterate_TRC(
                 ribasim_model = ribasim.Model(filepath=path_ribasim_toml)
 
             # assert that all upstream nodes of a tabulated_rating_curve are basins.
-            df_trc = ribasim_model.edge.df[ribasim_model.edge.df.to_node_type == "TabulatedRatingCurve"]
+            df_trc = ribasim_model.link.df[ribasim_model.link.df.to_node_type == "TabulatedRatingCurve"]
             assert (df_trc.from_node_type == "Basin").all()
 
             df_trc_static = ribasim_model.tabulated_rating_curve.static.df
@@ -895,16 +900,16 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     # peilgebied_basins = basin_nodes.loc[basin_nodes.meta_categorie == "doorgaand", "node_id"]
     boezem_basins = basin_nodes.loc[basin_nodes.meta_categorie == "hoofdwater", "node_id"]
 
-    # select the nodes which originate from a boezem, and the ones which go to a boezem. Use the edge table for this.
-    nodes_from_boezem = ribasim_model.edge.df.loc[ribasim_model.edge.df.from_node_id.isin(boezem_basins), "to_node_id"]
-    nodes_to_boezem = ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id.isin(boezem_basins), "from_node_id"]
+    # select the nodes which originate from a boezem, and the ones which go to a boezem. Use the link table for this.
+    nodes_from_boezem = ribasim_model.link.df.loc[ribasim_model.link.df.from_node_id.isin(boezem_basins), "to_node_id"]
+    nodes_to_boezem = ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id.isin(boezem_basins), "from_node_id"]
 
     # select the nodes which originate from, and go to a boundary
-    nodes_from_boundary = ribasim_model.edge.df.loc[
-        ribasim_model.edge.df.meta_from_node_type == "LevelBoundary", "to_node_id"
+    nodes_from_boundary = ribasim_model.link.df.loc[
+        ribasim_model.link.df.meta_from_node_type == "LevelBoundary", "to_node_id"
     ]
-    nodes_to_boundary = ribasim_model.edge.df.loc[
-        ribasim_model.edge.df.meta_to_node_type == "LevelBoundary", "from_node_id"
+    nodes_to_boundary = ribasim_model.link.df.loc[
+        ribasim_model.link.df.meta_to_node_type == "LevelBoundary", "from_node_id"
     ]
 
     # some pumps do not have a function yet, as they may have been changed due to the feedback forms. Set it to afvoer.
@@ -927,9 +932,9 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
         ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
 
     # fill in the nan values
-    ribasim_model.pump.static.df["meta_func_afvoer"].fillna(0, inplace=True)
-    ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0, inplace=True)
-    ribasim_model.pump.static.df["meta_func_circulatie"].fillna(0, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_aanvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_circulatie": 0}, inplace=True)
 
     # Convert the column to string type
     ribasim_model.outlet.static.df["meta_categorie"] = ribasim_model.outlet.static.df["meta_categorie"].astype("string")
@@ -1084,21 +1089,23 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     ] = "Boezem boezem, aanvoer gemaal"
 
     # some pumps have been added due to the feedback form. Assume all these nodes are afvoer gemalen
-    ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].fillna(1.0)
-    ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].fillna(0.0)
-    ribasim_model.pump.static.df["meta_func_circulatie"] = ribasim_model.pump.static.df["meta_func_circulatie"].fillna(
-        0.0
-    )
+    ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 1}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_aanvoer": 0}, inplace=True)
+    ribasim_model.pump.static.df.fillna({"meta_func_circulatie": 0}, inplace=True)
 
 
 def set_aanvoer_flags(
-    ribasim_model: str | ribasim.Model, aanvoer_regions: str | gpd.GeoDataFrame, **kwargs
+    ribasim_model: str | ribasim.Model,
+    aanvoer_regions: str | gpd.GeoDataFrame,
+    processer: RibasimFeedbackProcessor,
+    **kwargs,
 ) -> ribasim.Model:
     """
     Set the 'aanvoer'-flags for both basins and outlets, grouping the whole pipeline in a single method.
 
     :param ribasim_model: Ribasim model, or file/path to a Ribasim model
     :param aanvoer_regions: geometry data of 'aanvoergebieden', or file/path to this geometry data
+    :param processer: Ribasim feedback processor object
 
     :key aanvoer_enabled: 'aanvoer'-settings are enabled, defaults to True
     :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to None
@@ -1110,6 +1117,7 @@ def set_aanvoer_flags(
 
     :type ribasim_model: str, ribasim.Model
     :type aanvoer_regions: str, geopandas.GeoDataFrame
+    :type processer: RibasimFeedbackProcessor
     :type aanvoer_enabled: bool, optional
     :type basin_aanvoer_on: tuple, optional
     :type basin_aanvoer_off: tuple, optional
@@ -1134,27 +1142,41 @@ def set_aanvoer_flags(
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
+        logging.info("Aanvoer-flagging skipped.")
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
         return ribasim_model
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
+        logging.warning(
+            f'With `aanvoer_regions={aanvoer_regions}`, the whole region is considered an "aanvoergebied". '
+            f"This is a temporary catch and will be deprecated in the future: "
+            f'Make sure that all water boards have a geometry-file from which the "aanvoergebieden" can be deduced.'
+        )
         aanvoer_regions = ribasim_model.basin.area.df.reset_index()
 
     # label basins as 'aanvoergebied'
     sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)  # type: ignore
     sb.exec()
+
+    basin_aanvoer_on = set(basin_aanvoer_on) | set(processer.basin_aanvoer_on)
     if basin_aanvoer_on:
         sb.set_aanvoer_on(*basin_aanvoer_on)
+
+    basin_aanvoer_off = set(basin_aanvoer_off) | set(processer.basin_aanvoer_off)
     if basin_aanvoer_off:
         sb.set_aanvoer_off(*basin_aanvoer_off)
 
     # label outlets as 'aanvoerkunstwerk'
     so = supply.SupplyOutlet(sb.model)
     so.exec(overruling_enabled=overruling_enabled)
+
+    outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processer.outlet_aanvoer_on)
     if outlet_aanvoer_on:
         so.set_aanvoer_on(*outlet_aanvoer_on)
+
+    outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processer.outlet_aanvoer_off)
     if outlet_aanvoer_off:
         so.set_aanvoer_off(*outlet_aanvoer_off)
 
@@ -1233,9 +1255,10 @@ def determine_min_upstream_max_downstream_levels(
         pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
 
     # raise warning if there are np.nan in the columns
-    def check_for_nans_in_columns(
-        df, outlet_or_pump, columns_to_check=["min_upstream_level", "max_downstream_level", "flow_rate", "flow_rate"]
-    ):
+    def check_for_nans_in_columns(df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list = None) -> None:
+        columns_to_check = columns_to_check or ["min_upstream_level", "max_downstream_level", "flow_rate"]
+        assert outlet_or_pump in ("outlet", "pump")
+
         if df[columns_to_check].isnull().values.any():
             warnings.warn(
                 f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
@@ -1246,7 +1269,7 @@ def determine_min_upstream_max_downstream_levels(
     check_for_nans_in_columns(pump, "pump")
 
     print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
-    pump.flow_rate = pump.flow_rate.fillna(value=0.1234)
+    pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
@@ -1258,13 +1281,13 @@ def add_discrete_control(ribasim_model, waterschap, default_level):
     # load in the sturing which is defined in the json files
     sturing = load_model_settings(f"sturing_{waterschap}.json")
 
-    # Remove all Discrete Control nodes and edges if its present
+    # Remove all Discrete Control nodes and links if its present
     ribasim_model.discrete_control.node.df = ribasim_model.discrete_control.node.df.iloc[0:0]
     if ribasim_model.discrete_control.condition.df is not None:
         ribasim_model.discrete_control.condition.df = ribasim_model.discrete_control.condition.df.iloc[0:0]
         ribasim_model.discrete_control.logic.df = ribasim_model.discrete_control.logic.df.iloc[0:0]
         ribasim_model.discrete_control.variable.df = ribasim_model.discrete_control.variable.df.iloc[0:0]
-        ribasim_model.edge.df = ribasim_model.edge.df.loc[ribasim_model.edge.df.edge_type != "control"]
+        ribasim_model.link.df = ribasim_model.link.df.loc[ribasim_model.link.df.link_type != "control"]
 
     # start assigning sturing to outlets/weirs
     # find the nodes to change
@@ -1584,9 +1607,9 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
     DC_condition_us["compound_variable_id"] = ribasim_model.discrete_control.node.df["meta_compound_variable_id"]
     DC_condition_ds = DC_condition_us.copy(deep=True)
 
-    # find the greather_than value by looking the corresponding UPstream basin up in the edge table
-    basin_to_control_node_us = ribasim_model.edge.df.loc[
-        ribasim_model.edge.df.to_node_id.isin(nodes_to_control.values)
+    # find the greather_than value by looking the corresponding UPstream basin up in the link table
+    basin_to_control_node_us = ribasim_model.link.df.loc[
+        ribasim_model.link.df.to_node_id.isin(nodes_to_control.values)
     ]  # ['from_node_id']
     basin_to_control_node_us = basin_to_control_node_us.merge(
         right=ribasim_model.basin.state.df, left_on="from_node_id", right_on="node_id", how="left"
@@ -1626,8 +1649,8 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
     # the upstream node which is listened to is found. Now, find the downstream listen node.
     # basically repeat the same lines as above
-    basin_to_control_node_ds = ribasim_model.edge.df.loc[
-        ribasim_model.edge.df.from_node_id.isin(nodes_to_control.values)
+    basin_to_control_node_ds = ribasim_model.link.df.loc[
+        ribasim_model.link.df.from_node_id.isin(nodes_to_control.values)
     ]
     basin_to_control_node_ds = basin_to_control_node_ds.merge(
         right=ribasim_model.basin.state.df, left_on="to_node_id", right_on="node_id", how="left"
@@ -1698,12 +1721,12 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
         by=["node_id", "listen_node_id"]
     ).reset_index(drop=True)
 
-    ### edge ####################################################
-    DC_edge = DC_condition.copy()[["node_id", "meta_to_control_node_id", "meta_to_control_node_type"]]
+    ### link ####################################################
+    DC_link = DC_condition.copy()[["node_id", "meta_to_control_node_id", "meta_to_control_node_type"]]
 
     # as the DC listens to both the upstream as well as the downstream nodes, it contains twice the node_ids. Only select one.
-    DC_edge = DC_edge.drop_duplicates(subset="node_id")
-    DC_edge.rename(
+    DC_link = DC_link.drop_duplicates(subset="node_id")
+    DC_link.rename(
         columns={
             "node_id": "from_node_id",
             "meta_to_control_node_id": "to_node_id",
@@ -1712,24 +1735,24 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
         inplace=True,
     )
 
-    # DC_edge['to_node_type'] = ribasim_model.edge.df.loc[ribasim_model.edge.df.to_node_id == DC_edge.node_id, 'to_node_type']
-    DC_edge["from_node_type"] = "DiscreteControl"
-    DC_edge["edge_type"] = "control"
-    DC_edge["meta_categorie"] = "DC_control"
+    # DC_link['to_node_type'] = ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id == DC_link.node_id, 'to_node_type']
+    DC_link["from_node_type"] = "DiscreteControl"
+    DC_link["link_type"] = "control"
+    DC_link["meta_categorie"] = "DC_control"
 
     # retrieve the FROM geometry from the DC_nodes. The TO is the same, as the DiscreteControl is on the same location
-    DC_edge["from_coord"] = DC_nodes["geometry"]
-    DC_edge["to_coord"] = DC_nodes["geometry"]
+    DC_link["from_coord"] = DC_nodes["geometry"]
+    DC_link["to_coord"] = DC_nodes["geometry"]
 
     def create_linestring(row):
         return LineString([row["from_coord"], row["to_coord"]])
 
-    DC_edge["geometry"] = DC_edge.apply(create_linestring, axis=1)
+    DC_link["geometry"] = DC_link.apply(create_linestring, axis=1)
 
-    DC_edge = DC_edge[
-        ["from_node_id", "from_node_type", "to_node_id", "to_node_type", "edge_type", "meta_categorie", "geometry"]
+    DC_link = DC_link[
+        ["from_node_id", "from_node_type", "to_node_id", "to_node_type", "link_type", "meta_categorie", "geometry"]
     ]
-    ribasim_model.edge.df = pd.concat([ribasim_model.edge.df, DC_edge]).reset_index(drop=True)
+    ribasim_model.link.df = pd.concat([ribasim_model.link.df, DC_link]).reset_index(drop=True)
 
     return
 
@@ -1897,20 +1920,20 @@ def clean_tables(ribasim_model, waterschap):
             "\nFollowing indexes are duplicated in the level_boundary.static table:\n", duplicated_static_level_boundary
         )
 
-    # check if node_ids in the edge table are not present in the node table
-    edge = ribasim_model.edge.df.copy()
-    missing_from_node_id = edge.loc[~edge.from_node_id.isin(combined_df.node_id.to_numpy())]
-    missing_to_node_id = edge.loc[~edge.to_node_id.isin(combined_df.node_id.to_numpy())]
-    missing_edges = combined_df.loc[
-        (~combined_df.node_id.isin(edge.from_node_id)) & (~combined_df.node_id.isin(edge.to_node_id))
+    # check if node_ids in the link table are not present in the node table
+    link = ribasim_model.link.df.copy()
+    missing_from_node_id = link.loc[~link.from_node_id.isin(combined_df.node_id.to_numpy())]
+    missing_to_node_id = link.loc[~link.to_node_id.isin(combined_df.node_id.to_numpy())]
+    missing_links = combined_df.loc[
+        (~combined_df.node_id.isin(link.from_node_id)) & (~combined_df.node_id.isin(link.to_node_id))
     ]
 
     if len(missing_from_node_id) > 0:
-        print("\nFollowing from_node_id's in the edge table do not exist:\n", missing_from_node_id)
+        print("\nFollowing from_node_id's in the link table do not exist:\n", missing_from_node_id)
     if len(missing_to_node_id) > 0:
-        print("\nFollowing to_node_id's in the edge table do not exist:\n", missing_to_node_id)
-    if len(missing_edges) > 0:
-        print("\nFollowing node_ids are not connected to any edges:\n", missing_edges)
+        print("\nFollowing to_node_id's in the link table do not exist:\n", missing_to_node_id)
+    if len(missing_links) > 0:
+        print("\nFollowing node_ids are not connected to any links:\n", missing_links)
 
     # set crs
     ribasim_model.basin.node.df = gpd.GeoDataFrame(ribasim_model.basin.node.df.set_crs(crs="EPSG:28992"))
@@ -1983,7 +2006,7 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
         ]  # prevent errors if the function is ran before
     # find upstream basin node_id
     structure_static = structure_static.merge(
-        right=ribasim_model.edge.df[["from_node_id", "to_node_id"]],
+        right=ribasim_model.link.df[["from_node_id", "to_node_id"]],
         left_on="node_id",
         right_on="to_node_id",
         how="left",
@@ -1992,7 +2015,7 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
 
     # find downstream basin node_id
     structure_static = structure_static.merge(
-        right=ribasim_model.edge.df[["to_node_id", "from_node_id"]],
+        right=ribasim_model.link.df[["to_node_id", "from_node_id"]],
         left_on="node_id",
         right_on="from_node_id",
         how="left",
@@ -2000,9 +2023,13 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
     )
     structure_static = structure_static.drop(columns="from_node_id_remove")  # remove redundant column
 
+    # filter the basin state table, in case basins have been converted to Level Boundaries in the FF
+    basin_state = ribasim_model.basin.state.df[["node_id", "level"]].copy()
+    basin_state = basin_state.loc[basin_state.node_id.isin(ribasim_model.basin.node.df.index.values)]
+
     # merge upstream target level to the outlet static table by using the Basins
     structure_static = structure_static.merge(
-        right=ribasim_model.basin.state.df[["node_id", "level"]],
+        right=basin_state,
         left_on="to_node_id",
         right_on="node_id",
         how="left",

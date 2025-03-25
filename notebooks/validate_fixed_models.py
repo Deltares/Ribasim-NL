@@ -1,5 +1,6 @@
-# %%
-from ribasim_nl import CloudStorage
+# %% Validate link source destination in fixed models
+
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
@@ -17,17 +18,11 @@ authorities = [
     "Limburg",
 ]
 
-missing_models = []
-missing_runs = []
-
 for authority in authorities:
+    print(authority)
     ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model")
-    output_controle_gpkg = ribasim_dir.joinpath("results", "output_controle.gpkg")
-    if not ribasim_dir.exists():
-        missing_models += [authority]
-    if not output_controle_gpkg.exists():
-        missing_runs += [authority]
-
-
-assert len(missing_models) == 0
-assert len(missing_runs) == 0
+    tomls = list(ribasim_dir.glob("*.toml"))
+    assert len(tomls) == 1
+    ribasim_toml = tomls[0]
+    model = Model.read(ribasim_toml)
+    model.validate_link_source_destination()

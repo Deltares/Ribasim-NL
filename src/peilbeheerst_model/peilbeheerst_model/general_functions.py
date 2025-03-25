@@ -162,7 +162,7 @@ def plot_histogram_overlap(overlapping_polygons):
     bins = range(0, 101, 10)  # Create bins from 0% to 100% in 10% increments
 
     # Create the histogram
-    plt.hist(overlapping_polygons["overlap_percentage"], bins=bins, color="cornflowerblue", edgecolor="k")
+    plt.hist(overlapping_polygons["overlap_percentage"], bins=bins, color="cornflowerblue", linkcolor="k")
 
     # Set labels and title
     plt.xlabel("Overlap [%]")

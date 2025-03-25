@@ -3,16 +3,18 @@ import time
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.check_basin_level import add_check_basin_level
 
 cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
-run_model = False
+run_model = True
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
+qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
@@ -33,9 +35,9 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-model.remove_node(node_id=1076, remove_edges=True)
-# model.edge.df = model.edge.df[model.edge.df.index != 1198]
 # Write model
+
+add_check_basin_level(model=model)
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)
 
@@ -48,6 +50,7 @@ if run_model:
     assert exit_code == 0
 
     # # %%
-    controle_output = Control(ribasim_toml=ribasim_toml)
-    indicators = controle_output.run_afvoer()
+
+controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+indicators = controle_output.run_afvoer()
 # %%
