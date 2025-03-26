@@ -41,10 +41,11 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 369, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 446, "min_upstream_level"] = 2.85
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 576, "min_upstream_level"] = 2.85
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 555, "min_upstream_level"] = 1.7
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 542, "min_upstream_level"] = 3.9
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 74, "flow_rate"] = 1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 289, "min_upstream_level"] = 12
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 169, "min_upstream_level"] = -0.75
-
+model.basin.area.df.loc[model.basin.area.df.node_id == 1006, "meta_streefpeil"] = 3.9
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
 # %%
 
