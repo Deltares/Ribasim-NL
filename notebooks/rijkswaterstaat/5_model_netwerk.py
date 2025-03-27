@@ -7,7 +7,6 @@ import pandas as pd
 from ribasim import Node
 from ribasim.nodes import (
     basin,
-    discrete_control,
     flow_boundary,
     level_boundary,
     manning_resistance,
@@ -393,51 +392,51 @@ for verdeelsleutel in VERDEELSLEUTELS:
     verdeelsleutel_properties = read_kwk_properties(verdeelsleutel_df)
 
     # add control node
-    control_node = Node(
-        verdeelsleutel_node_id,
-        verdeelsleutel_gdf.at[verdeelsleutel, "geometry"],
-        name=f"Verdeelsleutel {verdeelsleutel}",
-    )
+    # control_node = Node(
+    #     verdeelsleutel_node_id,
+    #     verdeelsleutel_gdf.at[verdeelsleutel, "geometry"],
+    #     name=f"Verdeelsleutel {verdeelsleutel}",
+    # )
 
-    control_flow_rate = verdeelsleutel_df.loc[verdeelsleutel_df.Eigenschap.to_list().index("Q") + 2 :][
-        "Eigenschap"
-    ].to_list()
+    # control_flow_rate = verdeelsleutel_df.loc[verdeelsleutel_df.Eigenschap.to_list().index("Q") + 2 :][
+    #     "Eigenschap"
+    # ].to_list()
 
-    control_state = [f"{verdeelsleutel}_{idx + 1:03d}" for idx in range(len(control_flow_rate))]
+    # control_state = [f"{verdeelsleutel}_{idx + 1:03d}" for idx in range(len(control_flow_rate))]
 
-    truth_state = [
-        "".join(["T"] * i + ["F"] * len(control_flow_rate))[0 : len(control_flow_rate)]
-        for i in range(len(control_flow_rate))
-    ]
+    # truth_state = [
+    #     "".join(["T"] * i + ["F"] * len(control_flow_rate))[0 : len(control_flow_rate)]
+    #     for i in range(len(control_flow_rate))
+    # ]
 
-    listen_node_id = (
-        model.node_table()
-        .df.reset_index()
-        .set_index("meta_meetlocatie_code")
-        .at[verdeelsleutel_properties["Meetlocatiecode"], "node_id"]
-    )
-    data = [
-        discrete_control.Variable(
-            compound_variable_id=1,
-            listen_node_id=[listen_node_id],
-            variable=["flow_rate"],
-        ),
-        discrete_control.Condition(
-            compound_variable_id=1,
-            greater_than=control_flow_rate,
-            condition_id=list(range(1, len(control_flow_rate) + 1)),
-            meta_control_state=control_state,
-        ),
-        discrete_control.Logic(
-            truth_state=truth_state,
-            control_state=control_state,
-        ),
-    ]
+    # listen_node_id = (
+    #     model.node_table()
+    #     .df.reset_index()
+    #     .set_index("meta_meetlocatie_code")
+    #     .at[verdeelsleutel_properties["Meetlocatiecode"], "node_id"]
+    # )
+    # data = [
+    #     discrete_control.Variable(
+    #         compound_variable_id=1,
+    #         listen_node_id=[listen_node_id],
+    #         variable=["flow_rate"],
+    #     ),
+    #     discrete_control.Condition(
+    #         compound_variable_id=1,
+    #         greater_than=control_flow_rate,
+    #         condition_id=list(range(1, len(control_flow_rate) + 1)),
+    #         meta_control_state=control_state,
+    #     ),
+    #     discrete_control.Logic(
+    #         truth_state=truth_state,
+    #         control_state=control_state,
+    #     ),
+    # ]
 
-    model.discrete_control.add(control_node, data)
+    # model.discrete_control.add(control_node, data)
 
-    verdeelsleutel_node = model.discrete_control[verdeelsleutel_node_id]
-    verdeelsleutel_node_id += 1
+    # verdeelsleutel_node = model.discrete_control[verdeelsleutel_node_id]
+    # verdeelsleutel_node_id += 1
 
     # add all verdelingen as Outlets
     for verdeling in [
@@ -481,35 +480,30 @@ for verdeelsleutel in VERDEELSLEUTELS:
             )
 
             if name in AS_PUMP:
+                print(f"{name} needs continous control to work!")
                 model.pump.add(
                     node,
-                    [
-                        pump.Static(
-                            flow_rate=qhq_df[waterlichaam].to_list(),
-                            control_state=control_state,
-                        )
-                    ],
+                    [pump.Static(flow_rate=[0])],
                 )
                 node = model.pump[node_id]
             else:
-                model.outlet.add(
+                model.tabulated_rating_curve.add(
                     node,
                     [
-                        outlet.Static(
+                        tabulated_rating_curve.Static(
                             flow_rate=qhq_df[waterlichaam].to_list(),
-                            min_upstream_level=min_upstream_level,
-                            control_state=control_state,
+                            level=min_upstream_level,
                         )
                     ],
                 )
-                node = model.outlet[node_id]
+                node = model.tabulated_rating_curve[node_id]
 
             # toevoegen edge tussen control-node en fractie
-            model.edge.add(
-                verdeelsleutel_node,
-                node,
-                name=verdeling_properties[waterlichaam],
-            )
+            # model.link.add(
+            #     verdeelsleutel_node,
+            #     node,
+            #     name=verdeling_properties[waterlichaam],
+            # )
 
             # zoeken naar aangrenzende basins
             us_basin_id, ds_basin_id = network.get_upstream_downstream(node_id, "basin_id", max_iters=4)
@@ -532,8 +526,8 @@ for verdeelsleutel in VERDEELSLEUTELS:
                 boundary_node_id = boundary.name
                 boundary_node_ids += [boundary_node_id]
                 edge_geom = network.get_line(node_id, boundary_node_id)
-                model.edge.add(
-                    model.outlet[node_id],
+                model.link.add(
+                    node,
                     getattr(model, pascal_to_snake_case(boundary.node_type))[boundary_node_id],
                     geometry=edge_geom,
                 )
