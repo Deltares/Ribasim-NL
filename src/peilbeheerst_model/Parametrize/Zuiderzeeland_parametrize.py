@@ -4,8 +4,6 @@ import datetime
 import os
 import warnings
 
-import ribasim
-import ribasim.nodes
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
@@ -14,7 +12,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 
@@ -100,7 +98,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -143,6 +141,92 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[116])
+
+# merge the smallest basins together
+ribasim_model.merge_basins(node_id=30, to_node_id=29)  # 4363 m2
+ribasim_model.merge_basins(node_id=66, to_node_id=21)  # 4745 m2
+ribasim_model.merge_basins(node_id=191, to_node_id=288)  # 4964 m2
+ribasim_model.merge_basins(node_id=288, to_node_id=140)
+ribasim_model.merge_basins(node_id=192, to_node_id=289)
+ribasim_model.merge_basins(node_id=289, to_node_id=140)
+ribasim_model.merge_basins(node_id=206, to_node_id=284)  # 7831 m2
+ribasim_model.merge_basins(node_id=29, to_node_id=195)  # 8398 m2
+
+ribasim_model.merge_basins(node_id=137, to_node_id=80)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=103, to_node_id=217)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=80, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=231, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=238, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=239, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=213, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=91, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=179, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=174, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=202, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=259, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=264, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=175, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=76, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=77, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=234, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=235, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=176, to_node_id=136)  # stedelijk gebied
+
+ribasim_model.merge_basins(node_id=190, to_node_id=73)  # los snippertje
+ribasim_model.merge_basins(node_id=224, to_node_id=73)  # los snippertje
+
+ribasim_model.merge_basins(node_id=246, to_node_id=133)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(node_id=250, to_node_id=133)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(node_id=162, to_node_id=133)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(node_id=119, to_node_id=133)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(node_id=65, to_node_id=124)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(node_id=150, to_node_id=124)  # Noordelijkst puntje veel kleine gebieden
+
+ribasim_model.merge_basins(node_id=83, to_node_id=220)  # oostelijke NOP
+ribasim_model.merge_basins(node_id=84, to_node_id=220)  # oostelijke NOP
+
+ribasim_model.merge_basins(node_id=196, to_node_id=73)  # klein gebiedje in lage afdeling
+ribasim_model.merge_basins(node_id=89, to_node_id=73)  # klein gebiedje in lage afdeling
+ribasim_model.merge_basins(node_id=42, to_node_id=123)  # klein gebiedjes met twee MR
+
+
+ribasim_model.merge_basins(node_id=68, to_node_id=96)  # natuurgebiedje NOP
+ribasim_model.merge_basins(node_id=158, to_node_id=96)  # natuurgebiedje NOP
+ribasim_model.merge_basins(node_id=256, to_node_id=96)  # natuurgebiedje NOP
+ribasim_model.merge_basins(node_id=163, to_node_id=96)  # natuurgebiedje NOP
+ribasim_model.merge_basins(node_id=69, to_node_id=96)  # natuurgebiedje NOP
+ribasim_model.merge_basins(node_id=177, to_node_id=96)  # natuurgebiedje NOP
+ribasim_model.merge_basins(node_id=78, to_node_id=96)  # natuurgebiedje NOP
+
+ribasim_model.merge_basins(node_id=257, to_node_id=138)  # natuurgebiedje NOP
+
+ribasim_model.merge_basins(node_id=115, to_node_id=6)  # natuurgebiedje NOP
+ribasim_model.merge_basins(node_id=135, to_node_id=6)  # natuurgebiedje NOP
+
+ribasim_model.merge_basins(node_id=227, to_node_id=10)
+ribasim_model.merge_basins(node_id=156, to_node_id=10)
+
+ribasim_model.merge_basins(node_id=4, to_node_id=32)  # vakantieparkje(?)
+ribasim_model.merge_basins(node_id=108, to_node_id=32)  # vakantieparkje(?)
+
+ribasim_model.merge_basins(node_id=107, to_node_id=198)  # klein gebiedje
+ribasim_model.merge_basins(node_id=67, to_node_id=21)  # klein gebiedje
+ribasim_model.merge_basins(node_id=281, to_node_id=51)  # klein gebiedje
+
+ribasim_model.merge_basins(node_id=11, to_node_id=16)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(node_id=35, to_node_id=16)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(node_id=97, to_node_id=16)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(node_id=164, to_node_id=16)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(node_id=75, to_node_id=16)  # klein gebiedje in hoge vaart
+
+ribasim_model.merge_basins(node_id=40, to_node_id=31)  # klein gebiedje in lage vaart
+ribasim_model.merge_basins(node_id=25, to_node_id=31)  # klein gebiedje in lage vaart
+ribasim_model.merge_basins(node_id=160, to_node_id=31)  # klein gebiedje in lage vaart
+
+ribasim_model.merge_basins(node_id=152, to_node_id=36)  # klein gebiedjes in polder, noordelijk
+ribasim_model.merge_basins(node_id=209, to_node_id=36)  # klein gebiedjes in polder, noordelijk
+ribasim_model.merge_basins(node_id=208, to_node_id=36)  # klein gebiedjes in polder, noordelijk
+
 
 # TODO: Own interpretation (GH)
 # change afvoergemaal to aanvoergemaal
