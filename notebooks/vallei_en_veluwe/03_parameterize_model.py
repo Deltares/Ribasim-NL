@@ -1,5 +1,8 @@
 # %%
 import time
+from pathlib import Path
+
+import geopandas as gpd
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
@@ -64,5 +67,40 @@ if run_model:
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_afvoer()
+
+# %%
+# code voor neeltje
+
+
+peilgebieden_path = Path(
+    r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\ValleienVeluwe\verwerkt\1_ontvangen_data\20250428\Peilvakken.shp"
+)
+node = model.outlet[78]
+peilgebieden_df = gpd.read_file(peilgebieden_path)
+tolerance = 10  # afstand voor zoeken bovenstrooms
+node_id = node.node_id
+node_geometry = node.geometry
+
+
+# haal bovenstroomse en bendenstroomse links op
+line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
+line_from_node = model.link.df.set_index("from_node_id").at[node_id, "geometry"]
+
+# bepaal een punt 10 meter bovenstrooms node
+containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
+
+# filter peilgebieden met intersect bovenstroomse link
+peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
+
+# als meerdere gevonden: filter verder met niet-intersect benedenstoomse link
+if peilgebieden_select_df.empty:
+    raise ValueError(f"No peilgebied found within {tolerance}m upstream of {node_id}")
+
+peilgebied = peilgebieden_select_df.iloc[0]
+
+# VALIDEREN!!!
+level = peilgebied["WS_MAX_PEI"]
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, "min_upstream_level"] = level
 
 # %%
