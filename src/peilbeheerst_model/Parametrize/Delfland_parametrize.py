@@ -118,11 +118,11 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 # change gemaal function Brielse Meer to aanvoer. Find node_id first, as it is added in the feedback form
-BrielseMeerNodes = ribasim_model.edge.df.loc[
-    ribasim_model.edge.df.from_node_id == 98, "to_node_id"
+BrielseMeerNodes = ribasim_model.link.df.loc[
+    ribasim_model.link.df.from_node_id == 98, "to_node_id"
 ]  # array of all values from basin 98
-BrielseMeerAanvoerPump = ribasim_model.edge.df.loc[
-    (ribasim_model.edge.df.from_node_id.isin(BrielseMeerNodes)) & (ribasim_model.edge.df.to_node_id == 10),
+BrielseMeerAanvoerPump = ribasim_model.link.df.loc[
+    (ribasim_model.link.df.from_node_id.isin(BrielseMeerNodes)) & (ribasim_model.link.df.to_node_id == 10),
     "from_node_id",
 ]
 
@@ -187,7 +187,7 @@ ribasim_param.set_aanvoer_flags(
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
-# there is a MR without geometry and without edges for some reason
+# there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node

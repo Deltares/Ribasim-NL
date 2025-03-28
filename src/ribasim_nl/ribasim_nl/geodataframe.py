@@ -8,8 +8,8 @@ from geopandas import GeoDataFrame
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import polylabel
 
-from ribasim_nl import Network
 from ribasim_nl.geometry import sort_basins, split_basin
+from ribasim_nl.network import Network
 
 
 def join_by_poly_overlay(

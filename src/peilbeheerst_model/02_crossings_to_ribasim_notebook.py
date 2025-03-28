@@ -40,14 +40,14 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -64,7 +64,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -136,15 +136,15 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -160,7 +160,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -232,15 +232,15 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -257,7 +257,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -329,16 +329,16 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
-edges = waterboard.change_boezems_manually(edges)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
+links = waterboard.change_boezems_manually(links)
 
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -355,7 +355,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -428,15 +428,15 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -453,7 +453,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -525,15 +525,15 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -550,7 +550,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -623,15 +623,15 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -648,7 +648,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -721,14 +721,14 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -745,7 +745,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -818,15 +818,15 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -843,7 +843,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -860,7 +860,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -932,15 +932,15 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -957,7 +957,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile
@@ -1029,14 +1029,14 @@ waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 post_processed_data, crossings = waterboard.read_files()
 post_processed_data, crossings = waterboard.routing_processor(post_processed_data, crossings)
 crossings = waterboard.assign_node_ids(crossings)
-edges = waterboard.create_edges(crossings)
-nodes, edges = waterboard.create_nodes(crossings, edges)
-edges = waterboard.embed_boezems(edges, post_processed_data, crossings)
+links = waterboard.create_links(crossings)
+nodes, links = waterboard.create_nodes(crossings, links)
+links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 # create individual model parts of the network
-network = RibasimNetwork(nodes=nodes, edges=edges, model_characteristics=model_characteristics)
+network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
 
-edge = network.edge()
+link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
 tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
@@ -1053,7 +1053,7 @@ terminal_node = network.terminal()
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
 
-model.edge.df = edge
+model.link.df = link
 
 model.basin.node.df = basin_node
 model.basin.profile = basin_profile

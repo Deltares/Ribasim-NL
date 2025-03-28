@@ -80,8 +80,12 @@ if not peilgebieden_path_editted.exists():
     mask = df["streefpeil"].isna()
     df.loc[mask, "streefpeil"] = df[mask]["WS_BP"]
 
+    # if nodata and onderpeil is nodata, fill with onderpeil
+    mask = df["streefpeil"].isna()
+    df.loc[mask, "streefpeil"] = df[mask]["WS_OP"]
+
     # write
-    df[df["streefpeil"].notna()].to_file(peilgebieden_path_editted)
+    df.to_file(peilgebieden_path_editted)
 
 
 add_streefpeil(

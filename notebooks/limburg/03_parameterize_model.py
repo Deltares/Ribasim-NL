@@ -3,6 +3,7 @@ import time
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.check_basin_level import add_check_basin_level
 
 cloud = CloudStorage()
 authority = "Limburg"
@@ -36,6 +37,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
+add_check_basin_level(model)
 model.write(ribasim_toml)
 
 # %%
@@ -45,7 +47,7 @@ if run_model:
     exit_code = model.run()
     assert exit_code == 0
 
-    # # %%
-    controle_output = Control(ribasim_toml=ribasim_toml)
-    indicators = controle_output.run_all()
+# # %%
+controle_output = Control(ribasim_toml=ribasim_toml)
+indicators = controle_output.run_afvoer()
 # %%

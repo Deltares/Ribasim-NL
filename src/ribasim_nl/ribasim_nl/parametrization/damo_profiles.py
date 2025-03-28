@@ -2,7 +2,8 @@ import geopandas as gpd
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
-from ribasim_nl import Model, Network
+from ribasim_nl.model import Model
+from ribasim_nl.network import Network
 
 
 class DAMOProfiles(BaseModel):

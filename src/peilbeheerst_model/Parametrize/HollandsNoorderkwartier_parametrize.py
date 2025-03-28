@@ -122,32 +122,32 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(114698, 551327)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.edge.add(ribasim_model.basin[3], tabulated_rating_curve_node)
-ribasim_model.edge.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[3], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # add gemaal and LB at boezemgemaal Monnickendam. Zowel af- als aanvoer. Dit blok: aanvoer
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(131027, 497603)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(130877, 497615)), [pump.Static(flow_rate=[20])])
-ribasim_model.edge.add(level_boundary_node, pump_node)
-ribasim_model.edge.add(pump_node, ribasim_model.basin[3])
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[3])
 
 # add gemaal and LB at boezemgemaal Monnickendam. Zowel af- als aanvoer. Dit blok: afvoer
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(131027, 497613)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(130877, 497625)), [pump.Static(flow_rate=[20])])
-ribasim_model.edge.add(ribasim_model.basin[3], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[3], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add gemaal and LB at Waterlandseboezem .
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(132115, 495290)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(132040, 495282)), [pump.Static(flow_rate=[10])])
-ribasim_model.edge.add(ribasim_model.basin[2], pump_node)
-ribasim_model.edge.add(pump_node, level_boundary_node)
+ribasim_model.link.add(ribasim_model.basin[2], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
@@ -212,7 +212,7 @@ ribasim_param.set_aanvoer_flags(
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
-# there is a MR without geometry and without edges for some reason
+# there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 
 # lower the difference in waterlevel for each manning node

@@ -48,7 +48,6 @@ networkx = ">=3.4"
 openpyxl = "*"
 pandas = "*"
 pandas-stubs = "*"
-pandera = "*"
 pip = "*"
 pre-commit = "*"
 pyarrow = "*"
@@ -66,6 +65,7 @@ ruff = "*"
 shapely = ">=2"
 tomli = "*"
 tomli-w = "*"
+tqdm = "*"
 types-requests = "*"
 xlwings = "*"
 xugrid = "*"
@@ -80,7 +80,7 @@ ribasim_nl = { path = "src/ribasim_nl", editable = true }
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 
 [feature.prod.dependencies]
-ribasim = "==2025.1.0"
+ribasim = "==2025.2.0"
 
 [environments]
 default = ["prod"]
