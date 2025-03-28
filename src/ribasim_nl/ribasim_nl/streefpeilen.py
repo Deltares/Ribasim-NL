@@ -18,6 +18,7 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
     peilgebieden = peilgebieden.explode()
     peilgebieden[target_level] = pd.to_numeric(peilgebieden[target_level], errors="coerce")
     peilgebieden = peilgebieden.dropna(subset=[target_level])
+    peilgebieden = peilgebieden[(peilgebieden[target_level] != 0) & (peilgebieden[target_level] < 100)]
 
     # Ensure required columns exist in the dataframe
     if "meta_code_waterbeheerder" not in model.basin.area.df.columns:
@@ -82,5 +83,6 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
                 selected_code = None
 
         # Apply selected values
+
         model.basin.area.df.loc[model.basin.area.df.node_id == node_id, ["meta_streefpeil"]] = selected_peil
         model.basin.area.df.loc[model.basin.area.df.node_id == node_id, ["meta_code_waterbeheerder"]] = selected_code
