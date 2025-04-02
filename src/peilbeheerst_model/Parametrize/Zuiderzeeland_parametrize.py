@@ -115,6 +115,14 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(143959, 492198)), [pump.S
 ribasim_model.link.add(ribasim_model.basin[31], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
+# 1 Gemaal near Almere
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(143895, 492250)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(143927, 492229)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[16], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
 # 1 Add gemaal Wortman
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(157201, 501796)), [level_boundary.Static(level=[default_level])]
@@ -194,6 +202,19 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[73])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
+# Inlaat (hevel) toevoegen at Ketelhaven
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(180145, 510253)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(180131, 510204)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[16])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
 
 # Inlaat (hevel) toevoegen at NOP: east 1. According data it should go to basin 199, but 45 seems more logical
 level_boundary_node = ribasim_model.level_boundary.add(
