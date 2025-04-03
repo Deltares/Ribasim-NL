@@ -12,6 +12,7 @@ from networkx import DiGraph, Graph, NetworkXNoPath, shortest_path, traversal
 from shapely.geometry import LineString, Point, box
 from shapely.ops import snap, split
 
+from ribasim_nl.geodataframe import snap_line_boundaries
 from ribasim_nl.geometry import drop_z, split_line
 from ribasim_nl.styles import add_styles_to_geopackage
 
@@ -68,6 +69,7 @@ class Network:
     name_col: str | None = None
     id_col: str | None = None
     tolerance: float | None = None
+    snap_line_boundaries: bool = True
 
     _graph: DiGraph | None = field(default=None, repr=False)
     _graph_undirected: Graph | None = field(default=None, repr=False)
@@ -95,6 +97,14 @@ class Network:
         # remove z-coordinates
         if self.lines_gdf.has_z.any():
             self.lines_gdf.loc[:, "geometry"] = self.lines_gdf.geometry.apply(lambda x: drop_z(x) if x.has_z else x)
+
+        # snap line_boundaries
+        if self.snap_line_boundaries:
+            if self.tolerance is not None:
+                tolerance = self.tolerance
+            else:
+                tolerance = 0.1
+            self.lines_gdf = snap_line_boundaries(self.lines_gdf, tolerance=tolerance)
 
     @classmethod
     def from_lines_gpkg(cls, gpkg_file: str | Path, layer: str | None = None, **kwargs):

@@ -35,7 +35,7 @@ def link_geometry_from_hydroobject(model: Model, network: Network, from_node_id,
 
     from_point = drop_z(model.node_table().df.at[from_node_id, "geometry"])
     to_point = drop_z(model.node_table().df.at[to_node_id, "geometry"])
-    # %get us_edge
+    # get or add node_from
     distance = network.nodes.distance(from_point)
     if distance.min() < 0.1:
         node_from = distance.idxmin()
