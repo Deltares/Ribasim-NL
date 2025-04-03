@@ -284,8 +284,6 @@ static_data.add_series(node_type="Basin", series=streefpeil["streefpeil"], fill_
 
 
 # %%
-import pandas as pd
-
 # Reset data voor "Basin"
 static_data.reset_data_frame(node_type="Basin")
 
