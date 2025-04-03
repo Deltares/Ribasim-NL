@@ -17,7 +17,7 @@ class Parameterize(BaseModel):
     profiles_gpkg: Path | None = None
     precipitation_mm_per_day: int | None = None
     evaporation_mm_per_day: int | None = None
-    boundary_flow_rate_m3_sec: float = 0
+    boundary_flow_rate_m3_sec: float = 0.0
 
     def run(self, **kwargs):
         # update class properties
@@ -58,6 +58,6 @@ class Parameterize(BaseModel):
         update_flow_boundary_static(
             model=self.model,
             code_column="meta_code_waterbeheerder",
-            meta_values={"meta_categorie": "Buitenlandse aanvoer"},
+            meta_values={"meta_categorie": "buitenlandse aanvoer"},
             default_values={"flow_rate": 0.0},
         )

@@ -5,8 +5,8 @@ from ribasim_nl.parametrization.empty_table import empty_table_df
 def update_flow_boundary_static(
     model: Model,
     code_column: str = "meta_code_waterbeheerder",
-    meta_values: dict[str] = {"meta_categorie": "Aanvoer Buitenland"},
-    default_values: dict = {"flow_rate": 0},
+    meta_values: dict[str] = {"meta_categorie": "buitenlandse aanvoer"},
+    default_values: dict = {"flow_rate": 0.0},
 ):
     """Update FlowBoundary table
 
