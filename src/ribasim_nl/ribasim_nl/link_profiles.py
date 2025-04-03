@@ -1,3 +1,4 @@
+# %%
 from shapely.geometry import Point
 
 from ribasim_nl.model import Model

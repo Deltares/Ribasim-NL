@@ -1,3 +1,4 @@
+# %%
 """All functions resulting in a geopandas.GeoDataFrame"""
 
 from typing import Literal
@@ -8,8 +9,7 @@ from geopandas import GeoDataFrame
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import polylabel
 
-from ribasim_nl.geometry import sort_basins, split_basin
-from ribasim_nl.network import Network
+from ribasim_nl.geometry import snap_boundaries_to_other_line, sort_basins, split_basin
 
 
 def join_by_poly_overlay(
@@ -240,7 +240,7 @@ def direct_basins(
 
 def basins_to_points(
     basins_gdf: GeoDataFrame,
-    network: Network,
+    network,
     mask: Polygon | None = None,
     buffer: int | None = None,
 ) -> GeoDataFrame:
@@ -323,3 +323,23 @@ def basins_to_points(
         data += [attributes]
 
     return gpd.GeoDataFrame(data, crs=basins_gdf.crs)
+
+
+def snap_line_boundaries(gdf: GeoDataFrame, tolerance: float) -> GeoDataFrame:
+    """Snap the boundaries of a linestring geodataframe to the other boundaries, or lines within the set that are within tolerance"""
+    _gdf = gdf.copy()
+    for row in _gdf.itertuples():
+        # row_tuples = _gdf.itertuples()
+        # row = next(row_tuples)
+        line = row.geometry
+        # select other lines that are within tolerance
+        other_lines = _gdf.iloc[_gdf.sindex.intersection(line.buffer(tolerance).bounds)]
+        other_lines = other_lines[(other_lines.distance(line) < tolerance) & (other_lines.distance(line) > 0)]
+
+        # snap boundaries of other lines to this line
+        if not other_lines.empty:
+            for other_row in other_lines.itertuples():
+                geometry = snap_boundaries_to_other_line(line=other_row.geometry, other_line=line, tolerance=tolerance)
+                _gdf.loc[other_row.Index, "geometry"] = geometry
+
+    return _gdf
