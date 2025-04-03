@@ -1,3 +1,4 @@
+# %%
 import logging
 from collections import Counter
 from dataclasses import dataclass, field
@@ -97,6 +98,9 @@ class Network:
         # remove z-coordinates
         if self.lines_gdf.has_z.any():
             self.lines_gdf.loc[:, "geometry"] = self.lines_gdf.geometry.apply(lambda x: drop_z(x) if x.has_z else x)
+
+        # remove circle-linestrings (linestrings with no boundaries)
+        self.lines_gdf = self.lines_gdf[self.lines_gdf.boundary.count_geometries() == 2]
 
         # snap line_boundaries
         if self.snap_line_boundaries:
