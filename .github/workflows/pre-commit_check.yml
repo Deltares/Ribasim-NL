@@ -1,11 +1,10 @@
 name: Pre-commit
-
 on:
   pull_request:
   merge_group:
   push:
-    branches: [main, update/pre-commit-hooks]
-
+    branches: [main]
+  workflow_dispatch:
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -13,5 +12,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - uses: pre-commit/action@v3.0.1

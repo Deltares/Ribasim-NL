@@ -218,7 +218,7 @@ te_verwijderen_aanvoergemalen = [
     "iKST6622",
     "iKST9950",
 ]
-split_nodes_id_conversion_dhydro = {g: "harde_knip" for g in te_verwijderen_aanvoergemalen}
+split_nodes_id_conversion_dhydro = dict.fromkeys(te_verwijderen_aanvoergemalen, "harde_knip")
 
 
 for waterschap in waterschappen:

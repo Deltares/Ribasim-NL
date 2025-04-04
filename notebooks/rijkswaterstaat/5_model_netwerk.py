@@ -324,7 +324,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         # check if code-value is the same in both Excels
         if kwk_properties["Kunstwerkcode"] != row.code:
             raise ValueError(
-                f"code for {row.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties["Kunstwerkcode"]} != {row.code}"
+                f"code for {row.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties['Kunstwerkcode']} != {row.code}"
             )
 
         # prepare static-data for updating node
@@ -406,7 +406,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
         "Eigenschap"
     ].to_list()
 
-    control_state = [f"{verdeelsleutel}_{idx+1:03d}" for idx in range(len(control_flow_rate))]
+    control_state = [f"{verdeelsleutel}_{idx + 1:03d}" for idx in range(len(control_flow_rate))]
 
     truth_state = [
         "".join(["T"] * i + ["F"] * len(control_flow_rate))[0 : len(control_flow_rate)]
