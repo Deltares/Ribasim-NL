@@ -108,9 +108,9 @@ node_ids = static_data.pump.node_id
 levels = []
 
 for node_id in node_ids:
-    node = model.pump[node_id]  # 🔹 Nu voor PUMP i.p.v. OUTLET
+    node = model.pump[node_id]
     peilgebieden_df = gpd.read_file(peilgebieden_path)
-    tolerance = 10  # 🔹 Afstand voor zoeken bovenstrooms
+    tolerance = 10
     node_id = node.node_id
     node_geometry = node.geometry
 
@@ -133,25 +133,18 @@ for node_id in node_ids:
     else:
         level = None
 
-    levels.append(level)  # 🔹 Correcte append-methode
+    levels.append(level)
 
-# Maak een pandas Series van de levels
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 
-# 🔹 Voeg de data toe aan "Pump"
 static_data.add_series(node_type="Pump", series=min_upstream_level)
 
 
 # %% Bepaal de basin streefpeilen
 
-# Reset de data
 static_data.reset_data_frame(node_type="Basin")
-
-# Zoek basins zonder streefpeil
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
-
-# Haal downstream node ids (outlets en pumps)
 ds_node_ids = []
 
 for node_id in node_ids:
@@ -162,24 +155,25 @@ for node_id in node_ids:
         else:
             ds_node_ids.append([ds])
     except KeyError:
-        print(f"⚠️ Geen downstream node gevonden voor basin met node_id {node_id}")
+        print(f"Geen downstream node gevonden voor basin met node_id {node_id}")
         ds_node_ids.append([])  # Voeg lege lijst toe als placeholder zodat volgorde behouden blijft
+
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 ds_node_ids = ds_node_ids[ds_node_ids.isin(static_data.outlet.node_id) | ds_node_ids.isin(static_data.pump.node_id)]
 combined = pd.concat([static_data.outlet, static_data.pump])
+combined = combined.reset_index(drop=True)
 
-# Voeg een 'source' kolom toe om te labelen of het een outlet of pump is
 combined["source"] = combined.apply(
     lambda row: "pump" if row["node_id"] in static_data.pump.node_id.values else "outlet", axis=1
 )
+# Stap 1: Filter alleen geldige downstream node_ids
+valid_ids = ds_node_ids[ds_node_ids.isin(combined["node_id"])]
+streefpeil = combined.set_index("node_id").loc[valid_ids.to_numpy(), ["min_upstream_level", "code", "source"]]
+streefpeil["basin_node_id"] = valid_ids.loc[valid_ids.isin(streefpeil.index)].index
+streefpeil["node_id"] = streefpeil.index  # outlet/pump node_id
 
-# Haal de streefpeilen voor de geselecteerde downstream node_ids (outlets en pumps)
-streefpeil = combined.set_index("node_id").loc[ds_node_ids.to_numpy(), ["min_upstream_level", "code", "source"]]
-
-# Zet de index gelijk aan de downstream node ids
-streefpeil.index = ds_node_ids.index
-
-# Verwijder NaN waarden
+# Stap 4: Zet basin_node_id als index
+streefpeil = streefpeil.set_index("basin_node_id")
 streefpeil.dropna(inplace=True)
 
 # Sorteer per groep zodat de kleinste 'min_upstream_level' bovenaan staat
@@ -188,47 +182,21 @@ non_kdu_values = streefpeil[~streefpeil["code"].str.startswith("KDU") | (streefp
 non_kdu_first = non_kdu_values.groupby(level=0).first()
 all_first = streefpeil.groupby(level=0).first()
 
-# Stap 4: Combineer de niet-KDU en KDU waarden: kies de niet-KDU waarde als die er is, anders de KDU waarde
+# update duiker min_upstream_level wanneer een stuw/pomp in dat basin ligt
+streefpeil_update = streefpeil.loc[streefpeil.index.isin(non_kdu_first.index)].copy()
+streefpeil_update["min_upstream_level"] = streefpeil_update.index.map(non_kdu_first["min_upstream_level"])
+min_upstream_level_outlets = streefpeil_update.set_index("node_id")["min_upstream_level"]
+min_upstream_level_outlets.index.name = "node_id"
+
+static_data.add_series(node_type="Outlet", series=min_upstream_level_outlets, fill_na=False)
+
+# update basin levels
 streefpeil = non_kdu_first.combine_first(all_first)
 streefpeil = streefpeil["min_upstream_level"]
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
-
-# Voeg de data toe als een Series
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
-
-# %% Corrigeer de outlet duikers wanneer er een stuw in peilgebied voorkomt
-
-# Haal node_ids op waarvoor streefpeil bekend is
-node_ids = static_data.basin[static_data.basin.streefpeil.notna()].node_id.to_numpy()
-
-# Zoek de downstream nodes (outlets) van deze Basin-nodes
-ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
-ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
-ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
-
-basin_to_outlet_map = ds_node_ids[ds_node_ids.isin(static_data.outlet.node_id)]
-
-# Haal min_upstream_level en code op
-streefpeil = static_data.outlet.set_index("node_id").loc[basin_to_outlet_map.to_numpy(), ["min_upstream_level", "code"]]
-streefpeil.index = basin_to_outlet_map.values
-streefpeil.dropna(inplace=True)
-
-# Sorteer per groep zodat de kleinste 'min_upstream_level' bovenaan staat
-streefpeil = streefpeil.sort_values(by="min_upstream_level")
-non_kdu_values = streefpeil[~streefpeil["code"].str.startswith("KDU")]
-non_kdu_first = non_kdu_values.groupby(level=0).first()
-all_first = streefpeil.groupby(level=0).first()
-streefpeil = non_kdu_first.combine_first(all_first)
-
-kdu_nodes = streefpeil[streefpeil["code"].str.startswith("KDU")].copy()
-kdu_nodes.index = basin_to_outlet_map.loc[basin_to_outlet_map.isin(kdu_nodes.index)].values
-kdu_nodes["min_upstream_level"] = streefpeil.loc[kdu_nodes.index, "min_upstream_level"]
-min_upstream_level = kdu_nodes["min_upstream_level"]
-min_upstream_level.index.name = "node_id"
-
-static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=False)
 
 # %%
 # DAMO-profielen bepalen voor outlets wanneer min_upstream_level nodata

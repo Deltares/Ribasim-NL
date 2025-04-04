@@ -42,6 +42,7 @@ model.basin.profile.df.loc[(model.basin.profile.df.node_id == 1209) & (model.bas
 
 model.remove_node(740, remove_edges=True)
 model.remove_node(736, remove_edges=True)
+model.merge_basins(basin_id=1139, to_node_id=959, are_connected=False)
 model.pump.static.df.loc[model.pump.static.df.node_id == 1282, ["active"]] = False
 model.pump.static.df.loc[model.pump.static.df.node_id == 1282, ["meta_categorie"]] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 634, ["active"]] = False
