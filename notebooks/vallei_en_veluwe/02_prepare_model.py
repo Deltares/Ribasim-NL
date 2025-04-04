@@ -36,17 +36,6 @@ cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
 # %%
 bbox = None
 # init classes
-network = Network(lines_gdf=gpd.read_file(venv_hydamo_gpkg, layer="hydroobject", bbox=bbox))
-damo_profiles = DAMOProfiles(
-    model=model,
-    network=network,
-    profile_line_df=gpd.read_file(venv_hydamo_gpkg, layer="profiellijn", bbox=bbox),
-    profile_point_df=gpd.read_file(venv_hydamo_gpkg, layer="profielpunt", bbox=bbox),
-    water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox),
-    profile_line_id_col="code",
-)
-if not profiles_gpkg.exists():
-    damo_profiles.process_profiles().to_file(profiles_gpkg)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 # %%
