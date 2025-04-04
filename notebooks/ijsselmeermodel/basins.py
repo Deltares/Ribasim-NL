@@ -49,7 +49,7 @@ def strip_code(code):
 def user_id(code, wbh_code, code_postfix=None):
     code = strip_code(code)
     if code_postfix:
-        code = f"{code}_{code_postfix }"
+        code = f"{code}_{code_postfix}"
     return code_utils.generate_model_id(code, "basin", wbh_code=wbh_code)
 
 

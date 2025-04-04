@@ -151,7 +151,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
             # check if code-value is the same in both Excels
             if kwk_properties["Kunstwerkcode"] != kwk.code:
                 raise ValueError(
-                    f"code for {kwk.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties["Kunstwerkcode"]} != {kwk.code}"
+                    f"code for {kwk.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties['Kunstwerkcode']} != {kwk.code}"
                 )
 
             # find existing node_id in model

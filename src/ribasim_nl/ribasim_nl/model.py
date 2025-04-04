@@ -995,5 +995,5 @@ class Model(Model):
         # if links are duplicated in reversed source-destination we raise an Exception
         if duplicated_links.any():
             raise ValueError(
-                f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[["link_id", "from_node_id", "to_node_id"]].to_dict(orient="index").values())}"
+                f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[['link_id', 'from_node_id', 'to_node_id']].to_dict(orient='index').values())}"
             )
