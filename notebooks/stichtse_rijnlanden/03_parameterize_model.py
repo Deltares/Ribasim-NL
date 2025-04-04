@@ -13,7 +13,7 @@ static_data_xlsx = cloud.joinpath(
     authority,
     "verwerkt",
     "parameters",
-    "static_data.xlsx",
+    "static_data_template.xlsx",
 )
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
@@ -60,8 +60,8 @@ model.merge_basins(basin_id=1432, to_node_id=1563)
 model.merge_basins(basin_id=1864, to_node_id=1386)
 model.merge_basins(basin_id=1928, to_node_id=1505)
 model.merge_basins(basin_id=1960, to_node_id=1855)
-model.merge_basins(basin_id=2044, to_node_id=1850)
-
+# model.merge_basins(basin_id=2044, to_node_id=1850)
+# %%
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
 print("Elapsed Time:", time.time() - start_time, "seconds")
