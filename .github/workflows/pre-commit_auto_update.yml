@@ -40,3 +40,5 @@ jobs:
           title: Update pre-commit hooks
           commit-message: "Update pre-commit hooks"
           author: "GitHub <noreply@github.com>"
+          path: Ribasim-NL
+          delete-branch: true
