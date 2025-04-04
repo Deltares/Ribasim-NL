@@ -9,14 +9,27 @@ jobs:
   auto-update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.3
+      - name: Checkout Ribasim-NL
+        uses: actions/checkout@v4
         with:
+          path: Ribasim-NL
+      # Ribasim needs to be checked out next to this repo even for the prod environment
+      - name: Checkout Ribasim
+        uses: actions/checkout@v4
+        with:
+          repository: Deltares/Ribasim
+          path: Ribasim
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.4
+        with:
+          manifest-path: Ribasim-NL/pixi.toml
           pixi-version: "latest"
       - name: Update pre-commit hooks
+        working-directory: Ribasim-NL
         run: |
           pixi run pre-commit-autoupdate
       - name: Run pre-commit on all files
+        working-directory: Ribasim-NL
         run: |
           pixi run pre-commit
         continue-on-error: true
