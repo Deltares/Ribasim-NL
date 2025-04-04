@@ -166,13 +166,11 @@ combined = combined.reset_index(drop=True)
 combined["source"] = combined.apply(
     lambda row: "pump" if row["node_id"] in static_data.pump.node_id.values else "outlet", axis=1
 )
-# Stap 1: Filter alleen geldige downstream node_ids
+
 valid_ids = ds_node_ids[ds_node_ids.isin(combined["node_id"])]
 streefpeil = combined.set_index("node_id").loc[valid_ids.to_numpy(), ["min_upstream_level", "code", "source"]]
 streefpeil["basin_node_id"] = valid_ids.loc[valid_ids.isin(streefpeil.index)].index
 streefpeil["node_id"] = streefpeil.index  # outlet/pump node_id
-
-# Stap 4: Zet basin_node_id als index
 streefpeil = streefpeil.set_index("basin_node_id")
 streefpeil.dropna(inplace=True)
 
