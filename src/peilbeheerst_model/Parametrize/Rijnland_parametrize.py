@@ -1,4 +1,4 @@
-"""Parameterisation of water board: Scheldestromen."""
+"""Parameterisation of water board: Rijnland."""
 
 import datetime
 import os
@@ -7,6 +7,9 @@ import warnings
 import ribasim
 import ribasim.nodes
 
+# from ribasim import Node
+# from ribasim.nodes import level_boundary, tabulated_rating_curve
+# from shapely import Point
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
@@ -28,6 +31,7 @@ ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_b
 FeedbackFormulier_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
 )
+# FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_Rijnland.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -102,6 +106,7 @@ with warnings.catch_warnings():
 ribasim_param.validate_basin_area(ribasim_model)
 
 # model specific tweaks
+
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
@@ -109,6 +114,19 @@ ribasim_model.basin.area.df.loc[
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == -9.999, "meta_streefpeil"] = str(
     unknown_streefpeil
 )
+
+# # code-based modifications
+# level_boundary_node = ribasim_model.level_boundary.add(
+#     Node(geometry=Point(107489, 495800)),
+#     [level_boundary.Static(level=[default_level])]
+# )
+# tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+#     Node(geometry=Point(107489, 495471)),
+#     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+# )
+# ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+# ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[35])
+
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
