@@ -38,9 +38,6 @@ bbox = None
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # %% Edges
 
-if not profiles_gpkg.exists():
-    damo_profiles.process_profiles().to_file(profiles_gpkg)
-
 network = Network(lines_gdf=gpd.read_file(venv_hydamo_gpkg, layer="hydroobject", bbox=bbox))
 damo_profiles = DAMOProfiles(
     model=model,
@@ -50,6 +47,9 @@ damo_profiles = DAMOProfiles(
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox),
     profile_line_id_col="code",
 )
+if not profiles_gpkg.exists():
+    damo_profiles.process_profiles().to_file(profiles_gpkg)
+
 
 # %%
 # fix link geometries
@@ -145,24 +145,46 @@ static_data.add_series(node_type="Pump", series=min_upstream_level)
 
 # %% Bepaal de basin streefpeilen
 
+# Reset de data
 static_data.reset_data_frame(node_type="Basin")
 
-# fill streefpeil from ds min_upstream_level
+# Zoek basins zonder streefpeil
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 
-ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
-ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
-ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
-ds_node_ids = ds_node_ids[ds_node_ids.isin(static_data.outlet.node_id)]
-streefpeil = static_data.outlet.set_index("node_id").loc[ds_node_ids.to_numpy(), ["min_upstream_level", "code"]]
+# Haal downstream node ids (outlets en pumps)
+ds_node_ids = []
 
+for node_id in node_ids:
+    try:
+        ds = model.downstream_node_id(int(node_id))  # Zorg dat type klopt
+        if isinstance(ds, pd.Series):
+            ds_node_ids.append(ds.to_list())
+        else:
+            ds_node_ids.append([ds])
+    except KeyError:
+        print(f"⚠️ Geen downstream node gevonden voor basin met node_id {node_id}")
+        ds_node_ids.append([])  # Voeg lege lijst toe als placeholder zodat volgorde behouden blijft
+ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
+ds_node_ids = ds_node_ids[ds_node_ids.isin(static_data.outlet.node_id) | ds_node_ids.isin(static_data.pump.node_id)]
+combined = pd.concat([static_data.outlet, static_data.pump])
+
+# Voeg een 'source' kolom toe om te labelen of het een outlet of pump is
+combined["source"] = combined.apply(
+    lambda row: "pump" if row["node_id"] in static_data.pump.node_id.values else "outlet", axis=1
+)
+
+# Haal de streefpeilen voor de geselecteerde downstream node_ids (outlets en pumps)
+streefpeil = combined.set_index("node_id").loc[ds_node_ids.to_numpy(), ["min_upstream_level", "code", "source"]]
+
+# Zet de index gelijk aan de downstream node ids
 streefpeil.index = ds_node_ids.index
 
+# Verwijder NaN waarden
 streefpeil.dropna(inplace=True)
 
 # Sorteer per groep zodat de kleinste 'min_upstream_level' bovenaan staat
 streefpeil = streefpeil.sort_index().sort_values(by="min_upstream_level", inplace=False)
-non_kdu_values = streefpeil[~streefpeil["code"].str.startswith("KDU")]
+non_kdu_values = streefpeil[~streefpeil["code"].str.startswith("KDU") | (streefpeil["source"] == "pump")]
 non_kdu_first = non_kdu_values.groupby(level=0).first()
 all_first = streefpeil.groupby(level=0).first()
 
