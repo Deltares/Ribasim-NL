@@ -115,7 +115,7 @@ def run_ribasim_lumping_for_waterboard(
         assign_unassigned_areas_to_basins=assign_unassigned_areas_to_basins,
     )
     ts_end = pd.Timestamp.now()
-    print(f"RIBASIM-lumping for waterboard {waterschap} ready: {ts_end-ts_start}")
+    print(f"RIBASIM-lumping for waterboard {waterschap} ready: {ts_end - ts_start}")
 
 
 if __name__ == "__main__":

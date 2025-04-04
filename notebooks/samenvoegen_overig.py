@@ -119,7 +119,7 @@ for model in models:
     if model_versions:
         model_version = sorted(model_versions, key=lambda x: x.version)[-1]
     else:
-        raise ValueError(f"No models with name {model["model"]} in the cloud")
+        raise ValueError(f"No models with name {model['model']} in the cloud")
 
     gpkg_file = cloud.joinpath(model["authority"], "modellen", model_version.path_string, model["area_file"])
 

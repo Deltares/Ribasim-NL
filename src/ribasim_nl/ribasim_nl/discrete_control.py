@@ -2,7 +2,7 @@ from pandas import DataFrame
 
 
 def control_state(name: str, length: int) -> list[str]:
-    return [f"{name}_{i+1:03d}" for i in range(length)]
+    return [f"{name}_{i + 1:03d}" for i in range(length)]
 
 
 def condition(
