@@ -131,7 +131,7 @@ class RibasimFeedbackProcessor:
                             if new_node_id is not None:
                                 node_id_map[int(row["Node ID.2"])] = new_node_id
                                 self.df.at[index, "Verwerkt"] = new_node_id
-                        elif row["Verbinding"] == "Link" and row["Aanpassing"] == "Stroomrichting Omdraaien":
+                        elif row["Verbinding"] in ("Link", "Edge") and row["Aanpassing"] == "Stroomrichting Omdraaien":
                             self.adjust_links(row, node_id_map)
                 except Exception as e:
                     logging.error(f"Error processing {row['Actie']}, {row['Verbinding']}, at index {index}: {e}")
