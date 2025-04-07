@@ -117,5 +117,5 @@ def add_split_nodes_based_on_selection(
     # print content of all split_nodes included
     print(f"{len(split_nodes)} split locations")
     for obj_type in split_nodes.object_type.unique():
-        print(f" - {obj_type}: {len(split_nodes[split_nodes['object_type']==obj_type])}")
+        print(f" - {obj_type}: {len(split_nodes[split_nodes['object_type'] == obj_type])}")
     return split_nodes

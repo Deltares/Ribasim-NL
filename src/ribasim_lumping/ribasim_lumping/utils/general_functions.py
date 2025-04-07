@@ -859,7 +859,7 @@ def assign_unassigned_areas_to_basin_areas(
 
     if len(areas.loc[areas["basin"].isna()]) > 0:
         print(
-            f" - not all unassigned areas could be assigned automatically ({len(areas.loc[areas['basin']==-1])}x remaining). Please inspect manually"
+            f" - not all unassigned areas could be assigned automatically ({len(areas.loc[areas['basin'] == -1])}x remaining). Please inspect manually"
         )
 
     print(" - basin areas and areas updated")

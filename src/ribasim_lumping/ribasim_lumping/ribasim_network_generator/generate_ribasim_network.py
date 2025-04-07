@@ -712,7 +712,7 @@ def remove_boundary_basins_if_not_needed(
 
 
 def remove_holes_from_basin_areas(basin_areas: gpd.GeoDataFrame, min_area: float):
-    print(f" - remove holes within basin areas with less than {min_area/10000.0:.2f}ha")
+    print(f" - remove holes within basin areas with less than {min_area / 10000.0:.2f}ha")
     return remove_holes_from_polygons(geom=basin_areas, min_area=min_area)
 
 
