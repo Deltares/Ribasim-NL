@@ -87,7 +87,6 @@ for node_id in node_ids:
     containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
     # filter peilgebieden met intersect bovenstroomse link
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
-
     # Als er meerdere peilgebieden zijn, kies de juiste
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
@@ -155,7 +154,6 @@ for node_id in node_ids:
         else:
             ds_node_ids.append([ds])
     except KeyError:
-        print(f"Geen downstream node gevonden voor basin met node_id {node_id}")
         ds_node_ids.append([])  # Voeg lege lijst toe als placeholder zodat volgorde behouden blijft
 
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
@@ -195,6 +193,57 @@ streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+# %% Bepaal min_upstream_level at Manning locations`en vul de nodata basins met deze streefpeilen
+node_ids = model.manning_resistance.static.df["node_id"]
+min_upstream_level = []
+
+levels = []
+for node_id in node_ids:
+    node = model.manning_resistance[node_id]
+    peilgebieden_df = gpd.read_file(peilgebieden_path)
+    tolerance = 10
+    node_id = node.node_id
+    node_geometry = node.geometry
+    line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
+    containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
+    peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
+    if not peilgebieden_select_df.empty:
+        peilgebied = peilgebieden_select_df.iloc[0]
+        if peilgebied["WS_MAX_PEI"] < 30:
+            level = peilgebied["WS_MAX_PEI"]
+        else:
+            level = None
+    levels += [level]
+
+min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
+min_upstream_level.index.name = "node_id"
+
+missing_basins = static_data.basin[static_data.basin.streefpeil.isna()]
+basin_node_ids = missing_basins.node_id.to_numpy()
+
+# Get downstream node(s) for each basin
+ds_node_ids = []
+ds_index = []
+for i in basin_node_ids:
+    try:
+        ds_ids = model.downstream_node_id(i)
+        ds_ids = ds_ids.to_list() if isinstance(ds_ids, pd.Series) else [ds_ids]
+        ds_node_ids.extend(ds_ids)
+        ds_index.extend([i] * len(ds_ids))
+    except KeyError:
+        print(f"No downstream node found for basin node {i}")
+
+ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
+
+# Keep only those that exist in min_upstream_level
+valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
+streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid_ds.values, valid_ds.index)))
+streefpeil = streefpeil.groupby(streefpeil.index).min()
+streefpeil.index.name = "node_id"
+streefpeil.name = "streefpeil"
+
+static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+
 
 # %%
 # DAMO-profielen bepalen voor outlets wanneer min_upstream_level nodata
@@ -220,6 +269,12 @@ flow_rate = gkw_gemaal_df.set_index("code")["maximalecapaciteit"] / 60  # m3/min
 flow_rate.name = "flow_rate"
 static_data.add_series(node_type="Pump", series=flow_rate)
 
+
+# %% correct some streefpeilen that are wrong
+
+static_data.basin.loc[static_data.basin.node_id == 1006, "streefpeil"] = -0.1
+static_data.basin.loc[static_data.basin.node_id == 1134, "streefpeil"] = -0.1
+static_data.basin.loc[static_data.basin.node_id == 1035, "streefpeil"] = -0.1
 # %%
 # get all nodata streefpeilen with their profile_ids and levels
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()

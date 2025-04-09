@@ -28,9 +28,11 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # read
 model = Model.read(ribasim_toml)
-
 start_time = time.time()
+
 # %%
+
+
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
@@ -38,18 +40,6 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.basin.profile.df.loc[(model.basin.profile.df.node_id == 1209) & (model.basin.profile.df.area > 0.1), "area"] = (
     10000
 )
-
-
-model.remove_node(740, remove_edges=True)
-model.remove_node(736, remove_edges=True)
-model.merge_basins(basin_id=1139, to_node_id=959, are_connected=False)
-model.pump.static.df.loc[model.pump.static.df.node_id == 1282, ["active"]] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 1282, ["meta_categorie"]] = "Inlaat"
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 634, ["active"]] = False
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 443, ["active"]] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 1279, ["active"]] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 252, ["active"]] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 418, ["active"]] = False
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 306, "min_upstream_level"] = 2.85
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 312, "min_upstream_level"] = 2.85
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 369, "min_upstream_level"] = 2.85
@@ -62,6 +52,63 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 418, ["active"]] = Fals
 # model.pump.static.df.loc[model.pump.static.df.node_id == 266, "min_upstream_level"] = 4.2
 # model.basin.area.df.loc[model.basin.area.df.node_id == 1006, "meta_streefpeil"] = 3.9
 # model.basin.area.df.loc[model.basin.area.df.node_id == 1028, "meta_streefpeil"] = 4.2
+
+# %% Verbeter model
+
+model.merge_basins(basin_id=1107, to_node_id=1134, are_connected=True)
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 512, "min_upstream_level"] = -0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 512, "flow_rate"] = 0
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 497, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 497, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 67, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 67, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 67, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 67, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 512, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 512, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 530, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 530, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 381, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 381, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 366, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 366, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 137, "min_upstream_level"] = -0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 137, "flow_rate"] = 0
+
+model.pump.static.df.loc[model.pump.static.df.node_id == 232, ["flow_rate"]] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 232, ["meta_categorie"]] = "Inlaat"
+
+model.pump.static.df.loc[model.pump.static.df.node_id == 466, ["flow_rate"]] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 466, ["meta_categorie"]] = "Inlaat"
+
+model.pump.static.df.loc[model.pump.static.df.node_id == 264, ["flow_rate"]] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 264, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 288, ["meta_categorie"]] = "Inlaat"
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 288, ["meta_name"]] = "Grebbesluis"
+
+model.pump.static.df.loc[model.pump.static.df.node_id == 1282, ["flow_rate"]] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 1282, ["meta_categorie"]] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 190, ["flow_rate"]] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 599, ["flow_rate"]] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 599, ["meta_categorie"]] = "Inlaat"
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 269, ["flow_rate"]] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 269, ["meta_categorie"]] = "Inlaat"
+model.pump.static.df.loc[model.pump.static.df.node_id == 268, ["flow_rate"]] = 2
+
+model.pump.static.df.loc[model.pump.static.df.node_id == 231, ["flow_rate"]] = 5
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 634, ["active"]] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 634, ["meta_categorie"]] = "Inlaat"
 
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
 # %%

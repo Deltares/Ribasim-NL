@@ -141,7 +141,11 @@ model.merge_basins(basin_id=1142, to_node_id=1066)
 model.merge_basins(basin_id=900, to_node_id=959)
 model.merge_basins(basin_id=1099, to_node_id=811)
 model.merge_basins(basin_id=1033, to_node_id=811)
-
+model.remove_node(740, remove_edges=True)
+model.remove_node(644, remove_edges=True)
+model.remove_node(736, remove_edges=True)
+model.merge_basins(basin_id=1139, to_node_id=959, are_connected=False)
+model.merge_basins(basin_id=1086, to_node_id=1137, are_connected=True)
 
 model.fix_unassigned_basin_area()
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
