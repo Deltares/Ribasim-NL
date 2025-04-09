@@ -26,10 +26,9 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-# FeedbackFormulier_path = cloud.joinpath(
-#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-# )
-FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_Rivierenland.xlsx"
+FeedbackFormulier_path = cloud.joinpath(
+    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+)
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -43,7 +42,7 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraa
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        # FeedbackFormulier_path,
+        FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -76,8 +75,7 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2024, 2, 1)
-# endtime = datetime.datetime(2025, 1, 1)
+endtime = datetime.datetime(2025, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -110,7 +108,6 @@ ribasim_param.validate_basin_area(ribasim_model)
 # merge basins
 ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
 ribasim_model.merge_basins(node_id=63, to_node_id=97, are_connected=True)
-# ribasim_model.merge_basins(node_id=69, to_node_id=66, are_connected=True)
 ribasim_model.merge_basins(node_id=131, to_node_id=119, are_connected=True)
 ribasim_model.merge_basins(node_id=212, to_node_id=210, are_connected=True)
 
@@ -138,7 +135,6 @@ split_line_string = LineString(
         (181450.80583859386, 436249.2787931333),
     ]
 )
-
 basin_ids = 66, 69
 basin = shapely.union_all(
     [
@@ -306,6 +302,12 @@ pump_ids = 989, 1000, 1001
 for i in pump_ids:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_aanvoer"] = 1
 
+# force 'afvoergemalen'
+pump_ids = 272, 280
+for i in pump_ids:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_afvoer"] = 1
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_aanvoer"] = 0
+
 # (re)set meta_node_id
 ribasim_model.level_boundary.node.df["meta_node_id"] = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df["meta_node_id"] = ribasim_model.tabulated_rating_curve.node.df.index
@@ -354,7 +356,7 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(
-    ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS, basin_aanvoer_off=204
+    ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS, basin_aanvoer_off=(40, 204)
 )
 
 # change the control of the outlet at Kinderdijk
