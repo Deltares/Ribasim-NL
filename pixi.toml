@@ -23,6 +23,7 @@ quarto-render = { cmd = "export QUARTO_PYTHON=python && quarto render docs --to 
 docs = { depends-on = ["build-julia-docs", "quarto-preview"] }
 # Lint
 mypy-hydamo = "mypy --ignore-missing-imports src/hydamo"
+pre-commit-autoupdate = "pre-commit autoupdate"
 pre-commit = "pre-commit run --all-files"
 lint = { depends-on = ["pre-commit", "mypy-hydamo"] }
 # Test

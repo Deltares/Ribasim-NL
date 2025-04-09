@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.basin_tables import update_basin_profile, update_basin_state, update_basin_static
+from ribasim_nl.parametrization.flow_boundary_table import update_flow_boundary_static
 from ribasim_nl.parametrization.level_boundary_table import update_level_boundary_static
 from ribasim_nl.parametrization.manning_resistance_table import update_manning_resistance_static
 from ribasim_nl.parametrization.node_table import populate_function_column
@@ -16,6 +17,7 @@ class Parameterize(BaseModel):
     profiles_gpkg: Path | None = None
     precipitation_mm_per_day: int | None = None
     evaporation_mm_per_day: int | None = None
+    boundary_flow_rate_m3_sec: float = 0.0
 
     def run(self, **kwargs):
         # update class properties
@@ -50,4 +52,12 @@ class Parameterize(BaseModel):
             model=self.model,
             static_data_xlsx=self.static_data_xlsx,
             code_column="meta_code_waterbeheerder",
+        )
+
+        # FlowBoundaries
+        update_flow_boundary_static(
+            model=self.model,
+            code_column="meta_code_waterbeheerder",
+            meta_values={"meta_categorie": "buitenlandse aanvoer"},
+            default_values={"flow_rate": 0.0},
         )

@@ -171,7 +171,7 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Pol
             raise ValueError(
                 f"""
                              geometry.geom_type = {geometry.geom_type} not supported.
-                              supported geometry.types are: {get_type_hints(drop_z)['geometry']}
+                              supported geometry.types are: {get_type_hints(drop_z)["geometry"]}
                               """
             )
 
