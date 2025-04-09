@@ -4,15 +4,16 @@ import datetime
 import os
 import warnings
 
+import shapely
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
-from shapely import Point
+from shapely import LineString, Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, geometry
 
 AANVOER_CONDITIONS: bool = True
 
@@ -75,7 +76,8 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2025, 1, 1)
+endtime = datetime.datetime(2024, 2, 1)
+# endtime = datetime.datetime(2025, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -108,14 +110,45 @@ ribasim_param.validate_basin_area(ribasim_model)
 # merge basins
 ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
 ribasim_model.merge_basins(node_id=63, to_node_id=97, are_connected=True)
-# TODO: Basin #66 must be split at the highway A50, with different 'streefpeilen'
-ribasim_model.merge_basins(node_id=69, to_node_id=66, are_connected=True)
+# ribasim_model.merge_basins(node_id=69, to_node_id=66, are_connected=True)
 ribasim_model.merge_basins(node_id=131, to_node_id=119, are_connected=True)
 ribasim_model.merge_basins(node_id=212, to_node_id=210, are_connected=True)
 
 # (too) small basins connected via a Manning-node --> merge basins
 ribasim_model.merge_basins(node_id=226, to_node_id=1, are_connected=True)
 ribasim_model.merge_basins(node_id=220, to_node_id=219, are_connected=True)
+
+# redefine basins #66 & #69
+split_line_string = LineString(
+    [
+        (179226.37281748792, 433425.4196105504),
+        (179348.13125653792, 433771.9628601542),
+        (179483.93874624756, 434001.43068759463),
+        (179652.52735416294, 434146.6042110773),
+        (179778.9688100995, 434240.2645488081),
+        (180027.16870508605, 434376.07203851774),
+        (180162.9761947957, 434455.68332558894),
+        (180364.34592091685, 434614.9058997312),
+        (180874.7947615496, 435172.18490922934),
+        (181104.26258898998, 435340.7735171448),
+        (181329.04739954387, 435345.4565340313),
+        (181488.26997368617, 435607.7054796775),
+        (181446.12282170734, 435832.49029023136),
+        (181427.39075416117, 436061.9581176717),
+        (181450.80583859386, 436249.2787931333),
+    ]
+)
+
+basin_ids = 66, 69
+basin = shapely.union_all(
+    [
+        ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"].values[0].geoms
+        for basin_id in basin_ids
+    ]
+)
+polygons = geometry.split_basin(basin, split_line_string)
+for basin_id, polygon in zip(basin_ids, polygons.geoms):
+    ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = polygon
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -136,7 +169,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 40, "m
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(136538, 422962)), [level_boundary.Static(level=[default_level])]
 )
-pump_node = ribasim_model.pump.add(Node(geometry=Point(136574, 422965)), [pump.Static(flow_rate=[0.1])])
+pump_node = ribasim_model.pump.add(Node(geometry=Point(136574, 422965)), [pump.Static(flow_rate=[6])])
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == pump_node.node_id, "meta_func_aanvoer"] = 1
 ribasim_model.link.add(ribasim_model.basin[154], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
