@@ -487,12 +487,14 @@ for verdeelsleutel in VERDEELSLEUTELS:
                 )
                 node = model.pump[node_id]
             else:
+                qh = pd.Series(qhq_df[waterlichaam].to_list(), index=min_upstream_level)
+                qh = qh[~qh.duplicated()]
                 model.tabulated_rating_curve.add(
                     node,
                     [
                         tabulated_rating_curve.Static(
-                            flow_rate=qhq_df[waterlichaam].to_list(),
-                            level=min_upstream_level,
+                            flow_rate=qh.to_numpy(),
+                            level=qh.index.to_numpy(),
                         )
                     ],
                 )
