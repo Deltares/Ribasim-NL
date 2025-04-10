@@ -4,14 +4,15 @@ import datetime
 import os
 import warnings
 
-import ribasim
-import ribasim.nodes
+from ribasim import Node
+from ribasim.nodes import pump
+from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 
@@ -97,7 +98,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -117,6 +118,8 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
+inlaat_pump = []
+
 # change gemaal function Brielse Meer to aanvoer. Find node_id first, as it is added in the feedback form
 BrielseMeerNodes = ribasim_model.link.df.loc[
     ribasim_model.link.df.from_node_id == 98, "to_node_id"
@@ -133,6 +136,37 @@ ribasim_model.pump.static.df.loc[
 ribasim_model.pump.static.df.loc[
     ribasim_model.pump.static.df.node_id.isin(BrielseMeerAanvoerPump), "meta_func_aanvoer"
 ] = 1
+
+# add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
+pump_node = ribasim_model.pump.add(Node(geometry=Point(81619, 439852)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[2], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[113])
+inlaat_pump.append(pump_node.node_id)
+
+# add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
+pump_node = ribasim_model.pump.add(Node(geometry=Point(70197, 444207)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[41], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[53])
+inlaat_pump.append(pump_node.node_id)
+
+for n in inlaat_pump:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
+
+ribasim_model.merge_basins(node_id=73, to_node_id=10)
+ribasim_model.merge_basins(node_id=67, to_node_id=2)
+ribasim_model.merge_basins(node_id=62, to_node_id=2)
+ribasim_model.merge_basins(node_id=61, to_node_id=2)
+ribasim_model.merge_basins(node_id=63, to_node_id=2)
+ribasim_model.merge_basins(node_id=89, to_node_id=16, are_connected=False)
+ribasim_model.merge_basins(node_id=71, to_node_id=9)
+ribasim_model.merge_basins(node_id=88, to_node_id=2)
+ribasim_model.merge_basins(node_id=32, to_node_id=50)
+ribasim_model.merge_basins(node_id=54, to_node_id=1)
+
+# (re)set 'meta_node_id'-values
+ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
+ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
+ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
 # insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
@@ -207,9 +241,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-ribasim_param.tqdm_subprocess(
-    ["C:/ribasim_windows/ribasim/ribasim.exe", ribasim_work_dir_model_toml], print_other=False, suffix="init"
-)
+ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_other=False, suffix="init")
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
