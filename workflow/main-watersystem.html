@@ -222,15 +222,15 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="basins.py" class="level1">
 <h1>2_basins.py</h1>
-<p>We derive RIBASIM basins (areas) for the RWS-watersystem. Using the resulting bathymetry of <code>1_bathymetry.py</code> we write a CSV-file with a basin profile</p>
+<p>We derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of <code>1_bathymetry.py</code> we write a CSV-file with a Basin profile.</p>
 </section>
 <section id="netwerk.py" class="level1">
 <h1>3_netwerk.py</h1>
-<p>We derive a Ribasim_nl.Network (not a RIBASIM network yet!) we can use to build a model_network with <code>5_model_netwerk.py</code>. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the basins from <code>2_basins.py</code> as a network node will be put at the intersect of a basin-polygon and the network.</p>
+<p>We derive a <code>ribasim_nl.Network</code> (not a Ribasim network yet!) we can use to build a model_network with <code>5_model_netwerk.py</code>. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from <code>2_basins.py</code> as a network node will be put at the intersect of a Basin-polygon and the network.</p>
 </section>
 <section id="kunstwerken.py" class="level1">
 <h1>4_kunstwerken.py</h1>
-<p>We combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our RIBASIM network (<code>model_netwerk.py</code>).</p>
+<p>We combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (<code>model_netwerk.py</code>).</p>
 </section>
 <section id="model_netwerk.py" class="level1">
 <h1>5_model_netwerk.py</h1>
