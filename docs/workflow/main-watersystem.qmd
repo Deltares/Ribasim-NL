@@ -15,3 +15,24 @@ For the mask we use Top10NL waterdelen and manually filled a boolean column `bas
 
 ![Bathymetry](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_result.png)
 :::
+
+# 2_basins.py
+We derive RIBASIM basins (areas) for the RWS-watersystem. Using the resulting bathymetry of `1_bathymetry.py` we write a CSV-file with a basin profile
+
+# 3_netwerk.py
+We derive a Ribasim_nl.Network (not a RIBASIM network yet!) we can use to build a model_network with `5_model_netwerk.py`. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the basins from `2_basins.py` as a network node will be put at the intersect of a basin-polygon and the network.
+
+# 4_kunstwerken.py
+We combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our RIBASIM network (`model_netwerk.py`).
+
+# 5_model_netwerk.py
+We combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a `.\modellen\hws_netwerk\hws.toml` file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.
+
+# 6_model_sturing.py
+We take the model of 5 (`.\modellen\hws_netwerk\hws.toml`), add control and write it to (`.\modellen\hws_sturing\hws.toml`)
+
+# 7_model_onttrekkingen.py
+We take the model of 6 (`.\modellen\hws_sturing\hws.toml`), add drinking water, industry and energy demands and write it to (`.\modellen\hws_demand\hws.toml`)
+
+# 8 update bc, state, etc.
+Scripts to provide boundary/initial conditions to the model in `.\modellen\hws_demand\hws.toml` and write it in another location.
