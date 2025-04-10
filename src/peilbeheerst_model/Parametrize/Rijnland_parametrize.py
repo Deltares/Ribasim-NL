@@ -29,10 +29,10 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-FeedbackFormulier_path = cloud.joinpath(
-    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-)
-# FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_Rijnland.xlsx"
+# FeedbackFormulier_path = cloud.joinpath(
+#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+# )
+FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_Rijnland.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -44,7 +44,7 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraa
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        FeedbackFormulier_path,
+        # FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -103,33 +103,29 @@ with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
-inlaat_pump = []
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
+
+# model specific tweaks
+# merge basins
+ribasim_model.merge_basins(node_id=106, to_node_id=93, are_connected=True)  # klein gebied
+ribasim_model.merge_basins(node_id=235, to_node_id=151, are_connected=True)  # klein gebied
+ribasim_model.merge_basins(node_id=166, to_node_id=22, are_connected=True)  # klein gebied
+ribasim_model.merge_basins(node_id=79, to_node_id=22, are_connected=True)  # klein gebied
+# unconnected basins
+ribasim_model.merge_basins(node_id=308, to_node_id=22, are_connected=False)
+ribasim_model.merge_basins(node_id=332, to_node_id=138, are_connected=False)
 
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(88007, 469350)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.link.add(ribasim_model.basin[22], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[27])
-inlaat_pump.append(pump_node.node_id)
-
-for n in inlaat_pump:
-    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
 
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
-
-ribasim_model.merge_basins(node_id=308, to_node_id=22, are_connected=False)  # klein gebied
-ribasim_model.merge_basins(node_id=106, to_node_id=93)  # klein gebied
-ribasim_model.merge_basins(node_id=235, to_node_id=151)  # klein gebied
-ribasim_model.merge_basins(node_id=166, to_node_id=22)  # klein gebied
-ribasim_model.merge_basins(node_id=79, to_node_id=22)  # klein gebied
-
-
-# check basin area
-ribasim_param.validate_basin_area(ribasim_model)
-
-# model specific tweaks
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -138,18 +134,6 @@ ribasim_model.basin.area.df.loc[
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == -9.999, "meta_streefpeil"] = str(
     unknown_streefpeil
 )
-
-# # code-based modifications
-# level_boundary_node = ribasim_model.level_boundary.add(
-#     Node(geometry=Point(107489, 495800)),
-#     [level_boundary.Static(level=[default_level])]
-# )
-# tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-#     Node(geometry=Point(107489, 495471)),
-#     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-# )
-# ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-# ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[35])
 
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
@@ -202,7 +186,7 @@ else:
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.set_aanvoer_flags(ribasim_model, aanvoergebieden, processor, aanvoer_enabled=AANVOER_CONDITIONS)
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
@@ -227,7 +211,9 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_other=False, suffix="init")
+ribasim_param.tqdm_subprocess(
+    [r"C:\ribasim_windows\ribasim\ribasim.exe", ribasim_work_dir_model_toml], print_other=False, suffix="init"
+)
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
