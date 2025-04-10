@@ -115,6 +115,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 inlaat_structures = []
+inlaat_pump = []
 # add the LevelBoundaries and Pumps
 # 1
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -235,6 +236,12 @@ ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[27])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
+# # # add gemaal between two basins in Rotterdam. Dont use FF as it is an aanvoergemaal
+pump_node = ribasim_model.pump.add(Node(geometry=Point(95653, 436055)), [pump.Static(flow_rate=[2.5 / 60])])
+ribasim_model.link.add(ribasim_model.basin[143], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[157])
+inlaat_pump.append(pump_node.node_id)
+
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
@@ -244,6 +251,9 @@ afvoer_pumps = [230, 387, 579, 366]
 for afvoer_pump in afvoer_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_afvoer"] = 1
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_aanvoer"] = 0
+
+for n in inlaat_pump:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
 
 ribasim_model.merge_basins(node_id=16, to_node_id=8)  # small (boezemli
 ribasim_model.merge_basins(node_id=145, to_node_id=2)  # klein gebied in boezem
