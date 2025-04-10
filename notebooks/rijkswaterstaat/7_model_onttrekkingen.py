@@ -34,7 +34,7 @@ def add_demand(
         outlet_basin_node = inlet_basin_node
 
     # define demand_node
-    demand_node_id = model.node_table().df.node_id.max() + 1
+    demand_node_id = model.node_table().df.index.max() + 1
     demand_node = Node(demand_node_id, geometry=geometry, name=name, **kwargs)
     if min_level is None:
         min_level = model.basin.profile[inlet_basin_node.node_id].level.min() + 0.1
@@ -43,7 +43,7 @@ def add_demand(
         demand_node,
         [
             user_demand.Static(
-                priority=[priority],
+                demand_priority=[priority],
                 demand=[demand],
                 return_factor=[return_factor],
                 min_level=[min_level],
@@ -75,7 +75,7 @@ def add_demand(
     model.edge.add(inlet_basin_node, model.user_demand[demand_node_id], geometry=line, name=name)
 
     if outlet_as_terminal:
-        terminal_node_id = model.node_table().df.node_id.max() + 1
+        terminal_node_id = model.node_table().df.index.max() + 1
         model.terminal.add(Node(terminal_node_id, outlet_geometry))
         terminal_node = model.terminal[terminal_node_id]
 
@@ -228,7 +228,7 @@ mask = ~industrie_inlet_gdf.naam.isin(["Avebe", "Evides Geervliet", "Evides Veer
 industrie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-uitlaat", engine="pyogrio")
 
 #
-maas_line = model.edge.df[model.edge.df.name == "Maas"].unary_union
+maas_line = model.edge.df[model.edge.df.name == "Maas"].union_all()
 index = industrie_outlet_gdf[industrie_outlet_gdf["naam"] == "Chemelot"].index[0]
 point = industrie_outlet_gdf.at[index, "geometry"]
 point = maas_line.interpolate(maas_line.project(point))
