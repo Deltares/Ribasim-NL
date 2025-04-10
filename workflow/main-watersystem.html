@@ -159,6 +159,13 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#bathymetrie.py" id="toc-bathymetrie.py" class="nav-link active" data-scroll-target="#bathymetrie.py">1_bathymetrie.py</a></li>
+  <li><a href="#basins.py" id="toc-basins.py" class="nav-link" data-scroll-target="#basins.py">2_basins.py</a></li>
+  <li><a href="#netwerk.py" id="toc-netwerk.py" class="nav-link" data-scroll-target="#netwerk.py">3_netwerk.py</a></li>
+  <li><a href="#kunstwerken.py" id="toc-kunstwerken.py" class="nav-link" data-scroll-target="#kunstwerken.py">4_kunstwerken.py</a></li>
+  <li><a href="#model_netwerk.py" id="toc-model_netwerk.py" class="nav-link" data-scroll-target="#model_netwerk.py">5_model_netwerk.py</a></li>
+  <li><a href="#model_sturing.py" id="toc-model_sturing.py" class="nav-link" data-scroll-target="#model_sturing.py">6_model_sturing.py</a></li>
+  <li><a href="#model_onttrekkingen.py" id="toc-model_onttrekkingen.py" class="nav-link" data-scroll-target="#model_onttrekkingen.py">7_model_onttrekkingen.py</a></li>
+  <li><a href="#update-bc-state-etc." id="toc-update-bc-state-etc." class="nav-link" data-scroll-target="#update-bc-state-etc.">8 update bc, state, etc.</a></li>
   </ul>
 </nav>
     </div>
@@ -212,6 +219,34 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
+</section>
+<section id="basins.py" class="level1">
+<h1>2_basins.py</h1>
+<p>We derive RIBASIM basins (areas) for the RWS-watersystem. Using the resulting bathymetry of <code>1_bathymetry.py</code> we write a CSV-file with a basin profile</p>
+</section>
+<section id="netwerk.py" class="level1">
+<h1>3_netwerk.py</h1>
+<p>We derive a Ribasim_nl.Network (not a RIBASIM network yet!) we can use to build a model_network with <code>5_model_netwerk.py</code>. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the basins from <code>2_basins.py</code> as a network node will be put at the intersect of a basin-polygon and the network.</p>
+</section>
+<section id="kunstwerken.py" class="level1">
+<h1>4_kunstwerken.py</h1>
+<p>We combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our RIBASIM network (<code>model_netwerk.py</code>).</p>
+</section>
+<section id="model_netwerk.py" class="level1">
+<h1>5_model_netwerk.py</h1>
+<p>We combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a <code>.\modellen\hws_netwerk\hws.toml</code> file. This excludes control (e.g.&nbsp;bifurcations of Monsin and Pannerden) and demand/supply.</p>
+</section>
+<section id="model_sturing.py" class="level1">
+<h1>6_model_sturing.py</h1>
+<p>We take the model of 5 (<code>.\modellen\hws_netwerk\hws.toml</code>), add control and write it to (<code>.\modellen\hws_sturing\hws.toml</code>)</p>
+</section>
+<section id="model_onttrekkingen.py" class="level1">
+<h1>7_model_onttrekkingen.py</h1>
+<p>We take the model of 6 (<code>.\modellen\hws_sturing\hws.toml</code>), add drinking water, industry and energy demands and write it to (<code>.\modellen\hws_demand\hws.toml</code>)</p>
+</section>
+<section id="update-bc-state-etc." class="level1">
+<h1>8 update bc, state, etc.</h1>
+<p>Scripts to provide boundary/initial conditions to the model in <code>.\modellen\hws_demand\hws.toml</code> and write it in another location.</p>
 
 
 </section>
