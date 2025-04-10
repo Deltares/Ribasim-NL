@@ -31,42 +31,13 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # fixes
-model.remove_node(node_id=1031, remove_edges=True)
-model.merge_basins(basin_id=1882, to_node_id=1867)
-model.merge_basins(basin_id=1888, to_node_id=1867)
-model.merge_basins(basin_id=1676, to_node_id=1375)
-model.merge_basins(basin_id=1866, to_node_id=1883)
-model.merge_basins(basin_id=1870, to_node_id=1883)
-model.merge_basins(basin_id=1695, to_node_id=1800)
-model.merge_basins(basin_id=2011, to_node_id=2050)
-model.merge_basins(basin_id=2049, to_node_id=2050)
-model.merge_basins(basin_id=1892, to_node_id=1947)
-model.merge_basins(basin_id=1834, to_node_id=1947)
-model.merge_basins(basin_id=2010, to_node_id=1863)
-model.merge_basins(basin_id=1901, to_node_id=1897)
-model.merge_basins(basin_id=1896, to_node_id=1897)
-model.merge_basins(basin_id=2021, to_node_id=2051)
-model.merge_basins(basin_id=1721, to_node_id=2033)
-model.merge_basins(basin_id=2032, to_node_id=2033)
-model.merge_basins(basin_id=1797, to_node_id=2100)
-model.merge_basins(basin_id=1938, to_node_id=2047)
-model.merge_basins(basin_id=2033, to_node_id=1438)
-model.merge_basins(basin_id=1751, to_node_id=1673)
-model.merge_basins(basin_id=1945, to_node_id=1474)
-model.merge_basins(basin_id=2009, to_node_id=1960)
-model.merge_basins(basin_id=2041, to_node_id=1783)
-model.merge_basins(basin_id=2006, to_node_id=1890)
-model.merge_basins(basin_id=1432, to_node_id=1563)
-model.merge_basins(basin_id=1864, to_node_id=1386)
-model.merge_basins(basin_id=1928, to_node_id=1505)
-model.merge_basins(basin_id=1960, to_node_id=1855)
+
+
 # model.merge_basins(basin_id=2044, to_node_id=1850)
 # %%
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-
-# %%
 
 
 # %% deactivate inlets

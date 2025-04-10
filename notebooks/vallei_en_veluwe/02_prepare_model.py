@@ -38,7 +38,7 @@ bbox = None
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # %% Edges
 
-network = Network(lines_gdf=gpd.read_file(venv_hydamo_gpkg, layer="hydroobject", bbox=bbox))
+network = Network(lines_gdf=gpd.read_file(venv_hydamo_gpkg, layer="hydroobject", bbox=bbox), tolerance=0.2)
 damo_profiles = DAMOProfiles(
     model=model,
     network=network,
@@ -140,7 +140,7 @@ min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level)
 
 
-# %% Bepaal de basin streefpeilen
+# %% Bepaal de basin streefpeilen door minimale upstream level outlet en gemalen. Streefpeil stuw en gemalen krijgt voorrang
 
 static_data.reset_data_frame(node_type="Basin")
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
@@ -154,7 +154,7 @@ for node_id in node_ids:
         else:
             ds_node_ids.append([ds])
     except KeyError:
-        ds_node_ids.append([])  # Voeg lege lijst toe als placeholder zodat volgorde behouden blijft
+        ds_node_ids.append([])
 
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 ds_node_ids = ds_node_ids[ds_node_ids.isin(static_data.outlet.node_id) | ds_node_ids.isin(static_data.pump.node_id)]

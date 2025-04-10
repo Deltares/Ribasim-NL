@@ -48,7 +48,6 @@ else:
 
 
 # %%
-
 # add streefpeilen
 peilgebieden_gpkg_editted = peilgebieden_gpkg.with_name(f"{peilgebieden_gpkg.stem}_bewerkt.gpkg")
 
@@ -160,7 +159,7 @@ min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level)
 
 
-# %% Bepaal de basin streefpeilen door minimale upstream level outlet en pumps. Streefpeil stuw krijgt voorrang
+# %% Bepaal de basin streefpeilen door minimale upstream level outlet en gemalen. Streefpeil stuw en gemalen krijgt voorrang
 
 static_data.reset_data_frame(node_type="Basin")
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
@@ -175,7 +174,7 @@ for node_id in node_ids:
             ds_node_ids.append([ds])
     except KeyError:
         print(f"Geen downstream node gevonden voor basin met node_id {node_id}")
-        ds_node_ids.append([])  # Voeg lege lijst toe als placeholder zodat volgorde behouden blijft
+        ds_node_ids.append([])
 
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 ds_node_ids = ds_node_ids[ds_node_ids.isin(static_data.outlet.node_id) | ds_node_ids.isin(static_data.pump.node_id)]
@@ -272,41 +271,6 @@ streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
 
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
-
-# # %% Fill missing streefpeilen by basin location
-# still_missing_basins = static_data.basin[static_data.basin.streefpeil.isna()]
-# basin_node_ids = still_missing_basins.node_id.to_numpy()
-
-# # Load peilgebieden once
-# fallback_levels = []
-
-# for node_id in basin_node_ids:
-#     node = model.basin[node_id]
-#     print(node)
-#     node_geometry = node.geometry
-#     print(node_geometry)
-
-#     # Zoek het peilgebied dat de basin bevat
-#     containing = peilgebieden_df[peilgebieden_df.contains(node_geometry)]
-
-#     if not containing.empty:
-#         peilgebied = containing.iloc[0]
-#         level = next(
-#             (
-#                 peilgebied[col]
-#                 for col in ["WS_ZP", "WS_VP", "WS_BP", "WS_OP"]
-#                 if col in peilgebied and peilgebied[col] < 30
-#             ),
-#             None,
-#         )
-#         if level is not None:
-#             fallback_levels.append((node_id, level))
-
-# # Voeg de fallback levels toe aan static_data als een Series
-# if fallback_levels:
-#     fallback_series = pd.Series(dict(fallback_levels), name="streefpeil")
-#     fallback_series.index.name = "node_id"
-#     static_data.add_series(node_type="Basin", series=fallback_series, fill_na=True)
 
 
 # %%

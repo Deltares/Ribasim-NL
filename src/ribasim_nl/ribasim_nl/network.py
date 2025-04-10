@@ -107,7 +107,7 @@ class Network:
             if self.tolerance is not None:
                 tolerance = self.tolerance
             else:
-                tolerance = 0.1
+                tolerance = 0.25
             self.lines_gdf = snap_line_boundaries(self.lines_gdf, tolerance=tolerance)
 
     @classmethod
