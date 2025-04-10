@@ -11,7 +11,6 @@ from ribasim_nl.reset_static_tables import reset_static_tables
 # %%
 cloud = CloudStorage()
 readme = f"""# Model voor het Landelijk Hydrologisch Model
-
 Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 Ribasim versie: {ribasim.__version__}
 Getest (u kunt simuleren): Nee
@@ -23,6 +22,7 @@ download_latest_model = True
 upload_model = False
 
 RESET_TABLES = []
+INCLUDE_MODELS = ["Rijkswaterstaat", "AmstelGooienVecht"]
 
 model_specs = [
     {
@@ -143,6 +143,9 @@ def get_model_path(model, model_version):
 
 
 # %%
+if INCLUDE_MODELS:
+    model_specs = [i for i in model_specs if i["authority"] in INCLUDE_MODELS]
+
 for idx, model_spec in enumerate(model_specs):
     print(f"{model_spec['authority']} - {model_spec['model']}")
 
