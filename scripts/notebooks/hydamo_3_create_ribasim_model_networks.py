@@ -42,7 +42,7 @@ def generate_ribasim_network(waterschap_path, split_nodes_type_conversion, split
 
     boundaries.loc[boundaries["node_type"] == "FlowBoundary", :].copy()
 
-    # RIBASIM LUMPING split nodes
+    # Ribasim lumping split nodes
     split_nodes = gpd.read_file(ribasim_network_path, layer="split_nodes")
     split_nodes = gpd.read_file(ribasim_network_path, layer="split_nodes")
     split_nodes = split_nodes.rename(

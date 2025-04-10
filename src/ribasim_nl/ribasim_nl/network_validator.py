@@ -40,7 +40,7 @@ def check_internal_basin(row, edge_df) -> bool:
 
 @dataclass
 class NetworkValidator:
-    """Contains some methods for validating a RIBASIM-model
+    """Contains some methods for validating a Ribasim-model
 
     Parameters
     ----------
