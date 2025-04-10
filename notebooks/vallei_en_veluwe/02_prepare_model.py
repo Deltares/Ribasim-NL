@@ -271,8 +271,6 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 
 
 # %% correct some streefpeilen that are wrong
-
-static_data.basin.loc[static_data.basin.node_id == 1006, "streefpeil"] = -0.1
 static_data.basin.loc[static_data.basin.node_id == 1134, "streefpeil"] = -0.1
 static_data.basin.loc[static_data.basin.node_id == 1035, "streefpeil"] = -0.1
 # %%
