@@ -18,9 +18,6 @@ from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 
-# TODO:
-#  + aanvoeroutlet ri. #138 (incl. LB)
-
 # model settings
 waterschap = "AmstelGooienVecht"
 base_model_versie = "2024_12_0"
