@@ -4,7 +4,6 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import rasterio
-from osgeo import gdal
 from pandas import DataFrame
 from rasterio import features  # noqa:F401
 from rasterio.windows import from_bounds
@@ -30,39 +29,6 @@ DEFAULT_PERCENTILES = [
     99.99,
     100,
 ]
-
-
-def build_vrt(raster_dir: Path):
-    """Build a vrt-file inside a directory of rasters.
-
-    Important notes!
-    1. Only tif-files will be included
-    2. All rasters should be equal in coordinate reference system, dtype (probably also nodata)
-
-    Parameters
-    ----------
-    raster_dir : Path
-        _description_
-    """
-    rasters_vrt = raster_dir / f"{raster_dir.name}.vrt"
-    if rasters_vrt.exists():
-        rasters_vrt.unlink()
-    raster_files = [f"{i.as_posix()}" for i in raster_dir.glob("*.tif")]
-
-    ds = gdal.VSIFOpenL(rasters_vrt.as_posix(), "w")
-    gdal.VSIFCloseL(ds)
-
-    vrt_ds = gdal.BuildVRT(rasters_vrt.as_posix(), raster_files)
-
-    for idx, raster_file in enumerate(raster_files):
-        file_name = Path(raster_file).name
-        subdataset_name = f"SUBDATASET_{idx}_NAME"
-        subdataset_description = f"SUBDATASET_{idx}_DESC"
-        vrt_ds.GetRasterBand(1).SetMetadataItem(subdataset_name, file_name)
-        vrt_ds.GetRasterBand(1).SetMetadataItem(subdataset_description, f"File: {file_name}")
-
-    # Save the changes and close the VRT file
-    vrt_ds = None
 
 
 def sample_level_area(raster_path: Path, polygon: Polygon, ident=None, percentiles=DEFAULT_PERCENTILES) -> DataFrame:
