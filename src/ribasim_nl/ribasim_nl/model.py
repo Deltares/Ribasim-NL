@@ -268,7 +268,9 @@ class Model(Model):
 
     def downstream_node_id(self, node_id: int):
         """Get downstream node_id(s)"""
-        return self.edge.df.set_index("from_node_id").loc[node_id].to_node_id
+        _df = self.edge.df.set_index("from_node_id")
+        if node_id in _df.index:
+            return _df.loc[node_id].from_node_id
 
     def downstream_profile(self, node_id: int):
         """Get upstream basin-profile"""
