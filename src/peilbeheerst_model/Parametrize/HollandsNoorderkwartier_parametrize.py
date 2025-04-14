@@ -123,6 +123,40 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(ribasim_model.basin[3], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
+
+# add hevel near Andijk
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(141549, 529097)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(141591, 529071)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[66])
+
+# add hevel near stedelijk gebied ARK-NZK
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(113959, 493654)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(113933, 493655)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[160])
+
+# add hevel near stedelijk gebied ARK-NZK
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(109989, 494265)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(110059, 494258)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[221])
+
 # add gemaal and LB at boezemgemaal Monnickendam. Zowel af- als aanvoer. Dit blok: aanvoer
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(131027, 497603)), [level_boundary.Static(level=[default_level])]
