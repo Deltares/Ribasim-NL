@@ -60,10 +60,11 @@ def get_link(
 toml_file = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm", "lhm.toml")
 model = Model.read(toml_file)
 
-# FIXME: er zitten duplicated node_ids in de static table van AGV
-# model.level_boundary.static.df = model.level_boundary.static.df[~model.level_boundary.static.df.node_id.duplicated()]
+network_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg")
 
-network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+cloud.synchronize([network_gpkg])
+
+network = Network.from_network_gpkg(network_gpkg)
 
 
 boundary_node_ids = model.level_boundary.static.df[
