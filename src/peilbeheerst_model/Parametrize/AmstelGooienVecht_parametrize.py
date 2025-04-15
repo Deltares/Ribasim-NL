@@ -183,7 +183,7 @@ ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[9])
 
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(123113, 486351)), [level_boundary.Static(level=[default_level])]
+    Node(geometry=Point(123115, 489284)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(123112, 489351)), [pump.Static(flow_rate=[20])])
 # TODO: Verify setting to 'aan- & afvoergemaal'
@@ -311,28 +311,27 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # last formating of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
+
+
+# add the water authority column to couple the model with
 assign = AssignAuthorities(
     ribasim_model=ribasim_model,
     waterschap=waterschap,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    RWS_buffer=1000,  # optional
+    custom_nodes={
+        907: "HollandsNoorderkwartier",
+        1050: "HollandsNoorderkwartier",
+        908: "HollandsNoorderkwartier",
+        905: "Rijkswaterstaat",
+        909: "Rijkswaterstaat",
+        931: "Rijkswaterstaat",
+        966: "Rijkswaterstaat",
+        2956: "Rijkswaterstaat",
+        994: "Rijnland",
+    },
 )
 ribasim_model = assign.assign_authorities()
-
-couple_authority = {
-    907: "HollandsNoorderkwartier",
-    909: "Rijkswaterstaat",
-    931: "Rijkswaterstaat",
-    994: "Rijnland",
-    2932: "Rijkswaterstaat",
-}
-
-# 98% of the automatically assigned neighbouring water authorities are correct, fix the remaining 2%
-for node_id, authority in couple_authority.items():
-    ribasim_model.level_boundary.static.df.loc[
-        ribasim_model.level_boundary.static.df["node_id"] == node_id, "meta_couple_authority"
-    ] = authority
 
 # write model output
 ribasim_model.use_validation = True

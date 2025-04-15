@@ -1,54 +1,78 @@
 import geopandas as gpd
 import pandas as pd
-from shapely.ops import nearest_points
 
 
 class AssignAuthorities:
     """
-    Assigns LevelBoundary nodes in a RIBASIM model to the most relevant neighboring authority polygon.
+    Assign authority polygons to LevelBoundary nodes in a RIBASIM model.
 
-    Each node is assigned to a polygon based on spatial containment or, if none contain it, the nearest polygon.
-    When multiple polygons contain a node, preference is given to the polygon named 'Rijkswaterstaat'.
+    This includes assigning Waterschappen and Rijkswaterstaat polygons based on spatial
+    intersection. Priority is given to 'Rijkswaterstaat' when multiple polygons overlap.
 
-    The Rijkswaterstaat polygon may be buffered using the `RWS_buffer` parameter to increase the likelihood
-    that nearby LevelBoundary nodes are assigned to it.
+    Manual overrides can be applied using the `custom_nodes` parameter.
     """
 
-    def __init__(self, ribasim_model, waterschap, ws_grenzen_path, RWS_grenzen_path, RWS_buffer=0):
+    def __init__(
+        self,
+        ribasim_model,
+        waterschap,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        ws_buffer=1000,
+        RWS_buffer=1000,
+        custom_nodes=None,
+    ):
         self.ws_grenzen_path = ws_grenzen_path
         self.RWS_grenzen_path = RWS_grenzen_path
 
-        self.ribasim_model = ribasim_model
-        self.waterschap = waterschap
-
+        self.ws_buffer = ws_buffer
         self.RWS_buffer = RWS_buffer
 
-    def assign_authorities(self):
-        """
-        Main function that assigns external authorities to LevelBoundary nodes in the model.
+        self.ribasim_model = ribasim_model
+        self.waterschap = waterschap
+        self.custom_nodes = custom_nodes
 
-        Returns
-        -------
-            Updated RIBASIM model with `meta_couple_authority` added to level_boundary.static.df.
-        """
-        authority_polygons = self.load_data()
+    def assign_authorities(self):
+        authority_borders = self.retrieve_geodataframe()
         ribasim_model = self.embed_authorities_in_model(
-            ribasim_model=self.ribasim_model, waterschap=self.waterschap, authority_polygons=authority_polygons
+            ribasim_model=self.ribasim_model, waterschap=self.waterschap, authority_borders=authority_borders
         )
+        if self.custom_nodes is not None:
+            ribasim_model = self.adjust_custom_nodes(ribasim_model=ribasim_model, custom_nodes=self.custom_nodes)
         return ribasim_model
 
-    def load_data(self):
-        """
-        Loads and preprocesses waterschap and Rijkswaterstaat boundaries.
+    def adjust_custom_nodes(self, ribasim_model, custom_nodes):
+        """Adjust nodes"""
+        for node_id, authority in custom_nodes.items():
+            ribasim_model.level_boundary.static.df.loc[
+                ribasim_model.level_boundary.static.df["node_id"] == node_id, "meta_couple_authority"
+            ] = authority
 
-        Returns
-        -------
-            GeoDataFrame containing cleaned and buffered authority polygons (EPSG:28992).
-        """
+        # check if all LevelBoundaries have an authority. Raise a soft warning otherwise. Note that sea / other countries are actual boundaries, so having NaN values is not necessarily wrong.
+        if ribasim_model.level_boundary.static.df["meta_couple_authority"].isna().sum() > 0:
+            print(
+                ribasim_model.level_boundary.static.df.loc[
+                    ribasim_model.level_boundary.static.df["meta_couple_authority"].isna()
+                ]
+            )
+            print("Warning! Not all LevelBoundary nodes were assigned to an authority.")
+
+        return ribasim_model
+
+    def retrieve_geodataframe(self):
+        """Main function which calls the other functions."""
+        ws_grenzen, RWS_grenzen = self.load_data()
+        authority_borders = self.clip_and_buffer(ws_grenzen, RWS_grenzen)
+        authority_borders = self.extent_authority_borders(authority_borders)
+
+        return authority_borders
+
+    def load_data(self):
+        """Loads and processes the authority areas of the waterschappen and RWS."""
         ws_grenzen = gpd.read_file(self.ws_grenzen_path)
         RWS_grenzen = gpd.read_file(self.RWS_grenzen_path)
 
-        # Removing "\n", "waterschap", "Hoogheemraadschap", "van" and spaces and commas to align names from file with GoodCloud names
+        # Removing "\n", "waterschap", "Hoogheemraadschap", "van" and spaces and commas
         ws_grenzen["naam"] = ws_grenzen["naam"].str.replace(r"\n", "", regex=True)
         ws_grenzen["naam"] = ws_grenzen["naam"].str.replace("Waterschap", "", regex=False)
         ws_grenzen["naam"] = ws_grenzen["naam"].str.replace("Hoogheemraadschap", "", regex=False)
@@ -60,6 +84,7 @@ class AssignAuthorities:
         ws_grenzen["naam"] = ws_grenzen["naam"].str.replace(" ", "", regex=False)
 
         ws_grenzen = ws_grenzen.sort_values(by="naam").reset_index(drop=True)
+        self.ws_grenzen_OG = ws_grenzen.copy()
 
         # get rid of irrelvant polygons
         ws_grenzen = ws_grenzen.explode()
@@ -71,85 +96,60 @@ class AssignAuthorities:
         RWS_grenzen["geometry"] = RWS_grenzen.buffer(self.RWS_buffer)
         RWS_grenzen = RWS_grenzen.dissolve()[["geometry"]]
 
+        return ws_grenzen, RWS_grenzen
+
+    def clip_and_buffer(self, ws_grenzen, RWS_grenzen):
+        """Clips the waterboard boundaries by removing the RWS areas and applies a buffer to the remaining polygons."""
+        # Remove the RWS area in each WS
+        ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how="symmetric_difference", keep_geom_type=True)
+        ws_grenzen_cut_out.dropna(subset="area", inplace=True)
+
+        # add a name to the RWS area
+        RWS_grenzen["naam"] = "Rijkswaterstaat"
+
+        # add a buffer to each waterschap. Within this strip an authority will be found.
+        ws_grenzen_cut_out["geometry"] = ws_grenzen_cut_out.buffer(self.ws_buffer)
+
         # add the two layers together
-        authority_polygons = pd.concat([ws_grenzen, RWS_grenzen])
-        authority_polygons = authority_polygons.reset_index(drop=True)
-        authority_polygons = gpd.GeoDataFrame(authority_polygons, geometry="geometry").set_crs(crs="EPSG:28992")
+        authority_borders = pd.concat([ws_grenzen_cut_out, RWS_grenzen])
+        authority_borders = authority_borders.reset_index(drop=True)
+        authority_borders = gpd.GeoDataFrame(authority_borders, geometry="geometry").set_crs(crs="EPSG:28992")
 
-        return authority_polygons
+        return authority_borders
 
-    def snap_points_to_nearest_polygon(self, LB_gdf, authority_polygons, waterschap):
-        """
-        Snaps each LevelBoundary point to the nearest relevant authority polygon.
+    def extent_authority_borders(self, authority_borders):
+        """Extends the authority borders by combining them with the original waterboard boundaries and dissolving the geometries based on the name."""
+        # Add a bit more area by dissolving it with the original gdf
+        authority_borders = pd.concat([authority_borders, self.ws_grenzen_OG])
+        authority_borders = gpd.GeoDataFrame(authority_borders, geometry="geometry").set_crs(crs="EPSG:28992")
+        authority_borders = authority_borders.dissolve(by="naam", as_index=False)
+        authority_borders = authority_borders[["naam", "geometry"]]
 
-        Preference is given to polygons that contain the point, and to 'Rijkswaterstaat'
-        in case of overlap. The current waterschap is excluded from snapping.
+        return authority_borders
 
-        Parameters
-        ----------
-            LB_gdf (GeoDataFrame): LevelBoundary node table with geometries.
-            authority_polygons (GeoDataFrame): All authority polygons.
-            waterschap (str): Name of the current water authority.
-
-        Returns
-        -------
-            GeoDataFrame with updated geometry and 'meta_couple_authority' column.
-        """
-        authority_polygons = authority_polygons.loc[
-            authority_polygons.naam != waterschap
-        ]  # do not snap the LevelBoundaries to its own waterschap; discard it from the polygons
-
-        def assign_polygon(row):
-            # Step 1: find all polygons that fall within the point
-            containing = authority_polygons[authority_polygons.contains(row.geometry)]
-
-            if not containing.empty:
-                if "Rijkswaterstaat" in containing["naam"].values:
-                    selected = containing[containing["naam"] == "Rijkswaterstaat"].iloc[
-                        0
-                    ]  # chose RWS if multiple polygons are there (assumption)
-                else:
-                    selected = containing.iloc[0]  # fallback to first if RWS not in list
-            else:
-                # Step 2: if point not in any polygon, fallback to nearest polygon
-                distances = authority_polygons.geometry.distance(row.geometry)
-                nearest_idx = distances.idxmin()
-                selected = authority_polygons.loc[nearest_idx]
-
-            snapped_point = nearest_points(row.geometry, selected.geometry)[1]
-            return snapped_point, selected["naam"]
-
-        snapped_results = LB_gdf.apply(assign_polygon, axis=1, result_type="expand")
-        LB_gdf["geometry"] = snapped_results[0]
-        LB_gdf["meta_couple_authority"] = snapped_results[1]
-
-        return LB_gdf
-
-    def embed_authorities_in_model(self, ribasim_model, waterschap, authority_polygons):
-        """
-        Embeds authority information into the RIBASIM model's level_boundary static table.
-
-        Parameters
-        ----------
-            ribasim_model: The RIBASIM model object.
-            waterschap (str): The current water authority to exclude from assignments.
-            authority_polygons (GeoDataFrame): The cleaned and combined authority polygons.
-
-        Returns
-        -------
-            Updated RIBASIM model with `meta_couple_authority` assigned.
-        """
+    def embed_authorities_in_model(self, ribasim_model, waterschap, authority_borders):
+        """Assigns authority to each LevelBoundary node using spatial intersection."""
         # create a temp copy of the level boundary df
         temp_LB_node = ribasim_model.level_boundary.node.df.copy().reset_index()
         temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry"]]
         ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df[["node_id", "level"]]
 
-        # snap LevelBoundary points to nearest polygon
-        snapped_nodes = self.snap_points_to_nearest_polygon(temp_LB_node, authority_polygons, waterschap)
+        # perform a spatial join
+        joined = gpd.sjoin(temp_LB_node, authority_borders, how="left", predicate="intersects")
+
+        # discard all rows where the waterschap itself occurs, as we only want to know the other waterschap
+        joined = joined.loc[joined.naam != waterschap]
+
+        # if authority areas overlap, duplicates may form. Retain the Rijkswaterstaat one
+        joined = pd.concat([joined.loc[joined.naam == "Rijkswaterstaat"], joined.loc[joined.naam != "Rijkswaterstaat"]])
+        joined = joined.drop_duplicates(subset="node_id", keep="first")
+        joined = joined.sort_values(by="node_id")
+
+        joined = joined.rename(columns={"naam": "meta_couple_authority"})
 
         # place the meta categories to the static table
         LB_static = ribasim_model.level_boundary.static.df.merge(
-            right=snapped_nodes[["node_id", "meta_couple_authority"]], on="node_id", how="left"
+            right=joined[["node_id", "meta_couple_authority"]], on="node_id", how="left"
         ).reset_index(drop=True)
         LB_static.index.name = "fid"
         ribasim_model.level_boundary.static.df = LB_static
