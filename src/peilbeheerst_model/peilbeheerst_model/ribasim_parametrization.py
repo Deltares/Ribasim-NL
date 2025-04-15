@@ -890,8 +890,8 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     It checks whether they are inlaten en uitlaten from a boezem, buitenwater or just regular peilgebieden.
     This will determine the rules of the control nodes.
     """
-    # optional arguments
-    aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
+    # # optional arguments
+    # aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
 
     # create new columsn to store the meta categorie of each node
     ribasim_model.outlet.static.df["meta_categorie"] = np.nan
@@ -923,15 +923,15 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
         "meta_func_afvoer",
     ] = 1
 
-    # TODO: Remove this patch once dual-functionality is implemented in ribasim
-    # if the function is both aanvoer and afvoer, then set aanvoer to False
-    mask = (ribasim_model.pump.static.df["meta_func_afvoer"] == 1) & (
-        ribasim_model.pump.static.df["meta_func_aanvoer"] == 1
-    )
-    if aanvoer_enabled:
-        ribasim_model.pump.static.df.loc[mask, "meta_func_afvoer"] = 0
-    else:
-        ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
+    # # TODO: Remove this patch once dual-functionality is implemented in ribasim
+    # # if the function is both aanvoer and afvoer, then set aanvoer to False
+    # mask = (ribasim_model.pump.static.df["meta_func_afvoer"] == 1) & (
+    #     ribasim_model.pump.static.df["meta_func_aanvoer"] == 1
+    # )
+    # if aanvoer_enabled:
+    #     ribasim_model.pump.static.df.loc[mask, "meta_func_afvoer"] = 0
+    # else:
+    #     ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
 
     # fill in the nan values
     ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 0}, inplace=True)
@@ -1760,7 +1760,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
 
 def add_continuous_control_node(
-    ribasim_model: ribasim.Model, connection_node: ribasim.Node, listen_nodes: list[int], **kwargs
+    ribasim_model: ribasim.Model, connection_node: ribasim.geometry.link.NodeData, listen_nodes: list[int], **kwargs
 ) -> ribasim.Node:
     """Add a continuous control node to `Pump`-/`Outlet`-nodes that are for both 'aanvoer' and 'afvoer'.
 
@@ -1769,7 +1769,7 @@ def add_continuous_control_node(
     :param listen_nodes: up- and downstream nodes to "listen to"
 
     :key dx: spatial distance between `connection_node` and continuous control node (x-direction), defaults to 0
-    :key dy: spatial distance between `connection_node` and continuous control node (y-direction), defaults to -5
+    :key dy: spatial distance between `connection_node` and continuous control node (y-direction), defaults to 0
     :key capacity: capacity of controlled output, defaults to 20
     :key control_variable: variable of controlled output, defaults to 'flow_rate'
     :key listen_variable: variable of listened to input, defaults to 'level'
@@ -1777,7 +1777,7 @@ def add_continuous_control_node(
     :key weights: weights of `listen_nodes` to determine control, defaults to [-1, 1]
 
     :type ribasim_model: ribasim.Model
-    :type connection_node: ribasim.Node
+    :type connection_node: ribasim.geometry.link.NodeData
     :type listen_nodes: list[int]
     :type dx: float, optional
     :type dy: float, optional
@@ -1796,13 +1796,14 @@ def add_continuous_control_node(
     """
     # optional arguments
     dx: float = kwargs.get("dx", 0)
-    dy: float = kwargs.get("dy", -5)
+    dy: float = kwargs.get("dy", 0)
     capacity: float = kwargs.get("capacity", 20)
     control_variable: str = kwargs.get("control_variable", "flow_rate")
     listen_variable: str = kwargs.get("listen_variable", "level")
     linear_transition_level: float = kwargs.get("linear_transition_level", 0.04)
-    weights: list[float] = kwargs.get("weights", [-1, 1])
+    weights: list[float] = kwargs.get("weights", [1, -1])
 
+    # input validation
     VARIABLES = "level", "flow_rate"
     assert control_variable in VARIABLES, f"`control_variable` must be in {VARIABLES}, {control_variable} given."
     assert listen_variable in VARIABLES, f"`listen_variable` must be in {VARIABLES}, {listen_variable} given."
@@ -1828,8 +1829,41 @@ def add_continuous_control_node(
         ],
     )
 
+    # add control link
+    ribasim_model.link.add(continuous_control_node, connection_node)
+
     # return control node
     return continuous_control_node
+
+
+def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
+    # optional arguments
+    apply_on_outlets: bool = kwargs.get("apply_on_outlets", True)
+    apply_on_pumps: bool = kwargs.get("apply_on_pumps", True)
+
+    # add continuous control nodes to outlets
+    if apply_on_outlets:
+        outlet = ribasim_model.outlet.static.df.copy()
+        selection = outlet[outlet["meta_aanvoer"]]
+        if len(selection) > 0:
+            selection.apply(
+                lambda r: add_continuous_control_node(
+                    ribasim_model, ribasim_model.outlet[r["node_id"]], [r["meta_from_node_id"], r["meta_to_node_id"]]
+                ),
+                axis=1,
+            )
+
+    # add continuous control nodes to pumps
+    if apply_on_pumps:
+        pump = ribasim_model.pump.static.df.copy()
+        selection = pump[(pump["meta_func_aanvoer"] == 1) & (pump["meta_func_afvoer"] == 1)]
+        if len(selection) > 0:
+            selection.apply(
+                lambda r: add_continuous_control_node(
+                    ribasim_model, ribasim_model.pump[r["node_id"]], [r["meta_from_node_id"], r["meta_to_node_id"]]
+                ),
+                axis=1,
+            )
 
 
 def clean_tables(ribasim_model, waterschap):
