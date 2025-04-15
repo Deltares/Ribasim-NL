@@ -12,7 +12,9 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import ribasim
+import shapely
 import tqdm.auto as tqdm
+from ribasim.nodes import continuous_control
 from shapely.geometry import LineString
 
 from peilbeheerst_model import supply
@@ -1755,6 +1757,79 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
     ribasim_model.link.df = pd.concat([ribasim_model.link.df, DC_link]).reset_index(drop=True)
 
     return
+
+
+def add_continuous_control(
+    ribasim_model: ribasim.Model, connection_node: ribasim.Node, listen_nodes: list[int], **kwargs
+) -> ribasim.Node:
+    """Add a continuous control node to `Pump`-/`Outlet`-nodes that are for both 'aanvoer' and 'afvoer'.
+
+    :param ribasim_model: Ribasim model
+    :param connection_node: `Pump`-/`Outlet`-node with dual 'sturing'
+    :param listen_nodes: up- and downstream nodes to "listen to"
+
+    :key dx: spatial distance between `connection_node` and continuous control node (x-direction), defaults to 0
+    :key dy: spatial distance between `connection_node` and continuous control node (y-direction), defaults to -5
+    :key capacity: capacity of controlled output, defaults to 20
+    :key control_variable: variable of controlled output, defaults to 'flow_rate'
+    :key listen_variable: variable of listened to input, defaults to 'level'
+    :key linear_transition_level: listened to input at which full capacity is reached, defaults to .04
+    :key weights: weights of `listen_nodes` to determine control, defaults to [-1, 1]
+
+    :type ribasim_model: ribasim.Model
+    :type connection_node: ribasim.Node
+    :type listen_nodes: list[int]
+    :type dx: float, optional
+    :type dy: float, optional
+    :type capacity: float, optional
+    :type control_variable: str, optional
+    :type listen_variable: str, optional
+    :type linear_transition_level: float, optional
+    :type weights: list[float], optional
+
+    :raise AssertionError: if `control_variable` is unknown
+    :raise AssertionError: if `listen_variable` is unknown
+    :raise AssertionError: if lengths of `listen_nodes` and `weights` are not 2
+
+    :return: continuous control node
+    :rtype: ribasim.Node
+    """
+    # optional arguments
+    dx: float = kwargs.get("dx", 0)
+    dy: float = kwargs.get("dy", -5)
+    capacity: float = kwargs.get("capacity", 20)
+    control_variable: str = kwargs.get("control_variable", "flow_rate")
+    listen_variable: str = kwargs.get("listen_variable", "level")
+    linear_transition_level: float = kwargs.get("linear_transition_level", 0.04)
+    weights: list[float] = kwargs.get("weights", [-1, 1])
+
+    VARIABLES = "level", "flow_rate"
+    assert control_variable in VARIABLES, f"`control_variable` must be in {VARIABLES}, {control_variable} given."
+    assert listen_variable in VARIABLES, f"`listen_variable` must be in {VARIABLES}, {listen_variable} given."
+    assert len(listen_nodes) == len(weights) == 2, (
+        f"Continuous control node requires two `listen_nodes` ({len(listen_nodes)}) and two `weights` ({len(weights)})"
+    )
+
+    # add continuous control
+    point = connection_node.geometry
+    continuous_control_node = ribasim_model.continuous_control.add(
+        ribasim.Node(geometry=shapely.Point(point.x + dx, point.y + dy)),
+        [
+            continuous_control.Variable(
+                listen_node_id=listen_nodes,
+                weight=weights,
+                variable=listen_variable,
+            ),
+            continuous_control.Function(
+                input=[-1, 0, linear_transition_level, 1],
+                output=[0, 0, capacity, capacity],
+                controlled_variable=control_variable,
+            ),
+        ],
+    )
+
+    # return control node
+    return continuous_control_node
 
 
 def clean_tables(ribasim_model, waterschap):
