@@ -1759,7 +1759,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
     return
 
 
-def add_continuous_control(
+def add_continuous_control_node(
     ribasim_model: ribasim.Model, connection_node: ribasim.Node, listen_nodes: list[int], **kwargs
 ) -> ribasim.Node:
     """Add a continuous control node to `Pump`-/`Outlet`-nodes that are for both 'aanvoer' and 'afvoer'.
