@@ -1,25 +1,25 @@
-"""Parameterisation of water board: Amstel, Gooi en Vecht."""
+"""Parameterisation of water board: Scheldestromen."""
 
 import datetime
 import os
 import warnings
 
+import ribasim
+import ribasim.nodes
 from ribasim import Node
-from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim.nodes import level_boundary, tabulated_rating_curve
 from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
-from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
-from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage
 
 AANVOER_CONDITIONS: bool = True
 
 # model settings
-waterschap = "AmstelGooienVecht"
+waterschap = "Scheldestromen"
 base_model_versie = "2024_12_0"
 
 # connect with the GoodCloud
@@ -35,12 +35,8 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 )
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
-
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
-
-aanvoer_path = cloud.joinpath(
-    waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "afvoergebiedaanvoergebied.gpkg"
-)
+aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "WSS_aanvoergebieden.shp")
 
 cloud.synchronize(
     filepaths=[
@@ -53,7 +49,7 @@ cloud.synchronize(
     ]
 )
 
-# download the Feedback Formulieren, overwrite the old ones
+# download the feedback forms, overwrite the old ones
 cloud.download_verwerkt(authority=waterschap, overwrite=True)
 
 # set paths to the TEMP working directory
@@ -83,7 +79,7 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = -0.42  # default LevelBoundary level
+default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary level
 
 # process the feedback form
 name = "HKV"
@@ -102,133 +98,12 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
-# merge basins
-ribasim_model.merge_basins(node_id=162, to_node_id=177, are_connected=False)
-# TODO: Verify merging of b#178 into b#177
-ribasim_model.merge_basins(node_id=178, to_node_id=177, are_connected=True)
-
 # model specific tweaks
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(125905, 486750)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(125958, 486838)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[225])
-
-# add additional pump and LB to ARK
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(129850, 480894)), [level_boundary.Static(level=[default_level])]
-)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(129829, 480893)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[229], pump_node)
-ribasim_model.link.add(pump_node, level_boundary_node)
-
-# add outlet and LB from ARK-NZK to Loosdrechtse Plassen
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(129097, 468241)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(129097, 468241)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[59])
-
-# add outlet to Gooimeer
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(146641, 479856)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(146592, 479749)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(ribasim_model.basin[215], tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-
-# add additional pump and LB to ARK
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(129677, 482929)), [level_boundary.Static(level=[default_level])]
-)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(129674, 482974)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[228], pump_node)
-ribasim_model.link.add(pump_node, level_boundary_node)
-
-# add node overlaat to ARK
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(128903, 470553)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(128913, 470563)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(ribasim_model.basin[69], tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(119234, 492570)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(119234, 492587)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[9])
-
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(123113, 486351)), [level_boundary.Static(level=[default_level])]
-)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(123112, 489351)), [pump.Static(flow_rate=[20])])
-# TODO: Verify setting to 'aan- & afvoergemaal'
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
-ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[12])
-
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(124470, 489070)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(124465, 489070)), [tabulated_rating_curve.Static(level=[0, 0.1234], flow_rate=[0, 0.1234])]
-)
-ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[182])
-
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(127630, 485961)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(127621, 485961)), [tabulated_rating_curve.Static(level=[0, 0.1234], flow_rate=[0, 0.1234])]
-)
-ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[174])
-
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(148516, 478866)), [level_boundary.Static(level=[default_level])]
-)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(148397, 478753)), [pump.Static(flow_rate=[20])])
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
-ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[168])
-
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(148550, 478832)), [level_boundary.Static(level=[default_level])]
-)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(148437, 478733)), [pump.Static(flow_rate=[20])])
-ribasim_model.link.add(ribasim_model.basin[168], pump_node)
-ribasim_model.link.add(pump_node, level_boundary_node)
-
-# set all 'meta_node_id'-values
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
-
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
@@ -237,9 +112,22 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
-ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
+# add an TRC and links to the newly created level boundary
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(74861, 382484)), [level_boundary.Static(level=[default_level])]
+)
 
-# insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(74504, 382443)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.tabulated_rating_curve.node.df.loc[tabulated_rating_curve_node.node_id, "meta_node_id"] = (
+    tabulated_rating_curve_node.node_id
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[133])
+
+# insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
     ribasim_model,
     unknown_streefpeil=unknown_streefpeil,
@@ -268,36 +156,33 @@ ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_di
 ribasim_model.pump.static.df["flow_rate"] = 0.16667  # 10 kuub per minuut
 
 # convert all boundary nodes to LevelBoundaries
-ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
+ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
 
 # add the default levels
 ribasim_model.level_boundary.static.df.level = default_level
 
+# Janna Schoonakker asked on 12-11-2024 to change the level of this specific level boundary
+ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2
+
+# See email 6/12/2024 Janna Schoonakker to change the level of this specific level boundary
+ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2
+
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
-# prepare 'aanvoergebieden'
-if AANVOER_CONDITIONS:
-    aanvoergebieden = supply.special_load_geometry(
-        f_geometry=aanvoer_path, method="inverse", layers=("afvoergebiedaanvoergebied", "afwateringsgebied")
-    )
-else:
-    aanvoergebieden = None
+# set undefined pumps to 'afvoer'
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df[["meta_func_afvoer", "meta_func_aanvoer", "meta_func_circulatie"]].isna().all(axis=1),
+    "meta_func_afvoer",
+] = 1
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-# TODO: Verify removal of 'aanvoer'-basins (i.e., `basin_aanvoer_off`)
-ribasim_param.set_aanvoer_flags(
-    ribasim_model,
-    aanvoergebieden,
-    processor,
-    basin_aanvoer_on=38,
-    basin_aanvoer_off=(1, 53, 134, 144, 196, 222),
-    aanvoer_enabled=AANVOER_CONDITIONS,
-)
+ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
+# ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
 # Manning resistance
@@ -308,38 +193,11 @@ ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node
 ribasim_model.manning_resistance.static.df.length = 10
 ribasim_model.manning_resistance.static.df.manning_n = 0.01
 
-# last formating of the tables
+# last formatting of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
-assign = AssignAuthorities(
-    ribasim_model=ribasim_model,
-    waterschap=waterschap,
-    ws_grenzen_path=ws_grenzen_path,
-    RWS_grenzen_path=RWS_grenzen_path,
-    ws_buffer=1025,
-    RWS_buffer=1000,
-)
-ribasim_model = assign.assign_authorities()
 
-# 98% of the automatically assigned neighbouring water authorities are correct, fix the remaining 2%
-from_authority = {908: "HollandsNoorderkwartier", 2912: "Rijkswaterstaat"}
-for k, v in from_authority.items():
-    ribasim_model.level_boundary.static.df.loc[
-        ribasim_model.level_boundary.static.df["node_id"] == k, "meta_from_authority"
-    ] = v
-
-to_authority = {
-    907: "HollandsNoorderkwartier",
-    972: "HollandsNoorderkwartier",
-    996: "Rijnland",
-    909: "Rijkswaterstaat",
-    931: "Rijkswaterstaat",
-}
-for k, v in to_authority.items():
-    ribasim_model.level_boundary.static.df.loc[
-        ribasim_model.level_boundary.static.df["node_id"] == k, "meta_to_authority"
-    ] = v
-
+# set numerical settings
 # write model output
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime
