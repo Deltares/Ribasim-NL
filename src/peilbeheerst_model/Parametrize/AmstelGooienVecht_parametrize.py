@@ -255,29 +255,23 @@ assign = AssignAuthorities(
     waterschap=waterschap,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    ws_buffer=1025,
-    RWS_buffer=1000,
+    RWS_buffer=1000,  # optional
 )
 ribasim_model = assign.assign_authorities()
 
-# 98% of the automatically assigned neighbouring water authorities are correct, fix the remaining 2%
-from_authority = {908: "HollandsNoorderkwartier", 2912: "Rijkswaterstaat"}
-for k, v in from_authority.items():
-    ribasim_model.level_boundary.static.df.loc[
-        ribasim_model.level_boundary.static.df["node_id"] == k, "meta_from_authority"
-    ] = v
-
-to_authority = {
+couple_authority = {
     907: "HollandsNoorderkwartier",
-    972: "HollandsNoorderkwartier",
-    996: "Rijnland",
     909: "Rijkswaterstaat",
     931: "Rijkswaterstaat",
+    994: "Rijnland",
+    2932: "Rijkswaterstaat",
 }
-for k, v in to_authority.items():
+
+# 98% of the automatically assigned neighbouring water authorities are correct, fix the remaining 2%
+for node_id, authority in couple_authority.items():
     ribasim_model.level_boundary.static.df.loc[
-        ribasim_model.level_boundary.static.df["node_id"] == k, "meta_to_authority"
-    ] = v
+        ribasim_model.level_boundary.static.df["node_id"] == node_id, "meta_couple_authority"
+    ] = authority
 
 # write model output
 ribasim_model.use_validation = True
