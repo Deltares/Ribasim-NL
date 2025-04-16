@@ -1884,8 +1884,8 @@ def add_continuous_control_node(
 
 def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
     # optional arguments
-    apply_on_outlets: bool = kwargs.get("apply_on_outlets", True)
-    apply_on_pumps: bool = kwargs.get("apply_on_pumps", True)
+    apply_on_outlets: bool = kwargs.pop("apply_on_outlets", True)
+    apply_on_pumps: bool = kwargs.pop("apply_on_pumps", True)
 
     # add continuous control nodes to outlets
     if apply_on_outlets:
@@ -1894,7 +1894,10 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
         if len(selection) > 0:
             selection.apply(
                 lambda r: add_continuous_control_node(
-                    ribasim_model, ribasim_model.outlet[r["node_id"]], [r["meta_from_node_id"], r["meta_to_node_id"]]
+                    ribasim_model,
+                    ribasim_model.outlet[r["node_id"]],
+                    [r["meta_from_node_id"], r["meta_to_node_id"]],
+                    **kwargs,
                 ),
                 axis=1,
             )
@@ -1906,7 +1909,10 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
         if len(selection) > 0:
             selection.apply(
                 lambda r: add_continuous_control_node(
-                    ribasim_model, ribasim_model.pump[r["node_id"]], [r["meta_from_node_id"], r["meta_to_node_id"]]
+                    ribasim_model,
+                    ribasim_model.pump[r["node_id"]],
+                    [r["meta_from_node_id"], r["meta_to_node_id"]],
+                    **kwargs,
                 ),
                 axis=1,
             )
