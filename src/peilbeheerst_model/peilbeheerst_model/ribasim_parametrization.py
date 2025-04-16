@@ -236,6 +236,43 @@ def set_dynamic_forcing(ribasim_model: ribasim.Model, time: typing.Sequence[date
     ribasim_model.endtime = time[-1]
 
 
+def set_hypothetical_dynamic_forcing(
+    ribasim_model: ribasim.Model, start_time: datetime.datetime, end_time: datetime.datetime, value: float = 10
+) -> None:
+    """Set a basic hypothetical dynamic forcing.
+
+    The hypothetical forcing consists of a period of precipitation followed by a period of evaporation. These periods
+    are equally divided over the total model duration.
+
+    :param ribasim_model: ribasim model
+    :param start_time: model's start time
+    :param end_time: model's end time
+    :param value: value for precipitation and evaporation in mm per day, defaults to 10
+
+    :type ribasim_model: ribasim.Model
+    :type start_time: datetime.datetime
+    :type end_time: datetime.datetime
+    :type value: float, optional
+    """
+    # define time-variables
+    halftime = start_time + (end_time - start_time) // 2
+    time = start_time, halftime, end_time
+
+    # define forcing time-series
+    v = convert_mm_day_to_m_sec(value)
+    precipitation = v, 0, 0
+    evaporation = 0, v, v
+
+    # set forcing conditions
+    forcing = {
+        "precipitation": precipitation,
+        "potential_evaporation": evaporation,
+        "drainage": 0,
+        "infiltration": 0,
+    }
+    set_dynamic_forcing(ribasim_model, time, forcing)
+
+
 def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
     # all Terminals need to be replaced by LevelBoundaries for the integration of the NHWS
 
@@ -1874,8 +1911,11 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
                 axis=1,
             )
 
+    # add "meta_node_id"-column to continuous control nodes
+    ribasim_model.continuous_control.node.df["meta_node_id"] = ribasim_model.continuous_control.node.df.index
 
-def clean_tables(ribasim_model, waterschap):
+
+def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
     """Only retain node_id's which are present in the .node table."""
     # Basin
     basin_ids = ribasim_model.basin.node.df.loc[
@@ -1964,7 +2004,7 @@ def clean_tables(ribasim_model, waterschap):
     if len(pump_missing) > 0:
         print("\nFollowing node_id's in the pump.static table are missing:\n", pump_missing.index.to_numpy())
 
-    # Manning resistance
+    # ManningResistance
     manning_resistance_missing = ribasim_model.manning_resistance.node.df.loc[
         ~ribasim_model.manning_resistance.node.df.index.isin(ribasim_model.manning_resistance.static.df.node_id)
     ]  # .index.to_numpy()
@@ -1974,6 +2014,7 @@ def clean_tables(ribasim_model, waterschap):
             manning_resistance_missing.index.to_numpy(),
         )
 
+    # LevelBoundary
     level_boundary_missing = ribasim_model.level_boundary.node.df.loc[
         ~ribasim_model.level_boundary.node.df.index.isin(ribasim_model.level_boundary.static.df.node_id)
     ]  # .index.to_numpy()
@@ -2086,12 +2127,11 @@ def clean_tables(ribasim_model, waterschap):
     # add waterschap name, remove meta_node_id
     ribasim_model.basin.node.df["meta_waterbeheerder"] = waterschap
     ribasim_model.basin.node.df = ribasim_model.basin.node.df.drop(columns="meta_node_id")
-    return
 
 
-def find_upstream_downstream_target_levels(ribasim_model, node):
+def find_upstream_downstream_target_levels(ribasim_model: ribasim.Model, node: str) -> None:
     """Find the target levels upstream and downstream from each outlet, and add it as meta data to the outlet.static table."""
-    if "utlet" in node:
+    if node.lower() == "outlet":
         structure_static = ribasim_model.outlet.static.df.copy(deep=True)
         structure_static = structure_static[
             [
@@ -2105,7 +2145,7 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
                 "meta_categorie",
             ]
         ]  # prevent errors if the function is ran before
-    elif "ump" in node:
+    elif node.lower() == "pump":
         structure_static = ribasim_model.pump.static.df.copy(deep=True)
         structure_static = structure_static[
             [
@@ -2122,6 +2162,9 @@ def find_upstream_downstream_target_levels(ribasim_model, node):
                 "meta_categorie",
             ]
         ]  # prevent errors if the function is ran before
+    else:
+        msg = f'Only the following node types are implemented: ("Outlet", "Pump"); {node} given.'
+        raise NotImplementedError(msg)
     # find upstream basin node_id
     structure_static = structure_static.merge(
         right=ribasim_model.link.df[["from_node_id", "to_node_id"]],
