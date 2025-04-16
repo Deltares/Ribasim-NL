@@ -1802,8 +1802,6 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
     ]
     ribasim_model.link.df = pd.concat([ribasim_model.link.df, DC_link]).reset_index(drop=True)
 
-    return
-
 
 def add_continuous_control_node(
     ribasim_model: ribasim.Model, connection_node: ribasim.geometry.link.NodeData, listen_nodes: list[int], **kwargs
@@ -1847,6 +1845,7 @@ def add_continuous_control_node(
     control_variable: str = kwargs.get("control_variable", "flow_rate")
     listen_variable: str = kwargs.get("listen_variable", "level")
     linear_transition_level: float = kwargs.get("linear_transition_level", 0.04)
+    node_id_raiser: int = kwargs.get("node_id_raiser", 10000)
     weights: list[float] = kwargs.get("weights", [1, -1])
 
     # input validation
@@ -1859,8 +1858,9 @@ def add_continuous_control_node(
 
     # add continuous control
     point = connection_node.geometry
+    node_id = connection_node.node_id + node_id_raiser
     continuous_control_node = ribasim_model.continuous_control.add(
-        ribasim.Node(geometry=shapely.Point(point.x + dx, point.y + dy)),
+        ribasim.Node(node_id=node_id, geometry=shapely.Point(point.x + dx, point.y + dy)),
         [
             continuous_control.Variable(
                 listen_node_id=listen_nodes,
