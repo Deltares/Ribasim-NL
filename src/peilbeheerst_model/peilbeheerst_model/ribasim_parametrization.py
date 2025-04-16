@@ -1,10 +1,12 @@
 # import pathlib
+import datetime
 import json
 import logging
 import os
 import shutil
 import subprocess
 import sys
+import typing
 import warnings
 from pathlib import Path
 
@@ -225,6 +227,38 @@ def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forc
     ribasim_model.endtime = time_range[-1].to_pydatetime()
 
     return
+
+
+def set_dynamic_forcing(ribasim_model: ribasim.Model, time: typing.Sequence[datetime.datetime], forcing: dict) -> None:
+    """Set dynamic forcing conditions.
+
+    :param ribasim_model: ribasim model
+    :param time: time series/array
+    :param forcing: forcing conditions
+
+    :type ribasim_model: ribasim.Model
+    :type time: sequence[datetime]
+    :type forcing: dict
+    """
+    # validate forcing conditions
+    for k, v in forcing.items():
+        if not isinstance(v, float | int) and len(v) != len(time):
+            msg = f"Forcing must be a single-value or its size must equal the time range; {k} has {len(v)} (=/={len(time)})"
+            raise ValueError(msg)
+
+    # set forcing conditions
+    basins_ids = ribasim_model.basin.node.df[["meta_node_id"]].to_numpy(dtype=int)
+    basin_time = pd.DataFrame({"node_id": np.repeat(basins_ids, len(time)), "time": np.tile(time, len(basins_ids))})
+    for k, v in forcing.items():
+        if isinstance(v, float | int):
+            basin_time[k] = v
+        else:
+            basin_time[k] = np.tile(v, len(basins_ids))
+
+    # update model
+    ribasim_model.basin.time.df = basin_time.reset_index(drop=True)
+    ribasim_model.starttime = time[0]
+    ribasim_model.endtime = time[-1]
 
 
 def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
