@@ -190,43 +190,18 @@ def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forc
     ribasim_model : object
         _description_
     """
-
+    # set time range
     time_range = pd.date_range(start=start_time, periods=timesteps, freq=timestep_size)
 
-    # Create forcing_data single Node
-    # forcing_data = {
-    #     "time": time_range,
-    #     "precipitation": [forcing_dict['precipitation']] * timesteps,
-    #     "potential_evaporation": [forcing_dict['potential_evaporation']] * timesteps,
-    #     "drainage": [forcing_dict['drainage']] * timesteps,
-    #     "infiltration": [forcing_dict['infiltration']] * timesteps,
-    #     "urban_runoff": [forcing_dict['urban_runoff']] * timesteps
-    # }
-    # forcing_data_df = pd.DataFrame(forcing_data)
-
-    # # Create forcing_data for all Nodes
-    # node_ids = ribasim_model.basin.node.df['node_id'].to_list()
-
-    # all_node_forcing_data = pd.concat([
-    #     pd.DataFrame({
-    #         "node_id": node_id,
-    #         "precipitation": forcing_data_df['precipitation'],
-    #         "potential_evaporation": forcing_data_df['potential_evaporation'],
-    #         "drainage": forcing_data_df['drainage'],
-    #         "infiltration": forcing_data_df['infiltration'],
-    #         "urban_runoff": forcing_data_df['urban_runoff']
-    #     }) for node_id in node_ids], ignore_index=True)
-
+    # set forcing conditions
     all_node_forcing_data = ribasim_model.basin.node.df[["meta_node_id"]].copy()
     for col_name, col_value in forcing_dict.items():
         all_node_forcing_data[col_name] = col_value
 
-    # Update Model
+    # update model
     ribasim_model.basin.static = all_node_forcing_data.reset_index()
     ribasim_model.starttime = time_range[0].to_pydatetime()
     ribasim_model.endtime = time_range[-1].to_pydatetime()
-
-    return
 
 
 def set_dynamic_forcing(ribasim_model: ribasim.Model, time: typing.Sequence[datetime.datetime], forcing: dict) -> None:
