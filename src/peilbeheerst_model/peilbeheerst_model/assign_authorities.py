@@ -1,10 +1,27 @@
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 
 
 class AssignAuthorities:
-    def __init__(self, ribasim_model, waterschap, ws_grenzen_path, RWS_grenzen_path, ws_buffer=1025, RWS_buffer=1000):
+    """
+    Assign authority polygons to LevelBoundary nodes in a RIBASIM model.
+
+    This includes assigning Waterschappen and Rijkswaterstaat polygons based on spatial
+    intersection. Priority is given to 'Rijkswaterstaat' when multiple polygons overlap.
+
+    Manual overrides can be applied using the `custom_nodes` parameter.
+    """
+
+    def __init__(
+        self,
+        ribasim_model,
+        waterschap,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        ws_buffer=1000,
+        RWS_buffer=1000,
+        custom_nodes=None,
+    ):
         self.ws_grenzen_path = ws_grenzen_path
         self.RWS_grenzen_path = RWS_grenzen_path
 
@@ -13,12 +30,33 @@ class AssignAuthorities:
 
         self.ribasim_model = ribasim_model
         self.waterschap = waterschap
+        self.custom_nodes = custom_nodes
 
     def assign_authorities(self):
         authority_borders = self.retrieve_geodataframe()
         ribasim_model = self.embed_authorities_in_model(
             ribasim_model=self.ribasim_model, waterschap=self.waterschap, authority_borders=authority_borders
         )
+        if self.custom_nodes is not None:
+            ribasim_model = self.adjust_custom_nodes(ribasim_model=ribasim_model, custom_nodes=self.custom_nodes)
+        return ribasim_model
+
+    def adjust_custom_nodes(self, ribasim_model, custom_nodes):
+        """Adjust nodes"""
+        for node_id, authority in custom_nodes.items():
+            ribasim_model.level_boundary.static.df.loc[
+                ribasim_model.level_boundary.static.df["node_id"] == node_id, "meta_couple_authority"
+            ] = authority
+
+        # check if all LevelBoundaries have an authority. Raise a soft warning otherwise. Note that sea / other countries are actual boundaries, so having NaN values is not necessarily wrong.
+        if ribasim_model.level_boundary.static.df["meta_couple_authority"].isna().sum() > 0:
+            print(
+                ribasim_model.level_boundary.static.df.loc[
+                    ribasim_model.level_boundary.static.df["meta_couple_authority"].isna()
+                ]
+            )
+            print("Warning! Not all LevelBoundary nodes were assigned to an authority.")
+
         return ribasim_model
 
     def retrieve_geodataframe(self):
@@ -90,6 +128,7 @@ class AssignAuthorities:
         return authority_borders
 
     def embed_authorities_in_model(self, ribasim_model, waterschap, authority_borders):
+        """Assigns authority to each LevelBoundary node using spatial intersection."""
         # create a temp copy of the level boundary df
         temp_LB_node = ribasim_model.level_boundary.node.df.copy().reset_index()
         temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry"]]
@@ -98,43 +137,19 @@ class AssignAuthorities:
         # perform a spatial join
         joined = gpd.sjoin(temp_LB_node, authority_borders, how="left", predicate="intersects")
 
-        # #find whether the LevelBoundary flows inward and outward the waterschap
-        FB_inward = ribasim_model.link.df.loc[ribasim_model.link.df.from_node_id.isin(joined.node_id.values)].copy()
-        FB_outward = ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id.isin(joined.node_id.values)].copy()
+        # discard all rows where the waterschap itself occurs, as we only want to know the other waterschap
+        joined = joined.loc[joined.naam != waterschap]
 
-        # add the current waterschap name in the correct column
-        FB_inward["meta_to_authority"], FB_outward["meta_from_authority"] = waterschap, waterschap
+        # if authority areas overlap, duplicates may form. Retain the Rijkswaterstaat one
+        joined = pd.concat([joined.loc[joined.naam == "Rijkswaterstaat"], joined.loc[joined.naam != "Rijkswaterstaat"]])
+        joined = joined.drop_duplicates(subset="node_id", keep="first")
+        joined = joined.sort_values(by="node_id")
 
-        temp_LB_node = temp_LB_node.merge(
-            right=FB_inward[["from_node_id", "meta_to_authority"]],
-            left_on="node_id",
-            right_on="from_node_id",
-            how="left",
-        )
-
-        temp_LB_node = temp_LB_node.merge(
-            right=FB_outward[["to_node_id", "meta_from_authority"]],
-            left_on="node_id",
-            right_on="to_node_id",
-            how="left",
-        )
-
-        # #replace the current waterschaps name in the joined layer to NaN, and drop those
-        joined["naam"] = joined["naam"].replace(to_replace=waterschap, value=np.nan)
-        joined = joined.dropna(subset="naam").reset_index(drop=True)
-
-        # now fill the meta_from_authority and meta_to_authority columns. As they already contain the correct position of the current waterschap, the remaining 'naam' will be placed correctly as well
-        temp_LB_node = temp_LB_node.merge(right=joined[["node_id", "naam"]], on="node_id", how="left")
-        temp_LB_node["meta_from_authority"] = temp_LB_node["meta_from_authority"].fillna(temp_LB_node["naam"])
-        temp_LB_node["meta_to_authority"] = temp_LB_node["meta_to_authority"].fillna(temp_LB_node["naam"])
-
-        # only select the relevant columns
-        temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry", "meta_from_authority", "meta_to_authority"]]
-        temp_LB_node = temp_LB_node.drop_duplicates(subset="node_id").reset_index(drop=True)
+        joined = joined.rename(columns={"naam": "meta_couple_authority"})
 
         # place the meta categories to the static table
         LB_static = ribasim_model.level_boundary.static.df.merge(
-            right=temp_LB_node[["node_id", "meta_from_authority", "meta_to_authority"]], on="node_id", how="left"
+            right=joined[["node_id", "meta_couple_authority"]], on="node_id", how="left"
         ).reset_index(drop=True)
         LB_static.index.name = "fid"
         ribasim_model.level_boundary.static.df = LB_static
