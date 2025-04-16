@@ -17,6 +17,7 @@ from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcess
 from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
+MIXED_CONDITIONS: bool = True
 
 # model settings
 waterschap = "AmstelGooienVecht"
@@ -109,7 +110,6 @@ ribasim_param.validate_basin_area(ribasim_model)
 
 # merge basins
 ribasim_model.merge_basins(node_id=162, to_node_id=177, are_connected=False)
-# TODO: Verify merging of b#178 into b#177
 ribasim_model.merge_basins(node_id=178, to_node_id=177, are_connected=True)
 
 # model specific tweaks
@@ -254,15 +254,17 @@ add_storage_basins = AddStorageBasins(
 
 add_storage_basins.create_bergende_basins()
 
-# set static forcing
-forcing_dict = {
-    "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
-    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
-    "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
-    "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
-}
-
-ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
+# set forcing
+if MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 10)
+else:
+    forcing_dict = {
+        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
+        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
+        "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
+        "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
+    }
+    ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
 # set pump capacity for each pump
 ribasim_model.pump.static.df["flow_rate"] = 0.16667  # 10 kuub per minuut
@@ -289,7 +291,6 @@ else:
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-# TODO: Verify removal of 'aanvoer'-basins (i.e., `basin_aanvoer_off`)
 ribasim_param.set_aanvoer_flags(
     ribasim_model,
     aanvoergebieden,
@@ -299,10 +300,7 @@ ribasim_param.set_aanvoer_flags(
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-
-# Manning resistance
-# there is a MR without geometry and without links for some reason
-ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
+ribasim_param.add_continuous_control(ribasim_model, dy=-200)
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df.length = 10
@@ -311,6 +309,11 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # last formating of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
+
+if MIXED_CONDITIONS:
+    ribasim_model.basin.static.df = None
+
+# assign authorities
 assign = AssignAuthorities(
     ribasim_model=ribasim_model,
     waterschap=waterschap,
