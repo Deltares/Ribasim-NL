@@ -106,12 +106,16 @@ node_ids = static_data.outlet.node_id
 levels = []
 for node_id in node_ids:
     node = model.outlet[node_id]
-    tolerance = 10  # afstand voor zoeken bovenstrooms
+    tolerance = 30  # afstand voor zoeken bovenstrooms
     node_id = node.node_id
     node_geometry = node.geometry
 
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
-    containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
+
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
@@ -134,13 +138,17 @@ node_ids = static_data.pump.node_id
 levels = []
 
 for node_id in node_ids:
-    node = model.pump[node_id]  # 🔹 Nu voor PUMP i.p.v. OUTLET
-    tolerance = 10  # 🔹 Afstand voor zoeken bovenstrooms
+    node = model.pump[node_id]
+    tolerance = 30
     node_id = node.node_id
     node_geometry = node.geometry
 
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
-    containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
+
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
@@ -223,10 +231,14 @@ node_ids = model.manning_resistance.static.df["node_id"]
 levels = []
 for node_id in node_ids:
     node = model.manning_resistance[node_id]
-    tolerance = 10
+    tolerance = 30
     node_geometry = node.geometry
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
-    containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
+
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
