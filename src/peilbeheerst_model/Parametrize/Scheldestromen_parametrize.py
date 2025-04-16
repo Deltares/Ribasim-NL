@@ -145,18 +145,7 @@ add_storage_basins.create_bergende_basins()
 
 # set forcing
 if MIXED_CONDITIONS:
-    halftime = starttime + (endtime - starttime) // 2
-    time = starttime, halftime, endtime
-    value = ribasim_param.convert_mm_day_to_m_sec(5)
-    precipitation = value, 0, 0
-    evaporation = 0, value, value
-    forcing_dict = {
-        "precipitation": precipitation,
-        "potential_evaporation": evaporation,
-        "drainage": 0,
-        "infiltration": 0,
-    }
-    ribasim_param.set_dynamic_forcing(ribasim_model, time, forcing_dict)
+    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 10)
 else:
     forcing_dict = {
         "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
