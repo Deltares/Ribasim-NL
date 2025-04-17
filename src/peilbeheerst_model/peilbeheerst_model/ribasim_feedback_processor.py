@@ -492,9 +492,9 @@ class RibasimFeedbackProcessor:
     def functie_gemalen(self):
         # read sheet with the updated the pump functions
         try:
-            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0)
+            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0, usecols="A:B")
         except ValueError:
-            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0)
+            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0, usecols="A:B")
 
         if len(df_FG) > 0:  # if the sheet is filled in, proceed
             # print warning if there are non existing pumps
@@ -504,17 +504,35 @@ class RibasimFeedbackProcessor:
                 print("Warning! Following pumps do not exist:\n", non_existing_pumps, "\n")
 
             # determine the function provided in the feedback form
-            afvoer_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.contains("fvoer")]
-            aanvoer_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.contains("nvoer")]
+            aanvoer_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.lower() == "aanvoer"]
+            afvoer_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.lower() == "afvoer"]
+            allround_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.lower() == "aanvoer & afvoer"]
 
-            # change the meta_func columns
-            self.model.pump.static.df.loc[
-                self.model.pump.static.df.node_id.isin(afvoer_pumps["Pump node_id"]), "meta_func_afvoer"
-            ] = 1
-            self.model.pump.static.df.loc[
-                self.model.pump.static.df.node_id.isin(aanvoer_pumps["Pump node_id"]), "meta_func_aanvoer"
-            ] = 1
+            # extract pump IDs and make them unique
+            aanvoer_pump_ids = np.unique(aanvoer_pumps["Pump node_id"].to_numpy(dtype=int))
+            afvoer_pump_ids = np.unique(afvoer_pumps["Pump node_id"].to_numpy(dtype=int))
+            allround_pump_ids = np.unique(allround_pumps["Pump node_id"].to_numpy(dtype=int))
 
+            # clean up pump-IDs
+            double_ids = []
+            for i in aanvoer_pump_ids:
+                if i in afvoer_pump_ids:
+                    allround_pump_ids = np.append(allround_pump_ids, i)
+                    double_ids.append(i)
+            for i in double_ids:
+                aanvoer_pump_ids = np.delete(aanvoer_pump_ids, aanvoer_pump_ids == i)
+                afvoer_pump_ids = np.delete(afvoer_pump_ids, afvoer_pump_ids == i)
+
+            # change the meta_func_* columns
+            pumps = aanvoer_pumps, afvoer_pumps, allround_pumps
+            funcs = [0, 1], [1, 0], [1, 1]
+            for p, f in zip(pumps, funcs):
+                self.model.pump.static.df.loc[
+                    self.model.pump.static.df["node_id"].isin(p["Pump node_id"]),
+                    ["meta_func_afvoer", "meta_func_aanvoer"],
+                ] = f
+
+            # logging statement
             print("The function of the pumps have been updated.")
 
     def run(self):
