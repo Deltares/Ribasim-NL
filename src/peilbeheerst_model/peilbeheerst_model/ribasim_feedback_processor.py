@@ -524,13 +524,12 @@ class RibasimFeedbackProcessor:
                 afvoer_pump_ids = np.delete(afvoer_pump_ids, afvoer_pump_ids == i)
 
             # change the meta_func_* columns
-            pumps = aanvoer_pumps, afvoer_pumps, allround_pumps
-            funcs = [0, 1], [1, 0], [1, 1]
-            for p, f in zip(pumps, funcs):
+            pump_ids = aanvoer_pump_ids, afvoer_pump_ids, allround_pump_ids
+            booleans = [0, 1], [1, 0], [1, 1]
+            for p, b in zip(pump_ids, booleans):
                 self.model.pump.static.df.loc[
-                    self.model.pump.static.df["node_id"].isin(p["Pump node_id"]),
-                    ["meta_func_afvoer", "meta_func_aanvoer"],
-                ] = f
+                    self.model.pump.static.df["node_id"].isin(p), ["meta_func_afvoer", "meta_func_aanvoer"]
+                ] = b
 
             # logging statement
             print("The function of the pumps have been updated.")
