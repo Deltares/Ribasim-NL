@@ -12,6 +12,7 @@ from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
@@ -120,6 +121,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
+inlaat_structures = []
 # add an TRC and links to the newly created level boundary
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(74861, 382484)), [level_boundary.Static(level=[default_level])]
@@ -134,6 +136,24 @@ ribasim_model.tabulated_rating_curve.node.df.loc[tabulated_rating_curve_node.nod
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[133])
+
+
+# add a TRC and LB from Belgium
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(43290, 356428)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(43486, 357740)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[1])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
+# (re) set 'meta_node_id'
+ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
+ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
+ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
@@ -190,6 +210,11 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
+
+for node in inlaat_structures:
+    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
+    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_afvoer"] = 0
+
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 
@@ -204,6 +229,17 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# add the water authority column to couple the model with
+assign = AssignAuthorities(
+    ribasim_model=ribasim_model,
+    waterschap=waterschap,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    RWS_buffer=2000,  # mainly neighbouring RWS, so increase buffer. Not too much, due to nodes within Belgium.
+    custom_nodes=None,
+)
+ribasim_model = assign.assign_authorities()
 
 # set numerical settings
 # write model output
