@@ -10614,7 +10614,7 @@ packages:
   - matplotlib ; extra == 'graph'
   - altair>=5.4.0 ; extra == 'plot'
   - great-tables>=0.8.0 ; extra == 'style'
-  - tzdata ; sys_platform == 'win32' and extra == 'timezone'
+  - tzdata ; platform_system == 'Windows' and extra == 'timezone'
   - cudf-polars-cu12 ; extra == 'gpu'
   - polars[async,cloudpickle,database,deltalake,excel,fsspec,graph,iceberg,numpy,pandas,plot,pyarrow,pydantic,style,timezone] ; extra == 'all'
   requires_python: '>=3.9'
@@ -10648,7 +10648,7 @@ packages:
   - matplotlib ; extra == 'graph'
   - altair>=5.4.0 ; extra == 'plot'
   - great-tables>=0.8.0 ; extra == 'style'
-  - tzdata ; sys_platform == 'win32' and extra == 'timezone'
+  - tzdata ; platform_system == 'Windows' and extra == 'timezone'
   - cudf-polars-cu12 ; extra == 'gpu'
   - polars[async,cloudpickle,database,deltalake,excel,fsspec,graph,iceberg,numpy,pandas,plot,pyarrow,pydantic,style,timezone] ; extra == 'all'
   requires_python: '>=3.9'
@@ -10682,7 +10682,7 @@ packages:
   - matplotlib ; extra == 'graph'
   - altair>=5.4.0 ; extra == 'plot'
   - great-tables>=0.8.0 ; extra == 'style'
-  - tzdata ; sys_platform == 'win32' and extra == 'timezone'
+  - tzdata ; platform_system == 'Windows' and extra == 'timezone'
   - cudf-polars-cu12 ; extra == 'gpu'
   - polars[async,cloudpickle,database,deltalake,excel,fsspec,graph,iceberg,numpy,pandas,plot,pyarrow,pydantic,style,timezone] ; extra == 'all'
   requires_python: '>=3.9'
@@ -12139,15 +12139,15 @@ packages:
   timestamp: 1598024297745
 - pypi: ../Ribasim/python/ribasim
   name: ribasim
-  version: 2025.2.0
-  sha256: 555f77a50822a4f25c4984be1cecbc85c09baf71aaec8dc79744f5d652e5f293
+  version: 2025.1.0
+  sha256: 1beeb16859cc9084dbf4bdc93f5ff7da3e8c032bd82d0702db9218a396ee578e
   requires_dist:
   - datacompy>=0.16
   - geopandas>=1.0
   - matplotlib>=3.7
   - numpy>=1.25
   - pandas>=2.0
-  - pandera>=0.20,<0.23
+  - pandera>=0.20
   - pyarrow>=17.0
   - pydantic>=2.0
   - pyogrio>=0.8

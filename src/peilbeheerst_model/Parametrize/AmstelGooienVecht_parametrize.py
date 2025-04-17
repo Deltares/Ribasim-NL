@@ -4,8 +4,6 @@ import datetime
 import os
 import warnings
 
-import ribasim
-import ribasim.nodes
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
@@ -16,7 +14,7 @@ from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 
@@ -104,10 +102,15 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
+
+# merge basins
+ribasim_model.merge_basins(node_id=162, to_node_id=177, are_connected=False)
+# TODO: Verify merging of b#178 into b#177
+ribasim_model.merge_basins(node_id=178, to_node_id=177, are_connected=True)
 
 # model specific tweaks
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -117,8 +120,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(125958, 486838)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.link.add(ribasim_model.basin[225], tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[225])
 
 # add additional pump and LB to ARK
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -168,6 +171,58 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[69], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(119234, 492570)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(119234, 492587)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[9])
+
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(123113, 486351)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(123112, 489351)), [pump.Static(flow_rate=[20])])
+# TODO: Verify setting to 'aan- & afvoergemaal'
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[12])
+
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(124470, 489070)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(124465, 489070)), [tabulated_rating_curve.Static(level=[0, 0.1234], flow_rate=[0, 0.1234])]
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[182])
+
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(127630, 485961)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(127621, 485961)), [tabulated_rating_curve.Static(level=[0, 0.1234], flow_rate=[0, 0.1234])]
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[174])
+
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(148516, 478866)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(148397, 478753)), [pump.Static(flow_rate=[20])])
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[168])
+
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(148550, 478832)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(148437, 478733)), [pump.Static(flow_rate=[20])])
+ribasim_model.link.add(ribasim_model.basin[168], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # set all 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
@@ -234,8 +289,14 @@ else:
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
+# TODO: Verify removal of 'aanvoer'-basins (i.e., `basin_aanvoer_off`)
 ribasim_param.set_aanvoer_flags(
-    ribasim_model, aanvoergebieden, processor, basin_aanvoer_on=38, aanvoer_enabled=AANVOER_CONDITIONS
+    ribasim_model,
+    aanvoergebieden,
+    processor,
+    basin_aanvoer_on=38,
+    basin_aanvoer_off=(1, 53, 134, 144, 196, 222),
+    aanvoer_enabled=AANVOER_CONDITIONS,
 )
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 

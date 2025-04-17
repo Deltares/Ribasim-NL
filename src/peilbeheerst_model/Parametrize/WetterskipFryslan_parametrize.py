@@ -207,7 +207,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[89], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(156824, 552856)), [level_boundary.Static(level=[default_level])]
 )
@@ -217,7 +216,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[861], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(155989, 563067)), [level_boundary.Static(level=[default_level])]
 )
@@ -227,7 +225,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[149], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(154647, 567409)), [level_boundary.Static(level=[default_level])]
 )
@@ -237,7 +234,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[149], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(156173, 576551)), [level_boundary.Static(level=[default_level])]
 )

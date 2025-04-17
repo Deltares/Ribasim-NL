@@ -1,5 +1,5 @@
 """
-RIBASIM LUMPING NETWORK module to create a RIBASIM Lumping network
+Ribasim lumping network module to create a Ribasim lumping network
 
 Project: National Hydrological Model (Netherlands)
 Created by: Harm Nomden (Sweco, 2024)
@@ -51,7 +51,7 @@ from .utils.general_functions import (
 
 
 class RibasimLumpingNetwork(BaseModel):
-    """RIBASIM LUMPING NETWORK class to keep all data and network generation"""
+    """Ribasim lumping network class to keep all data and network generation"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -138,7 +138,7 @@ class RibasimLumpingNetwork(BaseModel):
     simulations_ts: list[list | pd.DatetimeIndex] = []
     crs: int = 28992
 
-    """RIBASIM LUMPING NETWORK class to keep all data and network generation"""
+    """Ribasim lumping network class to keep all data and network generation"""
 
     def add_basis_network(
         self,
@@ -667,7 +667,7 @@ class RibasimLumpingNetwork(BaseModel):
         starttime: str = None,
         endtime: str = None,
     ) -> ribasim.Model:
-        """Generate RIBASIM model using RIBASIM-LUMPING"""
+        """Generate Ribasim model using Ribasim-lumping"""
         self.generate_ribasim_lumping_network(
             simulation_code=simulation_code,
         )
@@ -701,7 +701,7 @@ class RibasimLumpingNetwork(BaseModel):
             use_laterals_for_basin_area (bool): use standard lateral inflow per second per area applied to basin_areas.
             remove_isolated_basins (bool):
         """
-        print(f"Network {self.name} - Generate RIBASIM lumping network")
+        print(f"Network {self.name} - Generate Ribasim lumping network")
         # first some checks
         self.simulation_code = simulation_code
         self.simulation_path = Path(self.results_dir, simulation_code)
@@ -777,7 +777,7 @@ class RibasimLumpingNetwork(BaseModel):
         split_node_type_conversion: dict = None,
         split_node_id_conversion: dict = None,
     ) -> ribasim.Model:
-        """Generate RIBASIM model. From RIBASIM lumping to ribasim.Model"""
+        """Generate Ribasim model. From Ribasim lumping to ribasim.Model"""
         if not dummy_model and set_name not in self.basis_set_names:
             # print(f"set_name {set_name} not in available set_names")
             raise ValueError(f"set_name {set_name} not in available set_names")
@@ -937,7 +937,7 @@ class RibasimLumpingNetwork(BaseModel):
             f.write("pause")
 
     def export_to_geopackage(self, simulation_code: str, results_dir: Path | str = None):
-        """Export RIBASIM lumping results to ribasim_network.gpkg"""
+        """Export Ribasim lumping results to ribasim_network.gpkg"""
         if results_dir is None:
             results_dir = self.results_dir
         results_network_dir = Path(results_dir, simulation_code)
@@ -1020,7 +1020,7 @@ class RibasimLumpingNetwork(BaseModel):
         print(f"Export location: {qgz_path}")
 
     def plot(self):
-        """Plot RIBASIM lumping network"""
+        """Plot Ribasim lumping network"""
         fig, ax = plt.subplots(figsize=(10, 10))
         rng = np.random.default_rng()
 

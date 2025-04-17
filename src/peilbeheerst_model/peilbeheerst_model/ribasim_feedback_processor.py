@@ -531,14 +531,18 @@ class RibasimFeedbackProcessor:
         """Extract corrections on basin 'aanvoer'-flagging from the feedback forms."""
         sheet_name = "Aan_afvoer_basins"
         try:
-            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name)
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B")
         except ValueError:
             logging.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
             self._basin_aanvoer_on = ()
             self._basin_aanvoer_off = ()
         else:
-            aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Basin ID"].to_numpy(dtype=int)
-            afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Basin ID"].to_numpy(dtype=int)
+            df.dropna(axis=0, inplace=True)
+            if len(df) == 0:
+                aanvoer_ids = afvoer_ids = []
+            else:
+                aanvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Basin ID"].to_numpy(dtype=int)
+                afvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Basin ID"].to_numpy(dtype=int)
 
             self._basin_aanvoer_on = tuple(aanvoer_ids)
             self._basin_aanvoer_off = tuple(afvoer_ids)
@@ -553,14 +557,22 @@ class RibasimFeedbackProcessor:
         # TODO: Remove this 'missing worksheet'-catch in the future
         sheet_name = "Aan_afvoer_outlets"
         try:
-            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name)
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B")
         except ValueError:
             logging.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
             self._outlet_aanvoer_on = ()
             self._outlet_aanvoer_off = ()
         else:
-            aanvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Aanvoer", "Outlet node_id"].to_numpy(dtype=int)
-            afvoer_ids = df.loc[df["Aanvoer / afvoer?"] == "Afvoer", "Outlet node_id"].to_numpy(dtype=int)
+            df.dropna(axis=0, inplace=True)
+            if len(df) == 0:
+                aanvoer_ids = afvoer_ids = []
+            else:
+                aanvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Outlet node_id"].to_numpy(
+                    dtype=int
+                )
+                afvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Outlet node_id"].to_numpy(
+                    dtype=int
+                )
 
             self._outlet_aanvoer_on = tuple(aanvoer_ids)
             self._outlet_aanvoer_off = tuple(afvoer_ids)
