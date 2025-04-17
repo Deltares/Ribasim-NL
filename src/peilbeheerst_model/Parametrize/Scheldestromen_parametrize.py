@@ -110,7 +110,6 @@ exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["n
 )
 exploded_basins["area"] = exploded_basins.area
 largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
-# largest_polygon = exploded_basin.loc[[exploded_basin.geometry.area.idxmax()]].iloc[0]  # retain largest area
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 189, "geometry"] = largest_polygon["geometry"]
 
 # change unknown streefpeilen to a default streefpeil
