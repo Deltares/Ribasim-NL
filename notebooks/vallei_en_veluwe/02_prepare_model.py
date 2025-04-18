@@ -24,7 +24,7 @@ ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_tom
 # check files
 peilgebieden_path = cloud.joinpath(cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20250428/Peilvakken.shp"))
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
-venv_hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "2_voorbewerking", "hydamo.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "2_voorbewerking", "hydamo.gpkg")
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
@@ -36,22 +36,20 @@ cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
 bbox = None
 # init classes
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
-# %% Edges
+# %% Links
 
-network = Network(lines_gdf=gpd.read_file(venv_hydamo_gpkg, layer="hydroobject", bbox=bbox), tolerance=0.2)
+network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject", bbox=bbox), tolerance=0.2)
 damo_profiles = DAMOProfiles(
     model=model,
     network=network,
-    profile_line_df=gpd.read_file(venv_hydamo_gpkg, layer="profiellijn", bbox=bbox),
-    profile_point_df=gpd.read_file(venv_hydamo_gpkg, layer="profielpunt", bbox=bbox),
+    profile_line_df=gpd.read_file(hydamo_gpkg, layer="profiellijn", bbox=bbox),
+    profile_point_df=gpd.read_file(hydamo_gpkg, layer="profielpunt", bbox=bbox),
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox),
     profile_line_id_col="code",
 )
 if not profiles_gpkg.exists():
     damo_profiles.process_profiles().to_file(profiles_gpkg)
 
-
-# %%
 # fix link geometries
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
@@ -62,8 +60,6 @@ if link_geometries_gpkg.exists():
         ]
     profiles_df = gpd.read_file(profiles_gpkg)
 else:
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
     fix_link_geometries(model, network)
     add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
@@ -77,17 +73,17 @@ levels = []
 for node_id in node_ids:
     node = model.outlet[node_id]
     peilgebieden_df = gpd.read_file(peilgebieden_path)
-    tolerance = 10  # afstand voor zoeken bovenstrooms
+    tolerance = 50  # afstand voor zoeken bovenstrooms
     node_id = node.node_id
     node_geometry = node.geometry
 
-    # haal bovenstroomse en bendenstroomse links op
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
-    # bepaal een punt 10 meter bovenstrooms node
-    containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
-    # filter peilgebieden met intersect bovenstroomse link
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
+
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
-    # Als er meerdere peilgebieden zijn, kies de juiste
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
         if peilgebied["WS_MAX_PEI"] < 30:
@@ -102,6 +98,7 @@ min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level)
 
 # %% Bepaal min_upstream_level pumps
+
 static_data.reset_data_frame(node_type="Pump")
 node_ids = static_data.pump.node_id
 levels = []
@@ -109,20 +106,18 @@ levels = []
 for node_id in node_ids:
     node = model.pump[node_id]
     peilgebieden_df = gpd.read_file(peilgebieden_path)
-    tolerance = 10
+    tolerance = 50
     node_id = node.node_id
     node_geometry = node.geometry
 
-    # Haal de bovenstroomse en benedenstroomse links op
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
 
-    # Bepaal een punt 10 meter bovenstrooms de node
-    containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
-
-    # Filter peilgebieden die dit punt bevatten
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
 
-    # Als er meerdere peilgebieden zijn, kies de juiste
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
         if peilgebied["WS_MAX_PEI"] < 30:  # 🔹 Drempelwaarde voor max peil
@@ -201,11 +196,16 @@ levels = []
 for node_id in node_ids:
     node = model.manning_resistance[node_id]
     peilgebieden_df = gpd.read_file(peilgebieden_path)
-    tolerance = 10
+    tolerance = 50
     node_id = node.node_id
     node_geometry = node.geometry
+
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
-    containing_point = line_to_node.interpolate(line_to_node.length - tolerance)
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
+
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
