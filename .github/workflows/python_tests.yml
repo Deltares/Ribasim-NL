@@ -21,25 +21,13 @@ jobs:
         arch:
           - x86
     steps:
-      - name: Checkout Ribasim-NL
-        uses: actions/checkout@v4
-        with:
-          path: Ribasim-NL
-
-      # Ribasim needs to be checked out next to this repo even for the prod environment
-      - name: Checkout Ribasim
-        uses: actions/checkout@v4
-        with:
-          repository: Deltares/Ribasim
-          path: Ribasim
+      - uses: actions/checkout@v4
 
       - uses: prefix-dev/setup-pixi@v0.8.8
         with:
-          manifest-path: Ribasim-NL/pixi.toml
           pixi-version: "latest"
 
       - name: Run tests
-        working-directory: Ribasim-NL
         run: pixi run test-hydamo
         env:
           RIBASIM_NL_CLOUD_PASS: ${{ secrets.RIBASIM_NL_CLOUD_PASS }}
