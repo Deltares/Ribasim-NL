@@ -20,7 +20,7 @@ jobs:
           repository: Deltares/Ribasim
           path: Ribasim
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.8.7
+        uses: prefix-dev/setup-pixi@v0.8.8
         with:
           manifest-path: Ribasim-NL/pixi.toml
           pixi-version: "latest"
