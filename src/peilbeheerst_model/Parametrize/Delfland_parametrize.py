@@ -15,8 +15,11 @@ from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
 
-AANVOER_CONDITIONS: bool = True
+AANVOER_CONDITIONS: bool = False
 MIXED_CONDITIONS: bool = True
+
+if MIXED_CONDITIONS:
+    AANVOER_CONDITIONS = True
 
 # model settings
 waterschap = "Delfland"
@@ -27,9 +30,10 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-FeedbackFormulier_path = cloud.joinpath(
-    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-)
+# FeedbackFormulier_path = cloud.joinpath(
+#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+# )
+FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_Delfland.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -43,7 +47,7 @@ aanvoer_path = cloud.joinpath(
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        FeedbackFormulier_path,
+        # FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -82,6 +86,8 @@ timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
 default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary level
+if MIXED_CONDITIONS:
+    default_level = 0.2
 
 # process the feedback form
 name = "HKV"
@@ -222,7 +228,7 @@ ribasim_param.set_aanvoer_flags(
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-ribasim_param.add_continuous_control(ribasim_model, dy=-200)
+ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
