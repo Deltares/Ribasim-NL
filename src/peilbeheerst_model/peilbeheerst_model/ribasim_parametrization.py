@@ -1888,7 +1888,10 @@ def add_continuous_control_node(
                             ribasim_model.level_boundary.static.df["node_id"] == i, "level"
                         ]
                     case _:
-                        msg = f"Unknown node-type ({t.lower()}) for implementation of `ContinuousControl`-node for {connection_node.node_type} #{connection_node.node_id}."
+                        msg = (
+                            f"Unknown node-type ({t.lower()}) for implementation of `ContinuousControl`-node for "
+                            f"{connection_node.node_type} #{connection_node.node_id}."
+                        )
                         raise NotImplementedError(msg)
 
                 listen_targets.append(float(value.values[0]))
