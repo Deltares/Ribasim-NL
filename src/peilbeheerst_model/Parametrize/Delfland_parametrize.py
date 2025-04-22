@@ -18,7 +18,7 @@ from ribasim_nl import CloudStorage, Model
 AANVOER_CONDITIONS: bool = False
 MIXED_CONDITIONS: bool = True
 
-if MIXED_CONDITIONS:
+if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
 # model settings
@@ -30,10 +30,9 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-# FeedbackFormulier_path = cloud.joinpath(
-#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-# )
-FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_Delfland.xlsx"
+FeedbackFormulier_path = cloud.joinpath(
+    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+)
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -47,7 +46,7 @@ aanvoer_path = cloud.joinpath(
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        # FeedbackFormulier_path,
+        FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -85,9 +84,12 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary level
 if MIXED_CONDITIONS:
     default_level = 0.2
+elif AANVOER_CONDITIONS:
+    default_level = 0.42
+else:
+    default_level = -0.42
 
 # process the feedback form
 name = "HKV"
@@ -160,16 +162,16 @@ inlaat_pump.append(pump_node.node_id)
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
 
-ribasim_model.merge_basins(node_id=73, to_node_id=10)
-ribasim_model.merge_basins(node_id=67, to_node_id=2)
-ribasim_model.merge_basins(node_id=62, to_node_id=2)
-ribasim_model.merge_basins(node_id=61, to_node_id=2)
-ribasim_model.merge_basins(node_id=63, to_node_id=2)
+ribasim_model.merge_basins(node_id=73, to_node_id=10, are_connected=True)
+ribasim_model.merge_basins(node_id=67, to_node_id=2, are_connected=True)
+ribasim_model.merge_basins(node_id=62, to_node_id=2, are_connected=True)
+ribasim_model.merge_basins(node_id=61, to_node_id=2, are_connected=True)
+ribasim_model.merge_basins(node_id=63, to_node_id=2, are_connected=True)
 ribasim_model.merge_basins(node_id=89, to_node_id=16, are_connected=False)
-ribasim_model.merge_basins(node_id=71, to_node_id=9)
-ribasim_model.merge_basins(node_id=88, to_node_id=2)
-ribasim_model.merge_basins(node_id=32, to_node_id=50)
-ribasim_model.merge_basins(node_id=54, to_node_id=1)
+ribasim_model.merge_basins(node_id=71, to_node_id=9, are_connected=True)
+ribasim_model.merge_basins(node_id=88, to_node_id=2, are_connected=True)
+ribasim_model.merge_basins(node_id=32, to_node_id=50, are_connected=True)
+ribasim_model.merge_basins(node_id=54, to_node_id=1, are_connected=True)
 
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
