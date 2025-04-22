@@ -1878,22 +1878,21 @@ def add_continuous_control_node(
             listen_targets = []
             node_types = [ribasim_model.node_table().df.loc[i, "node_type"] for i in listen_nodes]
             for i, t in zip(listen_nodes, node_types):
-                if t.lower() == "basin":
-                    listen_targets.append(
-                        float(
-                            ribasim_model.basin.area.df.loc[
-                                ribasim_model.basin.area.df["meta_node_id"] == i, "meta_streefpeil"
-                            ].values[0]
-                        )
-                    )
-                elif t.lower() == "levelboundary":
-                    listen_targets.append(
-                        float(
-                            ribasim_model.level_boundary.static.df.loc[
-                                ribasim_model.level_boundary.static.df["node_id"] == i, "level"
-                            ].values[0]
-                        )
-                    )
+                match t.lower():
+                    case "basin":
+                        value = ribasim_model.basin.area.df.loc[
+                            ribasim_model.basin.area.df["meta_node_id"] == i, "meta_streefpeil"
+                        ]
+                    case "levelboundary":
+                        value = ribasim_model.level_boundary.static.df.loc[
+                            ribasim_model.level_boundary.static.df["node_id"] == i, "level"
+                        ]
+                    case _:
+                        msg = f"Unknown node-type ({t.lower()}) for implementation of `ContinuousControl`-node for {connection_node.node_type} #{connection_node.node_id}."
+                        raise NotImplementedError(msg)
+
+                listen_targets.append(float(value.values[0]))
+
     assert len(listen_targets) == 2, (
         f"Continuous control node requires two `listen_targets` ({len(listen_targets)}) corresponding to the number of `listen_nodes` ({len(listen_nodes)})"
     )
