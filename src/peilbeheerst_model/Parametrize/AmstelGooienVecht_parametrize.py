@@ -19,6 +19,9 @@ from ribasim_nl import CloudStorage, Model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 
+if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
+    AANVOER_CONDITIONS = True
+
 # model settings
 waterschap = "AmstelGooienVecht"
 base_model_versie = "2024_12_0"
