@@ -255,7 +255,7 @@ def set_hypothetical_dynamic_forcing(
     :type value: float, optional
     """
     # define time-variables
-    halftime = start_time + (end_time - start_time) // 2
+    halftime = start_time + (1 * (end_time - start_time)) // 3
     time = start_time, halftime, end_time
 
     # define forcing time-series
@@ -1805,7 +1805,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
 def add_continuous_control_node(
     ribasim_model: ribasim.Model, connection_node: ribasim.geometry.link.NodeData, listen_nodes: list[int], **kwargs
-) -> ribasim.Node:
+) -> ribasim.Node | None:
     """Add a continuous control node to `Pump`-/`Outlet`-nodes that are for both 'aanvoer' and 'afvoer'.
 
     :param ribasim_model: Ribasim model
@@ -1816,9 +1816,13 @@ def add_continuous_control_node(
     :key dy: spatial distance between `connection_node` and continuous control node (y-direction), defaults to 0
     :key capacity: capacity of controlled output, defaults to 20
     :key control_variable: variable of controlled output, defaults to 'flow_rate'
+    :key listen_targets: target variable values of the `listen_nodes`, defaults to None
     :key listen_variable: variable of listened to input, defaults to 'level'
-    :key linear_transition_level: listened to input at which full capacity is reached, defaults to .04
-    :key weights: weights of `listen_nodes` to determine control, defaults to [-1, 1]
+    :key node_id_raiser: node-ID of `ContinuousControl`-node is based on node-ID of `connection_node` as follows:
+        `continuous_control_node.node_id = connection_node.node_id + node_id_raiser`
+        defaults to 10000
+    :key numerical_tolerance: listened to input at which full capacity is reached, defaults to 0.01
+    :key weights: weights of `listen_nodes` to determine control, defaults to [1, -1]
 
     :type ribasim_model: ribasim.Model
     :type connection_node: ribasim.geometry.link.NodeData
@@ -1827,25 +1831,28 @@ def add_continuous_control_node(
     :type dy: float, optional
     :type capacity: float, optional
     :type control_variable: str, optional
+    :type listen_targets: list[float], optional
     :type listen_variable: str, optional
-    :type linear_transition_level: float, optional
+    :type node_id_raiser: int, optional
+    :type numerical_tolerance: float, optional
     :type weights: list[float], optional
 
     :raise AssertionError: if `control_variable` is unknown
     :raise AssertionError: if `listen_variable` is unknown
-    :raise AssertionError: if lengths of `listen_nodes` and `weights` are not 2
+    :raise AssertionError: if lengths of `listen_nodes`, `weights` and `listen_targets` are not 2
 
-    :return: continuous control node
-    :rtype: ribasim.Node
+    :return: continuous control node (if created)
+    :rtype: ribasim.Node, None
     """
     # optional arguments
     dx: float = kwargs.get("dx", 0)
     dy: float = kwargs.get("dy", 0)
     capacity: float = kwargs.get("capacity", 20)
     control_variable: str = kwargs.get("control_variable", "flow_rate")
+    listen_targets: list[float] = kwargs.get("listen_targets")
     listen_variable: str = kwargs.get("listen_variable", "level")
-    linear_transition_level: float = kwargs.get("linear_transition_level", 0.04)
     node_id_raiser: int = kwargs.get("node_id_raiser", 10000)
+    numerical_tolerance: float = kwargs.get("numerical_tolerance", 0.01)
     weights: list[float] = kwargs.get("weights", [1, -1])
 
     # input validation
@@ -1855,6 +1862,45 @@ def add_continuous_control_node(
     assert len(listen_nodes) == len(weights) == 2, (
         f"Continuous control node requires two `listen_nodes` ({len(listen_nodes)}) and two `weights` ({len(weights)})"
     )
+
+    # get listen targets
+    if listen_targets is None:
+        try:
+            listen_targets = [
+                float(
+                    ribasim_model.basin.area.df.loc[
+                        ribasim_model.basin.area.df["meta_node_id"] == i, "meta_streefpeil"
+                    ].values[0]
+                )
+                for i in listen_nodes
+            ]
+        except IndexError:
+            listen_targets = []
+            node_types = [ribasim_model.node_table().df.loc[i, "node_type"] for i in listen_nodes]
+            for i, t in zip(listen_nodes, node_types):
+                if t.lower() == "basin":
+                    listen_targets.append(
+                        float(
+                            ribasim_model.basin.area.df.loc[
+                                ribasim_model.basin.area.df["meta_node_id"] == i, "meta_streefpeil"
+                            ].values[0]
+                        )
+                    )
+                elif t.lower() == "levelboundary":
+                    listen_targets.append(
+                        float(
+                            ribasim_model.level_boundary.static.df.loc[
+                                ribasim_model.level_boundary.static.df["node_id"] == i, "level"
+                            ].values[0]
+                        )
+                    )
+    assert len(listen_targets) == 2, (
+        f"Continuous control node requires two `listen_targets` ({len(listen_targets)}) corresponding to the number of `listen_nodes` ({len(listen_nodes)})"
+    )
+
+    # set ON-switch for continuous control node
+    margin = 2 * numerical_tolerance
+    on_switch = sum(t * w for t, w in zip(listen_targets, weights))
 
     # add continuous control
     point = connection_node.geometry
@@ -1868,12 +1914,17 @@ def add_continuous_control_node(
                 variable=listen_variable,
             ),
             continuous_control.Function(
-                input=[-1, 0, linear_transition_level, 1],
+                input=[on_switch - margin, on_switch, on_switch + numerical_tolerance, on_switch + margin],
                 output=[0, 0, capacity, capacity],
                 controlled_variable=control_variable,
             ),
         ],
     )
+
+    # update connection node
+    static_table = getattr(ribasim_model, connection_node.node_type.lower()).static.df
+    static_table.loc[static_table["node_id"] == connection_node.node_id, "min_upstream_level"] = np.nan
+    static_table.loc[static_table["node_id"] == connection_node.node_id, "max_downstream_level"] = np.nan
 
     # add control link
     ribasim_model.link.add(continuous_control_node, connection_node)
@@ -1887,10 +1938,18 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
     apply_on_outlets: bool = kwargs.pop("apply_on_outlets", True)
     apply_on_pumps: bool = kwargs.pop("apply_on_pumps", True)
 
+    # collect nodes that are part of the 'hoofdwatersysteem'
+    main_water_system_node_ids = (
+        ribasim_model.basin.state.df.loc[
+            ribasim_model.basin.state.df["meta_categorie"] == "hoofdwater", "node_id"
+        ].to_list()
+        + ribasim_model.level_boundary.node.df.index.to_list()
+    )
+
     # add continuous control nodes to outlets
     if apply_on_outlets:
         outlet = ribasim_model.outlet.static.df.copy()
-        selection = outlet[outlet["meta_aanvoer"]]
+        selection = outlet[outlet["meta_aanvoer"] & (~outlet["meta_from_node_id"].isin(main_water_system_node_ids))]
         if len(selection) > 0:
             selection.apply(
                 lambda r: add_continuous_control_node(
