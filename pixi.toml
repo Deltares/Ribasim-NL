@@ -3,7 +3,7 @@ name = "Ribasim-NL"
 version = "0.1.0"
 description = "Ribasim water resources modeling in the Netherlands"
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64"]
+platforms = ["win-64", "linux-64", "osx-arm64"]
 readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
@@ -71,6 +71,7 @@ tqdm = "*"
 types-requests = "*"
 xlwings = "*"
 xugrid = "*"
+pydantic-settings = ">=2.8.1,<3"
 
 [pypi-dependencies]
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
