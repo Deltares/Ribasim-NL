@@ -1897,7 +1897,8 @@ def add_continuous_control_node(
                 listen_targets.append(float(value.values[0]))
 
     assert len(listen_targets) == 2, (
-        f"Continuous control node requires two `listen_targets` ({len(listen_targets)}) corresponding to the number of `listen_nodes` ({len(listen_nodes)})"
+        f"Continuous control node requires two `listen_targets` ({len(listen_targets)}) "
+        f"corresponding to the number of `listen_nodes` ({len(listen_nodes)})"
     )
 
     # set ON-switch for continuous control node
