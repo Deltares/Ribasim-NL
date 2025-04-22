@@ -26,9 +26,10 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-FeedbackFormulier_path = cloud.joinpath(
-    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-)
+# FeedbackFormulier_path = cloud.joinpath(
+#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+# )
+FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_HollandseDelta.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -40,7 +41,7 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraa
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        FeedbackFormulier_path,
+        # FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -108,6 +109,7 @@ ribasim_model.merge_basins(node_id=149, to_node_id=21)  # too small basin
 ribasim_model.merge_basins(node_id=559, to_node_id=120)  # small basin + deviations
 ribasim_model.merge_basins(node_id=7, to_node_id=54)  # small basin causes numerical instabilities
 ribasim_model.merge_basins(node_id=720, to_node_id=54)  # small basin causes numerical instabilities
+ribasim_model.merge_basins(node_id=81, to_node_id=357)
 # merge overlapping basins
 ribasim_model.merge_basins(node_id=633, to_node_id=475)
 ribasim_model.merge_basins(node_id=329, to_node_id=325)
@@ -132,6 +134,8 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(55992, 424882)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(55982, 424908)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[675])
 
