@@ -53,6 +53,7 @@ pip = "*"
 pre-commit = "*"
 pyarrow = "*"
 pydantic = ">=2"
+pydantic-settings = "*"
 pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
@@ -71,7 +72,6 @@ tqdm = "*"
 types-requests = "*"
 xlwings = "*"
 xugrid = "*"
-pydantic-settings = "*"
 
 [pypi-dependencies]
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
