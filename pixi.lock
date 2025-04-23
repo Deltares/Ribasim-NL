@@ -608,8 +608,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libfreetype-2.13.3-hce30654_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libfreetype6-2.13.3-h1d14073_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgdal-core-3.10.3-haa91088_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgfortran-5.0.0-14_2_0_h6c33f7e_103.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgfortran5-14.2.0-h6c33f7e_103.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgfortran-14.2.0-heb5dd2a_105.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgfortran5-14.2.0-h2c44a93_105.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgoogle-cloud-2.36.0-h9484b08_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgoogle-cloud-storage-2.36.0-h7081f7f_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgrpc-1.71.0-h857da87_1.conda
@@ -1322,7 +1322,7 @@ packages:
   license: BSD-2-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/appnope?source=hash-mapping
+  - pkg:pypi/appnope?source=compressed-mapping
   size: 10076
   timestamp: 1733332433806
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/appscript-1.3.0-py313h63a2874_0.conda
@@ -3377,7 +3377,7 @@ packages:
   - python >=3.9
   license: Unlicense
   purls:
-  - pkg:pypi/filelock?source=compressed-mapping
+  - pkg:pypi/filelock?source=hash-mapping
   size: 17887
   timestamp: 1741969612334
 - conda: https://conda.anaconda.org/conda-forge/linux-64/fiona-1.10.1-py313hab4ff3b_3.conda
@@ -4140,7 +4140,7 @@ packages:
   license: Apache-2.0
   license_family: APACHE
   purls:
-  - pkg:pypi/importlib-metadata?source=hash-mapping
+  - pkg:pypi/importlib-metadata?source=compressed-mapping
   size: 29141
   timestamp: 1737420302391
 - conda: https://conda.anaconda.org/conda-forge/noarch/importlib-resources-6.5.2-pyhd8ed1ab_0.conda
@@ -5996,16 +5996,16 @@ packages:
   purls: []
   size: 53733
   timestamp: 1740240690977
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgfortran-5.0.0-14_2_0_h6c33f7e_103.conda
-  sha256: 8628746a8ecd311f1c0d14bb4f527c18686251538f7164982ccbe3b772de58b5
-  md5: 044a210bc1d5b8367857755665157413
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgfortran-14.2.0-heb5dd2a_105.conda
+  sha256: 6ca48762c330d1cdbdaa450f197ccc16ffb7181af50d112b4ccf390223d916a1
+  md5: ad35937216e65cfeecd828979ee5e9e6
   depends:
-  - libgfortran5 14.2.0 h6c33f7e_103
+  - libgfortran5 14.2.0 h2c44a93_105
   license: GPL-3.0-only WITH GCC-exception-3.1
   license_family: GPL
   purls: []
-  size: 156291
-  timestamp: 1743863532821
+  size: 155474
+  timestamp: 1743913530958
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libgfortran5-14.2.0-hf1ad2bd_2.conda
   sha256: c17b7cf3073a1f4e1f34d50872934fa326346e104d3c445abc1e62481ad6085c
   md5: 556a4fdfac7287d349b8f09aba899693
@@ -6019,18 +6019,18 @@ packages:
   purls: []
   size: 1461978
   timestamp: 1740240671964
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgfortran5-14.2.0-h6c33f7e_103.conda
-  sha256: 8599453990bd3a449013f5fa3d72302f1c68f0680622d419c3f751ff49f01f17
-  md5: 69806c1e957069f1d515830dcc9f6cbb
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgfortran5-14.2.0-h2c44a93_105.conda
+  sha256: de09987e1080f71e2285deec45ccb949c2620a672b375029534fbb878e471b22
+  md5: 06f35a3b1479ec55036e1c9872f97f2c
   depends:
   - llvm-openmp >=8.0.0
   constrains:
-  - libgfortran 5.0.0 14_2_0_*_103
+  - libgfortran 14.2.0
   license: GPL-3.0-only WITH GCC-exception-3.1
   license_family: GPL
   purls: []
-  size: 806566
-  timestamp: 1743863491726
+  size: 806283
+  timestamp: 1743913488925
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libgl-1.7.0-ha4b6fd6_2.conda
   sha256: dc2752241fa3d9e40ce552c1942d0a4b5eeb93740c9723873f6fcf8d39ef8d2d
   md5: 928b8be80851f5d8ffb016f9c81dae7a
@@ -6622,7 +6622,7 @@ packages:
   md5: 0cd1148c68f09027ee0b0f0179f77c30
   depends:
   - __osx >=11.0
-  - libgfortran 5.*
+  - libgfortran >=5
   - libgfortran5 >=13.2.0
   - llvm-openmp >=18.1.8
   constrains:
@@ -7413,7 +7413,7 @@ packages:
   md5: e71f31f8cfb0a91439f2086fc8aa0461
   depends:
   - libgcc-ng >=12
-  - libxml2 >=2.12.1,<3.0.0a0
+  - libxml2 >=2.12.1,<2.14.0a0
   license: MIT
   license_family: MIT
   purls: []
@@ -9816,7 +9816,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/pyparsing?source=hash-mapping
+  - pkg:pypi/pyparsing?source=compressed-mapping
   size: 95988
   timestamp: 1743089832359
 - conda: https://conda.anaconda.org/conda-forge/linux-64/pyproj-3.7.1-py313hcd509b5_1.conda
@@ -10939,7 +10939,7 @@ packages:
   - libblas >=3.9.0,<4.0a0
   - libcblas >=3.9.0,<4.0a0
   - libcxx >=18
-  - libgfortran 5.*
+  - libgfortran >=5
   - libgfortran5 >=13.2.0
   - liblapack >=3.9.0,<4.0a0
   - numpy <2.5
