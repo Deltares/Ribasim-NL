@@ -19,10 +19,11 @@ Getest (u kunt simuleren): Nee
 """
 
 download_latest_model = True
+
 upload_model = False
 
 RESET_TABLES = []
-INCLUDE_MODELS = ["Rijkswaterstaat", "AmstelGooienVecht"]
+INCLUDE_MODELS = ["Rijkswaterstaat", "AmstelGooienVecht", "Rijnland", "HollandseDelta", "Delfland"]
 
 model_specs = [
     {
@@ -222,6 +223,7 @@ for idx, model_spec in enumerate(model_specs):
     else:
         # concat and do not mess with original_index as it has been preserved
         lhm_model = concat([lhm_model, model], keep_original_index=True)
+        lhm_model._validate_model()
         readme += f"""
 **{model_spec["authority"]}**: {model_spec["model"]} ({model_version.version})"""
 
