@@ -3,7 +3,7 @@ name = "Ribasim-NL"
 version = "0.1.0"
 description = "Ribasim water resources modeling in the Netherlands"
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64"]
+platforms = ["win-64", "linux-64", "osx-arm64"]
 readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
@@ -53,6 +53,7 @@ pip = "*"
 pre-commit = "*"
 pyarrow = "*"
 pydantic = ">=2"
+pydantic-settings = "*"
 pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
