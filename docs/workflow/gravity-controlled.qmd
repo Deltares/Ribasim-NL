@@ -1,5 +1,5 @@
 ---
-title: "gravity controlled"
+title: "Gravity controlled"
 ---
 
 Workflow for deriving and parametizing "gravity controlled systems". They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO.
