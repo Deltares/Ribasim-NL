@@ -72,6 +72,7 @@ tqdm = "*"
 types-requests = "*"
 xlwings = "*"
 xugrid = "*"
+imod = ">=1.0.0rc3,<2"
 
 [pypi-dependencies]
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
