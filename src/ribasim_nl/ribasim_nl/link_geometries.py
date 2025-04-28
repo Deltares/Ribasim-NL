@@ -1,4 +1,5 @@
 # %%
+
 from networkx import NetworkXNoPath
 from shapely.geometry import LineString
 
@@ -18,7 +19,9 @@ class LinkGeometryError(Exception):
         return f"{self.message} between node_id {self.from_node_id} and {self.to_node_id}"
 
 
-def link_geometry_from_hydroobject(model: Model, network: Network, from_node_id, to_node_id) -> LineString:
+def link_geometry_from_hydroobject(
+    model: Model, network: Network, from_node_id, to_node_id, max_straight_line_ratio: float = 5
+) -> LineString:
     """Get an edge-geometry between two model nodes
 
     Args:
@@ -26,6 +29,7 @@ def link_geometry_from_hydroobject(model: Model, network: Network, from_node_id,
         network (Network): ribasim_nl Network
         from_node_id (int): start node_id
         to_node_id (int): to node_id
+        max_straight_line_ratio (float): max straight_line ratio
 
     Returns
     -------
@@ -35,6 +39,7 @@ def link_geometry_from_hydroobject(model: Model, network: Network, from_node_id,
 
     from_point = drop_z(model.node_table().df.at[from_node_id, "geometry"])
     to_point = drop_z(model.node_table().df.at[to_node_id, "geometry"])
+    straight_line_distance = from_point.distance(to_point)
     # get or add node_from
     distance = network.nodes.distance(from_point)
     if distance.min() < 0.1:
@@ -61,11 +66,16 @@ def link_geometry_from_hydroobject(model: Model, network: Network, from_node_id,
     else:
         if geometry.length == 0:
             raise LinkGeometryError(f"LineString.length = {geometry.length}", from_node_id, to_node_id)
-
+        if (geometry.length / straight_line_distance) > max_straight_line_ratio:
+            raise LinkGeometryError(
+                f"LineString.length ({geometry.length}) / straight_line_distance {straight_line_distance} > {max_straight_line_ratio}",
+                from_node_id,
+                to_node_id,
+            )
     return geometry
 
 
-def fix_link_geometries(model, network):
+def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
     # fix edge geometries
     for row in model.edge.df.itertuples():
         try:
@@ -74,6 +84,7 @@ def fix_link_geometries(model, network):
                 network=network,
                 from_node_id=row.from_node_id,
                 to_node_id=row.to_node_id,
+                max_straight_line_ratio=max_straight_line_ratio,
             )
             model.edge.df.loc[row.Index, "geometry"] = geometry
         except LinkGeometryError as e:

@@ -248,7 +248,7 @@ class Network:
         name=None,
     ):
         """Add a link (edge) to the network"""
-        if self.tolerance is not None:
+        if not ((point_from is None) | (point_to is None)):
             geometry = LineString([(point_from.x, point_from.y)] + geometry.coords[1:-1] + [(point_to.x, point_to.y)])
 
         # add edge to graph
@@ -481,14 +481,13 @@ class Network:
             node_id = max(self.graph.nodes) + 1
             node_geometry = edge_geometry.interpolate(edge_geometry.project(point))
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
-
             # add edges
             self.graph.remove_edge(node_from, node_to)
             split_result = split_line(edge_geometry, node_geometry)
             if isinstance(split_result, LineString):
                 logger.warning(f"Splitting edge: {edge_id} resulted in a single LineString)")
                 return None
-            us_geometry, ds_geometry = split_line(edge_geometry, node_geometry).geoms
+            us_geometry, ds_geometry = split_result.geoms
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
@@ -611,7 +610,9 @@ class Network:
 
     def get_line(self, node_from, node_to, directed=True, weight="length"):
         path = self.get_path(node_from, node_to, directed, weight)
-        return self.path_to_line(path)
+
+        line = self.path_to_line(path)
+        return line
 
     def get_nodes(self) -> GeoDataFrame:
         """Get nodes from lines_gdf
