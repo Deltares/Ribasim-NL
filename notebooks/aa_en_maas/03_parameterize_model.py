@@ -9,7 +9,7 @@ cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
-run_model = True
+run_model = False
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -29,12 +29,17 @@ cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 model = Model.read(ribasim_toml)
 
 start_time = time.time()
+
+
 # %%
 # parameterize
+
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
-# %%
+# Fix afvoer
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "active"] = False
+
 # Write model
 
 add_check_basin_level(model=model)

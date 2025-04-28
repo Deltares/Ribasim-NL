@@ -255,14 +255,6 @@ min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # %%
-# DAMO-profielen bepalen voor pumps wanneer min_upstream_level nodata
-node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
-profile_ids = model.edge.df.set_index("to_node_id").loc[node_ids]["meta_profielid_waterbeheerder"]
-levels = ((profiles_df.loc[profile_ids]["bottom_level"] + profiles_df.loc[profile_ids]["invert_level"]) / 2).to_numpy()
-min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
-min_upstream_level.index.name = "node_id"
-static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
-
 ## PUMP.flow_rate
 gkw_gemaal_df = get_data_from_gkw(authority=authority, layers=["gemaal"])
 flow_rate = gkw_gemaal_df.set_index("code")["maximalecapaciteit"] / 60  # m3/minuut to m3/s
