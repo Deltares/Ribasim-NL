@@ -87,8 +87,14 @@ class DAMOProfiles(BaseModel):
             else:
                 df.loc[:, "elevation"] = df[elevation_col]
 
-            geometry = self.profile_line_df.set_index(self.profile_line_id_col).at[profiel_id, "geometry"]
-
+            try:
+                geometry = self.profile_line_df.set_index(self.profile_line_id_col).at[profiel_id, "geometry"]
+                if geometry is None:
+                    print(f"⚠️ Geometry is None for profiel_id: {profiel_id}")
+                    continue
+            except KeyError:
+                print(f"⚠️ profiel_id not found in profile_line_df: {profiel_id}")
+                continue
             # compute stuff from points
             bottom_level = df["elevation"].min()
             invert_level = df["elevation"].max()
