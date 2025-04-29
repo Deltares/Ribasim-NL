@@ -214,6 +214,8 @@ def set_dynamic_forcing(ribasim_model: ribasim.Model, time: typing.Sequence[date
     :type ribasim_model: ribasim.Model
     :type time: sequence[datetime]
     :type forcing: dict
+
+    :raise ValueError: if values in `forcing`-dictionary are neither float/int, nor of equal size as `time`
     """
     # validate forcing conditions
     for k, v in forcing.items():
@@ -245,8 +247,8 @@ def set_hypothetical_dynamic_forcing(
     are equally divided over the total model duration.
 
     :param ribasim_model: ribasim model
-    :param start_time: model's start time
-    :param end_time: model's end time
+    :param start_time: start time of simulation
+    :param end_time: end time of simulation
     :param value: value for precipitation and evaporation in mm per day, defaults to 10
 
     :type ribasim_model: ribasim.Model
@@ -255,7 +257,7 @@ def set_hypothetical_dynamic_forcing(
     :type value: float, optional
     """
     # define time-variables
-    halftime = start_time + (1 * (end_time - start_time)) // 3
+    halftime = start_time + (end_time - start_time) // 3
     time = start_time, halftime, end_time
 
     # define forcing time-series
@@ -271,6 +273,65 @@ def set_hypothetical_dynamic_forcing(
         "infiltration": 0,
     }
     set_dynamic_forcing(ribasim_model, time, forcing)
+
+
+def set_dynamic_level_boundaries(
+    ribasim_model: ribasim.Model, time: typing.Sequence[datetime.datetime], levels: typing.Sequence[float]
+) -> None:
+    """Set dynamic level boundary water levels.
+
+    :param ribasim_model: ribasim model
+    :param time: time-series/array
+    :param levels: water levels
+
+    :type ribasim_model: ribasim.Model
+    :type time: sequence[datetime]
+    :type levels: sequence[float]
+
+    :raise AssertionError: if `time` and `levels` are not of the same size
+    """
+    # validate conditions
+    assert len(time) == len(levels), f"Size of `time` ({len(time)}) and `levels` ({len(levels)}) must be equal."
+
+    # set level time-series
+    lb_ids = ribasim_model.level_boundary.node.df[["meta_node_id"]].to_numpy(dtype=int)
+    lb_time = pd.DataFrame(
+        {
+            "node_id": np.repeat(lb_ids, len(time)),
+            "time": np.tile(time, len(lb_ids)),
+            "level": np.tile(levels, len(lb_ids)),
+        }
+    )
+
+    # update model
+    ribasim_model.level_boundary.time.df = lb_time.reset_index(drop=True)
+
+
+def set_hypothetical_dynamic_level_boundaries(
+    ribasim_model: ribasim.Model, start_time: datetime.datetime, end_time: datetime.datetime, low: float, high: float
+) -> None:
+    """Set basic hypothetical dynamic level boundaries.
+
+    :param ribasim_model: ribasim model
+    :param start_time: start time of simulation
+    :param end_time: end time of simulation
+    :param low: low water level ("waterafvoer")
+    :param high: high water level ("wateraanvoer")
+
+    :type ribasim_model: ribasim.Model
+    :type start_time: datetime.datetime
+    :type end_time: datetime.datetime
+    :type low: float
+    :type high: float
+    """
+    # define time-series
+    halftime = start_time + (end_time - start_time) // 3
+    halftime_1 = halftime + datetime.timedelta(days=1)
+    time = start_time, halftime, halftime_1, end_time
+    level = low, low, high, high
+
+    # set dynamic level boundaries
+    set_dynamic_level_boundaries(ribasim_model, time, level)
 
 
 def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
