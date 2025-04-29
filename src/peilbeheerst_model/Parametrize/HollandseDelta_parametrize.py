@@ -1,4 +1,3 @@
-# %%
 """Parameterisation of water board: Hollandse Delta."""
 
 import datetime
@@ -6,6 +5,7 @@ import os
 import warnings
 
 from ribasim import Node
+from ribasim.config import Solver
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
 
@@ -21,6 +21,9 @@ MIXED_CONDITIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
+
+# enlarge (relative) tolerance to smoothen any possible instabilities
+constructor_solver = Solver(abstol=1e-9, reltol=1e-9)
 
 # model settings
 waterschap = "HollandseDelta"
@@ -78,12 +81,18 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2025, 1, 1)
+endtime = datetime.datetime(2024, 2, 1)
+# endtime = datetime.datetime(2025, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = 1.24 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary level
+if MIXED_CONDITIONS:
+    default_level = 0.4
+elif AANVOER_CONDITIONS:
+    default_level = 1.24
+else:
+    default_level = -0.42
 
 # process the feedback form
 name = "HKV"
@@ -355,14 +364,16 @@ add_storage_basins = AddStorageBasins(
 add_storage_basins.create_bergende_basins()
 
 # set static forcing
-forcing_dict = {
-    "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
-    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
-    "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
-    "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
-}
-
-ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
+if MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 2)
+else:
+    forcing_dict = {
+        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
+        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
+        "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
+        "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
+    }
+    ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
 # set pump capacity for each pump
 ribasim_model.pump.static.df["flow_rate"] = 0.16667  # 10 kuub per minuut
@@ -382,8 +393,8 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
-# ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
+ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -396,6 +407,8 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # last formating of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
+if MIXED_CONDITIONS:
+    ribasim_model.basin.static.df = None
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
@@ -413,8 +426,8 @@ ribasim_model = assign.assign_authorities()
 
 # set numerical settings
 ribasim_model.use_validation = True
-ribasim_model.starttime = datetime.datetime(2024, 1, 1)
-ribasim_model.endtime = datetime.datetime(2025, 1, 1)
+ribasim_model.starttime = starttime
+ribasim_model.endtime = endtime
 ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
