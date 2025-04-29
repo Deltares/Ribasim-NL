@@ -29,7 +29,7 @@ cloud.synchronize(filepaths=[peilgebieden_gpkg, top10NL_gpkg])
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
-network = Network(lines_gdf=gpd.read_file(hydroobject_gpkg, layer="hydroobject"))
+network = Network(lines_gdf=gpd.read_file(hydroobject_gpkg, layer="hydroobject"), tolerance=0.2)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 # %%
@@ -43,7 +43,7 @@ if link_geometries_gpkg.exists():
             "meta_profielid_waterbeheerder"
         ]
 else:
-    fix_link_geometries(model, network)
+    fix_link_geometries(model, network, max_straight_line_ratio=5)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
 
