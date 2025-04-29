@@ -40,7 +40,7 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
 # %%
-network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"))
+network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"), tolerance=0.2)
 
 # %%
 profile_line_df = gpd.read_file(profiellijn_shp).to_crs(28992)
@@ -73,8 +73,8 @@ if link_geometries_gpkg.exists():
     ]
     profiles_df = gpd.read_file(profiles_gpkg)
 else:
-    fix_link_geometries(model, network)
     add_link_profile_ids(model, profiles=damo_profiles, id_col="GLOBALID")
+    fix_link_geometries(model, network, max_straight_line_ratio=5)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
 profiles_df.set_index("profiel_id", inplace=True)

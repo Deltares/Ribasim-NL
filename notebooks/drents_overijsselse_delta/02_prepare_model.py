@@ -35,7 +35,7 @@ ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_tom
 lines_gdf = pd.concat(
     [gpd.read_file(hydamo_wm_gpkg, layer="hydroobject"), gpd.read_file(meppelerdiep_gpkg)], ignore_index=True
 )
-network = Network(lines_gdf=lines_gdf)
+network = Network(lines_gdf=lines_gdf, tolerance=0.2)
 damo_profiles = DAMOProfiles(
     model=model,
     network=network,
@@ -64,8 +64,8 @@ if link_geometries_gpkg.exists():
         "meta_profielid_waterbeheerder"
     ]
 else:
-    fix_link_geometries(model, network)
     add_link_profile_ids(model, profiles=damo_profiles)
+    fix_link_geometries(model, network, max_straight_line_ratio=5)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
 # %%
