@@ -106,6 +106,14 @@ with warnings.catch_warnings():
 ribasim_param.validate_basin_area(ribasim_model)
 
 # model specific tweaks
+# the vrij-afwaterende basins are a multipolygon, in a single basin (189). Only retain the largest value
+exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 189].explode(
+    index_parts=False
+)
+exploded_basins["area"] = exploded_basins.area
+largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 189, "geometry"] = largest_polygon["geometry"]
+
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
@@ -235,7 +243,9 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     RWS_buffer=2000,  # mainly neighbouring RWS, so increase buffer. Not too much, due to nodes within Belgium.
-    custom_nodes=None,
+    custom_nodes={
+        578: "Rijkswaterstaat",  # basically open sea, does not matter that much
+    },
 )
 ribasim_model = assign.assign_authorities()
 
