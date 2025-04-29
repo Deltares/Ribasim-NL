@@ -106,7 +106,7 @@ class DAMOProfiles(BaseModel):
 
             if df.within_water.any():
                 width_at_water_level = df.at[df[df.within_water].index.min(), "geometry"].distance(
-                    df.at[df[df.within_water].index.max(), "geometry"]hmn m, 
+                    df.at[df[df.within_water].index.max(), "geometry"]
                 )
             else:
                 width_at_water_level = geometry.length / 3
