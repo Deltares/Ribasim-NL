@@ -23,6 +23,8 @@ MIXED_CONDITIONS: bool = False
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
+# TODO: Assigning authorities is done to the `level_boundary.static`-table, while the `level_boundary.time`-table is
+#  required for mixed forcing conditions, which cannot be used simultaneously.
 if MIXED_CONDITIONS:
     warnings.warn("Authorities not assigned because of applying mixed forcing conditions.")
 
