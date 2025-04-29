@@ -65,10 +65,14 @@ node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "I
 # %%
 # Set inlaten to inactive
 model.update_node(node_id=1401, node_type="Outlet")
+
+model.reverse_edge(edge_id=894)
+model.reverse_edge(edge_id=1983)
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 739, "active"] = True
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 739, "active"] = True
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 749, "active"] = True
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 841, "active"] = True
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1724, "active"] = True
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1257, "active"] = False
 model.pump.static.df.loc[model.pump.static.df.node_id == 2594, "active"] = False
 
@@ -76,9 +80,13 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "active"] = Fa
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "meta_categorie"] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1143, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1143, "meta_categorie"] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "meta_categorie"] = "Inlaat"
 model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1
-
-
+model.pump.static.df.loc[model.pump.static.df.node_id == 385, "flow_rate"] = 1
+model.merge_basins(basin_id=1763, to_basin_id=1764, are_connected=False)
+model.merge_basins(basin_id=2474, to_basin_id=2185, are_connected=False)
 model.merge_basins(basin_id=2011, to_basin_id=2008, are_connected=True)
 model.merge_basins(basin_id=56, to_basin_id=59, are_connected=True)
 model.merge_basins(basin_id=1681, to_basin_id=1717, are_connected=True)

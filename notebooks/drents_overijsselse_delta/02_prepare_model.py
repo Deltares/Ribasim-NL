@@ -282,6 +282,8 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 # %%
 
 model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.6
+
+model.basin.area.df.loc[model.basin.area.df.node_id == 1868, "meta_streefpeil"] = 3.5
 model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] = model.basin.area.df.set_index(
     "node_id"
 ).at[1769, "meta_streefpeil"]
