@@ -44,7 +44,9 @@ network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"), tol
 
 # %%
 profile_line_df = gpd.read_file(profiellijn_shp).to_crs(28992)
+profile_line_df = profile_line_df[profile_line_df.geometry.notnull() & ~profile_line_df.geometry.is_empty]
 profile_point_df = gpd.read_file(profielpunt_shp).to_crs(28992)
+profile_point_df = profile_point_df[profile_point_df.geometry.notnull() & ~profile_point_df.geometry.is_empty]
 profile_point_df.rename(columns={"METINGPROF": "profiellijnid", "CODEVOLGNU": "codevolgnummer"}, inplace=True)
 
 damo_profiles = DAMOProfiles(

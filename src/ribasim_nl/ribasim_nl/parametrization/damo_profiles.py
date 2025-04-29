@@ -87,14 +87,8 @@ class DAMOProfiles(BaseModel):
             else:
                 df.loc[:, "elevation"] = df[elevation_col]
 
-            try:
-                geometry = self.profile_line_df.set_index(self.profile_line_id_col).at[profiel_id, "geometry"]
-                if geometry is None:
-                    print(f"⚠️ Geometry is None for profiel_id: {profiel_id}")
-                    continue
-            except KeyError:
-                print(f"⚠️ profiel_id not found in profile_line_df: {profiel_id}")
-                continue
+            geometry = self.profile_line_df.set_index(self.profile_line_id_col).at[profiel_id, "geometry"]
+
             # compute stuff from points
             bottom_level = df["elevation"].min()
             invert_level = df["elevation"].max()
@@ -112,7 +106,7 @@ class DAMOProfiles(BaseModel):
 
             if df.within_water.any():
                 width_at_water_level = df.at[df[df.within_water].index.min(), "geometry"].distance(
-                    df.at[df[df.within_water].index.max(), "geometry"]
+                    df.at[df[df.within_water].index.max(), "geometry"]hmn m, 
                 )
             else:
                 width_at_water_level = geometry.length / 3
