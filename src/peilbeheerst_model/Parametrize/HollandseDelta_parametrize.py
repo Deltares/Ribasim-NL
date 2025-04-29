@@ -23,7 +23,7 @@ if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
 # enlarge (relative) tolerance to smoothen any possible instabilities
-constructor_solver = Solver(abstol=1e-9, reltol=1e-9)
+solver = Solver(abstol=1e-9, reltol=1e-9)
 
 # model settings
 waterschap = "HollandseDelta"
@@ -111,7 +111,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml, solver=solver)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
