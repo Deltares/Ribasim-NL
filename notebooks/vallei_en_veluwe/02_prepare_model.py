@@ -25,6 +25,7 @@ ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_tom
 peilgebieden_path = cloud.joinpath(cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20250428/Peilvakken.shp"))
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "2_voorbewerking", "hydamo.gpkg")
+network_gpkg = cloud.joinpath(authority, "verwerkt", "network.gpkg")
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
@@ -36,9 +37,18 @@ cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
 bbox = None
 # init classes
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
-# %% Links
+# %%
 
-network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject", bbox=bbox), tolerance=0.2)
+# prepare DAMO profiles and network
+lines_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", bbox=bbox)
+lines_gdf = lines_gdf[lines_gdf.categorieoppwaterlichaam.astype(int) < 3]
+
+if not network_gpkg.exists():
+    network = Network(lines_gdf=lines_gdf, tolerance=0.2)
+    network.to_file(network_gpkg)
+else:
+    network = Network.from_network_gpkg(network_gpkg)
+
 damo_profiles = DAMOProfiles(
     model=model,
     network=network,
@@ -50,7 +60,9 @@ damo_profiles = DAMOProfiles(
 if not profiles_gpkg.exists():
     damo_profiles.process_profiles().to_file(profiles_gpkg)
 
-# fix link geometries
+# %% fix link geometries
+
+# fix geometries
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
     model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
@@ -60,8 +72,10 @@ if link_geometries_gpkg.exists():
         ]
     profiles_df = gpd.read_file(profiles_gpkg)
 else:
-    fix_link_geometries(model, network)
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
     add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
+    fix_link_geometries(model, network, max_straight_line_ratio=5)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 
