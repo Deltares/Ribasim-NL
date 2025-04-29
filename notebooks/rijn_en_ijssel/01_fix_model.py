@@ -146,6 +146,10 @@ for row in network_validator.edge_incorrect_type_connectivity(
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
 
+# %% extra basin merges
+model.merge_basins(basin_id=944, to_basin_id=1028)
+model.merge_basins(basin_id=788, to_basin_id=1150)
+
 # %% Reset static tables
 
 # Reset static tables

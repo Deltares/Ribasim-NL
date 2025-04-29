@@ -34,8 +34,7 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %% fixes
-model.merge_basins(basin_id=944, to_basin_id=1028)
-model.merge_basins(basin_id=788, to_basin_id=1150)
+
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 471, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 472, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 119, "min_upstream_level"] = 11
