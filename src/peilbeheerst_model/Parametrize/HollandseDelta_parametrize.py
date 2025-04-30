@@ -17,7 +17,7 @@ from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcess
 from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
-MIXED_CONDITIONS: bool = False
+MIXED_CONDITIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -34,9 +34,10 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-FeedbackFormulier_path = cloud.joinpath(
-    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-)
+# FeedbackFormulier_path = cloud.joinpath(
+#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+# )
+FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_HollandseDelta.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -48,7 +49,7 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraa
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        FeedbackFormulier_path,
+        # FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -81,8 +82,8 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2024, 2, 1)
-# endtime = datetime.datetime(2025, 1, 1)
+# endtime = datetime.datetime(2024, 2, 1)
+endtime = datetime.datetime(2025, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -113,19 +114,188 @@ with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml, solver=solver)
 
-# check basin area
-ribasim_param.validate_basin_area(ribasim_model)
-
 # model specific tweaks
 # merge small basins into larger basins for numerical stability
-ribasim_model.merge_basins(node_id=149, to_node_id=21)  # too small basin
-ribasim_model.merge_basins(node_id=559, to_node_id=120)  # small basin + deviations
-ribasim_model.merge_basins(node_id=7, to_node_id=54)  # small basin causes numerical instabilities
-ribasim_model.merge_basins(node_id=720, to_node_id=54)  # small basin causes numerical instabilities
+ribasim_model.merge_basins(node_id=149, to_node_id=21)
+ribasim_model.merge_basins(node_id=559, to_node_id=120)
+ribasim_model.merge_basins(node_id=7, to_node_id=54)
+ribasim_model.merge_basins(node_id=720, to_node_id=54)
+# basins too small: aggregate basins
 ribasim_model.merge_basins(node_id=81, to_node_id=357)
+ribasim_model.merge_basins(node_id=95, to_node_id=99)
+ribasim_model.merge_basins(node_id=715, to_node_id=721)
+ribasim_model.merge_basins(node_id=778, to_node_id=393)
+ribasim_model.merge_basins(node_id=675, to_node_id=170)
+ribasim_model.merge_basins(node_id=636, to_node_id=232)
+ribasim_model.merge_basins(node_id=610, to_node_id=15)
+ribasim_model.merge_basins(node_id=286, to_node_id=203)
+ribasim_model.merge_basins(node_id=417, to_node_id=418)
+ribasim_model.merge_basins(node_id=65, to_node_id=326)
+ribasim_model.merge_basins(node_id=714, to_node_id=281)
+ribasim_model.merge_basins(node_id=580, to_node_id=165)
+ribasim_model.merge_basins(node_id=702, to_node_id=668)
+ribasim_model.merge_basins(node_id=755, to_node_id=234)
+ribasim_model.merge_basins(node_id=230, to_node_id=488)
+ribasim_model.merge_basins(node_id=6, to_node_id=299, are_connected=False)
+ribasim_model.merge_basins(node_id=431, to_node_id=299)
+ribasim_model.merge_basins(node_id=782, to_node_id=429)
+ribasim_model.merge_basins(node_id=257, to_node_id=258)
+ribasim_model.merge_basins(node_id=602, to_node_id=393)
+ribasim_model.merge_basins(node_id=423, to_node_id=654)
+ribasim_model.merge_basins(node_id=530, to_node_id=393)
+ribasim_model.merge_basins(node_id=224, to_node_id=393)
+ribasim_model.merge_basins(node_id=263, to_node_id=310)
+ribasim_model.merge_basins(node_id=497, to_node_id=393)
+ribasim_model.merge_basins(node_id=565, to_node_id=12)
+ribasim_model.merge_basins(node_id=679, to_node_id=472)
+ribasim_model.merge_basins(node_id=721, to_node_id=271)
+ribasim_model.merge_basins(node_id=191, to_node_id=21)
+ribasim_model.merge_basins(node_id=706, to_node_id=219)
+ribasim_model.merge_basins(node_id=117, to_node_id=576)
+ribasim_model.merge_basins(node_id=169, to_node_id=189)
+ribasim_model.merge_basins(node_id=302, to_node_id=303)
+ribasim_model.merge_basins(node_id=303, to_node_id=189)
+ribasim_model.merge_basins(node_id=324, to_node_id=655)
+ribasim_model.merge_basins(node_id=98, to_node_id=99)
+ribasim_model.merge_basins(node_id=538, to_node_id=294)
+ribasim_model.merge_basins(node_id=558, to_node_id=32)
+ribasim_model.merge_basins(node_id=704, to_node_id=453)
+ribasim_model.merge_basins(node_id=300, to_node_id=116)
+ribasim_model.merge_basins(node_id=624, to_node_id=37)
+ribasim_model.merge_basins(node_id=250, to_node_id=248)
+ribasim_model.merge_basins(node_id=92, to_node_id=49)
+ribasim_model.merge_basins(node_id=687, to_node_id=304)
+ribasim_model.merge_basins(node_id=468, to_node_id=556)
+ribasim_model.merge_basins(node_id=488, to_node_id=709)
+ribasim_model.merge_basins(node_id=709, to_node_id=251)
+ribasim_model.merge_basins(node_id=249, to_node_id=251)
+ribasim_model.merge_basins(node_id=449, to_node_id=453)
+ribasim_model.merge_basins(node_id=387, to_node_id=75)
+ribasim_model.merge_basins(node_id=499, to_node_id=402)
+ribasim_model.merge_basins(node_id=180, to_node_id=15)
+ribasim_model.merge_basins(node_id=641, to_node_id=434)
+ribasim_model.merge_basins(node_id=432, to_node_id=320)
+ribasim_model.merge_basins(node_id=36, to_node_id=614)
+ribasim_model.merge_basins(node_id=480, to_node_id=55)
+ribasim_model.merge_basins(node_id=410, to_node_id=453)
+ribasim_model.merge_basins(node_id=726, to_node_id=591)
+ribasim_model.merge_basins(node_id=374, to_node_id=371)
+ribasim_model.merge_basins(node_id=514, to_node_id=184)
+ribasim_model.merge_basins(node_id=690, to_node_id=556)
+ribasim_model.merge_basins(node_id=354, to_node_id=384)
+ribasim_model.merge_basins(node_id=125, to_node_id=124)
+ribasim_model.merge_basins(node_id=623, to_node_id=753)
+ribasim_model.merge_basins(node_id=462, to_node_id=31)
+ribasim_model.merge_basins(node_id=555, to_node_id=232)
+ribasim_model.merge_basins(node_id=341, to_node_id=26)
+ribasim_model.merge_basins(node_id=618, to_node_id=701)
+ribasim_model.merge_basins(node_id=705, to_node_id=682)
+ribasim_model.merge_basins(node_id=643, to_node_id=262)
+ribasim_model.merge_basins(node_id=151, to_node_id=47)
+ribasim_model.merge_basins(node_id=57, to_node_id=353)
+ribasim_model.merge_basins(node_id=121, to_node_id=85)
+ribasim_model.merge_basins(node_id=510, to_node_id=512)
+ribasim_model.merge_basins(node_id=311, to_node_id=383)
+ribasim_model.merge_basins(node_id=349, to_node_id=26)
+ribasim_model.merge_basins(node_id=40, to_node_id=175)
+ribasim_model.merge_basins(node_id=197, to_node_id=242)
+ribasim_model.merge_basins(node_id=685, to_node_id=615)
+ribasim_model.merge_basins(node_id=668, to_node_id=21)
+ribasim_model.merge_basins(node_id=261, to_node_id=305)
+ribasim_model.merge_basins(node_id=406, to_node_id=405)
+ribasim_model.merge_basins(node_id=733, to_node_id=632)
+ribasim_model.merge_basins(node_id=100, to_node_id=512)
+ribasim_model.merge_basins(node_id=737, to_node_id=632)
+ribasim_model.merge_basins(node_id=146, to_node_id=139)
+ribasim_model.merge_basins(node_id=99, to_node_id=728)
+ribasim_model.merge_basins(node_id=144, to_node_id=352)
+ribasim_model.merge_basins(node_id=442, to_node_id=229)
+ribasim_model.merge_basins(node_id=528, to_node_id=268)
+ribasim_model.merge_basins(node_id=64, to_node_id=47)
+ribasim_model.merge_basins(node_id=693, to_node_id=60)
+ribasim_model.merge_basins(node_id=576, to_node_id=606)
+ribasim_model.merge_basins(node_id=603, to_node_id=13)
+ribasim_model.merge_basins(node_id=211, to_node_id=320)
+ribasim_model.merge_basins(node_id=319, to_node_id=320)
+ribasim_model.merge_basins(node_id=369, to_node_id=732)
+ribasim_model.merge_basins(node_id=757, to_node_id=476)
+ribasim_model.merge_basins(node_id=147, to_node_id=518)
+ribasim_model.merge_basins(node_id=186, to_node_id=60)
+ribasim_model.merge_basins(node_id=70, to_node_id=674)
+ribasim_model.merge_basins(node_id=531, to_node_id=60)
+ribasim_model.merge_basins(node_id=708, to_node_id=31)
+ribasim_model.merge_basins(node_id=762, to_node_id=344)
+ribasim_model.merge_basins(node_id=657, to_node_id=129)
+ribasim_model.merge_basins(node_id=697, to_node_id=597)
+ribasim_model.merge_basins(node_id=585, to_node_id=198)
+ribasim_model.merge_basins(node_id=742, to_node_id=198)
+ribasim_model.merge_basins(node_id=48, to_node_id=242)
+ribasim_model.merge_basins(node_id=492, to_node_id=233)
+ribasim_model.merge_basins(node_id=87, to_node_id=340)
+ribasim_model.merge_basins(node_id=612, to_node_id=162)
+ribasim_model.merge_basins(node_id=22, to_node_id=752)
+ribasim_model.merge_basins(node_id=274, to_node_id=752)
+ribasim_model.merge_basins(node_id=187, to_node_id=420)
+ribasim_model.merge_basins(node_id=361, to_node_id=113)
+ribasim_model.merge_basins(node_id=703, to_node_id=357)
+ribasim_model.merge_basins(node_id=451, to_node_id=75)
+ribasim_model.merge_basins(node_id=200, to_node_id=75)
+ribasim_model.merge_basins(node_id=486, to_node_id=522)
+ribasim_model.merge_basins(node_id=545, to_node_id=393)
+ribasim_model.merge_basins(node_id=393, to_node_id=31)
+ribasim_model.merge_basins(node_id=663, to_node_id=570)
+ribasim_model.merge_basins(node_id=347, to_node_id=660)
+ribasim_model.merge_basins(node_id=628, to_node_id=415)
+ribasim_model.merge_basins(node_id=583, to_node_id=518)
+ribasim_model.merge_basins(node_id=779, to_node_id=126)
+ribasim_model.merge_basins(node_id=372, to_node_id=422)
+ribasim_model.merge_basins(node_id=784, to_node_id=701)
+ribasim_model.merge_basins(node_id=457, to_node_id=365)
+ribasim_model.merge_basins(node_id=215, to_node_id=297)
+ribasim_model.merge_basins(node_id=297, to_node_id=312)
+ribasim_model.merge_basins(node_id=212, to_node_id=133)
+ribasim_model.merge_basins(node_id=358, to_node_id=175)
+ribasim_model.merge_basins(node_id=412, to_node_id=266)
+ribasim_model.merge_basins(node_id=350, to_node_id=476)
+ribasim_model.merge_basins(node_id=707, to_node_id=384)
+ribasim_model.merge_basins(node_id=342, to_node_id=155)
+ribasim_model.merge_basins(node_id=798, to_node_id=9)
+ribasim_model.merge_basins(node_id=592, to_node_id=254)
+ribasim_model.merge_basins(node_id=67, to_node_id=9)
+ribasim_model.merge_basins(node_id=193, to_node_id=401, are_connected=False)
+ribasim_model.merge_basins(node_id=699, to_node_id=75)
+ribasim_model.merge_basins(node_id=776, to_node_id=21)
+ribasim_model.merge_basins(node_id=614, to_node_id=31)
+ribasim_model.merge_basins(node_id=691, to_node_id=47)
+ribasim_model.merge_basins(node_id=294, to_node_id=388)
+ribasim_model.merge_basins(node_id=318, to_node_id=647)
+ribasim_model.merge_basins(node_id=574, to_node_id=282)
+ribasim_model.merge_basins(node_id=473, to_node_id=453)
+ribasim_model.merge_basins(node_id=648, to_node_id=207)
+ribasim_model.merge_basins(node_id=461, to_node_id=340)
+ribasim_model.merge_basins(node_id=383, to_node_id=266)
+ribasim_model.merge_basins(node_id=751, to_node_id=174)
+ribasim_model.merge_basins(node_id=591, to_node_id=150)
+ribasim_model.merge_basins(node_id=216, to_node_id=320)
+ribasim_model.merge_basins(node_id=541, to_node_id=37)
+ribasim_model.merge_basins(node_id=596, to_node_id=605)
+ribasim_model.merge_basins(node_id=710, to_node_id=519)
+ribasim_model.merge_basins(node_id=777, to_node_id=348)
+ribasim_model.merge_basins(node_id=239, to_node_id=465)
+ribasim_model.merge_basins(node_id=513, to_node_id=512)
+ribasim_model.merge_basins(node_id=107, to_node_id=771)
+ribasim_model.merge_basins(node_id=309, to_node_id=481)
+ribasim_model.merge_basins(node_id=723, to_node_id=566)
+ribasim_model.merge_basins(node_id=692, to_node_id=237)
+ribasim_model.merge_basins(node_id=638, to_node_id=50)
+ribasim_model.merge_basins(node_id=321, to_node_id=53)
+ribasim_model.merge_basins(node_id=595, to_node_id=75)
 # merge overlapping basins
 ribasim_model.merge_basins(node_id=633, to_node_id=475)
 ribasim_model.merge_basins(node_id=329, to_node_id=325)
+
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
 
 
 # change unknown streefpeilen to a default streefpeil
@@ -150,7 +320,7 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(55982, 424908)), [pump.St
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[675])
+ribasim_model.link.add(pump_node, ribasim_model.basin[170])
 
 # both an afvoer as well as aanvoer gemaal. Aanvoer gemaal already in model, add afvoer
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -193,7 +363,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(102158, 421104)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[777])
+ribasim_model.link.add(pump_node, ribasim_model.basin[348])
 
 # add gemaal and LB
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -220,7 +390,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[300])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[116])
 
 # add gemaal and LB at the Voornse Meer
 level_boundary_node = ribasim_model.level_boundary.add(
