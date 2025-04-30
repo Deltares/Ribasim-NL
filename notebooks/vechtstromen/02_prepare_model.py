@@ -96,10 +96,10 @@ else:
 #    target_level="GPGZMRPL",
 #    code="GPGIDENT",
 # )
-if "meta_code_waterbeheerder" not in model.basin.area.columns:
+if "meta_code_waterbeheerder" not in model.basin.area.columns():
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
-if "meta_streefpeil" in model.basin.area.columns:
+if "meta_streefpeil" in model.basin.area.columns():
     model.basin.area.drop(columns="meta_streefpeil", inplace=True)
 model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
@@ -163,7 +163,7 @@ static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True
 # from DAMO profiles
 node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
-    model.edge.df[model.edge.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+    model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
 # levels = ((profiles_df.loc[profile_ids]["invert_level"] + profiles_df.loc[profile_ids]["bottom_level"]) / 2).to_numpy()
 
