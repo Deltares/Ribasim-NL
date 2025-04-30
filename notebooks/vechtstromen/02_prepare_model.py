@@ -100,7 +100,7 @@ if "meta_code_waterbeheerder" not in model.basin.area.columns():
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
 if "meta_streefpeil" in model.basin.area.columns():
-    model.basin.area.drop(columns="meta_streefpeil", inplace=True)
+    model.basin.area.df.drop(columns="meta_streefpeil", inplace=True)
 model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
 # %%
@@ -129,15 +129,25 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=Tr
 # from DAMO profiles
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
-    model.edge.df[model.edge.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+    model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
 # levels = (
 #    profiles_df.loc[profile_ids]["bottom_level"]
 #    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
 # ).to_numpy()
 
-levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
-min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
+# Filter node_ids and profile_ids to prevent missing
+valid_node_ids = []
+valid_profile_ids = []
+
+for i in range(len(profile_ids)):
+    if profile_ids[i] in profiles_df.index:
+        valid_node_ids.append(node_ids[i])
+        valid_profile_ids.append(profile_ids[i])
+
+
+levels = (profiles_df.loc[valid_profile_ids]["invert_level"] - 1).to_numpy()
+min_upstream_level = pd.Series(levels, index=valid_node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
@@ -167,9 +177,18 @@ profile_ids = [
 ]
 # levels = ((profiles_df.loc[profile_ids]["invert_level"] + profiles_df.loc[profile_ids]["bottom_level"]) / 2).to_numpy()
 
-# veel bottom levels kloppen niet dus nemen we de invert level -1
-levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
-min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
+# Filter node_ids and profile_ids to prevent missing
+valid_node_ids = []
+valid_profile_ids = []
+
+for i in range(len(profile_ids)):
+    if profile_ids[i] in profiles_df.index:
+        valid_node_ids.append(node_ids[i])
+        valid_profile_ids.append(profile_ids[i])
+
+
+levels = (profiles_df.loc[valid_profile_ids]["invert_level"] - 1).to_numpy()
+min_upstream_level = pd.Series(levels, index=valid_node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
 
@@ -207,28 +226,39 @@ profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
 # ).to_numpy()
 
 # Veel bottom_levels kloppen niet, dus we nemen de invert_level -1
-levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
 
-# # update static_data
-profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), name="profielid")
-static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
-streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
+
+# Filter node_ids and profile_ids to only include those present in profiles_df
+valid_node_ids = []
+valid_profile_ids = []
+
+for i in range(len(profile_ids)):
+    if profile_ids[i] in profiles_df.index:
+        valid_node_ids.append(node_ids[i])
+        valid_profile_ids.append(profile_ids[i])
+
+# Compute levels using invert_level - 1
+levels = (profiles_df.loc[valid_profile_ids]["invert_level"] - 1).to_numpy()
+
+# Assign levels to Series aligned with valid_node_ids
+streefpeil = pd.Series(levels, index=pd.Index(valid_node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # # update model basin-data
-model.basin.area.set_index("node_id", inplace=True)
+model.basin.area.df.set_index("node_id", inplace=True)
 
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
-model.basin.area.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
+model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
 profiellijnid = static_data.basin.set_index("node_id")["profielid"]
-model.basin.area.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
+model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
+model.basin.area.df["meta_streefpeil"] = pd.to_numeric(model.basin.area.df["meta_streefpeil"], errors="coerce")
 
-model.basin.area.reset_index(drop=False, inplace=True)
-model.basin.area.index += 1
-model.basin.area.index.name = "fid"
+model.basin.area.df.reset_index(drop=False, inplace=True)
+model.basin.area.df.index += 1
+model.basin.area.df.index.name = "fid"
 
 # some customs
-model.basin.area.loc[model.basin.area.node_id == 1549]
+# model.basin.area.df.loc[model.basin.area.node_id == 1549]
 
 # write
 static_data.write()

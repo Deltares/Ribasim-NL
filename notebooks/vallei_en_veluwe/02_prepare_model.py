@@ -296,6 +296,7 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
+
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
 model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
 profiellijnid = static_data.basin.set_index("node_id")["profielid"]
