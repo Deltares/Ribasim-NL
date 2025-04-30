@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
+from tqdm import tqdm
 
 from ribasim_nl.model import Model
 from ribasim_nl.network import Network
@@ -23,6 +24,10 @@ class DAMOProfiles(BaseModel):
 
         # drop duplicated profile-lines
         self.profile_line_df.drop_duplicates(self.profile_line_id_col, inplace=True)
+
+        # drop NA geometries
+        self.profile_line_df = self.profile_line_df[self.profile_line_df.geometry.notna()]
+        self.profile_point_df = self.profile_point_df[self.profile_point_df.geometry.notna()]
 
         # in principle globalid in line should be in profiellijnid of point. In case they don't match we clean in 2 directions
         self.profile_line_df = self.profile_line_df[
@@ -81,7 +86,7 @@ class DAMOProfiles(BaseModel):
         min_profile_depth: float = 0.5,
     ):
         data = []
-        for profiel_id, df in self.profile_point_df.groupby("profiellijnid"):
+        for profiel_id, df in tqdm(self.profile_point_df.groupby("profiellijnid"), desc="process_profiles"):
             if elevation_col is None:
                 df.loc[:, "elevation"] = df.geometry.z
             else:

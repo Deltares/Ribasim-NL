@@ -217,10 +217,15 @@ class Network:
                     for node in nodes_select[1:-1].itertuples():
                         link_def["node_to"] = node.Index
                         link_def["point_to"] = nodes_select.loc[link_def["node_to"]].geometry
-                        edge_geometry, geometry = split(
-                            snap(geometry, link_def["point_to"], self.snap_tolerance),
-                            link_def["point_to"],
-                        ).geoms
+                        try:
+                            edge_geometry, geometry = split(
+                                snap(geometry, link_def["point_to"], self.snap_tolerance),
+                                link_def["point_to"],
+                            ).geoms
+                        except ValueError:
+                            print(f"line with index {row.Index} can't be split. Please inspect input-lines here")
+                        continue
+
                         link_def["geometry"] = edge_geometry
                         self.add_link(**link_def)
                         link_def["node_from"] = link_def["node_to"]

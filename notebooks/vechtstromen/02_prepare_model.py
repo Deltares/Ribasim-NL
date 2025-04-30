@@ -40,13 +40,13 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
 # %%
+lines_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject")
 network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"), tolerance=0.2)
 
 # %%
 profile_line_df = gpd.read_file(profiellijn_shp).to_crs(28992)
-profile_line_df = profile_line_df[profile_line_df.geometry.notnull() & ~profile_line_df.geometry.is_empty]
+profile_line_df = profile_line_df[profile_line_df["SOORTPROFI"] == 7]
 profile_point_df = gpd.read_file(profielpunt_shp).to_crs(28992)
-profile_point_df = profile_point_df[profile_point_df.geometry.notnull() & ~profile_point_df.geometry.is_empty]
 profile_point_df.rename(columns={"METINGPROF": "profiellijnid", "CODEVOLGNU": "codevolgnummer"}, inplace=True)
 
 damo_profiles = DAMOProfiles(
@@ -69,14 +69,14 @@ if not profiles_gpkg.exists():
 # fix link geometries
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
-    model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+    model.edge.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
+    model.edge.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
     ]
     profiles_df = gpd.read_file(profiles_gpkg)
 else:
-    add_link_profile_ids(model, profiles=damo_profiles, id_col="GLOBALID")
     fix_link_geometries(model, network, max_straight_line_ratio=5)
+    add_link_profile_ids(model, profiles=damo_profiles, id_col="GLOBALID")
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
 profiles_df.set_index("profiel_id", inplace=True)
@@ -95,11 +95,11 @@ profiles_df.set_index("profiel_id", inplace=True)
 #    target_level="GPGZMRPL",
 #    code="GPGIDENT",
 # )
-if "meta_code_waterbeheerder" not in model.basin.area.df.columns:
+if "meta_code_waterbeheerder" not in model.basin.area.columns:
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
-if "meta_streefpeil" in model.basin.area.df.columns:
-    model.basin.area.df.drop(columns="meta_streefpeil", inplace=True)
+if "meta_streefpeil" in model.basin.area.columns:
+    model.basin.area.drop(columns="meta_streefpeil", inplace=True)
 model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
 # %%
@@ -128,7 +128,7 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=Tr
 # from DAMO profiles
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
-    model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+    model.edge.df[model.edge.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
 # levels = (
 #    profiles_df.loc[profile_ids]["bottom_level"]
@@ -162,7 +162,7 @@ static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True
 # from DAMO profiles
 node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
-    model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+    model.edge.df[model.edge.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
 # levels = ((profiles_df.loc[profile_ids]["invert_level"] + profiles_df.loc[profile_ids]["bottom_level"]) / 2).to_numpy()
 
@@ -215,19 +215,19 @@ streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="s
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # # update model basin-data
-model.basin.area.df.set_index("node_id", inplace=True)
+model.basin.area.set_index("node_id", inplace=True)
 
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
-model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
+model.basin.area.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
 profiellijnid = static_data.basin.set_index("node_id")["profielid"]
-model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
+model.basin.area.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
 
-model.basin.area.df.reset_index(drop=False, inplace=True)
-model.basin.area.df.index += 1
-model.basin.area.df.index.name = "fid"
+model.basin.area.reset_index(drop=False, inplace=True)
+model.basin.area.index += 1
+model.basin.area.index.name = "fid"
 
 # some customs
-model.basin.area.df.loc[model.basin.area.df.node_id == 1549]
+model.basin.area.loc[model.basin.area.node_id == 1549]
 
 # write
 static_data.write()

@@ -1,5 +1,6 @@
 # %%
 from shapely.geometry import Point
+from tqdm import tqdm
 
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
@@ -45,6 +46,6 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles, id_col="
 
 
 def add_link_profile_ids(model: Model, profiles: DAMOProfiles, id_col="globalid"):
-    for link_id in model.edge.df.index:
+    for link_id in tqdm(model.edge.df.index, desc="link_profile_ids"):
         profile_id = link_profile_id(link_id, model, profiles, id_col)
         model.edge.df.loc[link_id, "meta_profielid_waterbeheerder"] = profile_id
