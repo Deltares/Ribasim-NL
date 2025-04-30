@@ -49,6 +49,7 @@ profile_line_df = profile_line_df[profile_line_df["SOORTPROFI"] == 7]
 profile_point_df = gpd.read_file(profielpunt_shp).to_crs(28992)
 profile_point_df.rename(columns={"METINGPROF": "profiellijnid", "CODEVOLGNU": "codevolgnummer"}, inplace=True)
 
+profile_point_df = profile_point_df[(profile_point_df.geometry.z != 0) | (profile_point_df.geometry.z > 50)]
 damo_profiles = DAMOProfiles(
     model=model,
     network=network,
@@ -57,6 +58,8 @@ damo_profiles = DAMOProfiles(
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
     profile_line_id_col="GLOBALID",
 )
+
+
 # %%
 if not profiles_gpkg.exists():
     profiles_df = damo_profiles.process_profiles()
@@ -65,7 +68,7 @@ if not profiles_gpkg.exists():
     profiles_df.to_file(profiles_gpkg)
 else:
     profiles_df = gpd.read_file(profiles_gpkg)
-profiles_df.set_index("profiel_id", inplace=True)
+
 
 # %%
 
@@ -79,9 +82,9 @@ if link_geometries_gpkg.exists():
 
 else:
     fix_link_geometries(model, network, max_straight_line_ratio=5)
-    add_link_profile_ids(model, profiles=damo_profiles, id_col="GLOBALID")
+    add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
-
+profiles_df.set_index("profiel_id", inplace=True)
 # %%
 
 # add link profiles
@@ -229,19 +232,11 @@ profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
 
 
 # Filter node_ids and profile_ids to only include those present in profiles_df
-valid_node_ids = []
-valid_profile_ids = []
-
-for i in range(len(profile_ids)):
-    if profile_ids[i] in profiles_df.index:
-        valid_node_ids.append(node_ids[i])
-        valid_profile_ids.append(profile_ids[i])
-
 # Compute levels using invert_level - 1
-levels = (profiles_df.loc[valid_profile_ids]["invert_level"] - 1).to_numpy()
+levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
 
 # Assign levels to Series aligned with valid_node_ids
-streefpeil = pd.Series(levels, index=pd.Index(valid_node_ids, name="node_id"), name="streefpeil")
+streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # # update model basin-data
