@@ -75,7 +75,7 @@ if link_geometries_gpkg.exists():
         ]
 else:
     add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
-    fix_link_geometries(model, network, max_straight_line_ratio=5)
+    fix_link_geometries(model, network)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 

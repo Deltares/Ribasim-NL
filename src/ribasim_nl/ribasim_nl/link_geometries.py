@@ -39,7 +39,7 @@ def get_edge_geometry(network, source, target, forbidden_nodes):
         return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
 
 
-def fix_link_geometries(model, network):
+def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
     node_df = model.node_table().df
     for node_id in tqdm(model.basin.node.df.index, desc="fix line geometries"):
         logger.info(f"fix basin {node_id}")
