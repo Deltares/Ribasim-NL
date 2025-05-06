@@ -7,7 +7,6 @@ from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
-from ribasim_nl.parametrization.target_level import upstream_target_levels
 
 cloud = CloudStorage()
 authority = "Vechtstromen"
@@ -27,17 +26,23 @@ profielpunt_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/naleverin
 profiellijn_shp = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/nalevering_20240920/meting_profiellijn_soort_profiel_wsv.shp"
 )
-# peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/peilgebieden_voormalig_velt_en_vecht.gpkg")
+peilgebieden_path = cloud.joinpath(
+    authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Peilgebied_(met_peilregister_peilen).shp"
+)
+peilgebieden_RD = cloud.joinpath(
+    authority, "verwerkt/1_ontvangen_data/downloads\peilgebieden_voormalig_velt_en_vecht.gpkg"
+)
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
 peilregister_xlsx = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalevering_20240920/Peilregister.xlsx")
+feedback_xlsx = cloud.joinpath(
+    authority, "verwerkt/1_ontvangen_data/Feedbackform_20250428/20250428_Feedback Formulier.xlsx"
+)
 cloud.synchronize(filepaths=[top10NL_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
-
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
-
 
 # %%
 lines_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject")
@@ -81,7 +86,7 @@ if link_geometries_gpkg.exists():
     ]
 
 else:
-    fix_link_geometries(model, network, max_straight_line_ratio=5)
+    fix_link_geometries(model, network, max_straight_line_ratio=3)
     add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
@@ -90,15 +95,6 @@ profiles_df.set_index("profiel_id", inplace=True)
 # add link profiles
 
 # %%
-
-# add streefpeilen
-# add_streefpeil(
-#    model=model,
-#    peilgebieden_path=peilgebieden_path,
-#    layername=None,
-#    target_level="GPGZMRPL",
-#    code="GPGIDENT",
-# )
 if "meta_code_waterbeheerder" not in model.basin.area.columns():
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
@@ -108,93 +104,154 @@ model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
 # %%
 # OUTLET
-
-# OUTLET.min_upstream_level
-# from basin streefpeil
-
 static_data.reset_data_frame(node_type="Outlet")
-
-min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.outlet.node_id)
-min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-min_upstream_level.name = "min_upstream_level"
-static_data.add_series(node_type="Outlet", series=min_upstream_level)
-
-# from Peilregister
+# --- Load Peilregister data ---
 peilregister_df = pd.read_excel(peilregister_xlsx, sheet_name="Blad2")
 peilregister_df.drop_duplicates("KXXIDENT", inplace=True)
 peilregister_df.set_index("KXXIDENT", inplace=True)
 peilregister_df.index.name = "code"
-min_upstream_level = peilregister_df["GGOR_ZPNAP"]
-min_upstream_level.name = "min_upstream_level"
-min_upstream_level = min_upstream_level[min_upstream_level != -9.99]
-static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
+
+# Extract min_upstream_level, excluding invalid placeholder
+min_upstream_level_pr = peilregister_df["GGOR_ZPNAP"]
+min_upstream_level_pr = min_upstream_level_pr[min_upstream_level_pr != -9.99]
+min_upstream_level_pr.name = "min_upstream_level"
+
+# --- Add Peilregister values to static_data ---
+static_data.add_series(node_type="Outlet", series=min_upstream_level_pr, fill_na=True)
+
+# From Peilenkaart
+node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
+levels = []
+
+peilgebieden_df = gpd.read_file(peilgebieden_path)
+peilgebieden_df["PEILREG_ZP_FIRST"] = peilgebieden_df["PEILREG_ZP"].str.split(";").str[0].astype(float)
+
+levels = []
+
+for node_id in node_ids:
+    node = model.outlet[node_id]
+    tolerance = 50  # afstand voor zoeken bovenstrooms
+    node_geometry = node.geometry
+
+    line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
+
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
+    peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
+
+    if not peilgebieden_select_df.empty:
+        peilgebied = peilgebieden_select_df.iloc[0]
+        if peilgebied["PEILREG_ZP_FIRST"] != 0 and peilgebied["PEILREG_ZP_FIRST"] < 30:
+            level = peilgebied["PEILREG_ZP_FIRST"]
+        else:
+            level = None
+    else:
+        level = None
+
+    levels.append(level)
+
+
+min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
+min_upstream_level.index.name = "node_id"
+static_data.add_series(node_type="Outlet", series=min_upstream_level)
+
+# From Peilenkaart voormalig RD
+levels = []
+peilgebieden_rd_df = gpd.read_file(peilgebieden_RD)
+for node_id in node_ids:
+    node = model.outlet[node_id]
+    tolerance = 50  # afstand voor zoeken bovenstrooms
+    node_id = node.node_id
+    node_geometry = node.geometry
+    line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
+
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
+    peilgebieden_select_df = peilgebieden_rd_df[peilgebieden_rd_df.contains(containing_point)]
+    if not peilgebieden_select_df.empty:
+        peilgebied = peilgebieden_select_df.iloc[0]
+        if peilgebied["GPGZMRPL"] != 0 and peilgebied["GPGZMRPL"] < 30:
+            level = peilgebied["GPGZMRPL"]
+        else:
+            level = None
+    else:
+        level = None
+    levels += [level]
+
+min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
+min_upstream_level.index.name = "node_id"
+static_data.add_series(node_type="Outlet", series=min_upstream_level)
+
+# --- Load Feedback data ---
+feedback_df = pd.read_excel(feedback_xlsx, sheet_name="Streefpeilen")
+feedback_df.drop_duplicates("Basin node_id", inplace=True)
+feedback_df.set_index("Basin node_id", inplace=True)
+feedback_df.index.name = "node_id"
+
+# Fill Streefpeil ZP with Maatg. kruinhoogte (m NAP) where missing
+min_upstream_level_fb = feedback_df["Streefpeil ZP"]
+fallback_values = feedback_df["Maatg. kruinhoogte (m NAP)"] + 0.25
+min_upstream_level_fb = min_upstream_level_fb.fillna(fallback_values)
+min_upstream_level_fb.name = "min_upstream_level"
+
+# --- Add Feedback values to static_data (only where still missing) ---
+static_data.add_series(node_type="Outlet", series=min_upstream_level_fb, fill_na=True)
 
 # from DAMO profiles
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
     model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
-# levels = (
-#    profiles_df.loc[profile_ids]["bottom_level"]
-#    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
-# ).to_numpy()
-
-# Filter node_ids and profile_ids to prevent missing
-valid_node_ids = []
-valid_profile_ids = []
-
-for i in range(len(profile_ids)):
-    if profile_ids[i] in profiles_df.index:
-        valid_node_ids.append(node_ids[i])
-        valid_profile_ids.append(profile_ids[i])
-
-
-levels = (profiles_df.loc[valid_profile_ids]["invert_level"] - 1).to_numpy()
-min_upstream_level = pd.Series(levels, index=valid_node_ids, name="min_upstream_level")
+levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
+min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
-# %%
-
-# PUMP
-
-# PUMP.min_upstream_level
-# from basin streefpeil
+# %% Bepaal min_upstream_level pumps from peilenkaart
 static_data.reset_data_frame(node_type="Pump")
-min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.pump.node_id)
-min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-min_upstream_level.name = "min_upstream_level"
-static_data.add_series(node_type="Pump", series=min_upstream_level)
+node_ids = static_data.pump.node_id
+levels = []
+for node_id in node_ids:
+    node = model.pump[node_id]
+    tolerance = 50  # afstand voor zoeken bovenstrooms
+    node_geometry = node.geometry
 
-# from damo
-pump_df = gpd.read_file(hydamo_gpkg, layer="gemaal").set_index("code")
-min_upstream_level = pump_df["kerendehoogte"]
-min_upstream_level.name = "min_upstream_level"
-min_upstream_level = min_upstream_level[min_upstream_level < 50]
-static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
+    line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
+    distance_to_interpolate = line_to_node.length - tolerance
+    if distance_to_interpolate < 0:
+        distance_to_interpolate = 0
+
+    containing_point = line_to_node.interpolate(distance_to_interpolate)
+    peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
+
+    if not peilgebieden_select_df.empty:
+        peilgebied = peilgebieden_select_df.iloc[0]
+        if peilgebied["PEILREG_ZP_FIRST"] != 0 and peilgebied["PEILREG_ZP_FIRST"] < 30:
+            level = peilgebied["PEILREG_ZP_FIRST"]
+        else:
+            level = None
+    else:
+        level = None
+
+    levels.append(level)
+
+min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
+min_upstream_level.index.name = "node_id"
+static_data.add_series(node_type="Pump", series=min_upstream_level)
 
 # from DAMO profiles
 node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
     model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
-# levels = ((profiles_df.loc[profile_ids]["invert_level"] + profiles_df.loc[profile_ids]["bottom_level"]) / 2).to_numpy()
-
-# Filter node_ids and profile_ids to prevent missing
-valid_node_ids = []
-valid_profile_ids = []
-
-for i in range(len(profile_ids)):
-    if profile_ids[i] in profiles_df.index:
-        valid_node_ids.append(node_ids[i])
-        valid_profile_ids.append(profile_ids[i])
-
-
-levels = (profiles_df.loc[valid_profile_ids]["invert_level"] - 1).to_numpy()
-min_upstream_level = pd.Series(levels, index=valid_node_ids, name="min_upstream_level")
+levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
+min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
-
 
 # %%
 
@@ -223,25 +280,14 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 # get all nodata streefpeilen with their profile_ids and levels
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
-# levels = (
-#    profiles_df.loc[profile_ids]["bottom_level"]
-#    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
-# ).to_numpy()
 
 # Veel bottom_levels kloppen niet, dus we nemen de invert_level -1
-
-
-# Filter node_ids and profile_ids to only include those present in profiles_df
-# Compute levels using invert_level - 1
 levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
-
-# Assign levels to Series aligned with valid_node_ids
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
-
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
 model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
 profiellijnid = static_data.basin.set_index("node_id")["profielid"]
@@ -254,7 +300,7 @@ model.basin.area.df.index.name = "fid"
 
 # some customs
 # model.basin.area.df.loc[model.basin.area.node_id == 1549]
-
+# %%
 # write
 static_data.write()
 

@@ -38,6 +38,20 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 # %%
 # Merge basins
 model.merge_basins(basin_id=2115, to_node_id=1405)
+model.merge_basins(basin_id=1378, to_node_id=1431)
+model.merge_basins(basin_id=2211, to_node_id=1727)
+model.merge_basins(basin_id=1538, to_node_id=33)
+model.merge_basins(basin_id=1963, to_node_id=1518)
+model.merge_basins(basin_id=2245, to_node_id=1818)
+model.merge_basins(basin_id=2026, to_node_id=1818)
+model.merge_basins(basin_id=1412, to_node_id=2107)
+model.merge_basins(basin_id=1592, to_node_id=1765)
+model.merge_basins(basin_id=1765, to_node_id=1817)
+model.remove_node(node_id=619, remove_edges=True)
+model.remove_node(node_id=660, remove_edges=True)
+model.remove_node(node_id=698, remove_edges=True)
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, ["meta_categorie"]] = "Inlaat"
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
 model.pump.static.df.loc[model.pump.static.df.node_id == 582, "min_upstream_level"] = 6.13
 # %%

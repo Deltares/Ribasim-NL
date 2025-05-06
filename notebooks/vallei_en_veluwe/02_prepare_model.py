@@ -84,9 +84,9 @@ profiles_df.set_index("profiel_id", inplace=True)
 static_data.reset_data_frame(node_type="Outlet")
 node_ids = static_data.outlet.node_id
 levels = []
+peilgebieden_df = gpd.read_file(peilgebieden_path)
 for node_id in node_ids:
     node = model.outlet[node_id]
-    peilgebieden_df = gpd.read_file(peilgebieden_path)
     tolerance = 50  # afstand voor zoeken bovenstrooms
     node_id = node.node_id
     node_geometry = node.geometry
@@ -116,14 +116,11 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level)
 static_data.reset_data_frame(node_type="Pump")
 node_ids = static_data.pump.node_id
 levels = []
-
 for node_id in node_ids:
     node = model.pump[node_id]
-    peilgebieden_df = gpd.read_file(peilgebieden_path)
     tolerance = 50
     node_id = node.node_id
     node_geometry = node.geometry
-
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
@@ -205,15 +202,12 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 # %% Bepaal min_upstream_level at Manning locations`en vul de nodata basins met deze streefpeilen
 node_ids = model.manning_resistance.static.df["node_id"]
 min_upstream_level = []
-
 levels = []
 for node_id in node_ids:
     node = model.manning_resistance[node_id]
-    peilgebieden_df = gpd.read_file(peilgebieden_path)
     tolerance = 50
     node_id = node.node_id
     node_geometry = node.geometry
-
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
@@ -263,7 +257,7 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 # DAMO-profielen bepalen voor outlets wanneer min_upstream_level nodata
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = model.edge.df.set_index("to_node_id").loc[node_ids]["meta_profielid_waterbeheerder"]
-levels = ((profiles_df.loc[profile_ids]["bottom_level"] + profiles_df.loc[profile_ids]["invert_level"]) / 2).to_numpy()
+levels = ((profiles_df.loc[profile_ids]["bottom_level"] + profiles_df.loc[profile_ids]["invert_level"]) / 3).to_numpy()
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
