@@ -58,7 +58,10 @@ damo_profiles = DAMOProfiles(
     profile_line_id_col="code",
 )
 if not profiles_gpkg.exists():
-    damo_profiles.process_profiles().to_file(profiles_gpkg)
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
+else:
+    profiles_df = gpd.read_file(profiles_gpkg)
 
 # %% fix link geometries
 
@@ -70,12 +73,9 @@ if link_geometries_gpkg.exists():
         model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
             "meta_profielid_waterbeheerder"
         ]
-    profiles_df = gpd.read_file(profiles_gpkg)
 else:
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
     add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
-    fix_link_geometries(model, network, max_straight_line_ratio=5)
+    fix_link_geometries(model, network)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 

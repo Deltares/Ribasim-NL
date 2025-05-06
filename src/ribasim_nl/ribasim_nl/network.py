@@ -71,6 +71,7 @@ class Network:
     id_col: str | None = None
     tolerance: float | None = None
     snap_line_boundaries: bool = True
+    verbose: bool = False
 
     _graph: DiGraph | None = field(default=None, repr=False)
     _graph_undirected: Graph | None = field(default=None, repr=False)
@@ -83,7 +84,8 @@ class Network:
         # check if name_col and id_col are valid values
         for col in [self.name_col, self.id_col]:
             if (col is not None) & (col not in self.lines_gdf.columns):
-                logger.warn(f"{col} not a column in lines_gdf, input will be set to None")
+                if self.verbose:
+                    logger.warning(f"{col} not a column in lines_gdf, input will be set to None")
                 col = None
 
         # check if lines_gdf only contains allowed geometries
@@ -461,9 +463,10 @@ class Network:
                 self.graph.edges[(edge.node_from, edge.node_to)]["geometry"] = LineString(coords)
             return node_id
         else:
-            logger.warning(
-                f"No Node moved. Closest node: {node_id}, distance > max_distance ({node_distance} > {max_distance})"
-            )
+            if self.verbose:
+                logger.warning(
+                    f"No Node moved. Closest node: {node_id}, distance > max_distance ({node_distance} > {max_distance})"
+                )
             return None
 
     def add_node(self, point: Point, max_distance: float, align_distance: float = 100):
@@ -490,7 +493,8 @@ class Network:
             self.graph.remove_edge(node_from, node_to)
             split_result = split_line(edge_geometry, node_geometry)
             if isinstance(split_result, LineString):
-                logger.warning(f"Splitting edge: {edge_id} resulted in a single LineString)")
+                if self.verbose:
+                    logger.warning(f"Splitting edge: {edge_id} resulted in a single LineString)")
                 return None
             us_geometry, ds_geometry = split_result.geoms
             self.add_link(node_from, node_id, us_geometry)
@@ -498,9 +502,10 @@ class Network:
 
             return self.move_node(point, max_distance=max_distance, align_distance=align_distance)
         else:
-            logger.warning(
-                f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
-            )
+            if self.verbose:
+                logger.warning(
+                    f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
+                )
             return None
 
     def reset(self):
