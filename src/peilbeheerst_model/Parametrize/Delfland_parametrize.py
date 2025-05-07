@@ -5,7 +5,7 @@ import os
 import warnings
 
 from ribasim import Node
-from ribasim.nodes import pump
+from ribasim.nodes import level_boundary, pump
 from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -142,6 +142,15 @@ ribasim_model.pump.static.df.loc[
 pump_node = ribasim_model.pump.add(Node(geometry=Point(81619, 439852)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.link.add(ribasim_model.basin[2], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[113])
+inlaat_pump.append(pump_node.node_id)
+
+# add gemaal near Rijnland (Dolk). Dont use FF as it is an aanvoergemaal + boundary
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(87256, 455139)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(87082, 455089)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[9])
 inlaat_pump.append(pump_node.node_id)
 
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
