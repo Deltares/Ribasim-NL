@@ -26,6 +26,7 @@ qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.q
 # read
 model = Model.read(ribasim_toml)
 
+# TODO: For calculating runtime, `time.perf_counter()` is preferred over `time.time()`
 start_time = time.time()
 # %%
 # parameterize
