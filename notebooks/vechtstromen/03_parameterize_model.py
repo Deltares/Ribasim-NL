@@ -50,7 +50,7 @@ node_ids = model.outlet.node.df[
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
 
 
-node_ids = model.outlet.node.df[model.outlet.node.df.meta_function.str.startswith("in")].index.to_numpy()
+node_ids = model.outlet.node.df[model.outlet.node.df.meta_function.str.startswith("inlaat")].index.to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
 
 
@@ -86,6 +86,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, ["meta_catego
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1151, "active"] = False
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
 model.pump.static.df.loc[model.pump.static.df.node_id == 582, "min_upstream_level"] = 6.13
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "flow_rate"] = 1
 # %%
 
 

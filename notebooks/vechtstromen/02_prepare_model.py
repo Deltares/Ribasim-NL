@@ -157,7 +157,7 @@ for node_id in node_ids:
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
-static_data.add_series(node_type="Outlet", series=min_upstream_level)
+static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # From Peilenkaart voormalig RD
 levels = []
@@ -186,7 +186,7 @@ for node_id in node_ids:
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
-static_data.add_series(node_type="Outlet", series=min_upstream_level)
+static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # --- Load Feedback data ---
 feedback_df = pd.read_excel(feedback_xlsx, sheet_name="Streefpeilen")
