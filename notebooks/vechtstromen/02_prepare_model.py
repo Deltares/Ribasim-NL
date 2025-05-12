@@ -39,6 +39,8 @@ feedback_xlsx = cloud.joinpath(
 )
 cloud.synchronize(filepaths=[top10NL_gpkg])
 
+waterinlaten = cloud.joinpath(authority, "verwerkt\1_ontvangen_data\aanvulling feb 24\Waterinlaten.shp")
+
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
@@ -211,6 +213,44 @@ min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level"
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
+
+# %% Set waterinlaten
+# --- Load Shapefile ---
+waterinlaten = cloud.joinpath(authority, "verwerkt\\1_ontvangen_data\\aanvulling feb 24\\Waterinlaten.shp")
+waterinlaten_gdf = gpd.read_file(waterinlaten)
+
+# --- Load Waterinlaten data ---
+waterinlaten_gdf.drop_duplicates("IDENT", inplace=True)
+waterinlaten_gdf.set_index("IDENT", inplace=True)
+waterinlaten_gdf.index.name = "code"
+
+# --- Filter data for Outlet ---
+type_outlet = waterinlaten_gdf["IWS_WATERB"].copy()
+type_outlet.name = "categorie"
+
+# --- Adjust categories ---
+type_outlet = type_outlet.replace({"Inlaat (extern)": "Inlaat", "Inlaat (intern)": "Inlaat"})
+
+# --- Remove "Aflaat" ---
+valid_values = type_outlet[~type_outlet.str.contains("Aflaat", na=False)]
+
+
+# Get node IDs where the name contains "inlaat"
+node_ids = model.outlet.node.df[
+    model.outlet.node.df["name"].fillna("").str.lower().str.contains("inlaat")
+].index.to_numpy()
+
+# Set categorie = "Inlaat" for these node IDs in the static data
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "categorie"] = "Inlaat"
+updated_categories = model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "categorie"]
+# --- Add filtered series ---
+static_data.add_series(node_type="Outlet", series=valid_values, fill_na=False)
+static_data.add_series(
+    node_type="Outlet",
+    series=model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "categorie"],
+    fill_na=False,
+)
+
 # %% Bepaal min_upstream_level pumps from peilenkaart
 static_data.reset_data_frame(node_type="Pump")
 node_ids = static_data.pump.node_id
@@ -253,6 +293,21 @@ min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level"
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
 
+# %% aanvoer of aanvoergemaal
+# --- Load Feedback data ---
+feedback_df = pd.read_excel(feedback_xlsx, sheet_name="Functie gemalen")
+feedback_df.drop_duplicates("Pump node_id", inplace=True)
+feedback_df.set_index("Pump node_id", inplace=True)
+feedback_df.index.name = "code"
+
+# Fill Streefpeil ZP with Maatg. kruinhoogte (m NAP) where missing
+type_gemaal = feedback_df["Aanvoer / afvoer?"]
+type_gemaal.name = "categorie"
+type_gemaal = type_gemaal.apply(lambda x: x.capitalize() if isinstance(x, str) else x)
+valid_values = type_gemaal.dropna()
+static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
+
+
 # %%
 
 # # BASIN
@@ -286,6 +341,7 @@ levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
@@ -299,6 +355,8 @@ model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
 
 # some customs
+
+
 # model.basin.area.df.loc[model.basin.area.node_id == 1549]
 # %%
 # write

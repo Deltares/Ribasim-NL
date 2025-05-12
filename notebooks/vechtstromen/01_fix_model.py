@@ -27,6 +27,7 @@ database_gpkg = ribasim_toml.with_name("database.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg])
 
@@ -34,6 +35,10 @@ cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, 
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 split_line_gdf = gpd.read_file(fix_user_data_gpkg, layer="split_basins", fid_as_index=True)
 level_boundary_gdf = gpd.read_file(fix_user_data_gpkg, layer="level_boundary", fid_as_index=True)
+ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
+drainage_areas_df = gpd.read_file(
+    cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "areas.gpkg"), layer="drainage_areas"
+)
 
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
@@ -913,10 +918,6 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 2115, ["geometry"]] = pol
 # de rest gaan we automatisch vullen
 holes_df = holes_df[~holes_df.index.isin([10, 22, 29, 32, 38, 39, 41])]
 
-drainage_areas_df = gpd.read_file(
-    cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "areas.gpkg"), layer="drainage_areas"
-)
-
 drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
 
 for idx, geometry in enumerate(holes_df):
@@ -952,6 +953,86 @@ for idx, geometry in enumerate(holes_df):
         if isinstance(geometry, Polygon):
             geometry = MultiPolygon([geometry])
         model.basin.area.df.loc[model.basin.area.df.node_id == assigned_basin_id, "geometry"] = geometry
+# buffer out small slivers
+model.basin.area.df.loc[:, ["geometry"]] = (
+    model.basin.area.df.buffer(0.1)
+    .buffer(-0.1)
+    .apply(lambda x: x if x.geom_type == "MultiPolygon" else MultiPolygon([x]))
+)
+# %%
+# Fix small nodata holes (slivers in the basins: https://github.com/Deltares/Ribasim-NL/issues/316 )
+ribasim_areas_gdf = ribasim_areas_gdf.to_crs(model.basin.area.df.crs)
+ribasim_areas_gdf.loc[:, "geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
+
+# Exclude Twentekanaal by setting their geometry to NaN
+codes_to_exclude = [
+    "AFW_E/20",
+    "AFW_E/TWK1600/30",
+    "AFW_E/20/005",
+    "AFW_E/TWK1600/20",
+    "AFW_E/20/10",
+    "AFW_E/TWK2500/10",
+    "AFW_E/ENSCHEDE 3",
+    "AFW_E/20/010",
+    "AFW_E/20/030",
+    "AFW_E/24/010",
+]
+ribasim_areas_gdf.loc[ribasim_areas_gdf["code"].isin(codes_to_exclude), "geometry"] = pd.NA
+
+# Process basin area
+processed_basin_area_df = model.basin.area.df.copy()
+processed_basin_area_df = processed_basin_area_df.dissolve(by="node_id").reset_index()
+processed_basin_area_df = processed_basin_area_df[processed_basin_area_df["geometry"].notna()]
+processed_basin_area_df = processed_basin_area_df[processed_basin_area_df.geometry.area > 0]
+processed_basin_area_df = processed_basin_area_df[~processed_basin_area_df.geometry.is_empty]
+
+# Combine all geometries into a single polygon
+combined_geometry = processed_basin_area_df.geometry.union_all()
+combined_basin_area_gdf = gpd.GeoDataFrame(geometry=[combined_geometry], crs=processed_basin_area_df.crs)
+
+# Get the bounding box and calculate internal NoData areas
+bounding_box = combined_basin_area_gdf.geometry.union_all().envelope
+internal_no_data_areas = bounding_box.difference(combined_geometry)
+internal_no_data_gdf = gpd.GeoDataFrame(geometry=[internal_no_data_areas], crs=combined_basin_area_gdf.crs)
+exploded_internal_no_data_gdf = internal_no_data_gdf.explode(index_parts=True).reset_index(drop=True)
+
+# Apply area threshold for sliver removal
+threshold_area = 10
+exploded_internal_no_data_gdf = exploded_internal_no_data_gdf[
+    exploded_internal_no_data_gdf.geometry.area > threshold_area
+]
+
+# Clip to remove areas where ribasim_areas_gdf is NoData (NaN geometries)
+ribasim_not_na_gdf = ribasim_areas_gdf[~ribasim_areas_gdf.geometry.isna()]
+exploded_internal_no_data_gdf = gpd.overlay(
+    exploded_internal_no_data_gdf, ribasim_not_na_gdf, how="intersection", keep_geom_type=True
+)
+unique_codes = exploded_internal_no_data_gdf["code"].unique()
+filtered_ribasim_areas_gdf = ribasim_areas_gdf[ribasim_areas_gdf["code"].isin(unique_codes)]
+combined_basin_areas_gdf = gpd.overlay(
+    filtered_ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
+).explode()
+combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
+combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
+non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
+largest_area_node_ids = non_null_basin_areas_gdf.loc[
+    non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
+]
+combined_basin_areas_gdf = combined_basin_areas_gdf.merge(
+    largest_area_node_ids, on="code", how="left", suffixes=("", "_largest")
+)
+
+# Fill missing node_id with the largest_area node_id
+combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
+    combined_basin_areas_gdf["node_id_largest"]
+)
+
+combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
+combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
+combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
+combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
+combined_basin_areas_gdf.index.name = "fid"
+model.basin.area.df = combined_basin_areas_gdf
 
 # buffer out small slivers
 model.basin.area.df.loc[:, ["geometry"]] = (
@@ -963,7 +1044,6 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 
 # Reset static tables
 model = reset_static_tables(model)
-
 
 # %%
 for action in gpd.list_layers(model_edits_gpkg).name:
@@ -979,6 +1059,7 @@ for action in gpd.list_layers(model_edits_gpkg).name:
 
 # remove unassigned basin area
 model.remove_unassigned_basin_area()
+
 
 # %%
 
