@@ -1,3 +1,4 @@
+# %%
 """Parameterisation of water board: Hollandse Delta."""
 
 import datetime
@@ -10,6 +11,7 @@ from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
@@ -283,6 +285,17 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[616])
 
+# addition of LLB-TRC combination
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(73429, 420133)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(73429, 420123)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[391])
+
 # TEMP add LB
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(88565, 429038)), [level_boundary.Static(level=[default_level])]
@@ -377,6 +390,20 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
+# add the water authority column to couple the model with
+assign = AssignAuthorities(
+    ribasim_model=ribasim_model,
+    waterschap=waterschap,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    RWS_buffer=10000,  # is only neighbouring RWS, so increase buffer
+    custom_nodes={
+        9141: None,  # dunes
+        2687: None,  # dunes
+    },
+)
+ribasim_model = assign.assign_authorities()
+
 # set numerical settings
 ribasim_model.use_validation = True
 ribasim_model.starttime = datetime.datetime(2024, 1, 1)
@@ -385,9 +412,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-ribasim_param.tqdm_subprocess(
-    ["C:/ribasim_windows/ribasim/ribasim.exe", ribasim_work_dir_model_toml], print_other=False, suffix="init"
-)
+ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_other=False, suffix="init")
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)

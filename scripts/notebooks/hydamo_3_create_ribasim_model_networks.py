@@ -42,7 +42,7 @@ def generate_ribasim_network(waterschap_path, split_nodes_type_conversion, split
 
     boundaries.loc[boundaries["node_type"] == "FlowBoundary", :].copy()
 
-    # RIBASIM LUMPING split nodes
+    # Ribasim lumping split nodes
     split_nodes = gpd.read_file(ribasim_network_path, layer="split_nodes")
     split_nodes = gpd.read_file(ribasim_network_path, layer="split_nodes")
     split_nodes = split_nodes.rename(
@@ -218,7 +218,7 @@ te_verwijderen_aanvoergemalen = [
     "iKST6622",
     "iKST9950",
 ]
-split_nodes_id_conversion_dhydro = {g: "harde_knip" for g in te_verwijderen_aanvoergemalen}
+split_nodes_id_conversion_dhydro = dict.fromkeys(te_verwijderen_aanvoergemalen, "harde_knip")
 
 
 for waterschap in waterschappen:

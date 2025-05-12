@@ -211,7 +211,7 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
             snip_line = line.copy()
             snip_line["geometry"] = split_linestring
             snip_line["preprocessing_split"] = "Opgeknipt"
-            snip_line["code"] = f'{snip_line["code"].values[0]}-{k}'
+            snip_line["code"] = f"{snip_line['code'].values[0]}-{k}"
             split_lines = pd.concat([split_lines, snip_line], axis=0, join="inner")
 
     # Remove lines that have been devided from original geodataframe, and append resulting lines
@@ -308,7 +308,7 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
     logging.info(
         f"Summary:\n\n\
           Detected unconnected endpoints nearby intersecting lines: {unconnected_endpoints_count_total} \n\
-          Connected endpoints: {unconnected_endpoints_count_total-unconnected_endpoints_count} \n\
+          Connected endpoints: {unconnected_endpoints_count_total - unconnected_endpoints_count} \n\
           Remaining unconnected endpoints: {unconnected_endpoints_count}\n\
           Iterations: {iterations}"
     )

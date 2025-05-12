@@ -144,7 +144,7 @@ def get_model_path(model, model_version):
 
 # %%
 for idx, model_spec in enumerate(model_specs):
-    print(f"{model_spec["authority"]} - {model_spec["model"]}")
+    print(f"{model_spec['authority']} - {model_spec['model']}")
 
     # get version
     if "model_version" in model_spec.keys():
@@ -155,7 +155,7 @@ for idx, model_spec in enumerate(model_specs):
         if model_versions:
             model_version = sorted(model_versions, key=lambda x: x.sorter)[-1]
         else:
-            raise ValueError(f"No models with name {model_spec["model"]} in the cloud")
+            raise ValueError(f"No models with name {model_spec['model']} in the cloud")
 
     model_path = get_model_path(model_spec, model_version)
 
@@ -170,7 +170,7 @@ for idx, model_spec in enumerate(model_specs):
             model_paths = (get_model_path(model_spec, i) for i in model_versions)
             model_path = next((i for i in model_paths if i.exists()), None)
             if model_path is None:
-                raise ValueError(f"No models with name {model_spec["model"]} on local drive")
+                raise ValueError(f"No models with name {model_spec['model']} on local drive")
 
     # find toml
     if model_spec["find_toml"]:
@@ -180,7 +180,7 @@ for idx, model_spec in enumerate(model_specs):
         else:
             model_path = tomls[0]
     else:
-        model_path = model_path.joinpath(f"{model_spec["model"]}.toml")
+        model_path = model_path.joinpath(f"{model_spec['model']}.toml")
 
     # read model
     model = Model.read(model_path)

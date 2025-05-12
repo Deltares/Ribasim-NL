@@ -1,18 +1,20 @@
-"""Parameterisation of water board: Scheldestromen."""
+"""Parameterisation of water board: Rijnland."""
 
 import datetime
 import os
 import warnings
 
-import ribasim
-import ribasim.nodes
+from ribasim import Node
+from ribasim.nodes import pump
+from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 
@@ -96,12 +98,32 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
 # model specific tweaks
+# merge basins
+ribasim_model.merge_basins(node_id=106, to_node_id=93, are_connected=True)  # (too) small area
+ribasim_model.merge_basins(node_id=235, to_node_id=151, are_connected=True)  # (too) small area
+ribasim_model.merge_basins(node_id=166, to_node_id=22, are_connected=True)  # (too) small area
+ribasim_model.merge_basins(node_id=79, to_node_id=22, are_connected=True)  # (too) small area
+# unconnected basins
+ribasim_model.merge_basins(node_id=308, to_node_id=22, are_connected=False)
+ribasim_model.merge_basins(node_id=332, to_node_id=138, are_connected=False)
+
+# add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
+pump_node = ribasim_model.pump.add(Node(geometry=Point(88007, 469350)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[22], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[27])
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
+
+# (re)set 'meta_node_id'-values
+ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
+ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
+ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
@@ -176,6 +198,18 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
+# add the water authority column to couple the model with
+assign = AssignAuthorities(
+    ribasim_model=ribasim_model,
+    waterschap=waterschap,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    custom_nodes={
+        1367: "Delfland",
+    },
+)
+
+ribasim_model = assign.assign_authorities()
 # set numerical settings
 # write model output
 ribasim_model.use_validation = True
@@ -185,9 +219,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-ribasim_param.tqdm_subprocess(
-    ["C:/ribasim_windows/ribasim/ribasim.exe", ribasim_work_dir_model_toml], print_other=False, suffix="init"
-)
+ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_other=False, suffix="init")
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)

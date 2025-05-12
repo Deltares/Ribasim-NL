@@ -230,12 +230,12 @@ class Model(Model):
         if (ds_node_id is not None) or (us_node_id is not None):
             edge_df = self.edge.df
             if ds_node_id is not None:
-                df = df[df.node_id.isin(edge_df[edge_df.to_node_id == ds_node_id].from_node_id)]
+                df = df[df.index.isin(edge_df[edge_df.to_node_id == ds_node_id].from_node_id)]
             if us_node_id is not None:
-                df = df[df.node_id.isin(edge_df[edge_df.from_node_id == us_node_id].to_node_id)]
+                df = df[df.index.isin(edge_df[edge_df.from_node_id == us_node_id].to_node_id)]
 
         # check if we didn't find 0 or multiple node_ids
-        node_ids = df.node_id.to_list()
+        node_ids = df.index.to_list()
         if len(node_ids) == 0:
             raise ValueError(
                 f"no node_id found with properties {kwargs} us_node_id {us_node_id} and ds_node_id {ds_node_id}"

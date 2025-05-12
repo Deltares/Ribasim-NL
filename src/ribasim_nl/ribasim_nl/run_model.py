@@ -4,11 +4,12 @@ from pathlib import Path
 
 # TODO: check if ribasim is in path, stop if not and ribasim_exe is not provided
 # TODO: raise FileNotFoundError if toml_path does not exist. User
+from .settings import settings
 
 
 def run(
     toml_path: Path,
-    ribasim_exe: Path | None = None,
+    ribasim_exe: Path | None = settings.ribasim_exe,
     stream_output: bool = True,
     returncode: bool = True,
 ):
@@ -31,11 +32,11 @@ def run(
     # use exe_path if not None (and check if exists)
     if ribasim_exe is not None:
         ribasim_exe = Path(ribasim_exe)
-        args = [ribasim_exe.as_posix(), toml_path.as_posix()]
+        args = [ribasim_exe.as_posix(), toml_path.absolute().as_posix()]
         if not ribasim_exe.exists():
             raise FileNotFoundError(f"{ribasim_exe} does not exist!")
     else:
-        args = ["ribasim", toml_path.as_posix()]
+        args = ["ribasim", toml_path.absolute().as_posix()]
 
     input = ""
     proc = subprocess.Popen(

@@ -3,7 +3,7 @@ name = "Ribasim-NL"
 version = "0.1.0"
 description = "Ribasim water resources modeling in the Netherlands"
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64"]
+platforms = ["win-64", "linux-64", "osx-arm64"]
 readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
@@ -23,6 +23,7 @@ quarto-render = { cmd = "export QUARTO_PYTHON=python && quarto render docs --to 
 docs = { depends-on = ["build-julia-docs", "quarto-preview"] }
 # Lint
 mypy-hydamo = "mypy --ignore-missing-imports src/hydamo"
+pre-commit-autoupdate = "pre-commit autoupdate"
 pre-commit = "pre-commit run --all-files"
 lint = { depends-on = ["pre-commit", "mypy-hydamo"] }
 # Test
@@ -52,15 +53,17 @@ pip = "*"
 pre-commit = "*"
 pyarrow = "*"
 pydantic = ">=2"
+pydantic-settings = "*"
 pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-python = ">=3.11"
+python = "3.13.*"
 quarto = "*"
 quartodoc = "*"
 rasterstats = "*"
 requests = "*"
+ribasim = "==2025.3.0"
 ruff = "*"
 shapely = ">=2"
 tomli = "*"
@@ -75,13 +78,3 @@ bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
-
-[feature.dev.pypi-dependencies]
-ribasim = { path = "../Ribasim/python/ribasim", editable = true }
-
-[feature.prod.dependencies]
-ribasim = "==2025.2.0"
-
-[environments]
-default = ["prod"]
-dev = ["dev"]

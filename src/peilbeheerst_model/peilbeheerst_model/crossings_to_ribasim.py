@@ -1912,7 +1912,7 @@ class RibasimNetwork:
                 output_path=str(P_path + "visualisation_checks"),
             )
 
-        ##### copy symbology for the RIBASIM model #####
+        ##### copy symbology for the Ribasim model #####
         if self.model_characteristics["write_symbology"]:
             # dont change the paths below!
             checks_symbology_path = (

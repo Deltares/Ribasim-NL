@@ -125,7 +125,7 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
             snip_line = line.copy()
             snip_line["geometry"] = segment
             snip_line["preprocessing_split"] = "Opgeknipt"
-            snip_line["code"] = f'{snip_line["code"].values[0]}-{k}'
+            snip_line["code"] = f"{snip_line['code'].values[0]}-{k}"
             split_lines = pd.concat([split_lines, snip_line], axis=0, join="inner")
 
     uneditted_lines = lines[~lines["code"].isin(connections_to_create["lines"])]
@@ -260,7 +260,7 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
     logging.info(
         f"Summary:\n\n\
           Detected unconnected endpoints within buffer distance: {unconnected_endpoints_count_total} \n\
-          Connected endpoints: {unconnected_endpoints_count_total-unconnected_endpoints_count} \n\
+          Connected endpoints: {unconnected_endpoints_count_total - unconnected_endpoints_count} \n\
           Remaining unconnected endpoints: {unconnected_endpoints_count}\n\
           Iterations: {iterations}"
     )
@@ -369,7 +369,7 @@ def create_graph_based_on_nodes_edges(
     add_edge_length_as_weight: bool = False,
 ) -> nx.DiGraph:
     """
-    create networkx graph from ribasim model.
+    Create networkx graph from ribasim model.
 
     input: nodes and edges
     """

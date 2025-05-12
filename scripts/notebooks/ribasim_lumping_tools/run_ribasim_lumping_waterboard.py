@@ -34,7 +34,7 @@ def run_ribasim_lumping_for_waterboard(
     include_level_boundary_basins: bool = False,
 ):
     ts_start = pd.Timestamp.now()
-    print(f"\n\nRun RIBASIM-lumping for waterboard {waterschap}")
+    print(f"\n\nRun Ribasim-lumping for waterboard {waterschap}")
     base_dir = Path(base_dir, waterschap, "verwerkt")
 
     # define network name, base dir
@@ -84,7 +84,7 @@ def run_ribasim_lumping_for_waterboard(
         hydamo_split_network_dx=hydamo_split_network_dx,
     )
 
-    ## -------- RIBASIM INPUT --------
+    ## -------- Ribasim input --------
     # input files
     ribasim_input_boundary_file = Path(base_dir, "3_input", "ribasim_input.gpkg")
     ribasim_input_boundary_gpkg_layer = "boundaries"
@@ -115,7 +115,7 @@ def run_ribasim_lumping_for_waterboard(
         assign_unassigned_areas_to_basins=assign_unassigned_areas_to_basins,
     )
     ts_end = pd.Timestamp.now()
-    print(f"RIBASIM-lumping for waterboard {waterschap} ready: {ts_end-ts_start}")
+    print(f"Ribasim-lumping for waterboard {waterschap} ready: {ts_end - ts_start}")
 
 
 if __name__ == "__main__":
