@@ -48,7 +48,11 @@ class Parameterize(BaseModel):
         # Basin profile and state
         update_basin_profile(model=self.model)
         update_basin_state(model=self.model)
-        update_basin_static(model=self.model, precipitation_mm_per_day=10)
+        update_basin_static(
+            model=self.model,
+            precipitation_mm_per_day=self.precipitation_mm_per_day,
+            evaporation_mm_per_day=self.evaporation_mm_per_day,
+        )
 
         # LevelBoundaries
         update_level_boundary_static(

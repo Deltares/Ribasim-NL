@@ -4,6 +4,7 @@ import geopandas as gpd
 import pandas as pd
 
 from ribasim_nl import CloudStorage, Model, Network
+from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
@@ -301,6 +302,8 @@ model.basin.area.df.reset_index(drop=False, inplace=True)
 model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
 
+# %%
+add_from_to_nodes_and_levels(model)
 
 # %%
 # defaults
