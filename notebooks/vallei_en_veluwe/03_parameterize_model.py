@@ -4,6 +4,7 @@ import time
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 
 cloud = CloudStorage()
 authority = "ValleienVeluwe"
@@ -96,6 +97,9 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 634, ["meta_categor
 
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
 # %%
+
+add_from_to_nodes_and_levels(model)
+
 
 # Write model
 add_check_basin_level(model=model)
