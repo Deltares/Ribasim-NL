@@ -234,22 +234,9 @@ type_outlet = type_outlet.replace({"Inlaat (extern)": "Inlaat", "Inlaat (intern)
 # --- Remove "Aflaat" ---
 valid_values = type_outlet[~type_outlet.str.contains("Aflaat", na=False)]
 
-
-# Get node IDs where the name contains "inlaat"
-node_ids = model.outlet.node.df[
-    model.outlet.node.df["name"].fillna("").str.lower().str.contains("inlaat")
-].index.to_numpy()
-
-# Set categorie = "Inlaat" for these node IDs in the static data
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "categorie"] = "Inlaat"
-updated_categories = model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "categorie"]
 # --- Add filtered series ---
 static_data.add_series(node_type="Outlet", series=valid_values, fill_na=False)
-static_data.add_series(
-    node_type="Outlet",
-    series=model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "categorie"],
-    fill_na=False,
-)
+
 
 # %% Bepaal min_upstream_level pumps from peilenkaart
 static_data.reset_data_frame(node_type="Pump")
