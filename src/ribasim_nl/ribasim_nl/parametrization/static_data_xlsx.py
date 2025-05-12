@@ -12,7 +12,7 @@ from ribasim_nl.parametrization.empty_table import empty_table_df
 
 description = [
     {"sheet": "defaults", "beschrijving": "default settings bij geen-data"},
-    {"sheet": "Outlet & Pump", "beschrijving": "gemodelleerde instellingen bij RIBASIM Pump en Outlet nodes"},
+    {"sheet": "Outlet & Pump", "beschrijving": "gemodelleerde instellingen bij Ribasim Pump en Outlet nodes"},
     {"kolom": "flow_rate", "beschrijving": "gemodelleerde capaciteit (m3/s) van het kunstwerk"},
     {
         "kolom": "code",

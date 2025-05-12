@@ -124,13 +124,6 @@ print("for ribasim")
 
 # gaten uit basins verwijderen
 def exterior_polygon(geometry):
-    # def keep_geom(i):
-    #     if max_hole_fraction:
-    #         max_area = min([i.area * max_hole_fraction, max_hole_area])
-    #     else:
-    #         max_area = max_hole_area
-    #     return i.area < max_area
-
     boundary = geometry.boundary
     if isinstance(boundary, MultiLineString):
         return MultiPolygon([Polygon(i) for i in boundary.geoms])

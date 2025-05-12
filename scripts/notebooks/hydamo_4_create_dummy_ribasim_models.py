@@ -11,7 +11,7 @@ warnings.simplefilter(action="ignore", category=UserWarning)
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-# #### Read RIBASIM model
+# #### Read Ribasim model
 
 
 base_dir = Path("..\\Ribasim modeldata\\")
