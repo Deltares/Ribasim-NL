@@ -112,6 +112,16 @@ min_upstream_level.index.name = "node_id"
 
 static_data.add_series(node_type="Outlet", series=min_upstream_level)
 
+# DAMO-profielen bepalen voor outlets wanneer min_upstream_level nodata
+node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
+profile_ids = model.edge.df.set_index("to_node_id").loc[node_ids]["meta_profielid_waterbeheerder"]
+levels = ((profiles_df.loc[profile_ids]["bottom_level"] + profiles_df.loc[profile_ids]["invert_level"]) / 3).to_numpy()
+
+min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
+min_upstream_level.index.name = "node_id"
+
+static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
+
 # %% Bepaal min_upstream_level pumps
 
 static_data.reset_data_frame(node_type="Pump")
@@ -146,8 +156,7 @@ min_upstream_level.index.name = "node_id"
 
 static_data.add_series(node_type="Pump", series=min_upstream_level)
 
-
-# %% Bepaal de basin streefpeilen door minimale upstream level outlet en gemalen. Streefpeil stuw en gemalen krijgt voorrang
+# %% Bepaal de basin streefpeilen door minimale upstream level stuwen en gemalen
 
 static_data.reset_data_frame(node_type="Basin")
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
@@ -185,12 +194,11 @@ non_kdu_values = streefpeil[~streefpeil["code"].str.startswith("KDU") | (streefp
 non_kdu_first = non_kdu_values.groupby(level=0).first()
 all_first = streefpeil.groupby(level=0).first()
 
-# update duiker min_upstream_level wanneer een stuw/pomp in dat basin ligt
+# update duiker min_upstream_level wanneer een stuw/pomp in basin ligt
 streefpeil_update = streefpeil.loc[streefpeil.index.isin(non_kdu_first.index)].copy()
 streefpeil_update["min_upstream_level"] = streefpeil_update.index.map(non_kdu_first["min_upstream_level"])
 min_upstream_level_outlets = streefpeil_update.set_index("node_id")["min_upstream_level"]
 min_upstream_level_outlets.index.name = "node_id"
-
 static_data.add_series(node_type="Outlet", series=min_upstream_level_outlets, fill_na=False)
 
 # update basin levels
@@ -213,7 +221,6 @@ for node_id in node_ids:
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
         distance_to_interpolate = 0
-
     containing_point = line_to_node.interpolate(distance_to_interpolate)
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
@@ -229,7 +236,6 @@ min_upstream_level.index.name = "node_id"
 
 missing_basins = static_data.basin[static_data.basin.streefpeil.isna()]
 basin_node_ids = missing_basins.node_id.to_numpy()
-
 # Get downstream node(s) for each basin
 ds_node_ids = []
 ds_index = []
@@ -250,18 +256,7 @@ streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid
 streefpeil = streefpeil.groupby(streefpeil.index).min()
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
-
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
-
-
-# %%
-# DAMO-profielen bepalen voor outlets wanneer min_upstream_level nodata
-node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
-profile_ids = model.edge.df.set_index("to_node_id").loc[node_ids]["meta_profielid_waterbeheerder"]
-levels = ((profiles_df.loc[profile_ids]["bottom_level"] + profiles_df.loc[profile_ids]["invert_level"]) / 3).to_numpy()
-min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
-min_upstream_level.index.name = "node_id"
-static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # %%
 ## PUMP.flow_rate
@@ -270,7 +265,6 @@ flow_rate = gkw_gemaal_df.set_index("code")["maximalecapaciteit"] / 60  # m3/min
 flow_rate.name = "flow_rate"
 static_data.add_series(node_type="Pump", series=flow_rate)
 
-
 # %% correct some streefpeilen that are wrong
 static_data.basin.loc[static_data.basin.node_id == 1134, "streefpeil"] = -0.1
 static_data.basin.loc[static_data.basin.node_id == 1035, "streefpeil"] = -0.1
@@ -278,10 +272,7 @@ static_data.basin.loc[static_data.basin.node_id == 1035, "streefpeil"] = -0.1
 # get all nodata streefpeilen with their profile_ids and levels
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
-levels = (
-    profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
-).to_numpy()
+levels = ((profiles_df.loc[profile_ids]["bottom_level"] + profiles_df.loc[profile_ids]["invert_level"]) / 3).to_numpy()
 
 # # update static_data
 profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), name="profielid")
