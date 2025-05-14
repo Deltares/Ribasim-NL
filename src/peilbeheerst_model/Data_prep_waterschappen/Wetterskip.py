@@ -138,3 +138,38 @@ boezem_idx = Wetterskip["aggregation_area"].polder == "Boezem"
 Wetterskip["aggregation_area"].loc[boezem_idx, "Boezem"] = "Boezem_" + Wetterskip["aggregation_area"].index[
     boezem_idx
 ].astype(str)
+
+# combine duikers and sifons to duikersifonhevel, and add to the hydroobjecten
+Wetterskip["duikersifonhevel"] = gpd.GeoDataFrame(pd.concat([Wetterskip["duikers"], Wetterskip["sifons"]]))
+Wetterskip["duikers"] = Wetterskip["duikers"][["GLOBALID", "IDENT_NW", "geometry"]]
+Wetterskip["duikers"] = Wetterskip["duikers"].rename(columns={"GLOBALID": "globalid", "IDENT_NW": "code"})
+Wetterskip["duikers"]["nen3610id"] = "dummy_nen3610id_duiker_" + Wetterskip["duikers"].index.astype(str)
+
+Wetterskip["sifons"] = Wetterskip["sifons"][["GLOBALID", "KSYIDENT", "geometry"]]
+Wetterskip["sifons"] = Wetterskip["sifons"].rename(columns={"GLOBALID": "globalid", "KSYIDENT": "code"})
+Wetterskip["sifons"]["nen3610id"] = "dummy_nen3610id_duiker_" + Wetterskip["sifons"].index.astype(str)
+
+Wetterskip["duikersifonhevel"] = pd.concat([Wetterskip["duikers"], Wetterskip["sifons"]])
+
+# prevent duplicate values
+gdf = Wetterskip["duikersifonhevel"].copy()
+for col in ["globalid", "code"]:
+    # Convert None/NaN to string "None" to handle them uniformly
+    gdf[col] = gdf[col].fillna("None").astype(str)
+
+    # Identify duplicates
+    duplicated = gdf[col].duplicated(keep=False)
+
+    # Create suffixes only for duplicated values
+    suffixes = (
+        gdf.loc[duplicated, col]
+        .groupby(gdf.loc[duplicated, col])
+        .cumcount()
+        .astype(str)
+        .radd("_")
+        .replace("_0", "")  # Don't suffix the first occurrence
+    )
+
+    gdf.loc[duplicated, col] += suffixes
+
+Wetterskip["duikersifonhevel"] = gdf
