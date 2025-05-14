@@ -139,6 +139,10 @@ Wetterskip["aggregation_area"].loc[boezem_idx, "Boezem"] = "Boezem_" + Wetterski
     boezem_idx
 ].astype(str)
 
+# add streefpeilen
+Wetterskip["streefpeil"] = Wetterskip["peilgebied"][["globalid", "waterhoogte", "geometry"]].copy()
+Wetterskip["streefpeil"]["geometry"] = None
+
 # combine duikers and sifons to duikersifonhevel, and add to the hydroobjecten
 Wetterskip["duikersifonhevel"] = gpd.GeoDataFrame(pd.concat([Wetterskip["duikers"], Wetterskip["sifons"]]))
 Wetterskip["duikers"] = Wetterskip["duikers"][["GLOBALID", "IDENT_NW", "geometry"]]
