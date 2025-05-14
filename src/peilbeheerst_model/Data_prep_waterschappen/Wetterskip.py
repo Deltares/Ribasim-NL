@@ -173,3 +173,9 @@ for col in ["globalid", "code"]:
     gdf.loc[duplicated, col] += suffixes
 
 Wetterskip["duikersifonhevel"] = gdf
+
+# add hydroobjecten
+Wetterskip["hydroobject"] = Wetterskip["watergangen"][["OVKIDENT", "GLOBALID", "geometry"]]
+Wetterskip["hydroobject"] = Wetterskip["hydroobject"].rename(columns={"GLOBALID": "globalid", "OVKIDENT": "code"})
+Wetterskip["hydroobject"]["nen3610id"] = "dummy_nen3610id_hydroobject_" + Wetterskip["hydroobject"].index.astype(str)
+Wetterskip["hydroobject"] = gpd.GeoDataFrame(pd.concat([Wetterskip["hydroobject"], Wetterskip["duikersifonhevel"]]))
