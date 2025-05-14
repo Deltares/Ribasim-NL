@@ -121,7 +121,7 @@ class SupplyBasin:
 
         areas = basin_areas.merge(nodes_in_polygons[["node_id", "meta_aanvoer"]], how="left", on="node_id")
         basin_areas["meta_aanvoer"] = areas["meta_aanvoer"]
-        basin_areas.dropna(inplace=True)
+        basin_areas.dropna(subset=["meta_aanvoer"], inplace=True)
 
         # updated data: basin areas
         self.basin_areas = basin_areas.copy(deep=True)
