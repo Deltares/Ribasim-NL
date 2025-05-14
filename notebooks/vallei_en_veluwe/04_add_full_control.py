@@ -11,7 +11,7 @@ from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
 # execute model run
-MODEL_EXEC: bool = True
+MODEL_EXEC: bool = False
 
 # model settings
 AUTHORITY: str = "ValleienVeluwe"

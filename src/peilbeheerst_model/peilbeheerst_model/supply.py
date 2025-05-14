@@ -104,8 +104,11 @@ class SupplyBasin:
         :rtype: pandas.DataFrame
         """
         # determine which nodes fall within 'aanvoergebieden'
+        # print(self.geometry)
         basin_nodes = self.basin_nodes
         nodes_in_polygons = gpd.sjoin(basin_nodes, self.geometry[["geometry"]], how="left")
+        # with pd.option_context('display.max_rows', None):
+        #     print(nodes_in_polygons)
 
         # check for double-polygon matching
         if len(nodes_in_polygons) != len(basin_nodes):
@@ -114,13 +117,14 @@ class SupplyBasin:
 
         # mark basins as 'aanvoergebieden'
         nodes_in_polygons["meta_aanvoer"] = nodes_in_polygons["index_right"].notna()
+        # with pd.option_context('display.max_rows', None):
+        #     print(nodes_in_polygons[["meta_aanvoer", "index_right"]])
         nodes_in_polygons.reset_index(inplace=True)
 
         # update basin areas
         basin_areas = self.basin_areas
 
-        areas = basin_areas.merge(nodes_in_polygons[["node_id", "meta_aanvoer"]], how="left", on="node_id")
-        basin_areas["meta_aanvoer"] = areas["meta_aanvoer"]
+        basin_areas = basin_areas.merge(nodes_in_polygons[["node_id", "meta_aanvoer"]], how="left", on="node_id")
         basin_areas.dropna(subset=["meta_aanvoer"], inplace=True)
 
         # updated data: basin areas
