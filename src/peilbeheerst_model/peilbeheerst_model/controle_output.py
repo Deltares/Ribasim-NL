@@ -7,7 +7,38 @@ import pandas as pd
 import ribasim
 
 
+def model_loaded(func: callable) -> callable:
+    """Wrapper-function to assert that the model data is loaded before using methods that analyse this data.
+
+    :param func: class-method
+    :type func: callable
+
+    :return: wrapper
+    :rtype: callable
+    """
+
+    def wrapper(*args, **kwargs) -> dict:
+        """Wrapper-function to assert that the model is loaded before using methods that analyse the data.
+
+        :param args: positional arguments
+        :param kwargs: optional arguments
+
+        :return: control dictionary
+        :rtype: dict
+        """
+        co = args[0]
+        assert isinstance(co, Control)
+        assert all(getattr(co, k) is not None for k in ("df_basin", "df_link", "model"))
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 class Control:
+    df_basin: pd.DataFrame = None
+    df_link: pd.DataFrame = None
+    model: ribasim.Model = None
+
     def __init__(self, qlr_path=None, work_dir=None, ribasim_toml=None):
         if (work_dir is None) and (ribasim_toml is None):
             raise ValueError("provide either work_dir or ribasim_toml")
@@ -39,6 +70,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def initial_final_level(self, control_dict):
         basin_level = self.df_basin.sort_values(
             by=["time", "node_id"], ascending=True
@@ -72,6 +104,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def min_max_level(self, control_dict):
         basin_level = self.df_basin.sort_values(
             by=["level", "node_id"], ascending=True
@@ -109,6 +142,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def error(self, control_dict):
         error_gdf = gpd.GeoDataFrame()
         basin_error = self.df_basin.copy()
@@ -144,6 +178,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def stationary(self, control_dict):
         def is_stationary(group):
             group = group.sort_values(by="time")
@@ -181,6 +216,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def find_stationary_flow(self, control_dict, n_hours_mean=24):
         df_link = self.df_link.copy()
         df_link["time"] = pd.to_datetime(df_link["time"])  # convert to time column
@@ -221,6 +257,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def water_aanvoer_areas(self, control_dict):
         """Retrieve the areas (polygons) of the wateraanvoer gebieden."""
         aanvoer_areas = self.model.basin.area.df.copy(deep=True)
@@ -237,6 +274,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def water_aanvoer_afvoer_basin_nodes(self, control_dict):
         """Retrieve the nodes (points) of the wateraanvoer gebieden basin, as well as afvoer basin nodes"""
         aanvoer_areas = self.model.basin.area.df.copy(deep=True)
@@ -262,6 +300,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def water_aanvoer_afvoer_pumps(self, control_dict):
         """Retrieve the nodes (points) of the wateraan- and afvoer pumps"""
         aanvoer_afvoer_pumps = self.model.pump.static.df.copy(deep=True)
@@ -285,6 +324,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def water_aanvoer_outlets(self, control_dict):
         """Retrieve the nodes (points) of the wateraan outlets"""
         aanvoer_outlets = self.model.outlet.static.df.copy(deep=True)
@@ -300,6 +340,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def mask_basins(self, control_dict):
         if "meta_check_basin_level" in self.model.basin.node.df.columns:
             control_dict["mask_afvoer"] = self.model.basin.node.df[
@@ -308,6 +349,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():
