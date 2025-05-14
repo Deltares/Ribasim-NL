@@ -29,6 +29,11 @@ def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
     return data
 
 
+def store_data(waterschap, output_gpkg_path):
+    for key in waterschap.keys():
+        waterschap[str(key)].to_file(output_gpkg_path, layer=str(key), driver="GPKG")
+
+
 Wetterskip = read_gpkg_layers(gpkg_path=data_delivery)
 
 Wetterskip["peilgebied"] = Wetterskip["peilenbeheerkaart"][
@@ -230,3 +235,8 @@ for var in variables:
                 print("column =", column)
                 print(temp.loc[temp_column.duplicated(keep=False), [column]])
                 print()
+
+# @TO DO
+output_gpkg_path = r"D:\Users\Bruijns\Documents\PR4750_30\RIBASIM_NL_DATA_DIR\WetterskipFryslan\verwerkt\Delivered_data_processed\WetterskipFryslan.gpkg"
+store_data(waterschap=Wetterskip, output_gpkg_path=output_gpkg_path)
+cloud.upload_file(output_gpkg_path)
