@@ -179,3 +179,9 @@ Wetterskip["hydroobject"] = Wetterskip["watergangen"][["OVKIDENT", "GLOBALID", "
 Wetterskip["hydroobject"] = Wetterskip["hydroobject"].rename(columns={"GLOBALID": "globalid", "OVKIDENT": "code"})
 Wetterskip["hydroobject"]["nen3610id"] = "dummy_nen3610id_hydroobject_" + Wetterskip["hydroobject"].index.astype(str)
 Wetterskip["hydroobject"] = gpd.GeoDataFrame(pd.concat([Wetterskip["hydroobject"], Wetterskip["duikersifonhevel"]]))
+
+# add gemalen
+Wetterskip["gemaal"] = Wetterskip["gemalen"][["KWKPLAAN", "KWKNAAM", "KGMIDENT", "IDENT_NW", "GLOBALID", "geometry"]]
+Wetterskip["gemaal"] = Wetterskip["gemaal"].rename(
+    columns={"GLOBALID": "globalid", "IDENT_NW": "nen3610id", "KWKNAAM": "name", "KGMIDENT": "code"}
+)
