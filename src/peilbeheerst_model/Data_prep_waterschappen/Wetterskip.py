@@ -185,3 +185,12 @@ Wetterskip["gemaal"] = Wetterskip["gemalen"][["KWKPLAAN", "KWKNAAM", "KGMIDENT",
 Wetterskip["gemaal"] = Wetterskip["gemaal"].rename(
     columns={"GLOBALID": "globalid", "IDENT_NW": "nen3610id", "KWKNAAM": "name", "KGMIDENT": "code"}
 )
+
+# add stuwen
+Wetterskip["stuw"] = Wetterskip["stuwen"][["IDENT_NW", "GLOBALID", "geometry"]]
+Wetterskip["stuw"] = Wetterskip["stuw"].rename(columns={"GLOBALID": "globalid", "IDENT_NW": "code"})
+Wetterskip["stuw"]["nen3610id"] = "dummy_nen3610id_stuw_" + Wetterskip["stuw"].index.astype(str)
+Wetterskip["stuw"]["code"] = Wetterskip["stuw"]["code"].fillna("Code_onbekend_").astype(str)
+Wetterskip["stuw"].loc[Wetterskip["stuw"]["code"] == "Code_onbekend_", "code"] = Wetterskip["stuw"][
+    "code"
+] + Wetterskip["stuw"].index.astype(str)
