@@ -22,8 +22,9 @@ def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
     layers = gpd.list_layers(gpkg_path)
     for layer in layers.name:
         if print_var:
-            data_temp = gpd.read_file(gpkg_path, layer=layer, engine=engine)
-            data[layer] = data_temp
+            print(layer)
+        data_temp = gpd.read_file(gpkg_path, layer=layer, engine=engine)
+        data[layer] = data_temp
 
     return data
 
@@ -39,10 +40,11 @@ Wetterskip["peilgebied"] = Wetterskip["peilgebied"].rename(
         "HOOGPEIL": "waterhoogte",
         "LAAGPEIL": "meta_laag_peil",
         "WATERSYSTEEM": "polder",
-        "ORDECODE": "code",
         "GLOBALID": "globalid",
     }
 )
+
+Wetterskip["peilgebied"]["code"] = Wetterskip["peilgebied"]["meta_name"].copy()
 
 # change names for correct aggregation
 print(len(Wetterskip["peilgebied"].loc[Wetterskip["peilgebied"].polder == "Boezem"]))
@@ -182,6 +184,15 @@ Wetterskip["hydroobject"] = Wetterskip["watergangen"][["OVKIDENT", "GLOBALID", "
 Wetterskip["hydroobject"] = Wetterskip["hydroobject"].rename(columns={"GLOBALID": "globalid", "OVKIDENT": "code"})
 Wetterskip["hydroobject"]["nen3610id"] = "dummy_nen3610id_hydroobject_" + Wetterskip["hydroobject"].index.astype(str)
 Wetterskip["hydroobject"] = gpd.GeoDataFrame(pd.concat([Wetterskip["hydroobject"], Wetterskip["duikersifonhevel"]]))
+Wetterskip["hydroobject"].loc[Wetterskip["hydroobject"].code.duplicated(), "code"] = (
+    Wetterskip["hydroobject"].code + "_" + Wetterskip["hydroobject"].index.astype(str)
+)
+
+# Find duplicated code values
+df = Wetterskip["hydroobject"]
+dupes = df["code"].duplicated()
+df.loc[dupes, "code"] = df.loc[dupes, "code"].fillna("None").astype(str) + "_" + df.loc[dupes].index.astype(str)
+Wetterskip["hydroobject"] = df
 
 # add gemalen
 Wetterskip["gemaal"] = Wetterskip["gemalen"][["KWKPLAAN", "KWKNAAM", "KGMIDENT", "IDENT_NW", "GLOBALID", "geometry"]]
@@ -197,3 +208,25 @@ Wetterskip["stuw"]["code"] = Wetterskip["stuw"]["code"].fillna("Code_onbekend_")
 Wetterskip["stuw"].loc[Wetterskip["stuw"]["code"] == "Code_onbekend_", "code"] = Wetterskip["stuw"][
     "code"
 ] + Wetterskip["stuw"].index.astype(str)
+
+# only select relevant keys
+Wetterskip = {
+    k: Wetterskip[k]
+    for k in ["aggregation_area", "peilgebied", "streefpeil", "hydroobject", "duikersifonhevel", "stuw", "gemaal"]
+}
+
+# test whether the codes and globalids are unique
+variables = ["aggregation_area", "peilgebied", "stuw", "gemaal", "duikersifonhevel", "hydroobject"]
+
+for var in variables:
+    temp = Wetterskip[var]
+
+    for column in temp.keys():
+        if column in ["globalid", "code"]:
+            temp_column = temp[column]
+
+            if temp_column.duplicated().any():
+                print("variable =", var)
+                print("column =", column)
+                print(temp.loc[temp_column.duplicated(keep=False), [column]])
+                print()
