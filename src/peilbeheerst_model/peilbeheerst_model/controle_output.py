@@ -479,7 +479,8 @@ class Control:
                 logging.info("Water level bounds auto-filled: Default settings used.")
                 control_dict = self.water_level_bounds(control_dict)
             else:
-                msg = f"Not all required data in `control_dict` (missing keys: {_keys}) and autofill disabled."
+                _data = {k: control_dict.get(k) for k in _keys}
+                msg = f"Not all required data in `control_dict` and autofill disabled: {_data}"
                 raise ValueError(msg)
 
         # get water level bounds data
