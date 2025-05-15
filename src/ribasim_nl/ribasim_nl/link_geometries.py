@@ -7,6 +7,8 @@ from networkx import NetworkXNoPath, node_disjoint_paths
 from shapely.geometry import LineString
 from tqdm import tqdm
 
+from ribasim_nl import Model, Network
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,6 +17,10 @@ def get_network_node(network, point, max_distance: float = 5):
     if node is None:
         node = network.add_node(point, max_distance=max_distance, align_distance=10)
     return node
+
+
+def accept_length(geometry, point1, point2, max_straight_line_ratio: float = 5):
+    return geometry.length / point1.distance(point2) < 5
 
 
 def get_edge_geometry(network, source, target, forbidden_nodes):
@@ -39,7 +45,16 @@ def get_edge_geometry(network, source, target, forbidden_nodes):
         return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
 
 
-def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
+def fix_link_geometries(model: Model, network: Network, max_straight_line_ratio: float = 5):
+    """Fix model.link.geometry column by finding routes over network
+
+    Args:
+        model (Model): Ribasim_nl Model to be fixed
+        network (Network): Ribasim_nl Network with hydroobject line geometries
+        max_straight_line_ratio (float, optional): threshold to check line.
+         If the new line is `max_straight_line_ratio` times longer than straight line distance we don't accept the geometry.
+         Defaults to 5.
+    """
     node_df = model.node_table().df
     for node_id in tqdm(model.basin.node.df.index, desc="fix line geometries"):
         logger.info(f"fix basin {node_id}")
@@ -76,8 +91,16 @@ def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
             geometry = get_edge_geometry(
                 network=network, source=network_node, target=network_basin_node, forbidden_nodes=forbidden_nodes
             )
-            mask = (model.edge.df["from_node_id"] == upstream_node_ids[idx]) & (model.edge.df["to_node_id"] == node_id)
-            model.edge.df.loc[mask, ["geometry"]] = geometry
+            if accept_length(
+                geometry=geometry,
+                point1=node_df.at[node_id, "geometry"],
+                point2=node_df.at[upstream_node_ids[idx], "geometry"],
+                max_straight_line_ratio=max_straight_line_ratio,
+            ):
+                mask = (model.edge.df["from_node_id"] == upstream_node_ids[idx]) & (
+                    model.edge.df["to_node_id"] == node_id
+                )
+                model.edge.df.loc[mask, ["geometry"]] = geometry
 
         # draw edges to downstream nodes
         for idx, network_node in enumerate(downstream_nodes):
@@ -85,9 +108,18 @@ def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
                 continue
             forbidden_nodes = [i for i in upstream_nodes + downstream_nodes if i != network_node]
             geometry = get_edge_geometry(
-                network=network, target=network_node, source=network_basin_node, forbidden_nodes=forbidden_nodes
+                network=network,
+                target=network_node,
+                source=network_basin_node,
+                forbidden_nodes=forbidden_nodes,
             )
-            mask = (model.edge.df["to_node_id"] == downstream_node_ids[idx]) & (
-                model.edge.df["from_node_id"] == node_id
-            )
-            model.edge.df.loc[mask, ["geometry"]] = geometry
+            if accept_length(
+                geometry=geometry,
+                point1=node_df.at[node_id, "geometry"],
+                point2=node_df.at[downstream_node_ids[idx], "geometry"],
+                max_straight_line_ratio=max_straight_line_ratio,
+            ):
+                mask = (model.edge.df["to_node_id"] == downstream_node_ids[idx]) & (
+                    model.edge.df["from_node_id"] == node_id
+                )
+                model.edge.df.loc[mask, ["geometry"]] = geometry
