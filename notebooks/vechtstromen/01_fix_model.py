@@ -1056,11 +1056,38 @@ for action in gpd.list_layers(model_edits_gpkg).name:
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
-
-# remove unassigned basin area
 model.remove_unassigned_basin_area()
-
-
+# %% some customs
+# remove unassigned basin area
+model.merge_basins(basin_id=2115, to_node_id=1405)
+model.merge_basins(basin_id=1378, to_node_id=1431)
+model.merge_basins(basin_id=2211, to_node_id=1727)
+model.merge_basins(basin_id=1538, to_node_id=33)
+model.merge_basins(basin_id=1963, to_node_id=1518)
+model.merge_basins(basin_id=2245, to_node_id=1818)
+model.merge_basins(basin_id=2026, to_node_id=1818)
+model.merge_basins(basin_id=1412, to_node_id=2107)
+model.merge_basins(basin_id=1592, to_node_id=1765)
+model.merge_basins(basin_id=1765, to_node_id=1817)
+model.merge_basins(basin_id=2159, to_node_id=1890)
+model.merge_basins(basin_id=1588, to_node_id=1561)
+model.merge_basins(basin_id=1654, to_node_id=2163)
+model.merge_basins(basin_id=2254, to_node_id=1493, are_connected=False)
+# model.merge_basins(basin_id=1604, to_node_id=1890)
+model.merge_basins(basin_id=1628, to_node_id=2143)
+model.merge_basins(basin_id=1821, to_node_id=2143)
+model.merge_basins(basin_id=2144, to_node_id=2143)
+model.merge_basins(basin_id=2116, to_node_id=1730)
+model.merge_basins(basin_id=2177, to_node_id=1730)
+model.remove_node(node_id=619, remove_edges=True)
+model.remove_node(node_id=660, remove_edges=True)
+model.remove_node(node_id=698, remove_edges=True)
+model.remove_node(node_id=1243, remove_edges=True)
+model.remove_node(node_id=1242, remove_edges=True)
+model.remove_node(node_id=1252, remove_edges=True)
+model.remove_node(node_id=836, remove_edges=True)
+model.remove_node(node_id=80, remove_edges=True)
+model.remove_node(node_id=265, remove_edges=True)
 # %%
 
 # sanitize node-table

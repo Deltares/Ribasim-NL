@@ -36,7 +36,7 @@ start_time = time.time()
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-model.outlet.node.df.name
+
 # %% deactivate inlets
 node_ids = model.pump.node.df[model.pump.node.df.meta_function.str.startswith("in")].index.to_numpy()
 model.pump.static.df.loc[model.pump.static.df.node_id.isin(node_ids), "active"] = False
@@ -49,38 +49,13 @@ node_ids = model.outlet.node.df[
 # Set active = False for these node IDs in the static data
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
 
-
 node_ids = model.outlet.node.df[model.outlet.node.df.meta_function.str.startswith("inlaat")].index.to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
 
 
 # %%
 # Merge basins
-model.merge_basins(basin_id=2115, to_node_id=1405)
-model.merge_basins(basin_id=1378, to_node_id=1431)
-model.merge_basins(basin_id=2211, to_node_id=1727)
-model.merge_basins(basin_id=1538, to_node_id=33)
-model.merge_basins(basin_id=1963, to_node_id=1518)
-model.merge_basins(basin_id=2245, to_node_id=1818)
-model.merge_basins(basin_id=2026, to_node_id=1818)
-model.merge_basins(basin_id=1412, to_node_id=2107)
-model.merge_basins(basin_id=1592, to_node_id=1765)
-model.merge_basins(basin_id=1765, to_node_id=1817)
-model.merge_basins(basin_id=2159, to_node_id=1890)
-# model.merge_basins(basin_id=1604, to_node_id=1890)
-model.merge_basins(basin_id=1628, to_node_id=2143)
-model.merge_basins(basin_id=1821, to_node_id=2143)
-model.merge_basins(basin_id=2144, to_node_id=2143)
-model.merge_basins(basin_id=2116, to_node_id=1730)
-model.merge_basins(basin_id=2177, to_node_id=1730)
-model.remove_node(node_id=619, remove_edges=True)
-model.remove_node(node_id=660, remove_edges=True)
-model.remove_node(node_id=698, remove_edges=True)
-model.remove_node(node_id=1243, remove_edges=True)
-model.remove_node(node_id=1242, remove_edges=True)
-model.remove_node(node_id=836, remove_edges=True)
-model.remove_node(node_id=80, remove_edges=True)
-model.remove_node(node_id=265, remove_edges=True)
+
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, ["meta_categorie"]] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1151, "active"] = False
