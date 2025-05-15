@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -392,4 +393,158 @@ class Control:
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
+        return control_dict
+
+    @model_loaded
+    def water_level_bounds(self, control_dict: dict, skip_time_steps: int = 0) -> dict:
+        """Determine the minimum and maximum water levels within the basins occurring over time.
+
+        As there might be some water level differences related to the initialisation, the bounds are analysed after a
+        number of time steps, which is provided using the `skip_time_steps`-argument. This optional argument defaults to
+        zero (0), which implies that the whole time-series of basin water levels is used in the analysis by default.
+
+        :param control_dict: analysed data collector
+        :param skip_time_steps: number of time steps skipped before determining the water level bounds, defaults to 0
+
+        :type control_dict: dict
+        :type skip_time_steps: int, optional
+
+        :return: updated analysed data collector
+        :rtype: dict
+        """
+        start_time = (
+            self.df_basin.sort_values(by="time", ascending=True)
+            .drop_duplicates(subset="time", keep="first")
+            .reset_index(drop=True)["time"]
+        )[skip_time_steps]
+
+        # minimum water level
+        min_basin_level = (
+            self.df_basin[self.df_basin["time"] >= start_time]
+            .groupby(by="node_id")["level"]
+            .agg("min")
+            .reset_index(drop=False)
+        )
+
+        # maximum water level
+        max_basin_level = (
+            self.df_basin[self.df_basin["time"] >= start_time]
+            .groupby(by="node_id")["level"]
+            .agg("max")
+            .reset_index(drop=False)
+        )
+
+        # collect analysed data in GeoDataFrame
+        gdf_min_basin_level = min_basin_level.merge(
+            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+        ).set_geometry("geometry")
+        gdf_max_basin_level = max_basin_level.merge(
+            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+        ).set_geometry("geometry")
+        control_dict.update(
+            {
+                "min_basin_level": gdf_min_basin_level,
+                "max_basin_level": gdf_max_basin_level,
+            }
+        )
+
+        # return updated analysed data collector
+        return control_dict
+
+    @model_loaded
+    def error_bounds(self, control_dict: dict, autofill_missing_data: bool = True) -> dict:
+        """Determine the minimum and maximum basin water level error occurring over time.
+
+        Prior to calculating the error bounds, the water level bounds must be determined. If this is not done, the
+        method `.water_level_bounds()` will be called within this method-call if `autofill_missing_data=True`. This
+        auto-call will give the water level bounds using the default settings. This functionality can be disabled by
+        setting `autofill_missing_data=False`.
+
+        :param control_dict: analysed data collector
+        :param autofill_missing_data: autofill water level bounds if missing, defaults to True
+
+        :type control_dict: dict
+        :type autofill_missing_data: bool, optional
+
+        :return: updated analysed data collector
+        :rtype: dict
+
+        :raise ValueError: if data is missing in the collector and not auto-filled.
+        """
+        # validate available analysed data
+        _keys = "min_basin_level", "max_basin_level"
+        if not all(k in control_dict for k in _keys):
+            logging.info(f"Water level bounds not yet determined and `autofill_missing_data={autofill_missing_data}`:")
+            if autofill_missing_data:
+                logging.info("Water level bounds auto-filled: Default settings used.")
+                control_dict = self.water_level_bounds(control_dict)
+            else:
+                msg = f"Not all required data in `control_dict` (missing keys: {_keys}) and autofill disabled."
+                raise ValueError(msg)
+
+        # get water level bounds data
+        min_basin_level = control_dict["min_basin_level"]
+        max_basin_level = control_dict["max_basin_level"]
+
+        # initial water level is considered the target level
+        initial_basin_level = (
+            self.df_basin.sort_values(by=["time", "node_id"], ascending=True)
+            .drop_duplicates(subset="node_id", keep="first")
+            .reset_index(drop=True)[["node_id", "level"]]
+        )
+
+        # water level differences
+        min_difference_level = (
+            (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
+            .reset_index(drop=False)
+            .rename(columns={"level": "level_difference"})
+        )
+        max_difference_level = (
+            (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
+            .reset_index(drop=False)
+            .rename(columns={"level": "level_difference"})
+        )
+
+        # collect analysed data in GeoDataFrame
+        gdf_min_basin_level = min_difference_level.merge(
+            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+        ).set_geometry("geometry")
+        gdf_max_basin_level = max_difference_level.merge(
+            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+        ).set_geometry("geometry")
+        control_dict.update(
+            {
+                "error_min_basin_level": gdf_min_basin_level,
+                "error_max_basin_level": gdf_max_basin_level,
+            }
+        )
+
+        # return updated analysed data collector
+        return control_dict
+
+    def run_dynamic_forcing(self, **kwargs) -> dict:
+        """Run the output control formatting for varying forcing conditions.
+
+        :param kwargs: optional arguments, which are passed on to the various method-calls within this collective data
+            analysis call
+
+        :key skip_time_steps: number of time-steps considered as spin-up time and so skipped in analysis, defaults to 0
+        :key autofill_missing_data: autofill water level bounds if missing, defaults to False
+
+        :return: analysed data collector
+        :rtype: dict
+        """
+        # optional arguments
+        skip_time_steps: int = kwargs.get("skip_time_steps", 0)
+        autofill_missing_data: bool = kwargs.get("autofill_missing_data", False)
+
+        # analyse output data
+        control_dict = self.read_model_output()
+        control_dict = self.water_level_bounds(control_dict, skip_time_steps=skip_time_steps)
+        control_dict = self.error_bounds(control_dict, autofill_missing_data=autofill_missing_data)
+
+        # export analysed data
+        self.store_data(control_dict, self.path_control_dict_path)
+
+        # return analysed data collector
         return control_dict
