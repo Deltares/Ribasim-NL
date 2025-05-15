@@ -1,3 +1,4 @@
+# %%
 """
 Addition of settings for 'wateraanvoer' by means of `ContinuousControl`-nodes and 'wateraanvoergebieden'.
 
@@ -22,7 +23,7 @@ MODEL_ID: str = "2025_5_0"
 cloud = CloudStorage()
 
 # collect relevant data from the GoodCloud
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_{MODEL_ID}")
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
 aanvoer_path = cloud.joinpath(
@@ -31,7 +32,6 @@ aanvoer_path = cloud.joinpath(
 
 cloud.synchronize(
     filepaths=[
-        ribasim_model_dir,
         qlr_path,
         aanvoer_path,
     ]
@@ -39,6 +39,7 @@ cloud.synchronize(
 
 # read model
 model = Model.read(ribasim_toml)
+original_model = model.copy(deep=True)
 
 # TODO: Remember to set the forcing conditions to be representative for a drought ('aanvoer'-conditions), or for
 #  changing conditions (e.g., 1/3 precipitation, 2/3 evaporation).
@@ -62,7 +63,7 @@ Ribasim will raise an error and thus not execute.
 """
 
 # write model
-ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model", f"{SHORT_NAME}.toml")
+ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)
 model.write(ribasim_toml)
 
