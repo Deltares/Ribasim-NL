@@ -31,7 +31,7 @@ peilgebieden_path = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Peilgebied_(met_peilregister_peilen).shp"
 )
 peilgebieden_RD = cloud.joinpath(
-    authority, "verwerkt/1_ontvangen_data/downloads\peilgebieden_voormalig_velt_en_vecht.gpkg"
+    authority, "verwerkt/1_ontvangen_data/downloads/peilgebieden_voormalig_velt_en_vecht.gpkg"
 )
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
 peilregister_xlsx = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalevering_20240920/Peilregister.xlsx")
@@ -382,9 +382,7 @@ static_data.add_series(node_type="Pump", series=downstream_basin_levels.dropna()
 # Fallback DAMO profielen voor outlets
 node_ids_outlets = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids_outlets = model.edge.df.set_index("to_node_id").loc[node_ids_outlets]["meta_profielid_waterbeheerder"]
-levels_outlets = (
-    (profiles_df.loc[profile_ids_outlets]["bottom_level"] + profiles_df.loc[profile_ids_outlets]["invert_level"]) / 3
-).to_numpy()
+levels_outlets = (profiles_df.loc[profile_ids_outlets]["invert_level"] - 1).to_numpy()
 min_upstream_level_outlets = pd.Series(levels_outlets, index=node_ids_outlets, name="min_upstream_level")
 min_upstream_level_outlets.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level_outlets, fill_na=False)
@@ -392,11 +390,8 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level_outlets, fi
 # DAMO-profielen bepalen voor pumps wanneer min_upstream_level nodata
 node_ids_pumps = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids_pumps = model.edge.df.set_index("to_node_id").loc[node_ids_pumps]["meta_profielid_waterbeheerder"]
-
 # Veel bottom_levels kloppen niet, dus we nemen de invert_level -1
-levels_pumps = (
-    (profiles_df.loc[profile_ids_pumps]["bottom_level"] + profiles_df.loc[profile_ids_pumps]["invert_level"]) / 3
-).to_numpy()
+levels_pumps = (profiles_df.loc[profile_ids_pumps]["invert_level"] - 1).to_numpy()
 min_upstream_level_pumps = pd.Series(levels_pumps, index=node_ids_pumps, name="min_upstream_level")
 min_upstream_level_pumps.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level_pumps, fill_na=False)
@@ -431,7 +426,7 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 # update all nodata streefpeilen with their profile_ids and levels
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
-levels = ((profiles_df.loc[profile_ids]["bottom_level"] + profiles_df.loc[profile_ids]["invert_level"]) / 3).to_numpy()
+levels = (profiles_df.loc[profile_ids]["invert_level"] - 1).to_numpy()
 
 # # update static_data
 profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), name="profielid")
@@ -483,6 +478,10 @@ type_gemaal.name = "categorie"
 type_gemaal = type_gemaal.apply(lambda x: x.capitalize() if isinstance(x, str) else x)
 valid_values = type_gemaal.dropna()
 static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
+# %% some customs
+model.remove_node(2297)
+model.remove_node(166, remove_edges=True)
+model.remove_node(393, remove_edges=True)
 # %%
 # write
 static_data.write()
