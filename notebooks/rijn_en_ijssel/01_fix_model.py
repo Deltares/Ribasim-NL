@@ -146,6 +146,7 @@ for row in network_validator.edge_incorrect_type_connectivity(
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
 
+
 # %% Reset static tables
 
 # Reset static tables
@@ -221,6 +222,10 @@ model.basin.area.df = combined_basin_areas_gdf
 # model.use_validation = False
 model.fix_unassigned_basin_area()
 
+
+# %% merge basins
+model.merge_basins(basin_id=944, to_basin_id=1028)
+model.merge_basins(basin_id=788, to_basin_id=1150)
 # %%
 # Sanitize node_table
 for node_id in model.tabulated_rating_curve.node.df.index:

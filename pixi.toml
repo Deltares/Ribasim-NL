@@ -63,7 +63,6 @@ quarto = "*"
 quartodoc = "*"
 rasterstats = "*"
 requests = "*"
-ribasim = "==2025.3.0"
 ruff = "*"
 shapely = ">=2"
 tomli = "*"
@@ -78,3 +77,13 @@ bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
+
+[feature.dev.pypi-dependencies]
+ribasim = { path = "../Ribasim/python/ribasim", editable = true }
+
+[feature.prod.dependencies]
+ribasim = "==2025.3.0"
+
+[environments]
+default = ["prod"]
+dev = ["dev"]

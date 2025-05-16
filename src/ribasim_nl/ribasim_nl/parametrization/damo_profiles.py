@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
+from tqdm import tqdm
 
 from ribasim_nl.model import Model
 from ribasim_nl.network import Network
@@ -23,6 +24,10 @@ class DAMOProfiles(BaseModel):
 
         # drop duplicated profile-lines
         self.profile_line_df.drop_duplicates(self.profile_line_id_col, inplace=True)
+
+        # drop NA geometries
+        self.profile_line_df = self.profile_line_df[self.profile_line_df.geometry.notna()]
+        self.profile_point_df = self.profile_point_df[self.profile_point_df.geometry.notna()]
 
         # in principle globalid in line should be in profiellijnid of point. In case they don't match we clean in 2 directions
         self.profile_line_df = self.profile_line_df[
@@ -47,9 +52,23 @@ class DAMOProfiles(BaseModel):
 
     def get_profile_level(self, profile_id, statistic="max"):
         profile_points = self.profile_point_df.set_index("profiellijnid").loc[profile_id]
-        if profile_points.within_water.any():
-            profile_points = profile_points[profile_points.within_water]
-        return getattr(profile_points.geometry.z, statistic)()
+
+        if isinstance(profile_points, pd.Series):
+            z_values = [profile_points.geometry.z]
+        else:
+            profile_points_in_water = (
+                profile_points[profile_points.within_water] if "within_water" in profile_points else pd.DataFrame()
+            )
+            z_values = (
+                profile_points_in_water.geometry.apply(lambda g: g.z)
+                if not profile_points_in_water.empty
+                else profile_points.geometry.apply(lambda g: g.z)
+            ).tolist()
+
+        if len(z_values) == 1:
+            return z_values[0]
+
+        return getattr(pd.Series(z_values), statistic)()
 
     def get_profile_id(self, node_id, statistic="max"):
         node_type = self.model.get_node_type(node_id)
@@ -81,7 +100,7 @@ class DAMOProfiles(BaseModel):
         min_profile_depth: float = 0.5,
     ):
         data = []
-        for profiel_id, df in self.profile_point_df.groupby("profiellijnid"):
+        for profiel_id, df in tqdm(self.profile_point_df.groupby("profiellijnid"), desc="process_profiles"):
             if elevation_col is None:
                 df.loc[:, "elevation"] = df.geometry.z
             else:

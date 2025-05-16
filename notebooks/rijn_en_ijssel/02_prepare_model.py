@@ -76,15 +76,26 @@ profiles_df.set_index("profiel_id", inplace=True)
 
 # OUTLET.min_upstream_level
 # from basin streefpeil
+# Reset de data voor Outlet nodes
 static_data.reset_data_frame(node_type="Outlet")
 
-# from regelpeil
-regelpeil_df = pd.read_csv(regelpeil_csv, delimiter="\t").set_index("Code")
+# Lees het CSV-bestand in (met tabs als delimiter)
+regelpeil_df = pd.read_csv(regelpeil_csv, delimiter="\t")
+
+# Strip de 'Code'-waarde tot alleen het relevante ST-codenummer, zoals 'ST84450156'
+# Hiervoor gebruiken we regex om de middenwaarde eruit te halen (tussen de streepjes)
+regelpeil_df["code"] = regelpeil_df["Code"].str.extract(r"-(ST\d+)-")
+regelpeil_df = regelpeil_df[regelpeil_df["code"].notna()]
+regelpeil_df = regelpeil_df.drop_duplicates(subset="code", keep="first")
+
+regelpeil_df = regelpeil_df.set_index("code")
 regelpeil_df.index.name = "code"
 min_upstream_level = regelpeil_df["Stuwpeil zomer (m NAP)"]
 min_upstream_level.name = "min_upstream_level"
-static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
+# Voeg deze serie toe aan static_data voor nodes van type 'Outlet'
+# Alleen codes die overeenkomen worden gekoppeld
+static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # from DAMO profiles
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
@@ -93,11 +104,13 @@ profile_ids = [
 ]
 levels = (
     profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 3
 ).to_numpy()
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
+
+static_data.outlet.loc[static_data.outlet.node_id == 119, "min_upstream_level"] = 10  # here profiles are messed-up
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 
@@ -115,47 +128,48 @@ profile_ids = [
 ]
 levels = (
     profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 3
 ).to_numpy()
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
 
-static_data.pump.loc[static_data.pump.node_id == 406] = 8.0  # here profiles are messed-up
-
-
 # %%
 
-# # BASIN
+# BASIN
 static_data.reset_data_frame(node_type="Basin")
 
-# fill streefpeil from ds min_upstream_level
+# Vind Basin nodes zonder streefpeil
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 
+# Zoek downstream nodes per Basin
 ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 
-ds_levels = pd.concat([static_data.basin, static_data.outlet], ignore_index=True).set_index("node_id")[
-    "min_upstream_level"
-]
+# Combineer Basin, Outlet én Pump data
+ds_levels = pd.concat([static_data.basin, static_data.outlet, static_data.pump], ignore_index=True).set_index(
+    "node_id"
+)["min_upstream_level"]
+
 ds_levels.dropna(inplace=True)
+
 ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
 ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
-
 levels = ds_node_ids.apply(lambda x: ds_levels[x])
 streefpeil = levels.groupby(levels.index).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+
 # get all nodata streefpeilen with their profile_ids and levels
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
 levels = (
     profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 3
 ).to_numpy()
 
 # # update static_data
@@ -182,5 +196,6 @@ model.basin.area.df.index.name = "fid"
 static_data.write()
 
 model.write(ribasim_toml)
+
 
 # %%

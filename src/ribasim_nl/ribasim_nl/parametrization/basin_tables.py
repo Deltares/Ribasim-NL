@@ -19,15 +19,15 @@ def update_basin_static(
     static_df = empty_table_df(model, node_type="Basin", table_type="Static", fill_value=0)
 
     area = model.basin.area.df.set_index("node_id").geometry.area
-    if precipitation_mm_per_day is not None:
-        precipitation = area * (precipitation_mm_per_day * 0.001 / 86400)  # m3/s
-        static_df.loc[:, "drainage"] = precipitation[static_df.node_id].to_numpy()
-    if evaporation_mm_per_day is not None:
-        evaporation = area * (evaporation_mm_per_day * 0.001 / 86400)  # m3/s
-        static_df.loc[:, "infiltration"] = evaporation[static_df.node_id].to_numpy()
+    max_profile_area = model.basin.profile.df.set_index("node_id")["area"].groupby("node_id").max()
+    multi_factor = (area / max_profile_area).astype(float) * 0.001 / 86400
 
-    # add to static df
-    model.basin.static.df = static_df
+    if precipitation_mm_per_day is not None:
+        precipitation = multi_factor * precipitation_mm_per_day  # m/s
+        static_df.loc[:, "precipitation"] = precipitation[static_df.node_id].to_numpy()
+    if evaporation_mm_per_day is not None:
+        evaporation = multi_factor * evaporation_mm_per_day  # m/s
+        static_df.loc[:, "potential_evaporation"] = evaporation[static_df.node_id].to_numpy()
 
     # add to static df
     model.basin.static.df = static_df
