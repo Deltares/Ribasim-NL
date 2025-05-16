@@ -133,7 +133,7 @@ levels = []
 
 for node_id in node_ids:
     node = model.outlet[node_id]
-    tolerance = 50  # afstand voor zoeken bovenstrooms
+    tolerance = 5  # afstand voor zoeken bovenstrooms
     node_geometry = node.geometry
 
     line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
@@ -165,7 +165,7 @@ levels = []
 peilgebieden_rd_df = gpd.read_file(peilgebieden_RD)
 for node_id in node_ids:
     node = model.outlet[node_id]
-    tolerance = 50  # afstand voor zoeken bovenstrooms
+    tolerance = 5  # afstand voor zoeken bovenstrooms
     node_id = node.node_id
     node_geometry = node.geometry
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
@@ -204,14 +204,16 @@ min_upstream_level_fb.name = "min_upstream_level"
 # --- Add Feedback values to static_data (only where still missing) ---
 static_data.add_series(node_type="Outlet", series=min_upstream_level_fb, fill_na=True)
 
-
+# %%custum, zomerpeil Overijsselsche Vecht bij waterlevl boundary kloppen niet, uit DOD gehaald
+static_data.outlet.loc[static_data.outlet.node_id == 1289, "min_upstream_level"] = 1.25
+static_data.outlet.loc[static_data.outlet.node_id == 1290, "min_upstream_level"] = 1.25
 # %% Bepaal min_upstream_level pumps from peilenkaart
 static_data.reset_data_frame(node_type="Pump")
 node_ids = static_data.pump.node_id
 levels = []
 for node_id in node_ids:
     node = model.pump[node_id]
-    tolerance = 50  # afstand voor zoeken bovenstrooms
+    tolerance = 5  # afstand voor zoeken bovenstrooms
     node_geometry = node.geometry
 
     line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
@@ -315,7 +317,7 @@ min_upstream_level = []
 levels = []
 for node_id in node_ids:
     node = model.manning_resistance[node_id]
-    tolerance = 50
+    tolerance = 5
     node_id = node.node_id
     node_geometry = node.geometry
     line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
@@ -480,8 +482,8 @@ valid_values = type_gemaal.dropna()
 static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
 # %% some customs
 model.remove_node(2297)
-model.remove_node(166, remove_edges=True)
-model.remove_node(393, remove_edges=True)
+# model.remove_node(166, remove_edges=True)
+# model.remove_node(393, remove_edges=True)
 # %%
 # write
 static_data.write()

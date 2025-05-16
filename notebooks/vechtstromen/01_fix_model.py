@@ -1046,7 +1046,22 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 model = reset_static_tables(model)
 
 # %%
-for action in gpd.list_layers(model_edits_gpkg).name:
+actions = [
+    "remove_basin_area",
+    "remove_node",
+    "remove_edge",
+    "add_basin",
+    "add_basin_area",
+    "update_basin_area",
+    "merge_basins",
+    "reverse_edge",
+    "connect_basins",
+    "move_node",
+    "update_node",
+    "redirect_edge",
+]
+actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
+for action in actions:
     print(action)
     # get method and args
     method = getattr(model, action)
@@ -1056,9 +1071,12 @@ for action in gpd.list_layers(model_edits_gpkg).name:
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
+
+# remove unassigned basin area
 model.remove_unassigned_basin_area()
 # %% some customs
 # remove unassigned basin area
+model.redirect_edge(edge_id=89, to_node_id=1561)
 model.merge_basins(basin_id=2115, to_node_id=1405)
 model.merge_basins(basin_id=1378, to_node_id=1431)
 model.merge_basins(basin_id=2211, to_node_id=1727)
@@ -1070,7 +1088,6 @@ model.merge_basins(basin_id=1412, to_node_id=2107)
 model.merge_basins(basin_id=1592, to_node_id=1765)
 model.merge_basins(basin_id=1765, to_node_id=1817)
 model.merge_basins(basin_id=2159, to_node_id=1890)
-model.merge_basins(basin_id=1588, to_node_id=1561)
 model.merge_basins(basin_id=1654, to_node_id=2163)
 model.merge_basins(basin_id=2254, to_node_id=1493, are_connected=False)
 # model.merge_basins(basin_id=1604, to_node_id=1890)
@@ -1088,6 +1105,87 @@ model.remove_node(node_id=1252, remove_edges=True)
 model.remove_node(node_id=836, remove_edges=True)
 model.remove_node(node_id=80, remove_edges=True)
 model.remove_node(node_id=265, remove_edges=True)
+model.remove_node(node_id=126, remove_edges=True)
+model.remove_node(166, remove_edges=True)
+model.remove_node(313, remove_edges=True)
+model.remove_node(393, remove_edges=True)
+model.remove_node(146, remove_edges=True)
+model.remove_node(835, remove_edges=True)
+model.remove_node(1370, remove_edges=True)
+model.remove_node(358, remove_edges=True)
+model.remove_node(188, remove_edges=True)
+model.remove_node(219, remove_edges=True)
+model.remove_node(345, remove_edges=True)
+model.remove_node(654, remove_edges=True)
+model.remove_node(1045, remove_edges=True)
+model.remove_node(125, remove_edges=True)
+model.remove_node(601, remove_edges=True)
+model.remove_node(121, remove_edges=True)
+model.remove_node(590, remove_edges=True)
+model.remove_node(624, remove_edges=True)
+model.remove_node(573, remove_edges=True)
+model.remove_node(570, remove_edges=True)
+model.remove_node(657, remove_edges=True)
+model.remove_node(652, remove_edges=True)
+model.remove_node(633, remove_edges=True)
+model.remove_node(178, remove_edges=True)
+model.remove_node(319, remove_edges=True)
+model.remove_node(395, remove_edges=True)
+model.remove_node(114, remove_edges=True)
+model.remove_node(442, remove_edges=True)
+model.remove_node(562, remove_edges=True)
+model.remove_node(438, remove_edges=True)
+model.remove_node(167, remove_edges=True)
+model.remove_node(561, remove_edges=True)
+model.remove_node(456, remove_edges=True)
+model.remove_node(673, remove_edges=True)
+model.remove_node(1128, remove_edges=True)
+model.merge_basins(basin_id=1488, to_basin_id=1834)
+model.merge_basins(basin_id=1848, to_basin_id=2158)
+model.merge_basins(basin_id=1891, to_basin_id=2158)
+model.merge_basins(basin_id=1994, to_basin_id=2158)
+model.merge_basins(basin_id=1648, to_basin_id=1826)
+model.merge_basins(basin_id=1826, to_node_id=1843)
+model.merge_basins(basin_id=1646, to_basin_id=1513)
+model.merge_basins(basin_id=1897, to_basin_id=1678)
+model.merge_basins(basin_id=2181, to_basin_id=1678)
+model.merge_basins(basin_id=1678, to_basin_id=1700)
+model.merge_basins(basin_id=1876, to_basin_id=1633)
+model.merge_basins(basin_id=2187, to_basin_id=1873)
+model.merge_basins(basin_id=2174, to_basin_id=1873)
+model.merge_basins(basin_id=1875, to_basin_id=1879)
+model.merge_basins(basin_id=1908, to_basin_id=1879)
+model.merge_basins(basin_id=1902, to_basin_id=1879)
+model.merge_basins(basin_id=1441, to_basin_id=1879)
+model.merge_basins(basin_id=1957, to_basin_id=1879)
+model.merge_basins(basin_id=1717, to_basin_id=1528)
+model.merge_basins(basin_id=1995, to_basin_id=1442)
+model.merge_basins(basin_id=2262, to_basin_id=1431)
+model.merge_basins(basin_id=1853, to_basin_id=1852)
+model.merge_basins(basin_id=2137, to_basin_id=2138)
+model.merge_basins(basin_id=1819, to_basin_id=2138)
+model.merge_basins(basin_id=33, to_basin_id=1377)
+model.merge_basins(basin_id=1560, to_basin_id=1478)
+model.merge_basins(basin_id=2228, to_basin_id=2121)
+model.merge_basins(basin_id=2050, to_basin_id=1812)
+model.merge_basins(basin_id=1811, to_basin_id=1812)
+model.merge_basins(basin_id=1386, to_basin_id=2157)
+model.merge_basins(basin_id=2307, to_basin_id=2157)
+model.merge_basins(basin_id=1610, to_basin_id=1454)
+model.merge_basins(basin_id=1664, to_basin_id=1588)
+model.merge_basins(basin_id=2234, to_basin_id=1418)
+model.merge_basins(basin_id=2317, to_basin_id=1700)
+model.merge_basins(basin_id=1982, to_basin_id=1431)
+model.merge_basins(basin_id=1589, to_basin_id=1431)
+
+model.remove_node(413, remove_edges=True)
+model.remove_node(842, remove_edges=True)
+model.remove_node(463, remove_edges=True)
+model.remove_node(341, remove_edges=True)
+model.remove_node(235, remove_edges=True)
+model.merge_basins(basin_id=1584, to_basin_id=1817)
+model.merge_basins(basin_id=1817, to_basin_id=2135)
+model.merge_basins(basin_id=1588, to_basin_id=1561)
 # %%
 
 # sanitize node-table
