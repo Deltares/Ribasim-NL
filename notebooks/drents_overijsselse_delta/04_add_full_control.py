@@ -91,4 +91,4 @@ if MODEL_EXEC:
     """
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    indicators = controle_output.run_all(mask_basins=True)
