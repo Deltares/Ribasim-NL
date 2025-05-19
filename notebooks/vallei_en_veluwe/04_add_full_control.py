@@ -70,6 +70,8 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)
+model.pump.static.df["meta_func_afvoer"] = 1
+model.pump.static.df["meta_func_aanvoer"] = 0
 model.write(ribasim_toml)
 
 # run model
