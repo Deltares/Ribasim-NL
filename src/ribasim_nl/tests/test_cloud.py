@@ -1,7 +1,11 @@
+import os
+from pathlib import Path
+
 import pytest
 
 from ribasim_nl import CloudStorage
 from ribasim_nl.cloud import WATER_AUTHORITIES  # noqa: F401
+from ribasim_nl.settings import Settings, settings
 
 
 @pytest.fixture
@@ -56,3 +60,13 @@ def test_models(cloud):
     # check if we can find uploaded models
     models = cloud.uploaded_models("Rijkswaterstaat")
     assert any((i.model == "ijsselmeer" for i in models))  # noqa: UP034
+
+
+def test_settings():
+    assert isinstance(settings, Settings)
+
+    os.environ["RIBASIM_NL_CLOUD_PASS"] = "test"
+    nsettings = Settings(_env_file="foo.env")
+    assert nsettings.ribasim_exe == Path("ribasim")
+    assert nsettings.ribasim_nl_data_dir == Path("data")
+    assert nsettings.ribasim_nl_cloud_pass == "test"

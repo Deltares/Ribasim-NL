@@ -28,7 +28,7 @@ jobs:
           pixi-version: "latest"
 
       - name: Run tests
-        run: pixi run test-hydamo
+        run: pixi run tests
         env:
           RIBASIM_NL_CLOUD_PASS: ${{ secrets.RIBASIM_NL_CLOUD_PASS }}
 
