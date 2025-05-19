@@ -226,7 +226,7 @@ class Network:
                             ).geoms
                         except ValueError:
                             print(f"line with index {row.Index} can't be split. Please inspect input-lines here")
-                        continue
+                            continue
 
                         link_def["geometry"] = edge_geometry
                         self.add_link(**link_def)
