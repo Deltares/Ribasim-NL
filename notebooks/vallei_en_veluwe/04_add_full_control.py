@@ -28,7 +28,7 @@ cloud = CloudStorage()
 # collect relevant data from the GoodCloud
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_afvoer.qlr")
+qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(
     AUTHORITY, "verwerkt", "1_ontvangen_data", "Na_levering_202401", "wateraanvoer", "Inlaatgebieden.shp"
 )
@@ -67,7 +67,7 @@ Ribasim will raise an error and thus not execute.
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
-model.pump.df.flow_rate = original_model.pump.static.df.flow_rate
+model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
@@ -91,4 +91,4 @@ if MODEL_EXEC:
     """
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    indicators = controle_output.run_all(mask_basins=True)
