@@ -145,6 +145,12 @@ Wetterskip["aggregation_area"].loc[boezem_idx, "Boezem"] = "Boezem_" + Wetterski
     boezem_idx
 ].astype(str)
 
+# define boezem areas
+Wetterskip["aggregation_area"]["peilgebied_cat"] = 0  # 0 = regular basin
+Wetterskip["aggregation_area"].loc[
+    Wetterskip["aggregation_area"]["polder"].str.lower().str.contains("boezem", na=False), "peilgebied_cat"
+] = 1
+
 # add streefpeilen
 Wetterskip["streefpeil"] = Wetterskip["peilgebied"][["globalid", "waterhoogte", "geometry"]].copy()
 Wetterskip["streefpeil"]["geometry"] = None
@@ -189,8 +195,11 @@ Wetterskip["hydroobject"] = Wetterskip["watergangen"][["OVKIDENT", "GLOBALID", "
 Wetterskip["hydroobject"] = Wetterskip["hydroobject"].rename(columns={"GLOBALID": "globalid", "OVKIDENT": "code"})
 Wetterskip["hydroobject"]["nen3610id"] = "dummy_nen3610id_hydroobject_" + Wetterskip["hydroobject"].index.astype(str)
 Wetterskip["hydroobject"] = gpd.GeoDataFrame(pd.concat([Wetterskip["hydroobject"], Wetterskip["duikersifonhevel"]]))
-Wetterskip["hydroobject"].loc[Wetterskip["hydroobject"].code.duplicated(), "code"] = (
-    Wetterskip["hydroobject"].code + "_" + Wetterskip["hydroobject"].index.astype(str)
+dup_mask = Wetterskip["hydroobject"]["code"].duplicated(keep=False) | Wetterskip["hydroobject"]["code"].isna()
+Wetterskip["hydroobject"].loc[dup_mask, "code"] = (
+    Wetterskip["hydroobject"].loc[dup_mask, "code"].astype(str)
+    + "_"
+    + Wetterskip["hydroobject"].loc[dup_mask].index.astype(str)
 )
 
 # Find duplicated code values
