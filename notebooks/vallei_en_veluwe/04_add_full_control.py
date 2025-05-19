@@ -66,6 +66,8 @@ Ribasim will raise an error and thus not execute.
 
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
+model.outlet.pump.df.flow_rate = original_model.pump.static.df.flow_rate
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
