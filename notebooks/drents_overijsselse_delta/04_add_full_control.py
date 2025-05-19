@@ -7,6 +7,7 @@ NOTE: This is a non-working dummy file to provide guidance on how to implement t
 Author: Gijs G. Hendrickx
 """
 
+import geopandas as gpd
 import pandas as pd
 
 from peilbeheerst_model import ribasim_parametrization
@@ -18,9 +19,8 @@ from ribasim_nl.parametrization.basin_tables import update_basin_static
 MODEL_EXEC: bool = False
 
 # model settings
-AUTHORITY: str = "ValleienVeluwe"
-SHORT_NAME: str = "venv"
-MODEL_ID: str = "2025_5_0"
+AUTHORITY: str = "DrentsOverijsselseDelta"
+SHORT_NAME: str = "dod"
 
 # connect with the GoodCloud
 cloud = CloudStorage()
@@ -29,15 +29,20 @@ cloud = CloudStorage()
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(
-    AUTHORITY, "verwerkt", "1_ontvangen_data", "Na_levering_202401", "wateraanvoer", "Inlaatgebieden.shp"
-)
+aanvoer_path = cloud.joinpath(AUTHORITY, "aangeleverd", "Na_levering", "HyDAMO_WM_20230720.gpkg")
 
 cloud.synchronize(
     filepaths=[
         aanvoer_path,
     ]
 )
+
+# filter aanvoergebieden
+gdf = gpd.read_file(aanvoer_path, layer="afvoergebiedaanvoergebied")
+gdf = gdf[gdf["soortafvoeraanvoergebied"] == "Aanvoergebied"]
+
+aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt", "aanvoergebied.gpkg")
+gdf.to_file(aanvoer_path)
 
 # read model
 model = Model.read(ribasim_toml)

@@ -69,6 +69,10 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
 model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 
+# set upstream level boundaries to 999 so we get inflow
+node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(node_ids), "level"] = 999
+
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)
