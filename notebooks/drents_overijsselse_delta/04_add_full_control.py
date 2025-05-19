@@ -38,12 +38,9 @@ cloud.synchronize(
 )
 
 # filter aanvoergebieden
-gdf = gpd.read_file(aanvoer_path, layer="afvoergebiedaanvoergebied")
-gdf = gdf[gdf["soortafvoeraanvoergebied"] == "Aanvoergebied"]
-
-aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt", "aanvoergebied.gpkg")
-gdf.to_file(aanvoer_path)
-
+aanvoergebieden_df = gpd.read_file(aanvoer_path, layer="afvoergebiedaanvoergebied")
+aanvoergebieden_df = aanvoergebieden_df[aanvoergebieden_df["soortafvoeraanvoergebied"] == "Aanvoergebied"]
+aanvoergebieden_df = gpd.GeoDataFrame({"geometry": list(aanvoergebieden_df.union_all().geoms)}, crs=28992)
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
@@ -53,7 +50,7 @@ update_basin_static(model=model, evaporation_mm_per_day=2)
 # set forcing conditions
 
 # re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=False)
+ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df, overruling_enabled=False)
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)
 
 # TODO: The addition of `ContinuousControl`-nodes is subsequently a minor modification:
