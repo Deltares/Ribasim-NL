@@ -41,7 +41,7 @@ cloud.synchronize(
 
 # read model
 model = Model.read(ribasim_toml)
-original_model = model.copy(deep=True)
+original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=2)
 # TODO: Remember to set the forcing conditions to be representative for a drought ('aanvoer'-conditions), or for
 #  changing conditions (e.g., 1/3 precipitation, 2/3 evaporation).
