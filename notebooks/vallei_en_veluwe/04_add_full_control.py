@@ -7,9 +7,12 @@ NOTE: This is a non-working dummy file to provide guidance on how to implement t
 Author: Gijs G. Hendrickx
 """
 
+import pandas as pd
+
 from peilbeheerst_model import ribasim_parametrization
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model, check_basin_level
+from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 # execute model run
 MODEL_EXEC: bool = False
@@ -25,14 +28,13 @@ cloud = CloudStorage()
 # collect relevant data from the GoodCloud
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
+qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_afvoer.qlr")
 aanvoer_path = cloud.joinpath(
     AUTHORITY, "verwerkt", "1_ontvangen_data", "Na_levering_202401", "wateraanvoer", "Inlaatgebieden.shp"
 )
 
 cloud.synchronize(
     filepaths=[
-        qlr_path,
         aanvoer_path,
     ]
 )
@@ -40,7 +42,7 @@ cloud.synchronize(
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.copy(deep=True)
-
+update_basin_static(model=model, evaporation_mm_per_day=2)
 # TODO: Remember to set the forcing conditions to be representative for a drought ('aanvoer'-conditions), or for
 #  changing conditions (e.g., 1/3 precipitation, 2/3 evaporation).
 # set forcing conditions
@@ -62,6 +64,9 @@ fixed and up-and-running beforehand.
 Ribasim will raise an error and thus not execute.
 """
 
+mask = model.outlet.static.df["meta_aanvoer"] == 0
+model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)
@@ -72,6 +77,7 @@ if MODEL_EXEC:
     # TODO: Different ways of executing the model; choose the one that suits you best:
     ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
     # exit_code = model.run()
+
     # assert exit_code == 0
 
     """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
@@ -81,4 +87,4 @@ if MODEL_EXEC:
     """
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_afvoer()
+    indicators = controle_output.run_all()
