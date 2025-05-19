@@ -43,6 +43,8 @@ aanvoergebieden_df = aanvoergebieden_df[aanvoergebieden_df["soortafvoeraanvoerge
 aanvoergebieden_df = gpd.GeoDataFrame({"geometry": list(aanvoergebieden_df.union_all().geoms)}, crs=28992)
 # read model
 model = Model.read(ribasim_toml)
+
+# %%
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=2)
 # TODO: Remember to set the forcing conditions to be representative for a drought ('aanvoer'-conditions), or for
