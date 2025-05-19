@@ -6,6 +6,7 @@ import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 
 cloud = CloudStorage()
 authority = "DrentsOverijsselseDelta"
@@ -93,6 +94,8 @@ model.merge_basins(basin_id=1681, to_basin_id=1717, are_connected=True)
 model.merge_basins(basin_id=2348, to_basin_id=1756, are_connected=False)
 model.merge_basins(basin_id=2192, to_basin_id=2194, are_connected=False)
 # %%
+
+add_from_to_nodes_and_levels(model)
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 add_check_basin_level(model=model)
