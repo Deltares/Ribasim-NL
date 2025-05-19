@@ -146,9 +146,9 @@ Wetterskip["aggregation_area"].loc[boezem_idx, "Boezem"] = "Boezem_" + Wetterski
 ].astype(str)
 
 # define boezem areas
-Wetterskip["aggregation_area"]["peilgebied_cat"] = 0  # 0 = regular basin
-Wetterskip["aggregation_area"].loc[
-    Wetterskip["aggregation_area"]["polder"].str.lower().str.contains("boezem", na=False), "peilgebied_cat"
+Wetterskip["peilgebied"]["peilgebied_cat"] = 0  # 0 = regular basin
+Wetterskip["peilgebied"].loc[
+    Wetterskip["peilgebied"]["polder"].str.lower().str.contains("boezem", na=False), "peilgebied_cat"
 ] = 1
 
 # add streefpeilen
