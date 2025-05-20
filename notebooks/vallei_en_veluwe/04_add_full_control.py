@@ -42,7 +42,7 @@ cloud.synchronize(
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
-update_basin_static(model=model, evaporation_mm_per_day=2)
+update_basin_static(model=model, evaporation_mm_per_day=1)
 # TODO: Remember to set the forcing conditions to be representative for a drought ('aanvoer'-conditions), or for
 #  changing conditions (e.g., 1/3 precipitation, 2/3 evaporation).
 # set forcing conditions
@@ -72,9 +72,14 @@ model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 # fix boundary levels so we can get inflow
 model.reverse_direction_at_node(271)  # sluis Dieren is not an inlet
 
+# Grebbesluis: flow_rate: 2.85m3/s
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 288, "flow_rate"] = 2.5
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 44, "level"] = 999
+
 # set upstream level boundaries at 999 meters
-boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
+# boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
+# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
+
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
