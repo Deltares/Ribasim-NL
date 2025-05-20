@@ -1,3 +1,4 @@
+# %%
 import logging
 from collections import Counter
 from dataclasses import dataclass, field
@@ -12,6 +13,7 @@ from networkx import DiGraph, Graph, NetworkXNoPath, shortest_path, traversal
 from shapely.geometry import LineString, Point, box
 from shapely.ops import snap, split
 
+from ribasim_nl.geodataframe import snap_line_boundaries
 from ribasim_nl.geometry import drop_z, split_line
 from ribasim_nl.styles import add_styles_to_geopackage
 
@@ -68,6 +70,8 @@ class Network:
     name_col: str | None = None
     id_col: str | None = None
     tolerance: float | None = None
+    snap_line_boundaries: bool = True
+    verbose: bool = False
 
     _graph: DiGraph | None = field(default=None, repr=False)
     _graph_undirected: Graph | None = field(default=None, repr=False)
@@ -80,7 +84,8 @@ class Network:
         # check if name_col and id_col are valid values
         for col in [self.name_col, self.id_col]:
             if (col is not None) & (col not in self.lines_gdf.columns):
-                logger.warn(f"{col} not a column in lines_gdf, input will be set to None")
+                if self.verbose:
+                    logger.warning(f"{col} not a column in lines_gdf, input will be set to None")
                 col = None
 
         # check if lines_gdf only contains allowed geometries
@@ -95,6 +100,17 @@ class Network:
         # remove z-coordinates
         if self.lines_gdf.has_z.any():
             self.lines_gdf.loc[:, "geometry"] = self.lines_gdf.geometry.apply(lambda x: drop_z(x) if x.has_z else x)
+
+        # remove circle-linestrings (linestrings with no boundaries)
+        self.lines_gdf = self.lines_gdf[self.lines_gdf.boundary.count_geometries() == 2]
+
+        # snap line_boundaries
+        if self.snap_line_boundaries:
+            if self.tolerance is not None:
+                tolerance = self.tolerance
+            else:
+                tolerance = 0.25
+            self.lines_gdf = snap_line_boundaries(self.lines_gdf, tolerance=tolerance)
 
     @classmethod
     def from_lines_gpkg(cls, gpkg_file: str | Path, layer: str | None = None, **kwargs):
@@ -203,10 +219,15 @@ class Network:
                     for node in nodes_select[1:-1].itertuples():
                         link_def["node_to"] = node.Index
                         link_def["point_to"] = nodes_select.loc[link_def["node_to"]].geometry
-                        edge_geometry, geometry = split(
-                            snap(geometry, link_def["point_to"], self.snap_tolerance),
-                            link_def["point_to"],
-                        ).geoms
+                        try:
+                            edge_geometry, geometry = split(
+                                snap(geometry, link_def["point_to"], self.snap_tolerance),
+                                link_def["point_to"],
+                            ).geoms
+                        except ValueError:
+                            print(f"line with index {row.Index} can't be split. Please inspect input-lines here")
+                            continue
+
                         link_def["geometry"] = edge_geometry
                         self.add_link(**link_def)
                         link_def["node_from"] = link_def["node_to"]
@@ -234,7 +255,7 @@ class Network:
         name=None,
     ):
         """Add a link (edge) to the network"""
-        if self.tolerance is not None:
+        if not ((point_from is None) | (point_to is None)):
             geometry = LineString([(point_from.x, point_from.y)] + geometry.coords[1:-1] + [(point_to.x, point_to.y)])
 
         # add edge to graph
@@ -442,9 +463,10 @@ class Network:
                 self.graph.edges[(edge.node_from, edge.node_to)]["geometry"] = LineString(coords)
             return node_id
         else:
-            logger.warning(
-                f"No Node moved. Closest node: {node_id}, distance > max_distance ({node_distance} > {max_distance})"
-            )
+            if self.verbose:
+                logger.warning(
+                    f"No Node moved. Closest node: {node_id}, distance > max_distance ({node_distance} > {max_distance})"
+                )
             return None
 
     def add_node(self, point: Point, max_distance: float, align_distance: float = 100):
@@ -467,22 +489,23 @@ class Network:
             node_id = max(self.graph.nodes) + 1
             node_geometry = edge_geometry.interpolate(edge_geometry.project(point))
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
-
             # add edges
             self.graph.remove_edge(node_from, node_to)
             split_result = split_line(edge_geometry, node_geometry)
             if isinstance(split_result, LineString):
-                logger.warning(f"Splitting edge: {edge_id} resulted in a single LineString)")
+                if self.verbose:
+                    logger.warning(f"Splitting edge: {edge_id} resulted in a single LineString)")
                 return None
-            us_geometry, ds_geometry = split_line(edge_geometry, node_geometry).geoms
+            us_geometry, ds_geometry = split_result.geoms
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
             return self.move_node(point, max_distance=max_distance, align_distance=align_distance)
         else:
-            logger.warning(
-                f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
-            )
+            if self.verbose:
+                logger.warning(
+                    f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
+                )
             return None
 
     def reset(self):
@@ -597,7 +620,9 @@ class Network:
 
     def get_line(self, node_from, node_to, directed=True, weight="length"):
         path = self.get_path(node_from, node_to, directed, weight)
-        return self.path_to_line(path)
+
+        line = self.path_to_line(path)
+        return line
 
     def get_nodes(self) -> GeoDataFrame:
         """Get nodes from lines_gdf
