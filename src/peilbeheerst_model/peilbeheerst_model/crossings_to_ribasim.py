@@ -1917,7 +1917,7 @@ class RibasimNetwork:
             # dont change the paths below!
             checks_symbology_path = (
                 # r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_Ribasimmodel.qlr"
-                r"../../../../Data_overig/QGIS_qlr/visualisation_Ribasim.qlr"
+                r"../../../../RIBASIM_NL_DATA_DIR/Basisgegevens/QGIS_qlr/visualisation_Ribasim.qlr"
             )
             checks_symbology_path_new = os.path.join(
                 path,
@@ -1978,7 +1978,7 @@ class RibasimNetwork:
         if self.model_characteristics["write_symbology"]:
             # dont change the paths below!
             # checks_symbology_path = r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_checks.qlr"
-            checks_symbology_path = r"../../../../Data_overig/QGIS_qlr/visualisation_checks.qlr"
+            checks_symbology_path = r"../../../../RIBASIM_NL_DATA_DIR/Basisgegevens/QGIS_qlr/visualisation_checks.qlr"
 
             checks_symbology_path_new = os.path.join(
                 path,
