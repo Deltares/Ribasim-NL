@@ -81,11 +81,6 @@ print(len(Wetterskip["peilgebied"].loc[Wetterskip["peilgebied"].polder == "Boeze
 boezem = Wetterskip["peilgebied"].loc[Wetterskip["peilgebied"].polder == "Boezem"]
 boezem_to_merge = Wetterskip["peilgebied"].loc[Wetterskip["peilgebied"].polder == "Boezem_to_merge"]
 
-# quickly dissolve and explode all boezem_to_merge, so they are already (partly) aggregated
-boezem_to_merge = boezem_to_merge.dissolve()
-boezem_to_merge = boezem_to_merge.explode(index_parts=False)
-boezem_to_merge = boezem_to_merge[["polder", "geometry"]]
-
 # remove from the peilgebieden (will be added later again)
 Wetterskip["peilgebied"] = Wetterskip["peilgebied"].loc[Wetterskip["peilgebied"].polder != "Boezem"]
 Wetterskip["peilgebied"] = Wetterskip["peilgebied"].loc[Wetterskip["peilgebied"].polder != "Boezem_to_merge"]
@@ -97,6 +92,10 @@ Wetterskip["aggregation_area"] = Wetterskip["aggregation_area"].dissolve(by="pol
 # place the boezem back in the aggregation areas. A number will be added to it later to have unique values
 Wetterskip["aggregation_area"] = gpd.GeoDataFrame(pd.concat([Wetterskip["aggregation_area"], boezem]))
 Wetterskip["aggregation_area"] = gpd.GeoDataFrame(pd.concat([Wetterskip["aggregation_area"], boezem_to_merge]))
+
+# add the boezem back in the peilgebieden
+Wetterskip["peilgebied"] = gpd.GeoDataFrame(pd.concat([Wetterskip["peilgebied"], boezem]))
+Wetterskip["peilgebied"] = gpd.GeoDataFrame(pd.concat([Wetterskip["peilgebied"], boezem_to_merge]))
 
 # merge the tiny Boezem_to_merge polygons with the existing boezem
 # Original layers
@@ -113,7 +112,7 @@ for idx, row in to_merge.iterrows():
     buffered_geom = row.geometry.buffer(1)
 
     # Find boezem polygons that touch within the buffer tolerance
-    touching = boezem[boezem.geometry.buffer(0).intersects(buffered_geom)]
+    touching = boezem[boezem.geometry.intersects(buffered_geom)]
 
     if not touching.empty:
         # Merge with the first touching boezem only
@@ -129,7 +128,7 @@ for idx, row in to_merge.iterrows():
 
 print("Following boezems have not been assigned:")
 
-# Combine results, check if results as desired!
+# Combine results
 merged_gdf = pd.concat(
     [
         boezem,
@@ -149,7 +148,8 @@ Wetterskip["aggregation_area"].loc[boezem_idx, "Boezem"] = "Boezem_" + Wetterski
 Wetterskip["peilgebied"]["peilgebied_cat"] = 0  # 0 = regular basin
 Wetterskip["peilgebied"].loc[
     Wetterskip["peilgebied"]["polder"].str.lower().str.contains("boezem", na=False), "peilgebied_cat"
-] = 1
+] = 1  # 1 = boezem
+Wetterskip["peilgebied"] = Wetterskip["peilgebied"].to_crs(crs="EPSG:28992")
 
 # add streefpeilen
 Wetterskip["streefpeil"] = Wetterskip["peilgebied"][["globalid", "waterhoogte", "geometry"]].copy()
@@ -209,10 +209,30 @@ df.loc[dupes, "code"] = df.loc[dupes, "code"].fillna("None").astype(str) + "_" +
 Wetterskip["hydroobject"] = df
 
 # add gemalen
-Wetterskip["gemaal"] = Wetterskip["gemalen"][["KWKPLAAN", "KWKNAAM", "KGMIDENT", "IDENT_NW", "GLOBALID", "geometry"]]
+Wetterskip["gemaal"] = Wetterskip["gemalen"][
+    ["KWKNAAM", "KGMIDENT", "IDENT_NW", "GLOBALID", "KGMFUNC", "KGMMACAP", "geometry"]
+]
 Wetterskip["gemaal"] = Wetterskip["gemaal"].rename(
-    columns={"GLOBALID": "globalid", "IDENT_NW": "nen3610id", "KWKNAAM": "name", "KGMIDENT": "code"}
+    columns={
+        "GLOBALID": "globalid",
+        "IDENT_NW": "nen3610id",
+        "KWKNAAM": "meta_name",
+        "KGMIDENT": "code",
+        "KGMFUNC": "functie",
+        "KGMMACAP": "meta_capaciteit",
+    }
 )
+
+# determine the function of the gemalen
+Wetterskip["gemaal"].functie = Wetterskip["gemaal"].functie.astype(int)
+Wetterskip["gemaal"].loc[Wetterskip["gemaal"].functie.isin([2, 4, 5, 6, 7, 99]), "func_afvoer"] = True
+Wetterskip["gemaal"].loc[Wetterskip["gemaal"].functie.isin([1, 3, 5, 7]), "func_aanvoer"] = True
+Wetterskip["gemaal"].loc[Wetterskip["gemaal"].functie == 8, "func_circulatie"] = True
+Wetterskip["gemaal"] = Wetterskip["gemaal"].drop(columns="functie")
+
+cols = ["func_aanvoer", "func_afvoer", "func_circulatie"]
+for col in cols:  # fill the columns with False if None
+    Wetterskip["gemaal"][col] = Wetterskip["gemaal"][col].fillna(False).astype(bool)
 
 # add stuwen
 Wetterskip["stuw"] = Wetterskip["stuwen"][["IDENT_NW", "GLOBALID", "geometry"]]
@@ -228,6 +248,7 @@ Wetterskip = {
     k: Wetterskip[k]
     for k in ["aggregation_area", "peilgebied", "streefpeil", "hydroobject", "duikersifonhevel", "stuw", "gemaal"]
 }
+
 
 # test whether the codes and globalids are unique
 variables = ["aggregation_area", "peilgebied", "stuw", "gemaal", "duikersifonhevel", "hydroobject"]
