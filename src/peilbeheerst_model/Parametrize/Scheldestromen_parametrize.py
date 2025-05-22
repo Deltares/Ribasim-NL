@@ -204,9 +204,6 @@ else:
     ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2
     ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2
 
-print("LB-static:", ribasim_model.level_boundary.static.df, "", sep="\n")
-print("LB-time:", ribasim_model.level_boundary.time.df, "", sep="\n")
-
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
@@ -258,10 +255,7 @@ assign = AssignAuthorities(
 ribasim_model = assign.assign_authorities()
 if MIXED_CONDITIONS:
     # TODO: Embed the correct usage of `static` v. `time` dataframes in `AssignAuthorities`
-    ribasim_model.level_boundary.time.df.merge(
-        ribasim_model.level_boundary.static.df[["node_id", "meta_couple_authority"]], on="node_id", how="left"
-    )
-    ribasim_model.level_boundary.static.df = None
+    ribasim_model = assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # set numerical settings
 # write model output
