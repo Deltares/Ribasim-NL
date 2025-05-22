@@ -23,11 +23,6 @@ MIXED_CONDITIONS: bool = False
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
-# TODO: Assigning authorities is done to the `level_boundary.static`-table, while the `level_boundary.time`-table is
-#  required for mixed forcing conditions, which cannot be used simultaneously.
-if MIXED_CONDITIONS:
-    warnings.warn("Authorities not assigned because of applying mixed forcing conditions.")
-
 # model tolerances
 solver = Solver(abstol=1e-9, reltol=1e-9)
 
@@ -48,9 +43,9 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 )
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
-
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
-
+qlr_path = cloud.joinpath(
+    "Basisgegevens", "QGIS_qlr", "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_202502.qlr"
+)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "Aanvoergebieden_detail.shp")
 
 cloud.synchronize(
@@ -417,7 +412,7 @@ assign = AssignAuthorities(
 )
 ribasim_model = assign.assign_authorities()
 if MIXED_CONDITIONS:
-    ribasim_model.level_boundary.static.df = None
+    assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # set numerical settings
 # write model output
