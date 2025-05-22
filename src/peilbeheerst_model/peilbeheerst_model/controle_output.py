@@ -529,20 +529,28 @@ class Control:
         :param kwargs: optional arguments, which are passed on to the various method-calls within this collective data
             analysis call
 
-        :key skip_time_steps: number of time-steps considered as spin-up time and so skipped in analysis, defaults to 0
         :key autofill_missing_data: autofill water level bounds if missing, defaults to False
+        :key skip_time_steps: number of time-steps considered as spin-up time and so skipped in analysis, defaults to 0
+        :key suppress_file_warning: suppress warning for potentially incompatible *.qlr-file, defaults to False
 
         :return: analysed data collector
         :rtype: dict
         """
         # optional arguments
-        skip_time_steps: int = kwargs.get("skip_time_steps", 0)
         autofill_missing_data: bool = kwargs.get("autofill_missing_data", False)
+        skip_time_steps: int = kwargs.get("skip_time_steps", 0)
+        suppress_file_warning: bool = kwargs.get("suppress_file_warning", False)
 
         # analyse output data
         control_dict = self.read_model_output()
         control_dict = self.water_level_bounds(control_dict, skip_time_steps=skip_time_steps)
         control_dict = self.error_bounds(control_dict, autofill_missing_data=autofill_missing_data)
+
+        # check for dynamic forcing specific *.qlr
+        filename_cc_qlr = "output_controle_cc.qlr"
+        if not suppress_file_warning and not str(self.qlr_path).endswith(filename_cc_qlr):
+            logging.warning(f"*.qlr-file is different from default for dynamic forcing: {filename_cc_qlr}")
+            logging.warning(f"*.qlr-file may not be compatible with dynamic forcing: {self.qlr_path}")
 
         # export analysed data
         self.store_data(control_dict, self.path_control_dict_path)
