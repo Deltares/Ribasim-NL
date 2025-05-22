@@ -545,6 +545,10 @@ class Control:
         control_dict = self.read_model_output()
         control_dict = self.water_level_bounds(control_dict, skip_time_steps=skip_time_steps)
         control_dict = self.error_bounds(control_dict, autofill_missing_data=autofill_missing_data)
+        control_dict = self.water_aanvoer_areas(control_dict)
+        control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
+        control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
+        control_dict = self.water_aanvoer_outlets(control_dict)
 
         # check for dynamic forcing specific *.qlr
         filename_cc_qlr = "output_controle_cc.qlr"
