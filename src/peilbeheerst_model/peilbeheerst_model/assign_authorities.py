@@ -2,6 +2,7 @@ import geopandas as gpd
 import pandas as pd
 
 
+# TODO: Embed correct usage of `static` v. `time` dataframes in `AssignAuthorities`
 class AssignAuthorities:
     """
     Assign authority polygons to LevelBoundary nodes in a RIBASIM model.
