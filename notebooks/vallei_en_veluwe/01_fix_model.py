@@ -126,7 +126,26 @@ model.remove_node(360, remove_edges=True)
 model.remove_node(394, remove_edges=True)
 model.merge_basins(basin_id=1269, to_basin_id=1087)
 model.merge_basins(basin_id=1149, to_basin_id=1270, are_connected=False)
-
+model.merge_basins(basin_id=1187, to_node_id=1028)
+model.merge_basins(basin_id=759, to_node_id=990)
+model.merge_basins(basin_id=992, to_node_id=990)
+model.merge_basins(basin_id=1024, to_node_id=990)
+model.merge_basins(basin_id=1064, to_node_id=990)
+model.merge_basins(basin_id=826, to_node_id=1140)
+model.merge_basins(basin_id=789, to_node_id=1137)
+model.merge_basins(basin_id=1077, to_node_id=1137)
+model.merge_basins(basin_id=938, to_node_id=1137)
+model.merge_basins(basin_id=1147, to_node_id=1103)
+model.merge_basins(basin_id=828, to_node_id=1103)
+model.merge_basins(basin_id=1142, to_node_id=1066)
+model.merge_basins(basin_id=900, to_node_id=959)
+model.merge_basins(basin_id=1099, to_node_id=811)
+model.merge_basins(basin_id=1033, to_node_id=811)
+model.remove_node(740, remove_edges=True)
+model.remove_node(644, remove_edges=True)
+model.remove_node(736, remove_edges=True)
+model.merge_basins(basin_id=1139, to_node_id=959, are_connected=False)
+model.merge_basins(basin_id=1086, to_node_id=1137, are_connected=True)
 
 model.fix_unassigned_basin_area()
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
@@ -158,7 +177,13 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 model = reset_static_tables(model)
 
 # %%
+model.explode_basin_area()  # all multipolygons to singles
+model.basin.area.df.to_file("basin_area.gpkg", layer="model_basin_area")
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
+model.write(ribasim_toml)
+
 actions = [
+    "remove_basin_area",
     "remove_node",
     "remove_edge",
     "add_basin",
@@ -169,6 +194,7 @@ actions = [
     "move_node",
     "connect_basins",
     "update_node",
+    "redirect_edge",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 for action in actions:
@@ -177,6 +203,8 @@ for action in actions:
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}

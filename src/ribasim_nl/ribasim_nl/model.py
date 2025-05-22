@@ -108,18 +108,29 @@ class Model(Model):
         return self._flow_results
 
     @property
-    def link_results(self):
-        if self._basin_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
-            self._basin_results = Results(filepath=filepath)
-        return self._basin_results
-
-    @property
     def basin_outstate(self):
         if self._basin_outstate is None:
             filepath = self.filepath.parent.joinpath(self.results_dir, "basin_state.arrow").absolute().resolve()
             self._basin_outstate = Results(filepath=filepath)
         return self._basin_outstate
+
+    def basin_static_discharge(self):
+        return self.basin.static.df.drainage
+
+    def total_flow_boundary_static_inflow(self):
+        return self.flow_boundary.static.df.flow_rate
+
+    def level_boundary_inflow(self, time_stamp: pd.Timestamp | None = None):
+        # filter link_results on timestamp
+        if time_stamp is None:
+            time_stamp = self.flow_results.df.index.max()
+        flow_results = self.flow_results.df.loc[time_stamp]
+
+        # get inflow edges
+        node_ids = self.level_boundary.node.df.index
+        link_ids = self.link.df[self.link.df.from_node_id.isin(node_ids)].index
+
+        return flow_results[flow_results.link_id.isin(link_ids)].reset_index().set_index("link_id").flow_rate
 
     @property
     def graph(self):
@@ -131,14 +142,12 @@ class Model(Model):
                 target="to_node_id",
                 create_using=nx.DiGraph,
             )
-            if "meta_function" not in self.node_table().df.columns:
-                node_attributes = {node_id: {"function": ""} for node_id in self.node_table().df.index}
-            else:
-                node_attributes = (
-                    self.node_table()
-                    .df.rename(columns={"meta_function": "function"})[["function"]]
-                    .to_dict(orient="index")
-                )
+            node_table_df = self.node_table().df.copy()
+            if "meta_function" not in node_table_df.columns:
+                node_table_df.loc[:, "meta_function"] = ""
+            node_attributes = node_table_df.rename(columns={"meta_function": "function"})[
+                ["function", "node_type"]
+            ].to_dict(orient="index")
             nx.set_node_attributes(graph, node_attributes)
 
             self._graph = graph
@@ -874,6 +883,11 @@ class Model(Model):
             if node_id in self.basin.area.df.node_id.to_numpy():
                 poly = self.basin.area.df.set_index("node_id").at[node_id, "geometry"]
 
+                # polygon could be a series op polygons
+                if isinstance(poly, pd.Series):
+                    poly = poly.union_all()
+
+                # if it is a polygon we convert it to multipolygon
                 if isinstance(poly, Polygon):
                     poly = MultiPolygon([poly])
 

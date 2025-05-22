@@ -1,10 +1,12 @@
+# %%
 import os
 import shutil
 from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-import ribasim
+
+from ribasim_nl import Model
 
 
 class Control:
@@ -30,7 +32,7 @@ class Control:
     def read_model_output(self):
         df_basin = pd.read_feather(self.path_basin_output)
         df_link = pd.read_feather(self.path_link_output)
-        model = ribasim.model.Model(filepath=self.path_ribasim_toml)
+        model = Model(filepath=self.path_ribasim_toml)
 
         self.df_basin = df_basin
         self.df_link = df_link
@@ -308,6 +310,15 @@ class Control:
 
         return control_dict
 
+    def flow_rate(self, control_dict):
+        time_stamp = self.model.flow_results.df.index.max()
+        flow_rate = self.model.flow_results.df.loc[time_stamp].reset_index().set_index("link_id").flow_rate
+        link_df = self.model.link.df.copy()
+        link_df.loc[flow_rate.index, "flow_rate"] = flow_rate
+        control_dict["flow_rate"] = link_df
+
+        return control_dict
+
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():
@@ -347,6 +358,7 @@ class Control:
         control_dict = self.stationary(control_dict)
         control_dict = self.find_stationary_flow(control_dict)
         control_dict = self.mask_basins(control_dict)
+        control_dict = self.flow_rate(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 

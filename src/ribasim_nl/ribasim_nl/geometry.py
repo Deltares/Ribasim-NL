@@ -248,3 +248,27 @@ def split_line(line: LineString, point: Point, tolerance: float = 0.1) -> MultiL
             return MultiLineString(result)
         else:
             return line
+
+
+def snap_boundaries_to_other_line(line: LineString, other_line: LineString, tolerance: float = 0.1) -> LineString:
+    """Snap the boundaries of line to the boundary or edge/vertice of other_line if boundaries are within tolerance"""
+    coords = list(line.coords)
+    start_pt, end_pt = line.boundary.geoms
+
+    # modify other_start_pt if within tolerance
+    if start_pt.distance(other_line) < tolerance:
+        if start_pt.distance(other_line.boundary) < tolerance:
+            pt = next(i for i in other_line.boundary.geoms if i.distance(start_pt) < tolerance)
+        else:
+            pt = line.interpolate(line.project(start_pt))
+        coords[0] = (pt.x, pt.y)
+
+    # modify end_start_pt if within tolerance
+    if end_pt.distance(other_line) < tolerance:
+        if end_pt.distance(other_line.boundary) < tolerance:
+            pt = next(i for i in other_line.boundary.geoms if i.distance(end_pt) < tolerance)
+        else:
+            pt = line.interpolate(line.project(end_pt))
+        coords[-1] = (pt.x, pt.y)
+
+    return LineString(coords)
