@@ -4,7 +4,6 @@ import datetime
 import os
 import warnings
 
-import ribasim
 import ribasim.nodes
 from ribasim import Node
 from ribasim.nodes import level_boundary, tabulated_rating_curve
@@ -19,6 +18,9 @@ from ribasim_nl import CloudStorage
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
+
+if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
+    AANVOER_CONDITIONS = True
 
 # model settings
 waterschap = "Scheldestromen"
@@ -37,7 +39,9 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 )
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
+qlr_path = cloud.joinpath(
+    "Basisgegevens", "QGIS_qlr", "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_202502.qlr"
+)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "WSS_aanvoergebieden.shp")
 
 cloud.synchronize(
@@ -81,7 +85,7 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary level
+default_level = 0 if MIXED_CONDITIONS else (0.42 if AANVOER_CONDITIONS else -0.42)  # default LevelBoundary level
 
 # process the feedback form
 name = "HKV"
@@ -262,7 +266,7 @@ ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_ot
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
-indicators = controle_output.run_all()
+indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
 
 # write model
 ribasim_param.write_ribasim_model_GoodCloud(
