@@ -5,6 +5,7 @@ import os
 import warnings
 
 from ribasim import Node
+from ribasim.config import Solver
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
 
@@ -21,6 +22,9 @@ MIXED_CONDITIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
+
+# enlarge (relative) tolerance to smoothen any possible instabilities
+solver = Solver(abstol=1e-9, reltol=1e-9)
 
 # model settings
 waterschap = "AmstelGooienVecht"
@@ -107,7 +111,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml, solver=solver)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -228,6 +232,9 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(148437, 478733)), [pump.S
 ribasim_model.link.add(ribasim_model.basin[168], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
+# TODO: Temporary fix
+ribasim_model.remove_node(350, True)
+
 #  a multipolygon occurs in a single basin (88). Only retain the largest value
 exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 88].explode(
     index_parts=False
@@ -268,7 +275,7 @@ add_storage_basins.create_bergende_basins()
 
 # set forcing
 if MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 10)
+    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 1)
 else:
     forcing_dict = {
         "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
@@ -318,7 +325,7 @@ ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waters
 ribasim_param.add_continuous_control(ribasim_model, dy=-200)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 10
+ribasim_model.manning_resistance.static.df.length = 100
 ribasim_model.manning_resistance.static.df.manning_n = 0.01
 
 # last formating of the tables
@@ -327,6 +334,7 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
+    ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
 # assign authorities
 assign = AssignAuthorities(
