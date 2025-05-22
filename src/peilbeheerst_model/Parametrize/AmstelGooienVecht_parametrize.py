@@ -363,7 +363,7 @@ ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_ot
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
-indicators = controle_output.run_all()
+indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
 
 # write model
 ribasim_param.write_ribasim_model_GoodCloud(
