@@ -85,7 +85,7 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-default_level = 0 if MIXED_CONDITIONS else (0.42 if AANVOER_CONDITIONS else -0.42)  # default LevelBoundary level
+default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary level
 
 # process the feedback form
 name = "HKV"
@@ -195,13 +195,17 @@ ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
 
 # add the default levels
-ribasim_model.level_boundary.static.df.level = default_level
+if MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(ribasim_model, starttime, endtime, -0.42, 0.42)
+    ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2
+    ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2
+else:
+    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2
+    ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2
 
-# Janna Schoonakker asked on 12-11-2024 to change the level of this specific level boundary
-ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2
-
-# See email 6/12/2024 Janna Schoonakker to change the level of this specific level boundary
-ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2
+print("LB-static:", ribasim_model.level_boundary.static.df, "", sep="\n")
+print("LB-time:", ribasim_model.level_boundary.time.df, "", sep="\n")
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -252,6 +256,12 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
+if MIXED_CONDITIONS:
+    # TODO: Embed the correct usage of `static` v. `time` dataframes in `AssignAuthorities`
+    ribasim_model.level_boundary.time.df.merge(
+        ribasim_model.level_boundary.static.df[["node_id", "meta_couple_authority"]], on="node_id", how="left"
+    )
+    ribasim_model.level_boundary.static.df = None
 
 # set numerical settings
 # write model output
