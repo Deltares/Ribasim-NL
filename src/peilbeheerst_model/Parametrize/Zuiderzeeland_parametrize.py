@@ -42,7 +42,9 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 )
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
+qlr_path = cloud.joinpath(
+    "Basisgegevens", "QGIS_qlr", "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_202502.qlr"
+)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "peilgebieden.gpkg")
 
 cloud.synchronize(
@@ -551,7 +553,10 @@ ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
 
 # add the default levels
-ribasim_model.level_boundary.static.df.level = default_level
+if MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(ribasim_model, starttime, endtime, -0.4, 0.4)
+else:
+    ribasim_model.level_boundary.static.df.level = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -599,6 +604,8 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
+if MIXED_CONDITIONS:
+    assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # set numerical settings
 # write model output
