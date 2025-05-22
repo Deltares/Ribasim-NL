@@ -1385,6 +1385,28 @@ def determine_min_upstream_max_downstream_levels(
     ribasim_model.pump.static.df = pump
 
 
+def set_dynamic_min_upstream_max_downstream(ribasim_model: ribasim.Model) -> None:
+    """Set the upstream/downstream bounding levels to `None` if they are based on dynamic `LevelBoundary`-nodes.
+
+    With dynamic `LevelBoundary`-nodes, the `min_upstream_level` and `max_downstream_level` of both `Outlet`- and
+    `Pump`-nodes are no longer valid, as they are static while the `LevelBoundary`-nodes are dynamic. To remove this
+    constrain, the values of `min_upstream_level` and `max_downstream_level` that are based on `LevelBoundary`-nodes are
+    set to `None` to prevent incorrect flows to and from `LevelBoundary`-nodes.
+
+    :param ribasim_model: ribasim model
+    :type ribasim_model: ribasim.Model
+    """
+    print(ribasim_model.level_boundary.node.df)
+    level_boundary_node_ids = ribasim_model.level_boundary.node.df["meta_node_id"].values
+
+    for structure in ("outlet", "pump"):
+        data = getattr(ribasim_model, structure)
+        df = data.static.df
+        df.loc[df["meta_from_node_id"].isin(level_boundary_node_ids), "min_upstream_level"] = None
+        df.loc[df["meta_to_node_id"].isin(level_boundary_node_ids), "max_downstream_level"] = None
+        setattr(ribasim_model, structure, data)
+
+
 def add_discrete_control(ribasim_model, waterschap, default_level):
     """Add discrete control nodes to the network. The rules are based on the meta_categorie of each node."""
     # load in the sturing which is defined in the json files
