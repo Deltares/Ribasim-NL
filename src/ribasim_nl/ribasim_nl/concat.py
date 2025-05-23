@@ -39,7 +39,9 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
         model.edge.df = edge_df
 
         # merge tables
-        for node_type in model.node_table().df.node_type.unique():
+        for node_type in set(model.node_table().df.node_type.unique()).union(
+            merge_model.node_table().df.node_type.unique()
+        ):
             model_node = getattr(model, pascal_to_snake_case(node_type))
             merge_model_node = getattr(merge_model, pascal_to_snake_case(node_type))
             for attr in model_node.model_fields.keys():
