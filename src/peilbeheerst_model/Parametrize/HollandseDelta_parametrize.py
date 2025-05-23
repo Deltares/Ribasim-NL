@@ -83,7 +83,8 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2025, 1, 1)
+endtime = datetime.datetime(2024, 2, 1)
+# endtime = datetime.datetime(2025, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -360,6 +361,8 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(102168, 421137)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(102158, 421104)), [pump.Static(flow_rate=[0.1])])
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[348])
 
@@ -502,6 +505,25 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[26])
 
+# TODO: Temporary fixes
+# Changed direction of two pumps: See updated feedback form.
+ribasim_param.change_pump_func(ribasim_model, 1082, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 1662, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 1761, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 1873, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 1913, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 1913, "afvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, 2137, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 2180, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 2202, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 2242, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 2453, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 2572, "afvoer", 1)
+# basins are connected by both a `Pump`- and `Manning`-node: removed `Pump`-nodes due to same 'streefpeil'-values
+ribasim_model.remove_node(953, True)
+ribasim_model.remove_node(1041, True)
+ribasim_model.remove_node(2534, True)
+
 # (re) set 'meta_node_id'
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
@@ -580,6 +602,7 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 ribasim_param.clean_tables(ribasim_model, waterschap)
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
+    ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
@@ -595,7 +618,6 @@ assign = AssignAuthorities(
 )
 ribasim_model = assign.assign_authorities()
 if MIXED_CONDITIONS:
-    # TODO: Embed the correct usage of `static` v. `time` dataframes in `AssignAuthorities`
     assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # set numerical settings
@@ -610,7 +632,7 @@ ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_ot
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
-indicators = controle_output.run_all()
+indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
 
 # write model
 ribasim_param.write_ribasim_model_GoodCloud(
