@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Level controlled – Ribasim-NL</title>
+<title>Coupling – Ribasim-NL</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -118,7 +118,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/couple.html">Coupling</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -138,7 +138,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link active">
+  <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Level controlled</span></a>
   </div>
 </li>
@@ -150,7 +150,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
+  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Coupling</span></a>
   </div>
 </li>
@@ -159,15 +159,27 @@ ul.task-list li input[type="checkbox"] {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#notebookssamenvoegen_modellen.py" id="toc-notebookssamenvoegen_modellen.py" class="nav-link active" data-scroll-target="#notebookssamenvoegen_modellen.py"><code>notebooks/samenvoegen_modellen.py</code></a></li>
+  <li><a href="#notebookskoppelen_modellen.py" id="toc-notebookskoppelen_modellen.py" class="nav-link" data-scroll-target="#notebookskoppelen_modellen.py"><code>notebooks/koppelen_modellen.py</code></a>
+  <ul class="collapse">
+  <li><a href="#connector-levelboundary-replaced-by-connector-basin" id="toc-connector-levelboundary-replaced-by-connector-basin" class="nav-link" data-scroll-target="#connector-levelboundary-replaced-by-connector-basin"><code>Connector</code> | <code>LevelBoundary</code> replaced by <code>Connector</code> | <code>Basin</code></a></li>
+  <li><a href="#outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet" id="toc-outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet" class="nav-link" data-scroll-target="#outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet"><code>Outlet</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Outlet</code> replaced by <code>Outlet</code></a></li>
+  <li><a href="#other-connections" id="toc-other-connections" class="nav-link" data-scroll-target="#other-connections">Other connections</a></li>
+  </ul></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Level controlled</h1>
+<h1 class="title">Coupling</h1>
 </div>
 
 
@@ -184,19 +196,42 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model"><code>src/peilbeheerst_model</code></a>. The paths below are relative to this path.</p>
-<ol type="1">
-<li>Run the preprocessing scripts. One script per water board, path: <code>peilbeheerst_model/preprocess_data/</code></li>
-<li>Run the postprocessing script. One script per water board, path: <code>peilbeheerst_model/postprocess_data/</code></li>
-<li>Run the crossings script. One script, path: <code>01_parse_crossings.ipynb</code>. Moving to one script per water board under <code>peilbeheerst_model/parse_crossings/</code>.</li>
-<li>Run shortest paths scripts. One script per water board, path: <code>Shortest_path/</code></li>
-<li>Run crossings to Ribasim script. One script, all water boards are below each other, path: <code>02_crossings_to_ribasim_notebook.ipynb</code>. Moving to one script per water board under <code>peilbeheerst_model/crossings_to_ribasim/</code>.</li>
-<li>Run parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: <code>Parametrize/AmstelGooienVecht_parametrize.ipynb</code></li>
-</ol>
-<p>We originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as <code>AmstelGooienVecht_parametrize.ipynb</code>.</p>
-<p>Finally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.</p>
+<p>To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.</p>
+<p>This procedure assumes there’s a <code>meta_couple_authority</code> column in the <code>LevelBoundary / Static</code> table, which is currently the case for (at least) the level controlled models.</p>
+<ul class="task-list">
+<li><label><input type="checkbox">Ensure all models have a <code>meta_couple_authority</code>.</label></li>
+</ul>
+<section id="notebookssamenvoegen_modellen.py" class="level1">
+<h1><code>notebooks/samenvoegen_modellen.py</code></h1>
+<p>First we determine which models we want to couple. Currently this is tested for <code>Rijkswaterstaat</code>, <code>AmstelGooienVecht</code>, <code>Rijnland</code>, <code>HollandseDelta</code>, <code>Delfland</code>, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g.&nbsp;<code>80</code> for <code>Rijkswaterstaat</code>. This will result in an <code>lhm</code> model.</p>
+</section>
+<section id="notebookskoppelen_modellen.py" class="level1">
+<h1><code>notebooks/koppelen_modellen.py</code></h1>
+<p>Secondly, we can use this <code>lhm</code> model to actually couple the individual models in there. To do so, each <code>LevelBoundary</code> with a filled in <code>meta_couple_authority</code> in their <code>Static</code> table is replaced by another node from the <code>meta_couple_authority</code>s model.</p>
+<p>There are several combinations possible:</p>
+<section id="connector-levelboundary-replaced-by-connector-basin" class="level3">
+<h3 class="anchored" data-anchor-id="connector-levelboundary-replaced-by-connector-basin"><code>Connector</code> | <code>LevelBoundary</code> replaced by <code>Connector</code> | <code>Basin</code></h3>
+<p>The easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the <code>Basin / area</code> polygon). This will relink the connector node (i.e.&nbsp;an <code>Outlet</code>) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the <code>Basin</code> instead.</p>
+<p>For the <code>Rijkswaterstaat</code> Basins, the new link follows the <code>Rijkswataerstaat/verwerkt/netwerk.gpkg</code> topology, instead of a direct line.</p>
+</section>
+<section id="outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet" class="level3">
+<h3 class="anchored" data-anchor-id="outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet"><code>Outlet</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Outlet</code> replaced by <code>Outlet</code></h3>
+<p>In some cases, especially when coupling between two waterboards, there are two <code>LevelBoundary</code>s close to one another, which are treated as duplicates.</p>
+</section>
+<section id="other-connections" class="level3">
+<h3 class="anchored" data-anchor-id="other-connections">Other connections</h3>
+<p>There are several other coupling connections that could happen which require further attention:</p>
+<ul class="task-list">
+<li><label><input type="checkbox">Create a coupling for <code>Pump</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Pump</code></label></li>
+<li><label><input type="checkbox">Create a coupling for <code>Pump</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Outlet</code></label></li>
+<li><label><input type="checkbox">Fix Control nodes when merging duplicates</label></li>
+<li><label><input type="checkbox">Investigate whether other connections happen</label></li>
+</ul>
+<p>Currently these cases are automatically handled as the <code>Connector</code> | <code>Basin</code>, which leaves duplicate Connector Nodes in place, and might duplicate a flow.</p>
 
 
+</section>
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
