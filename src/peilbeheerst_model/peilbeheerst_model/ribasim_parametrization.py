@@ -2405,3 +2405,79 @@ def find_upstream_downstream_target_levels(ribasim_model: ribasim.Model, node: s
         ribasim_model.outlet.static = structure_static
     elif "ump" in node:
         ribasim_model.pump.static = structure_static
+
+
+def change_func(ribasim_model: ribasim.Model, node_id: int, node_type: str, func: str, value: int) -> None:
+    """Change the 'meta_func_{func}' of a `Outlet`- or `Pump`-node.
+
+    :param ribasim_model: Ribasim model
+    :param node_id: node ID
+    :param node_type: node type, options are {'outlet', 'pump'}
+    :param func: function to change, options are {'aanvoer', 'afvoer'}
+    :param value: value to set the function to, options are {0, 1}
+
+    :type ribasim_model: ribasim.Model
+    :type node_id: int
+    :type node_type: str
+    :type func: str
+    :type value: int
+    """
+    assert node_type in ("outlet", "pump")
+    assert func in ("aanvoer", "afvoer")
+    assert value in (0, 1)
+    getattr(ribasim_model, node_type).static.df.loc[
+        getattr(ribasim_model, node_type).static.df["node_id"] == node_id, f"meta_func_{func}"
+    ] = value
+
+
+def change_pump_func(ribasim_model: ribasim.Model, node_id: int, func: str, value: int) -> None:
+    """Change the 'meta_func_{func}' of a `Pump`-node.
+
+    :param ribasim_model: Ribasim model
+    :param node_id: pump node ID
+    :param func: function to change, options are {'aanvoer', 'afvoer'}
+    :param value: value to set the function to, options are {0, 1}
+
+    :type ribasim_model: ribasim.Model
+    :type node_id: int
+    :type func: str
+    :type value: int
+    """
+    change_func(ribasim_model, node_id, "pump", func, value)
+
+
+def change_outlet_func(ribasim_model: ribasim.Model, node_id: int, func: str, value: int) -> None:
+    """Change the 'meta_func_{func}' of a `Outlet`-node.
+
+    :param ribasim_model: Ribasim model
+    :param node_id: outlet node ID
+    :param func: function to change, options are {'aanvoer', 'afvoer'}
+    :param value: value to set the function to, options are {0, 1}
+
+    :type ribasim_model: ribasim.Model
+    :type node_id: int
+    :type func: str
+    :type value: int
+    """
+    change_func(ribasim_model, node_id, "outlet", func, value)
+
+
+def change_link_direction(ribasim_model: ribasim.Model, node_id: int) -> None:
+    """Change directions of links from and to {node_id}.
+
+    :param ribasim_model: Ribasim model
+    :param node_id: node ID of which connecting links must change direction
+
+    :type ribasim_model: ribasim.Model
+    :type node_id: int
+    """
+    assert node_id in ribasim_model.outlet.node.df.index or node_id in ribasim_model.pump.node.df.index
+    link_ids = ribasim_model.link.df[
+        (ribasim_model.link.df["from_node_id"] == node_id) | (ribasim_model.link.df["to_node_id"] == node_id)
+    ].index
+    lines = [ribasim_model.link.df.loc[lid, "geometry"] for lid in link_ids]
+    ribasim_model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]] = ribasim_model.link.df.loc[
+        link_ids, ["to_node_id", "from_node_id"]
+    ]
+    for lid, line in zip(link_ids, lines):
+        ribasim_model.link.df.loc[lid, "geometry"] = shapely.LineString(line.coords[::-1])
