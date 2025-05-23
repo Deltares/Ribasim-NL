@@ -2460,24 +2460,3 @@ def change_outlet_func(ribasim_model: ribasim.Model, node_id: int, func: str, va
     :type value: int
     """
     change_func(ribasim_model, node_id, "outlet", func, value)
-
-
-def change_link_direction(ribasim_model: ribasim.Model, node_id: int) -> None:
-    """Change directions of links from and to {node_id}.
-
-    :param ribasim_model: Ribasim model
-    :param node_id: node ID of which connecting links must change direction
-
-    :type ribasim_model: ribasim.Model
-    :type node_id: int
-    """
-    assert node_id in ribasim_model.outlet.node.df.index or node_id in ribasim_model.pump.node.df.index
-    link_ids = ribasim_model.link.df[
-        (ribasim_model.link.df["from_node_id"] == node_id) | (ribasim_model.link.df["to_node_id"] == node_id)
-    ].index
-    lines = [ribasim_model.link.df.loc[lid, "geometry"] for lid in link_ids]
-    ribasim_model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]] = ribasim_model.link.df.loc[
-        link_ids, ["to_node_id", "from_node_id"]
-    ]
-    for lid, line in zip(link_ids, lines):
-        ribasim_model.link.df.loc[lid, "geometry"] = shapely.LineString(line.coords[::-1])
