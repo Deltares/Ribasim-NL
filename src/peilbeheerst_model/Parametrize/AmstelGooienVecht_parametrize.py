@@ -234,6 +234,10 @@ ribasim_model.link.add(pump_node, level_boundary_node)
 
 # TODO: Temporary fix
 ribasim_model.remove_node(350, True)
+aanvoer_pump_ids = 251, 430, 644, 673, 769, 784, 842
+for pid in aanvoer_pump_ids:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pid, "meta_func_aanvoer"] = 1
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pid, "meta_func_afvoer"] = 0
 
 #  a multipolygon occurs in a single basin (88). Only retain the largest value
 exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 88].explode(
