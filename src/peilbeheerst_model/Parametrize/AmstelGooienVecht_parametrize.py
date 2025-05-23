@@ -232,7 +232,7 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(148437, 478733)), [pump.S
 ribasim_model.link.add(ribasim_model.basin[168], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
-# TODO: Temporary fix
+# TODO: Temporary fixes
 ribasim_model.remove_node(350, True)
 aanvoer_pump_ids = 251, 430, 644, 673, 769, 784, 842
 for pid in aanvoer_pump_ids:

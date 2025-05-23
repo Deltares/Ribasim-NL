@@ -173,6 +173,19 @@ ribasim_model.merge_basins(node_id=88, to_node_id=2, are_connected=True)
 ribasim_model.merge_basins(node_id=32, to_node_id=50, are_connected=True)
 ribasim_model.merge_basins(node_id=54, to_node_id=1, are_connected=True)
 
+
+# TODO: Temporary fixes
+def change_pump_func(model: Model, pid: int, func: str, value: int) -> None:
+    assert func in ("aanvoer", "afvoer")
+    assert value in (0, 1)
+    model.pump.static.df.loc[model.pump.static.df["node_id"] == pid, f"meta_func_{func}"] = value
+
+
+change_pump_func(ribasim_model, 300, "aanvoer", 0)
+change_pump_func(ribasim_model, 300, "afvoer", 1)
+ribasim_model.remove_node(160, True)
+change_pump_func(ribasim_model, 158, "afvoer", 1)
+
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
@@ -248,6 +261,7 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 ribasim_param.clean_tables(ribasim_model, waterschap)
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
+    ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
