@@ -179,6 +179,13 @@ ribasim_param.change_pump_func(ribasim_model, 300, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 300, "afvoer", 1)
 ribasim_model.remove_node(160, True)
 
+# remove Brielse Meer as `Basin` and add as `LevelBoundary`-`Pump`-combination
+ribasim_model.remove_node(98, True)
+ribasim_model.remove_node(565, True)
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460, "meta_func_aanvoer"] = 1
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460, "meta_func_afvoer"] = 0
+ribasim_model.link.add(ribasim_model.pump[460], ribasim_model.basin[10])
+
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
