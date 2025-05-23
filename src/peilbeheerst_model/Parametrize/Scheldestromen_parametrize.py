@@ -155,6 +155,9 @@ ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[1])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
+# TODO: Temporary fixes
+# Nothing required: All set and done!
+
 # (re) set 'meta_node_id'
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
@@ -240,6 +243,7 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 ribasim_param.clean_tables(ribasim_model, waterschap)
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
+    ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
@@ -254,7 +258,6 @@ assign = AssignAuthorities(
 )
 ribasim_model = assign.assign_authorities()
 if MIXED_CONDITIONS:
-    # TODO: Embed the correct usage of `static` v. `time` dataframes in `AssignAuthorities`
     ribasim_model = assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # set numerical settings
