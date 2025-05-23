@@ -2035,7 +2035,16 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
     # add continuous control nodes to outlets
     if apply_on_outlets:
         outlet = ribasim_model.outlet.static.df.copy()
-        selection = outlet[outlet["meta_aanvoer"] & (~outlet["meta_from_node_id"].isin(main_water_system_node_ids))]
+        selection = outlet[
+            outlet["meta_aanvoer"]
+            & (
+                (~outlet["meta_from_node_id"].isin(main_water_system_node_ids))
+                | (
+                    outlet["meta_from_node_id"].isin(main_water_system_node_ids)
+                    & outlet["meta_to_node_id"].isin(main_water_system_node_ids)
+                )
+            )
+        ]
         if len(selection) > 0:
             selection.apply(
                 lambda r: add_continuous_control_node(
