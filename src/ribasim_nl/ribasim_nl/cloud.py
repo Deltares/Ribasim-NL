@@ -343,18 +343,24 @@ class CloudStorage:
         def strip_version(dir: str):
             pattern = r"^(.*)_([\d]+)_([\d]+)_([\d]+)$"
             match = re.match(pattern, dir)
-            return ModelVersion(
-                match.group(1),
-                int(match.group(2)),
-                int(match.group(3)),
-                int(match.group(4)),
-            )
+            if match is None:
+                return None
+            else:
+                return ModelVersion(
+                    match.group(1),
+                    int(match.group(2)),
+                    int(match.group(3)),
+                    int(match.group(4)),
+                )
 
         # get uploaded_models
         models_url = self.joinurl(authority, "modellen")
         uploaded_models = self.content(models_url)
 
-        return [strip_version(i) for i in uploaded_models]
+        # get versions
+        versions = [i for i in (strip_version(i) for i in uploaded_models) if i is not None]
+
+        return versions
 
     def upload_model(self, authority: str, model: str, include_results=False, include_plots=False):
         """Upload a model to a water authority
