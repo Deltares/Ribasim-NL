@@ -224,6 +224,14 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(148437, 478733)), [pump.S
 ribasim_model.link.add(ribasim_model.basin[168], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
+#  a multipolygon occurs in a single basin (88). Only retain the largest value
+exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 88].explode(
+    index_parts=False
+)
+exploded_basins["area"] = exploded_basins.area
+largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 88, "geometry"] = largest_polygon["geometry"]
+
 # set all 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
