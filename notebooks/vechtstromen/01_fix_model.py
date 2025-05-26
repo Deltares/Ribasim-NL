@@ -1045,6 +1045,23 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 # Reset static tables
 model = reset_static_tables(model)
 
+
+# name-column contains the code we want to keep, meta_name the name we want to have
+df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
+df.set_index("code", inplace=True)
+names = df["naam"]
+
+sanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_object_type"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump", "TabulatedRatingCurve"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
+        {"node_types": ["LevelBoundary", "FlowBoundary"], "columns": {"meta_name": "name"}},
+    ],
+    names=names,
+)
+
 # %%
 actions = [
     "remove_basin_area",
@@ -1067,6 +1084,8 @@ for action in actions:
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
@@ -1077,6 +1096,8 @@ model.remove_unassigned_basin_area()
 # %% some customs
 # remove unassigned basin area
 model.redirect_edge(edge_id=89, to_node_id=1561)
+model.redirect_edge(edge_id=1989, from_node_id=2333)
+model.redirect_edge(edge_id=1990, from_node_id=2333)
 model.merge_basins(basin_id=2115, to_node_id=1405)
 model.merge_basins(basin_id=1378, to_node_id=1431)
 model.merge_basins(basin_id=2211, to_node_id=1727)
@@ -1202,22 +1223,6 @@ for node_id in model.manning_resistance.node.df[
 for node_type in model.node_table().df.node_type.unique():
     table = getattr(model, pascal_to_snake_case(node_type)).node
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
-
-# name-column contains the code we want to keep, meta_name the name we want to have
-df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
-df.set_index("code", inplace=True)
-names = df["naam"]
-
-sanitize_node_table(
-    model,
-    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
-    copy_map=[
-        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
-        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
-        {"node_types": ["LevelBoundary", "FlowBoundary"], "columns": {"meta_name": "name"}},
-    ],
-    names=names,
-)
 
 
 #  %% write model
