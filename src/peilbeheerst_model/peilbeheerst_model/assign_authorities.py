@@ -43,20 +43,19 @@ class AssignAuthorities:
 
     def adjust_custom_nodes(self, ribasim_model, custom_nodes):
         """Adjust nodes"""
+        temp_node_id = ribasim_model.level_boundary.node.df.reset_index(drop=False)
         for node_id, authority in custom_nodes.items():
-            ribasim_model.level_boundary.static.df.loc[
-                ribasim_model.level_boundary.static.df["node_id"] == node_id, "meta_couple_authority"
+            temp_node_id.loc[
+                temp_node_id["node_id"] == node_id,
+                "meta_couple_authority",
             ] = authority
 
         # check if all LevelBoundaries have an authority. Raise a soft warning otherwise. Note that sea / other countries are actual boundaries, so having NaN values is not necessarily wrong.
-        if ribasim_model.level_boundary.static.df["meta_couple_authority"].isna().sum() > 0:
-            print(
-                ribasim_model.level_boundary.static.df.loc[
-                    ribasim_model.level_boundary.static.df["meta_couple_authority"].isna()
-                ]
-            )
+        if temp_node_id["meta_couple_authority"].isna().any():
+            print(temp_node_id.loc[temp_node_id["meta_couple_authority"].isna()])
             print("Warning! Not all LevelBoundary nodes were assigned to an authority.")
 
+        ribasim_model.level_boundary.node.df = temp_node_id.set_index("node_id")
         return ribasim_model
 
     def retrieve_geodataframe(self):
@@ -132,7 +131,6 @@ class AssignAuthorities:
         # create a temp copy of the level boundary df
         temp_LB_node = ribasim_model.level_boundary.node.df.copy().reset_index()
         temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry"]]
-        ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df[["node_id", "level"]]
 
         # perform a spatial join
         joined = gpd.sjoin(temp_LB_node, authority_borders, how="left", predicate="intersects")
@@ -147,11 +145,12 @@ class AssignAuthorities:
 
         joined = joined.rename(columns={"naam": "meta_couple_authority"})
 
-        # place the meta categories to the static table
-        LB_static = ribasim_model.level_boundary.static.df.merge(
-            right=joined[["node_id", "meta_couple_authority"]], on="node_id", how="left"
-        ).reset_index(drop=True)
-        LB_static.index.name = "fid"
-        ribasim_model.level_boundary.static.df = LB_static
+        # place the meta categories in the node table
+        LB_node = (
+            ribasim_model.level_boundary.node.df.reset_index()
+            .merge(right=joined[["node_id", "meta_couple_authority"]], on="node_id", how="left")
+            .set_index("node_id")
+        )
+        ribasim_model.level_boundary.node.df = LB_node
 
         return ribasim_model
