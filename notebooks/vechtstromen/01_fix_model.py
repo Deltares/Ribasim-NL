@@ -27,6 +27,7 @@ database_gpkg = ribasim_toml.with_name("database.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg])
 
@@ -34,6 +35,10 @@ cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, 
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 split_line_gdf = gpd.read_file(fix_user_data_gpkg, layer="split_basins", fid_as_index=True)
 level_boundary_gdf = gpd.read_file(fix_user_data_gpkg, layer="level_boundary", fid_as_index=True)
+ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
+drainage_areas_df = gpd.read_file(
+    cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "areas.gpkg"), layer="drainage_areas"
+)
 
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
@@ -913,10 +918,6 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 2115, ["geometry"]] = pol
 # de rest gaan we automatisch vullen
 holes_df = holes_df[~holes_df.index.isin([10, 22, 29, 32, 38, 39, 41])]
 
-drainage_areas_df = gpd.read_file(
-    cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "areas.gpkg"), layer="drainage_areas"
-)
-
 drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
 
 for idx, geometry in enumerate(holes_df):
@@ -952,6 +953,86 @@ for idx, geometry in enumerate(holes_df):
         if isinstance(geometry, Polygon):
             geometry = MultiPolygon([geometry])
         model.basin.area.df.loc[model.basin.area.df.node_id == assigned_basin_id, "geometry"] = geometry
+# buffer out small slivers
+model.basin.area.df.loc[:, ["geometry"]] = (
+    model.basin.area.df.buffer(0.1)
+    .buffer(-0.1)
+    .apply(lambda x: x if x.geom_type == "MultiPolygon" else MultiPolygon([x]))
+)
+# %%
+# Fix small nodata holes (slivers in the basins: https://github.com/Deltares/Ribasim-NL/issues/316 )
+ribasim_areas_gdf = ribasim_areas_gdf.to_crs(model.basin.area.df.crs)
+ribasim_areas_gdf.loc[:, "geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
+
+# Exclude Twentekanaal by setting their geometry to NaN
+codes_to_exclude = [
+    "AFW_E/20",
+    "AFW_E/TWK1600/30",
+    "AFW_E/20/005",
+    "AFW_E/TWK1600/20",
+    "AFW_E/20/10",
+    "AFW_E/TWK2500/10",
+    "AFW_E/ENSCHEDE 3",
+    "AFW_E/20/010",
+    "AFW_E/20/030",
+    "AFW_E/24/010",
+]
+ribasim_areas_gdf.loc[ribasim_areas_gdf["code"].isin(codes_to_exclude), "geometry"] = pd.NA
+
+# Process basin area
+processed_basin_area_df = model.basin.area.df.copy()
+processed_basin_area_df = processed_basin_area_df.dissolve(by="node_id").reset_index()
+processed_basin_area_df = processed_basin_area_df[processed_basin_area_df["geometry"].notna()]
+processed_basin_area_df = processed_basin_area_df[processed_basin_area_df.geometry.area > 0]
+processed_basin_area_df = processed_basin_area_df[~processed_basin_area_df.geometry.is_empty]
+
+# Combine all geometries into a single polygon
+combined_geometry = processed_basin_area_df.geometry.union_all()
+combined_basin_area_gdf = gpd.GeoDataFrame(geometry=[combined_geometry], crs=processed_basin_area_df.crs)
+
+# Get the bounding box and calculate internal NoData areas
+bounding_box = combined_basin_area_gdf.geometry.union_all().envelope
+internal_no_data_areas = bounding_box.difference(combined_geometry)
+internal_no_data_gdf = gpd.GeoDataFrame(geometry=[internal_no_data_areas], crs=combined_basin_area_gdf.crs)
+exploded_internal_no_data_gdf = internal_no_data_gdf.explode(index_parts=True).reset_index(drop=True)
+
+# Apply area threshold for sliver removal
+threshold_area = 10
+exploded_internal_no_data_gdf = exploded_internal_no_data_gdf[
+    exploded_internal_no_data_gdf.geometry.area > threshold_area
+]
+
+# Clip to remove areas where ribasim_areas_gdf is NoData (NaN geometries)
+ribasim_not_na_gdf = ribasim_areas_gdf[~ribasim_areas_gdf.geometry.isna()]
+exploded_internal_no_data_gdf = gpd.overlay(
+    exploded_internal_no_data_gdf, ribasim_not_na_gdf, how="intersection", keep_geom_type=True
+)
+unique_codes = exploded_internal_no_data_gdf["code"].unique()
+filtered_ribasim_areas_gdf = ribasim_areas_gdf[ribasim_areas_gdf["code"].isin(unique_codes)]
+combined_basin_areas_gdf = gpd.overlay(
+    filtered_ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
+).explode()
+combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
+combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
+non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
+largest_area_node_ids = non_null_basin_areas_gdf.loc[
+    non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
+]
+combined_basin_areas_gdf = combined_basin_areas_gdf.merge(
+    largest_area_node_ids, on="code", how="left", suffixes=("", "_largest")
+)
+
+# Fill missing node_id with the largest_area node_id
+combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
+    combined_basin_areas_gdf["node_id_largest"]
+)
+
+combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
+combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
+combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
+combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
+combined_basin_areas_gdf.index.name = "fid"
+model.basin.area.df = combined_basin_areas_gdf
 
 # buffer out small slivers
 model.basin.area.df.loc[:, ["geometry"]] = (
@@ -964,9 +1045,23 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 # Reset static tables
 model = reset_static_tables(model)
 
-
 # %%
-for action in gpd.list_layers(model_edits_gpkg).name:
+actions = [
+    "remove_basin_area",
+    "remove_node",
+    "remove_edge",
+    "add_basin",
+    "add_basin_area",
+    "update_basin_area",
+    "merge_basins",
+    "reverse_edge",
+    "connect_basins",
+    "move_node",
+    "update_node",
+    "redirect_edge",
+]
+actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
+for action in actions:
     print(action)
     # get method and args
     method = getattr(model, action)
@@ -979,7 +1074,118 @@ for action in gpd.list_layers(model_edits_gpkg).name:
 
 # remove unassigned basin area
 model.remove_unassigned_basin_area()
+# %% some customs
+# remove unassigned basin area
+model.redirect_edge(edge_id=89, to_node_id=1561)
+model.merge_basins(basin_id=2115, to_node_id=1405)
+model.merge_basins(basin_id=1378, to_node_id=1431)
+model.merge_basins(basin_id=2211, to_node_id=1727)
+model.merge_basins(basin_id=1538, to_node_id=33)
+model.merge_basins(basin_id=1963, to_node_id=1518)
+model.merge_basins(basin_id=2245, to_node_id=1818)
+model.merge_basins(basin_id=2026, to_node_id=1818)
+model.merge_basins(basin_id=1412, to_node_id=2107)
+model.merge_basins(basin_id=1592, to_node_id=1765)
+model.merge_basins(basin_id=1765, to_node_id=1817)
+model.merge_basins(basin_id=2159, to_node_id=1890)
+model.merge_basins(basin_id=1654, to_node_id=2163)
+model.merge_basins(basin_id=2254, to_node_id=1493, are_connected=False)
+# model.merge_basins(basin_id=1604, to_node_id=1890)
+model.merge_basins(basin_id=1628, to_node_id=2143)
+model.merge_basins(basin_id=1821, to_node_id=2143)
+model.merge_basins(basin_id=2144, to_node_id=2143)
+model.merge_basins(basin_id=2116, to_node_id=1730)
+model.merge_basins(basin_id=2177, to_node_id=1730)
+model.remove_node(node_id=619, remove_edges=True)
+model.remove_node(node_id=660, remove_edges=True)
+model.remove_node(node_id=698, remove_edges=True)
+model.remove_node(node_id=1243, remove_edges=True)
+model.remove_node(node_id=1242, remove_edges=True)
+model.remove_node(node_id=1252, remove_edges=True)
+model.remove_node(node_id=836, remove_edges=True)
+model.remove_node(node_id=80, remove_edges=True)
+model.remove_node(node_id=265, remove_edges=True)
+model.remove_node(node_id=126, remove_edges=True)
+model.remove_node(166, remove_edges=True)
+model.remove_node(313, remove_edges=True)
+model.remove_node(393, remove_edges=True)
+model.remove_node(146, remove_edges=True)
+model.remove_node(835, remove_edges=True)
+model.remove_node(1370, remove_edges=True)
+model.remove_node(358, remove_edges=True)
+model.remove_node(188, remove_edges=True)
+model.remove_node(219, remove_edges=True)
+model.remove_node(345, remove_edges=True)
+model.remove_node(654, remove_edges=True)
+model.remove_node(1045, remove_edges=True)
+model.remove_node(125, remove_edges=True)
+model.remove_node(601, remove_edges=True)
+model.remove_node(121, remove_edges=True)
+model.remove_node(590, remove_edges=True)
+model.remove_node(624, remove_edges=True)
+model.remove_node(573, remove_edges=True)
+model.remove_node(570, remove_edges=True)
+model.remove_node(657, remove_edges=True)
+model.remove_node(652, remove_edges=True)
+model.remove_node(633, remove_edges=True)
+model.remove_node(178, remove_edges=True)
+model.remove_node(319, remove_edges=True)
+model.remove_node(395, remove_edges=True)
+model.remove_node(114, remove_edges=True)
+model.remove_node(442, remove_edges=True)
+model.remove_node(562, remove_edges=True)
+model.remove_node(438, remove_edges=True)
+model.remove_node(167, remove_edges=True)
+model.remove_node(561, remove_edges=True)
+model.remove_node(456, remove_edges=True)
+model.remove_node(673, remove_edges=True)
+model.remove_node(1128, remove_edges=True)
+model.merge_basins(basin_id=1488, to_basin_id=1834)
+model.merge_basins(basin_id=1848, to_basin_id=2158)
+model.merge_basins(basin_id=1891, to_basin_id=2158)
+model.merge_basins(basin_id=1994, to_basin_id=2158)
+model.merge_basins(basin_id=1648, to_basin_id=1826)
+model.merge_basins(basin_id=1826, to_node_id=1843)
+model.merge_basins(basin_id=1646, to_basin_id=1513)
+model.merge_basins(basin_id=1897, to_basin_id=1678)
+model.merge_basins(basin_id=2181, to_basin_id=1678)
+model.merge_basins(basin_id=1678, to_basin_id=1700)
+model.merge_basins(basin_id=1876, to_basin_id=1633)
+model.merge_basins(basin_id=2187, to_basin_id=1873)
+model.merge_basins(basin_id=2174, to_basin_id=1873)
+model.merge_basins(basin_id=1875, to_basin_id=1879)
+model.merge_basins(basin_id=1908, to_basin_id=1879)
+model.merge_basins(basin_id=1902, to_basin_id=1879)
+model.merge_basins(basin_id=1441, to_basin_id=1879)
+model.merge_basins(basin_id=1957, to_basin_id=1879)
+model.merge_basins(basin_id=1717, to_basin_id=1528)
+model.merge_basins(basin_id=1995, to_basin_id=1442)
+model.merge_basins(basin_id=2262, to_basin_id=1431)
+model.merge_basins(basin_id=1853, to_basin_id=1852)
+model.merge_basins(basin_id=2137, to_basin_id=2138)
+model.merge_basins(basin_id=1819, to_basin_id=2138)
+model.merge_basins(basin_id=33, to_basin_id=1377)
+model.merge_basins(basin_id=1560, to_basin_id=1478)
+model.merge_basins(basin_id=2228, to_basin_id=2121)
+model.merge_basins(basin_id=2050, to_basin_id=1812)
+model.merge_basins(basin_id=1811, to_basin_id=1812)
+model.merge_basins(basin_id=1386, to_basin_id=2157)
+model.merge_basins(basin_id=2307, to_basin_id=2157)
+model.merge_basins(basin_id=1610, to_basin_id=1454)
+model.merge_basins(basin_id=1664, to_basin_id=1588)
+model.merge_basins(basin_id=2234, to_basin_id=1418)
+model.merge_basins(basin_id=2317, to_basin_id=1700)
+model.merge_basins(basin_id=1982, to_basin_id=1431)
+model.merge_basins(basin_id=1589, to_basin_id=1431)
 
+model.remove_node(413, remove_edges=True)
+model.remove_node(842, remove_edges=True)
+model.remove_node(463, remove_edges=True)
+model.remove_node(341, remove_edges=True)
+model.remove_node(235, remove_edges=True)
+model.merge_basins(basin_id=1584, to_basin_id=1817)
+model.merge_basins(basin_id=1817, to_basin_id=2135)
+model.merge_basins(basin_id=1588, to_basin_id=1561)
 # %%
 
 # sanitize node-table

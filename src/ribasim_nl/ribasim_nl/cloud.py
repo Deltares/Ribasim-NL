@@ -9,6 +9,8 @@ from xml.etree import ElementTree
 
 import requests
 
+from .settings import settings
+
 logger = logging.getLogger(__name__)
 
 RIBASIM_NL_CLOUD_PASS = os.getenv("RIBASIM_NL_CLOUD_PASS")
@@ -74,10 +76,10 @@ class ModelVersion:
 class CloudStorage:
     """Connect a local 'data_dir` to cloud-storage."""
 
-    data_dir: str | Path = RIBASIM_NL_DATA_DIR
+    data_dir: str | Path = settings.ribasim_nl_data_dir
     user: str = RIBASIM_NL_CLOUD_USER
     url: list[str] = BASE_URL
-    password: str = field(repr=False, default=RIBASIM_NL_CLOUD_PASS)
+    password: str = field(repr=False, default=settings.ribasim_nl_cloud_pass)
 
     def __post_init__(self):
         # check if user and password are specified

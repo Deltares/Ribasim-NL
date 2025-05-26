@@ -27,13 +27,17 @@ peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/WS_PEILGEBIEDP
 stuwen_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Na_levering_20240418", "stuwen.shp")
 aam_data_gpkg = cloud.joinpath(authority, "verwerkt", "2_voorbewerking", "AanpassinghWh", "20230530AaEnMaasData.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
+link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
 cloud.synchronize(filepaths=[peilgebieden_path, stuwen_shp, top10NL_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
-network = Network(lines_gdf=gpd.read_file(aam_data_gpkg, layer="hydroobject"))
+
+
+##
+network = Network(lines_gdf=gpd.read_file(aam_data_gpkg, layer="hydroobject", fid_as_index=True))
 damo_profiles = DAMOProfiles(
     model=model,
     network=network,
@@ -41,25 +45,27 @@ damo_profiles = DAMOProfiles(
     profile_point_df=gpd.read_file(aam_data_gpkg, layer="profielpunt"),
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
 )
+static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
-if not profiles_gpkg.exists():
+# fix link geometries
+if link_geometries_gpkg.exists():
+    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
+    model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
+    if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
+        model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+            "meta_profielid_waterbeheerder"
+        ]
+    profiles_df = gpd.read_file(profiles_gpkg)
+else:
     profiles_df = damo_profiles.process_profiles()
     profiles_df.to_file(profiles_gpkg)
-else:
-    profiles_df = gpd.read_file(profiles_gpkg)
-
+    fix_link_geometries(model, network)
+    add_link_profile_ids(model, profiles=damo_profiles, id_col="globalid")
+    model.edge.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
-static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
 # %%
-# Edges
-
-# fix link geometries
-fix_link_geometries(model, network)
-
-# link profiles
-add_link_profile_ids(model, profiles=damo_profiles)
 
 # %%
 

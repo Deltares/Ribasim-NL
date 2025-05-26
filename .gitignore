@@ -36,3 +36,5 @@ src/peilbeheerst_model/.vscode
 notebooks/rijkswaterstaat/plots/
 /src/peilbeheerst_model/peilbeheerst_model/Oud
 /src/peilbeheerst_model/ribasim
+
+.env

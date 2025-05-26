@@ -15,29 +15,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout Ribasim-NL
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
-          path: Ribasim-NL
-
-      # Ribasim needs to be checked out next to this repo even for the prod environment
-      - name: Checkout Ribasim
-        uses: actions/checkout@v4
-        with:
-          repository: Deltares/Ribasim
-          path: Ribasim
-
-      - uses: prefix-dev/setup-pixi@v0.8.7
-        with:
-          manifest-path: Ribasim-NL/pixi.toml
           pixi-version: "latest"
 
       - name: Check Quarto installation and all engines
-        working-directory: Ribasim-NL
         run: pixi run quarto-check
 
       - name: Render Quarto Project
-        working-directory: Ribasim-NL
         run: pixi run quarto-render
 
       - name: Publish Quarto Project
@@ -45,6 +31,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: Ribasim-NL/docs/_site
+          publish_dir: docs/_site
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
