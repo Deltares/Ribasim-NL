@@ -5,7 +5,7 @@ import os
 import warnings
 
 from ribasim import Node
-from ribasim.nodes import pump
+from ribasim.nodes import level_boundary, pump
 from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -144,6 +144,15 @@ ribasim_model.link.add(ribasim_model.basin[2], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[113])
 inlaat_pump.append(pump_node.node_id)
 
+# add gemaal near Rijnland (Dolk). Dont use FF as it is an aanvoergemaal + boundary
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(87256, 455139)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(87082, 455089)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[9])
+inlaat_pump.append(pump_node.node_id)
+
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(70197, 444207)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.link.add(ribasim_model.basin[41], pump_node)
@@ -163,6 +172,13 @@ ribasim_model.merge_basins(node_id=71, to_node_id=9)
 ribasim_model.merge_basins(node_id=88, to_node_id=2)
 ribasim_model.merge_basins(node_id=32, to_node_id=50)
 ribasim_model.merge_basins(node_id=54, to_node_id=1)
+
+# remove Brielse Meer as `Basin` and add as `LevelBoundary`-`Pump`-combination
+ribasim_model.remove_node(98, True)
+ribasim_model.remove_node(565, True)
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460, "meta_func_aanvoer"] = 1
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460, "meta_func_afvoer"] = 0
+ribasim_model.link.add(ribasim_model.pump[460], ribasim_model.basin[10])
 
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index

@@ -1,0 +1,42 @@
+---
+title: "Coupling"
+---
+
+To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.
+
+This procedure assumes there's a `meta_couple_authority` column in the `LevelBoundary / Static` table, which is currently the case for (at least) the level controlled models.
+
+- [ ] Ensure all models have a `meta_couple_authority`.
+
+# `notebooks/samenvoegen_modellen.py`
+
+First we determine which models we want to couple. Currently this is tested for `Rijkswaterstaat`, `AmstelGooienVecht`, `Rijnland`, `HollandseDelta`, `Delfland`, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g. `80` for `Rijkswaterstaat`.
+This will result in an `lhm` model.
+
+# `notebooks/koppelen_modellen.py`
+
+Secondly, we can use this `lhm` model to actually couple the individual models in there.
+To do so, each `LevelBoundary` with a filled in `meta_couple_authority` in their `Static` table is replaced by another node from the `meta_couple_authority`s model.
+
+There are several combinations possible:
+
+### `Connector` | `LevelBoundary` replaced by `Connector` | `Basin`
+
+The easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the `Basin / area` polygon). This will relink the connector node (i.e. an `Outlet`) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the `Basin` instead.
+
+For the `Rijkswaterstaat` Basins, the new link follows the `Rijkswataerstaat/verwerkt/netwerk.gpkg` topology, instead of a direct line.
+
+### `Outlet` | `LevelBoundary` . `LevelBoundary` | `Outlet` replaced by `Outlet`
+
+In some cases, especially when coupling between two waterboards, there are two `LevelBoundary`s close to one another, which are treated as duplicates.
+
+### Other connections
+
+There are several other coupling connections that could happen which require further attention:
+
+- [ ] Create a coupling for `Pump` | `LevelBoundary` . `LevelBoundary` | `Pump`
+- [ ] Create a coupling for `Pump` | `LevelBoundary` . `LevelBoundary` | `Outlet`
+- [ ] Fix Control nodes when merging duplicates
+- [ ] Investigate whether other connections happen
+
+Currently these cases are automatically handled as the `Connector` | `Basin`, which leaves duplicate Connector Nodes in place, and might duplicate a flow.

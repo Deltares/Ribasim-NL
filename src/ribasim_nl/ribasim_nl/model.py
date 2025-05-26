@@ -108,18 +108,29 @@ class Model(Model):
         return self._flow_results
 
     @property
-    def link_results(self):
-        if self._basin_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
-            self._basin_results = Results(filepath=filepath)
-        return self._basin_results
-
-    @property
     def basin_outstate(self):
         if self._basin_outstate is None:
             filepath = self.filepath.parent.joinpath(self.results_dir, "basin_state.arrow").absolute().resolve()
             self._basin_outstate = Results(filepath=filepath)
         return self._basin_outstate
+
+    def basin_static_discharge(self):
+        return self.basin.static.df.drainage
+
+    def total_flow_boundary_static_inflow(self):
+        return self.flow_boundary.static.df.flow_rate
+
+    def level_boundary_inflow(self, time_stamp: pd.Timestamp | None = None):
+        # filter link_results on timestamp
+        if time_stamp is None:
+            time_stamp = self.flow_results.df.index.max()
+        flow_results = self.flow_results.df.loc[time_stamp]
+
+        # get inflow edges
+        node_ids = self.level_boundary.node.df.index
+        link_ids = self.link.df[self.link.df.from_node_id.isin(node_ids)].index
+
+        return flow_results[flow_results.link_id.isin(link_ids)].reset_index().set_index("link_id").flow_rate
 
     @property
     def graph(self):
@@ -131,14 +142,12 @@ class Model(Model):
                 target="to_node_id",
                 create_using=nx.DiGraph,
             )
-            if "meta_function" not in self.node_table().df.columns:
-                node_attributes = {node_id: {"function": ""} for node_id in self.node_table().df.index}
-            else:
-                node_attributes = (
-                    self.node_table()
-                    .df.rename(columns={"meta_function": "function"})[["function"]]
-                    .to_dict(orient="index")
-                )
+            node_table_df = self.node_table().df.copy()
+            if "meta_function" not in node_table_df.columns:
+                node_table_df.loc[:, "meta_function"] = ""
+            node_attributes = node_table_df.rename(columns={"meta_function": "function"})[
+                ["function", "node_type"]
+            ].to_dict(orient="index")
             nx.set_node_attributes(graph, node_attributes)
 
             self._graph = graph
@@ -268,7 +277,9 @@ class Model(Model):
 
     def downstream_node_id(self, node_id: int):
         """Get downstream node_id(s)"""
-        return self.edge.df.set_index("from_node_id").loc[node_id].to_node_id
+        _df = self.edge.df.set_index("from_node_id")
+        if node_id in _df.index:
+            return _df.loc[node_id].to_node_id
 
     def downstream_profile(self, node_id: int):
         """Get upstream basin-profile"""
@@ -872,6 +883,11 @@ class Model(Model):
             if node_id in self.basin.area.df.node_id.to_numpy():
                 poly = self.basin.area.df.set_index("node_id").at[node_id, "geometry"]
 
+                # polygon could be a series op polygons
+                if isinstance(poly, pd.Series):
+                    poly = poly.union_all()
+
+                # if it is a polygon we convert it to multipolygon
                 if isinstance(poly, Polygon):
                     poly = MultiPolygon([poly])
 
@@ -897,6 +913,37 @@ class Model(Model):
 
         # finally we remove the basin
         self.remove_node(node_id)
+
+    def merge_outlets(self, outlet_a_id: int | None = None, outlet_b_id: int | None = None):
+        """Merge outlet_b into outlet_a. Outlet a is considered upstream, and b donwstream."""
+        assert self.get_node_type(outlet_a_id) == "Outlet" and self.get_node_type(outlet_b_id) == "Outlet"
+
+        outlet_a = self.outlet.node.df.loc[outlet_a_id]
+        outlet_b = self.outlet.node.df.loc[outlet_b_id]
+
+        # correct edge from and to attributes
+        edge_ids = self.edge.df[self.edge.df.to_node_id == outlet_a_id].index.to_list()
+        edge_ids += self.edge.df[self.edge.df.from_node_id == outlet_b_id].index.to_list()
+
+        # Remove outlet_b from the edges
+        self.edge.df.loc[self.edge.df.from_node_id == outlet_b_id, "from_node_id"] = outlet_a_id
+        self.edge.df.loc[self.edge.df.to_node_id == outlet_b_id, "to_node_id"] = outlet_a_id
+
+        # Merge geometry
+        avg_x = (outlet_a.geometry.x + outlet_b.geometry.x) / 2
+        avg_y = (outlet_a.geometry.y + outlet_b.geometry.y) / 2
+        self.outlet.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)
+
+        # Merge attributes
+        self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_a_id, "max_downstream_level"] = (
+            self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_b_id, "max_downstream_level"]
+        )
+
+        # Remove outlet_b
+        self.remove_node(outlet_b_id)
+        self.reset_edge_geometry(edge_ids=edge_ids)
+
+        return outlet_a
 
     def invalid_topology_at_node(self, edge_type: str = "flow") -> gpd.GeoDataFrame:
         df_graph = self.edge.df
