@@ -41,6 +41,16 @@ class AssignAuthorities:
         )
         if self.custom_nodes is not None:
             ribasim_model = self.adjust_custom_nodes(ribasim_model=ribasim_model, custom_nodes=self.custom_nodes)
+
+        # remove the node_ids from the static table if there's an occurence in the time table
+        ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df.loc[
+            ~(
+                ribasim_model.level_boundary.static.df.node_id.isin(
+                    ribasim_model.level_boundary.time.df.node_id.to_numpy()
+                )
+            )
+        ]
+
         return ribasim_model
 
     def adjust_custom_nodes(self, ribasim_model, custom_nodes):
@@ -154,7 +164,6 @@ class AssignAuthorities:
             .set_index("node_id")
         )
         ribasim_model.level_boundary.node.df = LB_node
-
         return ribasim_model
 
     @staticmethod

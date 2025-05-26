@@ -359,8 +359,8 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
-if MIXED_CONDITIONS:
-    ribasim_model = assign.from_static_to_time_df(ribasim_model, clear_static=True)
+# if MIXED_CONDITIONS:
+#     ribasim_model = assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # write model output
 ribasim_model.use_validation = True
