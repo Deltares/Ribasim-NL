@@ -1,7 +1,9 @@
 import geopandas as gpd
 import pandas as pd
+import ribasim
 
 
+# TODO: Embed correct usage of `static` v. `time` dataframes in `AssignAuthorities`
 class AssignAuthorities:
     """
     Assign authority polygons to LevelBoundary nodes in a RIBASIM model.
@@ -39,6 +41,16 @@ class AssignAuthorities:
         )
         if self.custom_nodes is not None:
             ribasim_model = self.adjust_custom_nodes(ribasim_model=ribasim_model, custom_nodes=self.custom_nodes)
+
+        # remove the node_ids from the static table if there's an occurence in the time table
+        ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df.loc[
+            ~(
+                ribasim_model.level_boundary.static.df.node_id.isin(
+                    ribasim_model.level_boundary.time.df.node_id.to_numpy()
+                )
+            )
+        ]
+
         return ribasim_model
 
     def adjust_custom_nodes(self, ribasim_model, custom_nodes):
@@ -152,5 +164,29 @@ class AssignAuthorities:
             .set_index("node_id")
         )
         ribasim_model.level_boundary.node.df = LB_node
-
         return ribasim_model
+
+    @staticmethod
+    def from_static_to_time_df(model: ribasim.Model, clear_static: bool = True) -> ribasim.Model:
+        """Patching-method to assign the coupling authority to the `time`-table instead of the `static`-table of level boundaries.
+
+        :param model: ribasim model
+        :param clear_static: clear the `static`-table, defaults to True
+
+        :type model: ribasim.Model
+        :type clear_static: bool, optional
+
+        :return: updated ribasim model
+        :rtype: ribasim.Model
+        """
+        # merge authority data to `time`-table
+        model.level_boundary.time.df = model.level_boundary.time.df.merge(
+            model.level_boundary.static.df[["node_id", "meta_couple_authority"]], on="node_id", how="left"
+        )
+
+        # clear `static`-table (optional)
+        if clear_static:
+            model.level_boundary.static.df = None
+
+        # return updated ribasim model
+        return model
