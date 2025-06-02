@@ -32,6 +32,7 @@ qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.q
 model = Model.read(ribasim_toml)
 
 start_time = time.time()
+# %%
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
 print("Elapsed Time:", time.time() - start_time, "seconds")
