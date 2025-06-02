@@ -1226,6 +1226,8 @@ for node_type in model.node_table().df.node_type.unique():
     table = getattr(model, pascal_to_snake_case(node_type)).node
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
+# %%
+model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
 
 #  %% write model
 model.basin.area.df.loc[:, ["meta_area"]] = model.basin.area.df.area

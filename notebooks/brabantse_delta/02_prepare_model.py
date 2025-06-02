@@ -23,6 +23,7 @@ static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
+profiles_in_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 damo_profiles_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
@@ -39,7 +40,7 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
 # %%
-
+bbox = None
 # prepare DAMO profiles and network
 lines_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", bbox=bbox)
 
@@ -52,8 +53,8 @@ else:
 damo_profiles = DAMOProfiles(
     model=model,
     network=network,
-    profile_line_df=gpd.read_file(hydamo_gpkg, layer="profiellijn", bbox=bbox),
-    profile_point_df=gpd.read_file(hydamo_gpkg, layer="profielpunt", bbox=bbox),
+    profile_line_df=gpd.read_file(profiles_in_gpkg, layer="profiellijn", bbox=bbox),
+    profile_point_df=gpd.read_file(profiles_in_gpkg, layer="profielpunt", bbox=bbox),
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox),
     profile_line_id_col="code",
 )
@@ -76,7 +77,7 @@ damo_profiles = DAMOProfiles(
 
 # fix link geometries
 if link_geometries_gpkg.exists():
-    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("edge_id")
+    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
     model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
         model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[

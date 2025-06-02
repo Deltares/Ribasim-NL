@@ -15,7 +15,6 @@ from ribasim_nl.sanitize_node_table import sanitize_node_table
 cloud = CloudStorage()
 authority = "DeDommel"
 short_name = "dommel"
-run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 
@@ -319,6 +318,17 @@ sanitize_node_table(
     names=names,
 )
 
+# add level_boundary at keersop (intake from Kannaal van Bocholt naar Heerentals)
+level_boundary_node = model.level_boundary.add(
+    Node(geometry=Point(152152, 365151)), tables=[level_boundary.Static(level=[0])]
+)
+outlet_node = model.outlet.add(
+    Node(geometry=Point(152150, 365169), name="Inlaat kanaal Bocholt naar Heerentals"),
+    tables=[outlet.Static(flow_rate=[0])],
+)
+model.link.add(level_boundary_node, outlet_node)
+model.link.add(outlet_node, model.basin[1609])
+
 # label flow-boundaries to buitenlandse-aanvoer
 model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
 
@@ -329,7 +339,7 @@ model.report_basin_area()
 model.report_internal_basins()
 
 # %% Test run model
-if run_model:
-    result = model.run()
-    assert result == 0
+
+result = model.run()
+assert result.simulation_time is not None
 # %%

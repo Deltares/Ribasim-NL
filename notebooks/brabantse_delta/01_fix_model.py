@@ -207,7 +207,7 @@ sanitize_node_table(
 )
 
 # label flow-boundaries to buitenlandse-aanvoer
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
 
 
 #  %% write model
@@ -221,6 +221,6 @@ model.report_internal_basins()
 # Test run model
 if run_model:
     result = model.run()
-    assert result == 0
+    assert result.exit_code == 0
 
 # %%

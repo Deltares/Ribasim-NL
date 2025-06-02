@@ -536,7 +536,9 @@ for row in model.flow_boundary.node.df.itertuples():
 
     # change flow_boundary to level_boundary and add outlet_node
     model.update_node(node_id, node_type="LevelBoundary")
-    outlet_node = model.outlet.add(node=Node(geometry=outlet_node_geometry), tables=default_tables.outlet)
+    outlet_node = model.outlet.add(
+        node=Node(geometry=outlet_node_geometry, name=row.name), tables=default_tables.outlet
+    )
 
     # remove old links and add 2 new
     left_link_geometry, right_link_geometry = list(split_line(link_geometry, outlet_node_geometry).geoms)
