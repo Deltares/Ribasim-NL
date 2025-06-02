@@ -1,3 +1,5 @@
+import os
+
 from ribasim import Model
 
 from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
@@ -781,19 +783,22 @@ network.WriteResults(model=model, checks=checks)
 
 # # Wetterskip
 # %%
+authority = "WetterskipFryslan"
+base_path = os.getenv("RIBASIM_NL_DATA_DIR")
+
 model_characteristics = {
     # model description
-    "waterschap": "WetterskipFryslan",
+    "waterschap": authority,
     "modelname": "2025",
     "modeltype": "boezemmodel",
     # define paths
-    # "path_postprocessed_data": r"../../../../Data_postprocessed/Waterschappen/Wetterskip/Wetterskip.gpkg",
-    "path_postprocessed_data": r"../../../../RIBASIM_NL_DATA_DIR/WetterskipFryslan/verwerkt/Delivered_data_processed/WetterskipFryslan.gpkg",
-    # "path_crossings": "../../../../Data_crossings/Wetterskip/wetterskip_crossings_v06.gpkg",
-    "path_crossings": r"../../../../RIBASIM_NL_DATA_DIR/WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg",
+    "path_postprocessed_data": os.path.join(
+        base_path, authority, f"verwerkt/Delivered_data_processed/{authority}.gpkg"
+    ),  # add the base path
+    "path_crossings": os.path.join(base_path, authority, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg"),
     "path_Pdrive": None,
-    "path_boezem": "../../../../RIBASIM_NL_DATA_DIR/WetterskipFryslan/verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg",
-    "path_goodcloud_password": "../../../../Data_overig/password_goodcloud.txt",
+    "path_boezem": os.path.join(base_path, authority, "verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"),
+    "path_goodcloud_password": "RIBASIM_NL_CLOUD_PASS",
     # apply filters
     "crossings_layer": "crossings_hydroobject_filtered",
     "in_use": True,
@@ -802,7 +807,7 @@ model_characteristics = {
     "aggregation": True,
     # data storage settings
     "write_Pdrive": False,
-    "write_Zdrive": True,
+    "write_Zdrive": False,
     "write_goodcloud": True,
     "write_checks": True,
     "write_symbology": True,
@@ -812,7 +817,6 @@ model_characteristics = {
     "starttime": "2024-01-01 00:00:00",
     "endtime": "2025-01-01 00:00:00",
 }
-
 
 waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 
