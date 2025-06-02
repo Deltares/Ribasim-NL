@@ -1,9 +1,20 @@
+import os
+from pathlib import Path
+
 import geopandas as gpd
 import pandas as pd
 
 from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
+
+# Ensure the directory for post_processed_path exists
+authority = "WetterskipFryslan"
+post_processed_dir = Path(cloud.joinpath(authority, "verwerkt/Data_postprocessed"))
+os.makedirs(post_processed_dir, exist_ok=True)
+
+# Define the full path for the GeoPackage file
+post_processed_path = post_processed_dir / f"{authority}.gpkg"
 
 data_delivery = cloud.joinpath(
     "WetterskipFryslan",
@@ -266,7 +277,9 @@ for var in variables:
                 print(temp.loc[temp_column.duplicated(keep=False), [column]])
                 print()
 
-# @TO DO
-output_gpkg_path = r"D:\Users\Bruijns\Documents\PR4750_30\RIBASIM_NL_DATA_DIR\WetterskipFryslan\verwerkt\Delivered_data_processed\WetterskipFryslan.gpkg"
-store_data(waterschap=Wetterskip, output_gpkg_path=output_gpkg_path)
-cloud.upload_file(output_gpkg_path)
+# Write the geopackage locally
+store_data(waterschap=Wetterskip, output_gpkg_path=post_processed_path)
+
+# ensure the parent directory exists on the cloud
+post_processed_path_dir = Path(post_processed_path).parent  # Get the parent directory of the file
+cloud.upload_content(dir_path=post_processed_path_dir, overwrite=True)
