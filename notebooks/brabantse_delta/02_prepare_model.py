@@ -27,7 +27,7 @@ hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 damo_profiles_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
-
+network_gpkg = cloud.joinpath(authority, "verwerkt", "network.gpkg")
 
 cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
 
@@ -39,6 +39,30 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
 # %%
+
+# prepare DAMO profiles and network
+lines_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", bbox=bbox)
+
+if not network_gpkg.exists():
+    network = Network(lines_gdf=lines_gdf, tolerance=0.2)
+    network.to_file(network_gpkg)
+else:
+    network = Network.from_network_gpkg(network_gpkg)
+
+damo_profiles = DAMOProfiles(
+    model=model,
+    network=network,
+    profile_line_df=gpd.read_file(hydamo_gpkg, layer="profiellijn", bbox=bbox),
+    profile_point_df=gpd.read_file(hydamo_gpkg, layer="profielpunt", bbox=bbox),
+    water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox),
+    profile_line_id_col="code",
+)
+if not profiles_gpkg.exists():
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
+else:
+    profiles_df = gpd.read_file(profiles_gpkg)
+
 
 network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"))
 damo_profiles = DAMOProfiles(

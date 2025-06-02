@@ -1,5 +1,6 @@
 # %%
 import inspect
+import os
 
 import geopandas as gpd
 from ribasim import Node
@@ -21,7 +22,9 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
+ribasim_areas_bewerkt_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas_bewerkt.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_gpkg, hydamo_gpkg, model_edits_gpkg])
@@ -126,43 +129,51 @@ for row in network_validator.edge_incorrect_type_connectivity(
     model.update_node(row.to_node_id, "Outlet")
 
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code)
-# by overlapping the Ribasim area file baed on largest overlap
+# by overlapping the Ribasim area file based on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code.
 # Many nodata areas are removed by this method
-ribasim_areas_gdf.loc[:, "geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
-combined_basin_areas_gdf = gpd.overlay(
-    ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
-).explode()
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
-combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
-non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
 
-# Find largest area node_ids for each code
-largest_area_node_ids = non_null_basin_areas_gdf.loc[
-    non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
-]
+if os.path.exists(ribasim_areas_bewerkt_gpkg):
+    # Load precomputed result
+    combined_basin_areas_gdf = gpd.read_file(ribasim_areas_bewerkt_gpkg)
+else:
+    # Step 1: Clean geometries
+    ribasim_areas_gdf["geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
 
-# Merge largest area node_ids
-combined_basin_areas_gdf = combined_basin_areas_gdf.merge(
-    largest_area_node_ids, on="code", how="left", suffixes=("", "_largest")
-)
+    # Step 2: Overlay
+    combined_basin_areas_gdf = gpd.overlay(
+        ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
+    ).explode(index_parts=False)
 
-# Fill missing node_id with the largest_area node_id
-combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
-    combined_basin_areas_gdf["node_id_largest"]
-)
-combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
-combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
-combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
-combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
-combined_basin_areas_gdf.index.name = "fid"
+    # Step 3: Handle Z-coordinates and calculate area
+    combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
+    combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
+
+    # Step 4: Find and assign node_id
+    non_null = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
+    largest = non_null.loc[non_null.groupby("code")["area"].idxmax(), ["code", "node_id"]]
+
+    combined_basin_areas_gdf = combined_basin_areas_gdf.merge(largest, on="code", how="left", suffixes=("", "_largest"))
+    combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
+        combined_basin_areas_gdf["node_id_largest"]
+    )
+    combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
+
+    # Step 5: Final processing
+    combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
+    combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
+    combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
+    combined_basin_areas_gdf.index.name = "fid"
+
+    # Save for future use
+    combined_basin_areas_gdf.to_file(ribasim_areas_bewerkt_gpkg, driver="GPKG")
+
+# Assign to model
 model.basin.area.df = combined_basin_areas_gdf
-
 # %% Reset static tables
 
 # Reset static tables
 model = reset_static_tables(model)
-
 
 # Sanitize node_table
 for node_id in model.tabulated_rating_curve.node.df.index:
@@ -194,8 +205,6 @@ sanitize_node_table(
     ],
     names=names,
 )
-
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
 
 # label flow-boundaries to buitenlandse-aanvoer
 model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
