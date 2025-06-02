@@ -1,15 +1,5 @@
 # %%
-"""
-Addition of settings for 'wateraanvoer' by means of `ContinuousControl`-nodes and 'wateraanvoergebieden'.
 
-NOTE: This is a non-working dummy file to provide guidance on how to implement these workflows.
-
-Author: Gijs G. Hendrickx
-"""
-
-import inspect
-
-import geopandas as gpd
 import pandas as pd
 
 from peilbeheerst_model import ribasim_parametrization
@@ -47,6 +37,7 @@ cloud.synchronize(
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
+# update_basin_static(model=model, precipitation_mm_per_day=10)
 # TODO: Remember to set the forcing conditions to be representative for a drought ('aanvoer'-conditions), or for
 #  changing conditions (e.g., 1/3 precipitation, 2/3 evaporation).
 # set forcing conditions
@@ -72,7 +63,6 @@ fixed and up-and-running beforehand.
 Ribasim will raise an error and thus not execute.
 """
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
-
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
@@ -87,38 +77,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 378, "flow_rate"] =
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 580, "min_upstream_level"] = 1.55
 model.basin.area.df.loc[model.basin.area.df.node_id == 786, "meta_streefpeil"] = 1.55
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 44, "level"] = 999
-
-# Valleikanaal verkeerd geschematiseerd
-model.redirect_edge(edge_id=138, to_node_id=1095)
-model.redirect_edge(edge_id=137, to_node_id=1095)
-model.redirect_edge(edge_id=136, to_node_id=1095)
-model.redirect_edge(edge_id=24, to_node_id=1115)
-model.redirect_edge(edge_id=560, to_node_id=1)
-model.redirect_edge(edge_id=745, from_node_id=1120)
-
-
-# fix boundary levels so we can get inflow
-model.reverse_direction_at_node(271)  # sluis Dieren is not an inlet
-model.reverse_direction_at_node(228)  # Inlaatgemaat diepe Gracht
-model.reverse_direction_at_node(470)  # Inlaatgemaat Goorpomp
-model.reverse_direction_at_node(302)  #
-model.reverse_direction_at_node(479)  # Laakse Duiker
-
-
-actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
-
 
 # set upstream level boundaries at 999 meters
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
@@ -216,8 +174,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 701, "flow_rate"] =
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 701, "min_upstream_level"] = 1.4
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 747, "flow_rate"] = 1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 747, "min_upstream_level"] = 1.4
-
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 339, "min_upstream_level"] = -0.81
 
 # Havensluis Elburg
@@ -238,7 +194,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 319, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 121, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 418, "max_downstream_level"] = pd.NA
 
-
 # Inlaat Eektermerksluis
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "meta_code"] = "KSL-8"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "meta_name"] = "Eektermerksluis"
@@ -247,26 +202,15 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "min_upstream_
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 2, "level"] = -0.05
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "flow_rate"] = 1
 
+# Stuw Vlieterweg
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1298, "min_upstream_level"] = 3.45
+# Stuw KST-4284
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1299, "min_upstream_level"] = 12.68
 
-# merge basins
-# model.merge_basins(basin_id=1044, to_basin_id=1103)
-model.merge_basins(basin_id=910, to_basin_id=988)
-model.merge_basins(basin_id=1078, to_basin_id=1193)
-model.merge_basins(basin_id=1193, to_basin_id=1170)
-model.merge_basins(basin_id=1170, to_basin_id=1123)
-model.merge_basins(basin_id=1115, to_basin_id=1123)
-model.merge_basins(basin_id=883, to_basin_id=989)
-model.merge_basins(basin_id=1145, to_basin_id=1088)
-model.merge_basins(basin_id=927, to_basin_id=1117)
-model.merge_basins(basin_id=1036, to_basin_id=848)
-model.merge_basins(basin_id=804, to_basin_id=928)
-model.merge_basins(basin_id=928, to_basin_id=977)
-model.merge_basins(basin_id=806, to_basin_id=1185)
-model.merge_basins(basin_id=1177, to_basin_id=1111)
-model.merge_basins(basin_id=834, to_basin_id=904)
-model.merge_basins(basin_id=904, to_basin_id=862)
-model.merge_basins(basin_id=1051, to_basin_id=895)
-model.merge_basins(basin_id=1044, to_basin_id=1103)
+# Stuw Vlieterweg
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1300, "min_upstream_level"] = 11.65
+# Stuw KST-4284
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1301, "min_upstream_level"] = 11.3
 
 # Stuw Vloeddijk
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 556, "min_upstream_level"] = 2.99
@@ -336,30 +280,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "max_downstre
 model.pump.static.df.loc[model.pump.static.df.node_id == 240, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "min_upstream_level"] = 3
 
-# remove node (wrong connection)
-model.remove_node(478, remove_edges=True)
-model.remove_node(672, remove_edges=True)
-model.remove_node(671, remove_edges=True)
-model.remove_node(16, remove_edges=True)
-model.remove_node(17, remove_edges=True)
-model.remove_node(18, remove_edges=True)
-model.remove_node(738, remove_edges=True)
-model.remove_node(443, remove_edges=True)
-model.remove_node(595, remove_edges=True)
-model.remove_node(199, remove_edges=True)
-model.remove_node(585, remove_edges=True)
-model.remove_node(631, remove_edges=True)
-model.remove_node(611, remove_edges=True)
-model.remove_node(710, remove_edges=True)
-model.remove_node(292, remove_edges=True)
-model.remove_node(125, remove_edges=True)
-model.remove_node(696, remove_edges=True)
-model.remove_node(706, remove_edges=True)
-model.remove_node(737, remove_edges=True)
-model.remove_node(182, remove_edges=True)
-model.remove_node(185, remove_edges=True)  # Duiker vervangen door pomp Oostsingel
-model.remove_node(581, remove_edges=True)  # Stuw Asschat, zit er 2 keer in
-model.remove_node(496, remove_edges=True)  # stuw de Groep, zit er 2 keer in
+
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 

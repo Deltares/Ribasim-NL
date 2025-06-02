@@ -195,8 +195,11 @@ sanitize_node_table(
     names=names,
 )
 
-# label flow-boundaries to buitenlandse-aanvoer
 model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+
+# label flow-boundaries to buitenlandse-aanvoer
+model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+
 
 #  %% write model
 model.use_validation = True

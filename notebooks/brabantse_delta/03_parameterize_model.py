@@ -14,6 +14,7 @@ run_model = False
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
+qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
@@ -42,11 +43,11 @@ model.merge_basins(node_id=1441, to_node_id=1799, are_connected=True)
 
 # %%
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
+model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
 
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
@@ -62,6 +63,6 @@ if run_model:
     assert exit_code == 0
 
     # # %%
-    controle_output = Control(ribasim_toml=ribasim_toml)
-    indicators = controle_output.run_all()
+    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+    indicators = controle_output.run_afvoer()
 # %%
