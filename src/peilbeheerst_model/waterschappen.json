@@ -121,12 +121,12 @@
     },
     "Wetterskip": {
         "init": {
-            "gpkg_path": "D:/Users/Bruijns/Documents/PR4750_30/RIBASIM_NL_DATA_DIR/WetterskipFryslan/verwerkt/Delivered_data_processed/WetterskipFryslan.gpkg",
-            "output_path": "D:/Users/Bruijns/Documents/PR4750_30/RIBASIM_NL_DATA_DIR/WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg",
+            "gpkg_path": "WetterskipFryslan/verwerkt/Data_postprocessed/WetterskipFryslan.gpkg",
+            "output_path": "WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
             "agg_peilgebieden_column": "code",
-            "krw_path": "D:/Users/Bruijns/Documents/PR4750_30/RIBASIM_NL_DATA_DIR/Basisgegevens/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_path": "Basisgegevens/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
             "krw_min_overlap": 0.025
