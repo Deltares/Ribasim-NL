@@ -17,7 +17,7 @@ from shapely.geometry import LineString
 
 from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, settings
 
 
 # FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
@@ -678,7 +678,7 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
     The log file of the feedback form is not included to avoid cluttering.'
     """
     destination_path = os.path.join(
-        os.getenv("RIBASIM_NL_DATA_DIR"), waterschap, "modellen", f"{waterschap}_parameterized/"
+        settings.ribasim_nl_data_dir, waterschap, "modellen", f"{waterschap}_parameterized/"
     )
 
     # clear the modellen/parameterized dir
@@ -695,10 +695,7 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
         if file.endswith(".log") and os.path.isfile(file_path):
             os.remove(file_path)
 
-    cloud_storage = CloudStorage(
-        password=os.getenv("RIBASIM_NL_CLOUD_PASS"),  # password stored in system env
-        data_dir=os.getenv("RIBASIM_NL_DATA_DIR"),  # datadir stored in system env
-    )
+    cloud_storage = CloudStorage()
 
     # Upload to waterschap/modellen/model_name instead of waterschap/verwerkt
     cloud_storage.upload_model(
@@ -1279,11 +1276,11 @@ def determine_min_upstream_max_downstream_levels(
         raise KeyError(msg)
 
     # for each different outlet and pump type, determine the min and max upstream and downstream level
-    for types, settings in sturing.items():
+    for types, model_settings in sturing.items():
         # Extract values for each setting
-        upstream_level_offset = settings["upstream_level_offset"]
-        downstream_level_offset = settings["downstream_level_offset"]
-        max_flow_rate = settings["max_flow_rate"]
+        upstream_level_offset = model_settings["upstream_level_offset"]
+        downstream_level_offset = model_settings["downstream_level_offset"]
+        max_flow_rate = model_settings["max_flow_rate"]
 
         # Update the min_upstream_level and max_downstream_level in the OUTLET dataframe
         outlet.loc[(outlet.meta_categorie == types) & (~outlet["meta_aanvoer"]), "min_upstream_level"] = (

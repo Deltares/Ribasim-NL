@@ -785,7 +785,7 @@ network.WriteResults(model=model, checks=checks)
 # # Wetterskip
 # %%
 authority = "WetterskipFryslan"
-base_path = os.getenv("RIBASIM_NL_DATA_DIR")
+base_path = settings.ribasim_nl_data_dir
 
 model_characteristics = {
     # model description

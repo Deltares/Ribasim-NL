@@ -125,10 +125,8 @@ model = ribasim.Model(
 ribasim_model_dir = MODEL_DIR / "ijsselmeermodel"
 model.write(ribasim_model_dir)
 # %%
-# environmnt variables
-
-RIBASIM_NL_CLOUD_PASS = os.getenv("RIBASIM_NL_CLOUD_PASS")
-assert RIBASIM_NL_CLOUD_PASS is not None
+# environment variables
+RIBASIM_NL_CLOUD_PASS = settings.ribasim_nl_cloud_pass
 
 RIBASIM_NL_CLOUD_USER = "nhi_api"
 WEBDAV_URL = "https://deltares.thegood.cloud/remote.php/dav"

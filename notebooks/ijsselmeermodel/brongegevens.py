@@ -1,9 +1,10 @@
-import os
 from pathlib import Path
 
 import geopandas as gpd
 
-DATA_DIR = os.getenv("RIBASIM_NL_DATA_DIR")
+from ribasim_nl import settings
+
+DATA_DIR = settings.ribasim_nl_data_dir
 
 # file-paths
 kunstwerken_gpkg = Path(DATA_DIR) / "nl_kunstwerken.gpkg"
