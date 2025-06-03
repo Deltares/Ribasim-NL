@@ -2,11 +2,12 @@ import os
 
 from ribasim import Model
 
+import ribasim_nl
 from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
 
+base_path = ribasim_nl.settings.settings.ribasim_nl_data_dir
+
 # # Amstel, Gooi en Vecht
-
-
 model_characteristics = {
     # model description
     "waterschap": "AmstelGooienVecht",
@@ -798,7 +799,6 @@ model_characteristics = {
     "path_crossings": os.path.join(base_path, authority, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg"),
     "path_Pdrive": None,
     "path_boezem": os.path.join(base_path, authority, "verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"),
-    "path_goodcloud_password": "RIBASIM_NL_CLOUD_PASS",
     # apply filters
     "crossings_layer": "crossings_hydroobject_filtered",
     "in_use": True,
