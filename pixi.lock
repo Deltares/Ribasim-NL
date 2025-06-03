@@ -316,6 +316,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pydantic-core-2.33.2-py313h4b2b08d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.9.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pyodbc-5.2.0-py313h46c70d0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyogrio-0.11.0-py313hab4ff3b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyproj-3.7.1-py313hcd509b5_1.conda
@@ -393,6 +394,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/typst-0.13.0-h53e704d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025b-h78e105d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ukkonen-1.0.1-py313h33d0bda_5.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/unixodbc-2.3.12-h661eb56_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/uri-template-1.3.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/uriparser-0.9.8-hac33072_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/urllib3-2.4.0-pyhd8ed1ab_0.conda
@@ -437,10 +439,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py313h536fd9c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
-      - pypi: ./src/bokeh_helpers
-      - pypi: ./src/hydamo
-      - pypi: ./src/peilbeheerst_model
-      - pypi: ./src/ribasim_nl
+      - pypi: .\src\bokeh_helpers
+      - pypi: .\src\hydamo
+      - pypi: .\src\peilbeheerst_model
+      - pypi: .\src\ribasim_nl
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/affine-2.4.0-pyhd8ed1ab_1.conda
@@ -716,6 +718,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-core-11.0-py313hb6afeec_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-framework-cocoa-11.0-py313hb6afeec_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyodbc-5.2.0-py313h4e5f155_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyogrio-0.11.0-py313h4ad91d6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyproj-3.7.1-py313h84bd6f1_1.conda
@@ -790,6 +793,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/typst-0.13.0-h0716509_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025b-h78e105d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ukkonen-1.0.1-py313hf9c7212_5.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/unixodbc-2.3.12-h0e2417a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/uri-template-1.3.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/uriparser-0.9.8-h00cdb27_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/urllib3-2.4.0-pyhd8ed1ab_0.conda
@@ -813,10 +817,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.1-h8359307_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.23.0-py313h90d716c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
-      - pypi: ./src/bokeh_helpers
-      - pypi: ./src/hydamo
-      - pypi: ./src/peilbeheerst_model
-      - pypi: ./src/ribasim_nl
+      - pypi: .\src\bokeh_helpers
+      - pypi: .\src\hydamo
+      - pypi: .\src\peilbeheerst_model
+      - pypi: .\src\ribasim_nl
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/_openmp_mutex-4.5-2_gnu.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
@@ -1085,6 +1089,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pydantic-core-2.33.2-py313ha8a9a3c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.9.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/pyodbc-5.2.0-py313h5813708_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyogrio-0.11.0-py313h75b81ac_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyproj-3.7.1-py313hc3e4018_1.conda
@@ -1192,10 +1197,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.1-h2466b09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.23.0-py313ha7868ed_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
-      - pypi: ./src/bokeh_helpers
-      - pypi: ./src/hydamo
-      - pypi: ./src/peilbeheerst_model
-      - pypi: ./src/ribasim_nl
+      - pypi: .\src\bokeh_helpers
+      - pypi: .\src\hydamo
+      - pypi: .\src\peilbeheerst_model
+      - pypi: .\src\ribasim_nl
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
   sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
@@ -2234,7 +2239,8 @@ packages:
   constrains:
   - tinycss >=1.1.0,<1.5
   license: Apache-2.0 AND MIT
-  purls: []
+  purls:
+  - pkg:pypi/bleach?source=hash-mapping
   size: 141405
   timestamp: 1737382993425
 - conda: https://conda.anaconda.org/conda-forge/noarch/bleach-with-css-6.2.0-h82add2a_4.conda
@@ -2315,7 +2321,7 @@ packages:
   - pkg:pypi/bokeh?source=hash-mapping
   size: 4934851
   timestamp: 1747091638593
-- pypi: ./src/bokeh_helpers
+- pypi: .\src\bokeh_helpers
   name: bokeh-helpers
   version: 0.1.0
   sha256: 0ccdd0ad5587dcb53d0ff5e907b64837b3afe208b504bfd483799a793353891d
@@ -4044,7 +4050,7 @@ packages:
   - pkg:pypi/httpx?source=hash-mapping
   size: 63082
   timestamp: 1733663449209
-- pypi: ./src/hydamo
+- pypi: .\src\hydamo
   name: hydamo
   version: 0.1.0
   sha256: 8981c9d89f3f7f7dd48c6c5cf14396677feed3971cc661e63f398f3b57ae6f4c
@@ -8972,7 +8978,7 @@ packages:
   purls: []
   size: 1040584
   timestamp: 1745955875845
-- pypi: ./src/peilbeheerst_model
+- pypi: .\src\peilbeheerst_model
   name: peilbeheerst-model
   version: 0.1.0
   sha256: 9ec22544800123361c4449542c548c1e3739a3f8d9d5bbe2f91a8d50d304fac5
@@ -9702,6 +9708,53 @@ packages:
   - pkg:pypi/pyobjc-framework-cocoa?source=hash-mapping
   size: 384331
   timestamp: 1736927195004
+- conda: https://conda.anaconda.org/conda-forge/linux-64/pyodbc-5.2.0-py313h46c70d0_0.conda
+  sha256: f21c8926e7ff63d37121cc53529ef96fc310c11a15bab738019271d77c48bc03
+  md5: 5415d6e15c2fc101a5c9d6d8b64083b7
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=13
+  - libstdcxx >=13
+  - python >=3.13,<3.14.0a0
+  - python_abi 3.13.* *_cp313
+  - unixodbc >=2.3.12,<2.4.0a0
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/pyodbc?source=hash-mapping
+  size: 79294
+  timestamp: 1729084436760
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyodbc-5.2.0-py313h4e5f155_0.conda
+  sha256: 78a6a9aa511a85ae9f32c52cea07bc7885d1e9973716a6d6b33a13fd9c8eff5d
+  md5: d39e219274fb912df8fe5805c68aadac
+  depends:
+  - __osx >=11.0
+  - libcxx >=17
+  - python >=3.13,<3.14.0a0
+  - python >=3.13,<3.14.0a0 *_cp313
+  - python_abi 3.13.* *_cp313
+  - unixodbc >=2.3.12,<2.4.0a0
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/pyodbc?source=hash-mapping
+  size: 72932
+  timestamp: 1729084492746
+- conda: https://conda.anaconda.org/conda-forge/win-64/pyodbc-5.2.0-py313h5813708_0.conda
+  sha256: 7ef0975e369f5c2020988210d44f26560293236849ff359d1045a9d05e814e5e
+  md5: 0a4d96b1d200db4077cf63657b4a9e98
+  depends:
+  - python >=3.13,<3.14.0a0
+  - python_abi 3.13.* *_cp313
+  - ucrt >=10.0.20348.0
+  - vc >=14.2,<15
+  - vc14_runtime >=14.29.30139
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/pyodbc?source=hash-mapping
+  size: 69666
+  timestamp: 1729084917875
 - conda: https://conda.anaconda.org/conda-forge/linux-64/pyogrio-0.11.0-py313hab4ff3b_0.conda
   sha256: e8e9f602e5b67f5bb864847fe4c1e9b38af3532a6f080a2d9d9222ac9ca328fa
   md5: 7fa579756b74a1b06423881a535bca8d
@@ -10645,7 +10698,7 @@ packages:
   - pkg:pypi/ribasim?source=hash-mapping
   size: 280419
   timestamp: 1744780025330
-- pypi: ./src/ribasim_nl
+- pypi: .\src\ribasim_nl
   name: ribasim-nl
   version: 0.1.0
   sha256: c88a53d538c83ac90850bab1b6312861cccdd0308477e30cc3d8879643db57c0
@@ -11674,6 +11727,29 @@ packages:
   - pkg:pypi/ukkonen?source=hash-mapping
   size: 17210
   timestamp: 1725784604368
+- conda: https://conda.anaconda.org/conda-forge/linux-64/unixodbc-2.3.12-h661eb56_0.conda
+  sha256: 718eb807a5e6e6993ee06745cb2a25a6b353427485a6e50df01db99c6016a53f
+  md5: a737e5c549c13fbb5590c581848b0446
+  depends:
+  - libedit >=3.1.20191231,<3.2.0a0
+  - libgcc-ng >=12
+  - libiconv >=1.17,<2.0a0
+  - libstdcxx-ng >=12
+  license: LGPL-2.1
+  purls: []
+  size: 281830
+  timestamp: 1691504075258
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/unixodbc-2.3.12-h0e2417a_0.conda
+  sha256: c23df29cd90c80f1bd599909cb8fb0281058d372324afde481687f240a7e77c7
+  md5: 466dfbfb384f10c790f48c9b4316ffb1
+  depends:
+  - libcxx >=15.0.7
+  - libedit >=3.1.20191231,<3.2.0a0
+  - libiconv >=1.17,<2.0a0
+  license: LGPL-2.1
+  purls: []
+  size: 253937
+  timestamp: 1691504579753
 - conda: https://conda.anaconda.org/conda-forge/noarch/uri-template-1.3.0-pyhd8ed1ab_1.conda
   sha256: e0eb6c8daf892b3056f08416a96d68b0a358b7c46b99c8a50481b22631a4dfc0
   md5: e7cb0f5745e4c5035a460248334af7eb
