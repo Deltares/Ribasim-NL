@@ -7,7 +7,9 @@ import pandas as pd
 import requests
 import ribasim
 
-DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
+from ribasim_nl import settings
+
+DATA_DIR = settings.ribasim_nl_data_dir
 MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"
 
 MODEL_DATA_GPKG = Path(MODEL_DIR) / "model_data.gpkg"

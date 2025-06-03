@@ -6,8 +6,9 @@ import geopandas as gpd
 import pandas as pd
 
 from hydamo import code_utils
+from ribasim_nl import settings
 
-DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
+DATA_DIR = settings.ribasim_nl_data_dir
 MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"
 EXCEL_FILE = "uitlaten_inlaten.xlsx"
 BGT_CODES = ["W0650", "P0024"]

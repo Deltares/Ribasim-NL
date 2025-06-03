@@ -6,10 +6,11 @@ import geopandas as gpd
 import pandas as pd
 
 from hydamo import code_utils
+from ribasim_nl import settings
 from ribasim_nl.utils.geometry import cut_basin, drop_z
 from ribasim_nl.utils.geoseries import basins_to_points
 
-DATA_DIR = Path(os.getenv("RIBASIM_NL_DATA_DIR"))
+DATA_DIR = settings.ribasim_nl_data_dir
 MODEL_DIR = Path(os.getenv("RIBASIM_NL_MODEL_DIR")) / "ijsselmeer"
 
 DEFAULT_AREA = [0.01, 1000.0]
