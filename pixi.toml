@@ -40,7 +40,8 @@ bokeh = ">=3.0"
 contextily = "*"
 fiona = "*"
 geocube = "*"
-geopandas = "*"
+geopandas = "1.0.*"
+imod = ">=1.0.0rc3"
 ipykernel = "*"
 jupyterlab = "*"
 matplotlib = "*"
@@ -72,7 +73,6 @@ tqdm = "*"
 types-requests = "*"
 xlwings = "*"
 xugrid = "*"
-imod = ">=1.0.0rc3,<2"
 
 [pypi-dependencies]
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
