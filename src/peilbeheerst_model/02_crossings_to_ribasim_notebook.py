@@ -1,10 +1,13 @@
+import os
+
 from ribasim import Model
 
+import ribasim_nl
 from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
 
+base_path = ribasim_nl.settings.settings.ribasim_nl_data_dir
+
 # # Amstel, Gooi en Vecht
-
-
 model_characteristics = {
     # model description
     "waterschap": "AmstelGooienVecht",
@@ -780,28 +783,31 @@ network.WriteResults(model=model, checks=checks)
 
 
 # # Wetterskip
-
+# %%
+authority = "WetterskipFryslan"
+base_path = os.getenv("RIBASIM_NL_DATA_DIR")
 
 model_characteristics = {
     # model description
-    "waterschap": "WetterskipFryslan",
-    "modelname": "20240417_samenwerkdag",
+    "waterschap": authority,
+    "modelname": "2025",
     "modeltype": "boezemmodel",
     # define paths
-    "path_postprocessed_data": r"../../../../Data_postprocessed/Waterschappen/Wetterskip/Wetterskip.gpkg",
-    "path_crossings": "../../../../Data_crossings/Wetterskip/wetterskip_crossings_v06.gpkg",
+    "path_postprocessed_data": os.path.join(
+        base_path, authority, f"verwerkt/Delivered_data_processed/{authority}.gpkg"
+    ),  # add the base path
+    "path_crossings": os.path.join(base_path, authority, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg"),
     "path_Pdrive": None,
-    "path_boezem": "../../../../Data_shortest_path/Wetterskip/Wetterskip_shortest_path.gpkg",
-    "path_goodcloud_password": "../../../../Data_overig/password_goodcloud.txt",
+    "path_boezem": os.path.join(base_path, authority, "verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"),
     # apply filters
     "crossings_layer": "crossings_hydroobject_filtered",
     "in_use": True,
     "agg_links_in_use": True,
     "agg_areas_in_use": True,
-    "aggregation": True,  ############################ LET OP
+    "aggregation": True,
     # data storage settings
     "write_Pdrive": False,
-    "write_Zdrive": True,
+    "write_Zdrive": False,
     "write_goodcloud": True,
     "write_checks": True,
     "write_symbology": True,
@@ -809,9 +815,8 @@ model_characteristics = {
     "solver": None,
     "logging": None,
     "starttime": "2024-01-01 00:00:00",
-    "endtime": "2024-01-02 00:00:00",
+    "endtime": "2025-01-01 00:00:00",
 }
-
 
 waterboard = CrossingsToRibasim(model_characteristics=model_characteristics)
 
@@ -825,7 +830,6 @@ links = waterboard.embed_boezems(links, post_processed_data, crossings)
 
 # create individual model parts of the network
 network = RibasimNetwork(nodes=nodes, links=links, model_characteristics=model_characteristics)
-
 link = network.link()
 basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
 pump_node, pump_static = network.pump()
@@ -834,28 +838,6 @@ level_boundary_node, level_boundary_static = network.level_boundary()
 flow_boundary_node, flow_boundary_static = network.flow_boundary()
 manning_resistance_node, manning_resistance_static = network.manning_resistance()
 terminal_node = network.terminal()
-
-# linear_resistance = network.linear_resistance()
-# outlet = network.outlet()
-# discrete_control = network.discrete_control()
-# pid_control = network.pid_control()
-
-# insert the individual model modules in an actual model
-model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
-
-link = network.link()
-basin_node, basin_profile, basin_static, basin_state, basin_area = network.basin()
-pump_node, pump_static = network.pump()
-tabulated_rating_curve_node, tabulated_rating_curve_static = network.tabulated_rating_curve()
-level_boundary_node, level_boundary_static = network.level_boundary()
-flow_boundary_node, flow_boundary_static = network.flow_boundary()
-manning_resistance_node, manning_resistance_static = network.manning_resistance()
-terminal_node = network.terminal()
-
-# linear_resistance = network.linear_resistance()
-# outlet = network.outlet()
-# discrete_control = network.discrete_control()
-# pid_control = network.pid_control()
 
 # insert the individual model modules in an actual model
 model = Model(starttime=model_characteristics["starttime"], endtime=model_characteristics["endtime"], crs="EPSG:28992")
@@ -893,6 +875,7 @@ model = network.add_relevant_names(model, post_processed_data, crossings)
 # write the result
 network.WriteResults(model=model, checks=checks)
 
+# %%
 
 # # Zuiderzeeland
 

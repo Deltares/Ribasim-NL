@@ -856,7 +856,6 @@ def iterate_TRC(
                 pbar.update(1)
 
 
-#### New ####
 def validate_basin_area(model):
     """
     Validate the area of basins in the model.
@@ -879,6 +878,58 @@ def validate_basin_area(model):
         print("All basins are larger than 100 m²")
 
     return
+
+
+def validate_manning_basins(model):
+    manning_nodes = model.manning_resistance.node.df.reset_index()[["node_id"]]
+    basins_downstream_manning_nodes = model.link.df.loc[
+        model.link.df.from_node_id.isin(manning_nodes.to_numpy().flatten())
+    ][["from_node_id", "to_node_id"]].copy()  # select the basins downstream of the manning_nodes
+    manning_nodes = manning_nodes.merge(
+        right=basins_downstream_manning_nodes,
+        left_on="node_id",
+        right_on="from_node_id",
+        how="left",
+        suffixes=("", "_y"),
+    )  # merge to the manning_nodes df
+    manning_nodes = manning_nodes.rename(columns={"to_node_id": "downstream_basin"})
+    manning_nodes = manning_nodes.merge(
+        right=model.basin.area.df[["node_id", "meta_streefpeil"]],
+        left_on="downstream_basin",
+        right_on="node_id",
+        how="left",
+        suffixes=("", "_y"),
+    )  # add the streefpeilen
+    manning_nodes = manning_nodes.rename(columns={"meta_streefpeil": "downstream_streefpeil"})
+    manning_nodes = manning_nodes[["node_id", "downstream_basin", "downstream_streefpeil"]]
+
+    # repeat for the upstream basins of each manning node
+    basins_upstream_manning_nodes = model.link.df.loc[
+        model.link.df.to_node_id.isin(manning_nodes.to_numpy().flatten())
+    ][["from_node_id", "to_node_id"]].copy()  # select the basins downstream of the manning_nodes
+
+    manning_nodes = manning_nodes.merge(
+        right=basins_upstream_manning_nodes, left_on="node_id", right_on="to_node_id", how="left", suffixes=("", "_y")
+    )  # merge to the manning_nodes df
+
+    manning_nodes = manning_nodes.rename(columns={"from_node_id": "upstream_basin"})
+    manning_nodes = manning_nodes.merge(
+        right=model.basin.area.df[["node_id", "meta_streefpeil"]],
+        left_on="upstream_basin",
+        right_on="node_id",
+        how="left",
+        suffixes=("", "_y"),
+    )  # add the streefpeilen
+    manning_nodes = manning_nodes.rename(columns={"meta_streefpeil": "upstream_streefpeil"})
+    manning_nodes = manning_nodes.drop(columns=["to_node_id", "node_id_y"])
+
+    # round streefpeilen
+    for col in ["downstream_streefpeil", "upstream_streefpeil"]:
+        manning_nodes[col] = pd.to_numeric(manning_nodes[col], errors="coerce").round(2)
+
+    if len(manning_nodes > 0):
+        print("Warning! The streefpeilen on both sides of following Manning Nodes are not equal!")
+        print(manning_nodes.loc[manning_nodes.downstream_streefpeil != manning_nodes.upstream_streefpeil])
 
 
 def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
