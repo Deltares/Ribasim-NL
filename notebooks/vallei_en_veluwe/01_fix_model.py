@@ -22,6 +22,7 @@ ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+model_edits_aanvoer_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg])
 
@@ -212,6 +213,90 @@ for action in actions:
 
 # remove unassigned basin area
 model.remove_unassigned_basin_area()
+
+# Valleikanaal verkeerd geschematiseerd
+model.redirect_edge(edge_id=138, to_node_id=1095)
+model.redirect_edge(edge_id=137, to_node_id=1095)
+model.redirect_edge(edge_id=136, to_node_id=1095)
+model.redirect_edge(edge_id=24, to_node_id=1115)
+model.redirect_edge(edge_id=560, to_node_id=1)
+model.redirect_edge(edge_id=745, from_node_id=1120)
+
+# %% Aanvoer edits
+
+# fix boundary levels so we can get inflow
+model.reverse_direction_at_node(271)  # sluis Dieren is not an inlet
+model.reverse_direction_at_node(228)  # Inlaatgemaat diepe Gracht
+model.reverse_direction_at_node(470)  # Inlaatgemaat Goorpomp
+model.reverse_direction_at_node(302)  #
+model.reverse_direction_at_node(479)  # Laakse Duiker
+
+
+actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+# remove node (wrong connection)
+model.remove_node(478, remove_edges=True)
+model.remove_node(672, remove_edges=True)
+model.remove_node(671, remove_edges=True)
+model.remove_node(16, remove_edges=True)
+model.remove_node(17, remove_edges=True)
+model.remove_node(18, remove_edges=True)
+model.remove_node(738, remove_edges=True)
+model.remove_node(443, remove_edges=True)
+model.remove_node(595, remove_edges=True)
+model.remove_node(199, remove_edges=True)
+model.remove_node(585, remove_edges=True)
+model.remove_node(631, remove_edges=True)
+model.remove_node(611, remove_edges=True)
+model.remove_node(710, remove_edges=True)
+model.remove_node(292, remove_edges=True)
+model.remove_node(125, remove_edges=True)
+model.remove_node(696, remove_edges=True)
+model.remove_node(706, remove_edges=True)
+model.remove_node(737, remove_edges=True)
+model.remove_node(182, remove_edges=True)
+model.remove_node(185, remove_edges=True)  # Duiker vervangen door pomp Oostsingel
+model.remove_node(581, remove_edges=True)  # Stuw Asschat, zit er 2 keer in
+model.remove_node(496, remove_edges=True)  # stuw de Groep, zit er 2 keer in
+model.remove_node(649, remove_edges=True)
+model.remove_node(651, remove_edges=True)
+model.remove_node(677, remove_edges=True)
+model.remove_node(652, remove_edges=True)
+# merge basins
+# model.merge_basins(basin_id=1044, to_basin_id=1103)
+
+model.merge_basins(basin_id=910, to_basin_id=988)
+model.merge_basins(basin_id=1078, to_basin_id=1193)
+model.merge_basins(basin_id=1193, to_basin_id=1170)
+model.merge_basins(basin_id=1170, to_basin_id=1123)
+model.merge_basins(basin_id=1115, to_basin_id=1123)
+model.merge_basins(basin_id=883, to_basin_id=989)
+model.merge_basins(basin_id=1145, to_basin_id=1088)
+model.merge_basins(basin_id=927, to_basin_id=1117)
+model.merge_basins(basin_id=1036, to_basin_id=848)
+model.merge_basins(basin_id=804, to_basin_id=928)
+model.merge_basins(basin_id=928, to_basin_id=977)
+model.merge_basins(basin_id=806, to_basin_id=1185)
+model.merge_basins(basin_id=1177, to_basin_id=1111)
+model.merge_basins(basin_id=834, to_basin_id=904)
+model.merge_basins(basin_id=904, to_basin_id=862)
+model.merge_basins(basin_id=1051, to_basin_id=895)
+model.merge_basins(basin_id=1044, to_basin_id=1103)
+model.merge_basins(basin_id=1120, to_basin_id=862)
+model.merge_basins(basin_id=1218, to_basin_id=984)
+
 
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet

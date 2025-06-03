@@ -265,6 +265,8 @@ sanitize_node_table(
     names=names,
 )
 
+# %%
+model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
 
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)

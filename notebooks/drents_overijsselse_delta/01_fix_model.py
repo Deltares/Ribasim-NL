@@ -6,8 +6,9 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
-from ribasim_nl.geometry import split_basin_multi_polygon
+from ribasim_nl.geometry import split_basin_multi_polygon, split_line
 from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 
@@ -405,6 +406,35 @@ sanitize_node_table(
     ],
     names=names,
 )
+
+
+# %% set flow-boundaries to level-boundaries (plus outlet)
+for row in model.flow_boundary.node.df.itertuples():
+    node_id = row.Index
+    basin_node_id = model.downstream_node_id(node_id)
+
+    # get link geometry and remove link
+    link_id = model.link.df[model.link.df["from_node_id"] == node_id].index[0]
+    link_geometry = model.link.df.at[link_id, "geometry"]
+    model.link.df = model.link.df[model.link.df.index != link_id]
+
+    # outlet node.geometry 10m from upstream or at 10% of link.geometry
+    if link_geometry.length > 20:
+        outlet_node_geometry = link_geometry.interpolate(10)
+    else:
+        outlet_node_geometry = link_geometry.interpolate(0.1, normalized=True)
+
+    # change flow_boundary to level_boundary and add outlet_node
+    model.update_node(node_id, node_type="LevelBoundary")
+    outlet_node = model.outlet.add(
+        node=Node(geometry=outlet_node_geometry, name=row.name), tables=default_tables.outlet
+    )
+
+    # remove old links and add 2 new
+    left_link_geometry, right_link_geometry = list(split_line(link_geometry, outlet_node_geometry).geoms)
+    model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
+    model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+
 
 #  %% write model
 model.use_validation = True

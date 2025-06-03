@@ -1,3 +1,4 @@
+# %%
 import time
 
 from peilbeheerst_model.controle_output import Control
@@ -8,7 +9,7 @@ cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
-run_model = False
+run_model = True
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
