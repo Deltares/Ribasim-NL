@@ -2,10 +2,10 @@ import os
 
 from ribasim import Model
 
-import ribasim_nl
 from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
+from ribasim_nl import settings
 
-base_path = ribasim_nl.settings.settings.ribasim_nl_data_dir
+base_path = settings.ribasim_nl_data_dir
 
 # # Amstel, Gooi en Vecht
 model_characteristics = {
