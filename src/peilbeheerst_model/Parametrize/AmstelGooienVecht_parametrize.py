@@ -169,17 +169,6 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(129674, 482974)), [pump.S
 ribasim_model.link.add(ribasim_model.basin[228], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
-# add node overlaat to ARK
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(128903, 470553)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(128913, 470563)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(ribasim_model.basin[69], tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(119234, 492570)), [level_boundary.Static(level=[default_level])]
 )
@@ -232,20 +221,23 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(148437, 478733)), [pump.S
 ribasim_model.link.add(ribasim_model.basin[168], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
-# TODO: Temporary fixes
 ribasim_model.remove_node(350, True)
-aanvoer_pump_ids = 430
+aanvoer_pump_ids = [430]
 for pid in aanvoer_pump_ids:
     ribasim_param.change_pump_func(ribasim_model, pid, "aanvoer", 1)
     ribasim_param.change_pump_func(ribasim_model, pid, "afvoer", 0)
 
-#  a multipolygon occurs in a single basin (88). Only retain the largest value
-exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 88].explode(
-    index_parts=False
-)
-exploded_basins["area"] = exploded_basins.area
-largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 88, "geometry"] = largest_polygon["geometry"]
+#  a multipolygon occurs in some basins (88, 62). Only retain the largest value
+multipolygon_basins = [88, 62]
+for basin_to_explode in multipolygon_basins:
+    exploded_basins = ribasim_model.basin.area.df.loc[
+        ribasim_model.basin.area.df["node_id"] == basin_to_explode
+    ].explode(index_parts=False)
+    exploded_basins["area"] = exploded_basins.area
+    largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
+    ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == basin_to_explode, "geometry"] = (
+        largest_polygon["geometry"]
+    )
 
 # set all 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
