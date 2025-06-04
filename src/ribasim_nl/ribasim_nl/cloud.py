@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import shutil
 from dataclasses import dataclass, field
@@ -13,8 +12,6 @@ from .settings import settings
 
 logger = logging.getLogger(__name__)
 
-RIBASIM_NL_CLOUD_PASS = os.getenv("RIBASIM_NL_CLOUD_PASS")
-RIBASIM_NL_DATA_DIR = os.getenv("RIBASIM_NL_DATA_DIR")
 RIBASIM_NL_CLOUD_USER = "nhi_api"
 WEBDAV_URL = "https://deltares.thegood.cloud/remote.php/dav"
 BASE_URL = rf"{WEBDAV_URL}/files/{RIBASIM_NL_CLOUD_USER}/Ribasim modeldata"
@@ -84,7 +81,7 @@ class CloudStorage:
     def __post_init__(self):
         # check if user and password are specified
         if self.user is None:
-            raise ValueError("""'user' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_USER.""")
+            raise ValueError("""'user' is None. Provide it.""")
         if self.password is None:
             raise ValueError("""'password' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_PASS.""")
         # check if we have correct credentials

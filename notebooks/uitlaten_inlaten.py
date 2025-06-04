@@ -1,4 +1,3 @@
-import os
 import warnings
 from pathlib import Path
 
@@ -9,6 +8,7 @@ import requests
 from shapely.geometry import Point
 
 from hydamo import HyDAMO, code_utils
+from ribasim_nl import settings
 
 warnings.simplefilter("ignore", UserWarning)
 
@@ -21,11 +21,9 @@ warnings.simplefilter("ignore", UserWarning)
 # - `CRS`: De projectile waarin de ruimtelijke data moet worden opgeslagen (28992 = Rijksdriehoekstelsel)
 
 
-# environmnt variables
-DATA_DIR = os.getenv("RIBASIM_NL_DATA_DIR")
-RIBASIM_NL_CLOUD_PASS = os.getenv("RIBASIM_NL_CLOUD_PASS")
-assert DATA_DIR is not None
-assert RIBASIM_NL_CLOUD_PASS is not None
+# environment variables
+DATA_DIR = settings.ribasim_nl_data_dir
+RIBASIM_NL_CLOUD_PASS = settings.ribasim_nl_cloud_pass
 
 DATA_DIR = Path(DATA_DIR)
 EXCEL_FILE = r"uitlaten_inlaten.xlsx"
