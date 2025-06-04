@@ -234,7 +234,7 @@ ribasim_model.link.add(pump_node, level_boundary_node)
 
 # TODO: Temporary fixes
 ribasim_model.remove_node(350, True)
-aanvoer_pump_ids = 251, 430, 644, 673, 769, 784, 842
+aanvoer_pump_ids = 430, 644, 673, 769, 784
 for pid in aanvoer_pump_ids:
     ribasim_param.change_pump_func(ribasim_model, pid, "aanvoer", 1)
     ribasim_param.change_pump_func(ribasim_model, pid, "afvoer", 0)
