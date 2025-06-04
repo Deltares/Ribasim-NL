@@ -10,8 +10,7 @@ from bokeh.palettes import Category10
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.wkt import loads
 
-import ribasim_nl
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, settings
 
 
 class CrossingsToRibasim:
@@ -1838,7 +1837,7 @@ class RibasimNetwork:
         checks : _type_
             _description_
         """
-        dir_path = ribasim_nl.settings.settings.ribasim_nl_data_dir
+        dir_path = settings.ribasim_nl_data_dir
         dir_path = os.path.join(dir_path, self.model_characteristics["waterschap"])
 
         ##### write the model to the Z drive #####
@@ -1897,7 +1896,7 @@ class RibasimNetwork:
         ##### copy symbology for the Ribasim model #####
         if self.model_characteristics["write_symbology"]:
             checks_symbology_path = os.path.join(
-                ribasim_nl.settings.settings.ribasim_nl_data_dir, "Basisgegevens/QGIS_qlr/visualisation_Ribasim.qlr"
+                settings.ribasim_nl_data_dir, "Basisgegevens/QGIS_qlr/visualisation_Ribasim.qlr"
             )
             checks_symbology_path_new = os.path.join(
                 dir_path,
@@ -1979,7 +1978,7 @@ class RibasimNetwork:
             # dont change the paths below!
 
             checks_symbology_path = os.path.join(
-                ribasim_nl.settings.settings.ribasim_nl_data_dir, "Basisgegevens/QGIS_qlr/visualisation_checks.qlr"
+                settings.ribasim_nl_data_dir, "Basisgegevens/QGIS_qlr/visualisation_checks.qlr"
             )
 
             checks_symbology_path_new = os.path.join(

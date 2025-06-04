@@ -14,7 +14,7 @@ import shapely.ops
 import tqdm.auto as tqdm
 from shapely.geometry import LineString, MultiLineString, MultiPoint, Point, Polygon
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, settings
 
 
 class ParseCrossings:
@@ -124,7 +124,7 @@ class ParseCrossings:
         self.disable_progress = disable_progress
 
         # read all layers of geopackage
-        base_path = os.getenv("RIBASIM_NL_DATA_DIR")
+        base_path = settings.ribasim_nl_data_dir
         gpkg_path = os.path.join(base_path, gpkg_path)  # add the base path
         self.df_gpkg = {L: gpd.read_file(gpkg_path, layer=L) for L in fiona.listlayers(gpkg_path)}
 

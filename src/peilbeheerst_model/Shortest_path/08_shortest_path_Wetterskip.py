@@ -20,8 +20,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import split
 from shapely.wkt import dumps
 
-import ribasim_nl
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, settings
 
 cloud = CloudStorage()
 # ### Load Data
@@ -31,7 +30,7 @@ waterschap = "WetterskipFryslan"
 
 # Define crossings file path
 data_path = cloud.joinpath(waterschap, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg")
-base_path = ribasim_nl.settings.settings.ribasim_nl_data_dir
+base_path = settings.ribasim_nl_data_dir
 output_path = f"{waterschap}/verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"
 output_path = os.path.join(base_path, output_path)  # add the base path
 
@@ -418,7 +417,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         plt_paths.plot(ax=ax, color="purple", label="shortest paths")
         ax.legend()
         path_figs = os.path.join(
-            ribasim_nl.settings.settings.ribasim_nl_data_dir,
+            settings.ribasim_nl_data_dir,
             "WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new",
         )
         plt.savefig(
@@ -450,7 +449,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         for key, value in objects.items():
             # For each GeoDataFrame, save it to a layer in the GeoPackage
             path_gpkg = os.path.join(
-                ribasim_nl.settings.settings.ribasim_nl_data_dir,
+                settings.ribasim_nl_data_dir,
                 "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg",
             )
             value.to_file(
