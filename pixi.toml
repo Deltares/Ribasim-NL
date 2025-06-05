@@ -45,6 +45,7 @@ ipykernel = "*"
 jupyterlab = "*"
 matplotlib = "*"
 mypy = "*"
+netcdf4 = ">=1.7.2"
 networkx = ">=3.4"
 openpyxl = "*"
 pandas = "*"
@@ -72,7 +73,6 @@ tqdm = "*"
 types-requests = "*"
 xlwings = "*"
 xugrid = "*"
-netcdf4 = ">=1.7.2,<2"
 
 [pypi-dependencies]
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
