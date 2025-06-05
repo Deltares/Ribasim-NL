@@ -50,9 +50,9 @@ def get_rws_link(
     # now get closest links
     link_idx = iter(network.links.distance(to_be_projected_point).sort_values().index)
     link_geometry = None
-    while link_geometry is None:
-        idx = next(link_idx)
+    while link_geometry is None or link_geometry.is_empty:  # links can now be empty?
         try:
+            idx = next(link_idx)
             link_geom = network.links.at[idx, "geometry"]
             projected_point = link_geom.interpolate(link_geom.project(to_be_projected_point))
             # If the projected point is not close to any network node, add a new node
@@ -63,6 +63,8 @@ def get_rws_link(
             link_geometry = network.get_line(from_network_node, to_network_node)
         except NetworkXNoPath:
             continue
+        except StopIteration:
+            link_geometry = LineString(tuple(to_be_projected_point.coords) + tuple(on_network_point.coords))
 
     # If the generated link doesn't start or end with the point, add it.
     if not link_geometry.boundary.geoms[0].equals(to_be_projected_point):
@@ -124,9 +126,9 @@ network = Network.from_network_gpkg(network_gpkg)
 
 unique_waterbeheerders = model.basin.node.df.meta_waterbeheerder.unique()
 
-boundary_node_ids = model.level_boundary.static.df[
-    model.level_boundary.static.df.meta_couple_authority.isin(unique_waterbeheerders)
-].node_id.to_list()
+boundary_node_ids = model.level_boundary.node.df[
+    model.level_boundary.node.df.meta_couple_authority.isin(unique_waterbeheerders)
+].index.to_list()
 
 # basin areas indexed met de node_id
 basin_areas_df = model.basin.area.df.set_index("node_id")
@@ -143,7 +145,7 @@ for boundary_node_id in boundary_node_ids:
 
     boundary_node = model.level_boundary[boundary_node_id]
     boundary_node_authority = model.level_boundary.node.df.at[boundary_node_id, "meta_waterbeheerder"]
-    couple_authority = model.level_boundary.static.df.set_index("node_id").at[boundary_node_id, "meta_couple_authority"]
+    couple_authority = model.level_boundary.node.df.at[boundary_node_id, "meta_couple_authority"]
 
     # Some levelboundaries don't need to be coupled
     if pd.isna(couple_authority):
