@@ -10,7 +10,7 @@ from bokeh.palettes import Category10
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.wkt import loads
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, settings
 
 
 class CrossingsToRibasim:
@@ -1837,8 +1837,8 @@ class RibasimNetwork:
         checks : _type_
             _description_
         """
-        path = f"../../../../Ribasim_networks/Waterschappen/{self.model_characteristics['waterschap']}"
-        #         path = os.path.join(path, '', 'modellen', '', self.model_characteristics['waterschap']  + '_' + self.model_characteristics['modeltype'])
+        dir_path = settings.ribasim_nl_data_dir
+        dir_path = os.path.join(dir_path, self.model_characteristics["waterschap"])
 
         ##### write the model to the Z drive #####
         if self.model_characteristics["write_Zdrive"]:
@@ -1853,7 +1853,7 @@ class RibasimNetwork:
                         os.remove(file_path)
 
             path_ribasim = os.path.join(
-                path,
+                dir_path,
                 "",
                 "modellen",
                 "",
@@ -1861,25 +1861,6 @@ class RibasimNetwork:
                 "ribasim.toml",
             )
             model.write(path_ribasim)
-
-            # print('Links after writing to Z drive:')
-            # display(model.network.link.df)
-            # gpd.GeoDataFrame(model.network.link.df.geometry).plot(color='red')
-            # model.network.link.df.to_file('zzl_test.gpkg')
-            # model.network.link.plot()
-
-        ##### write the checks #####
-        if self.model_characteristics["write_checks"]:
-            RibasimNetwork.store_data(
-                data=checks,
-                #                                       output_path = str(path + self.model_characteristics['waterschap'] + '_' + self.model_characteristics['modelname'] + '_' + self.model_characteristics['modeltype'] + '_checks'))
-                output_path=os.path.join(
-                    path,
-                    "modellen",
-                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    "database_checks",
-                ),
-            )
 
         ##### write to the P drive #####
         if self.model_characteristics["write_Pdrive"]:
@@ -1914,36 +1895,21 @@ class RibasimNetwork:
 
         ##### copy symbology for the Ribasim model #####
         if self.model_characteristics["write_symbology"]:
-            # dont change the paths below!
-            checks_symbology_path = (
-                # r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_Ribasimmodel.qlr"
-                r"../../../../Data_overig/QGIS_qlr/visualisation_Ribasim.qlr"
+            checks_symbology_path = os.path.join(
+                settings.ribasim_nl_data_dir, "Basisgegevens/QGIS_qlr/visualisation_Ribasim.qlr"
             )
             checks_symbology_path_new = os.path.join(
-                path,
+                dir_path,
                 "modellen",
                 self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
                 "visualisation_Ribasim.qlr",
             )
 
-            # dummy string, required to replace string in the file
-            # checks_path_old = r"../../symbology/symbology__poldermodel_Ribasim/symbology__poldermodel.gpkg"
-            # #             checks_path_new = os.path.join(self.model_characteristics['waterschap'] + '_' + self.model_characteristics['modelname'] + '_' + self.model_characteristics['modeltype'] + '.gpkg')
-            # checks_path_new = os.path.join("database.gpkg")
-
+            # check if the directory exists, if not create it
+            if not os.path.exists(os.path.dirname(checks_symbology_path_new)):
+                os.makedirs(os.path.dirname(checks_symbology_path_new))
             # copy checks_symbology file from old dir to new dir
             shutil.copy(src=checks_symbology_path, dst=checks_symbology_path_new)
-
-            # read file
-            # with open(checks_symbology_path_new, encoding="utf-8") as file:
-            #     qlr_contents = file.read()
-
-            # # change paths in the .qlr file
-            # qlr_contents = qlr_contents.replace(checks_path_old, checks_path_new)
-
-            # # write updated file
-            # with open(checks_symbology_path_new, "w", encoding="utf-8") as file:
-            #     file.write(qlr_contents)
 
             if self.model_characteristics["write_Pdrive"]:
                 # write Ribasim model to the P drive
@@ -1974,37 +1940,56 @@ class RibasimNetwork:
                     ),
                 )
 
+        # write model locally
+        output_locally = os.path.join(
+            dir_path,
+            "modellen",
+            self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
+        )
+        if not os.path.exists(output_locally):
+            os.makedirs(output_locally)
+        model.write(filepath=output_locally + "/ribasim.toml")
+
+        ##### write the checks #####
+        if self.model_characteristics["write_checks"]:
+            print("dir_path = ", dir_path)
+            print(
+                os.path.join(
+                    dir_path,
+                    "modellen",
+                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
+                    "database_checks",
+                )
+            )
+            print("Done")
+
+            RibasimNetwork.store_data(
+                data=checks,
+                output_path=os.path.join(
+                    dir_path,
+                    "modellen",
+                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
+                    "database_checks",
+                ),
+            )
+
         ##### copy symbology for the CHECKS data #####
         if self.model_characteristics["write_symbology"]:
             # dont change the paths below!
-            # checks_symbology_path = r"../../../../Ribasim_networks/Waterschappen/Symbo_feb/modellen/Symbo_feb_poldermodel/Symbo_feb_20240219_checks.qlr"
-            checks_symbology_path = r"../../../../Data_overig/QGIS_qlr/visualisation_checks.qlr"
+
+            checks_symbology_path = os.path.join(
+                settings.ribasim_nl_data_dir, "Basisgegevens/QGIS_qlr/visualisation_checks.qlr"
+            )
 
             checks_symbology_path_new = os.path.join(
-                path,
+                dir_path,
                 "modellen",
                 self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
                 "visualisation_checks.qlr",
             )
 
-            # # dummy string, required to replace string in the file
-            # checks_path_old = r"../../symbology/symbology__poldermodel_Ribasim/symbology__poldermodel_checks.gpkg"
-            # #             checks_path_new = os.path.join(self.model_characteristics['waterschap'] + '_' + self.model_characteristics['modelname'] + '_' + self.model_characteristics['modeltype'] + '.gpkg')
-            # checks_path_new = os.path.join("HollandseDelta_classtest_poldermodel_checks.gpkg")
-
             # copy checks_symbology file from old dir to new dir
             shutil.copy(src=checks_symbology_path, dst=checks_symbology_path_new)
-
-            # read file
-            # with open(checks_symbology_path_new, encoding="utf-8") as file:
-            #     qlr_contents = file.read()
-
-            # change paths in the .qlr file
-            # qlr_contents = qlr_contents.replace(checks_path_old, checks_path_new)
-
-            # # write updated file
-            # with open(checks_symbology_path_new, "w", encoding="utf-8") as file:
-            #     file.write(qlr_contents)
 
             if self.model_characteristics["write_Pdrive"]:
                 # write Ribasim model to the P drive
@@ -2036,13 +2021,7 @@ class RibasimNetwork:
                 )
 
         if self.model_characteristics["write_goodcloud"]:
-            with open(self.model_characteristics["path_goodcloud_password"]) as file:
-                password = file.read()
-
-            cloud_storage = CloudStorage(
-                password=password,
-                data_dir=r"../../../../Ribasim_networks/Waterschappen/",  # + waterschap + '_'+ modelname + '_' + modeltype,
-            )
+            cloud_storage = CloudStorage()
 
             cloud_storage.upload_model(
                 authority=self.model_characteristics["waterschap"],

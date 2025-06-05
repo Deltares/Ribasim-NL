@@ -18,7 +18,7 @@ def run(
     Args:
         toml_path (Path): path to your ribasim toml-file
         ribasim_exe (Path): path to ribasim exe-file
-        stream_output (bool, optional): stream output in IDE. Defaults to False.
+        stream_output (bool, optional): stream output in IDE. Defaults to True.
         returncode (bool, optional): return return code after running model. Defaults to True.
 
     """
