@@ -1,8 +1,7 @@
 # %%
-# import ribasim
 import geopandas as gpd
 import xarray as xr
-from DynMeteo_functions import (
+from meteo_functions import (
     AddMeteoModel,
     GetFractionalGridPerBasin,
     GetMeteoPerBasin,
