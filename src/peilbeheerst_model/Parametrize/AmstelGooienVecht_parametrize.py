@@ -222,17 +222,10 @@ ribasim_model.link.add(ribasim_model.basin[168], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 ribasim_model.remove_node(350, True)
-aanvoer_pump_ids = [430]
-for pid in aanvoer_pump_ids:
-    ribasim_param.change_pump_func(ribasim_model, pid, "aanvoer", 1)
-    ribasim_param.change_pump_func(ribasim_model, pid, "afvoer", 0)
-
-# TODO: Temporary fixes
-ribasim_model.remove_node(350, True)
-aanvoer_pump_ids = 251, 430, 644, 673, 769, 784, 842
-for pid in aanvoer_pump_ids:
-    ribasim_param.change_pump_func(ribasim_model, pid, "aanvoer", 1)
-    ribasim_param.change_pump_func(ribasim_model, pid, "afvoer", 0)
+ribasim_model.remove_node(673, True)
+ribasim_model.remove_node(1000, False)
+ribasim_param.change_pump_func(ribasim_model, 430, "aanvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, 430, "afvoer", 0)
 
 #  a multipolygon occurs in some basins (88, 62). Only retain the largest value
 multipolygon_basins = [88, 62]
@@ -297,7 +290,8 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 
 # add the default levels
 if MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_level_boundaries(ribasim_model, starttime, endtime, -0.42, 0.42)
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(ribasim_model, starttime, endtime, -0.42, -0.4)
+    # ribasim_param.set_hypothetical_dynamic_level_boundaries(ribasim_model, starttime, endtime, -0.42, 0.42)
 else:
     ribasim_model.level_boundary.static.df.level = default_level
 
@@ -322,8 +316,10 @@ ribasim_param.set_aanvoer_flags(
     processor,
     basin_aanvoer_on=38,
     basin_aanvoer_off=(1, 53, 134, 144, 196, 222),
+    outlet_aanvoer_on=856,
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 109, "meta_aanvoer"] = True
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 ribasim_param.add_continuous_control(ribasim_model, dy=-200)
 
