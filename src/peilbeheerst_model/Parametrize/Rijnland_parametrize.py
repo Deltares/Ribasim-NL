@@ -202,7 +202,7 @@ if AANVOER_CONDITIONS:
 else:
     aanvoergebieden = None
 
-# assign metadata
+# assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
     authority=waterschap,
     model_name=ribasim_model,
@@ -215,6 +215,7 @@ assign_metadata.add_meta_to_pumps(
         "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
     },
     max_distance=100,
+    factor_flowrate=1 / 60,  # m3/min -> m3/s
 )
 assign_metadata.add_meta_to_basins(
     layer="aggregation_area",
