@@ -281,9 +281,6 @@ assign = AssignAuthorities(
     custom_nodes=None,
 )
 ribasim_model = assign.assign_authorities()
-# if MIXED_CONDITIONS:
-#     # TODO: Embed the correct usage of `static` v. `time` dataframes in `AssignAuthorities`
-#     ribasim_model = assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # set numerical settings
 # write model output
