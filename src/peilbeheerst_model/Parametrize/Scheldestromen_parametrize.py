@@ -6,7 +6,7 @@ import warnings
 
 import ribasim.nodes
 from ribasim import Node
-from ribasim.nodes import level_boundary, tabulated_rating_curve
+from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -141,6 +141,14 @@ ribasim_model.tabulated_rating_curve.node.df.loc[tabulated_rating_curve_node.nod
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[133])
+
+# add a pump and links to a newly created level boundary
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(65450, 374986)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(65429, 374945)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[148], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 
 # add a TRC and LB from Belgium

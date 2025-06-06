@@ -1,6 +1,7 @@
 import itertools
 import logging
 import math
+import os
 import pathlib
 
 import fiona
@@ -12,6 +13,8 @@ import pydantic
 import shapely.ops
 import tqdm.auto as tqdm
 from shapely.geometry import LineString, MultiLineString, MultiPoint, Point, Polygon
+
+from ribasim_nl import CloudStorage, settings
 
 
 class ParseCrossings:
@@ -121,6 +124,8 @@ class ParseCrossings:
         self.disable_progress = disable_progress
 
         # read all layers of geopackage
+        base_path = settings.ribasim_nl_data_dir
+        gpkg_path = os.path.join(base_path, gpkg_path)  # add the base path
         self.df_gpkg = {L: gpd.read_file(gpkg_path, layer=L) for L in fiona.listlayers(gpkg_path)}
 
         # Validate globalids
@@ -146,12 +151,14 @@ class ParseCrossings:
                 raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
 
         # KRW
+        krw_path = os.path.join(base_path, krw_path)  # add the base path
         self.krw_path = krw_path
         self.krw_column_id = krw_column_id
         self.krw_column_name = krw_column_name
         self.krw_min_overlap = krw_min_overlap
 
         # Output path
+        output_path = os.path.join(base_path, output_path)  # add the base path
         self.output_path = output_path
 
         # logger settings
@@ -161,6 +168,8 @@ class ParseCrossings:
         if show_log:
             handlers.append(logging.StreamHandler())
         if logfile is not None:
+            # Prepend base_path to logfile if it's not an absolute path
+            logfile = os.path.join(base_path, logfile) if not os.path.isabs(logfile) else logfile
             handlers.append(logging.FileHandler(pathlib.Path(logfile), "w"))
         for handler in handlers:
             formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
@@ -608,6 +617,11 @@ class ParseCrossings:
             df_filter.to_file(output_path, layer=f"crossings_{filterlayer}")
         if df_hydro_filter is not None:
             df_hydro_filter.to_file(output_path, layer="crossings_hydroobject_filtered")
+
+        # Write the crossings to the GoodCloud
+        cloud = CloudStorage()
+        crossings_path_cloud_parent = output_path.parent  # Use the parent directory of the output path
+        cloud.upload_content(dir_path=crossings_path_cloud_parent, overwrite=True)
 
     @pydantic.validate_call(config={"strict": True})
     def _classify_from_to_peilgebieden(self, pfrom: str | None, pto: str | None) -> tuple[str, str]:
