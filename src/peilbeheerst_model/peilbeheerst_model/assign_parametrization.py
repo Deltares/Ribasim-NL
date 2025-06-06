@@ -126,6 +126,7 @@ class AssignMetaData:
         layer: str,
         mapper: dict[str, dict[str, list[str]]],
         max_distance: float = 100,
+        factor_flowrate: float = 1.0,
     ) -> None:
         # get gemaal information
         df_gemaal = self.get_paramfile_from_cloud(layer)
@@ -170,6 +171,8 @@ class AssignMetaData:
                     df_ribasim, mrows = self._get_matching_rows("pump", ribasim_attr, node_id)
                     for ribasim_col in ribasim_cols:
                         param_val = matching_row[param_col]
+                        if "flow_rate" in ribasim_col:
+                            param_val = param_val * factor_flowrate
                         df_ribasim.loc[mrows, ribasim_col] = param_val
 
         # Restore original values for those that are still NA
