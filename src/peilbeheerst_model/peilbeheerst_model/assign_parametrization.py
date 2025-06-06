@@ -51,26 +51,38 @@ class AssignMetaData:
 
         return df_object
 
-    def _series_assigned(self, series: pd.Series) -> bool:
-        assigned = not (series.isna().all() or (series == "").all())
+    def _na_or_empty(self, series: pd.Series) -> pd.Series:
+        return pd.isna(series) | (series == "")
 
-        return assigned
+    def _series_assigned(self, series: pd.Series) -> bool:
+        return not self._na_or_empty(series).all()
 
     def _add_unassigned_columns(
         self,
-        ribasim_type,
-        mapper,
-    ) -> None:
+        ribasim_type: str,
+        mapper: dict[str, dict[str, list[str]]],
+    ) -> dict[tuple[str, str, str], pd.Series]:
         # Add columns which do not exist yet
+        restore_mapper = {}
         rtype = getattr(self.model, ribasim_type)
         for colmap in mapper.values():
             for ribasim_attr, ribasim_cols in colmap.items():
                 df_ribasim = getattr(rtype, ribasim_attr).df
                 for col in ribasim_cols:
                     if col in df_ribasim.columns and self._series_assigned(df_ribasim[col]):
-                        raise ValueError(f"{ribasim_type}.{ribasim_attr}.df[{col}] has values")
+                        restore_mapper[(ribasim_type, ribasim_attr, col)] = df_ribasim[col].copy()
+                        df_ribasim[col] = pd.NA
                     elif col not in df_ribasim.columns:
                         df_ribasim[col] = pd.NA
+
+        return restore_mapper
+
+    def _restore_org_vals(self, restore_mapper: dict[tuple[str, str, str], pd.Series]) -> None:
+        # Restore original values for those that are still N
+        for (ribasim_type, ribasim_attr, col), org_vals in restore_mapper.items():
+            df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
+            mrows = self._na_or_empty(df_ribasim[col])
+            df_ribasim.loc[mrows, col] = org_vals.loc[mrows]
 
     def _get_matching_rows(
         self,
@@ -118,19 +130,8 @@ class AssignMetaData:
         # get gemaal information
         df_gemaal = self.get_paramfile_from_cloud(layer)
 
-        # Save old flow_rate values in case we want to overwrite them.
-        old_flow_rate = None
-        for param_col, colmap in mapper.items():
-            for ribasim_attr, ribasim_cols in colmap.items():
-                if ribasim_attr == "static" and "flow_rate" in ribasim_cols:
-                    old_flow_rate = self.model.pump.static.df["flow_rate"].copy()
-                    self.model.pump.static.df["flow_rate"] = pd.NA
-                    break
-            if old_flow_rate is not None:
-                break
-
         # Add columns which do not exist yet
-        self._add_unassigned_columns("pump", mapper)
+        restore_cols = self._add_unassigned_columns("pump", mapper)
 
         # Add matching unassigned pumps to the ribasim model
         visited = {}
@@ -167,13 +168,12 @@ class AssignMetaData:
             for param_col, colmap in mapper.items():
                 for ribasim_attr, ribasim_cols in colmap.items():
                     df_ribasim, mrows = self._get_matching_rows("pump", ribasim_attr, node_id)
-                    df_ribasim.loc[mrows, ribasim_cols] = matching_row[param_col]
+                    for ribasim_col in ribasim_cols:
+                        param_val = matching_row[param_col]
+                        df_ribasim.loc[mrows, ribasim_col] = param_val
 
-        # Restore old flow_rate for those that are still nan
-        if old_flow_rate is not None:
-            df_ribasim = self.model.pump.static.df
-            mrows = pd.isna(df_ribasim.flow_rate)
-            df_ribasim.loc[mrows, "flow_rate"] = old_flow_rate.loc[mrows]
+        # Restore original values for those that are still NA
+        self._restore_org_vals(restore_cols)
 
         return None
 
@@ -187,7 +187,7 @@ class AssignMetaData:
         df_area = self.get_paramfile_from_cloud(layer)
 
         # Add columns which do not exist yet
-        self._add_unassigned_columns("basin", mapper)
+        restore_cols = self._add_unassigned_columns("basin", mapper)
 
         # Add the matching areas to the ribasim model
         for row in self.model.basin.area.df.itertuples():
@@ -215,5 +215,8 @@ class AssignMetaData:
                 for ribasim_attr, ribasim_cols in colmap.items():
                     df_ribasim, mrows = self._get_matching_rows("basin", ribasim_attr, [row.node_id])
                     df_ribasim.loc[mrows, ribasim_cols] = matching_row[param_col]
+
+        # Restore original values for those that are still NA
+        self._restore_org_vals(restore_cols)
 
         return None
