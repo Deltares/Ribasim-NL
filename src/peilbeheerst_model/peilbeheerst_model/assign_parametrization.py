@@ -173,7 +173,7 @@ class AssignMetaData:
                     for ribasim_col in ribasim_cols:
                         param_val = matching_row[param_col]
                         if "flow_rate" in ribasim_col:
-                            param_val = param_val * factor_flowrate
+                            param_val = pd.to_numeric(param_val) * factor_flowrate
                         df_ribasim.loc[mrows, ribasim_col] = param_val
 
         # Restore original values for those that are still NA
