@@ -145,11 +145,12 @@ class AssignMetaData:
 
             # Check if there are multiple overlapping pumps (within 1cm)
             rows = self.model.pump.node.df.sindex.query(row.geometry.buffer(0.01), predicate="intersects")
+            node_id = self.model.pump.node.df.index[rows].tolist()
+            node_id_str = ", ".join(map(str, node_id))
+            if row.Index not in node_id:
+                raise ValueError("Unexpected error: intersects does not return the buffered node_id")
             if len(rows) > 1:
-                node_id = self.model.pump.node.df.index[rows].tolist()
-                print(f"  - Multiple overlapping ribasim pumps for {node_id=}")
-            else:
-                node_id = [row.Index]
+                print(f"  - Multiple overlapping ribasim pumps for node_id={node_id_str}")
 
             # Only use gemalen which have not been assigned yet
             dfa = df_gemaal[~df_gemaal.index.isin(list(visited.keys()))].copy()
@@ -159,10 +160,10 @@ class AssignMetaData:
             dfa = df_gemaal.iloc[idx[1, :]].copy()
 
             if len(dfa) == 0:
-                print(f"  - Warning: No matching pump found for {node_id=}")
+                print(f"  - Warning: No matching pump found for node_id={node_id_str}")
                 continue
             elif len(dfa) > 1:
-                print(f"  - Warning: Multiple matching pumps found for {node_id=}, using the first")
+                print(f"  - Warning: Multiple matching pumps found for node_id={node_id_str}, using the first")
 
             # Assign metadata
             matching_row = dfa.iloc[0]
