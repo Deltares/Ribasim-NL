@@ -195,13 +195,6 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460,
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460, "meta_func_afvoer"] = 0
 ribasim_model.link.add(ribasim_model.pump[460], ribasim_model.basin[10])
 
-# remove Brielse Meer as `Basin` and add as `LevelBoundary`-`Pump`-combination
-ribasim_model.remove_node(98, True)
-ribasim_model.remove_node(565, True)
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460, "meta_func_aanvoer"] = 1
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460, "meta_func_afvoer"] = 0
-ribasim_model.link.add(ribasim_model.pump[460], ribasim_model.basin[10])
-
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
@@ -288,9 +281,9 @@ assign = AssignAuthorities(
     custom_nodes=None,
 )
 ribasim_model = assign.assign_authorities()
-if MIXED_CONDITIONS:
-    # TODO: Embed the correct usage of `static` v. `time` dataframes in `AssignAuthorities`
-    ribasim_model = assign.from_static_to_time_df(ribasim_model, clear_static=True)
+# if MIXED_CONDITIONS:
+#     # TODO: Embed the correct usage of `static` v. `time` dataframes in `AssignAuthorities`
+#     ribasim_model = assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # set numerical settings
 # write model output

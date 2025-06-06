@@ -293,9 +293,18 @@ ribasim_model.merge_basins(node_id=595, to_node_id=75)
 ribasim_model.merge_basins(node_id=633, to_node_id=475)
 ribasim_model.merge_basins(node_id=329, to_node_id=325)
 
+ribasim_model.merge_basins(node_id=90, to_node_id=577)  # numerical limiting outlet #1350
+ribasim_model.merge_basins(node_id=425, to_node_id=577)  # numerical limiting outlet #1453
+ribasim_model.merge_basins(node_id=722, to_node_id=577)  # numerical limiting outlet #2366
+ribasim_model.merge_basins(node_id=293, to_node_id=571)  # numerical limiting MR #6685
+ribasim_model.merge_basins(node_id=196, to_node_id=505)  # numerical limiting MR #6588
+ribasim_model.merge_basins(node_id=465, to_node_id=245)  # numerical limiting outlet #1628
+
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -617,8 +626,8 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
-if MIXED_CONDITIONS:
-    assign.from_static_to_time_df(ribasim_model, clear_static=True)
+# if MIXED_CONDITIONS:
+#     assign.from_static_to_time_df(ribasim_model, clear_static=True)
 
 # set numerical settings
 ribasim_model.use_validation = True
