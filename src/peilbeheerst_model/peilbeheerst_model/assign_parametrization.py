@@ -3,22 +3,24 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from ribasim import Model
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage
+from ribasim_nl import Model as ModelNL
 
 
 class AssignMetaData:
     def __init__(
         self,
         authority: str,
-        model_name: Model | Path | str,
+        model_name: ModelNL | Model | Path | str,
         param_name: str,
     ):
         # Initialize cloudstorage
         self.cloud = CloudStorage()
 
         # Model
-        if isinstance(model_name, Model):
+        if isinstance(model_name, Model) or isinstance(model_name, ModelNL):
             self.model_dir = model_name.filepath.parent
             self.model = model_name
         else:
