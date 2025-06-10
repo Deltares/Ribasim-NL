@@ -79,8 +79,7 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2024, 2, 1)
-# endtime = datetime.datetime(2025, 1, 1)
+endtime = datetime.datetime(2025, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -288,6 +287,7 @@ ribasim_model.merge_basins(node_id=595, to_node_id=75)
 # merge overlapping basins
 ribasim_model.merge_basins(node_id=633, to_node_id=475)
 ribasim_model.merge_basins(node_id=329, to_node_id=325)
+ribasim_model.merge_basins(node_id=470, to_node_id=278)  # small basin area
 
 ribasim_model.merge_basins(node_id=90, to_node_id=577)  # numerical limiting outlet #1350
 ribasim_model.merge_basins(node_id=425, to_node_id=577)  # numerical limiting outlet #1453
@@ -295,6 +295,8 @@ ribasim_model.merge_basins(node_id=722, to_node_id=577)  # numerical limiting ou
 ribasim_model.merge_basins(node_id=293, to_node_id=571)  # numerical limiting MR #6685
 ribasim_model.merge_basins(node_id=196, to_node_id=505)  # numerical limiting MR #6588
 ribasim_model.merge_basins(node_id=465, to_node_id=245)  # numerical limiting outlet #1628
+
+ribasim_model.merge_basins(node_id=635, to_node_id=340)  # wrong target level
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -392,7 +394,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(103964, 429864)), [level_boundary.Static(level=[default_level])]
 )
 tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(103927.41, 429888.69)),
+    Node(geometry=Point(103927, 429888)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
@@ -510,9 +512,13 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[26])
 
-# TODO: Temporary fixes
 # Changed direction of two pumps: See updated feedback form.
-ribasim_param.change_pump_func(ribasim_model, 1082, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 1082, "aanvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, 1082, "afvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, 2206, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 2206, "afvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, 1601, "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 1601, "afvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 1662, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 1761, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 1873, "aanvoer", 0)
