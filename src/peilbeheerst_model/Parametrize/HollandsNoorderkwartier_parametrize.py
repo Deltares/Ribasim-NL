@@ -208,8 +208,6 @@ ribasim_model.merge_basins(node_id=218, to_node_id=3)  # klein gebiedje vlakbij 
 ribasim_model.merge_basins(node_id=113, to_node_id=3)  # klein gebiedje in boezem
 ribasim_model.merge_basins(node_id=203, to_node_id=21)  # klein gebiedje in duinen
 
-# TODO: Temporary fixes
-# Changed direction of three pumps: See updated feedback form.
 
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
