@@ -962,11 +962,12 @@ def iterate_TRC(
                 pbar.update(1)
 
 
-def validate_basin_area(model):
+def validate_basin_area(model, threshold_area=45000):
     """
     Validate the area of basins in the model.
 
     :param model: The ribasim model to validate
+    :param threshold_area: The area threshold for validation
     :return: None
     """
     too_small_basins = []
@@ -976,12 +977,12 @@ def validate_basin_area(model):
         basin_geometry = model.basin.area.df.loc[model.basin.area.df["meta_node_id"] == basin_id, "geometry"]
         if not basin_geometry.empty:
             basin_area = basin_geometry.iloc[0].area
-            if basin_area < 100:
+            if basin_area < threshold_area:
                 error = True
-                print(f"Basin with Node ID {basin_id} has an area smaller than 100 m²: {basin_area} m²")
+                print(f"Basin with Node ID {basin_id} has an area smaller than {threshold_area} m²: {basin_area} m²")
                 too_small_basins.append(basin_id)
     if not error:
-        print("All basins are larger than 100 m²")
+        print(f"All basins are larger than {threshold_area} m²")
 
     return
 
