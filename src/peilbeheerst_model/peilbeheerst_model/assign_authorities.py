@@ -43,13 +43,14 @@ class AssignAuthorities:
             ribasim_model = self.adjust_custom_nodes(ribasim_model=ribasim_model, custom_nodes=self.custom_nodes)
 
         # remove the node_ids from the static table if there's an occurence in the time table
-        ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df.loc[
-            ~(
-                ribasim_model.level_boundary.static.df.node_id.isin(
-                    ribasim_model.level_boundary.time.df.node_id.to_numpy()
+        if ribasim_model.level_boundary.time.df is not None:
+            ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df.loc[
+                ~(
+                    ribasim_model.level_boundary.static.df.node_id.isin(
+                        ribasim_model.level_boundary.time.df.node_id.to_numpy()
+                    )
                 )
-            )
-        ]
+            ]
 
         return ribasim_model
 
