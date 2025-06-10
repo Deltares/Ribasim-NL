@@ -110,6 +110,9 @@ with warnings.catch_warnings():
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
+
 # model specific tweaks
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
