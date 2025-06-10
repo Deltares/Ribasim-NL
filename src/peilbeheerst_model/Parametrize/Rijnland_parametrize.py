@@ -122,9 +122,6 @@ ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
-# check basin area
-ribasim_param.validate_basin_area(ribasim_model)
-
 # model specific tweaks
 # merge basins
 ribasim_model.merge_basins(node_id=106, to_node_id=93, are_connected=True)  # (too) small area
@@ -153,6 +150,12 @@ ribasim_model.basin.area.df.loc[
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == -9.999, "meta_streefpeil"] = str(
     unknown_streefpeil
 )
+
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
+
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
