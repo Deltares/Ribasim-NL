@@ -5,6 +5,7 @@ import pandas as pd
 from peilbeheerst_model import ribasim_parametrization
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model, check_basin_level
+from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 # execute model run
@@ -38,6 +39,7 @@ cloud.synchronize(
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
+add_from_to_nodes_and_levels(model)
 
 # re-parameterize
 ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=False)
