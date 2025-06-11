@@ -1,13 +1,5 @@
 # %%
-"""
-Addition of settings for 'wateraanvoer' by means of `ContinuousControl`-nodes and 'wateraanvoergebieden'.
 
-NOTE: This is a non-working dummy file to provide guidance on how to implement these workflows.
-
-Author: Gijs G. Hendrickx
-"""
-
-import geopandas as gpd
 import pandas as pd
 
 from peilbeheerst_model import ribasim_parametrization
@@ -20,8 +12,9 @@ from ribasim_nl.parametrization.basin_tables import update_basin_static
 MODEL_EXEC: bool = False
 
 # model settings
-AUTHORITY: str = "DrentsOverijsselseDelta"
-SHORT_NAME: str = "dod"
+AUTHORITY: str = "BrabantseDelta"
+SHORT_NAME: str = "wbd"
+MODEL_ID: str = "2025_7_0"
 
 # connect with the GoodCloud
 cloud = CloudStorage()
@@ -30,7 +23,7 @@ cloud = CloudStorage()
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(AUTHORITY, "aangeleverd", "Na_levering", "HyDAMO_WM_20230720.gpkg")
+aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt", "1_ontvangen_data", "downloads", "Peilgebieden_praktijk.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -38,12 +31,6 @@ cloud.synchronize(
     ]
 )
 
-# filter aanvoergebieden
-aanvoergebieden_df = gpd.read_file(aanvoer_path, layer="afvoergebiedaanvoergebied")
-aanvoergebieden_df = aanvoergebieden_df[aanvoergebieden_df["soortafvoeraanvoergebied"] == "Aanvoergebied"]
-aanvoergebieden_df = gpd.GeoDataFrame({"geometry": list(aanvoergebieden_df.union_all().geoms)}, crs=28992)
-
-# %%
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
@@ -51,7 +38,7 @@ update_basin_static(model=model, evaporation_mm_per_day=1)
 add_from_to_nodes_and_levels(model)
 
 # re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df, overruling_enabled=False)
+ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=False)
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)
 check_basin_level.add_check_basin_level(model=model)
 
@@ -73,9 +60,14 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
 model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 
+# set upstream level boundaries at 999 meters
+# boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
+# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
+
+
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-check_basin_level.add_check_basin_level(model=model)
+
 model.pump.static.df["meta_func_afvoer"] = 1
 model.pump.static.df["meta_func_aanvoer"] = 0
 model.write(ribasim_toml)
@@ -95,4 +87,4 @@ if MODEL_EXEC:
     """
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all(mask_basins=True)
+    indicators = controle_output.run_all()
