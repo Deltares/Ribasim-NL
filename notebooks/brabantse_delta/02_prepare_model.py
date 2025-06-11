@@ -3,6 +3,7 @@ import geopandas as gpd
 import pandas as pd
 
 from ribasim_nl import CloudStorage, Model, Network
+from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
@@ -138,7 +139,7 @@ static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True
 static_data.add_series(node_type="Pump", series=max_cap, fill_na=True)
 
 
-# %% Add peilen van peilekaart to pumps en outlets
+# %% Add peilen van peilenkaart to pumps en outlets
 def add_min_upstream_level_from_peilenkaart(node_type):
     if node_type == "Outlet":
         node_df = static_data.outlet[static_data.outlet.min_upstream_level.isna()]
@@ -148,19 +149,25 @@ def add_min_upstream_level_from_peilenkaart(node_type):
     node_ids = node_df.node_id.to_numpy()
     levels = []
 
-    link_df = model.link.df.set_index("to_node_id")
-
     for node_id in node_ids:
         node = getattr(model, node_type.lower())[node_id]
-        line_to_node = link_df.at[node.node_id, "geometry"]
-        distance = max(line_to_node.length - 5, 0)
-        point = line_to_node.interpolate(distance)
+        tolerance = 30  # afstand voor zoeken bovenstrooms
+        node_geometry = node.geometry
 
-        selected = peilgebieden_df[peilgebieden_df.contains(point)]
+        line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
+        distance_to_interpolate = line_to_node.length - tolerance
+        if distance_to_interpolate < 0:
+            distance_to_interpolate = 0
 
-        if not selected.empty:
-            streefpeil = selected.iloc[0]["streefpeil"]
-            level = streefpeil if -30 < streefpeil < 30 else None
+        containing_point = line_to_node.interpolate(distance_to_interpolate)
+        peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
+
+        if not peilgebieden_select_df.empty:
+            peilgebied = peilgebieden_select_df.iloc[0]
+            if peilgebied["streefpeil"] != 0 and peilgebied["streefpeil"] < 30:
+                level = peilgebied["streefpeil"]
+            else:
+                level = None
         else:
             level = None
 
@@ -168,14 +175,13 @@ def add_min_upstream_level_from_peilenkaart(node_type):
 
     series = pd.Series(levels, index=node_ids, name="min_upstream_level")
     series.index.name = "node_id"
-    static_data.add_series(node_type=node_type, series=series, fill_na=True if node_type == "Outlet" else False)
+    static_data.add_series(node_type=node_type, series=series, fill_na=True)
 
 
 # Aanroepen voor beide types
 add_min_upstream_level_from_peilenkaart("Outlet")
 add_min_upstream_level_from_peilenkaart("Pump")
 
-# %%
 # %% Bepaal de basin streefpeilen door minimale upstream level van stuwen en gemalen. Duikers in basin worden gelijk gezet aan basinpeil
 static_data.reset_data_frame(node_type="Basin")
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
@@ -226,74 +232,6 @@ streefpeil = non_kdu_first.combine_first(all_first)
 streefpeil = streefpeil["min_upstream_level"]
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
-static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
-
-# Update stuwen met nodata op basis van basin streefpeil
-missing_min_level_outlets = static_data.outlet[static_data.outlet.min_upstream_level.isna()]
-downstream_basin_ids = model.edge.df.set_index("to_node_id").loc[missing_min_level_outlets.node_id].from_node_id
-downstream_basin_levels = static_data.basin.set_index("node_id").reindex(downstream_basin_ids)["streefpeil"]
-downstream_basin_levels.index = missing_min_level_outlets.node_id
-downstream_basin_levels.name = "min_upstream_level"
-static_data.add_series(node_type="Outlet", series=downstream_basin_levels.dropna(), fill_na=False)
-
-# Update pumps met nodata op basis van basin streefpeil
-missing_min_level_pumps = static_data.pump[static_data.pump.min_upstream_level.isna()]
-downstream_basin_ids = model.edge.df.set_index("to_node_id").loc[missing_min_level_pumps.node_id].from_node_id
-downstream_basin_levels = static_data.basin.set_index("node_id").reindex(downstream_basin_ids)["streefpeil"]
-downstream_basin_levels.index = missing_min_level_pumps.node_id
-downstream_basin_levels.name = "min_upstream_level"
-static_data.add_series(node_type="Pump", series=downstream_basin_levels.dropna(), fill_na=False)
-
-
-# %% Vul de nodata basins met streefpeilen op downstream node locaties (in dit geval Manning)
-node_ids = model.manning_resistance.static.df["node_id"]
-min_upstream_level = []
-levels = []
-for node_id in node_ids:
-    node = model.manning_resistance[node_id]
-    tolerance = 5
-    node_id = node.node_id
-    node_geometry = node.geometry
-    line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
-    distance_to_interpolate = line_to_node.length - tolerance
-    if distance_to_interpolate < 0:
-        distance_to_interpolate = 0
-    containing_point = line_to_node.interpolate(distance_to_interpolate)
-    peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
-    if not peilgebieden_select_df.empty:
-        peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["streefpeil"] > -30 and peilgebied["streefpeil"] < 30:
-            level = peilgebied["streefpeil"]
-        else:
-            level = None
-    levels += [level]
-
-min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
-min_upstream_level.index.name = "node_id"
-
-missing_basins = static_data.basin[static_data.basin.streefpeil.isna()]
-basin_node_ids = missing_basins.node_id.to_numpy()
-
-# Get downstream node(s) for each basin
-ds_node_ids = []
-ds_index = []
-for i in basin_node_ids:
-    try:
-        ds_ids = model.downstream_node_id(i)
-        ds_ids = ds_ids.to_list() if isinstance(ds_ids, pd.Series) else [ds_ids]
-        ds_node_ids.extend(ds_ids)
-        ds_index.extend([i] * len(ds_ids))
-    except KeyError:
-        print(f"No downstream node found for basin node {i}")
-
-ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
-
-# Keep only those that exist in min_upstream_level
-valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
-streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid_ds.values, valid_ds.index)))
-streefpeil = streefpeil.groupby(streefpeil.index).min()
-streefpeil.index.name = "node_id"
-streefpeil.name = "streefpeil"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=False)
 
 # Update stuwen met nodata op basis van basin streefpeil
@@ -312,6 +250,7 @@ downstream_basin_levels.index = missing_min_level_pumps.node_id
 downstream_basin_levels.name = "min_upstream_level"
 static_data.add_series(node_type="Pump", series=downstream_basin_levels.dropna(), fill_na=False)
 
+
 # %%
 # Outlet
 # from DAMO profiles
@@ -321,7 +260,7 @@ profile_ids = [
 ]
 levels = (
     profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 3
 ).to_numpy()
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -338,7 +277,7 @@ profile_ids = [
 ]
 levels = (
     profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 3
 ).to_numpy()
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -365,7 +304,7 @@ levels = ds_node_ids.apply(lambda x: ds_levels[x])
 streefpeil = levels.groupby(levels.index).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
-static_data.add_series(node_type="Basin", series=streefpeil, fill_na=False)
+static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # %%
 ## PUMP.flow_rate
@@ -380,7 +319,7 @@ node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_num
 profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
 levels = (
     profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
+    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 3
 ).to_numpy()
 
 # # update static_data

@@ -40,14 +40,136 @@ model.merge_basins(node_id=2048, to_node_id=1412, are_connected=True)
 model.merge_basins(node_id=2300, to_node_id=2198, are_connected=True)
 model.merge_basins(node_id=2001, to_node_id=2273, are_connected=True)
 model.merge_basins(node_id=1441, to_node_id=1799, are_connected=True)
+model.merge_basins(node_id=2282, to_node_id=2120, are_connected=True)
+model.merge_basins(node_id=2120, to_node_id=1928, are_connected=True)
+model.merge_basins(node_id=1928, to_node_id=1581, are_connected=True)
+model.merge_basins(node_id=1946, to_node_id=1581, are_connected=True)
+model.merge_basins(node_id=2218, to_node_id=2311, are_connected=True)
+model.merge_basins(node_id=2022, to_node_id=2311, are_connected=True)
+model.merge_basins(node_id=1452, to_node_id=2114, are_connected=True)
+model.merge_basins(node_id=2306, to_node_id=2281, are_connected=True)
+model.merge_basins(node_id=2281, to_node_id=2176, are_connected=True)
+model.merge_basins(node_id=2143, to_node_id=1617, are_connected=True)
+model.merge_basins(node_id=2286, to_node_id=2295, are_connected=True)
+model.merge_basins(node_id=2294, to_node_id=2275, are_connected=True)
+model.merge_basins(node_id=1475, to_node_id=1689, are_connected=True)
+model.merge_basins(node_id=1574, to_node_id=2276, are_connected=True)
+model.merge_basins(node_id=2276, to_node_id=1854, are_connected=True)
+model.merge_basins(node_id=1854, to_node_id=2293, are_connected=True)
+model.merge_basins(node_id=2293, to_node_id=1858, are_connected=True)
+model.merge_basins(node_id=1939, to_node_id=1445, are_connected=True)
+model.merge_basins(node_id=1403, to_node_id=1611, are_connected=True)
+model.merge_basins(node_id=1957, to_node_id=1856, are_connected=True)
+model.merge_basins(node_id=1856, to_node_id=2289, are_connected=True)
+model.merge_basins(node_id=1573, to_node_id=1720, are_connected=True)
+model.merge_basins(node_id=1412, to_node_id=1563, are_connected=True)
+model.merge_basins(node_id=1858, to_node_id=1689, are_connected=True)
+model.merge_basins(node_id=1563, to_node_id=2280, are_connected=True)
+model.merge_basins(node_id=2280, to_node_id=1802, are_connected=True)
+model.merge_basins(node_id=1740, to_node_id=2047, are_connected=True)
+model.merge_basins(node_id=2253, to_node_id=2114, are_connected=True)
+model.merge_basins(node_id=1708, to_node_id=2129, are_connected=True)
+model.merge_basins(node_id=1878, to_node_id=2214, are_connected=True)
+model.merge_basins(node_id=2250, to_node_id=1428, are_connected=True)
+model.merge_basins(node_id=1812, to_node_id=1870, are_connected=True)
+model.merge_basins(node_id=1622, to_node_id=1780, are_connected=True)
+model.merge_basins(node_id=1780, to_node_id=1694, are_connected=True)
+model.merge_basins(node_id=1616, to_node_id=1909, are_connected=True)
+model.merge_basins(node_id=2302, to_node_id=1808, are_connected=True)
 
+
+model.remove_node(998, remove_edges=True)
 # %%
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
+
 # %%
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
+
+# %%
+# Voor pomp
+model.pump.static.df.loc[model.pump.static.df.node_id == 535, "flow_rate"] = 0.05
+model.pump.static.df.loc[model.pump.static.df.node_id == 517, "flow_rate"] = 5  # Let op: boven max cap van 2.83m3/s!
+model.pump.static.df.loc[model.pump.static.df.node_id == 829, "flow_rate"] = 0.1  # inlaat
+model.pump.static.df.loc[model.pump.static.df.node_id == 829, "max_downstream_level"] = 6
+model.pump.static.df.loc[model.pump.static.df.node_id == 977, "flow_rate"] = 0.1  # inlaat
+model.pump.static.df.loc[model.pump.static.df.node_id == 984, "flow_rate"] = 0.1  # Gemaal keersluis Leursche haven
+
+model.pump.static.df.loc[model.pump.static.df.node_id == 446, "flow_rate"] = 2  # Let op: boven max cap van 0.06m3/s!
+model.pump.static.df.loc[model.pump.static.df.node_id == 214, "max_downstream_level"] = 1.4
+model.pump.static.df.loc[model.pump.static.df.node_id == 901, "flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 453, "flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 376, "flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 449, "flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 703, "flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 747, "flow_rate"] = 1  # max cap verhoogd! Check!
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1049, "min_upstream_level"] = -0.5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1048, "min_upstream_level"] = -0.5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 845, "min_upstream_level"] = 6.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 146, "min_upstream_level"] = 6.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 536, "min_upstream_level"] = -1.6
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 4.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 667, "max_downstream_level"] = -0.6
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 667, "min_upstream_level"] = (
+    0  # Molenpolder 667 inlaat op -5m! Klopt dit wel, komt uit excel WBD
+)
+
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 36, "level"] = -3
+model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_level"] = 4.1
+
+# Voor outlets
+flow_updates = {
+    150: 5,  # Let op: boven cap van 0.07 m³/s! Check!
+    233: 5,  # Let op, Het Laag verhoogd naar 5m3/s! Check!
+    241: 0.01,
+    271: 0.001,
+    375: 0.01,
+    376: 0.5,  # Max cap verhoogd van 0.05m3/s! Check!
+    383: 0.01,
+    384: 0.01,
+    385: 0.01,
+    386: 0.01,
+    387: 0.01,
+    391: 0.01,
+    399: 0.01,
+    400: 0.01,
+    401: 0.01,
+    403: 0.01,
+    405: 0.01,
+    407: 0.01,
+    410: 0.01,
+    411: 0.01,
+    414: 0.01,
+    415: 0.01,
+    416: 0.01,
+    417: 0.01,
+    418: 0.01,
+    422: 0.01,
+    427: 0.1,
+    439: 0.1,
+    441: 0.01,
+    497: 0.01,
+    499: 0.01,
+    503: 0.01,
+    544: 0.01,
+    566: 0.01,
+    614: 0.01,
+    615: 0.01,
+    655: 0.01,
+    656: 0.01,
+    667: 0.01,
+    676: 0.01,
+    745: 1,  # Let op, max cap Groenvenseweg was 0.067m3/s, nu 1 m3/s! Check!
+    799: 0.01,
+    935: 0.01,
+    987: 0.01,
+}
+
+for node_id, flow_rate in flow_updates.items():
+    model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, "flow_rate"] = flow_rate
 
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
