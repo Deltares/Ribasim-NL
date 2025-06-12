@@ -38,6 +38,15 @@ original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
 add_from_to_nodes_and_levels(model)
 
+
+# update manning nodes to basin state
+state = model.basin_outstate.df.set_index("node_id")["level"]
+controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+basin_ids = controle_output.mask_basins(controle_output.read_model_output())["mask_afvoer"]["node_id"].to_numpy()
+mask = model.basin.area.df.node_id.isin(basin_ids)
+model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(lambda x: state[x])
+
+# %%
 aanvoergebieden_df = gpd.read_file(aanvoer_path)
 aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
 
