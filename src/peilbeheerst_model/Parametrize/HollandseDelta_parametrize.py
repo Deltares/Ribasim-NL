@@ -34,9 +34,10 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-FeedbackFormulier_path = cloud.joinpath(
-    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-)
+# FeedbackFormulier_path = cloud.joinpath(
+#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+# )
+FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_HollandseDelta.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -50,7 +51,7 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraa
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        FeedbackFormulier_path,
+        # FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -528,10 +529,26 @@ ribasim_param.change_pump_func(ribasim_model, 2202, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 2242, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 2453, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 2572, "afvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, 1454, "afvoer", 0)
 # basins are connected by both a `Pump`- and `Manning`-node: removed `Pump`-nodes due to same 'streefpeil'-values
 ribasim_model.remove_node(953, True)
 ribasim_model.remove_node(1041, True)
 ribasim_model.remove_node(2534, True)
+
+# TODO: Additional temporary fixes
+# Reversing direction (cannot be done via FF)
+ribasim_model.remove_node(913, True)
+ribasim_model.remove_node(2596, False)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(105288, 418521)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(105287, 418521)), [pump.Static(flow_rate=[20])])
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[84])
+
+ribasim_model.remove_node(2125, True)
 
 # (re) set 'meta_node_id'
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
@@ -596,7 +613,7 @@ ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-ribasim_param.add_continuous_control(ribasim_model, dy=-50)
+ribasim_param.add_continuous_control(ribasim_model, dy=-50, exclude_outlets=(1265, 1371))
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
