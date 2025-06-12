@@ -6,7 +6,6 @@ import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.check_basin_level import add_check_basin_level
-from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 
 cloud = CloudStorage()
 authority = "DrentsOverijsselseDelta"
@@ -69,8 +68,14 @@ model.update_node(node_id=1401, node_type="Outlet")
 
 model.reverse_edge(edge_id=894)
 model.reverse_edge(edge_id=1983)
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "min_upstream_level"] = -2.6
+model.pump.static.df.loc[model.pump.static.df.node_id == 600, "min_upstream_level"] = 4
+model.pump.static.df.loc[model.pump.static.df.node_id == 601, "min_upstream_level"] = 4
+model.pump.static.df.loc[model.pump.static.df.node_id == 602, "min_upstream_level"] = 2.65
+model.pump.static.df.loc[model.pump.static.df.node_id == 1095, "min_upstream_level"] = 0
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 739, "active"] = True
+
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 749, "active"] = True
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 841, "active"] = True
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1724, "active"] = True
@@ -81,6 +86,8 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "active"] = Fa
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "meta_categorie"] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1143, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1143, "meta_categorie"] = "Inlaat"
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "meta_categorie"] = "Inlaat"
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "meta_categorie"] = "Inlaat"
@@ -95,7 +102,7 @@ model.merge_basins(basin_id=2348, to_basin_id=1756, are_connected=False)
 model.merge_basins(basin_id=2192, to_basin_id=2194, are_connected=False)
 # %%
 
-add_from_to_nodes_and_levels(model)
+
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 add_check_basin_level(model=model)
