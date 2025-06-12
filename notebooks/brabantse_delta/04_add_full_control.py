@@ -46,6 +46,10 @@ basin_ids = controle_output.mask_basins(controle_output.read_model_output())["ma
 mask = model.basin.area.df.node_id.isin(basin_ids)
 model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(lambda x: state[x])
 
+mask = model.basin.state.df.node_id.isin(basin_ids)
+model.basin.state.df.loc[mask, "level"] = model.basin.state.df[mask]["node_id"].apply(lambda x: state[x])
+
+
 # %%
 aanvoergebieden_df = gpd.read_file(aanvoer_path)
 aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
