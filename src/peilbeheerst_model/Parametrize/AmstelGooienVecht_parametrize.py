@@ -13,6 +13,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
@@ -305,6 +306,27 @@ if AANVOER_CONDITIONS:
     )
 else:
     aanvoergebieden = None
+
+# assign metadata for pumps and basins
+assign_metadata = AssignMetaData(
+    authority=waterschap,
+    model_name=ribasim_model,
+    param_name=f"{waterschap}.gpkg",
+)
+assign_metadata.add_meta_to_pumps(
+    layer="gemaal",
+    mapper={
+        "meta_name": {"node": ["name"]},
+        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
+    },
+    max_distance=100,
+    factor_flowrate=1 / 60,  # m3/min -> m3/s
+)
+assign_metadata.add_meta_to_basins(
+    layer="aggregation_area",
+    mapper={"meta_name": {"node": ["name"]}},
+    min_overlap=0.95,
+)
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
