@@ -76,6 +76,7 @@ model.merge_basins(node_id=1622, to_node_id=1780, are_connected=True)
 model.merge_basins(node_id=1780, to_node_id=1694, are_connected=True)
 model.merge_basins(node_id=1616, to_node_id=1909, are_connected=True)
 model.merge_basins(node_id=2302, to_node_id=1808, are_connected=True)
+model.merge_basins(node_id=1568, to_node_id=1909, are_connected=True)
 
 
 model.remove_node(998, remove_edges=True)
@@ -99,6 +100,7 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 984, "flow_rate"] = 0.1
 
 model.pump.static.df.loc[model.pump.static.df.node_id == 446, "flow_rate"] = 2  # Let op: boven max cap van 0.06m3/s!
 model.pump.static.df.loc[model.pump.static.df.node_id == 214, "max_downstream_level"] = 1.4
+model.pump.static.df.loc[model.pump.static.df.node_id == 214, "min_upstream_level"] = 0.55
 model.pump.static.df.loc[model.pump.static.df.node_id == 901, "flow_rate"] = 1  # max cap verhoogd! Check!
 model.pump.static.df.loc[model.pump.static.df.node_id == 453, "flow_rate"] = 1  # max cap verhoogd! Check!
 model.pump.static.df.loc[model.pump.static.df.node_id == 376, "flow_rate"] = 1  # max cap verhoogd! Check!
@@ -106,19 +108,15 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 449, "flow_rate"] = 1  
 model.pump.static.df.loc[model.pump.static.df.node_id == 703, "flow_rate"] = 1  # max cap verhoogd! Check!
 model.pump.static.df.loc[model.pump.static.df.node_id == 747, "flow_rate"] = 1  # max cap verhoogd! Check!
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1049, "min_upstream_level"] = -0.5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1048, "min_upstream_level"] = -0.5
+
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 845, "min_upstream_level"] = 6.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 146, "min_upstream_level"] = 6.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 536, "min_upstream_level"] = -1.6
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 4.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 667, "max_downstream_level"] = -0.6
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 667, "min_upstream_level"] = (
-    0  # Molenpolder 667 inlaat op -5m! Klopt dit wel, komt uit excel WBD
-)
 
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 36, "level"] = -3
 model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_level"] = 4.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "meta_level"] = 0.1
 
 # Voor outlets
 flow_updates = {
@@ -156,16 +154,23 @@ flow_updates = {
     503: 0.01,
     544: 0.01,
     566: 0.01,
+    589: 0.55,
     614: 0.01,
     615: 0.01,
     655: 0.01,
     656: 0.01,
-    667: 0.01,
+    667: 0,
+    668: 0.1,
+    668: 0.1,
     676: 0.01,
     745: 1,  # Let op, max cap Groenvenseweg was 0.067m3/s, nu 1 m3/s! Check!
     799: 0.01,
     935: 0.01,
     987: 0.01,
+    1048: 0,
+    1049: 0,
+    1055: 0,
+    1056: 0,
 }
 
 for node_id, flow_rate in flow_updates.items():
