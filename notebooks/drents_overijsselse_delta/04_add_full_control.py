@@ -1,19 +1,10 @@
 # %%
-"""
-Addition of settings for 'wateraanvoer' by means of `ContinuousControl`-nodes and 'wateraanvoergebieden'.
-
-NOTE: This is a non-working dummy file to provide guidance on how to implement these workflows.
-
-Author: Gijs G. Hendrickx
-"""
-
 import geopandas as gpd
 import pandas as pd
 
 from peilbeheerst_model import ribasim_parametrization
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model, check_basin_level
-from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 # execute model run
@@ -38,20 +29,20 @@ cloud.synchronize(
     ]
 )
 
-# filter aanvoergebieden
-aanvoergebieden_df = gpd.read_file(aanvoer_path, layer="afvoergebiedaanvoergebied")
-aanvoergebieden_df = aanvoergebieden_df[aanvoergebieden_df["soortafvoeraanvoergebied"] == "Aanvoergebied"]
-aanvoergebieden_df = gpd.GeoDataFrame({"geometry": list(aanvoergebieden_df.union_all().geoms)}, crs=28992)
-
 # %%
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
-add_from_to_nodes_and_levels(model)
+
+# filter aanvoergebieden
+aanvoergebieden_df = gpd.read_file(aanvoer_path, layer="afvoergebiedaanvoergebied")
+aanvoergebieden_df = aanvoergebieden_df[aanvoergebieden_df["soortafvoeraanvoergebied"] == "Aanvoergebied"]
+aanvoergebieden_df = gpd.GeoDataFrame({"geometry": list(aanvoergebieden_df.union_all().geoms)}, crs=28992)
+aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
 
 # re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df, overruling_enabled=False)
+ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=False)
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)
 check_basin_level.add_check_basin_level(model=model)
 
