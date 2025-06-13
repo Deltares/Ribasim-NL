@@ -77,6 +77,14 @@ model.merge_basins(node_id=1780, to_node_id=1694, are_connected=True)
 model.merge_basins(node_id=1616, to_node_id=1909, are_connected=True)
 model.merge_basins(node_id=2302, to_node_id=1808, are_connected=True)
 model.merge_basins(node_id=1568, to_node_id=1909, are_connected=True)
+model.merge_basins(node_id=1611, to_node_id=1543, are_connected=True)
+model.merge_basins(node_id=1543, to_node_id=2289, are_connected=True)
+model.merge_basins(node_id=2208, to_node_id=2242, are_connected=True)
+model.merge_basins(node_id=2028, to_node_id=2242, are_connected=True)
+model.merge_basins(node_id=2201, to_node_id=1820, are_connected=True)
+model.merge_basins(node_id=2002, to_node_id=2215, are_connected=True)
+model.merge_basins(node_id=2215, to_node_id=2248, are_connected=True)
+model.merge_basins(node_id=2247, to_node_id=1998, are_connected=True)
 
 
 model.remove_node(998, remove_edges=True)
@@ -98,6 +106,7 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 829, "max_downstream_le
 model.pump.static.df.loc[model.pump.static.df.node_id == 977, "flow_rate"] = 0.1  # inlaat
 model.pump.static.df.loc[model.pump.static.df.node_id == 984, "flow_rate"] = 0.1  # Gemaal keersluis Leursche haven
 
+
 model.pump.static.df.loc[model.pump.static.df.node_id == 446, "flow_rate"] = 2  # Let op: boven max cap van 0.06m3/s!
 model.pump.static.df.loc[model.pump.static.df.node_id == 214, "max_downstream_level"] = 1.4
 model.pump.static.df.loc[model.pump.static.df.node_id == 214, "min_upstream_level"] = 0.55
@@ -108,69 +117,91 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 449, "flow_rate"] = 1  
 model.pump.static.df.loc[model.pump.static.df.node_id == 703, "flow_rate"] = 1  # max cap verhoogd! Check!
 model.pump.static.df.loc[model.pump.static.df.node_id == 747, "flow_rate"] = 1  # max cap verhoogd! Check!
 
-
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1055, "min_upstream_level"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1056, "min_upstream_level"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1048, "min_upstream_level"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1049, "min_upstream_level"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 503, "min_upstream_level"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 667, "min_upstream_level"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 668, "min_upstream_level"] = 0.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 845, "min_upstream_level"] = 6.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 146, "min_upstream_level"] = 6.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 536, "min_upstream_level"] = -1.6
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 217, "min_upstream_level"] = (
+    2  # Check dit, zomerpeil stuw Turfvaart staat op 0m NAP
+)
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1909, "min_upstream_level"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 4.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 408, "min_upstream_level"] = 0.55  # Haven van Zevenbergen
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 589, "min_upstream_level"] = 0.55  # Roode Vaart Sluis
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 884, "min_upstream_level"] = 0.55  # Roode Vaart duiker
+model.pump.static.df.loc[model.pump.static.df.node_id == 972, "min_upstream_level"] = 0.55  # Roode Vaart Afvoergemaal
 
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 36, "level"] = -3
-model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_level"] = 4.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "meta_level"] = 0.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_streefpeil"] = 4.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "meta_streefpeil"] = 0.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1909, "meta_streefpeil"] = 0
+model.basin.area.df.loc[model.basin.area.df.node_id == 1634, "meta_streefpeil"] = 2  # Basin Turfvaart meetpunt
+model.basin.state.df.loc[model.basin.state.df.node_id == 1634, "level"] = 2
+model.basin.state.df.loc[model.basin.state.df.node_id == 1584, "level"] = 0.15
 
 # Voor outlets
 flow_updates = {
     150: 5,  # Let op: boven cap van 0.07 m³/s! Check!
+    218: 0.5,
     233: 5,  # Let op, Het Laag verhoogd naar 5m3/s! Check!
-    241: 0.01,
-    271: 0.001,
-    375: 0.01,
+    241: 0.1,
+    271: 0.1,
+    368: 0.1,
+    369: 0.1,
+    375: 0.1,
     376: 0.5,  # Max cap verhoogd van 0.05m3/s! Check!
-    383: 0.01,
-    384: 0.01,
-    385: 0.01,
-    386: 0.01,
-    387: 0.01,
-    391: 0.01,
-    399: 0.01,
-    400: 0.01,
-    401: 0.01,
-    403: 0.01,
-    405: 0.01,
-    407: 0.01,
-    410: 0.01,
-    411: 0.01,
-    414: 0.01,
-    415: 0.01,
-    416: 0.01,
-    417: 0.01,
-    418: 0.01,
-    422: 0.01,
+    383: 0.1,
+    384: 0.1,
+    385: 0.1,
+    386: 0.1,
+    387: 0.1,
+    391: 0.1,
+    396: 0.1,
+    399: 0.1,
+    400: 0.1,
+    401: 0.1,
+    403: 0.1,
+    405: 0.1,
+    407: 0.1,
+    408: 3,
+    410: 0.1,
+    411: 0.1,
+    414: 0.1,
+    415: 0.1,
+    416: 0.1,
+    417: 0.1,
+    418: 0.1,
+    422: 0.1,
     427: 0.1,
     439: 0.1,
-    441: 0.01,
-    497: 0.01,
-    499: 0.01,
-    503: 0.01,
-    544: 0.01,
-    566: 0.01,
+    441: 0.1,
+    497: 0.1,
+    499: 0.1,
+    503: 0.1,
+    537: 0.1,
+    544: 0.1,
+    556: 0.1,
+    566: 0.1,
     589: 0.55,
-    614: 0.01,
-    615: 0.01,
-    655: 0.01,
-    656: 0.01,
-    667: 0,
-    668: 0.1,
-    668: 0.1,
-    676: 0.01,
+    614: 0.1,
+    615: 0.1,
+    655: 0.1,
+    656: 0.1,
+    676: 0.1,
     745: 1,  # Let op, max cap Groenvenseweg was 0.067m3/s, nu 1 m3/s! Check!
-    799: 0.01,
-    935: 0.01,
-    987: 0.01,
-    1048: 0,
-    1049: 0,
-    1055: 0,
-    1056: 0,
+    799: 0.1,
+    935: 0.1,
+    983: 0.1,
+    987: 0.1,
+    393: 0.1,
+    539: 0.1,
 }
 
 for node_id, flow_rate in flow_updates.items():
