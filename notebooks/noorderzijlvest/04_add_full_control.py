@@ -85,6 +85,10 @@ model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
 # model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 
+# %% bovenstroomse outlets op 10m3/s zetten
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
+] = 10
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
@@ -109,3 +113,5 @@ if MODEL_EXEC:
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()
+
+# %%
