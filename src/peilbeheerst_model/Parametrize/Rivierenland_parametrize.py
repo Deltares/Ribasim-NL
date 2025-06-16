@@ -113,6 +113,9 @@ with warnings.catch_warnings():
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
+# check target levels at both sides of the Manning Nodes
+ribasim_param.validate_manning_basins(ribasim_model)
+
 # model specific tweaks
 # merge basins
 ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
