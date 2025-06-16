@@ -27,8 +27,6 @@ aanvoer_path = cloud.joinpath(
     AUTHORITY, "verwerkt", "1_ontvangen_data", "wrij_wateraanvoer", "wrij_wateraanvoer_gebieden.shp"
 )
 
-model_edits_aanvoer_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "model_edits_aanvoer.gpkg")
-
 cloud.synchronize(
     filepaths=[
         aanvoer_path,

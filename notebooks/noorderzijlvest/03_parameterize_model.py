@@ -37,10 +37,9 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
 
-add_check_basin_level(model=model)
-
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
+add_check_basin_level(model=model)
 model.write(ribasim_toml)
 
 # %%
