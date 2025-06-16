@@ -38,8 +38,16 @@ original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
 add_from_to_nodes_and_levels(model)
 
+# %% deactivate inlets
+node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = True
+
+# %%
+aanvoergebieden_df = gpd.read_file(aanvoer_path)
+aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
+
 # re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=False)
+ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=False)
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)
 check_basin_level.add_check_basin_level(model=model)
 

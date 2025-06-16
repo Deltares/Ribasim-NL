@@ -41,7 +41,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 # %%
 # fixes
 
-for edge_id in [2563, 1251, 1238, 2087, 91, 1436, 938, 2196]:
+for edge_id in [2563, 1238, 91, 1436]:
     model.reverse_edge(edge_id=edge_id)
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2103, "flow_rate"] = 5
