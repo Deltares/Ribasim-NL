@@ -36,7 +36,8 @@ verdeelpunten_df.loc[mask, "aanvoer_eenheid"] = "m3/s"
 # %% [markdown]
 # Limburg
 # * Toevoegen geometrie aan verdeelpunten
-# * Netwerk opbouwen tot aan verdeelpunten
+# * Hydroobject filteren op supply areas
+# * Aanvoergebieden maken op basis van hydroobjecten + BGT
 
 bronhouder = "W0665"
 hydroobject_buffer = 0.5
@@ -75,6 +76,13 @@ aanvoergebied_combined_df = pd.concat(
 
 aanvoergebied_combined_df = aanvoergebied_combined_df.dissolve().explode()[["geometry"]]
 aanvoergebied_combined_df["waterbeheerder"] = "Limburg"
+
+# %% [markdown]
+# Aa en Maas
+# * Hydroobject filteren op supply areas
+# * Aanvoergebieden maken op basis van hydroobjecten + BGT
+
+bronhouder = "W0654"
 
 # %% [markdown]
 # * wegschrijven laag verdeelpunten
