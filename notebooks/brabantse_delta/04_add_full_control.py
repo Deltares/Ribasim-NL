@@ -35,7 +35,7 @@ cloud.synchronize(
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
-update_basin_static(model=model, evaporation_mm_per_day=1)
+update_basin_static(model=model, evaporation_mm_per_day=0.5)
 add_from_to_nodes_and_levels(model)
 
 
@@ -80,7 +80,20 @@ model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 # set upstream level boundaries at 999 meters
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
 # model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
-
+# inlaten bij RWS min_upstream_level op NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 123, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 461, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 576, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 577, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 580, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 581, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 585, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 593, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 737, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 738, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 991, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2323, "min_upstream_level"] = 0.36
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
