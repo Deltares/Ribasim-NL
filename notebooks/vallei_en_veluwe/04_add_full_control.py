@@ -45,6 +45,16 @@ update_basin_static(model=model, evaporation_mm_per_day=1)
 model.basin.area.df.loc[model.basin.area.df.node_id == 864, "meta_streefpeil"] = -0.5
 model.basin.area.df.loc[model.basin.area.df.node_id == 1271, "meta_streefpeil"] = 1.2
 
+# update manning nodes to basin state
+state = model.basin_outstate.df.set_index("node_id")["level"]
+controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+basin_ids = controle_output.mask_basins(controle_output.read_model_output())["mask_afvoer"]["node_id"].to_numpy()
+mask = model.basin.area.df.node_id.isin(basin_ids)
+model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(lambda x: state[x])
+
+mask = model.basin.state.df.node_id.isin(basin_ids)
+model.basin.state.df.loc[mask, "level"] = model.basin.state.df[mask]["node_id"].apply(lambda x: state[x])
+
 # re-parameterize
 ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=False)
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)

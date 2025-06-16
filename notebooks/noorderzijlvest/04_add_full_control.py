@@ -1,5 +1,6 @@
 # %%
 
+import geopandas as gpd
 import pandas as pd
 
 from peilbeheerst_model import ribasim_parametrization
@@ -44,8 +45,21 @@ original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
 add_from_to_nodes_and_levels(model)
 
+aanvoergebieden_df = gpd.read_file(aanvoer_path)
+aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
+
+# update manning nodes to basin state
+state = model.basin_outstate.df.set_index("node_id")["level"]
+controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+basin_ids = controle_output.mask_basins(controle_output.read_model_output())["mask_afvoer"]["node_id"].to_numpy()
+mask = model.basin.area.df.node_id.isin(basin_ids)
+model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(lambda x: state[x])
+
+mask = model.basin.state.df.node_id.isin(basin_ids)
+model.basin.state.df.loc[mask, "level"] = model.basin.state.df[mask]["node_id"].apply(lambda x: state[x])
+
 # re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=False)
+ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=False)
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)
 check_basin_level.add_check_basin_level(model=model)
 

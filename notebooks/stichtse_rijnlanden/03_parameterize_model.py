@@ -36,7 +36,7 @@ start_time = time.time()
 # model.merge_basins(basin_id=2044, to_node_id=1850)
 # %%
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
+model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 # %%
 # fixes
