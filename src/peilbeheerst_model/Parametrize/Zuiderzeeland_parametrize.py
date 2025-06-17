@@ -111,9 +111,6 @@ with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml, solver=solver)
 
-# check basin area
-ribasim_param.validate_basin_area(ribasim_model)
-
 # merge the smallest basins together
 ribasim_model.merge_basins(node_id=30, to_node_id=29)  # 4363 m2
 ribasim_model.merge_basins(node_id=66, to_node_id=21)  # 4745 m2
@@ -223,6 +220,12 @@ ribasim_model.merge_basins(node_id=173, to_node_id=53, are_connected=False)  # k
 # Convert these pumps to inlaat_pumps
 inlaat_structures = []
 inlaat_pump = []
+
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
+
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
 
 # model specific tweaks
 # 1 Add gemaal at blocq van kuffeler
@@ -504,9 +507,6 @@ inlaat_pump += [319, 333, 380, 433, 650]
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_afvoer"] = 0
-
-# TODO: Temporary fixes
-# All set and done!
 
 # (re)set 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
