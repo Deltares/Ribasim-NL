@@ -298,6 +298,8 @@ ribasim_model.merge_basins(node_id=465, to_node_id=245)  # numerical limiting ou
 
 ribasim_model.merge_basins(node_id=635, to_node_id=340)  # wrong target level
 
+ribasim_model.merge_basins(node_id=730, to_node_id=33)  # limiting node for coupling
+
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
