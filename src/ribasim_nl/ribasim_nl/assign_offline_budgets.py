@@ -26,7 +26,7 @@ class AssignOfflineBudgets:
         basin_split: str = "area",
         basin_subtype: str = "state",
         basin_metacol: str = "meta_categorie",
-    ):
+    ) -> ModelNL | Model:
         # Synchronize LHM budget and model files
         budgets, model = self._sync_files(model)
 
@@ -50,12 +50,33 @@ class AssignOfflineBudgets:
         # compute budgets
         budgets_per_node_id = self._compute_budgets_per_node_id(budgets, primary_basin_mask, secondary_basin_mask)
 
+        # Align model
+        budgets_per_node_id.columns += model.starttime - budgets_per_node_id.columns.min()
+
         # split to drainage and infiltration budgets
         # negative budgets means drainage from the groundwatermodel
         drainage_per_node_id = budgets_per_node_id[budgets_per_node_id.lt(0.0)].abs().fillna(0.0)
         infiltration_per_node_id = budgets_per_node_id[budgets_per_node_id.gt(0.0)].fillna(0.0)
 
-        return drainage_per_node_id, infiltration_per_node_id
+        # Fill missing node-ids with zeros
+        all_nodeids = model.basin.node.df.index.unique()
+        missing_nodeids = all_nodeids[~all_nodeids.isin(budgets_per_node_id.index)]
+        missing_df = pd.DataFrame(0.0, index=missing_nodeids, columns=budgets_per_node_id.columns)
+        drainage_per_node_id = pd.concat([drainage_per_node_id, missing_df], ignore_index=False)
+        infiltration_per_node_id = pd.concat([infiltration_per_node_id, missing_df], ignore_index=False)
+
+        drainage_per_node_id = drainage_per_node_id.unstack().to_frame("drainage")
+        infiltration_per_node_id = infiltration_per_node_id.unstack().to_frame("infiltration")
+        basin_time = drainage_per_node_id.join(infiltration_per_node_id).reset_index()
+
+        # Fill remaining columns with 0
+        missing_cols = model.basin.time.df.columns[~model.basin.time.df.columns.isin(basin_time.columns)]
+        basin_time[missing_cols] = 0.0
+
+        # set basin.time
+        model.basin.time.df = basin_time
+
+        return model
 
     def _sync_files(
         self,
@@ -81,7 +102,7 @@ class AssignOfflineBudgets:
         budgets: xr.Dataset,
         primary_basin_mask: xr.DataArray,
         secondary_basin_mask: xr.DataArray,
-    ):
+    ) -> pd.DataFrame:
         # compute budgets
         # LHM-budget output naming convention
 
