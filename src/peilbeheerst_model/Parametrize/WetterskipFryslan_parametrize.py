@@ -247,7 +247,7 @@ ribasim_model.merge_basins(node_id=872, to_node_id=632)  # vrijafstromend
 ribasim_model.merge_basins(node_id=352, to_node_id=252)  # vrijafstromend
 ribasim_model.merge_basins(node_id=933, to_node_id=252)  # vrijafstromend
 
-# basin area
+# small basin area
 ribasim_model.merge_basins(node_id=146, to_node_id=145)
 ribasim_model.merge_basins(node_id=155, to_node_id=21)
 ribasim_model.merge_basins(node_id=211, to_node_id=248)
@@ -270,7 +270,6 @@ ribasim_model.merge_basins(node_id=784, to_node_id=16)
 ribasim_model.merge_basins(node_id=797, to_node_id=268)
 ribasim_model.merge_basins(node_id=859, to_node_id=268)
 ribasim_model.merge_basins(node_id=974, to_node_id=268)
-ribasim_model.merge_basins(node_id=974, to_node_id=282)
 ribasim_model.merge_basins(node_id=817, to_node_id=16)
 ribasim_model.merge_basins(node_id=879, to_node_id=184)
 ribasim_model.merge_basins(node_id=910, to_node_id=6)
@@ -278,6 +277,9 @@ ribasim_model.merge_basins(node_id=918, to_node_id=562)
 ribasim_model.merge_basins(node_id=942, to_node_id=404)
 ribasim_model.merge_basins(node_id=952, to_node_id=38)
 ribasim_model.merge_basins(node_id=953, to_node_id=16)
+ribasim_model.merge_basins(node_id=814, to_node_id=282)
+ribasim_model.merge_basins(node_id=976, to_node_id=722)
+ribasim_model.merge_basins(node_id=995, to_node_id=316)
 
 # fix water supply
 ribasim_model.merge_basins(node_id=747, to_node_id=13)
