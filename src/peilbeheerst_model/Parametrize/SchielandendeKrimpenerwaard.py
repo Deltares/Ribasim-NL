@@ -110,9 +110,6 @@ with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
-# check basin area
-ribasim_param.validate_basin_area(ribasim_model)
-
 # model specific tweaks
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -285,7 +282,6 @@ for n in inlaat_pump:
 ribasim_model.merge_basins(node_id=16, to_node_id=8)  # small (boezem)
 ribasim_model.merge_basins(node_id=145, to_node_id=2)  # small (boezem)
 
-# TODO: Temporary fixes
 # Flow directions have been changed: See feedback form
 ribasim_model.remove_node(478, True)
 ribasim_model.remove_node(641, False)
@@ -302,6 +298,12 @@ ribasim_model.link.add(pump_node, ribasim_model.basin[97])
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
+
+# check target levels at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
