@@ -185,7 +185,6 @@ ribasim_model.merge_basins(node_id=88, to_node_id=2, are_connected=True)
 ribasim_model.merge_basins(node_id=32, to_node_id=50, are_connected=True)
 ribasim_model.merge_basins(node_id=54, to_node_id=1, are_connected=True)
 
-# TODO: Temporary fixes
 ribasim_param.change_pump_func(ribasim_model, 158, "afvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 300, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 300, "afvoer", 1)
