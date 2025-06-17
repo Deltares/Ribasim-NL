@@ -175,6 +175,12 @@ ribasim_model.merge_basins(node_id=851, to_node_id=64)  # 16396 m2
 ribasim_model.merge_basins(node_id=847, to_node_id=519, are_connected=False)  # 17464 m2
 # basins below 20.000 m2 have been merged, whenever hydrologically possible
 
+# upon request
+ribasim_model.merge_basins(node_id=178, to_node_id=237)  # limiting node for coupling
+ribasim_model.merge_basins(node_id=517, to_node_id=39)  # limiting node for coupling
+ribasim_model.merge_basins(node_id=985, to_node_id=825)  # limiting node for coupling
+ribasim_model.merge_basins(node_id=420, to_node_id=145)  # limiting node for coupling
+
 # water supply
 ribasim_model.merge_basins(node_id=927, to_node_id=16)  # boezem stukje
 ribasim_model.merge_basins(node_id=200, to_node_id=253)  # boezem stuk
