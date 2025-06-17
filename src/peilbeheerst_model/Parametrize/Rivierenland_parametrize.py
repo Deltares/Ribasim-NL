@@ -268,8 +268,6 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(158270, 436942)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(158276, 436942)), [pump.Static(flow_rate=[20])])
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[86])
 
