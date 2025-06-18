@@ -23,7 +23,19 @@ download_latest_model = True
 upload_model = False
 
 RESET_TABLES = []
-INCLUDE_MODELS = ["Rijkswaterstaat", "AmstelGooienVecht", "Rijnland", "HollandseDelta", "Delfland"]
+INCLUDE_MODELS = [
+    "Rijkswaterstaat",
+    "AmstelGooienVecht",
+    "Delfland",
+    "HollandsNoorderkwartier",
+    # "HollandseDelta",
+    "Rijnland",
+    "Rivierenland",
+    "Scheldestromen",
+    "SchielandendeKrimpenerwaard",
+    "WetterskipFryslan",
+    "Zuiderzeeland",
+]
 
 model_specs = [
     {
