@@ -1034,7 +1034,7 @@ def validate_manning_basins(model):
     for col in ["downstream_streefpeil", "upstream_streefpeil"]:
         manning_nodes[col] = pd.to_numeric(manning_nodes[col], errors="coerce").round(2)
 
-    if len(manning_nodes > 0):
+    if not manning_nodes.empty:
         print("Warning! The streefpeilen on both sides of following Manning Nodes are not equal!")
         print(manning_nodes.loc[manning_nodes.downstream_streefpeil != manning_nodes.upstream_streefpeil])
 
