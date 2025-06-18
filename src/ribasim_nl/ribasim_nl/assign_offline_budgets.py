@@ -64,23 +64,25 @@ class AssignOfflineBudgets:
         drainage_per_node_id = budgets_per_node_id[budgets_per_node_id.lt(0.0)].abs().fillna(0.0)
         infiltration_per_node_id = budgets_per_node_id[budgets_per_node_id.gt(0.0)].fillna(0.0)
 
-        # Fill missing node-ids with zeros
-        all_nodeids = model.basin.node.df.index.unique()
-        missing_nodeids = all_nodeids[~all_nodeids.isin(budgets_per_node_id.index)]
-        missing_df = pd.DataFrame(0.0, index=missing_nodeids, columns=budgets_per_node_id.columns)
-        drainage_per_node_id = pd.concat([drainage_per_node_id, missing_df], ignore_index=False)
-        infiltration_per_node_id = pd.concat([infiltration_per_node_id, missing_df], ignore_index=False)
+        # Reindex basin.time to drainage and infiltration time series. Fill any
+        # missing values (e.g. due to upsampling) by padding (forward fill).
+        basin_time = []
+        for node_id, group in model.basin.time.df.groupby("node_id"):
+            group = group.sort_values("time").set_index("time")
+            group = group.reindex(budgets_per_node_id.columns)
+            for c in group.columns:
+                if pd.api.types.is_numeric_dtype(group[c]):
+                    group[c] = group[c].interpolate(method="pad")
+            basin_time.append(group.reset_index(drop=False))
+        basin_time = pd.concat(basin_time, ignore_index=True)
 
-        drainage_per_node_id = drainage_per_node_id.unstack().to_frame("drainage")
+        # Add infiltration and drainage
         infiltration_per_node_id = infiltration_per_node_id.unstack().to_frame("infiltration")
-        basin_time = drainage_per_node_id.join(infiltration_per_node_id).reset_index()
-
-        # Fill remaining columns with 0
-        missing_cols = model.basin.time.df.columns[~model.basin.time.df.columns.isin(basin_time.columns)]
-        basin_time[missing_cols] = 0.0
-
-        # set basin.time
-        model.basin.time.df = basin_time
+        drainage_per_node_id = drainage_per_node_id.unstack().to_frame("drainage")
+        basin_time = basin_time.set_index(["time", "node_id"])
+        basin_time.loc[infiltration_per_node_id.index, "infiltration"] = infiltration_per_node_id
+        basin_time.loc[drainage_per_node_id.index, "drainage"] = drainage_per_node_id
+        model.basin.time.df = basin_time.reset_index(drop=False)
 
         return model
 
