@@ -12,8 +12,8 @@ from ribasim_nl.parametrization.basin_tables import update_basin_static
 MODEL_EXEC: bool = False
 
 # model settings
-AUTHORITY: str = "AaenMaas"
-SHORT_NAME: str = "aam"
+AUTHORITY: str = "HunzeenAas"
+SHORT_NAME: str = "hea"
 MODEL_ID: str = "2025_7_0"
 
 # connect with the GoodCloud
@@ -23,9 +23,7 @@ cloud = CloudStorage()
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(
-    AUTHORITY, "verwerkt", "1_ontvangen_data", "Na_levering_202401", "Basisdata", "Aanvoergebieden.shp"
-)
+aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt", "4_ribasim", "areas.gpkg")
 
 model_edits_aanvoer_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "model_edits_aanvoer.gpkg")
 
@@ -38,21 +36,13 @@ cloud.synchronize(
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
+aanvoergebieden_df = gpd.read_file(aanvoer_path, layer="supply_areas")
+aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
 update_basin_static(model=model, evaporation_mm_per_day=1)
 add_from_to_nodes_and_levels(model)
 
-# update manning nodes to basin state
-state = model.basin_outstate.df.set_index("node_id")["level"]
-controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-basin_ids = controle_output.mask_basins(controle_output.read_model_output())["mask_afvoer"]["node_id"].to_numpy()
-mask = model.basin.area.df.node_id.isin(basin_ids)
-model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(lambda x: state[x])
-
-mask = model.basin.state.df.node_id.isin(basin_ids)
-model.basin.state.df.loc[mask, "level"] = model.basin.state.df[mask]["node_id"].apply(lambda x: state[x])
-
 # re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=False)
+ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=False)
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)
 check_basin_level.add_check_basin_level(model=model)
 
@@ -78,7 +68,12 @@ model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
 # model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 
-
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
+] = 10
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
+] = 10
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 

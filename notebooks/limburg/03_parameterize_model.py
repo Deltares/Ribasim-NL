@@ -26,7 +26,6 @@ cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # read
 model = Model.read(ribasim_toml)
-
 start_time = time.time()
 # %%
 # parameterize

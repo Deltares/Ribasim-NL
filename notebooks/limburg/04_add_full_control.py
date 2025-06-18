@@ -28,8 +28,6 @@ aanvoer_gpkg = cloud.joinpath("Landelijk", "waterverdeling", "aanvoer.gpkg")
 aanvoer_gdf = gpd.read_file(aanvoer_gpkg, layer="aanvoergebieden")
 aanvoer_gdf = aanvoer_gdf[aanvoer_gdf["waterbeheerder"] == "Limburg"]
 
-model_edits_aanvoer_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "model_edits_aanvoer.gpkg")
-
 cloud.synchronize(
     filepaths=[
         aanvoer_gpkg,
@@ -68,6 +66,12 @@ model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 # set upstream level boundaries at 999 meters
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
 # model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
+] = 10
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
+] = 10
 
 
 # write model

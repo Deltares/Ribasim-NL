@@ -413,8 +413,6 @@ valid_values = type_gemaal.dropna()
 static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
 # %% some customs
 model.remove_node(2297)
-# model.remove_node(166, remove_edges=True)
-# model.remove_node(393, remove_edges=True)
 # %%
 # write
 static_data.write()

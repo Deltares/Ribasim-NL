@@ -37,16 +37,6 @@ original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
 add_from_to_nodes_and_levels(model)
 
-# update manning nodes to basin state
-state = model.basin_outstate.df.set_index("node_id")["level"]
-controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-basin_ids = controle_output.mask_basins(controle_output.read_model_output())["mask_afvoer"]["node_id"].to_numpy()
-mask = model.basin.area.df.node_id.isin(basin_ids)
-model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(lambda x: state[x])
-
-mask = model.basin.state.df.node_id.isin(basin_ids)
-model.basin.state.df.loc[mask, "level"] = model.basin.state.df[mask]["node_id"].apply(lambda x: state[x])
-
 # filter aanvoergebieden
 aanvoergebieden_df = gpd.read_file(aanvoer_path, layer="afvoergebiedaanvoergebied")
 aanvoergebieden_df = aanvoergebieden_df[aanvoergebieden_df["soortafvoeraanvoergebied"] == "Aanvoergebied"]
@@ -76,6 +66,14 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
 model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 
+
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
+] = 10
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
+] = 10
+
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)
@@ -98,4 +96,4 @@ if MODEL_EXEC:
     """
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all(mask_basins=True)
+    indicators = controle_output.run_all()

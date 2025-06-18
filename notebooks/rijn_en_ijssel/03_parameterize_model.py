@@ -3,6 +3,7 @@ import time
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.check_basin_level import add_check_basin_level
 
 cloud = CloudStorage()
 authority = "RijnenIJssel"
@@ -43,6 +44,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 119, "min_upstream_
 # %%
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
+add_check_basin_level(model=model)
 model.write(ribasim_toml)
 
 # %%
