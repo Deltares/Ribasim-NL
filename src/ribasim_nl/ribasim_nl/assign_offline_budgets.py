@@ -53,11 +53,8 @@ class AssignOfflineBudgets:
         # compute budgets
         budgets_per_node_id = self._compute_budgets_per_node_id(budgets, primary_basin_mask, secondary_basin_mask)
 
-        # convert budgets from m3/day to m/s
-        areas = model.basin.area.df.set_index("node_id").loc[budgets_per_node_id.index].geometry.area
-        for c in budgets_per_node_id.columns:
-            budgets_per_node_id[c] = budgets_per_node_id[c] / (areas * 24 * 60 * 60)
-        model.basin.area.df
+        # convert budgets from m3/day to m3/s
+        budgets_per_node_id /= 24 * 60 * 60
 
         # Align model
         budgets_per_node_id.columns += model.starttime - budgets_per_node_id.columns.min()
