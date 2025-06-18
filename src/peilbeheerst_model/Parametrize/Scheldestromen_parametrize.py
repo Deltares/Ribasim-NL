@@ -7,12 +7,13 @@ import warnings
 import ribasim
 import ribasim.nodes
 from ribasim import Node
-from ribasim.nodes import level_boundary, tabulated_rating_curve
+from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
@@ -105,6 +106,14 @@ with warnings.catch_warnings():
 ribasim_param.validate_basin_area(ribasim_model)
 
 # model specific tweaks
+# the vrij-afwaterende basins are a multipolygon, in a single basin (189). Only retain the largest value
+exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 189].explode(
+    index_parts=False
+)
+exploded_basins["area"] = exploded_basins.area
+largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 189, "geometry"] = largest_polygon["geometry"]
+
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
@@ -128,6 +137,14 @@ ribasim_model.tabulated_rating_curve.node.df.loc[tabulated_rating_curve_node.nod
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[133])
+
+# add a pump and links to a newly created level boundary
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(65450, 374986)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(65429, 374945)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[148], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 
 # add a TRC and LB from Belgium
@@ -197,6 +214,26 @@ ribasim_model.pump.static.df.loc[
     "meta_func_afvoer",
 ] = 1
 
+assign_metadata = AssignMetaData(
+    authority=waterschap,
+    model_name=ribasim_model,
+    param_name=f"{waterschap}.gpkg",
+)
+assign_metadata.add_meta_to_pumps(
+    layer="gemaal",
+    mapper={
+        "meta_name": {"node": ["name"]},
+        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
+    },
+    max_distance=100,
+    factor_flowrate=1 / 60,  # m3/min -> m3/s
+)
+assign_metadata.add_meta_to_basins(
+    layer="aggregation_area",
+    mapper={"meta_name": {"node": ["name"]}},
+    min_overlap=0.95,
+)
+
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
@@ -229,7 +266,9 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     RWS_buffer=2000,  # mainly neighbouring RWS, so increase buffer. Not too much, due to nodes within Belgium.
-    custom_nodes=None,
+    custom_nodes={
+        578: "Rijkswaterstaat",  # basically open sea, does not matter that much
+    },
 )
 ribasim_model = assign.assign_authorities()
 

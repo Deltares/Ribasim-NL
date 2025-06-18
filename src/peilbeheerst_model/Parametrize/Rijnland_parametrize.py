@@ -12,6 +12,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
@@ -100,6 +101,29 @@ with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
+inlaat_pump = []
+
+# add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
+pump_node = ribasim_model.pump.add(Node(geometry=Point(88007, 469350)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[22], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[27])
+inlaat_pump.append(pump_node.node_id)
+
+for n in inlaat_pump:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
+
+# (re)set 'meta_node_id'-values
+ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
+ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
+ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+
+ribasim_model.merge_basins(node_id=308, to_node_id=22, are_connected=False)  # klein gebied
+ribasim_model.merge_basins(node_id=106, to_node_id=93)  # klein gebied
+ribasim_model.merge_basins(node_id=235, to_node_id=151)  # klein gebied
+ribasim_model.merge_basins(node_id=166, to_node_id=22)  # klein gebied
+ribasim_model.merge_basins(node_id=79, to_node_id=22)  # klein gebied
+
+
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
@@ -178,11 +202,32 @@ if AANVOER_CONDITIONS:
 else:
     aanvoergebieden = None
 
+# assign metadata for pumps and basins
+assign_metadata = AssignMetaData(
+    authority=waterschap,
+    model_name=ribasim_model,
+    param_name=f"{waterschap}.gpkg",
+)
+assign_metadata.add_meta_to_pumps(
+    layer="gemaal",
+    mapper={
+        "meta_name": {"node": ["name"]},
+        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
+    },
+    max_distance=100,
+    factor_flowrate=1 / 60,  # m3/min -> m3/s
+)
+assign_metadata.add_meta_to_basins(
+    layer="aggregation_area",
+    mapper={"meta_name": {"node": ["name"]}},
+    min_overlap=0.95,
+)
+
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(ribasim_model, aanvoergebieden, processor, aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
 # ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 

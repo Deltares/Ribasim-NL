@@ -17,7 +17,7 @@ from shapely.geometry import LineString
 
 from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, settings
 
 
 # FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
@@ -678,7 +678,7 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
     The log file of the feedback form is not included to avoid cluttering.'
     """
     destination_path = os.path.join(
-        os.getenv("RIBASIM_NL_DATA_DIR"), waterschap, "modellen", f"{waterschap}_parameterized/"
+        settings.ribasim_nl_data_dir, waterschap, "modellen", f"{waterschap}_parameterized/"
     )
 
     # clear the modellen/parameterized dir
@@ -695,10 +695,7 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
         if file.endswith(".log") and os.path.isfile(file_path):
             os.remove(file_path)
 
-    cloud_storage = CloudStorage(
-        password=os.getenv("RIBASIM_NL_CLOUD_PASS"),  # password stored in system env
-        data_dir=os.getenv("RIBASIM_NL_DATA_DIR"),  # datadir stored in system env
-    )
+    cloud_storage = CloudStorage()
 
     # Upload to waterschap/modellen/model_name instead of waterschap/verwerkt
     cloud_storage.upload_model(
@@ -856,7 +853,6 @@ def iterate_TRC(
                 pbar.update(1)
 
 
-#### New ####
 def validate_basin_area(model):
     """
     Validate the area of basins in the model.
@@ -879,6 +875,58 @@ def validate_basin_area(model):
         print("All basins are larger than 100 m²")
 
     return
+
+
+def validate_manning_basins(model):
+    manning_nodes = model.manning_resistance.node.df.reset_index()[["node_id"]]
+    basins_downstream_manning_nodes = model.link.df.loc[
+        model.link.df.from_node_id.isin(manning_nodes.to_numpy().flatten())
+    ][["from_node_id", "to_node_id"]].copy()  # select the basins downstream of the manning_nodes
+    manning_nodes = manning_nodes.merge(
+        right=basins_downstream_manning_nodes,
+        left_on="node_id",
+        right_on="from_node_id",
+        how="left",
+        suffixes=("", "_y"),
+    )  # merge to the manning_nodes df
+    manning_nodes = manning_nodes.rename(columns={"to_node_id": "downstream_basin"})
+    manning_nodes = manning_nodes.merge(
+        right=model.basin.area.df[["node_id", "meta_streefpeil"]],
+        left_on="downstream_basin",
+        right_on="node_id",
+        how="left",
+        suffixes=("", "_y"),
+    )  # add the streefpeilen
+    manning_nodes = manning_nodes.rename(columns={"meta_streefpeil": "downstream_streefpeil"})
+    manning_nodes = manning_nodes[["node_id", "downstream_basin", "downstream_streefpeil"]]
+
+    # repeat for the upstream basins of each manning node
+    basins_upstream_manning_nodes = model.link.df.loc[
+        model.link.df.to_node_id.isin(manning_nodes.to_numpy().flatten())
+    ][["from_node_id", "to_node_id"]].copy()  # select the basins downstream of the manning_nodes
+
+    manning_nodes = manning_nodes.merge(
+        right=basins_upstream_manning_nodes, left_on="node_id", right_on="to_node_id", how="left", suffixes=("", "_y")
+    )  # merge to the manning_nodes df
+
+    manning_nodes = manning_nodes.rename(columns={"from_node_id": "upstream_basin"})
+    manning_nodes = manning_nodes.merge(
+        right=model.basin.area.df[["node_id", "meta_streefpeil"]],
+        left_on="upstream_basin",
+        right_on="node_id",
+        how="left",
+        suffixes=("", "_y"),
+    )  # add the streefpeilen
+    manning_nodes = manning_nodes.rename(columns={"meta_streefpeil": "upstream_streefpeil"})
+    manning_nodes = manning_nodes.drop(columns=["to_node_id", "node_id_y"])
+
+    # round streefpeilen
+    for col in ["downstream_streefpeil", "upstream_streefpeil"]:
+        manning_nodes[col] = pd.to_numeric(manning_nodes[col], errors="coerce").round(2)
+
+    if len(manning_nodes > 0):
+        print("Warning! The streefpeilen on both sides of following Manning Nodes are not equal!")
+        print(manning_nodes.loc[manning_nodes.downstream_streefpeil != manning_nodes.upstream_streefpeil])
 
 
 def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
@@ -1246,11 +1294,11 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: ribasim.Model, w
         raise KeyError(msg)
 
     # for each different outlet and pump type, determine the min and max upstream and downstream level
-    for types, settings in sturing.items():
+    for types, model_settings in sturing.items():
         # Extract values for each setting
-        upstream_level_offset = settings["upstream_level_offset"]
-        downstream_level_offset = settings["downstream_level_offset"]
-        max_flow_rate = settings["max_flow_rate"]
+        upstream_level_offset = model_settings["upstream_level_offset"]
+        downstream_level_offset = model_settings["downstream_level_offset"]
+        max_flow_rate = model_settings["max_flow_rate"]
 
         # Update the min_upstream_level and max_downstream_level in the OUTLET dataframe
         outlet.loc[(outlet.meta_categorie == types) & (~outlet["meta_aanvoer"]), "min_upstream_level"] = (

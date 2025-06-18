@@ -12,6 +12,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
@@ -237,6 +238,30 @@ ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[27])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
+# Inlaat (hevel) toevoegen at Leuvehaven
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(92798, 436794)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(92801, 437070)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[139])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
+# Inlaat (hevel) toevoegen at Schilthuis
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(93880, 437435)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(93776, 437680)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[97])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
 # # # add gemaal between two basins in Rotterdam. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(95653, 436055)), [pump.Static(flow_rate=[2.5 / 60])])
 ribasim_model.link.add(ribasim_model.basin[143], pump_node)
@@ -315,6 +340,27 @@ if AANVOER_CONDITIONS:
     )
 else:
     aanvoergebieden = None
+
+# assign metadata for pumps and basins
+assign_metadata = AssignMetaData(
+    authority=waterschap,
+    model_name=ribasim_model,
+    param_name="HHSK.gpkg",
+)
+assign_metadata.add_meta_to_pumps(
+    layer="gemaal",
+    mapper={
+        "meta_name": {"node": ["name"]},
+        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
+    },
+    max_distance=100,
+    factor_flowrate=1 / 60,  # m3/min -> m3/s
+)
+assign_metadata.add_meta_to_basins(
+    layer="aggregation_area",
+    mapper={"meta_name": {"node": ["name"]}},
+    min_overlap=0.95,
+)
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)

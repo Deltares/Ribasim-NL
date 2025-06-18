@@ -155,7 +155,7 @@ class Network:
         # make sure we have a graph
         _ = self.graph
         gdf = GeoDataFrame.from_dict(
-            {i[0]: i[1] for i in self.graph.nodes.data()},
+            dict(self.graph.nodes.data()),
             orient="index",
             crs=self.lines_gdf.crs,
         )

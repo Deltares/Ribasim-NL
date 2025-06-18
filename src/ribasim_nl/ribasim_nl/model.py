@@ -918,6 +918,37 @@ class Model(Model):
         # finally we remove the basin
         self.remove_node(node_id)
 
+    def merge_outlets(self, outlet_a_id: int | None = None, outlet_b_id: int | None = None):
+        """Merge outlet_b into outlet_a. Outlet a is considered upstream, and b donwstream."""
+        assert self.get_node_type(outlet_a_id) == "Outlet" and self.get_node_type(outlet_b_id) == "Outlet"
+
+        outlet_a = self.outlet.node.df.loc[outlet_a_id]
+        outlet_b = self.outlet.node.df.loc[outlet_b_id]
+
+        # correct edge from and to attributes
+        edge_ids = self.edge.df[self.edge.df.to_node_id == outlet_a_id].index.to_list()
+        edge_ids += self.edge.df[self.edge.df.from_node_id == outlet_b_id].index.to_list()
+
+        # Remove outlet_b from the edges
+        self.edge.df.loc[self.edge.df.from_node_id == outlet_b_id, "from_node_id"] = outlet_a_id
+        self.edge.df.loc[self.edge.df.to_node_id == outlet_b_id, "to_node_id"] = outlet_a_id
+
+        # Merge geometry
+        avg_x = (outlet_a.geometry.x + outlet_b.geometry.x) / 2
+        avg_y = (outlet_a.geometry.y + outlet_b.geometry.y) / 2
+        self.outlet.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)
+
+        # Merge attributes
+        self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_a_id, "max_downstream_level"] = (
+            self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_b_id, "max_downstream_level"]
+        )
+
+        # Remove outlet_b
+        self.remove_node(outlet_b_id)
+        self.reset_edge_geometry(edge_ids=edge_ids)
+
+        return outlet_a
+
     def invalid_topology_at_node(self, edge_type: str = "flow") -> gpd.GeoDataFrame:
         df_graph = self.edge.df
         df_node = self.node_table().df

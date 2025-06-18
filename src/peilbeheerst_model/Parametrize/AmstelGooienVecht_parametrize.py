@@ -12,6 +12,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model import supply
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
@@ -224,6 +225,14 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(148437, 478733)), [pump.S
 ribasim_model.link.add(ribasim_model.basin[168], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
+#  a multipolygon occurs in a single basin (88). Only retain the largest value
+exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 88].explode(
+    index_parts=False
+)
+exploded_basins["area"] = exploded_basins.area
+largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 88, "geometry"] = largest_polygon["geometry"]
+
 # set all 'meta_node_id'-values
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
@@ -284,6 +293,27 @@ if AANVOER_CONDITIONS:
     )
 else:
     aanvoergebieden = None
+
+# assign metadata for pumps and basins
+assign_metadata = AssignMetaData(
+    authority=waterschap,
+    model_name=ribasim_model,
+    param_name=f"{waterschap}.gpkg",
+)
+assign_metadata.add_meta_to_pumps(
+    layer="gemaal",
+    mapper={
+        "meta_name": {"node": ["name"]},
+        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
+    },
+    max_distance=100,
+    factor_flowrate=1 / 60,  # m3/min -> m3/s
+)
+assign_metadata.add_meta_to_basins(
+    layer="aggregation_area",
+    mapper={"meta_name": {"node": ["name"]}},
+    min_overlap=0.95,
+)
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
