@@ -81,7 +81,9 @@ def fix_link_geometries(model: Model, network: Network, max_straight_line_ratio:
         upstream_nodes = [
             get_network_node(network, node_df.at[i, "geometry"]) for i in upstream_node_ids if i is not None
         ]
-        downstream_nodes = [get_network_node(network, node_df.at[i, "geometry"]) for i in downstream_node_ids]
+        downstream_nodes = [
+            get_network_node(network, node_df.at[i, "geometry"]) for i in downstream_node_ids if i is not None
+        ]
 
         # draw edges from upstream nodes
         for idx, network_node in enumerate(upstream_nodes):

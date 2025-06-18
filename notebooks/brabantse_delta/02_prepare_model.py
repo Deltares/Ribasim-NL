@@ -2,6 +2,7 @@
 import geopandas as gpd
 import pandas as pd
 
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
@@ -152,7 +153,6 @@ def add_min_upstream_level_from_peilenkaart(node_type):
     for node_id in node_ids:
         node = getattr(model, node_type.lower())[node_id]
         tolerance = 30  # afstand voor zoeken bovenstrooms
-        node_geometry = node.geometry
 
         line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
         distance_to_interpolate = line_to_node.length - tolerance
@@ -339,6 +339,16 @@ model.basin.area.df.reset_index(drop=False, inplace=True)
 model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
 
+# # koppelen
+ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+assign = AssignAuthorities(
+    ribasim_model=model,
+    waterschap=authority,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+)
+model = assign.assign_authorities()
 
 # %%
 
