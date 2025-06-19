@@ -58,7 +58,7 @@ fixed and up-and-running beforehand.
 `ContinuousControl`-nodes require `Time`-tables instead of `Static`-tables. If both are defined (for the same node,
 Ribasim will raise an error and thus not execute.
 """
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
