@@ -3,6 +3,7 @@ import inspect
 import os
 
 import geopandas as gpd
+import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 
@@ -208,6 +209,34 @@ sanitize_node_table(
 
 # label flow-boundaries to buitenlandse-aanvoer
 model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+
+
+# %%
+
+# init gestuwd voor basins, pumps en outlets
+model.basin.node.df["meta_gestuwd"] = False
+model.outlet.node.df["meta_gestuwd"] = False
+model.pump.node.df["meta_gestuwd"] = True
+
+#
+node_ids = (
+    model.node_table()
+    .df[
+        model.node_table().df["meta_code_waterbeheerder"].str.startswith("KST_")
+        | model.node_table().df["meta_code_waterbeheerder"].str.startswith("GEM_")
+    ]
+    .index
+)
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_ids]
+
+basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+
+downstream_node_ids = (
+    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
+)
+model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
 
 
 #  %% write model
