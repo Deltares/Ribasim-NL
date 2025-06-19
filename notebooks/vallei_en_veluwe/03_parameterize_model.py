@@ -12,7 +12,7 @@ short_name = "venv"
 run_model = False
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
-static_data_xlsx = parameters_dir / "static_data_template.xlsx"
+static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
