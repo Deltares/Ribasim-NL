@@ -84,24 +84,6 @@ model.outlet.static.df.loc[
     model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
 ] = 10
 
-# set upstream level boundaries at 999 meters
-# boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
-# inlaten bij RWS min_upstream_level op NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 123, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 461, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 576, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 577, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 580, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 581, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 585, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 593, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 737, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 738, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 991, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 2323, "min_upstream_level"] = 0.36
-
 # %% sturing uit alle niet-gestuwde outlets halen
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
 non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
