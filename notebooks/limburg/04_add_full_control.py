@@ -11,7 +11,7 @@ from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 # execute model run
-MODEL_EXEC: bool = False
+MODEL_EXEC: bool = True
 
 # model settings
 AUTHORITY: str = "Limburg"
@@ -108,17 +108,6 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    # TODO: Different ways of executing the model; choose the one that suits you best:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
-    # exit_code = model.run()
-
-    # assert exit_code == 0
-
-    """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
-    successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the
-    outlets on 'aanvoer' instead of the more suitable 'afvoer'. This should no longer be a problem once the next step of
-    adding `ContinuousControl`-nodes is implemented.
-    """
-
+    model.run()
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()
