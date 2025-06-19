@@ -39,6 +39,14 @@ cloud.synchronize(
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
+
+# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
+update_levels = model.basin_outstate.df.set_index("node_id")["level"]
+basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
+mask = model.basin.area.df["node_id"].isin(basin_ids)
+model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
+    lambda x: update_levels[x]
+)
 add_from_to_nodes_and_levels(model)
 
 # re-parameterize
@@ -95,9 +103,9 @@ actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
 
 # %% sturing uit alle niet-gestuwde outlets halen
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
