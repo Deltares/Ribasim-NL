@@ -3,7 +3,7 @@ import logging
 
 import geopandas as gpd
 import pandas as pd
-from networkx import NetworkXNoPath, node_disjoint_paths
+from networkx import NetworkXNoPath, node_disjoint_paths, shortest_path
 from shapely.geometry import LineString
 from tqdm import tqdm
 
@@ -31,7 +31,11 @@ def get_edge_geometry(network, source, target, forbidden_nodes):
         return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
 
     if len(all_paths) == 0:
-        return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
+        path = shortest_path(network.graph_undirected, source=source, target=target)
+        if any(_node_id in forbidden_nodes for _node_id in path):
+            return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
+        else:
+            return network.path_to_line(path)
     else:
         if len(all_paths) == 1:
             geometry = network.path_to_line(all_paths[0])
@@ -45,7 +49,9 @@ def get_edge_geometry(network, source, target, forbidden_nodes):
         return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
 
 
-def fix_link_geometries(model: Model, network: Network, max_straight_line_ratio: float = 5):
+def fix_link_geometries(
+    model: Model, network: Network, max_straight_line_ratio: float = 5, node_ids: list | None = None
+):
     """Fix model.link.geometry column by finding routes over network
 
     Args:
@@ -56,8 +62,10 @@ def fix_link_geometries(model: Model, network: Network, max_straight_line_ratio:
          Defaults to 5.
     """
     node_df = model.node_table().df
-    for node_id in tqdm(model.basin.node.df.index, desc="fix line geometries"):
-        logger.info(f"fix basin {node_id}")
+    if node_ids is None:
+        node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index
+    for node_id in tqdm(node_ids, desc="fix line geometries"):
+        logger.info(f"fixing edges for {node_df.at[node_id, 'node_type']} {node_id}")
         # get basin_node_id
         network_basin_node = get_network_node(network, node_df.at[node_id, "geometry"])
         if network_basin_node is None:

@@ -37,7 +37,9 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 
 # %%
-network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"))
+lines_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
+lines_gdf = lines_gdf[lines_gdf.index != 689]
+network = Network(lines_gdf=lines_gdf)
 profile_line_df = gpd.read_file(profielen_gpkg, layer="profiellijn")
 profile_point_df = gpd.read_file(profielen_gpkg, layer="profielpunt")
 damo_profiles = DAMOProfiles(
