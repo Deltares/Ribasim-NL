@@ -222,7 +222,7 @@ model.pump.node.df["meta_gestuwd"] = True
 node_ids = (
     model.node_table()
     .df[
-        model.node_table().df["meta_code_waterbeheerder"].str.startswith("KST_")
+        model.node_table().df["meta_code_waterbeheerder"].str.startswith("KST")
         | model.node_table().df["meta_code_waterbeheerder"].str.startswith("GEM_")
     ]
     .index
