@@ -84,8 +84,9 @@ min_upstream_level = stuwen_df["WS_STUWF_3"]
 min_upstream_level.name = "min_upstream_level"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
-
+# %%
 # from DAMO profiles
+
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
     model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
@@ -99,13 +100,11 @@ min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level"
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
-
 # %%
 
-# PUMP
+# %%
+# PUMP vanuit profielen
 
-# PUMP.min_upstream_level
-# from basin streefpeil
 static_data.reset_data_frame(node_type="Pump")
 # from DAMO profiles
 node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
@@ -121,11 +120,76 @@ min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level"
 min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
 
+# %% Bepaal de basin streefpeilen door minimale upstream level van stuwen en gemalen. Duikers in basin worden gelijk gezet aan basinpeil
 
-# %%
-
-# # BASIN
 static_data.reset_data_frame(node_type="Basin")
+node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
+ds_node_ids = []
+
+for node_id in node_ids:
+    try:
+        ds = model.downstream_node_id(int(node_id))
+        if isinstance(ds, pd.Series):
+            ds_node_ids.append(ds.to_list())
+        else:
+            ds_node_ids.append([ds])
+    except KeyError:
+        ds_node_ids.append([])
+
+ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
+ds_node_ids = ds_node_ids[ds_node_ids.isin(static_data.outlet.node_id) | ds_node_ids.isin(static_data.pump.node_id)]
+combined = pd.concat([static_data.outlet, static_data.pump])
+combined = combined.reset_index(drop=True)
+
+combined["source"] = combined.apply(
+    lambda row: "pump" if row["node_id"] in static_data.pump.node_id.values else "outlet", axis=1
+)
+
+valid_ids = ds_node_ids[ds_node_ids.isin(combined["node_id"])]
+streefpeil = combined.set_index("node_id").loc[valid_ids.to_numpy(), ["min_upstream_level", "code", "source"]]
+streefpeil["basin_node_id"] = valid_ids.loc[valid_ids.isin(streefpeil.index)].index
+streefpeil["node_id"] = streefpeil.index  # outlet/pump node_id
+streefpeil = streefpeil.set_index("basin_node_id")
+streefpeil.dropna(inplace=True)
+
+# Sorteer per groep zodat de kleinste 'min_upstream_level' bovenaan staat
+streefpeil = streefpeil.sort_index().sort_values(by="min_upstream_level", inplace=False)
+non_kdu_values = streefpeil[streefpeil["code"].str.startswith("S") | (streefpeil["source"] == "pump")]
+non_kdu_first = non_kdu_values.groupby(level=0).first()
+all_first = streefpeil.groupby(level=0).first()
+
+# Reset min_upstream level duikers op basis van streefpeilen
+streefpeil_update = streefpeil.loc[streefpeil.index.isin(non_kdu_first.index)].copy()
+streefpeil_update["min_upstream_level"] = streefpeil_update.index.map(non_kdu_first["min_upstream_level"])
+min_upstream_level_outlets = streefpeil_update.set_index("node_id")["min_upstream_level"]
+min_upstream_level_outlets.index.name = "node_id"
+static_data.add_series(node_type="Outlet", series=min_upstream_level_outlets, fill_na=False)
+
+# update basin levels
+streefpeil = non_kdu_first.combine_first(all_first)
+streefpeil = streefpeil["min_upstream_level"]
+streefpeil.index.name = "node_id"
+streefpeil.name = "streefpeil"
+static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+
+# Update stuwen met nodata op basis van basin streefpeil
+missing_min_level_outlets = static_data.outlet[static_data.outlet.min_upstream_level.isna()]
+downstream_basin_ids = model.edge.df.set_index("to_node_id").loc[missing_min_level_outlets.node_id].from_node_id
+downstream_basin_levels = static_data.basin.set_index("node_id").reindex(downstream_basin_ids)["streefpeil"]
+downstream_basin_levels.index = missing_min_level_outlets.node_id
+downstream_basin_levels.name = "min_upstream_level"
+static_data.add_series(node_type="Outlet", series=downstream_basin_levels.dropna(), fill_na=False)
+
+# Update pumps met nodata op basis van basin streefpeil
+missing_min_level_pumps = static_data.pump[static_data.pump.min_upstream_level.isna()]
+downstream_basin_ids = model.edge.df.set_index("to_node_id").loc[missing_min_level_pumps.node_id].from_node_id
+downstream_basin_levels = static_data.basin.set_index("node_id").reindex(downstream_basin_ids)["streefpeil"]
+downstream_basin_levels.index = missing_min_level_pumps.node_id
+downstream_basin_levels.name = "min_upstream_level"
+static_data.add_series(node_type="Pump", series=downstream_basin_levels.dropna(), fill_na=False)
+
+
+# %% if basin niet gestuwd, level from damo profiles
 
 # fill streefpeil from ds min_upstream_level
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
@@ -165,7 +229,7 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 model.basin.area.df.set_index("node_id", inplace=True)
 
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
-model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
+model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil.astype(float)
 profiellijnid = static_data.basin.set_index("node_id")["profielid"]
 model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
 
