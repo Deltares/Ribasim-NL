@@ -1,5 +1,6 @@
 # %%
 
+
 import geopandas as gpd
 import pandas as pd
 
@@ -79,19 +80,24 @@ model.merge_basins(basin_id=1885, to_basin_id=2360, are_connected=True)
 model.merge_basins(basin_id=2205, to_basin_id=2144, are_connected=True)
 
 actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+# for action in actions:
+#     print(action)
+#     # get method and args
+#     method = getattr(model, action)
+#     keywords = inspect.getfullargspec(method).args
+#     df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+#     if "order" in df.columns:
+#         df.sort_values("order", inplace=True)
+#     for row in df.itertuples():
+#         # filter kwargs by keywords
+#         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+#         method(**kwargs)
 
+# %% sturing uit alle niet-gestuwde outlets halen
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
+mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
