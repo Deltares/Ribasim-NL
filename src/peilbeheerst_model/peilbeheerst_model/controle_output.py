@@ -303,9 +303,9 @@ class Control:
         return control_dict
 
     def mask_basins(self, control_dict):
-        if "meta_check_basin_level" in self.model.basin.node.df.columns:
+        if "meta_gestuwd" in self.model.basin.node.df.columns:
             control_dict["mask_afvoer"] = self.model.basin.node.df[
-                self.model.basin.node.df["meta_check_basin_level"] == "False"
+                self.model.basin.node.df["meta_gestuwd"] == "False"
             ].reset_index()[["node_id", "geometry"]]
 
         return control_dict
