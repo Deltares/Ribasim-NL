@@ -48,7 +48,7 @@ damo_profiles = DAMOProfiles(
     profile_line_df=gpd.read_file(profielen_gpkg, layer="profiellijn", bbox=bbox),
     profile_point_df=gpd.read_file(profielen_gpkg, layer="profielpunt", bbox=bbox),
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox),
-    profile_line_id_col="code",
+    profile_line_id_col="globalid",
 )
 if not profiles_gpkg.exists():
     damo_profiles.process_profiles().to_file(profiles_gpkg)
