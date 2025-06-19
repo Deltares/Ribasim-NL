@@ -27,9 +27,10 @@ cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # read
 model = Model.read(ribasim_toml)
-
 start_time = time.time()
 
+# %%
+# fixes model
 # merge basins
 model.merge_basins(node_id=2101, to_node_id=2058, are_connected=True)
 model.merge_basins(node_id=1885, to_node_id=2114, are_connected=True)
@@ -85,8 +86,6 @@ model.merge_basins(node_id=2201, to_node_id=1820, are_connected=True)
 model.merge_basins(node_id=2002, to_node_id=2215, are_connected=True)
 model.merge_basins(node_id=2215, to_node_id=2248, are_connected=True)
 model.merge_basins(node_id=2247, to_node_id=1998, are_connected=True)
-
-
 model.remove_node(998, remove_edges=True)
 # %%
 # parameterize
@@ -95,7 +94,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 
 # %%
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # %%
 # Flow rate en levels pumps verbeteren
@@ -116,35 +115,20 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 703, "flow_rate"] = 1  
 model.pump.static.df.loc[model.pump.static.df.node_id == 747, "flow_rate"] = 1  # max cap verhoogd! Check!
 
 # Upstream levels kloppen niet
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1055, "min_upstream_level"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1056, "min_upstream_level"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1048, "min_upstream_level"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1049, "min_upstream_level"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 503, "min_upstream_level"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 667, "min_upstream_level"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 668, "min_upstream_level"] = 0.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 845, "min_upstream_level"] = 6.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 146, "min_upstream_level"] = 6.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 536, "min_upstream_level"] = -1.6
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 217, "min_upstream_level"] = (
-    2  # Check dit, zomerpeil stuw Turfvaart staat op 0m NAP
-)
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1909, "min_upstream_level"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 217, "min_upstream_level"] = 1.2  # Turfvaart meetpunt
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 4.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 408, "min_upstream_level"] = 0.55  # Haven van Zevenbergen
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 589, "min_upstream_level"] = 0.55  # Roode Vaart Sluis
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 884, "min_upstream_level"] = 0.55  # Roode Vaart duiker
 model.pump.static.df.loc[model.pump.static.df.node_id == 972, "min_upstream_level"] = 0.55  # Roode Vaart Afvoergemaal
-
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 36, "level"] = -3
 model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_streefpeil"] = 4.1
 model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "meta_streefpeil"] = 0.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1909, "meta_streefpeil"] = 0
-model.basin.area.df.loc[model.basin.area.df.node_id == 1634, "meta_streefpeil"] = 2  # Basin Turfvaart meetpunt
-model.basin.state.df.loc[model.basin.state.df.node_id == 1634, "level"] = 2
-model.basin.state.df.loc[model.basin.state.df.node_id == 1584, "level"] = 0.15
+model.basin.area.df.loc[model.basin.area.df.node_id == 1909, "meta_streefpeil"] = 0.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1634, "meta_streefpeil"] = 1.2  # Basin Turfvaart meetpunt
+model.basin.state.df.loc[model.basin.state.df.node_id == 1584, "meta_streefpeil"] = 0.15
 
-# Voor outlets
+# Voor outlets flow_updates
 flow_updates = {
     123: 1,
     150: 5,  # Let op: boven cap van 0.07 m³/s! Check!
@@ -152,7 +136,7 @@ flow_updates = {
     233: 5,  # Let op, Het Laag verhoogd naar 5m3/s! Check!
     240: 0,  # Geen Aanvoer Marksluis
     241: 0.1,
-    255:
+    255: 0.1,
     271: 0.1,
     368: 0.1,
     369: 0.1,
@@ -220,6 +204,25 @@ flow_updates = {
 
 for node_id, flow_rate in flow_updates.items():
     model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, "flow_rate"] = flow_rate
+
+# %% Geen sturing op duikers in niet gestuwde gebieden
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
+mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+
+# Upstream levels kloppen niet
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1055, "min_upstream_level"] = 0.1  # Benedensas Volkerak
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1056, "min_upstream_level"] = 0.1  # Benedensas Volkerak
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1048, "min_upstream_level"] = 0.1  # Volkerak
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1049, "min_upstream_level"] = 0.1  # Volkerak
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 503, "min_upstream_level"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 667, "min_upstream_level"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 668, "min_upstream_level"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 408, "min_upstream_level"] = 0.55  # Haven van Zevenbergen
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 589, "min_upstream_level"] = 0.55  # Roode Vaart Sluis
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 884, "min_upstream_level"] = 0.55  # Roode Vaart duiker
+# %%
 
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
