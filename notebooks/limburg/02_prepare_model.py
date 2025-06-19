@@ -21,6 +21,7 @@ parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "param
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
+stuwen_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20250613", "stuwWL_fase3.shp")
 
 
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
@@ -67,11 +68,23 @@ else:
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 
-# OUTLET
+# %%OUTLET
 
 # OUTLET.min_upstream_level
 # from basin streefpeil
 static_data.reset_data_frame(node_type="Outlet")
+
+# vanuit stuwen
+
+stuwen_df = gpd.read_file(stuwen_shp)
+stuwen_df.index = "S_" + stuwen_df["CODE"]
+stuwen_df.index.name = "code"
+stuwen_df = stuwen_df[stuwen_df.index.isin(static_data.outlet["code"])]
+min_upstream_level = stuwen_df["WS_STUWF_3"]
+min_upstream_level.name = "min_upstream_level"
+static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
+
+
 # from DAMO profiles
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
