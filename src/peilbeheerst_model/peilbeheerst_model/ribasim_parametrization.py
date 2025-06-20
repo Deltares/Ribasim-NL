@@ -308,7 +308,12 @@ def set_dynamic_level_boundaries(
 
 
 def set_hypothetical_dynamic_level_boundaries(
-    ribasim_model: ribasim.Model, start_time: datetime.datetime, end_time: datetime.datetime, low: float, high: float
+    ribasim_model: ribasim.Model,
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
+    low: float,
+    high: float,
+    DYNAMIC_CONDITIONS: bool,
 ) -> None:
     """Set basic hypothetical dynamic level boundaries.
 
@@ -325,10 +330,20 @@ def set_hypothetical_dynamic_level_boundaries(
     :type high: float
     """
     # define time-series
-    halftime = start_time + (end_time - start_time) // 3
-    halftime_1 = halftime + datetime.timedelta(days=1)
-    time = start_time, halftime, halftime_1, end_time
-    level = low, low, high, high
+    if DYNAMIC_CONDITIONS:
+        end_winter = datetime.datetime(start_time.year, 4, 1)
+        end_winter_1 = end_winter + datetime.timedelta(days=1)
+        end_summer = datetime.datetime(start_time.year, 10, 1)
+        end_summer_1 = end_summer + datetime.timedelta(days=1)
+
+        time = start_time, end_winter, end_winter_1, end_summer, end_summer_1, end_time
+        level = low, low, high, high, low, low
+
+    else:
+        halftime = start_time + (end_time - start_time) // 3
+        halftime_1 = halftime + datetime.timedelta(days=1)
+        time = start_time, halftime, halftime_1, end_time
+        level = low, low, high, high
 
     # set dynamic level boundaries
     set_dynamic_level_boundaries(ribasim_model, time, level)
