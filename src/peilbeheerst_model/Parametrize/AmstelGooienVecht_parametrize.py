@@ -86,7 +86,7 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2017, 1, 1)
-endtime = datetime.datetime(2017, 1, 1)
+endtime = datetime.datetime(2018, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -332,8 +332,8 @@ assign_metadata.add_meta_to_basins(
 forcing = SetDynamicForcing(
     model=ribasim_model,
     cloud=cloud,
-    startdate="2017-01-01",
-    enddate="2017-12-31",
+    startdate=starttime,
+    enddate=endtime,
 )
 
 ribasim_model = forcing.add()

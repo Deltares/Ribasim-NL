@@ -85,8 +85,8 @@ unknown_streefpeil = (
 )
 
 # forcing settings
-starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2025, 1, 1)
+starttime = datetime.datetime(2017, 1, 1)
+endtime = datetime.datetime(2018, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
