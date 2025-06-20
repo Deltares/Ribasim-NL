@@ -15,7 +15,7 @@ from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
@@ -388,6 +388,15 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+
+forcing = SetDynamicForcing(
+    model=ribasim_model,
+    cloud=cloud,
+    startdate=starttime,
+    enddate=endtime,
+)
+
+ribasim_model = forcing.add()
 
 offline_budgets = AssignOfflineBudgets()
 offline_budgets.compute_budgets(ribasim_model)
