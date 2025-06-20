@@ -5,7 +5,6 @@ import os
 import warnings
 
 from ribasim import Node
-from ribasim.config import Solver
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
 
@@ -16,7 +15,7 @@ from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
@@ -25,8 +24,6 @@ MIXED_CONDITIONS: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
-# enlarge (relative) tolerance to smoothen any possible instabilities
-solver = Solver(abstol=1e-9, reltol=1e-9)
 
 # model settings
 waterschap = "AmstelGooienVecht"
@@ -88,8 +85,8 @@ unknown_streefpeil = (
 )
 
 # forcing settings
-starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2025, 1, 1)
+starttime = datetime.datetime(2017, 1, 1)
+endtime = datetime.datetime(2017, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -113,7 +110,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml, solver=solver)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -328,6 +325,15 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+
+forcing = SetDynamicForcing(
+    model=ribasim_model,
+    cloud=cloud,
+    startdate="2017-01-01",
+    enddate="2017-12-31",
+)
+
+ribasim_model = forcing.add()
 
 offline_budgets = AssignOfflineBudgets()
 offline_budgets.compute_budgets(ribasim_model)

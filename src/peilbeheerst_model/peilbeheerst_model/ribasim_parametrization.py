@@ -2138,9 +2138,15 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
     ribasim_model.basin.state = ribasim_model.basin.state.df.loc[
         ribasim_model.basin.state.df.node_id.isin(basin_ids)
     ].reset_index(drop=True)
-    ribasim_model.basin.static = ribasim_model.basin.static.df.loc[
-        ribasim_model.basin.static.df.node_id.isin(basin_ids)
-    ].reset_index(drop=True)
+
+    if ribasim_model.basin.static is not None:
+        ribasim_model.basin.static = ribasim_model.basin.static.df.loc[
+            ribasim_model.basin.static.df.node_id.isin(basin_ids)
+        ].reset_index(drop=True)
+    else:
+        ribasim_model.basin.time = ribasim_model.basin.time.df.loc[
+            ribasim_model.basin.time.df.node_id.isin(basin_ids)
+        ].reset_index(drop=True)
 
     # Outlet
     outlet_ids = ribasim_model.outlet.node.df.loc[
