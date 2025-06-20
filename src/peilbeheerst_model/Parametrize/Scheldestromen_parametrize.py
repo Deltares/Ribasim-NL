@@ -111,6 +111,9 @@ with warnings.catch_warnings():
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
+# check target levels at both sides of the Manning Nodes
+ribasim_param.validate_manning_basins(ribasim_model)
+
 # model specific tweaks
 # the vrij-afwaterende basins are a multipolygon, in a single basin (189). Only retain the largest value
 exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 189].explode(
@@ -164,9 +167,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[1])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
-
-# TODO: Temporary fixes
-# Nothing required: All set and done!
 
 # (re) set 'meta_node_id'
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index

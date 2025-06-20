@@ -118,6 +118,9 @@ with warnings.catch_warnings():
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
+
 # merge basins
 ribasim_model.merge_basins(node_id=162, to_node_id=177, are_connected=False)
 ribasim_model.merge_basins(node_id=178, to_node_id=177, are_connected=True)
