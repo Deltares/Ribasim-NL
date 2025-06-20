@@ -254,9 +254,32 @@ df = pd.concat(
 df.set_index("code", inplace=True)
 names = df["naam"]
 
+# set meta_gestuwd in basins
+model.basin.node.df["meta_gestuwd"] = False
+model.outlet.node.df["meta_gestuwd"] = False
+model.pump.node.df["meta_gestuwd"] = True
+
+# set stuwen als gestuwd
+
+model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
+
+# set bovenstroomse basins als gestuwd
+node_df = model.node_table().df
+node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
+basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+
+# set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
+downstream_node_ids = (
+    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
+)
+model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+
 sanitize_node_table(
     model,
-    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_gestuwd"],
     copy_map=[
         {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
         {"node_types": ["Basin", "ManningResistance", "LevelBoundary"], "columns": {"name": ""}},
