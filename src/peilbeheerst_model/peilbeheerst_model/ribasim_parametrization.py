@@ -2143,12 +2143,12 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
         ribasim_model.basin.state.df.node_id.isin(basin_ids)
     ].reset_index(drop=True)
 
-    if ribasim_model.basin.static is not None:
-        ribasim_model.basin.static = ribasim_model.basin.static.df.loc[
+    if ribasim_model.basin.static.df is not None:
+        ribasim_model.basin.static.df = ribasim_model.basin.static.df.loc[
             ribasim_model.basin.static.df.node_id.isin(basin_ids)
         ].reset_index(drop=True)
     else:
-        ribasim_model.basin.time = ribasim_model.basin.time.df.loc[
+        ribasim_model.basin.time.df = ribasim_model.basin.time.df.loc[
             ribasim_model.basin.time.df.node_id.isin(basin_ids)
         ].reset_index(drop=True)
 
@@ -2184,11 +2184,21 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
 
     # identify empty static tables
     # Basin
-    basin_static_missing = ribasim_model.basin.node.df.loc[
-        ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.static.df.node_id)
-    ]  # .index.to_numpy()
-    if len(basin_static_missing) > 0:
-        print("\nFollowing node_id's in the Basin.static table are missing:\n", basin_static_missing.index.to_numpy())
+    if ribasim_model.basin.static.df is not None:
+        basin_static_missing = ribasim_model.basin.node.df.loc[
+            ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.static.df.node_id)
+        ]
+        if len(basin_static_missing) > 0:
+            print(
+                "\nFollowing node_id's in the Basin.static table are missing:\n", basin_static_missing.index.to_numpy()
+            )
+
+    else:
+        basin_time_missing = ribasim_model.basin.node.df.loc[
+            ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.time.df.node_id)
+        ]
+        if len(basin_time_missing) > 0:
+            print("\nFollowing node_id's in the Basin.time table are missing:\n", basin_time_missing.index.to_numpy())
 
     basin_state_missing = ribasim_model.basin.node.df.loc[
         ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.state.df.node_id)
@@ -2259,12 +2269,13 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
     if len(duplicated_ids) > 0:
         print("\nThe following node_ids are duplicates: \n", duplicated_ids)
 
-    # check for duplicated indexes in the basin static tables
-    duplicated_static_basin = ribasim_model.basin.static.df.loc[
-        ribasim_model.basin.static.df.duplicated(subset="node_id")
-    ]
-    if len(duplicated_static_basin) > 0:
-        print("\nFollowing indexes are duplicated in the basin.static table:\n", duplicated_static_basin)
+    if ribasim_model.basin.static.df is not None:
+        # check for duplicated indexes in the basin static tables
+        duplicated_static_basin = ribasim_model.basin.static.df.loc[
+            ribasim_model.basin.static.df.duplicated(subset="node_id")
+        ]
+        if len(duplicated_static_basin) > 0:
+            print("\nFollowing indexes are duplicated in the basin.static table:\n", duplicated_static_basin)
 
     # check for duplicated indexes in the outlet static tables
     duplicated_static_outlet = ribasim_model.outlet.static.df.loc[
