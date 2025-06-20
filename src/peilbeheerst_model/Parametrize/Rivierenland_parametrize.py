@@ -17,6 +17,7 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model, geometry
+from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -114,6 +115,9 @@ with warnings.catch_warnings():
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
+# check target levels at both sides of the Manning Nodes
+ribasim_param.validate_manning_basins(ribasim_model)
+
 # model specific tweaks
 # merge basins
 ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
@@ -164,13 +168,6 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
-# the spoelbak of Kinderdijk is not able to discharge water due to a lower default streefpeil level than the Lek. Change it manually. 36 discharges on 40, so make 36 larger
-ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["node_id"] == 36, "level"] = 4
-ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["node_id"] == 40, "level"] = 3
-
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 36, "meta_streefpeil"] = str(4)
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 40, "meta_streefpeil"] = str(3)
-
 # add levelboundary and a pump
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(136538, 422962)), [level_boundary.Static(level=[default_level])]
@@ -200,17 +197,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(ribasim_model.basin[237], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
-# add a TRC and LB near Groesbeek to Germany
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(103311, 433732)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(103315, 433716)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(ribasim_model.basin[36], tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-
 # add gemaal and LB at downstream Linge (Hardinxveld)
 pump_node = ribasim_model.pump.add(Node(geometry=Point(118539.25, 425972.46)), [pump.Static(flow_rate=[20])])
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -237,14 +223,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[30])
-
-# add gemaal from maalkom to Lek
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(103328, 433734)), [level_boundary.Static(level=[default_level])]
-)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(103328, 433720)), [pump.Static(flow_rate=[20])])
-ribasim_model.link.add(ribasim_model.basin[40], pump_node)
-ribasim_model.link.add(pump_node, level_boundary_node)
 
 # Van Dam van Brakel is both afvoergemaal as aanvoer-outlet
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -292,8 +270,6 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(158270, 436942)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(158276, 436942)), [pump.Static(flow_rate=[20])])
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[86])
 
@@ -407,16 +383,18 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
+offline_budgets = AssignOfflineBudgets()
+offline_budgets.compute_budgets(ribasim_model)
+
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(
-    ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS, basin_aanvoer_off=(40, 204)
+    ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS, basin_aanvoer_off=(204)
 )
 
 # change the control of the outlet at Kinderdijk
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 355, "min_upstream_level"] = 2
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 280, "meta_categorie"] = (
     "Inlaat boezem, afvoer gemaal"
 )

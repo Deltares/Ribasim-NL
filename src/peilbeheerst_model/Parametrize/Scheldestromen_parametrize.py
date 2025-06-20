@@ -16,6 +16,7 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage
+from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -110,6 +111,9 @@ with warnings.catch_warnings():
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
+# check target levels at both sides of the Manning Nodes
+ribasim_param.validate_manning_basins(ribasim_model)
+
 # model specific tweaks
 # the vrij-afwaterende basins are a multipolygon, in a single basin (189). Only retain the largest value
 exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 189].explode(
@@ -163,9 +167,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[1])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
-
-# TODO: Temporary fixes
-# Nothing required: All set and done!
 
 # (re) set 'meta_node_id'
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
@@ -244,6 +245,9 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+
+offline_budgets = AssignOfflineBudgets()
+offline_budgets.compute_budgets(ribasim_model)
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)

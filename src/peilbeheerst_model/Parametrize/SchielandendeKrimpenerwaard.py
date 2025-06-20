@@ -16,6 +16,7 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -109,9 +110,6 @@ processor.run()
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
-
-# check basin area
-ribasim_param.validate_basin_area(ribasim_model)
 
 # model specific tweaks
 # change unknown streefpeilen to a default streefpeil
@@ -285,7 +283,6 @@ for n in inlaat_pump:
 ribasim_model.merge_basins(node_id=16, to_node_id=8)  # small (boezem)
 ribasim_model.merge_basins(node_id=145, to_node_id=2)  # small (boezem)
 
-# TODO: Temporary fixes
 # Flow directions have been changed: See feedback form
 ribasim_model.remove_node(478, True)
 ribasim_model.remove_node(641, False)
@@ -302,6 +299,12 @@ ribasim_model.link.add(pump_node, ribasim_model.basin[97])
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
+
+# check target levels at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
@@ -385,6 +388,9 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+
+offline_budgets = AssignOfflineBudgets()
+offline_budgets.compute_budgets(ribasim_model)
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)

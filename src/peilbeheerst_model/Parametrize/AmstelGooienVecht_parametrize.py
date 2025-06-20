@@ -17,6 +17,7 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -116,6 +117,9 @@ with warnings.catch_warnings():
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
+
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
 
 # merge basins
 ribasim_model.merge_basins(node_id=162, to_node_id=177, are_connected=False)
@@ -327,6 +331,9 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+
+offline_budgets = AssignOfflineBudgets()
+offline_budgets.compute_budgets(ribasim_model)
 
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
