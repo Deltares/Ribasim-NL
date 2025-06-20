@@ -2073,12 +2073,10 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
     apply_on_pumps: bool = kwargs.pop("apply_on_pumps", True)
 
     # collect nodes that are part of the 'hoofdwatersysteem'
-    main_water_system_node_ids = (
-        ribasim_model.basin.state.df.loc[
-            ribasim_model.basin.state.df["meta_categorie"] == "hoofdwater", "node_id"
-        ].to_list()
-        + ribasim_model.level_boundary.node.df.index.to_list()
-    )
+    main_water_system_node_ids = ribasim_model.basin.state.df.loc[
+        ribasim_model.basin.state.df["meta_categorie"] == "hoofdwater", "node_id"
+    ].to_list()
+    level_boundaries = ribasim_model.level_boundary.node.df.index.to_list()
 
     # add continuous control nodes to outlets
     if apply_on_outlets:
@@ -2092,6 +2090,7 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
                     & outlet["meta_to_node_id"].isin(main_water_system_node_ids)
                 )
             )
+            & (~outlet["meta_from_node_id"].isin(level_boundaries) & ~outlet["meta_to_node_id"].isin(level_boundaries))
         ]
         if len(selection) > 0:
             selection.apply(
@@ -2107,7 +2106,11 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
     # add continuous control nodes to pumps
     if apply_on_pumps:
         pump = ribasim_model.pump.static.df.copy()
-        selection = pump[(pump["meta_func_aanvoer"] == 1) & (pump["meta_func_afvoer"] == 1)]
+        selection = pump[
+            (pump["meta_func_aanvoer"] == 1)
+            & (pump["meta_func_afvoer"] == 1)
+            & (~pump["meta_from_node_id"].isin(level_boundaries) & ~pump["meta_to_node_id"].isin(level_boundaries))
+        ]
         if len(selection) > 0:
             selection.apply(
                 lambda r: add_continuous_control_node(
