@@ -962,11 +962,12 @@ def iterate_TRC(
                 pbar.update(1)
 
 
-def validate_basin_area(model):
+def validate_basin_area(model, threshold_area=45000):
     """
     Validate the area of basins in the model.
 
     :param model: The ribasim model to validate
+    :param threshold_area: The area threshold for validation
     :return: None
     """
     too_small_basins = []
@@ -976,12 +977,12 @@ def validate_basin_area(model):
         basin_geometry = model.basin.area.df.loc[model.basin.area.df["meta_node_id"] == basin_id, "geometry"]
         if not basin_geometry.empty:
             basin_area = basin_geometry.iloc[0].area
-            if basin_area < 100:
+            if basin_area < threshold_area:
                 error = True
-                print(f"Basin with Node ID {basin_id} has an area smaller than 100 m²: {basin_area} m²")
+                print(f"Basin with Node ID {basin_id} has an area smaller than {threshold_area} m²: {basin_area} m²")
                 too_small_basins.append(basin_id)
     if not error:
-        print("All basins are larger than 100 m²")
+        print(f"All basins are larger than {threshold_area} m²")
 
     return
 
@@ -1033,7 +1034,7 @@ def validate_manning_basins(model):
     for col in ["downstream_streefpeil", "upstream_streefpeil"]:
         manning_nodes[col] = pd.to_numeric(manning_nodes[col], errors="coerce").round(2)
 
-    if len(manning_nodes > 0):
+    if not manning_nodes.empty:
         print("Warning! The streefpeilen on both sides of following Manning Nodes are not equal!")
         print(manning_nodes.loc[manning_nodes.downstream_streefpeil != manning_nodes.upstream_streefpeil])
 
@@ -2073,12 +2074,10 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
     apply_on_pumps: bool = kwargs.pop("apply_on_pumps", True)
 
     # collect nodes that are part of the 'hoofdwatersysteem'
-    main_water_system_node_ids = (
-        ribasim_model.basin.state.df.loc[
-            ribasim_model.basin.state.df["meta_categorie"] == "hoofdwater", "node_id"
-        ].to_list()
-        + ribasim_model.level_boundary.node.df.index.to_list()
-    )
+    main_water_system_node_ids = ribasim_model.basin.state.df.loc[
+        ribasim_model.basin.state.df["meta_categorie"] == "hoofdwater", "node_id"
+    ].to_list()
+    level_boundaries = ribasim_model.level_boundary.node.df.index.to_list()
 
     # add continuous control nodes to outlets
     if apply_on_outlets:
@@ -2092,6 +2091,7 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
                     & outlet["meta_to_node_id"].isin(main_water_system_node_ids)
                 )
             )
+            & (~outlet["meta_from_node_id"].isin(level_boundaries) & ~outlet["meta_to_node_id"].isin(level_boundaries))
         ]
         if len(selection) > 0:
             selection.apply(
@@ -2107,7 +2107,11 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
     # add continuous control nodes to pumps
     if apply_on_pumps:
         pump = ribasim_model.pump.static.df.copy()
-        selection = pump[(pump["meta_func_aanvoer"] == 1) & (pump["meta_func_afvoer"] == 1)]
+        selection = pump[
+            (pump["meta_func_aanvoer"] == 1)
+            & (pump["meta_func_afvoer"] == 1)
+            & (~pump["meta_from_node_id"].isin(level_boundaries) & ~pump["meta_to_node_id"].isin(level_boundaries))
+        ]
         if len(selection) > 0:
             selection.apply(
                 lambda r: add_continuous_control_node(
