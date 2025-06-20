@@ -5,7 +5,6 @@ import os
 import warnings
 
 from ribasim import Node
-from ribasim.config import Solver
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
 
@@ -23,9 +22,6 @@ MIXED_CONDITIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
-
-# enlarge (relative) tolerance to smoothen any possible instabilities
-solver = Solver(abstol=1e-9, reltol=1e-9)
 
 # model settings
 waterschap = "Zuiderzeeland"
@@ -111,7 +107,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml, solver=solver)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
 # merge the smallest basins together
 ribasim_model.merge_basins(node_id=30, to_node_id=29)  # 4363 m2
