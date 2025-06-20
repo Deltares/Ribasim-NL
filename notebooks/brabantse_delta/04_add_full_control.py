@@ -77,12 +77,14 @@ model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 # set upstream level boundaries at 999 meters
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
 # model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
+# Hoofdinlaten krijgen 10m3/s
 model.outlet.static.df.loc[
     model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
 ] = 10
-model.outlet.static.df.loc[
-    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
 ] = 10
+
 
 # %% sturing uit alle niet-gestuwde outlets halen
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
@@ -101,6 +103,12 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 668, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 408, "min_upstream_level"] = 0.55  # Haven van Zevenbergen
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 589, "min_upstream_level"] = 0.55  # Roode Vaart Sluis
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 884, "min_upstream_level"] = 0.55  # Roode Vaart duiker
+
+model.level_boundary.static.df.loc[
+    model.level_boundary.static.df.node_id == 41, "level"
+] = -1  # Inlaat Oosth Wilhelminakanaal
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 41, "level"] = -1  # Inlaat RWZI Dongemond
+
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 

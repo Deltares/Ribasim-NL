@@ -39,11 +39,16 @@ original_model = model.model_copy(deep=True)
 
 # %%
 update_basin_static(model=model, evaporation_mm_per_day=1)
-add_from_to_nodes_and_levels(model)
-# %% deactivate inlets
-node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = True
 
+# %%
+# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
+update_levels = model.basin_outstate.df.set_index("node_id")["level"]
+basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
+mask = model.basin.area.df["node_id"].isin(basin_ids)
+model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
+    lambda x: update_levels[x]
+)
+add_from_to_nodes_and_levels(model)
 # %%
 aanvoergebieden_df = gpd.read_file(aanvoer_path)
 aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
@@ -75,12 +80,41 @@ model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
 # model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 
+
+# %% Alle inlaten op max 0.5m3/s gezet.
+node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 0.1
+
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1
+model.pump.static.df.loc[model.pump.static.df.node_id == 541, "max_downstream_level"] = -1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1162, "max_flow_rate"] = 0.2
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 514, "max_flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1082, "max_flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1081, "max_flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 368, "max_flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 947, "max_flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 911, "max_flow_rate"] = 0.1
+
+# Hoofdinlaten krijgen 10m3/s
 model.outlet.static.df.loc[
     model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
 ] = 10
-model.outlet.static.df.loc[
-    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
 ] = 10
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "max_flow_rate"
+] = 10
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "max_flow_rate"
+] = 10
+
+# %% sturing uit alle niet-gestuwde outlets halen
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
+non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
+
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")

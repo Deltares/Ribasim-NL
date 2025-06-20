@@ -23,6 +23,7 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(AUTHORITY, "aangeleverd", "Na_levering", "HyDAMO_WM_20230720.gpkg")
+model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -35,6 +36,15 @@ cloud.synchronize(
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, evaporation_mm_per_day=1)
+
+
+# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
+update_levels = model.basin_outstate.df.set_index("node_id")["level"]
+basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
+mask = model.basin.area.df["node_id"].isin(basin_ids)
+model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
+    lambda x: update_levels[x]
+)
 add_from_to_nodes_and_levels(model)
 
 # filter aanvoergebieden
@@ -60,19 +70,37 @@ fixed and up-and-running beforehand.
 `ContinuousControl`-nodes require `Time`-tables instead of `Static`-tables. If both are defined (for the same node,
 Ribasim will raise an error and thus not execute.
 """
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
 model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 
+# Hoofdinlaten krijgen 10m3/s
+
+node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_flow_rate"] = 0.1
+
 
 model.outlet.static.df.loc[
     model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
 ] = 10
-model.outlet.static.df.loc[
-    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
 ] = 10
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "max_flow_rate"
+] = 10
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "max_flow_rate"
+] = 10
+
+# %% sturing uit alle niet-gestuwde outlets halen
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
+non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
+
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")

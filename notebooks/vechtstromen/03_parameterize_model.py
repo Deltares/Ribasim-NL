@@ -27,7 +27,6 @@ qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.q
 # cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %%
-
 # read
 model = Model.read(ribasim_toml)
 
@@ -36,6 +35,7 @@ start_time = time.time()
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1)
 print("Elapsed Time:", time.time() - start_time, "seconds")
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 
 # %% deactivate inlets
@@ -53,27 +53,25 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 # node_ids = model.outlet.node.df[model.outlet.node.df.meta_function.str.startswith("inlaat")].index.to_numpy()
 # model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
 
-
 # %%
-
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, ["meta_categorie"]] = "Inlaat"
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 1151, "active"] = False
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 704, "min_upstream_level"] = 10.5
-model.pump.static.df.loc[model.pump.static.df.node_id == 672, "flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 947, "flow_rate"] = 2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "flow_rate"] = 0.5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 532, "flow_rate"] = 2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1060, "flow_rate"] = 2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 44, "flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "flow_rate"] = 0.5
+model.pump.static.df.loc[model.pump.static.df.node_id == 672, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 947, "max_flow_rate"] = 2
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "max_flow_rate"] = 0.5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 532, "max_flow_rate"] = 2
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1060, "max_flow_rate"] = 2
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 44, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "max_flow_rate"] = 0.5
 
 # %%
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
+mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
-
+# %%
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 add_check_basin_level(model=model)

@@ -27,21 +27,24 @@ cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # read
 model = Model.read(ribasim_toml)
-
 start_time = time.time()
-
 
 # %%
 # parameterize
-
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg)
+model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 # Fix afvoer
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "active"] = False
 
-# Write model
+# %%
 
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
+mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+
+# Write model
 add_check_basin_level(model=model)
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)

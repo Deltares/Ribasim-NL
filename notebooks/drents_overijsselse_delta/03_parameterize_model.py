@@ -31,17 +31,20 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 model = Model.read(ribasim_toml)
 start_time = time.time()
 
+
 # %%
 # parameterize
 
 model.parameterize(
-    static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10, profiles_gpkg=profiles_gpkg, max_pump_flow_rate=125
+    static_data_xlsx=static_data_xlsx,
+    precipitation_mm_per_day=10,
+    profiles_gpkg=profiles_gpkg,
+    max_pump_flow_rate=125,
 )
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
-
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # %%
 # Inlaten op False zetten
@@ -50,7 +53,6 @@ outlet_gdf = gpd.GeoDataFrame(outlet_node_df, geometry="geometry", crs="EPSG:289
 
 if inlaten_gdf.crs != outlet_gdf.crs:
     inlaten_gdf = inlaten_gdf.to_crs(outlet_gdf.crs)
-
 
 outlet_gdf["geometry"] = outlet_gdf.geometry.buffer(0.1)
 joined = gpd.sjoin(outlet_gdf, inlaten_gdf, how="inner", predicate="intersects")
@@ -62,10 +64,10 @@ else:
         model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, ["meta_categorie"]] = "Inlaat"
 
 node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()
-# %%
-# Set inlaten to inactive
-model.update_node(node_id=1401, node_type="Outlet")
+model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "flow_rate"] = 0.1
 
+# %%
+model.update_node(node_id=1401, node_type="Outlet")
 model.reverse_edge(edge_id=894)
 model.reverse_edge(edge_id=1983)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "min_upstream_level"] = -2.6
@@ -73,22 +75,17 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 600, "min_upstream_leve
 model.pump.static.df.loc[model.pump.static.df.node_id == 601, "min_upstream_level"] = 4
 model.pump.static.df.loc[model.pump.static.df.node_id == 602, "min_upstream_level"] = 2.65
 model.pump.static.df.loc[model.pump.static.df.node_id == 1095, "min_upstream_level"] = 0
-model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 739, "active"] = True
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 749, "active"] = True
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 841, "active"] = True
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1724, "active"] = True
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1257, "active"] = False
 model.pump.static.df.loc[model.pump.static.df.node_id == 2594, "active"] = False
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "meta_categorie"] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1143, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1143, "meta_categorie"] = "Inlaat"
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "meta_categorie"] = "Inlaat"
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "meta_categorie"] = "Inlaat"
 model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1
@@ -100,8 +97,16 @@ model.merge_basins(basin_id=56, to_basin_id=59, are_connected=True)
 model.merge_basins(basin_id=1681, to_basin_id=1717, are_connected=True)
 model.merge_basins(basin_id=2348, to_basin_id=1756, are_connected=False)
 model.merge_basins(basin_id=2192, to_basin_id=2194, are_connected=False)
+
+
 # %%
 
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
+mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+
+# %%
 
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")

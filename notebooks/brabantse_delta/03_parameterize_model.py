@@ -87,6 +87,12 @@ model.merge_basins(node_id=2002, to_node_id=2215, are_connected=True)
 model.merge_basins(node_id=2215, to_node_id=2248, are_connected=True)
 model.merge_basins(node_id=2247, to_node_id=1998, are_connected=True)
 model.remove_node(998, remove_edges=True)
+model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_streefpeil"] = 4.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "meta_streefpeil"] = 0.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1909, "meta_streefpeil"] = 0.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1634, "meta_streefpeil"] = 1.2  # Basin Turfvaart meetpunt
+model.basin.area.df.loc[model.basin.area.df.node_id == 1584, "meta_streefpeil"] = 0.15
+model.basin.area.df.loc[model.basin.area.df.node_id == 1987, "meta_streefpeil"] = -0.5
 # %%
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
@@ -98,21 +104,25 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # %%
 # Flow rate en levels pumps verbeteren
-model.pump.static.df.loc[model.pump.static.df.node_id == 535, "flow_rate"] = 0.05
-model.pump.static.df.loc[model.pump.static.df.node_id == 517, "flow_rate"] = 5  # Let op: boven max cap van 2.83m3/s!
-model.pump.static.df.loc[model.pump.static.df.node_id == 829, "flow_rate"] = 0.1  # inlaat
+model.pump.static.df.loc[model.pump.static.df.node_id == 535, "max_flow_rate"] = 0.05
+model.pump.static.df.loc[model.pump.static.df.node_id == 517, "max_flow_rate"] = (
+    5  # Let op: boven max cap van 2.83m3/s!
+)
+model.pump.static.df.loc[model.pump.static.df.node_id == 829, "max_flow_rate"] = 0.1  # inlaat
 model.pump.static.df.loc[model.pump.static.df.node_id == 829, "max_downstream_level"] = 6
-model.pump.static.df.loc[model.pump.static.df.node_id == 977, "flow_rate"] = 0.1  # inlaat
-model.pump.static.df.loc[model.pump.static.df.node_id == 984, "flow_rate"] = 0.1  # Gemaal keersluis Leursche haven
-model.pump.static.df.loc[model.pump.static.df.node_id == 446, "flow_rate"] = 2  # Let op: boven max cap van 0.06m3/s!
+model.pump.static.df.loc[model.pump.static.df.node_id == 977, "max_flow_rate"] = 0.1  # inlaat
+model.pump.static.df.loc[model.pump.static.df.node_id == 984, "max_flow_rate"] = 0.1  # Gemaal keersluis Leursche haven
+model.pump.static.df.loc[model.pump.static.df.node_id == 446, "max_flow_rate"] = (
+    2  # Let op: boven max cap van 0.06m3/s!
+)
 model.pump.static.df.loc[model.pump.static.df.node_id == 214, "max_downstream_level"] = 1.4
 model.pump.static.df.loc[model.pump.static.df.node_id == 214, "min_upstream_level"] = 0.55
-model.pump.static.df.loc[model.pump.static.df.node_id == 901, "flow_rate"] = 1  # max cap verhoogd! Check!
-model.pump.static.df.loc[model.pump.static.df.node_id == 453, "flow_rate"] = 1  # max cap verhoogd! Check!
-model.pump.static.df.loc[model.pump.static.df.node_id == 376, "flow_rate"] = 1  # max cap verhoogd! Check!
-model.pump.static.df.loc[model.pump.static.df.node_id == 449, "flow_rate"] = 1  # max cap verhoogd! Check!
-model.pump.static.df.loc[model.pump.static.df.node_id == 703, "flow_rate"] = 1  # max cap verhoogd! Check!
-model.pump.static.df.loc[model.pump.static.df.node_id == 747, "flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 901, "max_flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 453, "max_flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 376, "max_flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 449, "max_flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 703, "max_flow_rate"] = 1  # max cap verhoogd! Check!
+model.pump.static.df.loc[model.pump.static.df.node_id == 747, "max_flow_rate"] = 1  # max cap verhoogd! Check!
 
 # Upstream levels kloppen niet
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 845, "min_upstream_level"] = 6.1
@@ -122,11 +132,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 217, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 4.1
 model.pump.static.df.loc[model.pump.static.df.node_id == 972, "min_upstream_level"] = 0.55  # Roode Vaart Afvoergemaal
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 36, "level"] = -3
-model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_streefpeil"] = 4.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "meta_streefpeil"] = 0.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1909, "meta_streefpeil"] = 0.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1634, "meta_streefpeil"] = 1.2  # Basin Turfvaart meetpunt
-model.basin.state.df.loc[model.basin.state.df.node_id == 1584, "meta_streefpeil"] = 0.15
+
 
 # Voor outlets flow_updates
 flow_updates = {
@@ -187,6 +193,7 @@ flow_updates = {
     655: 0.1,
     656: 0.1,
     676: 0.1,
+    732: 0.5,
     737: 1,
     738: 1,
     745: 1,  # Let op, max cap Groenvenseweg was 0.067m3/s, nu 1 m3/s! Check!
@@ -203,7 +210,7 @@ flow_updates = {
 }
 
 for node_id, flow_rate in flow_updates.items():
-    model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, "flow_rate"] = flow_rate
+    model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, "max_flow_rate"] = flow_rate
 
 # %% Geen sturing op duikers in niet gestuwde gebieden
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
@@ -222,6 +229,12 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 668, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 408, "min_upstream_level"] = 0.55  # Haven van Zevenbergen
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 589, "min_upstream_level"] = 0.55  # Roode Vaart Sluis
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 884, "min_upstream_level"] = 0.55  # Roode Vaart duiker
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id == 732, "min_upstream_level"
+] = -0.5  # Jan Steenlaan (LOPstuw), aangepast anders stroomt model leeg via Hooislobben
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id == 250, "min_upstream_level"
+] = -0.5  # Rijksweg/Kraanschotsedijk
 # %%
 
 # Write model
