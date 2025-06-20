@@ -64,7 +64,7 @@ else:
         model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, ["meta_categorie"]] = "Inlaat"
 
 node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_flow_rate"] = 0.1
 
 # %%
 model.update_node(node_id=1401, node_type="Outlet")
