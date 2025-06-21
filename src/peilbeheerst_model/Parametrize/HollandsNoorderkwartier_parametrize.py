@@ -320,6 +320,23 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
+# presumably wrong conversion of flow capacity in the data
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 452, "flow_rate"] = 0.4
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin([895, 1144]), "flow_rate"] = 1.17
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin([895, 1144]), "flow_rate"] = 1.17
+
+# according data flow_rate of 0
+zero_flow_pumps = [1293, 677]
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25
+
+increase_flow_rate_pumps = [1183, 827, 1108, 300, 735, 1010, 611, 1042, 392, 424, 626, 1144, 895, 536, 1048, 1132]
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
+] *= 60
+
+# set the flow_rate to the max_flow_rate
+ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
+
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
