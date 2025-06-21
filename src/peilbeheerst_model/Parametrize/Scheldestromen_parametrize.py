@@ -20,6 +20,7 @@ from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -189,8 +190,24 @@ add_storage_basins = AddStorageBasins(
 add_storage_basins.create_bergende_basins()
 
 # set forcing
-if MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 10)
+if DYNAMIC_CONDITIONS:
+    # Add dynamic meteo
+    forcing = SetDynamicForcing(
+        model=ribasim_model,
+        cloud=cloud,
+        startdate=starttime,
+        enddate=endtime,
+    )
+
+    ribasim_model = forcing.add()
+
+    # Add dynamic groundwater
+    offline_budgets = AssignOfflineBudgets()
+    offline_budgets.compute_budgets(ribasim_model)
+
+elif MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 1)
+
 else:
     forcing_dict = {
         "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
@@ -200,8 +217,8 @@ else:
     }
     ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
-# set pump capacity for each pump
-ribasim_model.pump.static.df["flow_rate"] = 0.16667  # 10 kuub per minuut
+# reset pump capacity for each pump
+ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
@@ -209,7 +226,9 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 
 # add the default levels
 if MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_level_boundaries(ribasim_model, starttime, endtime, -0.42, 0.42)
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(
+        ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
+    )
     ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2
     ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2
 else:
@@ -219,6 +238,20 @@ else:
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
+# add control, based on the meta_categorie
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
+ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
+ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
+
+for node in inlaat_structures:
+    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
+    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_afvoer"] = 0
+
+# ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
+ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
+ribasim_param.add_continuous_control(ribasim_model, dy=-200)
 
 # set undefined pumps to 'afvoer'
 ribasim_model.pump.static.df.loc[
@@ -245,32 +278,6 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
-
-forcing = SetDynamicForcing(
-    model=ribasim_model,
-    cloud=cloud,
-    startdate=starttime,
-    enddate=endtime,
-)
-
-ribasim_model = forcing.add()
-
-offline_budgets = AssignOfflineBudgets()
-offline_budgets.compute_budgets(ribasim_model)
-
-# add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
-ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
-ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
-
-for node in inlaat_structures:
-    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
-    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_afvoer"] = 0
-
-# ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
-ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-ribasim_param.add_continuous_control(ribasim_model, dy=-200)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
