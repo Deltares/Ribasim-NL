@@ -1388,8 +1388,6 @@ def determine_min_upstream_max_downstream_levels(
 
     ribasim_model.pump.static.df["min_upstream_level"] = np.nan
     ribasim_model.pump.static.df["max_downstream_level"] = np.nan
-    ribasim_model.pump.static.df["max_flow_rate"] = np.nan
-    ribasim_model.pump.static.df["flow_rate"] = np.nan
 
     # make a temp copy to reduce line length, place it later again in the model
     outlet = ribasim_model.outlet.static.df.copy()
@@ -1441,8 +1439,9 @@ def determine_min_upstream_max_downstream_levels(
     check_for_nans_in_columns(outlet, "outlet")
     check_for_nans_in_columns(pump, "pump")
 
-    print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
-    pump.fillna({"flow_rate": 0.1234}, inplace=True)
+    if pump["flow_rate"].isna().any():
+        print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
+        pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
@@ -1460,7 +1459,6 @@ def set_dynamic_min_upstream_max_downstream(ribasim_model: ribasim.Model) -> Non
     :param ribasim_model: ribasim model
     :type ribasim_model: ribasim.Model
     """
-    print(ribasim_model.level_boundary.node.df)
     level_boundary_node_ids = ribasim_model.level_boundary.node.df["meta_node_id"].values
 
     for structure in ("outlet", "pump"):
