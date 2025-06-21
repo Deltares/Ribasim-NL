@@ -414,6 +414,11 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
+increase_flow_rate_pumps = [395]
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
+] *= 60
+
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
