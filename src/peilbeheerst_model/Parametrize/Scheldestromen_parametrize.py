@@ -231,10 +231,15 @@ if MIXED_CONDITIONS:
     )
     ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2
     ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2
+    ribasim_model.level_boundary.time.df.loc[
+        (ribasim_model.level_boundary.time.df.node_id == 635) & (ribasim_model.level_boundary.time.df.level == -0.4),
+        "level",
+    ] = 0.4  # change value of a single LB during summer time
 else:
     ribasim_model.level_boundary.static.df.level = default_level
     ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2
     ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2
+
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)

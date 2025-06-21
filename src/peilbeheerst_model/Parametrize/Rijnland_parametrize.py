@@ -214,7 +214,7 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
-        ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
+        ribasim_model, starttime, endtime, -2, 2, DYNAMIC_CONDITIONS
     )
 else:
     ribasim_model.level_boundary.static.df.level = default_level
@@ -258,6 +258,19 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+
+# according data flow_rate of 0
+zero_flow_pumps = [1436, 1282, 1472]
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25
+
+# presumably wrong conversion of flow capacity in the data
+increase_flow_rate_pumps = [793, 754, 987, 354, 463, 1179, 496, 781]
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
+] *= 60
+
+# set the flow_rate to the max_flow_rate
+ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason

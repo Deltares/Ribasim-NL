@@ -551,9 +551,10 @@ if DYNAMIC_CONDITIONS:
     offline_budgets = AssignOfflineBudgets()
     offline_budgets.compute_budgets(ribasim_model)
 
-elif MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 1)
-
+if MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(
+        ribasim_model, starttime, endtime, -0.42, 0.4, DYNAMIC_CONDITIONS
+    )
 else:
     forcing_dict = {
         "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),

@@ -19,7 +19,7 @@ from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
+DYNAMIC_CONDITIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -624,7 +624,7 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
-        ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
+        ribasim_model, starttime, endtime, -0.42, 1.24, DYNAMIC_CONDITIONS
     )
 else:
     ribasim_model.level_boundary.static.df.level = default_level
