@@ -366,7 +366,7 @@ assign_metadata.add_meta_to_basins(
 # @TODO: properly retrieve unkown pumping capacities based on upstream surface area
 ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.flow_rate.fillna(value=25)
 ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.max_flow_rate.fillna(value=25)
-increase_flow_rate_pumps = [412]
+increase_flow_rate_pumps = [412, 146]
 
 # presumably wrong conversion of flow capacity in the data
 for pump_id in increase_flow_rate_pumps:
