@@ -310,7 +310,8 @@ ribasim_param.change_pump_func(ribasim_model, 722, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 1005, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 1005, "afvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 1153, "aanvoer", 0)
-
+ribasim_param.change_pump_func(ribasim_model, 1025, "afvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, 1025, "aanvoer", 1)
 # (re)set meta_node_id
 ribasim_model.level_boundary.node.df["meta_node_id"] = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df["meta_node_id"] = ribasim_model.tabulated_rating_curve.node.df.index
@@ -371,6 +372,12 @@ if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
         ribasim_model, starttime, endtime, -0.6, 12.4, DYNAMIC_CONDITIONS
     )
+    ribasim_model.level_boundary.time.df.loc[
+        (ribasim_model.level_boundary.time.df.node_id.isin([963, 957]))
+        & (ribasim_model.level_boundary.time.df.level == 12.4),
+        "level",
+    ] = 2.5  # change value of a single LB during summer time, so it can still discharge excess water
+
 else:
     ribasim_model.level_boundary.static.df.level = default_level
 
