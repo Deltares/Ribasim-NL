@@ -605,7 +605,7 @@ assign_metadata.add_meta_to_pumps(
         "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
     },
     max_distance=100,
-    factor_flowrate=1 / 60,  # m3/min -> m3/s
+    factor_flowrate=1,  # m3/s
 )
 assign_metadata.add_meta_to_basins(
     layer="aggregation_area",
