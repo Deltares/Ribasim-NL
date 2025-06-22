@@ -537,24 +537,17 @@ ribasim_param.change_pump_func(ribasim_model, 2242, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 2453, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 2572, "afvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 1454, "afvoer", 0)
+
+# change pumps from aanvoer to afvoer
+aanvoer_to_afvoer_pump = [2420, 924, 2148, 2320, 2191, 2457]
+for pumpid in aanvoer_to_afvoer_pump:
+    ribasim_param.change_pump_func(ribasim_model, pumpid, "aanvoer", 0)
+    ribasim_param.change_pump_func(ribasim_model, pumpid, "afvoer", 1)
+
 # basins are connected by both a `Pump`- and `Manning`-node: removed `Pump`-nodes due to same 'streefpeil'-values
 ribasim_model.remove_node(953, True)
 ribasim_model.remove_node(1041, True)
 ribasim_model.remove_node(2534, True)
-
-# TODO: Additional temporary fixes
-# Reversing direction (cannot be done via FF)
-ribasim_model.remove_node(913, True)
-ribasim_model.remove_node(2596, False)
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(105288, 418521)), [level_boundary.Static(level=[default_level])]
-)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(105287, 418521)), [pump.Static(flow_rate=[20])])
-ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
-ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
-ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[84])
-
 ribasim_model.remove_node(2125, True)
 
 # (re) set 'meta_node_id'
@@ -660,6 +653,9 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+
+ribasim_model.pump.static.df.flow_rate = 25
+ribasim_model.pump.static.df.max_flow_rate = 25
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
