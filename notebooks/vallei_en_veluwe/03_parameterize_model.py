@@ -1,13 +1,15 @@
 # %%
 import time
 
+import pandas as pd
+
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 authority = "ValleienVeluwe"
 short_name = "venv"
-run_model = False
+run_model = True
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -62,8 +64,8 @@ model.write(ribasim_toml)
 
 # run model
 if run_model:
-    exit_code = model.run()
-    assert exit_code == 0
+    result = model.run()
+    assert result.exit_code == 0
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_afvoer()
