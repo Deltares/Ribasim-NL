@@ -98,6 +98,17 @@ non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
 
+model.pump.static.df.loc[
+    model.pump.static.df.node_id == 34, "min_upstream_level"
+] = -1.26  # Check! Den Deel. Bij min_upstream_level =-1.14m NP geen aanvoer mogelijk. Outlet 722 lijkt niet OK. Bovenstrooms peil lagen dan benedenstrooms peil
+model.pump.static.df.loc[
+    model.pump.static.df.node_id == 35, "min_upstream_level"
+] = -1.26  # Check! Den Deel. Bij min_upstream_level =-1.14m NP geen aanvoer mogelijk. Outlet 722 lijkt niet OK. Bovenstrooms peil lagen dan benedenstrooms peil
+
+model.pump.static.df.node_id == 209, "min_upstream_level"
+] = -1.26  # Check! Bij min_upstream_level =-1.14m NP geen aanvoer mogelijk. Outlet 722 lijkt niet OK. Bovenstrooms peil lagen dan benedenstrooms peil
+
+
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)
