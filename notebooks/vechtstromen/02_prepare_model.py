@@ -423,6 +423,7 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
+    custom_nodes={21: "Buitenland", 34: "Buitenland", 2250: "Buitenland", 2265: "Buitenland", 2268: "Buitenland"},
 )
 model = assign.assign_authorities()
 

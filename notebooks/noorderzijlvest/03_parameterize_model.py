@@ -1,6 +1,8 @@
 # %%
 import time
 
+import pandas as pd
+
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.check_basin_level import add_check_basin_level
@@ -16,7 +18,7 @@ static_data_xlsx = cloud.joinpath(
     "parameters",
     "static_data.xlsx",
 )
-ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
 

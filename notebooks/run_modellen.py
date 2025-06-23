@@ -1,3 +1,6 @@
+# %%
+from datetime import datetime
+
 import pandas as pd
 
 from ribasim_nl import CloudStorage, Model
@@ -47,5 +50,6 @@ for authority in authorities:
         }
 
 
-pd.DataFrame.from_dict(data, orient="index").to_excel(cloud.joinpath("simulation_efficiency.xlsx"))
-# %%
+pd.DataFrame.from_dict(data, orient="index").to_excel(
+    cloud.joinpath(f"simulation_efficiency_{datetime.today().strftime('%Y%m%d')}.xlsx")
+)
