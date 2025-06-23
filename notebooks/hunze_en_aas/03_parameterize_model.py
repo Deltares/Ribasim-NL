@@ -31,7 +31,7 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=10)
+model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
@@ -44,11 +44,11 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_f
 
 # %% Fixes
 
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 183, "active"] = False
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 1220, "active"] = False
-# model.pump.static.df.loc[model.pump.static.df.node_id == 134, "active"] = False
-# model.pump.static.df.loc[model.pump.static.df.node_id == 728, "active"] = False
-# model.pump.static.df.loc[model.pump.static.df.node_id == 62, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 183, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1220, "active"] = False
+model.pump.static.df.loc[model.pump.static.df.node_id == 134, "active"] = False
+model.pump.static.df.loc[model.pump.static.df.node_id == 728, "active"] = False
+model.pump.static.df.loc[model.pump.static.df.node_id == 62, "active"] = False
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 570, "min_upstream_level"] = -1.27
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 815, "min_upstream_level"] = -1.27
 model.pump.static.df.loc[model.pump.static.df.node_id == 27, "max_flow_rate"] = 5
@@ -68,8 +68,8 @@ model.merge_basins(basin_id=1908, to_basin_id=1372)
 # %%
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+# model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+# model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
 # Write model
 add_check_basin_level(model=model)

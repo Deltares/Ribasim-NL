@@ -105,7 +105,7 @@ model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 44,
 model.pump.static.df.loc[model.pump.static.df.node_id == 1283, "max_downstream_level"] = -0.9
 
 # Gemaal De Groep: pump rate = 0.1m3/s (HKV, 2009)
-model.pump.static.df.loc[model.pump.static.df.node_id == 1283, "max_downstream_level"] = -0.9
+# model.pump.static.df.loc[model.pump.static.df.node_id == 1283, "max_downstream_level"] = -0.9
 
 # manning_node, wrong basin (anders lek)
 model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == 646, "active"] = False
@@ -280,14 +280,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 556, "max_downstrea
 # Grote Melm
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1295, "max_downstream_level"] = pd.NA
 
-# Inlaat Nijoever
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1295, "max_downstream_level"] = 0.8
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1295, "max_flow_rate"] = 1
-
-# Inlaat Nijoever
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1296, "max_downstream_level"] = 0.8
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1296, "max_flow_rate"] = 1
-
 # Stuw Hierdense beek
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 1297, "min_upstream_level"] = 6.55
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1297, "max_flow_rate"] = 1
@@ -299,6 +291,15 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "max_downstre
 model.pump.static.df.loc[model.pump.static.df.node_id == 240, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "min_upstream_level"] = 3
 
+# Fixes afvoer:
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 312, "min_upstream_level"] = 2.85
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 369, "min_upstream_level"] = 2.85
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 446, "min_upstream_level"] = 2.85
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 576, "min_upstream_level"] = 2.85
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 555, "min_upstream_level"] = 1.7
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 74, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 289, "min_upstream_level"] = 12
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 169, "min_upstream_level"] = -0.75
 
 # %%
 # Hoofdinlaten krijgen 10m3/s
