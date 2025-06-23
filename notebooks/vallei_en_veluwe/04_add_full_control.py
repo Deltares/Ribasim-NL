@@ -72,14 +72,22 @@ fixed and up-and-running beforehand.
 `ContinuousControl`-nodes require `Time`-tables instead of `Static`-tables. If both are defined (for the same node,
 Ribasim will raise an error and thus not execute.
 """
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
 model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.max_flow_rate
 model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
 
+# %% sturing uit alle niet-gestuwde outlets halen
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
+non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
+# %%
+# Fixes aanvoer
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 407, "max_flow_rate"] = 1
 
 # Grebbesluis: flow_rate: 2.85m3/s
@@ -121,9 +129,9 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 1284, "min_upstream_lev
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 599, "max_downstream_level"] = -0.99
 
 # Inlaat Malesuis toevoegen
-model.pump.static.df.loc[model.pump.static.df.node_id == 1286, "max_flow_rate"] = 5
-model.pump.static.df.loc[model.pump.static.df.node_id == 1286, "max_downstream_level"] = -0.44
-model.pump.static.df.loc[model.pump.static.df.node_id == 1286, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "flow_rate"] = 5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "max_downstream_level"] = -0.44
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "min_upstream_level"] = pd.NA
 
 # Inlaatduiker bij levelboundary
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 169, "min_upstream_level"] = -0.35
@@ -214,7 +222,7 @@ model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 2, 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "max_flow_rate"] = 1
 
 # Stuw Vlieterweg
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1298, "min_upstream_level"] = 3.45
+# model.outlet.static.df.loc[model.outlet.static.df.node_id == 1298, "min_upstream_level"] = 3.45
 # Stuw KST-4284
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1299, "min_upstream_level"] = 12.68
 
@@ -281,7 +289,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1296, "max_downstre
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1296, "max_flow_rate"] = 1
 
 # Stuw Hierdense beek
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1297, "min_upstream_level"] = 6.55
+# model.outlet.static.df.loc[model.outlet.static.df.node_id == 1297, "min_upstream_level"] = 6.55
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1297, "max_flow_rate"] = 1
 
 # Inlaat Mr Baron van der Feltz
@@ -292,13 +300,22 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 240, "max_downstream_le
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "min_upstream_level"] = 3
 
 
-# %% sturing uit alle niet-gestuwde outlets halen
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
 # %%
+# Hoofdinlaten krijgen 10m3/s
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
+] = 10
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
+] = 10
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "max_flow_rate"
+] = 10
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "max_flow_rate"
+] = 10
 
+# %%
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 
