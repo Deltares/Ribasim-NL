@@ -629,6 +629,7 @@ class Model(Model):
         gpkg = self.filepath.with_name("internal_basins.gpkg")
         df = self.basin.node.df[~self.basin.node.df.index.isin(self.edge.df.from_node_id)]
         df.to_file(gpkg)
+        return df
 
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None):
         """Find the closest basin_node."""

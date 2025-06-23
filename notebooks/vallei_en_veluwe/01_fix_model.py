@@ -180,7 +180,7 @@ model = reset_static_tables(model)
 
 # %%
 model.explode_basin_area()  # all multipolygons to singles
-model.basin.area.df.to_file("basin_area.gpkg", layer="model_basin_area")
+# model.basin.area.df.to_file("basin_area.gpkg", layer="model_basin_area")
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
 
@@ -227,8 +227,6 @@ model.redirect_edge(edge_id=745, from_node_id=1120)
 
 # fix boundary levels so we can get inflow
 model.reverse_direction_at_node(271)  # sluis Dieren is not an inlet
-model.reverse_direction_at_node(228)  # Inlaatgemaat diepe Gracht
-model.reverse_direction_at_node(470)  # Inlaatgemaat Goorpomp
 model.reverse_direction_at_node(302)  #
 model.reverse_direction_at_node(479)  # Laakse Duiker
 
@@ -297,6 +295,7 @@ model.merge_basins(basin_id=1051, to_basin_id=895)
 model.merge_basins(basin_id=1044, to_basin_id=1103)
 model.merge_basins(basin_id=1120, to_basin_id=862)
 model.merge_basins(basin_id=1218, to_basin_id=984)
+model.merge_basins(basin_id=1159, to_basin_id=1058, are_connected=False)
 
 
 # %% corrigeren knoop-topologie
@@ -369,6 +368,8 @@ model.use_validation = True
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
 model.report_basin_area()
-model.report_internal_basins()
+df = model.report_internal_basins()
+if not df.empty:
+    print(f"internal basins!: {df['node_id'].to_list()}")
 
 # %%
