@@ -155,7 +155,7 @@ for boundary_node_id in boundary_node_ids:
     couple_authority = model.level_boundary.node.df.at[boundary_node_id, "meta_couple_authority"]
 
     # Some levelboundaries don't need to be coupled
-    if pd.isna(couple_authority):
+    if pd.isna(couple_authority) or couple_authority in ("Noordzee", "Buitenland"):
         continue
 
     if couple_authority == boundary_node_authority:
@@ -309,7 +309,7 @@ for boundary_node_id in boundary_node_ids:
 
 # %%
 
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm_peil_coupled")
+model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm_coupled")
 toml_file = model_path / "lhm.toml"
 model.write(toml_file)
 
@@ -318,11 +318,11 @@ links = gpd.GeoDataFrame(all_link_table)
 links["from_node_id"] = links.from_node.apply(lambda x: x.node_id)
 links["to_node_id"] = links.to_node.apply(lambda x: x.node_id)
 links = links.drop(columns=["from_node", "to_node"])
-links.to_gpkg(model_path / "link.gpkg")
+links.to_file(model_path / "link.gpkg")
 
 # %%
 if upload_model:
-    cloud.upload_model("Rijkswaterstaat", model="lhm_peil_coupled")
+    cloud.upload_model("Rijkswaterstaat", model="lhm_coupled")
 
 # %%
 # Let's save the peil validation output
