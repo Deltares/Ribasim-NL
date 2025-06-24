@@ -346,14 +346,6 @@ if MIXED_CONDITIONS:
 else:
     ribasim_model.level_boundary.static.df.level = default_level
 
-# # test for better afwatering
-# ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 728, "level"] = -1.3
-# ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id == 728, "meta_categorie"] = "hoofdwater"
-# ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id == 728, "meta_to_node_type"] = "LevelBoundary"
-#
-# # test for better afwatering
-# ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 638, "level"] = -0.1
-
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
