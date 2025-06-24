@@ -15,8 +15,13 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
+MIXED_CONDITIONS: bool = True
+
+if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
+    AANVOER_CONDITIONS = True
 
 # model settings
 waterschap = "Zuiderzeeland"
@@ -35,7 +40,9 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 )
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_qlr", "output_controle_202502.qlr")
+qlr_path = cloud.joinpath(
+    "Basisgegevens", "QGIS_qlr", "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_202502.qlr"
+)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "peilgebieden.gpkg")
 
 cloud.synchronize(
@@ -101,9 +108,6 @@ processor.run()
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
-
-# check basin area
-ribasim_param.validate_basin_area(ribasim_model)
 
 # merge the smallest basins together
 ribasim_model.merge_basins(node_id=30, to_node_id=29)  # 4363 m2
@@ -214,6 +218,12 @@ ribasim_model.merge_basins(node_id=173, to_node_id=53, are_connected=False)  # k
 # Convert these pumps to inlaat_pumps
 inlaat_structures = []
 inlaat_pump = []
+
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
+
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
 
 # model specific tweaks
 # 1 Add gemaal at blocq van kuffeler
@@ -524,15 +534,17 @@ add_storage_basins = AddStorageBasins(
 
 add_storage_basins.create_bergende_basins()
 
-# set static forcing
-forcing_dict = {
-    "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
-    "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
-    "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
-    "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
-}
-
-ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
+# set forcing
+if MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 10)
+else:
+    forcing_dict = {
+        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
+        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
+        "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
+        "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
+    }
+    ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
 # set pump capacity for each pump
 ribasim_model.pump.static.df["flow_rate"] = 0.16667  # 10 kuub per minuut
@@ -542,7 +554,10 @@ ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
 
 # add the default levels
-ribasim_model.level_boundary.static.df.level = default_level
+if MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(ribasim_model, starttime, endtime, -0.4, 0.4)
+else:
+    ribasim_model.level_boundary.static.df.level = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -570,25 +585,31 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
+offline_budgets = AssignOfflineBudgets()
+offline_budgets.compute_budgets(ribasim_model)
+
 # add control, based on the meta_categorie
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
-# ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
+ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 10
+ribasim_model.manning_resistance.static.df.length = 100
 ribasim_model.manning_resistance.static.df.manning_n = 0.01
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
+if MIXED_CONDITIONS:
+    ribasim_model.basin.static.df = None
+    ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
@@ -623,7 +644,7 @@ ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_ot
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
-indicators = controle_output.run_all()
+indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
 
 # write model
 ribasim_param.write_ribasim_model_GoodCloud(
