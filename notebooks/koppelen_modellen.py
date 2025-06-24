@@ -18,6 +18,7 @@ cloud = CloudStorage()
 
 SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
+MIN_BASIN_OUTLET_DIFF = 0.5
 
 
 def get_basin_link(
@@ -95,11 +96,18 @@ def merge_lb(model, lb_neighbors, boundary_node_id):
         if from_node_ids is None:
             print(f"Cannot merge {boundary_node} => {neighbor_node}: Wrong direction")
             return
+        if model.downstream_node_id(neighbor_id) is not None:
+            print(f"Cannot merge {neighbor_node} => {boundary_node}: {neighbor_id} has both inflows and outflows.")
+            return
+
     # Outlet
     elif to_node_ids is None and from_node_ids is not None:
         to_node_ids = model.downstream_node_id(neighbor_id)
         if to_node_ids is None:
             print(f"Cannot merge {neighbor_node} => {boundary_node}: Wrong direction")
+            return
+        if model.upstream_node_id(neighbor_id) is not None:
+            print(f"Cannot merge {neighbor_node} => {boundary_node}: {neighbor_id} has both inflows and outflows.")
             return
 
     if isinstance(from_node_ids, pd.Series) or isinstance(to_node_ids, pd.Series):
@@ -303,14 +311,51 @@ for boundary_node_id in boundary_node_ids:
             #     )
             geometry = LineString([kwargs["from_node"].geometry, kwargs["to_node"].geometry])
 
+        cycles = model.link.df[
+            (model.link.df.from_node_id == kwargs["to_node"].node_id)
+            & (model.link.df.to_node_id == kwargs["from_node"].node_id)
+        ]
+        if len(cycles) > 0:
+            print(f"Link {kwargs['from_node']} -> {kwargs['to_node']} already exists.")
+            model.link.df.drop(cycles.index, inplace=True)
+            if kwargs["to_node"].node_type != "Basin":
+                print("Removing node", kwargs["to_node"])
+                model.remove_node(kwargs["to_node"], remove_edges=True)
+            else:
+                print("Removing node", kwargs["from_node"])
+                model.remove_node(kwargs["from_node"].node_id, remove_edges=True)
+            continue
+
         model.link.add(**kwargs, geometry=geometry)
         kwargs["geometry"] = geometry
         all_link_table.append(kwargs)
 
 # %%
+# Fix minimum upstream level of outlets lower than bottom of upstream Basins
+# by lowering the Basin profiles
+for outlet in model.outlet.node.df.index:
+    upstream_basin = model.upstream_node_id(outlet)
+    if upstream_basin is None:
+        continue
+    if not isinstance(upstream_basin, pd.Series):
+        upstream_basin = pd.Series([upstream_basin])
+    for upstream_basin_id in upstream_basin:
+        mask = model.basin.profile.df.node_id == upstream_basin_id
+        basin = model.basin.profile.df[mask]
+        # Get the current minimum level of the outlet
+        min_level = model.outlet.static.df.set_index("node_id").at[outlet, "min_upstream_level"]
+        if isinstance(min_level, pd.Series):
+            min_level = min_level.iloc[0]
+        if len(basin.level) == 0 or pd.isna(min_level):
+            continue
+        if min_level < basin.level.iloc[0]:
+            print(f"Lowering basin {upstream_basin_id} profile {min_level}.")
+            model.basin.profile.df.loc[(mask[mask]).index[0], "level"] = min_level - MIN_BASIN_OUTLET_DIFF
 
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm_coupled")
+# %%
+model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm_vrij_coupled")
 toml_file = model_path / "lhm.toml"
+# model.use_validation = False
 model.write(toml_file)
 
 # %%
