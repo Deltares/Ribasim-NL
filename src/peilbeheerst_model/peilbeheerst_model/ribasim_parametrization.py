@@ -1046,9 +1046,6 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     It checks whether they are inlaten en uitlaten from a boezem, buitenwater or just regular peilgebieden.
     This will determine the rules of the control nodes.
     """
-    # # optional arguments
-    # aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
-
     # create new columsn to store the meta categorie of each node
     ribasim_model.outlet.static.df["meta_categorie"] = np.nan
     ribasim_model.pump.static.df["meta_categorie"] = np.nan
