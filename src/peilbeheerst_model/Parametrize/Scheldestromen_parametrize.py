@@ -178,6 +178,7 @@ ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve
 ribasim_model.link.add(ribasim_model.tabulated_rating_curve[227], level_boundary_node)
 ribasim_model.link.add(ribasim_model.tabulated_rating_curve[381], level_boundary_node)
 inlaat_structures.extend([491, 547, 334, 554])
+inlaat_structures.append(309)
 
 # (re) set 'meta_node_id'
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
