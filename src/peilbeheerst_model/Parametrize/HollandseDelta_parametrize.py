@@ -540,7 +540,6 @@ ribasim_model.remove_node(953, True)
 ribasim_model.remove_node(1041, True)
 ribasim_model.remove_node(2534, True)
 
-# TODO: Additional temporary fixes
 # Reversing direction (cannot be done via FF)
 ribasim_model.remove_node(913, True)
 ribasim_model.remove_node(2596, False)

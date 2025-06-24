@@ -290,7 +290,6 @@ for i in pump_ids:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_afvoer"] = 1
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_aanvoer"] = 0
 
-# TODO: Temporary fixes
 ribasim_model.remove_node(788, True)
 ribasim_model.remove_node(960, False)
 level_boundary_node = ribasim_model.level_boundary.add(
