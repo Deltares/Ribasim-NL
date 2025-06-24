@@ -1076,16 +1076,6 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
         "meta_func_afvoer",
     ] = 1
 
-    # # TODO: Remove this patch once dual-functionality is implemented in ribasim
-    # # if the function is both aanvoer and afvoer, then set aanvoer to False
-    # mask = (ribasim_model.pump.static.df["meta_func_afvoer"] == 1) & (
-    #     ribasim_model.pump.static.df["meta_func_aanvoer"] == 1
-    # )
-    # if aanvoer_enabled:
-    #     ribasim_model.pump.static.df.loc[mask, "meta_func_afvoer"] = 0
-    # else:
-    #     ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
-
     # fill in the nan values
     ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 0}, inplace=True)
     ribasim_model.pump.static.df.fillna({"meta_func_aanvoer": 0}, inplace=True)
