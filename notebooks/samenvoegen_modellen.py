@@ -28,13 +28,21 @@ INCLUDE_MODELS = [
     "AmstelGooienVecht",
     "Delfland",
     "HollandsNoorderkwartier",
-    # "HollandseDelta",
+    "HollandseDelta",
     "Rijnland",
     "Rivierenland",
     "Scheldestromen",
     "SchielandendeKrimpenerwaard",
     "WetterskipFryslan",
     "Zuiderzeeland",
+    "DrentsOverijsselseDelta",
+    "HunzeenAas",
+    "Limburg",
+    "Noorderzijlvest",
+    "RijnenIJssel",
+    "StichtseRijnlanden",
+    "ValleienVeluwe",
+    "Vechtstromen",
 ]
 
 model_specs = [
@@ -209,6 +217,7 @@ for idx, model_spec in enumerate(model_specs):
     # run model
     if not model.basin_outstate.filepath.exists():
         print("run model to update state")
+        model.write(model_path)  # forced migration
         returncode = model.run()
         if returncode != 0:
             raise Exception("model won't run successfully!")

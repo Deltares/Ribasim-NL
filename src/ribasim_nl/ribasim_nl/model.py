@@ -403,7 +403,11 @@ class Model(Model):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
             else:
                 linestring = self.edge.df[self.edge.df["to_node_id"] == to_node_id].iloc[0].geometry
-                node_geom = Point(linestring.parallel_offset(node_offset, "left").coords[-1])
+                lo = linestring.parallel_offset(node_offset, "left")
+                if lo.geom_type == "MultiLineString":
+                    node_geom = Point(lo.geoms[-1].coords[-1])
+                else:
+                    node_geom = Point(lo.coords[-1])
                 to_node_id = [to_node_id]
 
         node_id = self.next_node_id

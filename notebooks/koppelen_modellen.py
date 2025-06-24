@@ -1,7 +1,11 @@
 # %%
 
+import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
+from ribasim.nodes import (
+    continuous_control,
+)
 from shapely.geometry import LineString, Point
 
 from peilbeheerst_model.controle_output import Control
@@ -13,6 +17,7 @@ cloud = CloudStorage()
 # %% update RWS-HWS
 
 SNAP_DISTANCE = 20
+MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 
 
 def get_basin_link(
@@ -81,30 +86,30 @@ def get_rws_link(
 def merge_lb(model, lb_neighbors, boundary_node_id):
     neighbor_id = lb_neighbors.index[0]
     neighbor_node = model.level_boundary[neighbor_id]
-    print(f"Linking {boundary_node} => {neighbor_node}.")
+    print(f"Merging {boundary_node} => {neighbor_node}.")
     from_node_ids = model.upstream_node_id(boundary_node_id)
     to_node_ids = model.downstream_node_id(boundary_node_id)
     # Inlet
     if from_node_ids is None and to_node_ids is not None:
         from_node_ids = model.upstream_node_id(neighbor_id)
         if from_node_ids is None:
-            print(f"Cannot link {boundary_node} => {neighbor_node}: Wrong direction")
+            print(f"Cannot merge {boundary_node} => {neighbor_node}: Wrong direction")
             return
     # Outlet
     elif to_node_ids is None and from_node_ids is not None:
         to_node_ids = model.downstream_node_id(neighbor_id)
         if to_node_ids is None:
-            print(f"Cannot link {neighbor_node} => {boundary_node}: Wrong direction")
+            print(f"Cannot merge {neighbor_node} => {boundary_node}: Wrong direction")
             return
 
     if isinstance(from_node_ids, pd.Series) or isinstance(to_node_ids, pd.Series):
-        print(f"Cannot link {neighbor_node} => {boundary_node}: Multiple inlets/outlets, please check manually.")
+        print(f"Cannot merge {neighbor_node} => {boundary_node}: Multiple inlets/outlets, please check manually.")
         return
 
     # TODO Handle Pump/Pump and Outlet/Pump
     if model.get_node_type(from_node_ids) != "Outlet" or model.get_node_type(to_node_ids) != "Outlet":
         print(
-            f"Cannot link {boundary_node} => {neighbor_node}: Expected Outlet, got {model.get_node_type(from_node_ids)} and {model.get_node_type(to_node_ids)}"
+            f"Cannot merge {boundary_node} => {neighbor_node}: Expected Outlet, got {model.get_node_type(from_node_ids)} and {model.get_node_type(to_node_ids)}"
         )
         return
 
@@ -138,6 +143,8 @@ waterbeheerder_df = model.basin.node.df["meta_waterbeheerder"]
 basin_areas_df.loc[waterbeheerder_df.index, "meta_waterbeheerder"] = waterbeheerder_df
 # waterbeheerder_mask_df = basin_areas_df.dissolve("meta_waterbeheerder")["geometry"]
 
+all_link_table = []
+
 for boundary_node_id in boundary_node_ids:
     # Check whether the boundary has been merged already
     if boundary_node_id not in model.level_boundary.node.df.index:
@@ -167,6 +174,7 @@ for boundary_node_id in boundary_node_ids:
     if len(lb_neighbors) == 1:
         merged_outlet = merge_lb(model, lb_neighbors, boundary_node_id)
         if merged_outlet is not None:
+            # TODO: Add Continuous control for the merged outlet?
             continue
 
     distances = basin_areas_df[basin_areas_df.meta_waterbeheerder == couple_authority].distance(boundary_node.geometry)
@@ -183,11 +191,14 @@ for boundary_node_id in boundary_node_ids:
     link_table = []
 
     # Upstream nodes (uitlaat)
+    # A: Basin -> B: Connector -> C: Basin (LB)
     from_node_ids = model.upstream_node_id(boundary_node_id)
     if from_node_ids is not None:
         if not isinstance(from_node_ids, pd.Series):
-            from_node_ids = [from_node_ids]
-
+            from_node_ids = pd.Series([from_node_ids])
+        connector_node_id = from_node_ids
+        upstream_basin = model.upstream_node_id(connector_node_id.iloc[0])
+        downstream_basin = couple_with_basin_id
         link_table += [
             {
                 "from_node": model.get_node(i),
@@ -199,10 +210,14 @@ for boundary_node_id in boundary_node_ids:
         ]
 
     # Downstream nodes (inlaat)
+    # Basin (LB) -> Connector -> Basin
     to_node_ids = model.downstream_node_id(boundary_node_id)
     if to_node_ids is not None:
         if not isinstance(to_node_ids, pd.Series):
-            to_node_ids = [to_node_ids]
+            to_node_ids = pd.Series([to_node_ids])
+        connector_node_id = to_node_ids
+        upstream_basin = couple_with_basin_id
+        downstream_basin = model.downstream_node_id(connector_node_id.iloc[0])
         link_table += [
             {
                 "from_node": model.get_node(couple_with_basin_id),
@@ -214,10 +229,38 @@ for boundary_node_id in boundary_node_ids:
         ]
 
     # Replace boundary id in discrete and continuous control with basin id
+    has_control = False
     for df in [model.discrete_control.variable.df, model.continuous_control.variable.df]:
         if df is not None:
+            has_control = any(df.listen_node_id == boundary_node_id)
             df.loc[df.listen_node_id == boundary_node_id, "listen_node_id"] = couple_with_basin_id
-            df.loc[df.listen_node_id == boundary_node_id, "listen_node_id"] = couple_with_basin_id
+
+    # Add ContinuousControl for non RWS boundaries when no control node is yet present
+    if not couple_authority == "Rijkswaterstaat" and not has_control and len(connector_node_id) == 1:
+        print(
+            f"Adding ContinuousControl for {connector_node_id.iloc[0]}, while having {len(connector_node_id)} connector nodes."
+        )
+        data = [
+            continuous_control.Variable(
+                node_id=[connector_node_id.iloc[0]] * 2,
+                listen_node_id=[upstream_basin, downstream_basin],
+                weight=[1, -1],
+                variable="level",
+            ),
+            continuous_control.Function(
+                node_id=[connector_node_id.iloc[0]] * 4,
+                input=[-1.0, 0.0, MIN_LEVEL_DIFF, 1.0],
+                output=[0.0, 0.0, 20, 20],
+                controlled_variable="flow_rate",
+            ),
+        ]
+
+        model.add_control_node(
+            to_node_id=connector_node_id.iloc[0],
+            data=data,
+            ctrl_type="ContinuousControl",
+            node_offset=20,
+        )
 
     # Remove boundary node from model
     model.remove_node(boundary_node_id, remove_edges=True)
@@ -226,6 +269,8 @@ for boundary_node_id in boundary_node_ids:
     for kwargs in link_table:
         # Use the geometry of the network to create a link
         if couple_authority == "Rijkswaterstaat":
+            # geometry = LineString([kwargs["from_node"].geometry, kwargs["to_node"].geometry])
+
             if kwargs["meta_to_authority"] != boundary_node_authority:  # uitlaat
                 geometry = get_rws_link(
                     network=network,
@@ -259,12 +304,25 @@ for boundary_node_id in boundary_node_ids:
             geometry = LineString([kwargs["from_node"].geometry, kwargs["to_node"].geometry])
 
         model.link.add(**kwargs, geometry=geometry)
+        kwargs["geometry"] = geometry
+        all_link_table.append(kwargs)
 
 # %%
 
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm_coupled")
+model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm_peil_coupled")
 toml_file = model_path / "lhm.toml"
 model.write(toml_file)
+
+# %%
+links = gpd.GeoDataFrame(all_link_table)
+links["from_node_id"] = links.from_node.apply(lambda x: x.node_id)
+links["to_node_id"] = links.to_node.apply(lambda x: x.node_id)
+links = links.drop(columns=["from_node", "to_node"])
+links.to_gpkg(model_path / "link.gpkg")
+
+# %%
+if upload_model:
+    cloud.upload_model("Rijkswaterstaat", model="lhm_peil_coupled")
 
 # %%
 # Let's save the peil validation output
