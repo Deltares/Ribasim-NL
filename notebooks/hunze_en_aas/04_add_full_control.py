@@ -53,8 +53,15 @@ model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["no
 add_from_to_nodes_and_levels(model)
 
 # re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=False)
-ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)
+ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=True)
+ribasim_parametrization.determine_min_upstream_max_downstream_levels(
+    model,
+    AUTHORITY,
+    aanvoer_upstream_offset=0.0,
+    aanvoer_downstream_offset=0.0,
+    afvoer_upstream_offset=0.0,
+    afvoer_downstream_offset=0.0,
+)
 check_basin_level.add_check_basin_level(model=model)
 
 # TODO: The addition of `ContinuousControl`-nodes is subsequently a minor modification:
