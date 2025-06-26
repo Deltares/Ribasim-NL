@@ -93,19 +93,36 @@ for action in actions:
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
-# Hoofdinlaten krijgen 10m3/s
-model.outlet.static.df.loc[
-    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
-] = 10
+# Hoofdinlaten (bij boundary model) krijgen 10m3/s en een geen min_upstream_level
+
 model.pump.static.df.loc[
     model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
-] = 10
-model.outlet.static.df.loc[
-    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "max_flow_rate"
 ] = 10
 model.pump.static.df.loc[
     model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "max_flow_rate"
 ] = 10
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "min_upstream_level"
+] = pd.NA
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
+] = 10
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "max_flow_rate"
+] = 10
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "min_upstream_level"
+] = pd.NA
+
+# Afvoer uit model krijgt geen max_downstream_level
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(model.downstream_connection_node_ids(node_type="Outlet")),
+    "max_downstream_level",
+] = pd.NA
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(model.downstream_connection_node_ids(node_type="Pump")), "max_downstream_level"
+] = pd.NA
+
 
 # Dokwerd, sluis ten onrechte op 10m3/s gezet
 model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20
