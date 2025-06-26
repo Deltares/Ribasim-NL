@@ -2,6 +2,7 @@
 import time
 
 import geopandas as gpd
+import pandas as pd
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
