@@ -5,7 +5,7 @@ cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model", "parameterized_model"]
 SELECTION = []
-INCLUDE_RESULTS = True
+INCLUDE_RESULTS = False
 
 
 def get_model_dir(authority, post_fix):
@@ -33,14 +33,15 @@ for authority in authorities:
         toml_file = next(model_dir.glob("*.toml"))
         model = Model.read(toml_file)
 
+        # write a local copy in root
+        print(f"copy {toml_file}")
+        toml_file = toml_file.parents[1].joinpath(authority, toml_file.name)
+        model.write(toml_file)
+
         # run model
         print("simulating...")
         result = model.run()
         assert result.exit_code == 0
-
-        # write a local copy in root
-        toml_file = toml_file.parents[1].joinpath(authority, toml_file.name)
-        model.write(toml_file)
 
         # create version and upload
         print("uploading...")
