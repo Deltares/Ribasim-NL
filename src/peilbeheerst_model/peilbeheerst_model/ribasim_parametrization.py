@@ -1372,9 +1372,9 @@ def load_model_settings(file_path):
 
 def determine_min_upstream_max_downstream_levels(ribasim_model: ribasim.Model, waterschap: str, **kwargs) -> None:
     # optional arguments
-    aanvoer_upstream_offset: float = kwargs.get("aanvoer_upstream_offset", 0.02)
+    aanvoer_upstream_offset: float = kwargs.get("aanvoer_upstream_offset", 0.0)
     aanvoer_downstream_offset: float = kwargs.get("aanvoer_downstream_offset", 0.02)
-    afvoer_upstream_offset: float = kwargs.get("afvoer_upstream_offset", 0.02)
+    afvoer_upstream_offset: float = kwargs.get("afvoer_upstream_offset", 0.0)
     afvoer_downstream_offset: float = kwargs.get("afvoer_downstream_offset", 0.02)
     max_flow_rate: float = kwargs.get("default_max_flow_rate", 20)
 
