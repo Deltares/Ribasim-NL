@@ -105,7 +105,8 @@ model.pump.static.df.loc[
     model.pump.static.df.node_id == 35, "min_upstream_level"
 ] = -1.26  # Check! Den Deel. Bij min_upstream_level =-1.14m NP geen aanvoer mogelijk. Outlet 722 lijkt niet OK. Bovenstrooms peil lagen dan benedenstrooms peil
 
-model.pump.static.df.node_id == 209, "min_upstream_level"
+model.pump.static.df.loc[
+    model.pump.static.df.node_id == 209, "min_upstream_level"
 ] = -1.26  # Check! Bij min_upstream_level =-1.14m NP geen aanvoer mogelijk. Outlet 722 lijkt niet OK. Bovenstrooms peil lagen dan benedenstrooms peil
 
 
