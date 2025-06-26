@@ -2,6 +2,7 @@
 import geopandas as gpd
 import pandas as pd
 
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
@@ -47,14 +48,14 @@ damo_profiles = DAMOProfiles(
     profile_line_df=gpd.read_file(profielen_gpkg, layer="profiellijn", bbox=bbox),
     profile_point_df=gpd.read_file(profielen_gpkg, layer="profielpunt", bbox=bbox),
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox),
-    profile_line_id_col="code",
+    profile_line_id_col="globalid",
 )
 if not profiles_gpkg.exists():
-    damo_profiles.process_profiles().to_file(profiles_gpkg)
+    profiles_df = damo_profiles.process_profiles().to_file(profiles_gpkg)
 
 # fix link geometries
 if link_geometries_gpkg.exists():
-    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("edge_id")
+    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
     model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
         model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
@@ -305,6 +306,18 @@ model.basin.area.df.reset_index(drop=False, inplace=True)
 model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
 
+
+# # koppelen
+ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+assign = AssignAuthorities(
+    ribasim_model=model,
+    waterschap=authority,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    custom_nodes={3: "Noordzee", 4: "Noordzee", 5: "Noordzee", 6: "Noordzee", 14: "Noordzee"},
+)
+model = assign.assign_authorities()
 
 # %%
 # defaults

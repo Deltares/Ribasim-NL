@@ -1,7 +1,10 @@
 # %%
+import inspect
+
 import geopandas as gpd
 import pandas as pd
 
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
@@ -26,6 +29,7 @@ peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/extra d
 hydamo_wm_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/HyDAMO_WM_20230720.gpkg")
 meppelerdiep_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/meppelerdiep.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
+model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
 
@@ -69,11 +73,44 @@ else:
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
 # %%
+# %% Quick fix basins
 
-# add streefpeilen
-# add_streefpeil(
-# model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="GPGZMRPL", code="GPGIDENT"
-# )
+actions = [
+    "remove_basin_area",
+    #    "remove_node",
+    #    "remove_edge",
+    "add_basin",
+    "add_basin_area",
+    # "update_basin_area",
+    # "merge_basins",
+    # "reverse_edge",
+    # "move_node",
+    "connect_basins",
+    #   "update_node",
+    "redirect_edge",
+]
+actions = [i for i in actions if i in gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()]
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1389, "flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2609, "flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2609, "min_upstream_level"] = 9.35
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 463, "min_upstream_level"] = 9.35
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 463, "flow_rate"] = 0.5
+# %%
+
 if "meta_code_waterbeheerder" not in model.basin.area.df.columns:
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
@@ -316,6 +353,18 @@ model.basin.area.df["meta_streefpeil"] = pd.to_numeric(model.basin.area.df["meta
 model.basin.area.df.reset_index(drop=False, inplace=True)
 model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
+
+
+# # koppelen
+ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+assign = AssignAuthorities(
+    ribasim_model=model,
+    waterschap=authority,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+)
+model = assign.assign_authorities()
 
 # %%
 # defaults

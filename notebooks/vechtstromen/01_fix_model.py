@@ -1045,6 +1045,47 @@ model.basin.area.df.loc[:, ["geometry"]] = (
 # Reset static tables
 model = reset_static_tables(model)
 
+
+# name-column contains the code we want to keep, meta_name the name we want to have
+df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
+df.set_index("code", inplace=True)
+names = df["naam"]
+
+# set meta_gestuwd in basins
+model.basin.node.df["meta_gestuwd"] = False
+model.outlet.node.df["meta_gestuwd"] = False
+model.pump.node.df["meta_gestuwd"] = True
+
+# set stuwen als gestuwd
+
+model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
+
+# set bovenstroomse basins als gestuwd
+node_df = model.node_table().df
+node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
+basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+
+# set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
+downstream_node_ids = (
+    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
+)
+model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+
+
+sanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_object_type", "meta_gestuwd"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump", "TabulatedRatingCurve"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
+        {"node_types": ["LevelBoundary", "FlowBoundary"], "columns": {"meta_name": "name"}},
+    ],
+    names=names,
+)
+
 # %%
 actions = [
     "remove_basin_area",
@@ -1065,11 +1106,15 @@ for action in actions:
     print(action)
     # get method and args
     method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        kwargs = row._asdict()
+        if inspect.getfullargspec(method).varkw != "kwargs":
+            keywords = inspect.getfullargspec(method).args
+            kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
 # remove unassigned basin area
@@ -1077,6 +1122,8 @@ model.remove_unassigned_basin_area()
 # %% some customs
 # remove unassigned basin area
 model.redirect_edge(edge_id=89, to_node_id=1561)
+model.redirect_edge(edge_id=1989, from_node_id=2333)
+model.redirect_edge(edge_id=1990, from_node_id=2333)
 model.merge_basins(basin_id=2115, to_node_id=1405)
 model.merge_basins(basin_id=1378, to_node_id=1431)
 model.merge_basins(basin_id=2211, to_node_id=1727)
@@ -1203,22 +1250,31 @@ for node_type in model.node_table().df.node_type.unique():
     table = getattr(model, pascal_to_snake_case(node_type)).node
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
-# name-column contains the code we want to keep, meta_name the name we want to have
-df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
-df.set_index("code", inplace=True)
-names = df["naam"]
+# %%
+model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
 
-sanitize_node_table(
-    model,
-    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
-    copy_map=[
-        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
-        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
-        {"node_types": ["LevelBoundary", "FlowBoundary"], "columns": {"meta_name": "name"}},
-    ],
-    names=names,
+# set meta_gestuwd in basins
+model.basin.node.df["meta_gestuwd"] = False
+model.outlet.node.df["meta_gestuwd"] = False
+model.pump.node.df["meta_gestuwd"] = True
+
+# set stuwen als gestuwd
+
+model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
+
+# set bovenstroomse basins als gestuwd
+node_df = model.node_table().df
+node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
+basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+
+# set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
+downstream_node_ids = (
+    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
 )
-
+model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
 
 #  %% write model
 model.basin.area.df.loc[:, ["meta_area"]] = model.basin.area.df.area
@@ -1231,4 +1287,4 @@ model.report_internal_basins()
 # %%
 if run_model:
     result = model.run()
-    assert result == 0
+    assert result.exit_code == 0

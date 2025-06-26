@@ -40,6 +40,8 @@ connect_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="c
 reverse_edge_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_edge")
 add_basin_outlet_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="add_basin_outlet")
 remove_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
+update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")
+merge_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="merge_basins")
 
 
 # %% some stuff we'll need again
@@ -281,6 +283,19 @@ for edge_id in reverse_edge_gdf.edge_id:
 for row in remove_node_gdf.itertuples():
     model.remove_node(node_id=row.node_id, remove_edges=row.remove_edges)
 
+
+# %% update nodes
+for row in update_node_gdf.itertuples():
+    model.update_node(
+        node_id=row.node_id,
+        node_type=row.node_type,
+        node_properties={"meta_code_waterbeheerder": row.meta_code_waterbeheerder},
+    )
+
+# %% merge_basins
+for row in merge_basins_gdf.itertuples():
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=row.are_connected)
+
 # %% change node_type
 
 # change node type
@@ -377,6 +392,37 @@ sanitize_node_table(
     names=names,
 )
 
+# %%
+
+# set buitenlandse aanvoer
+model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+
+# %%
+
+# set meta_gestuwd in basins
+model.basin.node.df["meta_gestuwd"] = False
+model.outlet.node.df["meta_gestuwd"] = False
+model.pump.node.df["meta_gestuwd"] = True
+
+node_ids = (
+    model.node_table()
+    .df[
+        model.node_table().df["meta_code_waterbeheerder"].str.startswith("S_")
+        | model.node_table().df["meta_code_waterbeheerder"].str.startswith("P_")
+    ]
+    .index
+)
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_ids]
+
+basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+
+downstream_node_ids = (
+    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
+)
+model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+
 
 #  %% write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
@@ -388,5 +434,5 @@ model.report_internal_basins()
 # %% Test run model
 if run_model:
     result = model.run()
-    assert result == 0
+    assert result.exit_code == 0
 # %%

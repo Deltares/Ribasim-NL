@@ -35,7 +35,7 @@ def upstream_target_levels(
     # sanitize df and only return upstream_target_level_series
     series = df.reset_index().set_index("node_id").sort_index()["upstream_target_level"]
 
-    return series
+    return series.astype(float)
 
 
 def downstream_target_levels(
@@ -70,4 +70,4 @@ def downstream_target_levels(
     # sanitize df and only return downstream_target_level_series
     series = df.reset_index().set_index("node_id").sort_index()["downstream_target_level"]
 
-    return series
+    return series.astype(float)

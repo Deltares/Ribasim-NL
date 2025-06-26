@@ -2,6 +2,7 @@
 import geopandas as gpd
 import pandas as pd
 
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
@@ -310,75 +311,6 @@ downstream_basin_levels.name = "min_upstream_level"
 static_data.add_series(node_type="Pump", series=downstream_basin_levels.dropna(), fill_na=False)
 
 
-# %% Vul de nodata basins met streefpeilen op downstream node locaties (in dit geval Manning)
-
-node_ids = model.manning_resistance.static.df["node_id"]
-min_upstream_level = []
-levels = []
-for node_id in node_ids:
-    node = model.manning_resistance[node_id]
-    tolerance = 5
-    node_id = node.node_id
-    node_geometry = node.geometry
-    line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
-    distance_to_interpolate = line_to_node.length - tolerance
-    if distance_to_interpolate < 0:
-        distance_to_interpolate = 0
-    containing_point = line_to_node.interpolate(distance_to_interpolate)
-    peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
-    if not peilgebieden_select_df.empty:
-        peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["PEILREG_ZP_FIRST"] != 0 and peilgebied["PEILREG_ZP_FIRST"] < 30:
-            level = peilgebied["PEILREG_ZP_FIRST"]
-        else:
-            level = None
-    levels += [level]
-
-min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
-min_upstream_level.index.name = "node_id"
-
-missing_basins = static_data.basin[static_data.basin.streefpeil.isna()]
-basin_node_ids = missing_basins.node_id.to_numpy()
-
-# Get downstream node(s) for each basin
-ds_node_ids = []
-ds_index = []
-for i in basin_node_ids:
-    try:
-        ds_ids = model.downstream_node_id(i)
-        ds_ids = ds_ids.to_list() if isinstance(ds_ids, pd.Series) else [ds_ids]
-        ds_node_ids.extend(ds_ids)
-        ds_index.extend([i] * len(ds_ids))
-    except KeyError:
-        print(f"No downstream node found for basin node {i}")
-
-ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
-
-# Keep only those that exist in min_upstream_level
-valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
-streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid_ds.values, valid_ds.index)))
-streefpeil = streefpeil.groupby(streefpeil.index).min()
-streefpeil.index.name = "node_id"
-streefpeil.name = "streefpeil"
-static_data.add_series(node_type="Basin", series=streefpeil, fill_na=False)
-
-# Update stuwen met nodata op basis van basin streefpeil
-missing_min_level_outlets = static_data.outlet[static_data.outlet.min_upstream_level.isna()]
-downstream_basin_ids = model.edge.df.set_index("to_node_id").loc[missing_min_level_outlets.node_id].from_node_id
-downstream_basin_levels = static_data.basin.set_index("node_id").reindex(downstream_basin_ids)["streefpeil"]
-downstream_basin_levels.index = missing_min_level_outlets.node_id
-downstream_basin_levels.name = "min_upstream_level"
-static_data.add_series(node_type="Outlet", series=downstream_basin_levels.dropna(), fill_na=False)
-
-# Update pumps met nodata op basis van basin streefpeil
-missing_min_level_pumps = static_data.pump[static_data.pump.min_upstream_level.isna()]
-downstream_basin_ids = model.edge.df.set_index("to_node_id").loc[missing_min_level_pumps.node_id].from_node_id
-downstream_basin_levels = static_data.basin.set_index("node_id").reindex(downstream_basin_ids)["streefpeil"]
-downstream_basin_levels.index = missing_min_level_pumps.node_id
-downstream_basin_levels.name = "min_upstream_level"
-static_data.add_series(node_type="Pump", series=downstream_basin_levels.dropna(), fill_na=False)
-
-
 # %% Laatste fallback optie DAMO profielen gebruiken
 # DAMO-profielen bepalen voor outlets wanneer min_upstream_level nodata
 # Fallback DAMO profielen voor outlets
@@ -482,8 +414,19 @@ valid_values = type_gemaal.dropna()
 static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
 # %% some customs
 model.remove_node(2297)
-# model.remove_node(166, remove_edges=True)
-# model.remove_node(393, remove_edges=True)
+
+# # koppelen
+ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+assign = AssignAuthorities(
+    ribasim_model=model,
+    waterschap=authority,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    custom_nodes={21: "Buitenland", 34: "Buitenland", 2250: "Buitenland", 2265: "Buitenland", 2268: "Buitenland"},
+)
+model = assign.assign_authorities()
+
 # %%
 # write
 static_data.write()

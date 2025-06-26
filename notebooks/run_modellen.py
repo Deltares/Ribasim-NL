@@ -1,17 +1,22 @@
 # %%
+from datetime import datetime
+
+import pandas as pd
+
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-FIND_POST_FIXES = ["full_control_model", "parameterized_model"]
+FIND_POST_FIXES = ["parameterized_model"]
 SELECTION = []
-INCLUDE_RESULTS = False
+INCLUDE_RESULTS = True
 
 
 def get_model_dir(authority, post_fix):
     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
 
 
+data = {}
 if len(SELECTION) == 0:
     authorities = cloud.water_authorities
 else:
@@ -19,6 +24,7 @@ else:
 
 for authority in authorities:
     # find model directory
+
     model_dir = next(
         (
             get_model_dir(authority, post_fix)
@@ -33,17 +39,17 @@ for authority in authorities:
         toml_file = next(model_dir.glob("*.toml"))
         model = Model.read(toml_file)
 
-        # write a local copy in root
-        print(f"copy {toml_file}")
-        toml_file = toml_file.parents[1].joinpath(authority, toml_file.name)
-        model.write(toml_file)
+        # time model-run
+        run_specs = model.run()
+        data[authority] = {
+            "basins": len(model.basin.node.df),
+            "exit_code": run_specs.exit_code,
+            "simulation_time": run_specs.simulation_time,
+            "starttime": model.starttime,
+            "endtime": model.endtime,
+        }
 
-        # run model
-        print("simulating...")
-        result = model.run()
-        assert result.exit_code == 0
 
-        # create version and upload
-        print("uploading...")
-        version = cloud.upload_model(authority=authority, model=authority, include_results=INCLUDE_RESULTS)
-        print(f"uploaded version {version.version}")
+pd.DataFrame.from_dict(data, orient="index").to_excel(
+    cloud.joinpath(f"simulation_efficiency_{datetime.today().strftime('%Y%m%d')}.xlsx")
+)

@@ -197,8 +197,8 @@ for idx, model_spec in enumerate(model_specs):
     # run model
     if not model.basin_outstate.filepath.exists():
         print("run model to update state")
-        returncode = model.run()
-        if returncode != 0:
+        result = model.run()
+        if result.exit_code != 0:
             raise Exception("model won't run successfully!")
     model.update_state()
 
