@@ -1,5 +1,8 @@
 # %%
 
+import inspect
+
+import geopandas as gpd
 import pandas as pd
 
 from peilbeheerst_model import ribasim_parametrization
@@ -71,13 +74,25 @@ mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
 model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
+model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.flow_rate
+model.pump.static.df.max_flow_rate = original_model.pump.static.df.flow_rate
 
-# set upstream level boundaries at 999 meters
-# boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
+# Area basin 1516 niet OK, te klein, model instabiel
+model.explode_basin_area()
+actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
 
-node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KIN")].index.to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 0.1
 # Hoofdinlaten krijgen 10m3/s
 model.outlet.static.df.loc[
     model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
@@ -92,17 +107,44 @@ model.pump.static.df.loc[
     model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "max_flow_rate"
 ] = 10
 
+# Dokwerd, sluis ten onrechte op 10m3/s gezet
+model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20
+model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20
+model.pump.static.df.loc[model.pump.static.df.node_id == 152, "max_flow_rate"] = 0.1
+model.pump.static.df.loc[model.pump.static.df.node_id == 152, "flow_rate"] = 0.1
+
+# Zomerpeil KST-W-20240 en KST-W-10430(Borgerweg) was 6.55, verhoogd naar 6.8m, anders geen aanvoer mogelijk
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 227, "min_upstream_level"] = 6.78
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 227, "max_downstream_level"] = 6.78
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 492, "min_upstream_level"] = 6.82
+
+# Bij boundaries downstream level nodig
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2011, "max_downstream_level"] = 15.82
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "max_downstream_level"] = 14.92
+
+# Oude Sluis en Nieuwsluis alleen lekverliezen, afvoer via gemaal Rozema
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 984, "flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 986, "flow_rate"] = 0.1
+
 # %% sturing uit alle niet-gestuwde outlets halen
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
 non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
 
+# Alle inlaten en duikers op max cap 5m3/s
+node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KIN")].index.to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
+
+node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KDU")].index.to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
+
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 model.pump.static.df["meta_func_afvoer"] = 1
 model.pump.static.df["meta_func_aanvoer"] = 0
 model.write(ribasim_toml)
+
 
 # run model
 if MODEL_EXEC:

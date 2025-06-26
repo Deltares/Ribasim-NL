@@ -130,6 +130,22 @@ for action in actions:
         method(**kwargs)
 
 
+# Area basin 1516 niet OK, te klein, model instabiel
+actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
 # Create the overlay of areas

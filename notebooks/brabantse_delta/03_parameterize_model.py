@@ -99,8 +99,6 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005
 
-# %%
-
 
 # %% Geen sturing op duikers in niet gestuwde gebieden
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
