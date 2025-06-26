@@ -1,6 +1,4 @@
 # %%
-import inspect
-
 import geopandas as gpd
 import pandas as pd
 
@@ -68,8 +66,8 @@ if link_geometries_gpkg.exists():
         "meta_profielid_waterbeheerder"
     ]
 else:
-    fix_link_geometries(model, network, max_straight_line_ratio=5)
     add_link_profile_ids(model, profiles=damo_profiles)
+    fix_link_geometries(model, network, max_straight_line_ratio=5)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
 # %%

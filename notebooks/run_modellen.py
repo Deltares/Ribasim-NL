@@ -7,7 +7,7 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-FIND_POST_FIXES = ["dynamic_model"]
+FIND_POST_FIXES = ["parameterized_model"]
 SELECTION = []
 INCLUDE_RESULTS = True
 
