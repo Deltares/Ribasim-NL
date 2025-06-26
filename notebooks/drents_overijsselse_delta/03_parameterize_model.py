@@ -2,6 +2,7 @@
 import time
 
 import geopandas as gpd
+import pandas as pd
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
@@ -11,7 +12,7 @@ cloud = CloudStorage()
 authority = "DrentsOverijsselseDelta"
 short_name = "dod"
 
-run_model = False
+run_model = True
 
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
