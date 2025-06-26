@@ -57,9 +57,9 @@ ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, o
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(
     model,
     AUTHORITY,
-    aanvoer_upstream_offset=0.0,
+    aanvoer_upstream_offset=0.02,
     aanvoer_downstream_offset=0.0,
-    afvoer_upstream_offset=0.0,
+    afvoer_upstream_offset=0.02,
     afvoer_downstream_offset=0.0,
 )
 check_basin_level.add_check_basin_level(model=model)
@@ -150,13 +150,20 @@ set_values(
     },
 )
 
+# === 2b. Verhoog mmin_upstream_level met offset voor downstream Outlets met 0.02
+mask = model.outlet.static.df["node_id"].isin(downstream_outlet_nodes)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.02
+mask = model.pump.static.df["node_id"].isin(downstream_pump_nodes)
+model.pump.static.df.loc[mask, "min_upstream_level"] = model.pump.static.df.loc[mask, "min_upstream_level"] + 0.02
 # === 4. Zet max/min levels op NA voor niet-gestuwde, niet-verbonden outlets ===
 non_control_nodes = model.outlet.node.df.query("meta_gestuwd == 'False'").index
-non_control_mask = model.outlet.static.df["node_id"].isin(non_control_nodes)
 excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
-final_mask = non_control_mask & ~model.outlet.static.df["node_id"].isin(excluded_nodes)
 
-model.outlet.static.df.loc[final_mask, ["max_downstream_level", "min_upstream_level"]] = pd.NA
+# model.outlet.static.df.loc[
+#    model.outlet.static.df["node_id"].isin(non_control_nodes) & ~model.outlet.static.df["node_id"].isin(excluded_nodes),
+#    ["max_downstream_level", "min_upstream_level"],
+# ] = pd.NA
+
 
 # Dokwerd, sluis ten onrechte op 10m3/s gezet
 model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20
@@ -177,11 +184,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "max_downstre
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 984, "flow_rate"] = 0.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 986, "flow_rate"] = 0.1
 
-# %% sturing uit alle niet-gestuwde outlets halen
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
 
 # Alle inlaten en duikers op max cap 5m3/s
 node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KIN")].index.to_numpy()
