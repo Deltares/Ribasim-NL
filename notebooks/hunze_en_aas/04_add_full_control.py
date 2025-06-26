@@ -100,19 +100,63 @@ for action in actions:
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
-# Hoofdinlaten krijgen 10m3/s
-model.outlet.static.df.loc[
-    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
-] = 10
-model.pump.static.df.loc[
-    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
-] = 10
-model.outlet.static.df.loc[
-    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "max_flow_rate"
-] = 10
-model.pump.static.df.loc[
-    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "max_flow_rate"
-] = 10
+
+def set_values(df, node_ids, values: dict):
+    """Hulpfunctie om meerdere kolommen tegelijk te updaten voor bepaalde node_ids."""
+    mask = df["node_id"].isin(node_ids)
+    for col, val in values.items():
+        df.loc[mask, col] = val
+
+
+# === 1. Bepaal upstream/downstream connection nodes ===
+upstream_outlet_nodes = model.upstream_connection_node_ids(node_type="Outlet")
+downstream_outlet_nodes = model.downstream_connection_node_ids(node_type="Outlet")
+upstream_pump_nodes = model.upstream_connection_node_ids(node_type="Pump")
+downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
+
+# === 2. Zet waardes voor upstream nodes ===
+set_values(
+    model.outlet.static.df,
+    upstream_outlet_nodes,
+    {
+        "flow_rate": 10,
+        "max_flow_rate": 10,
+        "min_upstream_level": pd.NA,
+    },
+)
+set_values(
+    model.pump.static.df,
+    upstream_pump_nodes,
+    {
+        "flow_rate": 10,
+        "max_flow_rate": 10,
+        "min_upstream_level": pd.NA,
+    },
+)
+
+# === 3. Zet waardes voor downstream nodes ===
+set_values(
+    model.outlet.static.df,
+    downstream_outlet_nodes,
+    {
+        "max_downstream_level": pd.NA,
+    },
+)
+set_values(
+    model.pump.static.df,
+    downstream_pump_nodes,
+    {
+        "max_downstream_level": pd.NA,
+    },
+)
+
+# === 4. Zet max/min levels op NA voor niet-gestuwde, niet-verbonden outlets ===
+non_control_nodes = model.outlet.node.df.query("meta_gestuwd == 'False'").index
+non_control_mask = model.outlet.static.df["node_id"].isin(non_control_nodes)
+excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
+final_mask = non_control_mask & ~model.outlet.static.df["node_id"].isin(excluded_nodes)
+
+model.outlet.static.df.loc[final_mask, ["max_downstream_level", "min_upstream_level"]] = pd.NA
 
 # Dokwerd, sluis ten onrechte op 10m3/s gezet
 model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20

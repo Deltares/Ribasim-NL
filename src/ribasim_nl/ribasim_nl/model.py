@@ -136,6 +136,22 @@ class Model(Model):
 
         return level_boundary_ds_node_ids_df[level_boundary_ds_node_ids_df.isin(node_ids)].to_list()
 
+    def downstream_connection_node_ids(self, node_type="Outlet"):
+        """Get all most upstream connection node ids that are connected to a LevelBoundary on upstream side."""
+        # get all possible node_ids
+        node_ids = getattr(self, pascal_to_snake_case(node_type)).node.df.index.to_numpy()
+
+        # get all downstream nodes of level-boundaries
+        level_boundary_ds_node_ids = [self.upstream_node_id(i) for i in self.level_boundary.node.df.index]
+        level_boundary_ds_node_ids_df = (
+            pd.Series([i.to_numpy() if isinstance(i, pd.Series) else i for i in level_boundary_ds_node_ids])
+            .explode()
+            .dropna()
+            .sort_values()
+        )
+
+        return level_boundary_ds_node_ids_df[level_boundary_ds_node_ids_df.isin(node_ids)].to_list()
+
     @property
     def graph(self):
         # create a DiGraph from edge-table
