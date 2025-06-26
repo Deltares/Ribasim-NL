@@ -219,18 +219,24 @@ class Control:
         return control_dict
 
     @model_loaded
-    def find_mean_flow(self, control_dict):
+    def find_stationary_flow(self, control_dict, n_hours_mean=24):
         df_link = self.df_link.copy()
         df_link["time"] = pd.to_datetime(df_link["time"])  # convert to time column
-        df_link = df_link.sort_values(by=["time", "link_id"], ascending=True).copy()  # sort values, just in case
 
-        # convert flow_rate to absolute values (in case of Manning Nodes)
-        df_link["flow_rate"] = df_link["flow_rate"].abs()
-        print("MAX VALUE DF_LINK", df_link["flow_rate"].max())
+        if "link_id" in df_link.columns:
+            df_link = df_link.sort_values(by=["time", "link_id"], ascending=True).copy()  # sort values, just in case
+        else:
+            df_link = df_link.sort_values(by=["time", "link_id"], ascending=True).copy()
+        last_time = df_link["time"].max()  # retireve max time value
+        time_threshold = last_time - pd.Timedelta(hours=n_hours_mean)  # determine the time threshold, likely 24 hours
 
-        # Group by 'link_id' and calculate the average flow rate
-        grouper = df_link.groupby("link_id", as_index=False)
+        df_link_24h = df_link[df_link["time"] >= time_threshold].copy()  # seelct above the threshold
 
+        # Group by 'link_id' and calculate the average flow rate over the last 24 hours
+        if "link_id" in df_link_24h.columns:
+            grouper = df_link_24h.groupby("link_id", as_index=False)
+        else:
+            grouper = df_link_24h.groupby("link_id", as_index=False)
         df_link_avg = grouper.agg(
             {
                 "flow_rate": "mean",  # take the mean, as the pumps may not show stationairy results in one timestep
@@ -338,9 +344,9 @@ class Control:
 
     @model_loaded
     def mask_basins(self, control_dict):
-        if "meta_gestuwd" in self.model.basin.node.df.columns:
+        if "meta_check_basin_level" in self.model.basin.node.df.columns:
             control_dict["mask_afvoer"] = self.model.basin.node.df[
-                self.model.basin.node.df["meta_gestuwd"] == "False"
+                self.model.basin.node.df["meta_check_basin_level"] == "False"
             ].reset_index()[["node_id", "geometry"]]
 
         return control_dict
@@ -377,12 +383,11 @@ class Control:
         control_dict = self.min_max_level(control_dict)
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
-        control_dict = self.find_mean_flow(control_dict)
+        control_dict = self.find_stationary_flow(control_dict)
         control_dict = self.water_aanvoer_areas(control_dict)
         control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
         control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
         control_dict = self.water_aanvoer_outlets(control_dict)
-        control_dict = self.mask_basins(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
@@ -394,7 +399,7 @@ class Control:
         control_dict = self.min_max_level(control_dict)
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
-        control_dict = self.find_mean_flow(control_dict)
+        control_dict = self.find_stationary_flow(control_dict)
         control_dict = self.mask_basins(control_dict)
         control_dict = self.flow_rate(control_dict)
 
@@ -556,7 +561,6 @@ class Control:
         control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
         control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
         control_dict = self.water_aanvoer_outlets(control_dict)
-        control_dict = self.find_mean_flow(control_dict)
 
         # check for dynamic forcing specific *.qlr
         filename_cc_qlr = "output_controle_cc.qlr"
