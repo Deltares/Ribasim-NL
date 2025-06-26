@@ -70,16 +70,30 @@ class DAMOProfiles(BaseModel):
 
         return getattr(pd.Series(z_values), statistic)()
 
+    # def get_profile_id(self, node_id, statistic="max"):
+    #     node_type = self.model.get_node_type(node_id)
+    #     if node_type == "Basin":
+    #         profile_ids = self.model.edge.df[
+    #             (self.model.edge.df.from_node_id == node_id) | (self.model.edge.df.to_node_id == node_id)
+    #         ][self.profile_id_col].to_numpy()
+    #         levels = [self.get_profile_level(profile_id, statistic) for profile_id in profile_ids]
+    #         return pd.Series(levels, index=profile_ids).idxmin()  # use pandas to get the profileid with min level
+    #     else:
+    #         return self.model.edge.df[self.model.edge.df.to_node_id == node_id].iloc[0][self.profile_id_col]
     def get_profile_id(self, node_id, statistic="max"):
-        node_type = self.model.get_node_type(node_id)
-        if node_type == "Basin":
-            profile_ids = self.model.edge.df[
-                (self.model.edge.df.from_node_id == node_id) | (self.model.edge.df.to_node_id == node_id)
-            ][self.profile_id_col].to_numpy()
-            levels = [self.get_profile_level(profile_id, statistic) for profile_id in profile_ids]
-            return pd.Series(levels, index=profile_ids).idxmin()  # use pandas to get the profileid with min level
-        else:
-            return self.model.edge.df[self.model.edge.df.to_node_id == node_id].iloc[0][self.profile_id_col]
+        try:
+            node_type = self.model.get_node_type(node_id)
+            if node_type == "Basin":
+                profile_ids = self.model.edge.df[
+                    (self.model.edge.df.from_node_id == node_id) | (self.model.edge.df.to_node_id == node_id)
+                ][self.profile_id_col].to_numpy()
+                levels = [self.get_profile_level(profile_id, statistic) for profile_id in profile_ids]
+                return pd.Series(levels, index=profile_ids).idxmin()
+            else:
+                return self.model.edge.df[self.model.edge.df.to_node_id == node_id].iloc[0][self.profile_id_col]
+        except Exception as e:
+            print(f"Fout bij node_id {node_id}: {e}")
+            raise  # eventueel doorgeven zodat je de fout ook buiten kunt afhandelen
 
     def get_node_level(self, node_id, statistic="max"):
         node_type = self.model.get_node_type(node_id)

@@ -2,6 +2,7 @@
 import geopandas as gpd
 import pandas as pd
 
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
@@ -49,7 +50,7 @@ damo_profiles = DAMOProfiles(
 
 # fix link geometries
 if link_geometries_gpkg.exists():
-    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("edge_id")
+    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
     model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
@@ -189,6 +190,19 @@ model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
 model.basin.area.df.reset_index(drop=False, inplace=True)
 model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
+
+
+# # koppelen
+ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+assign = AssignAuthorities(
+    ribasim_model=model,
+    waterschap=authority,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    custom_nodes={837: "Buitenland"},
+)
+model = assign.assign_authorities()
 
 # %%
 

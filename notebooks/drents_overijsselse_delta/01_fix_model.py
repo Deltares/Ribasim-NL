@@ -2,12 +2,14 @@
 import inspect
 
 import geopandas as gpd
+import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
-from ribasim_nl.geometry import split_basin_multi_polygon
+from ribasim_nl.geometry import split_basin_multi_polygon, split_line
 from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 
@@ -396,15 +398,69 @@ df.loc[:, "code"] = df.nen3610id.str.removeprefix("NL.WBHCODE.59.").str.lower()
 df.set_index("code", inplace=True)
 names = df["naam"]
 
+
+# set meta_gestuwd in basins
+model.basin.node.df["meta_gestuwd"] = False
+model.outlet.node.df["meta_gestuwd"] = False
+model.pump.node.df["meta_gestuwd"] = True
+
+# set stuwen als gestuwd
+
+model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"] == "stuw", "meta_gestuwd"] = True
+
+# set bovenstroomse basins als gestuwd
+node_df = model.node_table().df
+node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
+basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+
+# set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
+downstream_node_ids = (
+    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
+)
+model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+
+
 sanitize_node_table(
     model,
-    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_gestuwd"],
     copy_map=[
         {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
         {"node_types": ["Basin", "LevelBoundary", "FlowBoundary", "ManningResistance"], "columns": {"name": ""}},
     ],
     names=names,
 )
+
+
+# %% set flow-boundaries to level-boundaries (plus outlet)
+for row in model.flow_boundary.node.df.itertuples():
+    node_id = row.Index
+    basin_node_id = model.downstream_node_id(node_id)
+
+    # get link geometry and remove link
+    link_id = model.link.df[model.link.df["from_node_id"] == node_id].index[0]
+    link_geometry = model.link.df.at[link_id, "geometry"]
+    model.link.df = model.link.df[model.link.df.index != link_id]
+
+    # outlet node.geometry 10m from upstream or at 10% of link.geometry
+    if link_geometry.length > 20:
+        outlet_node_geometry = link_geometry.interpolate(10)
+    else:
+        outlet_node_geometry = link_geometry.interpolate(0.1, normalized=True)
+
+    # change flow_boundary to level_boundary and add outlet_node
+    model.update_node(node_id, node_type="LevelBoundary")
+    outlet_node = model.outlet.add(
+        node=Node(geometry=outlet_node_geometry, name=row.name), tables=default_tables.outlet
+    )
+
+    # remove old links and add 2 new
+    left_link_geometry, right_link_geometry = list(split_line(link_geometry, outlet_node_geometry).geoms)
+    model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
+    model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+
 
 #  %% write model
 model.use_validation = True
