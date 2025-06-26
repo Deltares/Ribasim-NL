@@ -308,12 +308,7 @@ def set_dynamic_level_boundaries(
 
 
 def set_hypothetical_dynamic_level_boundaries(
-    ribasim_model: ribasim.Model,
-    start_time: datetime.datetime,
-    end_time: datetime.datetime,
-    low: float,
-    high: float,
-    DYNAMIC_CONDITIONS: bool,
+    ribasim_model: ribasim.Model, start_time: datetime.datetime, end_time: datetime.datetime, low: float, high: float
 ) -> None:
     """Set basic hypothetical dynamic level boundaries.
 
@@ -330,20 +325,10 @@ def set_hypothetical_dynamic_level_boundaries(
     :type high: float
     """
     # define time-series
-    if DYNAMIC_CONDITIONS:
-        end_winter = datetime.datetime(start_time.year, 4, 1)
-        end_winter_1 = end_winter + datetime.timedelta(days=1)
-        end_summer = datetime.datetime(start_time.year, 10, 1)
-        end_summer_1 = end_summer + datetime.timedelta(days=1)
-
-        time = start_time, end_winter, end_winter_1, end_summer, end_summer_1, end_time
-        level = low, low, high, high, low, low
-
-    else:
-        halftime = start_time + (end_time - start_time) // 3
-        halftime_1 = halftime + datetime.timedelta(days=1)
-        time = start_time, halftime, halftime_1, end_time
-        level = low, low, high, high
+    halftime = start_time + (end_time - start_time) // 3
+    halftime_1 = halftime + datetime.timedelta(days=1)
+    time = start_time, halftime, halftime_1, end_time
+    level = low, low, high, high
 
     # set dynamic level boundaries
     set_dynamic_level_boundaries(ribasim_model, time, level)
@@ -1061,9 +1046,6 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     It checks whether they are inlaten en uitlaten from a boezem, buitenwater or just regular peilgebieden.
     This will determine the rules of the control nodes.
     """
-    # # optional arguments
-    # aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
-
     # create new columsn to store the meta categorie of each node
     ribasim_model.outlet.static.df["meta_categorie"] = np.nan
     ribasim_model.pump.static.df["meta_categorie"] = np.nan
@@ -1093,16 +1075,6 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
         .all(axis=1),
         "meta_func_afvoer",
     ] = 1
-
-    # # TODO: Remove this patch once dual-functionality is implemented in ribasim
-    # # if the function is both aanvoer and afvoer, then set aanvoer to False
-    # mask = (ribasim_model.pump.static.df["meta_func_afvoer"] == 1) & (
-    #     ribasim_model.pump.static.df["meta_func_aanvoer"] == 1
-    # )
-    # if aanvoer_enabled:
-    #     ribasim_model.pump.static.df.loc[mask, "meta_func_afvoer"] = 0
-    # else:
-    #     ribasim_model.pump.static.df.loc[mask, "meta_func_aanvoer"] = 0
 
     # fill in the nan values
     ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 0}, inplace=True)
@@ -1388,6 +1360,8 @@ def determine_min_upstream_max_downstream_levels(
 
     ribasim_model.pump.static.df["min_upstream_level"] = np.nan
     ribasim_model.pump.static.df["max_downstream_level"] = np.nan
+    ribasim_model.pump.static.df["max_flow_rate"] = np.nan
+    ribasim_model.pump.static.df["flow_rate"] = np.nan
 
     # make a temp copy to reduce line length, place it later again in the model
     outlet = ribasim_model.outlet.static.df.copy()
@@ -1439,9 +1413,8 @@ def determine_min_upstream_max_downstream_levels(
     check_for_nans_in_columns(outlet, "outlet")
     check_for_nans_in_columns(pump, "pump")
 
-    if pump["flow_rate"].isna().any():
-        print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
-        pump.fillna({"flow_rate": 0.1234}, inplace=True)
+    print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
+    pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
@@ -1459,6 +1432,7 @@ def set_dynamic_min_upstream_max_downstream(ribasim_model: ribasim.Model) -> Non
     :param ribasim_model: ribasim model
     :type ribasim_model: ribasim.Model
     """
+    print(ribasim_model.level_boundary.node.df)
     level_boundary_node_ids = ribasim_model.level_boundary.node.df["meta_node_id"].values
 
     for structure in ("outlet", "pump"):
@@ -2155,15 +2129,9 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
     ribasim_model.basin.state = ribasim_model.basin.state.df.loc[
         ribasim_model.basin.state.df.node_id.isin(basin_ids)
     ].reset_index(drop=True)
-
-    if ribasim_model.basin.static.df is not None:
-        ribasim_model.basin.static.df = ribasim_model.basin.static.df.loc[
-            ribasim_model.basin.static.df.node_id.isin(basin_ids)
-        ].reset_index(drop=True)
-    else:
-        ribasim_model.basin.time.df = ribasim_model.basin.time.df.loc[
-            ribasim_model.basin.time.df.node_id.isin(basin_ids)
-        ].reset_index(drop=True)
+    ribasim_model.basin.static = ribasim_model.basin.static.df.loc[
+        ribasim_model.basin.static.df.node_id.isin(basin_ids)
+    ].reset_index(drop=True)
 
     # Outlet
     outlet_ids = ribasim_model.outlet.node.df.loc[
@@ -2197,21 +2165,11 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
 
     # identify empty static tables
     # Basin
-    if ribasim_model.basin.static.df is not None:
-        basin_static_missing = ribasim_model.basin.node.df.loc[
-            ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.static.df.node_id)
-        ]
-        if len(basin_static_missing) > 0:
-            print(
-                "\nFollowing node_id's in the Basin.static table are missing:\n", basin_static_missing.index.to_numpy()
-            )
-
-    else:
-        basin_time_missing = ribasim_model.basin.node.df.loc[
-            ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.time.df.node_id)
-        ]
-        if len(basin_time_missing) > 0:
-            print("\nFollowing node_id's in the Basin.time table are missing:\n", basin_time_missing.index.to_numpy())
+    basin_static_missing = ribasim_model.basin.node.df.loc[
+        ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.static.df.node_id)
+    ]  # .index.to_numpy()
+    if len(basin_static_missing) > 0:
+        print("\nFollowing node_id's in the Basin.static table are missing:\n", basin_static_missing.index.to_numpy())
 
     basin_state_missing = ribasim_model.basin.node.df.loc[
         ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.state.df.node_id)
@@ -2282,13 +2240,12 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
     if len(duplicated_ids) > 0:
         print("\nThe following node_ids are duplicates: \n", duplicated_ids)
 
-    if ribasim_model.basin.static.df is not None:
-        # check for duplicated indexes in the basin static tables
-        duplicated_static_basin = ribasim_model.basin.static.df.loc[
-            ribasim_model.basin.static.df.duplicated(subset="node_id")
-        ]
-        if len(duplicated_static_basin) > 0:
-            print("\nFollowing indexes are duplicated in the basin.static table:\n", duplicated_static_basin)
+    # check for duplicated indexes in the basin static tables
+    duplicated_static_basin = ribasim_model.basin.static.df.loc[
+        ribasim_model.basin.static.df.duplicated(subset="node_id")
+    ]
+    if len(duplicated_static_basin) > 0:
+        print("\nFollowing indexes are duplicated in the basin.static table:\n", duplicated_static_basin)
 
     # check for duplicated indexes in the outlet static tables
     duplicated_static_outlet = ribasim_model.outlet.static.df.loc[
