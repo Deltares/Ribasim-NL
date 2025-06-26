@@ -1,6 +1,8 @@
 # %%
 import time
 
+import pandas as pd
+
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.check_basin_level import add_check_basin_level
@@ -240,8 +242,8 @@ model.write(ribasim_toml)
 
 # run model
 if run_model:
-    exit_code = model.run()
-    assert exit_code == 0
+    result = model.run()
+    assert result.exit_code == 0
 
     # # %%
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)

@@ -299,4 +299,4 @@ model.report_internal_basins()
 # %%
 if run_model:
     result = model.run()
-    assert result == 0
+    assert result.exit_code == 0

@@ -22,6 +22,7 @@ ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
 model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_path, model_edits_path])
 
@@ -250,4 +251,4 @@ model.report_internal_basins()
 # %% Test run model
 if run_model:
     result = model.run()
-    assert result == 0
+    assert result.exit_code == 0

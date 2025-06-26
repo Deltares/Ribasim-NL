@@ -49,8 +49,8 @@ add_check_basin_level(model=model)
 
 # run model
 if run_model:
-    exit_code = model.run()
-    assert exit_code == 0
+    result = model.run()
+    assert result.exit_code == 0
 
     # # %%
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)

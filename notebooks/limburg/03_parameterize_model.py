@@ -50,7 +50,7 @@ model.write(ribasim_toml)
 
 # run model
 if run_model:
-    exit_code = model.run()
+    result = model.run()
 
 # # %%
 controle_output = Control(ribasim_toml=ribasim_toml)

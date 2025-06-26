@@ -64,8 +64,8 @@ model.edge.add(model.outlet[5], model.level_boundary[6])
 
 model.write(ribasim_toml)
 
-exit_code = model.run()
-assert exit_code == 0
+result = model.run()
+assert result.exit_code == 0
 
 final_timestep = model.basin_results.df.index.max()
 df = model.basin_results.df.loc[final_timestep].set_index("node_id")
