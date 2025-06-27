@@ -129,13 +129,18 @@ class AssignOfflineBudgets:
         # sys2: ditch dranage
         # sys3: OLF
 
+        # MetaSWAP budgets
+        # qrun: OLF via MetaSWAP
+        # pssw: irrigation from surface water
+        # TODO: evaluate if we need to add urban runoff
+
         # For the Ribasim schematization we distinguish:
         #   - Primary system for all basins
         #   - Secondary system in basins other than the main river system
 
         # For drainage an infiltration input based on LHM-output budgets, we distubute the LHM-systems in the following matter:
         #  - Primary system   -> RIV-sys 1 + 4 + 5
-        #  - Secondary system -> RIV-sys 2 + 3 + 6, DRN-sys 1 + 2 + 3
+        #  - Secondary system -> RIV-sys 2 + 3 + 6, DRN-sys 1 + 2 + 3, qrun + pssw
 
         # sum primairy systems
         primary_summed_budgets = budgets["bdgriv_sys1"]
@@ -148,6 +153,9 @@ class AssignOfflineBudgets:
         secondary_summed_budgets = secondary_summed_budgets.rename("secondair")
         for sys, package in zip([3, 6, 1, 2, 3], ["riv", "riv", "drn", "drn", "drn"]):
             secondary_summed_budgets += budgets[f"bdg{package}_sys{sys}"]
+        # add MetaSWAP budgets
+        for name in ["bdgqrun", "bdgpssw"]:
+            secondary_summed_budgets += budgets[name]
 
         # sum per system and node_id
         primary_budgets_per_node_id = (
