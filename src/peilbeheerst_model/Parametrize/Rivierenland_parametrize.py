@@ -115,6 +115,9 @@ ribasim_param.validate_basin_area(ribasim_model)
 # check target levels at both sides of the Manning Nodes
 ribasim_param.validate_manning_basins(ribasim_model)
 
+afvoer_pumps = []
+aanvoer_pumps = []
+
 # model specific tweaks
 # merge basins
 ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
@@ -173,6 +176,7 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(136574, 422965)), [pump.S
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == pump_node.node_id, "meta_func_aanvoer"] = 1
 ribasim_model.link.add(ribasim_model.basin[154], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
+afvoer_pumps.append(pump_node.node_id)
 
 # add gemaal and LB at Pannerlingen
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -269,6 +273,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(158276, 436942)), [pump.Static(flow_rate=[20])])
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[86])
+aanvoer_pumps.append(pump_node.node_id)
 
 # Add Inlaatgemaal Bontemorgen
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -300,8 +305,9 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(157940, 425856)), [pump.Static(flow_rate=[20])])
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
-ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[194])
+ribasim_model.link.add(ribasim_model.basin[194], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+afvoer_pumps.append(pump_node.node_id)
 
 ribasim_param.change_pump_func(ribasim_model, 414, "aanvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 414, "afvoer", 0)
@@ -312,6 +318,15 @@ ribasim_param.change_pump_func(ribasim_model, 1005, "afvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 1153, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 1025, "afvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 1025, "aanvoer", 1)
+
+for afvoer_pump in afvoer_pumps:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_afvoer"] = 1
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_aanvoer"] = 0
+
+for aanvoer_pump in aanvoer_pumps:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == aanvoer_pump, "meta_func_aanvoer"] = 1
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == aanvoer_pump, "meta_func_afvoer"] = 0
+
 # (re)set meta_node_id
 ribasim_model.level_boundary.node.df["meta_node_id"] = ribasim_model.level_boundary.node.df.index
 ribasim_model.tabulated_rating_curve.node.df["meta_node_id"] = ribasim_model.tabulated_rating_curve.node.df.index
