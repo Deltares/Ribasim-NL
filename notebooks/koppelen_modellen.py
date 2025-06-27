@@ -20,6 +20,8 @@ SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
 
+upload_model = False
+
 
 def get_basin_link(
     model: Model,
