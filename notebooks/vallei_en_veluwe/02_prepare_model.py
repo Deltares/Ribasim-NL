@@ -3,8 +3,8 @@
 import geopandas as gpd
 import pandas as pd
 
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model, Network
-from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
@@ -335,6 +335,7 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 # %% correct some streefpeilen that are wrong
 static_data.basin.loc[static_data.basin.node_id == 1134, "streefpeil"] = -0.1
 static_data.basin.loc[static_data.basin.node_id == 1035, "streefpeil"] = -0.1
+static_data.basin.loc[static_data.basin.node_id == 1159, "streefpeil"] = 2
 
 # %%
 # get all nodata streefpeilen with their profile_ids and levels
@@ -360,8 +361,16 @@ model.basin.area.df.reset_index(drop=False, inplace=True)
 model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
 
-# %%
-add_from_to_nodes_and_levels(model)
+# # koppelen
+ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+assign = AssignAuthorities(
+    ribasim_model=model,
+    waterschap=authority,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+)
+model = assign.assign_authorities()
 
 # %%
 # defaults

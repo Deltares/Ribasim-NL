@@ -221,8 +221,8 @@ for idx, model_spec in enumerate(model_specs):
     if not model.basin_outstate.filepath.exists():
         print("run model to update state")
         model.write(model_path)  # forced migration
-        returncode = model.run()
-        if returncode != 0:
+        result = model.run()
+        if result.exit_code != 0:
             raise Exception("model won't run successfully!")
     model.update_state()
 

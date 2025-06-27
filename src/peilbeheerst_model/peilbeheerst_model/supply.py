@@ -119,9 +119,8 @@ class SupplyBasin:
         # update basin areas
         basin_areas = self.basin_areas
 
-        areas = basin_areas.merge(nodes_in_polygons[["node_id", "meta_aanvoer"]], how="left", on="node_id")
-        basin_areas["meta_aanvoer"] = areas["meta_aanvoer"]
-        basin_areas.dropna(inplace=True)
+        basin_areas = basin_areas.merge(nodes_in_polygons[["node_id", "meta_aanvoer"]], how="left", on="node_id")
+        basin_areas.dropna(subset=["meta_aanvoer"], inplace=True)
 
         # updated data: basin areas
         self.basin_areas = basin_areas.copy(deep=True)
@@ -335,10 +334,17 @@ class SupplyWork(abc.ABC):
         if overruling_enabled:
             remove_nodes = set()
             # collect all nodes that are considered part of the 'hoofdwatersysteem'
-            main_water_system_node_ids = (
-                basin_states[basin_states["meta_categorie"] == "hoofdwater"].index.to_list()
-                + boundaries.index.to_list()
-            )
+            if "meta_categorie" in self.model.basin.node.df.columns:
+                main_water_system_node_ids = (
+                    self.model.basin.node.df[self.model.basin.node.df["meta_categorie"] == "hoofdwater"].index.to_list()
+                    + boundaries.index.to_list()
+                )
+            else:
+                print("meta_categorie from basin/state")
+                main_water_system_node_ids = (
+                    basin_states[basin_states["meta_categorie"] == "hoofdwater"].index.to_list()
+                    + boundaries.index.to_list()
+                )
             # only consider basins and works that are considered for the 'aanvoer'-situation
             basin_sel = basin_areas[basin_areas["meta_aanvoer"]].index
             works_sel = statics.loc[statics["meta_aanvoer"], ["node_id", "meta_from_node_id", "meta_to_node_id"]]
