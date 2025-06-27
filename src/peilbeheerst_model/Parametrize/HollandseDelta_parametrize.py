@@ -309,6 +309,38 @@ ribasim_model.merge_basins(node_id=202, to_node_id=419)
 
 ribasim_model.merge_basins(node_id=730, to_node_id=33)  # limiting node for coupling
 
+# convergence issues
+ribasim_model.merge_basins(node_id=371, to_node_id=12)
+ribasim_model.merge_basins(node_id=124, to_node_id=262)
+ribasim_model.merge_basins(node_id=509, to_node_id=262)
+ribasim_model.merge_basins(node_id=746, to_node_id=698)
+ribasim_model.merge_basins(node_id=331, to_node_id=734)
+ribasim_model.merge_basins(node_id=653, to_node_id=734)
+ribasim_model.merge_basins(node_id=589, to_node_id=590)
+ribasim_model.merge_basins(node_id=192, to_node_id=1)
+ribasim_model.merge_basins(node_id=458, to_node_id=655)
+ribasim_model.merge_basins(node_id=140, to_node_id=655)
+ribasim_model.merge_basins(node_id=177, to_node_id=357)
+ribasim_model.merge_basins(node_id=150, to_node_id=365)
+ribasim_model.merge_basins(node_id=269, to_node_id=601)
+ribasim_model.merge_basins(node_id=42, to_node_id=43)
+ribasim_model.merge_basins(node_id=799, to_node_id=43)
+ribasim_model.merge_basins(node_id=384, to_node_id=577)
+ribasim_model.merge_basins(node_id=411, to_node_id=84)
+ribasim_model.merge_basins(node_id=16, to_node_id=481)
+ribasim_model.merge_basins(node_id=621, to_node_id=404)
+ribasim_model.merge_basins(node_id=199, to_node_id=14)
+ribasim_model.merge_basins(node_id=61, to_node_id=780)
+ribasim_model.merge_basins(node_id=266, to_node_id=780)
+ribasim_model.merge_basins(node_id=337, to_node_id=234)
+ribasim_model.merge_basins(node_id=649, to_node_id=246)
+ribasim_model.merge_basins(node_id=485, to_node_id=275)
+ribasim_model.merge_basins(node_id=729, to_node_id=173)
+ribasim_model.merge_basins(node_id=327, to_node_id=173)
+ribasim_model.merge_basins(node_id=769, to_node_id=31)
+ribasim_model.merge_basins(node_id=348, to_node_id=552)
+ribasim_model.merge_basins(node_id=424, to_node_id=593)
+
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
@@ -382,7 +414,7 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(102158, 421104)), [pump.S
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[348])
+ribasim_model.link.add(pump_node, ribasim_model.basin[552])
 
 # add gemaal and LB
 level_boundary_node = ribasim_model.level_boundary.add(
