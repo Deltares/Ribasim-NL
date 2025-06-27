@@ -14,11 +14,12 @@ from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -32,9 +33,10 @@ cloud = CloudStorage()
 
 # collect data from the base model, feedback form, waterauthority & RWS border
 ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
-FeedbackFormulier_path = cloud.joinpath(
-    waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
-)
+# FeedbackFormulier_path = cloud.joinpath(
+#     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+# )
+FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_HollandseDelta.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -48,7 +50,7 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraa
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        FeedbackFormulier_path,
+        # FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
@@ -80,8 +82,8 @@ unknown_streefpeil = (
 )
 
 # forcing settings
-starttime = datetime.datetime(2024, 1, 1)
-endtime = datetime.datetime(2025, 1, 1)
+starttime = datetime.datetime(2017, 1, 1)
+endtime = datetime.datetime(2018, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -300,7 +302,44 @@ ribasim_model.merge_basins(node_id=465, to_node_id=245)  # numerical limiting ou
 
 ribasim_model.merge_basins(node_id=635, to_node_id=340)  # wrong target level
 
+# circular pumping of water between basins
+ribasim_model.merge_basins(node_id=271, to_node_id=419)
+ribasim_model.merge_basins(node_id=763, to_node_id=419)
+ribasim_model.merge_basins(node_id=202, to_node_id=419)
+
 ribasim_model.merge_basins(node_id=730, to_node_id=33)  # limiting node for coupling
+
+# convergence issues
+ribasim_model.merge_basins(node_id=371, to_node_id=12)
+ribasim_model.merge_basins(node_id=124, to_node_id=262)
+ribasim_model.merge_basins(node_id=509, to_node_id=262)
+ribasim_model.merge_basins(node_id=746, to_node_id=698)
+ribasim_model.merge_basins(node_id=331, to_node_id=734)
+ribasim_model.merge_basins(node_id=653, to_node_id=734)
+ribasim_model.merge_basins(node_id=589, to_node_id=590)
+ribasim_model.merge_basins(node_id=192, to_node_id=1)
+ribasim_model.merge_basins(node_id=458, to_node_id=655)
+ribasim_model.merge_basins(node_id=140, to_node_id=655)
+ribasim_model.merge_basins(node_id=177, to_node_id=357)
+ribasim_model.merge_basins(node_id=150, to_node_id=365)
+ribasim_model.merge_basins(node_id=269, to_node_id=601)
+ribasim_model.merge_basins(node_id=42, to_node_id=43)
+ribasim_model.merge_basins(node_id=799, to_node_id=43)
+ribasim_model.merge_basins(node_id=384, to_node_id=577)
+ribasim_model.merge_basins(node_id=411, to_node_id=84)
+ribasim_model.merge_basins(node_id=16, to_node_id=481)
+ribasim_model.merge_basins(node_id=621, to_node_id=404)
+ribasim_model.merge_basins(node_id=199, to_node_id=14)
+ribasim_model.merge_basins(node_id=61, to_node_id=780)
+ribasim_model.merge_basins(node_id=266, to_node_id=780)
+ribasim_model.merge_basins(node_id=337, to_node_id=234)
+ribasim_model.merge_basins(node_id=649, to_node_id=246)
+ribasim_model.merge_basins(node_id=485, to_node_id=275)
+ribasim_model.merge_basins(node_id=729, to_node_id=173)
+ribasim_model.merge_basins(node_id=327, to_node_id=173)
+ribasim_model.merge_basins(node_id=769, to_node_id=31)
+ribasim_model.merge_basins(node_id=348, to_node_id=552)
+ribasim_model.merge_basins(node_id=424, to_node_id=593)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -375,7 +414,7 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(102158, 421104)), [pump.S
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[348])
+ribasim_model.link.add(pump_node, ribasim_model.basin[552])
 
 # add gemaal and LB
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -535,23 +574,17 @@ ribasim_param.change_pump_func(ribasim_model, 2242, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 2453, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 2572, "afvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 1454, "afvoer", 0)
+
+# change pumps from aanvoer to afvoer
+aanvoer_to_afvoer_pump = [2420, 924, 2148, 2320, 2191, 2457]
+for pumpid in aanvoer_to_afvoer_pump:
+    ribasim_param.change_pump_func(ribasim_model, pumpid, "aanvoer", 0)
+    ribasim_param.change_pump_func(ribasim_model, pumpid, "afvoer", 1)
+
 # basins are connected by both a `Pump`- and `Manning`-node: removed `Pump`-nodes due to same 'streefpeil'-values
 ribasim_model.remove_node(953, True)
 ribasim_model.remove_node(1041, True)
 ribasim_model.remove_node(2534, True)
-
-# Reversing direction (cannot be done via FF)
-ribasim_model.remove_node(913, True)
-ribasim_model.remove_node(2596, False)
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(105288, 418521)), [level_boundary.Static(level=[default_level])]
-)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(105287, 418521)), [pump.Static(flow_rate=[20])])
-ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
-ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
-ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[84])
-
 ribasim_model.remove_node(2125, True)
 
 # (re) set 'meta_node_id'
@@ -583,9 +616,25 @@ add_storage_basins = AddStorageBasins(
 
 add_storage_basins.create_bergende_basins()
 
-# set static forcing
-if MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 2)
+# set forcing
+if DYNAMIC_CONDITIONS:
+    # Add dynamic meteo
+    forcing = SetDynamicForcing(
+        model=ribasim_model,
+        cloud=cloud,
+        startdate=starttime,
+        enddate=endtime,
+    )
+
+    ribasim_model = forcing.add()
+
+    # Add dynamic groundwater
+    offline_budgets = AssignOfflineBudgets()
+    offline_budgets.compute_budgets(ribasim_model)
+
+elif MIXED_CONDITIONS:
+    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 1)
+
 else:
     forcing_dict = {
         "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
@@ -595,8 +644,8 @@ else:
     }
     ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
-# set pump capacity for each pump
-ribasim_model.pump.static.df["flow_rate"] = 0.16667  # 10 kuub per minuut
+# reset pump capacity for each pump
+ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
@@ -604,12 +653,22 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 
 # add the default levels
 if MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_level_boundaries(ribasim_model, starttime, endtime, -0.42, 1.24)
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(
+        ribasim_model, starttime, endtime, -0.42, 1.24, DYNAMIC_CONDITIONS
+    )
 else:
     ribasim_model.level_boundary.static.df.level = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
+# add control, based on the meta_categorie
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
+ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
+ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
+ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
+ribasim_param.add_continuous_control(ribasim_model, dy=-50, exclude_outlets=(1265, 1371))
 
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
@@ -632,16 +691,8 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
-offline_budgets = AssignOfflineBudgets()
-offline_budgets.compute_budgets(ribasim_model)
-
-# add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
-ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
-ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
-ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-ribasim_param.add_continuous_control(ribasim_model, dy=-50, exclude_outlets=(1265, 1371))
+ribasim_model.pump.static.df.flow_rate = 25
+ribasim_model.pump.static.df.max_flow_rate = 25
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -671,6 +722,14 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
+
+# TEMP CHANGES! VERY IMPORTANT TO REMOVE THIS AFTERWARDS! #@TODO ##################################
+reduce_computation_time = False
+if reduce_computation_time:
+    meteo_factor = 100
+    ribasim_model.basin.profile.df.area *= meteo_factor  # increase surface area
+    ribasim_model.basin.time.df.precipitation /= meteo_factor  # decrease meteo
+    ribasim_model.basin.time.df.potential_evaporation /= meteo_factor  # decrease meteo
 
 # set numerical settings
 ribasim_model.use_validation = True
