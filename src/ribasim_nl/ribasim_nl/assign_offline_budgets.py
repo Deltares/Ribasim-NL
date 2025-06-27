@@ -1,4 +1,3 @@
-import zipfile
 from pathlib import Path
 
 import geopandas as gpd
@@ -16,12 +15,10 @@ from ribasim_nl import Model as ModelNL
 class AssignOfflineBudgets:
     def __init__(
         self,
-        lhm_budget_zip: Path | str = "Basisgegevens/LHM/4.3/results/LHM_budgets.zip.zip",
-        lhm_budget: Path | str = "Basisgegevens/LHM/4.3/results/LHM_budgets.zip",
+        lhm_budget_path: Path | str = "Basisgegevens/LHM/4.3/results/LHM_433_budgets.zip",
     ):
         self.cloud = CloudStorage()
-        self.lhm_budget_zip = self.cloud.joinpath(lhm_budget_zip)
-        self.lhm_budget = self.cloud.joinpath(lhm_budget)
+        self.lhm_budget_path = self.cloud.joinpath(lhm_budget_path)
 
     def compute_budgets(
         self,
@@ -101,9 +98,7 @@ class AssignOfflineBudgets:
             model = Model.read(model)
 
         # Open the LHM budget file
-        if zipfile.is_zipfile(self.lhm_budget):
-            raise TypeError(f"The .zarr file needs to be unzipped manually at '{self.lhm_budget.absolute()}'")
-        budgets = xr.open_zarr(str(self.lhm_budget))
+        budgets = xr.open_zarr(str(self.lhm_budget_path))
 
         return budgets, model
 
