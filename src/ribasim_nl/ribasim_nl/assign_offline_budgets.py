@@ -88,7 +88,7 @@ class AssignOfflineBudgets:
         model: ModelNL | Model | Path | str,
     ) -> tuple[xr.Dataset, ModelNL | Model]:
         # Synchronize LHM budget and model files
-        filepaths = [self.lhm_budget_zip]
+        filepaths = [self.lhm_budget_path]
         if not (isinstance(model, ModelNL) or isinstance(model, Model)):
             filepaths.append(Path(model))
         self.cloud.synchronize(filepaths=filepaths)
