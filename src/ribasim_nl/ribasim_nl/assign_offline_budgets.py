@@ -15,7 +15,7 @@ from ribasim_nl import Model as ModelNL
 class AssignOfflineBudgets:
     def __init__(
         self,
-        lhm_budget_path: Path | str = "Basisgegevens/LHM/4.3/results/LHM_433_budgets.zip",
+        lhm_budget_path: Path | str = "Basisgegevens/LHM/4.3/results/LHM_433_budget.zip",
     ):
         self.cloud = CloudStorage()
         self.lhm_budget_path = self.cloud.joinpath(lhm_budget_path)
