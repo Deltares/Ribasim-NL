@@ -520,7 +520,7 @@ class Network:
             try:
                 return shortest_path(self.graph, node_from, node_to, weight=weight)
             except NetworkXNoPath:
-                print(f"search path undirected between {node_from} and {node_to}")
+                # print(f"search path undirected between {node_from} and {node_to}")
                 return shortest_path(self.graph_undirected, node_from, node_to, weight=weight)
         else:
             return shortest_path(self.graph_undirected, node_from, node_to, weight=weight)
