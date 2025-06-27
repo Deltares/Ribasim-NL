@@ -45,7 +45,7 @@ ds["bdgqrun"] = bdgqr.resample(time="1D").bfill().sel(time=time_slice)
 # rechunk for better cloud access
 # spatial: 50km x 50 km
 # temporal: one year
-distance = 50_000
+distance = 100_000
 dxy = 250
 n = int(distance / dxy)
 ds = ds.chunk(
