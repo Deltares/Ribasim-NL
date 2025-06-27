@@ -1,4 +1,3 @@
-import zipfile
 from pathlib import Path
 
 import geopandas as gpd
@@ -16,12 +15,10 @@ from ribasim_nl import Model as ModelNL
 class AssignOfflineBudgets:
     def __init__(
         self,
-        lhm_budget_zip: Path | str = "Basisgegevens/LHM/4.3/results/LHM_budgets.zip.zip",
-        lhm_budget: Path | str = "Basisgegevens/LHM/4.3/results/LHM_budgets.zip",
+        lhm_budget_path: Path | str = "Basisgegevens/LHM/4.3/results/LHM_433_budgets.zip",
     ):
         self.cloud = CloudStorage()
-        self.lhm_budget_zip = self.cloud.joinpath(lhm_budget_zip)
-        self.lhm_budget = self.cloud.joinpath(lhm_budget)
+        self.lhm_budget_path = self.cloud.joinpath(lhm_budget_path)
 
     def compute_budgets(
         self,
@@ -101,9 +98,7 @@ class AssignOfflineBudgets:
             model = Model.read(model)
 
         # Open the LHM budget file
-        if zipfile.is_zipfile(self.lhm_budget):
-            raise TypeError(f"The .zarr file needs to be unzipped manually at '{self.lhm_budget.absolute()}'")
-        budgets = xr.open_zarr(str(self.lhm_budget))
+        budgets = xr.open_zarr(str(self.lhm_budget_path))
 
         return budgets, model
 
@@ -129,13 +124,18 @@ class AssignOfflineBudgets:
         # sys2: ditch dranage
         # sys3: OLF
 
+        # MetaSWAP budgets
+        # qrun: OLF via MetaSWAP
+        # pssw: irrigation from surface water
+        # TODO: evaluate if we need to add urban runoff
+
         # For the Ribasim schematization we distinguish:
         #   - Primary system for all basins
         #   - Secondary system in basins other than the main river system
 
         # For drainage an infiltration input based on LHM-output budgets, we distubute the LHM-systems in the following matter:
         #  - Primary system   -> RIV-sys 1 + 4 + 5
-        #  - Secondary system -> RIV-sys 2 + 3 + 6, DRN-sys 1 + 2 + 3
+        #  - Secondary system -> RIV-sys 2 + 3 + 6, DRN-sys 1 + 2 + 3, qrun + pssw
 
         # sum primairy systems
         primary_summed_budgets = budgets["bdgriv_sys1"]
@@ -148,6 +148,9 @@ class AssignOfflineBudgets:
         secondary_summed_budgets = secondary_summed_budgets.rename("secondair")
         for sys, package in zip([3, 6, 1, 2, 3], ["riv", "riv", "drn", "drn", "drn"]):
             secondary_summed_budgets += budgets[f"bdg{package}_sys{sys}"]
+        # add MetaSWAP budgets
+        for name in ["bdgqrun", "bdgpssw"]:
+            secondary_summed_budgets += budgets[name]
 
         # sum per system and node_id
         primary_budgets_per_node_id = (

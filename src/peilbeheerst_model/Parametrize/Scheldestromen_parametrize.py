@@ -4,7 +4,6 @@ import datetime
 import os
 import warnings
 
-import ribasim.nodes
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import Point
@@ -15,7 +14,7 @@ from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, SetDynamicForcing
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 AANVOER_CONDITIONS: bool = True
@@ -107,7 +106,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = ribasim.Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -156,7 +155,6 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(65429, 374945)), [pump.St
 ribasim_model.link.add(ribasim_model.basin[148], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
-
 # add a TRC and LB from Belgium
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(43290, 356428)), [level_boundary.Static(level=[default_level])]
@@ -168,6 +166,20 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[1])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
+# connection with Belgium
+ribasim_model.remove_node(29, True)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(35147, 362794)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[491])
+ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[547])
+ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[334])
+ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[554])
+ribasim_model.link.add(ribasim_model.tabulated_rating_curve[227], level_boundary_node)
+ribasim_model.link.add(ribasim_model.tabulated_rating_curve[381], level_boundary_node)
+inlaat_structures.extend([491, 547, 334, 554])
+inlaat_structures.append(309)
 
 # (re) set 'meta_node_id'
 ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
@@ -239,7 +251,6 @@ else:
     ribasim_model.level_boundary.static.df.level = default_level
     ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2
     ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2
-
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)

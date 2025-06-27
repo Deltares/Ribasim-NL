@@ -1,6 +1,7 @@
 # %%
 
 
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
 
@@ -28,6 +29,19 @@ static_data_xlsx = cloud.joinpath(
 
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 static_data.write()
+
+# # koppelen
+ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+assign = AssignAuthorities(
+    ribasim_model=model,
+    waterschap=authority,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    custom_nodes={21: "Noordzee", 27: "Noordzee"},
+)
+model = assign.assign_authorities()
+
 
 # write model
 model.write(ribasim_toml)

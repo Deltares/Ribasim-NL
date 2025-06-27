@@ -338,9 +338,9 @@ class Control:
 
     @model_loaded
     def mask_basins(self, control_dict):
-        if "meta_check_basin_level" in self.model.basin.node.df.columns:
+        if "meta_gestuwd" in self.model.basin.node.df.columns:
             control_dict["mask_afvoer"] = self.model.basin.node.df[
-                self.model.basin.node.df["meta_check_basin_level"] == "False"
+                self.model.basin.node.df["meta_gestuwd"] == "False"
             ].reset_index()[["node_id", "geometry"]]
 
         return control_dict
@@ -382,6 +382,7 @@ class Control:
         control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
         control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
         control_dict = self.water_aanvoer_outlets(control_dict)
+        control_dict = self.mask_basins(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 

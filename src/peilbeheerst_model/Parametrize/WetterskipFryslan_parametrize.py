@@ -504,8 +504,6 @@ else:
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 inlaat_structures += [3685]  # add some more outlets (created due to FB, hence not in FF)
-# for node in inlaat_structures:
-#     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_aanvoer"] = 1
 
 # prepare 'aanvoergebieden'
 if AANVOER_CONDITIONS:
