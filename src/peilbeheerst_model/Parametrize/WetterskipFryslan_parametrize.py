@@ -580,6 +580,14 @@ assign = AssignAuthorities(
 )
 ribasim_model = assign.assign_authorities()
 
+# TEMP CHANGES! VERY IMPORTANT TO REMOVE THIS AFTERWARDS! #@TODO ##################################
+reduce_computation_time = False
+if reduce_computation_time:
+    meteo_factor = 100
+    ribasim_model.basin.profile.df.area *= meteo_factor  # increase surface area
+    ribasim_model.basin.time.df.precipitation /= meteo_factor  # decrease meteo
+    ribasim_model.basin.time.df.potential_evaporation /= meteo_factor  # decrease meteo
+
 # set numerical settings
 # write model output
 ribasim_model.use_validation = True

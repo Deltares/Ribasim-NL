@@ -302,6 +302,11 @@ ribasim_model.merge_basins(node_id=465, to_node_id=245)  # numerical limiting ou
 
 ribasim_model.merge_basins(node_id=635, to_node_id=340)  # wrong target level
 
+# circular pumping of water between basins
+ribasim_model.merge_basins(node_id=271, to_node_id=419)
+ribasim_model.merge_basins(node_id=763, to_node_id=419)
+ribasim_model.merge_basins(node_id=202, to_node_id=419)
+
 ribasim_model.merge_basins(node_id=730, to_node_id=33)  # limiting node for coupling
 
 # check basin area
@@ -685,6 +690,14 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
+
+# TEMP CHANGES! VERY IMPORTANT TO REMOVE THIS AFTERWARDS! #@TODO ##################################
+reduce_computation_time = False
+if reduce_computation_time:
+    meteo_factor = 100
+    ribasim_model.basin.profile.df.area *= meteo_factor  # increase surface area
+    ribasim_model.basin.time.df.precipitation /= meteo_factor  # decrease meteo
+    ribasim_model.basin.time.df.potential_evaporation /= meteo_factor  # decrease meteo
 
 # set numerical settings
 ribasim_model.use_validation = True
