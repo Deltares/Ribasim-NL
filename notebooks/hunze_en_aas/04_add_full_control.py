@@ -114,6 +114,7 @@ model.outlet.static.df.loc[
     model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "min_upstream_level"
 ] = pd.NA
 
+<<<<<<< Updated upstream
 # Afvoer uit model krijgt geen max_downstream_level
 model.outlet.static.df.loc[
     model.outlet.static.df.node_id.isin(model.downstream_connection_node_ids(node_type="Outlet")),
@@ -122,6 +123,65 @@ model.outlet.static.df.loc[
 model.pump.static.df.loc[
     model.pump.static.df.node_id.isin(model.downstream_connection_node_ids(node_type="Pump")), "max_downstream_level"
 ] = pd.NA
+=======
+
+# === 1. Bepaal upstream/downstream connection nodes ===
+upstream_outlet_nodes = model.upstream_connection_node_ids(node_type="Outlet")
+downstream_outlet_nodes = model.downstream_connection_node_ids(node_type="Outlet")
+upstream_pump_nodes = model.upstream_connection_node_ids(node_type="Pump")
+downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
+
+# === 2. Zet waardes voor upstream nodes ===
+set_values(
+    model.outlet.static.df,
+    upstream_outlet_nodes,
+    {
+        "flow_rate": 10,
+        "max_flow_rate": 10,
+        "min_upstream_level": pd.NA,
+    },
+)
+set_values(
+    model.pump.static.df,
+    upstream_pump_nodes,
+    {
+        "flow_rate": 10,
+        "max_flow_rate": 10,
+        "min_upstream_level": pd.NA,
+    },
+)
+
+# === 3. Zet waardes voor downstream nodes ===
+set_values(
+    model.outlet.static.df,
+    downstream_outlet_nodes,
+    {
+        "max_downstream_level": pd.NA,
+    },
+)
+set_values(
+    model.pump.static.df,
+    downstream_pump_nodes,
+    {
+        "max_downstream_level": pd.NA,
+    },
+)
+
+# === 2b. Verhoog mmin_upstream_level met offset voor downstream Outlets
+mask = model.outlet.static.df["node_id"].isin(downstream_outlet_nodes)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.02
+
+# Rondpompen tegengaan
+model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"] + 0.02
+# === 4. Zet max/min levels op NA voor niet-gestuwde, niet-verbonden outlets ===
+non_control_nodes = model.outlet.node.df.query("meta_gestuwd == 'False'").index
+excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
+
+# model.outlet.static.df.loc[
+#    model.outlet.static.df["node_id"].isin(non_control_nodes) & ~model.outlet.static.df["node_id"].isin(excluded_nodes),
+#    ["max_downstream_level", "min_upstream_level"],
+# ] = pd.NA
+>>>>>>> Stashed changes
 
 
 # Dokwerd, sluis ten onrechte op 10m3/s gezet
