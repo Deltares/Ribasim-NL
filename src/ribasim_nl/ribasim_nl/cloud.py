@@ -341,6 +341,7 @@ class CloudStorage:
             pattern = r"^(.*)_([\d]+)_([\d]+)_([\d]+)$"
             match = re.match(pattern, dir)
             if match is None:
+                print(f"WARNING: {dir} does not match pattern {pattern}")
                 return None
             else:
                 return ModelVersion(
@@ -355,8 +356,7 @@ class CloudStorage:
         uploaded_models = self.content(models_url)
 
         # get versions
-        versions = [i for i in (strip_version(i) for i in uploaded_models) if i is not None]
-
+        versions = [strip_version(i) for i in uploaded_models if strip_version(i) is not None]
         return versions
 
     def upload_model(self, authority: str, model: str, include_results=False, include_plots=False):

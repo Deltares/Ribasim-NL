@@ -1,3 +1,4 @@
+# %%
 # import pathlib
 import datetime
 import json
@@ -308,7 +309,12 @@ def set_dynamic_level_boundaries(
 
 
 def set_hypothetical_dynamic_level_boundaries(
-    ribasim_model: ribasim.Model, start_time: datetime.datetime, end_time: datetime.datetime, low: float, high: float
+    ribasim_model: ribasim.Model,
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
+    low: float,
+    high: float,
+    DYNAMIC_CONDITIONS: bool,
 ) -> None:
     """Set basic hypothetical dynamic level boundaries.
 
@@ -325,10 +331,20 @@ def set_hypothetical_dynamic_level_boundaries(
     :type high: float
     """
     # define time-series
-    halftime = start_time + (end_time - start_time) // 3
-    halftime_1 = halftime + datetime.timedelta(days=1)
-    time = start_time, halftime, halftime_1, end_time
-    level = low, low, high, high
+    if DYNAMIC_CONDITIONS:
+        end_winter = datetime.datetime(start_time.year, 4, 1)
+        end_winter_1 = end_winter + datetime.timedelta(days=1)
+        end_summer = datetime.datetime(start_time.year, 10, 1)
+        end_summer_1 = end_summer + datetime.timedelta(days=1)
+
+        time = start_time, end_winter, end_winter_1, end_summer, end_summer_1, end_time
+        level = low, low, high, high, low, low
+
+    else:
+        halftime = start_time + (end_time - start_time) // 3
+        halftime_1 = halftime + datetime.timedelta(days=1)
+        time = start_time, halftime, halftime_1, end_time
+        level = low, low, high, high
 
     # set dynamic level boundaries
     set_dynamic_level_boundaries(ribasim_model, time, level)
@@ -1046,6 +1062,9 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     It checks whether they are inlaten en uitlaten from a boezem, buitenwater or just regular peilgebieden.
     This will determine the rules of the control nodes.
     """
+    # # optional arguments
+    # aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
+
     # create new columsn to store the meta categorie of each node
     ribasim_model.outlet.static.df["meta_categorie"] = np.nan
     ribasim_model.pump.static.df["meta_categorie"] = np.nan
@@ -1242,7 +1261,7 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
 def set_aanvoer_flags(
     ribasim_model: str | ribasim.Model,
     aanvoer_regions: str | gpd.GeoDataFrame,
-    processer: RibasimFeedbackProcessor,
+    processor: RibasimFeedbackProcessor = None,
     **kwargs,
 ) -> ribasim.Model:
     """
@@ -1250,7 +1269,7 @@ def set_aanvoer_flags(
 
     :param ribasim_model: Ribasim model, or file/path to a Ribasim model
     :param aanvoer_regions: geometry data of 'aanvoergebieden', or file/path to this geometry data
-    :param processer: Ribasim feedback processor object
+    :param processor: Ribasim feedback processor object, defaults to None
 
     :key aanvoer_enabled: 'aanvoer'-settings are enabled, defaults to True
     :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to None
@@ -1262,7 +1281,7 @@ def set_aanvoer_flags(
 
     :type ribasim_model: str, ribasim.Model
     :type aanvoer_regions: str, geopandas.GeoDataFrame
-    :type processer: RibasimFeedbackProcessor
+    :type processor: RibasimFeedbackProcessor, optional
     :type aanvoer_enabled: bool, optional
     :type basin_aanvoer_on: tuple, optional
     :type basin_aanvoer_off: tuple, optional
@@ -1295,21 +1314,26 @@ def set_aanvoer_flags(
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
         logging.warning(
-            f'With `aanvoer_regions={aanvoer_regions}`, the whole region is considered an "aanvoergebied". '
+            f'With aanvoer_regions={aanvoer_regions}, the whole region is considered an "aanvoergebied". '
             f"This is a temporary catch and will be deprecated in the future: "
             f'Make sure that all water boards have a geometry-file from which the "aanvoergebieden" can be deduced.'
         )
         aanvoer_regions = ribasim_model.basin.area.df.reset_index()
 
+    # include 'aanvoer'-settings from feedback form
+    if processor is not None:
+        basin_aanvoer_on = set(basin_aanvoer_on) | set(processor.basin_aanvoer_on)
+        basin_aanvoer_off = set(basin_aanvoer_off) | set(processor.basin_aanvoer_off)
+        outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processor.outlet_aanvoer_on)
+        outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processor.outlet_aanvoer_off)
+
     # label basins as 'aanvoergebied'
-    sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)  # type: ignore
+    sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)
     sb.exec()
 
-    basin_aanvoer_on = set(basin_aanvoer_on) | set(processer.basin_aanvoer_on)
     if basin_aanvoer_on:
         sb.set_aanvoer_on(*basin_aanvoer_on)
 
-    basin_aanvoer_off = set(basin_aanvoer_off) | set(processer.basin_aanvoer_off)
     if basin_aanvoer_off:
         sb.set_aanvoer_off(*basin_aanvoer_off)
 
@@ -1317,11 +1341,9 @@ def set_aanvoer_flags(
     so = supply.SupplyOutlet(sb.model)
     so.exec(overruling_enabled=overruling_enabled)
 
-    outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processer.outlet_aanvoer_on)
     if outlet_aanvoer_on:
         so.set_aanvoer_on(*outlet_aanvoer_on)
 
-    outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processer.outlet_aanvoer_off)
     if outlet_aanvoer_off:
         so.set_aanvoer_off(*outlet_aanvoer_off)
 
@@ -1339,18 +1361,23 @@ def load_model_settings(file_path):
     return settings
 
 
-def determine_min_upstream_max_downstream_levels(
-    ribasim_model: ribasim.Model,
-    waterschap: str,
-    aanvoer_upstream_offset: float = 0.04,
-    aanvoer_downstream_offset: float = 0,
-) -> None:
+def determine_min_upstream_max_downstream_levels(ribasim_model: ribasim.Model, waterschap: str, **kwargs) -> None:
+    # optional arguments
+    aanvoer_upstream_offset: float = kwargs.get("aanvoer_upstream_offset", 0.04)
+    aanvoer_downstream_offset: float = kwargs.get("aanvoer_downstream_offset", 0)
+    afvoer_upstream_offset: float = kwargs.get("afvoer_upstream_offset", 0)
+    afvoer_downstream_offset: float = kwargs.get("afvoer_downstream_offset", 0.04)
+    max_flow_rate: float = kwargs.get("default_max_flow_rate", 20)
+
+    # read sturing, if available
     parametrization_path = Path(__file__)  # path to current script
     sturing_location = (
         parametrization_path.parent.parent / "Parametrize" / f"sturing_{waterschap}.json"
     )  # path to the sturing
-
-    sturing = load_model_settings(sturing_location)  # load the waterschap specific sturing
+    try:
+        sturing = load_model_settings(sturing_location)  # load the waterschap specific sturing
+    except FileNotFoundError:
+        sturing = None
 
     # create empty columns for the sturing
     ribasim_model.outlet.static.df["min_upstream_level"] = np.nan
@@ -1360,12 +1387,20 @@ def determine_min_upstream_max_downstream_levels(
 
     ribasim_model.pump.static.df["min_upstream_level"] = np.nan
     ribasim_model.pump.static.df["max_downstream_level"] = np.nan
-    ribasim_model.pump.static.df["max_flow_rate"] = np.nan
-    ribasim_model.pump.static.df["flow_rate"] = np.nan
 
     # make a temp copy to reduce line length, place it later again in the model
     outlet = ribasim_model.outlet.static.df.copy()
     pump = ribasim_model.pump.static.df.copy()
+
+    # create 'sturing'-dictionary, if none is provided
+    if sturing is None:
+        keys = outlet["meta_categorie"].unique().tolist() + pump["meta_categorie"].unique().tolist()
+        values = {
+            "upstream_level_offset": afvoer_upstream_offset,
+            "downstream_level_offset": afvoer_downstream_offset,
+            "max_flow_rate": max_flow_rate,
+        }
+        sturing = dict.fromkeys(keys, values)
 
     # check 'aanvoer'-flagging of outlets
     if "meta_aanvoer" not in outlet.columns:
@@ -1373,11 +1408,11 @@ def determine_min_upstream_max_downstream_levels(
         raise KeyError(msg)
 
     # for each different outlet and pump type, determine the min and max upstream and downstream level
-    for types, model_settings in sturing.items():
+    for types, sturing_settings in sturing.items():
         # Extract values for each setting
-        upstream_level_offset = model_settings["upstream_level_offset"]
-        downstream_level_offset = model_settings["downstream_level_offset"]
-        max_flow_rate = model_settings["max_flow_rate"]
+        upstream_level_offset = sturing_settings["upstream_level_offset"]
+        downstream_level_offset = sturing_settings["downstream_level_offset"]
+        max_flow_rate = sturing_settings["max_flow_rate"]
 
         # Update the min_upstream_level and max_downstream_level in the OUTLET dataframe
         outlet.loc[(outlet.meta_categorie == types) & (~outlet["meta_aanvoer"]), "min_upstream_level"] = (
@@ -1413,8 +1448,9 @@ def determine_min_upstream_max_downstream_levels(
     check_for_nans_in_columns(outlet, "outlet")
     check_for_nans_in_columns(pump, "pump")
 
-    print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
-    pump.fillna({"flow_rate": 0.1234}, inplace=True)
+    if pump["flow_rate"].isna().any():
+        print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
+        pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
@@ -1432,7 +1468,6 @@ def set_dynamic_min_upstream_max_downstream(ribasim_model: ribasim.Model) -> Non
     :param ribasim_model: ribasim model
     :type ribasim_model: ribasim.Model
     """
-    print(ribasim_model.level_boundary.node.df)
     level_boundary_node_ids = ribasim_model.level_boundary.node.df["meta_node_id"].values
 
     for structure in ("outlet", "pump"):
@@ -2129,9 +2164,15 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
     ribasim_model.basin.state = ribasim_model.basin.state.df.loc[
         ribasim_model.basin.state.df.node_id.isin(basin_ids)
     ].reset_index(drop=True)
-    ribasim_model.basin.static = ribasim_model.basin.static.df.loc[
-        ribasim_model.basin.static.df.node_id.isin(basin_ids)
-    ].reset_index(drop=True)
+
+    if ribasim_model.basin.static.df is not None:
+        ribasim_model.basin.static.df = ribasim_model.basin.static.df.loc[
+            ribasim_model.basin.static.df.node_id.isin(basin_ids)
+        ].reset_index(drop=True)
+    else:
+        ribasim_model.basin.time.df = ribasim_model.basin.time.df.loc[
+            ribasim_model.basin.time.df.node_id.isin(basin_ids)
+        ].reset_index(drop=True)
 
     # Outlet
     outlet_ids = ribasim_model.outlet.node.df.loc[
@@ -2165,11 +2206,21 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
 
     # identify empty static tables
     # Basin
-    basin_static_missing = ribasim_model.basin.node.df.loc[
-        ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.static.df.node_id)
-    ]  # .index.to_numpy()
-    if len(basin_static_missing) > 0:
-        print("\nFollowing node_id's in the Basin.static table are missing:\n", basin_static_missing.index.to_numpy())
+    if ribasim_model.basin.static.df is not None:
+        basin_static_missing = ribasim_model.basin.node.df.loc[
+            ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.static.df.node_id)
+        ]
+        if len(basin_static_missing) > 0:
+            print(
+                "\nFollowing node_id's in the Basin.static table are missing:\n", basin_static_missing.index.to_numpy()
+            )
+
+    else:
+        basin_time_missing = ribasim_model.basin.node.df.loc[
+            ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.time.df.node_id)
+        ]
+        if len(basin_time_missing) > 0:
+            print("\nFollowing node_id's in the Basin.time table are missing:\n", basin_time_missing.index.to_numpy())
 
     basin_state_missing = ribasim_model.basin.node.df.loc[
         ~ribasim_model.basin.node.df.index.isin(ribasim_model.basin.state.df.node_id)
@@ -2240,12 +2291,13 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
     if len(duplicated_ids) > 0:
         print("\nThe following node_ids are duplicates: \n", duplicated_ids)
 
-    # check for duplicated indexes in the basin static tables
-    duplicated_static_basin = ribasim_model.basin.static.df.loc[
-        ribasim_model.basin.static.df.duplicated(subset="node_id")
-    ]
-    if len(duplicated_static_basin) > 0:
-        print("\nFollowing indexes are duplicated in the basin.static table:\n", duplicated_static_basin)
+    if ribasim_model.basin.static.df is not None:
+        # check for duplicated indexes in the basin static tables
+        duplicated_static_basin = ribasim_model.basin.static.df.loc[
+            ribasim_model.basin.static.df.duplicated(subset="node_id")
+        ]
+        if len(duplicated_static_basin) > 0:
+            print("\nFollowing indexes are duplicated in the basin.static table:\n", duplicated_static_basin)
 
     # check for duplicated indexes in the outlet static tables
     duplicated_static_outlet = ribasim_model.outlet.static.df.loc[
