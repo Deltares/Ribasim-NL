@@ -11,6 +11,7 @@ import shapely
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
+from ribasim.utils import _concat
 
 try:
     from ribasim.validation import flow_edge_neighbor_amount as edge_amount
@@ -514,7 +515,9 @@ class Model(Model):
             **kwargs,
         )
 
-    def add_and_connect_node(self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, **kwargs):
+    def add_and_connect_node(
+        self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, use_add_api: bool = True, **kwargs
+    ):
         if name is None:
             name = ""
 
@@ -531,8 +534,31 @@ class Model(Model):
         )
 
         # add edges from and to node
-        self.edge.add(self.get_node(from_basin_id), node)
-        self.edge.add(node, self.get_node(to_basin_id))
+        for from_node, to_node in [(self.get_node(from_basin_id), node), (node, self.get_node(to_basin_id))]:
+            if use_add_api:
+                self.link.add(from_node=from_node, to_node=to_node)
+            else:
+                self.add_link(from_node, to_node)
+
+    def add_link(self, from_node, to_node, link_type="flow", name="", **kwargs):
+        geometry_to_append = [LineString([from_node.geometry, to_node.geometry])]
+        link_id = self.link.df.index.max() + 1
+        df = gpd.GeoDataFrame(
+            data={
+                "from_node_id": [from_node.node_id],
+                "to_node_id": [to_node.node_id],
+                "link_type": [link_type],
+                "name": [name],
+                **kwargs,
+            },
+            geometry=geometry_to_append,
+            crs=self.crs,
+            index=pd.Index([link_id], name="link_id"),
+        )
+
+        self.link.df = _concat([self.link.df, df])
+        self.link._used_link_ids.add(link_id)
+        self.link._used_link_ids.max_node_id = self.link.df.index.max()
 
     def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs):
         # define node properties
