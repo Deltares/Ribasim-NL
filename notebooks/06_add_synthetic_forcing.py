@@ -1,33 +1,17 @@
 # %%
 from datetime import datetime
 
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
-from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl import CloudStorage, Model
+from ribasim_nl.parametrization.basin_tables import add_basin_time_synthetic
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 
 
-def add_forcing(model, cloud, starttime, endtime):
-    forcing = SetDynamicForcing(
-        model=model,
-        cloud=cloud,
-        startdate=starttime,
-        enddate=endtime,
-    )
-
-    model = forcing.add()
-
-    # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
-    offline_budgets.compute_budgets(model)
-
-
-FIND_POST_FIXES = ["bergend_model", "full_control_model", "parameterized_model"]
-SELECTION: list[str] = ["AaenMaas"]
-INCLUDE_RESULTS = False
-REBUILD = True
+FIND_POST_FIXES = ["bergend_model"]
+SELECTION: list[str] = []
+REBUILD = False
 
 
 def get_model_dir(authority, post_fix):
@@ -55,7 +39,7 @@ for authority in authorities:
         model = Model.read(toml_file)
 
         # write dynamic model
-        dst_model_dir = model_dir.with_name(f"{authority}_dynamic_model")
+        dst_model_dir = model_dir.with_name(f"{authority}_synthetic_forcing_model")
         dst_toml_file = dst_model_dir / toml_file.name
 
         if (not dst_toml_file.exists()) or REBUILD:
@@ -64,13 +48,10 @@ for authority in authorities:
                 model.run()
             model.update_state()
 
-            # add categorie to basin / state
-            series = model.basin.node.df.loc[model.basin.state.df["node_id"].to_numpy()]["meta_categorie"]
-            assert series.notna().all()
-            model.basin.state.df["meta_categorie"] = series.to_numpy()
-
             # add forcing
-            add_forcing(model, cloud, starttime, endtime)
+            add_basin_time_synthetic(
+                model, precipitation_mm_per_day=2, evaporation_mm_per_day=1, start_time=starttime, end_time=endtime
+            )
 
             # run model
             model.write(dst_toml_file)
