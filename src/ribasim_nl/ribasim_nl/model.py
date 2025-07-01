@@ -536,7 +536,13 @@ class Model(Model):
         # add edges from and to node
         for from_node, to_node in [(self.get_node(from_basin_id), node), (node, self.get_node(to_basin_id))]:
             if use_add_api:
-                self.link.add(from_node=from_node, to_node=to_node)
+                try:
+                    self.link.add(from_node=from_node, to_node=to_node)
+                except AttributeError as e:
+                    print(
+                        f"Error in connecting {from_node.node_type} #{from_node.node_id} to {to_node.node_type} #{to_node.node_id}"
+                    )
+                    raise e
             else:
                 self.add_link(from_node, to_node)
 
