@@ -82,6 +82,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_f
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 358, "active"] = False
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 984, "active"] = False
 
+
 # %%
 # model.solver.maxiters = 100000
 # Write model

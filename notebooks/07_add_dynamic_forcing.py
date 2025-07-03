@@ -24,8 +24,8 @@ def add_forcing(model, cloud, starttime, endtime):
     offline_budgets.compute_budgets(model)
 
 
-FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = []
+FIND_POST_FIXES = ["full_control_model"]
+SELECTION: list[str] = ["StichtseRijnlanden"]
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -60,8 +60,6 @@ for authority in authorities:
 
         if (not dst_toml_file.exists()) or REBUILD:
             # update state so we start smooth/empty
-            if not model.results_path.exists():
-                model.run()
             model.update_state()
 
             # add categorie to basin / state

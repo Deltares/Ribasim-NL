@@ -194,6 +194,9 @@ class Model(Model):
         Args:
             time_stamp (pd.Timestamp | None, optional): Timestamp in results to update basin.state with . Defaults to None.
         """
+        if not self.valid_state():
+            self.run()
+
         if time_stamp is None:
             df = self.basin_outstate.df
         else:
@@ -202,6 +205,24 @@ class Model(Model):
         df.index += 1
         df.index.name = "fid"
         self.basin.state.df = df
+
+    def valid_state(self):
+        # only valid if results_path exists
+        valid_state = self.results_path.exists()
+
+        # only valid when states-file exists
+        if valid_state:
+            valid_state = self.basin_outstate.filepath.exists()
+
+            # only valid when length of state equals length of nodes
+            if valid_state:
+                valid_state = len(self.basin.node.df) == len(self.basin_outstate.df)
+
+                # only valid when all node_ids in basin.node.df are in outstate
+                if valid_state:
+                    valid_state = self.basin.node.df.index.isin(self.basin_outstate.df["node_id"]).all()
+
+        return valid_state
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
     def _upstream_nodes(self, node_id, **kwargs):

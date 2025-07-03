@@ -26,7 +26,7 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt", "4_ribasim", "peilgebieden_bewerkt.gpkg")
-model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
+model_edits_extra_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "model_edits_aanvoer.gpkg")
 
 
 cloud.synchronize(
@@ -304,8 +304,10 @@ model.remove_node(node_id=737, remove_edges=True)
 model.merge_basins(basin_id=1408, to_basin_id=1672)
 model.merge_basins(basin_id=1524, to_basin_id=1975)
 model.merge_basins(basin_id=1425, to_basin_id=1558)
-model.merge_basins(basin_id=1995, to_basin_id=1664)
-model.merge_basins(basin_id=1692, to_basin_id=1664)
+model.merge_basins(basin_id=1995, to_basin_id=1646)
+model.merge_basins(basin_id=1692, to_basin_id=1646)
+model.merge_basins(basin_id=1514, to_basin_id=1577)
+model.merge_basins(basin_id=1522, to_basin_id=1507)
 
 # %%
 # write model
