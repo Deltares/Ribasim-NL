@@ -36,6 +36,7 @@ ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_b
 FeedbackFormulier_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
 )
+# FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_HollandseDelta.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -339,6 +340,18 @@ ribasim_model.merge_basins(node_id=327, to_node_id=173)
 ribasim_model.merge_basins(node_id=769, to_node_id=31)
 ribasim_model.merge_basins(node_id=348, to_node_id=552)
 ribasim_model.merge_basins(node_id=424, to_node_id=593)
+ribasim_model.merge_basins(node_id=766, to_node_id=235)
+ribasim_model.merge_basins(node_id=194, to_node_id=60)
+ribasim_model.merge_basins(node_id=143, to_node_id=407)
+ribasim_model.merge_basins(node_id=433, to_node_id=725)
+ribasim_model.merge_basins(node_id=59, to_node_id=176)
+ribasim_model.merge_basins(node_id=209, to_node_id=238)
+ribasim_model.merge_basins(node_id=741, to_node_id=521)
+ribasim_model.merge_basins(node_id=743, to_node_id=175)
+ribasim_model.merge_basins(node_id=639, to_node_id=656)
+ribasim_model.merge_basins(node_id=554, to_node_id=15)
+ribasim_model.merge_basins(node_id=466, to_node_id=34)
+ribasim_model.merge_basins(node_id=195, to_node_id=535)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -511,16 +524,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[47])
 
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(104356.5, 430002.6)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(104336.5, 430002.6)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[616])
-
 # addition of LLB-TRC combination
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(73429, 420133)), [level_boundary.Static(level=[default_level])]
@@ -669,6 +672,13 @@ ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aan
 ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 ribasim_param.add_continuous_control(ribasim_model, dy=-50, exclude_outlets=(1265, 1371))
 
+# manually change the flow rates
+ribasim_model.pump.static.df.flow_rate = 2.5
+ribasim_model.pump.static.df.max_flow_rate = 2.5
+
+ribasim_model.outlet.static.df.flow_rate = 2.5
+ribasim_model.outlet.static.df.max_flow_rate = 2.5
+
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
     authority=waterschap,
@@ -689,9 +699,6 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
-
-ribasim_model.pump.static.df.flow_rate = 25
-ribasim_model.pump.static.df.max_flow_rate = 25
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
