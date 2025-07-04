@@ -34,7 +34,7 @@ def empty_table_df(
 
     # get correct dtypes
     dtypes = getattr(getattr(nodes, pascal_to_snake_case(node_type)), table_type)(
-        **{k: [] for k in node.static.columns()}
+        **{k: [] for k in getattr(node, pascal_to_snake_case(table_type)).columns()}
     ).df.dtypes
 
     # populate dataframe

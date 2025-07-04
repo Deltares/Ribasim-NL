@@ -79,10 +79,10 @@ Ribasim will raise an error and thus not execute.
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
-model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
-model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.flow_rate
-model.pump.static.df.max_flow_rate = original_model.pump.static.df.flow_rate
+model.outlet.static.df.flow_rate = 100
+model.pump.static.df.flow_rate = 100
+model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.max_flow_rate
+model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
 
 # Area basin 1516 niet OK, te klein, model instabiel
 model.explode_basin_area()
@@ -150,14 +150,14 @@ set_values(
     },
 )
 
-# === 2b. Verhoog mmin_upstream_level met offset voor downstream Outlets met 0.02
+# === 2b. Verhoog mmin_upstream_level met offset voor downstream Outlets
 mask = model.outlet.static.df["node_id"].isin(downstream_outlet_nodes)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.02
-mask = model.pump.static.df["node_id"].isin(downstream_pump_nodes)
-model.pump.static.df.loc[mask, "min_upstream_level"] = model.pump.static.df.loc[mask, "min_upstream_level"] + 0.02
+model.pump.static.df["max_downstream_level"] = model.pump.static.df["max_downstream_level"] - 0.02
+
 # === 4. Zet max/min levels op NA voor niet-gestuwde, niet-verbonden outlets ===
-non_control_nodes = model.outlet.node.df.query("meta_gestuwd == 'False'").index
-excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
+# non_control_nodes = model.outlet.node.df.query("meta_gestuwd == 'False'").index
+# excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
 
 # model.outlet.static.df.loc[
 #    model.outlet.static.df["node_id"].isin(non_control_nodes) & ~model.outlet.static.df["node_id"].isin(excluded_nodes),
@@ -184,13 +184,18 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "max_downstre
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 984, "flow_rate"] = 0.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 986, "flow_rate"] = 0.1
 
+# Beetserwijk/Ruiten: lek
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 231, "min_upstream_level"] = 6.8
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "min_upstream_level"] = 6.8
+
+# Dokwerd, sluis ten onrechte op 10m3/s gezet
 
 # Alle inlaten en duikers op max cap 5m3/s
-node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KIN")].index.to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
+# node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KIN")].index.to_numpy()
+# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
 
-node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KDU")].index.to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
+# node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KDU")].index.to_numpy()
+# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
