@@ -5,7 +5,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["Noorderzijlvest"]
+SELECTION: list[str] = ["StichtseRijnlanden"]
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -46,8 +46,8 @@ for authority in authorities:
         model.basin.area.df["meta_node_id"] = model.basin.area.df[
             "node_id"
         ]  # parameterization-script wants meta_categorie in basin.area.df
-
-        ribasim_parametrization.add_continuous_control(model, dy=-200)
+        model.outlet.static.df.loc[model.outlet.static.df["node_id"] == 887, "meta_aanvoer"] = 1
+        ribasim_parametrization.add_continuous_control(model, dy=-200, numerical_tolerance=0.05)
 
         # drop the columns we don't want to keep
         model.basin.area.df.drop(columns="meta_node_id", inplace=True)

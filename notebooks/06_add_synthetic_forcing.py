@@ -9,7 +9,7 @@ starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 
 
-FIND_POST_FIXES = ["full_control_model", "parameterized_model"]
+FIND_POST_FIXES = ["full_control_model"]
 SELECTION: list[str] = []
 REBUILD = False
 

@@ -1,5 +1,4 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import pandas as pd
@@ -90,11 +89,11 @@ Ribasim will raise an error and thus not execute.
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = 100
-model.pump.static.df.flow_rate = 100
+model.outlet.static.df.flow_rate = 20
+model.pump.static.df.flow_rate = 20
 # model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.max_flow_rate
-model.outlet.static.df.max_flow_rate = 100
-model.pump.static.df.max_flow_rate = 100
+model.outlet.static.df.max_flow_rate = 20
+model.pump.static.df.max_flow_rate = 20
 # model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
 model.basin.area.df["meta_streefpeil"] = model.basin.area.df["meta_streefpeil"] - 0.02
 # set upstream level boundaries at 999 meters
@@ -102,13 +101,13 @@ model.basin.area.df["meta_streefpeil"] = model.basin.area.df["meta_streefpeil"] 
 # model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 
 
-# %% Alle inlaten op max 5m3/s gezet.
-# node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
-# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
+# %% Alle inlaten op max debiet gezet.
+node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 0.1
 # %%
 
-model.remove_node(663, remove_edges=True)
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1
+
 model.pump.static.df.loc[model.pump.static.df.node_id == 541, "max_downstream_level"] = -1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1162, "max_flow_rate"] = 0.2
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 514, "max_flow_rate"] = 0.1
@@ -173,7 +172,8 @@ mask = model.outlet.static.df["node_id"].isin(downstream_outlet_nodes)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.02
 mask = model.pump.static.df["node_id"].isin(downstream_pump_nodes)
 model.pump.static.df.loc[mask, "min_upstream_level"] = model.pump.static.df.loc[mask, "min_upstream_level"] + 0.02
-model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"] + 0.02
+
+# model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"] + 0.02
 model.level_boundary.static.df["level"] = model.level_boundary.static.df["level"] + 0.02
 # model.pump.static.df["max_downstream_level"]+ = 0.02
 
@@ -205,7 +205,7 @@ excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
 # model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"].apply(round_to_2_decimals)
 # model.pump.static.df["max_downstream_level"] = model.pump.static.df["max_downstream_level"].apply(round_to_2_decimals)
 
-model.pump.static.df.flow_rate = 100
+model.pump.static.df.flow_rate = 20
 
 
 # %% Pompen halen downstream_level niet in Ribasim.
@@ -262,22 +262,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 742, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 79, "min_upstream_level"] += 0.001
 
 # %% Add inlaat
-
-actions = ["add_basin", "update_node", "connect_basins"]
-actions = [i for i in actions if i in gpd.list_layers(model_edits_extra_gpkg).name.to_list()]
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_extra_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
-
 # Waaiergemaal iets hoger (numeriek handig om peil te houden)
 # model.pump.static.df.loc[model.pump.static.df.node_id == 567, "min_upstream_level"] = 0.56
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 759, "min_upstream_level"] = 0.56
@@ -445,35 +429,46 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 246, "max_downstream_level"] = -1.53
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1156, "max_downstream_level"] = -1.53
 
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 420, "min_upstream_level"] = -1.55
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1005, "min_upstream_level"] = -1.55
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 487, "max_downstream_level"] = -1.53
 
 # model.pump.static.df.loc[model.pump.static.df.node_id == 543, "max_downstream_level"] = -2.29
 
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 678, "min_upstream_level"] = -1.55
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 678, "max_downstream_level"] = -1.75
 # %% Bij een pomp mag de max_downstream_level van outlets die water krijgen van hoofdwaterloop nooit hoger zijn dan min_upstream_level van pump.
 # #Echter moeten de afvoernodes naar de pomp wel een max_downstream_level hebben die lager is dan de pump zodat ze in afvoersituaties kunne afvoeren. Doordat
 # min_upstream_level van een pump net wat hoger is dan de setting.
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 887, "max_downstream_level"] = -2.19
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstream_level"] = -2.19
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 887, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstream_level"] = pd.NA
 
-
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_flow_rate"] = 0.1
+# Keulevaart
+model.pump.static.df.loc[model.pump.static.df.node_id == 623, "min_upstream_level"] = -2.20
 # %%
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 835, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1052, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1052, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 838, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 949, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 749, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 919, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 193, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 864, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 151, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1145, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 929, "max_downstream_level"] = 0.57
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 866, "max_downstream_level"] = 0.57
+model.pump.static.df.loc[model.pump.static.df.node_id == 561, "max_downstream_level"] = 1.27
+model.pump.static.df.loc[model.pump.static.df.node_id == 792, "max_downstream_level"] = 0.57
 
-model.remove_node(node_id=86, remove_edges=True)
-model.remove_node(node_id=669, remove_edges=True)
-model.remove_node(node_id=737, remove_edges=True)
-# model.remove_node(node_id=1197, remove_edges=True)
-model.merge_basins(basin_id=1408, to_basin_id=1672)
-model.merge_basins(basin_id=1524, to_basin_id=1975)
-model.merge_basins(basin_id=1425, to_basin_id=1558)
-model.merge_basins(basin_id=1995, to_basin_id=1646)
-model.merge_basins(basin_id=1692, to_basin_id=1646)
-model.merge_basins(basin_id=1514, to_basin_id=1577)
-model.merge_basins(basin_id=1522, to_basin_id=1507)
-model.merge_basins(basin_id=1681, to_basin_id=1763)
-model.merge_basins(basin_id=1638, to_basin_id=1762)
-model.redirect_edge(edge_id=2272, from_node_id=1572)
-model.update_node(node_id=1194, node_type="Outlet")
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1194, "min_upstream_level"] = -2.22
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1194, "min_upstream_level"] = -1.22
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1279, "min_upstream_level"] = pd.NA
 
+
+model.update_node(node_id=730, node_type="Outlet")
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 730, "min_upstream_level"] = -1
 
 # %%
 # write model
