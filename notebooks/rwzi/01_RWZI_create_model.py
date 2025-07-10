@@ -21,7 +21,9 @@ from ribasim import Model, Node
 from ribasim.nodes import flow_boundary
 from shapely.geometry import Point
 
-from ribasim_nl import CloudStorage  # Model
+from ribasim_nl import CloudStorage
+
+ribasim_path = r"c:/projects/2024/LWKM/06_Ribasim/00_scripts/ribasim_applicatie/ribasim.exe"
 
 # %%
 cloud = CloudStorage()
@@ -32,7 +34,6 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 model_dir = cloud.joinpath("Basisgegevens", "RWZI", "modellen")
 root_path_local = cloud.joinpath("Basisgegevens", "RWZI")
 
-ribasim_path = r"c:/projects/2024/LWKM/06_Ribasim/00_scripts/ribasim_applicatie/ribasim.exe"
 
 zinfo_influentdebieten_path = os.path.join(
     root_path_local,
@@ -40,6 +41,7 @@ zinfo_influentdebieten_path = os.path.join(
 )
 
 db_file = os.path.join(root_path_local, r"aangeleverd/RwziBase/RwziBase2022_RWS_18032024.accdb")
+
 rwzi_ligging_path = os.path.join(root_path_local, r"aangeleverd/locaties/RWZI_coordinates.geojson")
 
 # model settings
@@ -81,26 +83,22 @@ def process_zinfo_quantity_data(file_path, starttime, endtime):
 
     duplicates = df[df.duplicated(subset=["time", "RWZI_ids"], keep=False)]
     if not duplicates.empty:
+        print(duplicates["time"][0:25])
         logging.info(
             "Duplicate entries found for RWZI: %s",
             duplicates.sort_values(by=["time", "RWZI_ids"])["RWZI_ids"].unique(),
         )
-        print("Duplicate entries found for RWZI:")
-        print(duplicates.sort_values(by=["time", "RWZI_ids"])["RWZI_ids"].unique())
 
     df_summed = df.groupby(["time", "RWZI_ids"])["debiet_m3d"].sum().reset_index()
     logging.info("Duplicates are summed over the day \n")
 
     df_pivot = df_summed.pivot(index="time", columns="RWZI_ids", values="debiet_m3d")
+    df_pivot.reset_index(inplace=True)
 
-    # Change unit to m3/s
-    df_pivot_m3s = df_pivot / (3600 * 24)
-    df_pivot_m3s.reset_index(inplace=True)
-
-    logging.info("Zinfo data: \n %s", df_pivot_m3s.head())
+    logging.info("Zinfo data: \n %s", df_pivot.head())
 
     RWZI_ids = df_summed["RWZI_ids"].unique()
-    return df_pivot_m3s, RWZI_ids
+    return df_pivot, RWZI_ids
 
 
 df_Zinfo_influentdebieten, RWZI_ids_zinfo = process_zinfo_quantity_data(zinfo_influentdebieten_path, starttime, endtime)
@@ -151,8 +149,9 @@ plt.show()
 # %%
 def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten):
     """
-    Combineer de Z-info data met de spatial data om de naam van de RWZI te achterhalen (gebaseerd op de ID)
+    Combineer de Z-info data met de spatial data.
 
+    Combineer de Z-info data met de spatial data om de naam van de RWZI te achterhalen (gebaseerd op de ID)
     en om de RWZI's te vinden die niet in de Z-info database opgenomen zijn.
 
     Parameters
@@ -210,6 +209,45 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
 rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl = process_rwzi_zinfo_data(
     rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten
 )
+
+
+# %%
+# Extract all unique RWZI names
+rwzi_all_names = rwzi_gdf["Naam rwzi"].unique()
+logging.info(f"Total unique RWZI names found: {len(rwzi_all_names)}")
+
+# Split RWZI GeoDataFrame into those included and excluded in Zinfo data
+gdf_rwzi_zinfo_incl = rwzi_gdf[rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)]
+gdf_rwzi_zinfo_excl = rwzi_gdf[~rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)]
+
+# Extract relevant identifiers and names for included RWZIs
+rwzi_names_zinfo_incl = gdf_rwzi_zinfo_incl["Naam rwzi"].unique()
+rwzi_codeist_zinfo_incl = gdf_rwzi_zinfo_incl["Codeist"].unique()
+
+# Extract relevant identifiers and names for excluded RWZIs
+rwzi_names_zinfo_excl = gdf_rwzi_zinfo_excl["Naam rwzi"].unique()
+rwzi_RwziCode_zinfo_excl = gdf_rwzi_zinfo_excl["RwziCode"].unique()
+
+# Logging summary
+logging.info(f"RWZIs with Zinfo data: {len(rwzi_names_zinfo_incl)} names, {len(rwzi_codeist_zinfo_incl)} Codeist IDs")
+logging.info(f"RWZIs without Zinfo data: {len(rwzi_names_zinfo_excl)} names, {len(rwzi_RwziCode_zinfo_excl)} RwziCodes")
+
+# Rename DataFrame columns: map Codeist to actual RWZI names
+codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"]))
+
+df_Zinfo_influentdebieten_renamed = df_Zinfo_influentdebieten.rename(
+    columns={col: codeist_to_name.get(col, col) for col in df_Zinfo_influentdebieten.columns if col != "time"}
+)
+
+# Preview df with new column names
+print("Zinfo DataFrame with renamed columns:")
+print(df_Zinfo_influentdebieten_renamed.head())
+
+# Filter only the time column and RWZIs with Zinfo data
+rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time"] + list(rwzi_names_zinfo_incl)]
+
+print("Filtered RWZI flow data with common RWZIs:")
+print(rwzi_flow_data.head())
 
 
 # %% RWS Jaardebieten voor overige locaties omzetten naar dagwaardes
@@ -270,7 +308,7 @@ def process_rws_quantity_data(db_file, gdf_excluded):
 
         daily_row_data = {"time": date_range}
 
-        for col in row.index[1:]:  # Skip 'time'
+        for col in row.index[1:]:
             yearly_val = row[col]
             if pd.notna(yearly_val):
                 daily_row_data[col] = [yearly_val / num_days] * num_days
@@ -279,29 +317,24 @@ def process_rws_quantity_data(db_file, gdf_excluded):
 
         df_year = pd.DataFrame(daily_row_data)
         daily_dataframes.append(df_year)
-        # print('check',daily_dataframes)
 
     df_daily_values = pd.concat(daily_dataframes, ignore_index=True)
 
     # Average duplicate dates, just in case
-    # TODO: Check the units
-    df_daily_values = df_daily_values.groupby("time").mean(numeric_only=True)
-    df_m3pers = df_daily_values / (3600 * 24)
-    df_m3pers = df_m3pers.reset_index()
-    print(df_m3pers)
+    df_daily_values = df_daily_values.groupby("time").mean(numeric_only=True).reset_index()
+
     logging.info("Finished processing excluded RWZI flow data.")
-    return df_m3pers
+    return df_daily_values
 
 
 df_rws_influentdebieten = process_rws_quantity_data(
     db_file=db_file,
-    # rwzi_codes_excl=gdf_rwzi_zinfo_excl["RwziCode"].unique(),
     gdf_excluded=gdf_rwzi_zinfo_excl,
 )
 
 print(df_rws_influentdebieten.head())
 
-# %% Combineer de Z-info data met de RWS database om een complete
+# %% Combineer de Z-info data met de RWS database om een complete set te krijgen
 rwzi_flow_data_idxed = rwzi_flow_data.set_index("time")
 df_daily_values_idxed = df_rws_influentdebieten.set_index("time")
 rwzi_flow_data_all = rwzi_flow_data_idxed.combine_first(df_daily_values_idxed)
@@ -311,11 +344,13 @@ rwzi_flow_data_all = rwzi_flow_data_all[
     (rwzi_flow_data_all["time"] >= starttime) & (rwzi_flow_data_all["time"] < endtime)
 ]
 
+# Convert data to m3/s
+SECONDS_PER_DAY = 24 * 3600
+rwzi_flow_data_all.loc[:, rwzi_flow_data_all.columns != "time"] /= SECONDS_PER_DAY
+
 # Log result
-# logging.info(
-#    "Combined RWZI flow data within date range %s to %s:", starttime
-# )  # .date(), endtime.date())
-print(rwzi_flow_data_all.head())
+logging.info("Combined RWZI flow data to m3/s")
+print(rwzi_flow_data_all)
 
 
 # %% Define Boundary nodes
@@ -398,8 +433,7 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
                 [
                     flow_boundary.Time(
                         time=valid_times,
-                        # TODO: Check units
-                        flow_rate=np.round(valid_flow_rates, 3),  # Convert flow rate to daily rate
+                        flow_rate=np.round(valid_flow_rates, 3),
                     )
                 ],
             )
@@ -545,17 +579,9 @@ upload_model = True
 if upload_model:
     cloud.upload_model("Basisgegevens/RWZI", model="rwzi")
 
-# %%
-# result = model.run()
-# result = subprocess.run([ribasim_path, ribasim_toml], capture_output=True, encoding="utf-8")
+# %% Model does not run
+# result = subprocess.run(
+#     [ribasim_path, ribasim_toml], capture_output=True, encoding="utf-8"
+# )
 # print(result.stderr)
 # result.check_returncode()
-
-# %%
-# print("write lhm model")
-##ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
-# model.write(ribasim_toml)
-
-# ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm", "lhm.toml")
-# lhm_model.write(ribasim_toml)
-# cloud.joinpath("Rijkswaterstaat", "modellen", "lhm", "readme.md").write_text(readme)
