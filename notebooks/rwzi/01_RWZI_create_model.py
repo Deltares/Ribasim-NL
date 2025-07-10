@@ -7,7 +7,6 @@ Created on Mon Apr  7 11:03:05 2025
 # %%
 import logging
 import os
-import subprocess
 from collections import Counter
 from datetime import datetime
 
@@ -22,9 +21,7 @@ from ribasim import Model, Node
 from ribasim.nodes import flow_boundary
 from shapely.geometry import Point
 
-from ribasim_nl import CloudStorage  # , Model
-
-# import pandas_access as mdb
+from ribasim_nl import CloudStorage  # Model
 
 # %%
 cloud = CloudStorage()
@@ -43,7 +40,6 @@ zinfo_influentdebieten_path = os.path.join(
 )
 
 db_file = os.path.join(root_path_local, r"aangeleverd/RwziBase/RwziBase2022_RWS_18032024.accdb")
-
 rwzi_ligging_path = os.path.join(root_path_local, r"aangeleverd/locaties/RWZI_coordinates.geojson")
 
 # model settings
@@ -89,19 +85,22 @@ def process_zinfo_quantity_data(file_path, starttime, endtime):
             "Duplicate entries found for RWZI: %s",
             duplicates.sort_values(by=["time", "RWZI_ids"])["RWZI_ids"].unique(),
         )
-        # print("Duplicate entries found for RWZI:")
-        # print(duplicates.sort_values(by=["time", "RWZI_ids"])["RWZI_ids"].unique())
+        print("Duplicate entries found for RWZI:")
+        print(duplicates.sort_values(by=["time", "RWZI_ids"])["RWZI_ids"].unique())
 
     df_summed = df.groupby(["time", "RWZI_ids"])["debiet_m3d"].sum().reset_index()
     logging.info("Duplicates are summed over the day \n")
 
     df_pivot = df_summed.pivot(index="time", columns="RWZI_ids", values="debiet_m3d")
-    df_pivot.reset_index(inplace=True)
 
-    logging.info("Zinfo data: \n %s", df_pivot.head())
+    # Change unit to m3/s
+    df_pivot_m3s = df_pivot / (3600 * 24)
+    df_pivot_m3s.reset_index(inplace=True)
+
+    logging.info("Zinfo data: \n %s", df_pivot_m3s.head())
 
     RWZI_ids = df_summed["RWZI_ids"].unique()
-    return df_pivot, RWZI_ids
+    return df_pivot_m3s, RWZI_ids
 
 
 df_Zinfo_influentdebieten, RWZI_ids_zinfo = process_zinfo_quantity_data(zinfo_influentdebieten_path, starttime, endtime)
@@ -213,57 +212,6 @@ rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl = process_rwzi_zinfo_da
 )
 
 
-# %%
-# # Extract all unique RWZI names
-# rwzi_all_names = rwzi_gdf["Naam rwzi"].unique()
-# logging.info(f"Total unique RWZI names found: {len(rwzi_all_names)}")
-
-# # Split RWZI GeoDataFrame into those included and excluded in Zinfo data
-# gdf_rwzi_zinfo_incl = rwzi_gdf[rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)]
-# gdf_rwzi_zinfo_excl = rwzi_gdf[~rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)]
-
-# # Extract relevant identifiers and names for included RWZIs
-# rwzi_names_zinfo_incl = gdf_rwzi_zinfo_incl["Naam rwzi"].unique()
-# rwzi_codeist_zinfo_incl = gdf_rwzi_zinfo_incl["Codeist"].unique()
-
-# # Extract relevant identifiers and names for excluded RWZIs
-# rwzi_names_zinfo_excl = gdf_rwzi_zinfo_excl["Naam rwzi"].unique()
-# rwzi_RwziCode_zinfo_excl = gdf_rwzi_zinfo_excl["RwziCode"].unique()
-
-# # Logging summary
-# logging.info(
-#     f"RWZIs with Zinfo data: {len(rwzi_names_zinfo_incl)} names, {len(rwzi_codeist_zinfo_incl)} Codeist IDs"
-# )
-# logging.info(
-#     f"RWZIs without Zinfo data: {len(rwzi_names_zinfo_excl)} names, {len(rwzi_RwziCode_zinfo_excl)} RwziCodes"
-# )
-
-# # Rename DataFrame columns: map Codeist to actual RWZI names
-# codeist_to_name = dict(
-#     zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"])
-# )
-
-# df_Zinfo_influentdebieten_renamed = df_Zinfo_influentdebieten.rename(
-#     columns={
-#         col: codeist_to_name.get(col, col)
-#         for col in df_Zinfo_influentdebieten.columns
-#         if col != "time"
-#     }
-# )
-
-# # Preview df with new column names
-# print("Zinfo DataFrame with renamed columns:")
-# print(df_Zinfo_influentdebieten_renamed.head())
-
-# # Filter only the time column and RWZIs with Zinfo data
-# rwzi_flow_data = df_Zinfo_influentdebieten_renamed[
-#     ["time"] + list(rwzi_names_zinfo_incl)
-# ]
-
-# print("Filtered RWZI flow data with common RWZIs:")
-# print(rwzi_flow_data.head())
-
-
 # %% RWS Jaardebieten voor overige locaties omzetten naar dagwaardes
 # def process_rws_quantity_data(db_file, rwzi_codes_excl, gdf_excluded):
 def process_rws_quantity_data(db_file, gdf_excluded):
@@ -336,13 +284,15 @@ def process_rws_quantity_data(db_file, gdf_excluded):
     df_daily_values = pd.concat(daily_dataframes, ignore_index=True)
 
     # Average duplicate dates, just in case
-    df_daily_values = df_daily_values.groupby("time").mean(numeric_only=True).reset_index()
-
+    # TODO: Check the units
+    df_daily_values = df_daily_values.groupby("time").mean(numeric_only=True)
+    df_m3pers = df_daily_values / (3600 * 24)
+    df_m3pers = df_m3pers.reset_index()
+    print(df_m3pers)
     logging.info("Finished processing excluded RWZI flow data.")
-    return df_daily_values
+    return df_m3pers
 
 
-# %%
 df_rws_influentdebieten = process_rws_quantity_data(
     db_file=db_file,
     # rwzi_codes_excl=gdf_rwzi_zinfo_excl["RwziCode"].unique(),
@@ -448,7 +398,8 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
                 [
                     flow_boundary.Time(
                         time=valid_times,
-                        flow_rate=np.round(valid_flow_rates / 24, 3),  # Convert flow rate to daily rate
+                        # TODO: Check units
+                        flow_rate=np.round(valid_flow_rates, 3),  # Convert flow rate to daily rate
                     )
                 ],
             )
@@ -594,61 +545,11 @@ upload_model = True
 if upload_model:
     cloud.upload_model("Basisgegevens/RWZI", model="rwzi")
 
-# model.run()
-
-
 # %%
-# from ribasim_nl import CloudStorage, Model
-
-# cloud = CloudStorage()
-
-# FIND_POST_FIXES = ["parameterized_model"]
-# SELECTION = ["rwzi"]
-# INCLUDE_RESULTS = True
-
-
-# def get_model_dir(authority, post_fix):
-#     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
-
-
-# %%
-
-# if len(SELECTION) == 0:
-#     authorities = cloud.water_authorities
-# else:
-#     authorities = SELECTION
-
-# for authority in authorities:
-#     # find model directory
-#     model_dir = next(
-#         (
-#             get_model_dir(authority, post_fix)
-#             for post_fix in FIND_POST_FIXES
-#             if get_model_dir(authority, post_fix).exists()
-#         ),
-#         None,
-#     )
-#     if model_dir is not None:
-#         print(f"uploading copy for {authority}")
-#         # read model
-#         toml_file = next(model_dir.glob("*.toml"))
-#         model = Model.read(toml_file)
-
-#         # write a local copy in root
-#         toml_file = toml_file.parents[1].joinpath(authority, toml_file.name)
-#         model.write(toml_file)
-
-#         # create version and upload
-#         cloud.upload_model(
-#             authority=authority, model=authority, include_results=INCLUDE_RESULTS
-#         )
-
-
-# %%
-
-result = subprocess.run([ribasim_path, ribasim_toml], capture_output=True, encoding="utf-8")
-print(result.stderr)
-result.check_returncode()
+# result = model.run()
+# result = subprocess.run([ribasim_path, ribasim_toml], capture_output=True, encoding="utf-8")
+# print(result.stderr)
+# result.check_returncode()
 
 # %%
 # print("write lhm model")
