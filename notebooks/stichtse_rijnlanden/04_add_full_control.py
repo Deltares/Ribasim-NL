@@ -2,6 +2,9 @@
 
 import geopandas as gpd
 import pandas as pd
+from ribasim import Node
+from ribasim.nodes import discrete_control, pump
+from shapely.geometry import Point
 
 from peilbeheerst_model import ribasim_parametrization
 from peilbeheerst_model.controle_output import Control
@@ -107,7 +110,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_f
 # %%
 
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1
-
 model.pump.static.df.loc[model.pump.static.df.node_id == 541, "max_downstream_level"] = -1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1162, "max_flow_rate"] = 0.2
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 514, "max_flow_rate"] = 0.1
@@ -204,6 +206,40 @@ excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
 # )
 # model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"].apply(round_to_2_decimals)
 # model.pump.static.df["max_downstream_level"] = model.pump.static.df["max_downstream_level"].apply(round_to_2_decimals)
+
+# %%
+model.discrete_control.add(
+    Node(2113, Point(114000, 446400)),
+    [
+        discrete_control.Variable(
+            compound_variable_id=1,
+            listen_node_id=2090,
+            variable=["level"],
+        ),
+        discrete_control.Condition(
+            compound_variable_id=1,
+            condition_id=[1, 2],
+            # min, max
+            greater_than=[-2.21, -1.9],
+        ),
+        discrete_control.Logic(
+            truth_state=["FF", "TF", "TT"],
+            control_state=["in", "none", "out"],
+        ),
+    ],
+)
+
+model.pump.add(
+    Node(2114, Point(113950, 446370)),
+    [pump.Static(control_state=["none", "in", "out"], flow_rate=[0.0, 1e-3, 20])],
+)
+model.link.add(model.basin[2090], model.pump[2114])
+model.link.add(model.pump[2114], model.basin[1920])
+model.link.add(model.discrete_control[2113], model.pump[2114])
+
+
+# %%
+
 
 model.pump.static.df.flow_rate = 20
 
@@ -440,12 +476,13 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 678, "max_downstrea
 # %% Bij een pomp mag de max_downstream_level van outlets die water krijgen van hoofdwaterloop nooit hoger zijn dan min_upstream_level van pump.
 # #Echter moeten de afvoernodes naar de pomp wel een max_downstream_level hebben die lager is dan de pump zodat ze in afvoersituaties kunne afvoeren. Doordat
 # min_upstream_level van een pump net wat hoger is dan de setting.
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 887, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 887, "max_downstream_level"] = -2.2
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstream_level"] = -2.2
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_flow_rate"] = 0.1
 # Keulevaart
 model.pump.static.df.loc[model.pump.static.df.node_id == 623, "min_upstream_level"] = -2.20
+model.remove_node(node_id=623, remove_edges=True)
 # %%
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 835, "max_downstream_level"] = 0.57
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1052, "max_downstream_level"] = 0.57
