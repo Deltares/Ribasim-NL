@@ -24,14 +24,38 @@ def add_forcing(model, cloud, starttime, endtime):
     offline_budgets.compute_budgets(model)
 
 
-FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+FIND_POST_FIXES = ["bergend_model"]
+SELECTION: list[str] = []
 INCLUDE_RESULTS = False
-REBUILD = True
+REBUILD = False
 
 
 def get_model_dir(authority, post_fix):
     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
+
+
+def check_build(toml_file):
+    # check if we want to rebuild any way
+    build = REBUILD
+
+    # we build if model does not exist
+    if not build:
+        build = not toml_file.exists()
+
+    # we build if we don't have tabulated_rating_curves
+    if not build:
+        model = Model.read(toml_file)
+        build = model.tabulated_rating_curve.node.df is None
+
+    # we build if tabulated rating curves don't have a meta_cateogrie colummn
+    if not build:
+        build = "meta_categorie" not in model.tabulated_rating_curve.node.df.columns
+
+    # we build if we don't have any bergend in meta_categorie
+    if not build:
+        build = not (model.tabulated_rating_curve.node.df["meta_categorie"] == "bergend").any()
+
+    return build
 
 
 if len(SELECTION) == 0:
@@ -52,13 +76,15 @@ for authority in authorities:
     if model_dir is not None:
         print(authority)
         toml_file = next(model_dir.glob("*.toml"))
-        model = Model.read(toml_file)
+
+        # check if we need to (re)do the model
 
         # write dynamic model
         dst_model_dir = model_dir.with_name(f"{authority}_dynamic_model")
         dst_toml_file = dst_model_dir / toml_file.name
 
-        if (not dst_toml_file.exists()) or REBUILD:
+        if check_build(dst_toml_file):
+            model = Model.read(toml_file)
             # update state so we start smooth/empty
             model.update_state()
 
