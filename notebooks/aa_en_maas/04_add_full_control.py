@@ -9,7 +9,7 @@ from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 # execute model run
-MODEL_EXEC: bool = False
+MODEL_EXEC: bool = True
 
 # model settings
 AUTHORITY: str = "AaenMaas"
@@ -102,9 +102,7 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    # TODO: Different ways of executing the model; choose the one that suits you best:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
-    # exit_code = model.run()
+    exit_code = model.run()
 
     # assert exit_code == 0
 
