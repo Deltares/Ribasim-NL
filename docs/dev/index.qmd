@@ -93,3 +93,23 @@ The Pixi CLI only accepts absolute paths, but relative paths in `pixi.toml` will
 The last example will work if you clone Ribasim next to Ribasim-NL.
 
 For Ribasim developer documentation see https://ribasim.org/dev/.
+
+## Environment variables {#sec-environment-variables}
+
+The Ribasim-NL code downloads from and uploads to [cloud storage](/cloudstorage.qmd).
+The password to access the cloud storage, and local directory it interacts with, both need to be configured.
+To be able to run the Ribasim core, it needs to either find the `ribasim` executable in the Path, or you configure it.
+
+In the root of the repository is a `.env.default` file that can serve as a template to copy to `.env`.
+The `.env` file is gitignored because it is different per developer, and to avoid leaking the password.
+
+Here is an example for a filled in `.env` file:
+
+```ini
+RIBASIM_NL_CLOUD_PASS=your_password_here
+RIBASIM_NL_DATA_DIR=c:\data\ribasim-nl
+RIBASIM_EXE=c:\bin\ribasim\ribasim.exe
+```
+
+These values will be applied using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
+If you prefer to set these environment variables in your OS or terminal that will also work.
