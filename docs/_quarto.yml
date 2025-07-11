@@ -12,10 +12,11 @@ website:
       - text: "Workflows"
         file: workflow/main-watersystem.qmd
     right:
+      - text: "Contributing"
+        file: dev/index.qmd
       - icon: github
         href: https://github.com/Deltares/Ribasim-NL
         aria-label: GitHub
-
   sidebar:
     - title: "Workflows"
       contents:
