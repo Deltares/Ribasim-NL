@@ -2,6 +2,7 @@
 import inspect
 
 import geopandas as gpd
+import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
 
@@ -21,6 +22,7 @@ ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
 model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_path, model_edits_path])
 
@@ -129,6 +131,22 @@ for action in actions:
         method(**kwargs)
 
 
+# Area basin 1516 niet OK, te klein, model instabiel
+actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
 # Create the overlay of areas
@@ -187,9 +205,33 @@ df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
 df.set_index("code", inplace=True)
 names = df["naam"]
 
+# set meta_gestuwd in basins
+model.basin.node.df["meta_gestuwd"] = False
+model.outlet.node.df["meta_gestuwd"] = False
+model.pump.node.df["meta_gestuwd"] = True
+
+# set stuwen als gestuwd
+
+model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"] == "stuw", "meta_gestuwd"] = True
+
+# set bovenstroomse basins als gestuwd
+node_df = model.node_table().df
+node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
+basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+
+# set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
+downstream_node_ids = (
+    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
+)
+model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+
+
 sanitize_node_table(
     model,
-    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_gestuwd"],
     copy_map=[
         {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
         {"node_types": ["Basin", "ManningResistance", "LevelBoundary", "FlowBoundary"], "columns": {"name": ""}},
@@ -209,4 +251,4 @@ model.report_internal_basins()
 # %% Test run model
 if run_model:
     result = model.run()
-    assert result == 0
+    assert result.exit_code == 0

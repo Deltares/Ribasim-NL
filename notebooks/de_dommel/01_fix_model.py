@@ -3,6 +3,7 @@
 import inspect
 
 import geopandas as gpd
+import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from shapely.geometry import Point, Polygon
@@ -15,7 +16,6 @@ from ribasim_nl.sanitize_node_table import sanitize_node_table
 cloud = CloudStorage()
 authority = "DeDommel"
 short_name = "dommel"
-run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 
@@ -308,9 +308,34 @@ df = df[df.code.notna()]
 df.set_index("code", inplace=True)
 names = df["naam"]
 
+
+# set meta_gestuwd in basins
+model.basin.node.df["meta_gestuwd"] = False
+model.outlet.node.df["meta_gestuwd"] = False
+model.pump.node.df["meta_gestuwd"] = True
+
+# set stuwen als gestuwd
+
+model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"] == "stuw", "meta_gestuwd"] = True
+
+# set bovenstroomse basins als gestuwd
+node_df = model.node_table().df
+node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
+basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+
+# set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
+downstream_node_ids = (
+    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
+)
+model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+
+
 sanitize_node_table(
     model,
-    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_gestuwd"],
     copy_map=[
         {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
         {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
@@ -319,6 +344,20 @@ sanitize_node_table(
     names=names,
 )
 
+# add level_boundary at keersop (intake from Kannaal van Bocholt naar Heerentals)
+level_boundary_node = model.level_boundary.add(
+    Node(geometry=Point(152152, 365151)), tables=[level_boundary.Static(level=[0])]
+)
+outlet_node = model.outlet.add(
+    Node(geometry=Point(152150, 365169), name="Inlaat kanaal Bocholt naar Heerentals"),
+    tables=[outlet.Static(flow_rate=[0])],
+)
+model.link.add(level_boundary_node, outlet_node)
+model.link.add(outlet_node, model.basin[1609])
+
+# label flow-boundaries to buitenlandse-aanvoer
+model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
 model.write(ribasim_toml)
@@ -326,7 +365,7 @@ model.report_basin_area()
 model.report_internal_basins()
 
 # %% Test run model
-if run_model:
-    result = model.run()
-    assert result == 0
+
+result = model.run()
+assert result.simulation_time is not None
 # %%

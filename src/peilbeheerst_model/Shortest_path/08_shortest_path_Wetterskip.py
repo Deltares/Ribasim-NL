@@ -3,8 +3,10 @@
 # ### Create shortest_path RHWS network
 #
 # Code is based on: https://github.com/Deltares/Ribasim-NL/blob/1ad35931f49280fe223cbd9409e321953932a3a4/notebooks/ijsselmeermodel/netwerk.py#L55
-#
 
+
+import os
+from pathlib import Path
 
 import fiona
 import geopandas as gpd
@@ -18,23 +20,23 @@ from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import split
 from shapely.wkt import dumps
 
+from ribasim_nl import CloudStorage, settings
+
+cloud = CloudStorage()
 # ### Load Data
 
 
-waterschap = "Wetterskip"
+waterschap = "WetterskipFryslan"
 
 # Define crossings file path
-path2json = "/DATAFOLDER/projects/4750_30/Scripts/Ribasim-NL/src/peilbeheerst_model/waterschappen.json"
-data_path_str = pd.read_json(path2json).loc["init"][waterschap]["output_path"]
-data_path = f"/DATAFOLDER/projects/4750_30/{data_path_str.split('../')[-1]}"
-
+data_path = cloud.joinpath(waterschap, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg")
+base_path = settings.ribasim_nl_data_dir
+output_path = f"{waterschap}/verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"
+output_path = os.path.join(base_path, output_path)  # add the base path
 
 # Load crossings file
 DATA = {L: gpd.read_file(data_path, layer=L) for L in fiona.listlayers(data_path)}
-
-
-# ### Select rhws
-
+DATA["hydroobject"] = DATA["hydroobject"].to_crs(crs="EPSG:28992")
 
 # Select RHWS peilgebeied & calculate representative point
 gdf_rhws = DATA["peilgebied"].loc[DATA["peilgebied"]["peilgebied_cat"] == 1].copy()
@@ -44,7 +46,6 @@ gdf_rhws["representative_point"] = gdf_rhws.representative_point()
 gdf_cross = (
     DATA["crossings_hydroobject_filtered"].loc[DATA["crossings_hydroobject_filtered"]["agg_links_in_use"]].copy()
 )  # filter aggregation level
-
 
 # ### Define functions
 # 1. splitting functions
@@ -111,7 +112,7 @@ def connect_components(graph, node1, node2, node_geometries):
     geom1 = node_geometries[node1]
     geom2 = node_geometries[node2]
     new_link_geom = LineString([geom1.coords[0], geom2.coords[0]])
-    graph.add_link(node1, node2, geometry=new_link_geom)
+    graph.add_edge(node1, node2, geometry=new_link_geom)
 
 
 def find_closest_component_pair(largest_gdf, smaller_gdfs):
@@ -203,7 +204,6 @@ def connect_linestrings_within_distance(gdf, max_distance=4):
 
 # # Shortest Path
 
-
 gdf_crossings_out = []
 gdf_rhws = gdf_rhws.reset_index(drop=True)
 
@@ -216,7 +216,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         print(index)
 
         ### Select Crossings/Hydroobjects ###
-        print("Select Crossings/Hydroobjects")
+        # print("Select Crossings/Hydroobjects")
 
         # Single RHWS row as GeoDataFrame
         gdf_rhws_single = gpd.GeoDataFrame(rhws.to_frame().T, geometry="geometry", crs=gdf_rhws.crs)
@@ -226,7 +226,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         gdf_cross_single = gdf_cross[
             (gdf_cross.peilgebied_from == globalid_value) | (gdf_cross.peilgebied_to == globalid_value)
         ].copy()
-        print("Clip Crossings/Hydroobjects")
+        # print("Clip Crossings/Hydroobjects")
         # Select hydroobjects in RHWS polygons
         gdf_object = gpd.clip(DATA["hydroobject"], gdf_rhws_single)
         gdf_object = gdf_object.reset_index(drop=True)
@@ -235,11 +235,11 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         gdf_object = gdf_object.explode(index_parts=False).reset_index(drop=True)
         gdf_object = gdf_object[~gdf_object.is_empty].copy()
         gdf_object = gdf_object[gdf_object.length > 1e-7].copy()
-        print("Split Hydroobjects at Intersect")
+        # print("Split Hydroobjects at Intersect")
         # Split lines at intersection
         gdf_object = split_lines_at_intersections(gdf_object)
 
-        print("Connect Hydroobjects within distance")
+        # print("Connect Hydroobjects within distance")
         # Explode the linestrings into smaller segments
         distance_interval = 50  # The distance interval you want to segment the lines at
         gdf_object = explode_linestrings(gdf_object, distance_interval)
@@ -253,7 +253,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         gdf_object = gdf_object[gdf_object.length > 1e-7].copy()
 
         ### Create NetworkX nodes ###
-        print("Create NetworkX")
+        # print("Create NetworkX")
         # Use start and end points from hydroobjects in networkx as nodes
         nodes_gdf = gdf_object.copy()
         nodes_gdf["geometry"] = nodes_gdf.geometry.boundary
@@ -295,21 +295,21 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         for node_id, group in nodes_gdf.groupby("node_id"):
             graph.add_node(node_id, geometry=group.geometry.iat[0])
 
-        # add links
+        # add edges
         line_lookup = gdf_object.geometry
         for idx0, group in nodes_gdf.groupby(level=0):
             node_from, node_to = group.node_id
             line_geom = gdf_object.geometry.at[idx0]
-            graph.add_link(node_from, node_to, length=line_geom.length, geometry=line_geom)
+            graph.add_edge(node_from, node_to, length=line_geom.length, geometry=line_geom)
 
         ### Find distruptions Graph ###
-        # The graph often consists of multiple smaller graphs due to links not properly connecting with nodes
+        # The graph often consists of multiple smaller graphs due to edges not properly connecting with nodes
         # Get lists of compnents (sub-graph)
-        print("Find distruptions in Graph")
+        # print("Find distruptions in Graph")
         components = list(nx.connected_components(graph))
         largest_component = max(components, key=len)
         smaller_components = [comp for comp in components if comp != largest_component]  # not used anymore
-        print(len(smaller_components), end="\r")
+        # print(len(smaller_components), end="\r")
 
         while True:
             components = list(nx.connected_components(graph))
@@ -319,7 +319,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
             if not smaller_components:  # If there are no smaller components left, break the loop
                 break
 
-            print(len(smaller_components), end="\r")
+            # print(len(smaller_components), end="\r")
             # Update node geometries and largest_gdf for each iteration
             node_geometries = {node: graph.nodes[node]["geometry"] for node in graph.nodes()}
             largest_gdf = component_to_gdf(largest_component, node_geometries)
@@ -345,11 +345,11 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                 shortest_path = nx.shortest_path(
                     graph, source=startpoint, target=endpoint, weight="length", method="dijkstra"
                 )
-                links = []
+                edges = []
                 for i in range(0, len(shortest_path) - 1):
-                    links.append(graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"])
+                    edges.append(graph.get_edge_data(shortest_path[i], shortest_path[i + 1])["geometry"])
                 gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = shapely.ops.linemerge(
-                    links
+                    edges
                 )
 
             except nx.NetworkXNoPath as e:
@@ -357,7 +357,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                 not_connected.append(startpoint)
 
         if not_connected:
-            print("not connected")
+            # print("not connected")
             # Force connection
             # Convert the largest connected component to a GeoDataFrame for spatial operations
             largest_component_gdf = gpd.GeoDataFrame(
@@ -375,9 +375,9 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                 # Find the closest node in the largest component
                 closest_node_id = largest_component_gdf.iloc[distances.idxmin()].node_id
 
-                # Add link between not_connected node and closest node in the largest component
+                # Add edge between not_connected node and closest node in the largest component
                 # Note: You might want to calculate the LineString geometry connecting these nodes based on your specific requirements
-                graph.add_link(
+                graph.add_edge(
                     nc_node,
                     closest_node_id,
                     geometry=LineString([node_geometries[nc_node], node_geometries[closest_node_id]]),
@@ -388,11 +388,11 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                     shortest_path = nx.shortest_path(
                         graph, source=startpoint, target=endpoint, weight="length", method="dijkstra"
                     )
-                    links = []
+                    edges = []
                     for i in range(0, len(shortest_path) - 1):
-                        links.append(graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"])
+                        edges.append(graph.get_edge_data(shortest_path[i], shortest_path[i + 1])["geometry"])
                     gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = (
-                        shapely.ops.linemerge(links)
+                        shapely.ops.linemerge(edges)
                     )
 
                 except nx.NetworkXNoPath as e:
@@ -402,7 +402,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         ### Append output ###
         gdf_crossings_out.append(gdf_cross_single)
 
-        ### Plot graph ###
+        ## Plot graph ###
         print("Plotting Output")
         fig, ax = plt.subplots(figsize=(8, 8))
         plt_paths = gpd.GeoDataFrame(gdf_cross_single, geometry="shortest_path", crs=gdf_cross_single.crs)
@@ -416,10 +416,17 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         gdf_cross_single.plot(ax=ax, color="orange", label="crossings")
         plt_paths.plot(ax=ax, color="purple", label="shortest paths")
         ax.legend()
-        plt.savefig(f"./shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new", dpi=300)
-
+        path_figs = os.path.join(
+            settings.ribasim_nl_data_dir,
+            "WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new",
+        )
+        plt.savefig(
+            path_figs,
+            dpi=300,
+        )
         # Save results
-        print("Writing Output")
+
+        # print("Writing Output")
         objects = {}
         objects["hydroobjects"] = gpd.GeoDataFrame(gdf_object, geometry="geometry", crs=gdf_cross_single.crs)
         shortest_path = gdf_cross_single.drop(columns=["geometry"])
@@ -441,8 +448,15 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
 
         for key, value in objects.items():
             # For each GeoDataFrame, save it to a layer in the GeoPackage
+            path_gpkg = os.path.join(
+                settings.ribasim_nl_data_dir,
+                "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg",
+            )
             value.to_file(
-                f"./shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg", layer=key, driver="GPKG"
+                # f"./shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg", layer=key, driver="GPKG"
+                path_gpkg,
+                layer=key,
+                driver="GPKG",
             )
     except Exception as e:
         print(e)
@@ -450,6 +464,10 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
 # Write final output
 gdf_out = gpd.GeoDataFrame(pd.concat(gdf_crossings_out))
 gdf_out["shortest_path"] = gdf_out["shortest_path"].apply(lambda geom: dumps(geom) if geom is not None else None)
-gdf_out.to_file(
-    f"/DATAFOLDER/projects/4750_30/Data_shortest_path/{waterschap}/{waterschap}_shortest_path.gpkg", driver="GPKG"
-)
+
+gdf_out.to_file(output_path, driver="GPKG")
+
+# Write the shortest path to the GoodCloud
+cloud = CloudStorage()
+shortest_path_cloud_parent = Path(output_path).parent  # Use the parent directory of the output path
+cloud.upload_content(dir_path=shortest_path_cloud_parent, overwrite=True)

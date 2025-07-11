@@ -120,17 +120,37 @@ class Model(Model):
     def total_flow_boundary_static_inflow(self):
         return self.flow_boundary.static.df.flow_rate
 
-    def level_boundary_inflow(self, time_stamp: pd.Timestamp | None = None):
-        # filter link_results on timestamp
-        if time_stamp is None:
-            time_stamp = self.flow_results.df.index.max()
-        flow_results = self.flow_results.df.loc[time_stamp]
+    def upstream_connection_node_ids(self, node_type="Outlet"):
+        """Get all most upstream connection node ids that are connected to a LevelBoundary on upstream side."""
+        # get all possible node_ids
+        node_ids = getattr(self, pascal_to_snake_case(node_type)).node.df.index.to_numpy()
 
-        # get inflow edges
-        node_ids = self.level_boundary.node.df.index
-        link_ids = self.link.df[self.link.df.from_node_id.isin(node_ids)].index
+        # get all downstream nodes of level-boundaries
+        level_boundary_ds_node_ids = [self.downstream_node_id(i) for i in self.level_boundary.node.df.index]
+        level_boundary_ds_node_ids_df = (
+            pd.Series([i.to_numpy() if isinstance(i, pd.Series) else i for i in level_boundary_ds_node_ids])
+            .explode()
+            .dropna()
+            .sort_values()
+        )
 
-        return flow_results[flow_results.link_id.isin(link_ids)].reset_index().set_index("link_id").flow_rate
+        return level_boundary_ds_node_ids_df[level_boundary_ds_node_ids_df.isin(node_ids)].to_list()
+
+    def downstream_connection_node_ids(self, node_type="Outlet"):
+        """Get all most upstream connection node ids that are connected to a LevelBoundary on upstream side."""
+        # get all possible node_ids
+        node_ids = getattr(self, pascal_to_snake_case(node_type)).node.df.index.to_numpy()
+
+        # get all downstream nodes of level-boundaries
+        level_boundary_ds_node_ids = [self.upstream_node_id(i) for i in self.level_boundary.node.df.index]
+        level_boundary_ds_node_ids_df = (
+            pd.Series([i.to_numpy() if isinstance(i, pd.Series) else i for i in level_boundary_ds_node_ids])
+            .explode()
+            .dropna()
+            .sort_values()
+        )
+
+        return level_boundary_ds_node_ids_df[level_boundary_ds_node_ids_df.isin(node_ids)].to_list()
 
     @property
     def graph(self):
@@ -403,7 +423,11 @@ class Model(Model):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
             else:
                 linestring = self.edge.df[self.edge.df["to_node_id"] == to_node_id].iloc[0].geometry
-                node_geom = Point(linestring.parallel_offset(node_offset, "left").coords[-1])
+                lo = linestring.parallel_offset(node_offset, "left")
+                if lo.geom_type == "MultiLineString":
+                    node_geom = Point(lo.geoms[-1].coords[-1])
+                else:
+                    node_geom = Point(lo.coords[-1])
                 to_node_id = [to_node_id]
 
         node_id = self.next_node_id
@@ -625,6 +649,7 @@ class Model(Model):
         gpkg = self.filepath.with_name("internal_basins.gpkg")
         df = self.basin.node.df[~self.basin.node.df.index.isin(self.edge.df.from_node_id)]
         df.to_file(gpkg)
+        return df
 
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None):
         """Find the closest basin_node."""
