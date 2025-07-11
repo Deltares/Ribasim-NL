@@ -57,6 +57,13 @@
     "text": "Co-development with Ribasim\nRibasim-NL pins to a specific Ribasim version in the pixi.toml. Generally this will be the latest release. During development sometimes you may want to tet out the latest unreleased development version of Ribasim.\nTo do so, first remove the Ribasim Conda dependency:\npixi remove ribasim\nThen add it back via GitHub:\npixi add --git https://github.com/Deltares/Ribasim.git ribasim --branch main --pypi --subdir python/ribasim\nThis will add Ribasim like this in the pixi.toml:\n[pypi-dependencies]\nribasim = { git = \"https://github.com/Deltares/Ribasim.git\", branch = \"main\", subdirectory = \"python/ribasim\" }\nYou can change the branch name if needed, or use a specific commit with for example --rev 0075d4a.\nIf you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub. This can be done using this syntax:\npixi add --pypi 'ribasim @ file://absolute/path/to/Ribasim/python/ribasim' --editable\nThis will add Ribasim like this in the pixi.toml:\n[pypi-dependencies]\nribasim = { path = \"../Ribasim/python/ribasim\", editable = true }\nThe Pixi CLI only accepts absolute paths, but relative paths in pixi.toml will also work. The last example will work if you clone Ribasim next to Ribasim-NL.\nFor Ribasim developer documentation see https://ribasim.org/dev/."
   },
   {
+    "objectID": "dev/index.html#sec-environment-variables",
+    "href": "dev/index.html#sec-environment-variables",
+    "title": "Contributing",
+    "section": "Environment variables",
+    "text": "Environment variables\nThe Ribasim-NL code downloads from and uploads to cloud storage. The password to access the cloud storage, and local directory it interacts with, both need to be configured. To be able to run the Ribasim core, it needs to either find the ribasim executable in the Path, or you configure it.\nIn the root of the repository is a .env.default file that can serve as a template to copy to .env. The .env file is gitignored because it is different per developer, and to avoid leaking the password.\nHere is an example for a filled in .env file:\nRIBASIM_NL_CLOUD_PASS=your_password_here\nRIBASIM_NL_DATA_DIR=c:\\data\\ribasim-nl\nRIBASIM_EXE=c:\\bin\\ribasim\\ribasim.exe\nThese values will be applied using pydantic-settings. If you prefer to set these environment variables in your OS or terminal that will also work."
+  },
+  {
     "objectID": "reference/HyDAMO.html",
     "href": "reference/HyDAMO.html",
     "title": "HyDAMO",
@@ -201,56 +208,56 @@
     "href": "cloudstorage.html",
     "title": "Cloud storage",
     "section": "",
-    "text": "We recommend to set the following OS environment variables: - RIBASIM_NL_CLOUD_PASS: password for the cloud, to be requested at Deltares - RIBASIM_NL_DATA_DIR: directory with your local copy of data in the Ribasim-NL cloud\n\n\n\nImport the `Cloud`` and initialize it\nfrom ribasim_nl import CloudStorage\nIf you have set OS environment variables:\ncloud_store = CloudStorage()\nAnd else\ncloud_storage = CloudStorage(password=password, data_dir=my_data_dir)\n\n\n\nFind all sources\n# find all sources, `PBL_watertypenkaart`\nsources = cloud_storage.source_data\n# download, `PBL_watertypenkaart`\ncloud.download_basisgegevens(bronnen=[\"PBL_watertypenkaart\"])\n\n\n\nTo find available water authorities:\ncloud_storage.water_authorities\n\n\n\nauthority = \"Rijkswaterstaat\"\n\n# to download external data (aangeleverd) only\ncloud_storage.download_aangeleverd(authority)\n\n# to download manipulated data (verwerkt) only\ncloud_storage.download_verwerkt(authority)\n\n# to download all\ncloud_storage.download_all(authority)\n\n\n\nauthority = \"Rijkswaterstaat\"\n# upload local `aangeleverd` directory to cloud-storage\ncloud_storage.upload_aangeleverd(authority, overwrite=True)\n\n\n\nauthority = \"Rijkswaterstaat\"\ncloud_storage.uploaded_models(authority) # to see which models have been uploaded\n\ncloud_storage.upload_model(authority, model=\"ijsselmeer\") # to upload a new version of the `ijsselmeermodel`."
+    "text": "For hosting data Ribasim-NL makes extensive use of this cloud storage: https://deltares.thegood.cloud/. The input data is not open, but the output models are, see the links below. This page explains how the cloud storage is setup and used. For the API docs, see the CloudStorage reference."
   },
   {
-    "objectID": "cloudstorage.html#os-environment-variables",
-    "href": "cloudstorage.html#os-environment-variables",
+    "objectID": "cloudstorage.html#access-configuration",
+    "href": "cloudstorage.html#access-configuration",
     "title": "Cloud storage",
-    "section": "",
-    "text": "We recommend to set the following OS environment variables: - RIBASIM_NL_CLOUD_PASS: password for the cloud, to be requested at Deltares - RIBASIM_NL_DATA_DIR: directory with your local copy of data in the Ribasim-NL cloud"
+    "section": "Access configuration",
+    "text": "Access configuration\nBefore you can interact with the cloud storage, you need to configure the access. The section on environment variables documents how to do this. The two relevant variables here are:\n\nRIBASIM_NL_CLOUD_PASS: password for the cloud, to be requested at Deltares\nRIBASIM_NL_DATA_DIR: directory with your local copy of data in the Ribasim-NL cloud\n\nThe password can currently only be shared among project collaborators since not all input data is public. The output models, both nationwide (folder Rijkswaterstaat) and per water board, are public. Share links for the models are below. Sort on “Modified” to find the latest versions.\n\nRijkswaterstaat\nAaenMaas\nAmstelGooienVecht\nBrabantseDelta\nDeDommel\nDelfland\nDrentsOverijsselseDelta\nHollandsNoorderkwartier\nHollandseDelta\nHunzeenAas\nLimburg\nNoorderzijlvest\nRijnenIJssel\nRijnland\nRivierenland\nScheldestromen\nSchielandendeKrimpenerwaard\nStichtseRijnlanden\nValleienVeluwe\nVechtstromen\nWetterskipFryslan\nZuiderzeeland"
   },
   {
     "objectID": "cloudstorage.html#initialize-the-cloud",
     "href": "cloudstorage.html#initialize-the-cloud",
     "title": "Cloud storage",
-    "section": "",
-    "text": "Import the `Cloud`` and initialize it\nfrom ribasim_nl import CloudStorage\nIf you have set OS environment variables:\ncloud_store = CloudStorage()\nAnd else\ncloud_storage = CloudStorage(password=password, data_dir=my_data_dir)"
+    "section": "Initialize the cloud",
+    "text": "Initialize the cloud\nImport the Cloud and initialize it.\nfrom ribasim_nl import CloudStorage\n\ncloud_store = CloudStorage()"
   },
   {
     "objectID": "cloudstorage.html#download-sources-basisgegevens",
     "href": "cloudstorage.html#download-sources-basisgegevens",
     "title": "Cloud storage",
-    "section": "",
-    "text": "Find all sources\n# find all sources, `PBL_watertypenkaart`\nsources = cloud_storage.source_data\n# download, `PBL_watertypenkaart`\ncloud.download_basisgegevens(bronnen=[\"PBL_watertypenkaart\"])"
+    "section": "Download sources (basisgegevens)",
+    "text": "Download sources (basisgegevens)\nFind all sources\n# find all sources, `PBL_watertypenkaart`\nsources = cloud_storage.source_data\n# download, `PBL_watertypenkaart`\ncloud.download_basisgegevens(bronnen=[\"PBL_watertypenkaart\"])"
   },
   {
     "objectID": "cloudstorage.html#find-water-authorities",
     "href": "cloudstorage.html#find-water-authorities",
     "title": "Cloud storage",
-    "section": "",
-    "text": "To find available water authorities:\ncloud_storage.water_authorities"
+    "section": "Find water authorities",
+    "text": "Find water authorities\nTo find available water authorities:\ncloud_storage.water_authorities"
   },
   {
     "objectID": "cloudstorage.html#download-water-authority-datasets",
     "href": "cloudstorage.html#download-water-authority-datasets",
     "title": "Cloud storage",
-    "section": "",
-    "text": "authority = \"Rijkswaterstaat\"\n\n# to download external data (aangeleverd) only\ncloud_storage.download_aangeleverd(authority)\n\n# to download manipulated data (verwerkt) only\ncloud_storage.download_verwerkt(authority)\n\n# to download all\ncloud_storage.download_all(authority)"
+    "section": "Download water authority datasets",
+    "text": "Download water authority datasets\nauthority = \"Rijkswaterstaat\"\n\n# to download external data (aangeleverd) only\ncloud_storage.download_aangeleverd(authority)\n\n# to download manipulated data (verwerkt) only\ncloud_storage.download_verwerkt(authority)\n\n# to download all\ncloud_storage.download_all(authority)"
   },
   {
     "objectID": "cloudstorage.html#upload-manipulated-data-aangeleverd",
     "href": "cloudstorage.html#upload-manipulated-data-aangeleverd",
     "title": "Cloud storage",
-    "section": "",
-    "text": "authority = \"Rijkswaterstaat\"\n# upload local `aangeleverd` directory to cloud-storage\ncloud_storage.upload_aangeleverd(authority, overwrite=True)"
+    "section": "Upload manipulated data (aangeleverd)",
+    "text": "Upload manipulated data (aangeleverd)\nauthority = \"Rijkswaterstaat\"\n# upload local `aangeleverd` directory to cloud-storage\ncloud_storage.upload_aangeleverd(authority, overwrite=True)"
   },
   {
     "objectID": "cloudstorage.html#upload-models",
     "href": "cloudstorage.html#upload-models",
     "title": "Cloud storage",
-    "section": "",
-    "text": "authority = \"Rijkswaterstaat\"\ncloud_storage.uploaded_models(authority) # to see which models have been uploaded\n\ncloud_storage.upload_model(authority, model=\"ijsselmeer\") # to upload a new version of the `ijsselmeermodel`."
+    "section": "Upload models",
+    "text": "Upload models\nauthority = \"Rijkswaterstaat\"\ncloud_storage.uploaded_models(authority) # to see which models have been uploaded\n\ncloud_storage.upload_model(authority, model=\"ijsselmeer\") # to upload a new version of the `ijsselmeermodel`."
   },
   {
     "objectID": "workflow/level-controlled.html",

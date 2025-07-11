@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -128,16 +163,13 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#connecting-the-good-cloud" id="toc-connecting-the-good-cloud" class="nav-link active" data-scroll-target="#connecting-the-good-cloud">Connecting The Good Cloud</a>
-  <ul class="collapse">
-  <li><a href="#os-environment-variables" id="toc-os-environment-variables" class="nav-link" data-scroll-target="#os-environment-variables">OS environment variables</a></li>
+  <li><a href="#access-configuration" id="toc-access-configuration" class="nav-link active" data-scroll-target="#access-configuration">Access configuration</a></li>
   <li><a href="#initialize-the-cloud" id="toc-initialize-the-cloud" class="nav-link" data-scroll-target="#initialize-the-cloud">Initialize the cloud</a></li>
   <li><a href="#download-sources-basisgegevens" id="toc-download-sources-basisgegevens" class="nav-link" data-scroll-target="#download-sources-basisgegevens">Download sources (basisgegevens)</a></li>
   <li><a href="#find-water-authorities" id="toc-find-water-authorities" class="nav-link" data-scroll-target="#find-water-authorities">Find water authorities</a></li>
   <li><a href="#download-water-authority-datasets" id="toc-download-water-authority-datasets" class="nav-link" data-scroll-target="#download-water-authority-datasets">Download water authority datasets</a></li>
   <li><a href="#upload-manipulated-data-aangeleverd" id="toc-upload-manipulated-data-aangeleverd" class="nav-link" data-scroll-target="#upload-manipulated-data-aangeleverd">Upload manipulated data (aangeleverd)</a></li>
   <li><a href="#upload-models" id="toc-upload-models" class="nav-link" data-scroll-target="#upload-models">Upload models</a></li>
-  </ul></li>
   </ul>
 </nav>
     </div>
@@ -163,62 +195,87 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="connecting-the-good-cloud" class="level1">
-<h1>Connecting The Good Cloud</h1>
-<section id="os-environment-variables" class="level2">
-<h2 class="anchored" data-anchor-id="os-environment-variables">OS environment variables</h2>
-<p>We recommend to set the following OS environment variables: - <code>RIBASIM_NL_CLOUD_PASS</code>: password for the cloud, to be requested at Deltares - <code>RIBASIM_NL_DATA_DIR</code>: directory with your local copy of data in the Ribasim-NL cloud</p>
+<p>For hosting data Ribasim-NL makes extensive use of this cloud storage: https://deltares.thegood.cloud/. The input data is not open, but the output models are, see the links below. This page explains how the cloud storage is setup and used. For the API docs, see the <a href="./reference/CloudStorage.html">CloudStorage reference</a>.</p>
+<section id="access-configuration" class="level2">
+<h2 class="anchored" data-anchor-id="access-configuration">Access configuration</h2>
+<p>Before you can interact with the cloud storage, you need to configure the access. The section on <a href="./dev/index.html#sec-environment-variables">environment variables</a> documents how to do this. The two relevant variables here are:</p>
+<ul>
+<li><code>RIBASIM_NL_CLOUD_PASS</code>: password for the cloud, to be requested at Deltares</li>
+<li><code>RIBASIM_NL_DATA_DIR</code>: directory with your local copy of data in the Ribasim-NL cloud</li>
+</ul>
+<p>The password can currently only be shared among project collaborators since not all input data is public. The output models, both nationwide (folder Rijkswaterstaat) and per water board, are public. Share links for the models are below. Sort on “Modified” to find the latest versions.</p>
+<ul>
+<li><a href="https://deltares.thegood.cloud/s/7gNBzyFmi66iTjX">Rijkswaterstaat</a></li>
+<li><a href="https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J">AaenMaas</a></li>
+<li><a href="https://deltares.thegood.cloud/s/wko9RjGAYAsj6dG">AmstelGooienVecht</a></li>
+<li><a href="https://deltares.thegood.cloud/s/KHieyrrZZdcBBHo">BrabantseDelta</a></li>
+<li><a href="https://deltares.thegood.cloud/s/4ozjqW39eJakmao">DeDommel</a></li>
+<li><a href="https://deltares.thegood.cloud/s/2XjDdsHqPYkepHt">Delfland</a></li>
+<li><a href="https://deltares.thegood.cloud/s/TLtTk3xmgk2SAW8">DrentsOverijsselseDelta</a></li>
+<li><a href="https://deltares.thegood.cloud/s/CxJLoxSnzySJHTt">HollandsNoorderkwartier</a></li>
+<li><a href="https://deltares.thegood.cloud/s/ZBJSH7mJsdxbsMr">HollandseDelta</a></li>
+<li><a href="https://deltares.thegood.cloud/s/3Q2eGKqwpqdLkE8">HunzeenAas</a></li>
+<li><a href="https://deltares.thegood.cloud/s/MW2kiQMyXwFM4xw">Limburg</a></li>
+<li><a href="https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz">Noorderzijlvest</a></li>
+<li><a href="https://deltares.thegood.cloud/s/e8LbgZrgjsetPYn">RijnenIJssel</a></li>
+<li><a href="https://deltares.thegood.cloud/s/H4jtGLYiccMLeYH">Rijnland</a></li>
+<li><a href="https://deltares.thegood.cloud/s/TTri9ZqGXWcXHaW">Rivierenland</a></li>
+<li><a href="https://deltares.thegood.cloud/s/GJBcCL3wwNjMNty">Scheldestromen</a></li>
+<li><a href="https://deltares.thegood.cloud/s/Sjb98JNdSErRJir">SchielandendeKrimpenerwaard</a></li>
+<li><a href="https://deltares.thegood.cloud/s/RczyFnYKiCeYojW">StichtseRijnlanden</a></li>
+<li><a href="https://deltares.thegood.cloud/s/YgWfw7AEWLSbcGa">ValleienVeluwe</a></li>
+<li><a href="https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT">Vechtstromen</a></li>
+<li><a href="https://deltares.thegood.cloud/s/pDGmwTriotLCpxz">WetterskipFryslan</a></li>
+<li><a href="https://deltares.thegood.cloud/s/pDGmwTriotLCpxz">Zuiderzeeland</a></li>
+</ul>
 </section>
 <section id="initialize-the-cloud" class="level2">
 <h2 class="anchored" data-anchor-id="initialize-the-cloud">Initialize the cloud</h2>
-<p>Import the `Cloud`` and initialize it</p>
-<pre><code>from ribasim_nl import CloudStorage</code></pre>
-<p>If you have set OS environment variables:</p>
-<pre><code>cloud_store = CloudStorage()</code></pre>
-<p>And else</p>
-<pre><code>cloud_storage = CloudStorage(password=password, data_dir=my_data_dir)</code></pre>
+<p>Import the <code>Cloud</code> and initialize it.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode py code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim_nl <span class="im">import</span> CloudStorage</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>cloud_store <span class="op">=</span> CloudStorage()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="download-sources-basisgegevens" class="level2">
 <h2 class="anchored" data-anchor-id="download-sources-basisgegevens">Download sources (basisgegevens)</h2>
 <p>Find all sources</p>
-<pre><code># find all sources, `PBL_watertypenkaart`
-sources = cloud_storage.source_data
-# download, `PBL_watertypenkaart`
-cloud.download_basisgegevens(bronnen=["PBL_watertypenkaart"])</code></pre>
+<div class="sourceCode" id="cb2"><pre class="sourceCode py code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># find all sources, `PBL_watertypenkaart`</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>sources <span class="op">=</span> cloud_storage.source_data</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># download, `PBL_watertypenkaart`</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>cloud.download_basisgegevens(bronnen<span class="op">=</span>[<span class="st">"PBL_watertypenkaart"</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="find-water-authorities" class="level2">
 <h2 class="anchored" data-anchor-id="find-water-authorities">Find water authorities</h2>
 <p>To find available water authorities:</p>
-<pre><code>cloud_storage.water_authorities</code></pre>
+<div class="sourceCode" id="cb3"><pre class="sourceCode py code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>cloud_storage.water_authorities</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="download-water-authority-datasets" class="level2">
 <h2 class="anchored" data-anchor-id="download-water-authority-datasets">Download water authority datasets</h2>
-<pre><code>authority = "Rijkswaterstaat"
-
-# to download external data (aangeleverd) only
-cloud_storage.download_aangeleverd(authority)
-
-# to download manipulated data (verwerkt) only
-cloud_storage.download_verwerkt(authority)
-
-# to download all
-cloud_storage.download_all(authority)</code></pre>
+<div class="sourceCode" id="cb4"><pre class="sourceCode py code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>authority <span class="op">=</span> <span class="st">"Rijkswaterstaat"</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># to download external data (aangeleverd) only</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>cloud_storage.download_aangeleverd(authority)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co"># to download manipulated data (verwerkt) only</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>cloud_storage.download_verwerkt(authority)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co"># to download all</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>cloud_storage.download_all(authority)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="upload-manipulated-data-aangeleverd" class="level2">
 <h2 class="anchored" data-anchor-id="upload-manipulated-data-aangeleverd">Upload manipulated data (aangeleverd)</h2>
-<pre><code>authority = "Rijkswaterstaat"
-# upload local `aangeleverd` directory to cloud-storage
-cloud_storage.upload_aangeleverd(authority, overwrite=True)</code></pre>
+<div class="sourceCode" id="cb5"><pre class="sourceCode py code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>authority <span class="op">=</span> <span class="st">"Rijkswaterstaat"</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># upload local `aangeleverd` directory to cloud-storage</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>cloud_storage.upload_aangeleverd(authority, overwrite<span class="op">=</span><span class="va">True</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="upload-models" class="level2">
 <h2 class="anchored" data-anchor-id="upload-models">Upload models</h2>
-<pre><code>authority = "Rijkswaterstaat"
-cloud_storage.uploaded_models(authority) # to see which models have been uploaded
+<div class="sourceCode" id="cb6"><pre class="sourceCode py code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>authority <span class="op">=</span> <span class="st">"Rijkswaterstaat"</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>cloud_storage.uploaded_models(authority) <span class="co"># to see which models have been uploaded</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>cloud_storage.upload_model(authority, model<span class="op">=</span><span class="st">"ijsselmeer"</span>) <span class="co"># to upload a new version of the `ijsselmeermodel`.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 
-cloud_storage.upload_model(authority, model="ijsselmeer") # to upload a new version of the `ijsselmeermodel`.</code></pre>
 
-
-</section>
 </section>
 
 </main> <!-- /main -->
