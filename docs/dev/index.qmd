@@ -1,0 +1,95 @@
+---
+title: "Contributing"
+---
+
+Ribasim-NL welcomes contributions.
+
+# Setting up the developer environment
+
+## Clone Ribasim
+
+In order to have the Ribasim-NL repository locally available, you can clone it with Git.
+Git can be installed from [git-scm.com](https://git-scm.com/downloads).
+Once installed, run the following command at a directory of your choice:
+
+In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
+
+```sh
+git clone https://github.com/Deltares/Ribasim-NL.git
+```
+
+To continue with the following steps, make the root of the repository your working directory by running
+
+```sh
+cd Ribasim-NL
+```
+
+## Setting up Pixi
+
+First, set up Pixi as described on https://pixi.sh/.
+
+We require at least Pixi version v0.48.1, but generally recommend the latest release.
+Check the version with `pixi --version`, update with `pixi self-update`.
+
+Then set up the environment by running the following command.
+Check out the `pixi.toml` file to see the tasks that are part of this, you can also run them individually.
+
+```sh
+pixi run install
+```
+
+The install task automatically installs all required Python packages for development.
+These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled.
+You can do this in a terminal by calling `pixi shell`, or starting programs like `pixi run python`.
+The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment.
+Open the command box with {{< kbd Ctrl+Shift+P >}} ({{< kbd Cmd+Shift+P >}} on macOS) and run `Python: Select Interpreter`.
+Select `('default': Pixi)` in the `/.pixi` folder.
+Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
+
+If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with `pixi clean`, followed by `pixi run install`.
+
+## Co-development with Ribasim
+
+Ribasim-NL pins to a specific Ribasim version in the `pixi.toml`.
+Generally this will be the latest release.
+During development sometimes you may want to tet out the latest unreleased development version of Ribasim.
+
+To do so, first remove the Ribasim Conda dependency:
+
+```sh
+pixi remove ribasim
+```
+
+Then add it back via GitHub:
+
+```sh
+pixi add --git https://github.com/Deltares/Ribasim.git ribasim --branch main --pypi --subdir python/ribasim
+```
+
+This will add Ribasim like this in the `pixi.toml`:
+
+```toml
+[pypi-dependencies]
+ribasim = { git = "https://github.com/Deltares/Ribasim.git", branch = "main", subdirectory = "python/ribasim" }
+```
+
+You can change the branch name if needed, or use a specific commit with for example `--rev 0075d4a`.
+
+If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub.
+This can be done using this syntax:
+
+```sh
+pixi add --pypi 'ribasim @ file://absolute/path/to/Ribasim/python/ribasim' --editable
+```
+
+This will add Ribasim like this in the `pixi.toml`:
+
+```toml
+[pypi-dependencies]
+ribasim = { path = "../Ribasim/python/ribasim", editable = true }
+```
+
+The Pixi CLI only accepts absolute paths, but relative paths in `pixi.toml` will also work.
+The last example will work if you clone Ribasim next to Ribasim-NL.
+
+For Ribasim developer documentation see https://ribasim.org/dev/.
