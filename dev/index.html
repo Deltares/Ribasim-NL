@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Gravity controlled – Ribasim-NL</title>
+<title>Contributing – Ribasim-NL</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -19,6 +19,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -40,6 +75,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-77fa4190651282c21d415cb5083120b0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/kbd/kbd.js"></script>
+<link href="../site_libs/quarto-contrib/kbd/kbd.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -72,7 +109,7 @@ ul.task-list li input[type="checkbox"] {
 <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="nav-sidebar floating nav-fixed quarto-light">
+<body class="nav-fixed quarto-light">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -98,13 +135,13 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Cloud storage</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
+    <a class="nav-link" href="../workflow/main-watersystem.html"> 
 <span class="menu-text">Workflows</span></a>
   </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../dev/index.html"> 
+    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
 <span class="menu-text">Contributing</span></a>
   </li>  
   <li class="nav-item compact">
@@ -118,61 +155,31 @@ ul.task-list li input[type="checkbox"] {
 </div>
       </div> <!-- /container-fluid -->
     </nav>
-  <nav class="quarto-secondary-nav">
-    <div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
-        <i class="bi bi-layout-text-sidebar-reverse"></i>
-      </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/gravity-controlled.html">Gravity controlled</a></li></ol></nav>
-        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-        </a>
-    </div>
-  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
-    <div class="sidebar-menu-container"> 
-    <ul class="list-unstyled mt-1">
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Main watersystem</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Level controlled</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Gravity controlled</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Coupling</span></a>
-  </div>
-</li>
-    </ul>
-    </div>
-</nav>
-<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#setting-up-the-developer-environment" id="toc-setting-up-the-developer-environment" class="nav-link active" data-scroll-target="#setting-up-the-developer-environment">Setting up the developer environment</a>
+  <ul class="collapse">
+  <li><a href="#clone-ribasim" id="toc-clone-ribasim" class="nav-link" data-scroll-target="#clone-ribasim">Clone Ribasim</a></li>
+  <li><a href="#setting-up-pixi" id="toc-setting-up-pixi" class="nav-link" data-scroll-target="#setting-up-pixi">Setting up Pixi</a></li>
+  <li><a href="#co-development-with-ribasim" id="toc-co-development-with-ribasim" class="nav-link" data-scroll-target="#co-development-with-ribasim">Co-development with Ribasim</a></li>
+  </ul></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Gravity controlled</h1>
+<h1 class="title">Contributing</h1>
 </div>
 
 
@@ -189,15 +196,48 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl"><code>src/ribasim_nl</code></a>.</p>
-<p>Under <code>notebooks</code> you’ll find 3 scrips per water authority, e.g.&nbsp;<code>notebooks\aa_en_maas</code>, you can run in sequence.</p>
-<ol type="1">
-<li><code>01_fix_model.py</code> will “fix” the GIS-models supplied by Sweco in the directories <code>{authority}_2024_6_3</code> to valid Ribasim-models in the directory <code>{authority}_fix_model</code></li>
-<li><code>02_prepare_model.py</code>will read <code>{authority}_fix_model</code> and add <code>levels</code> and <code>flow_rate</code> to the model and a <code>static_data.xlsx</code> that can be reviewed. The model will be written as <code>{authority}_prepare_model</code></li>
-<li><code>03_parameterized_model.py</code> will read <code>{authority}_prepare_model</code> and <code>static_data.xlsx</code> to a model <code>{authority}_parameterized_model</code></li>
-</ol>
+<p>Ribasim-NL welcomes contributions.</p>
+<section id="setting-up-the-developer-environment" class="level1">
+<h1>Setting up the developer environment</h1>
+<section id="clone-ribasim" class="level2">
+<h2 class="anchored" data-anchor-id="clone-ribasim">Clone Ribasim</h2>
+<p>In order to have the Ribasim-NL repository locally available, you can clone it with Git. Git can be installed from <a href="https://git-scm.com/downloads">git-scm.com</a>. Once installed, run the following command at a directory of your choice:</p>
+<p>In order to have the Ribasim repository locally available, run the following command at a directory of your choice:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/Deltares/Ribasim-NL.git</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>To continue with the following steps, make the root of the repository your working directory by running</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> Ribasim-NL</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="setting-up-pixi" class="level2">
+<h2 class="anchored" data-anchor-id="setting-up-pixi">Setting up Pixi</h2>
+<p>First, set up Pixi as described on https://pixi.sh/.</p>
+<p>We require at least Pixi version v0.48.1, but generally recommend the latest release. Check the version with <code>pixi --version</code>, update with <code>pixi self-update</code>.</p>
+<p>Then set up the environment by running the following command. Check out the <code>pixi.toml</code> file to see the tasks that are part of this, you can also run them individually.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>The install task automatically installs all required Python packages for development. These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled. You can do this in a terminal by calling <code>pixi shell</code>, or starting programs like <code>pixi run python</code>. The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment. Open the command box with <kbd aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (<kbd aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and run <code>Python: Select Interpreter</code>. Select <code>('default': Pixi)</code> in the <code>/.pixi</code> folder. Unless the setting <code>python.terminal.activateEnvironment</code> is disabled, it will already activate the environment in your terminal.</p>
+<p>If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with <code>pixi clean</code>, followed by <code>pixi run install</code>.</p>
+</section>
+<section id="co-development-with-ribasim" class="level2">
+<h2 class="anchored" data-anchor-id="co-development-with-ribasim">Co-development with Ribasim</h2>
+<p>Ribasim-NL pins to a specific Ribasim version in the <code>pixi.toml</code>. Generally this will be the latest release. During development sometimes you may want to tet out the latest unreleased development version of Ribasim.</p>
+<p>To do so, first remove the Ribasim Conda dependency:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> remove ribasim</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Then add it back via GitHub:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> add <span class="at">--git</span> https://github.com/Deltares/Ribasim.git ribasim <span class="at">--branch</span> main <span class="at">--pypi</span> <span class="at">--subdir</span> python/ribasim</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>This will add Ribasim like this in the <code>pixi.toml</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[pypi-dependencies]</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ribasim</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">git</span><span class="op"> =</span> <span class="st">"https://github.com/Deltares/Ribasim.git"</span><span class="op">, </span><span class="dt">branch</span><span class="op"> =</span> <span class="st">"main"</span><span class="op">, </span><span class="dt">subdirectory</span><span class="op"> =</span> <span class="st">"python/ribasim"</span><span class="op"> }</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>You can change the branch name if needed, or use a specific commit with for example <code>--rev 0075d4a</code>.</p>
+<p>If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub. This can be done using this syntax:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> add <span class="at">--pypi</span> <span class="st">'ribasim @ file://absolute/path/to/Ribasim/python/ribasim'</span> <span class="at">--editable</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>This will add Ribasim like this in the <code>pixi.toml</code>:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[pypi-dependencies]</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ribasim</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">path</span><span class="op"> =</span> <span class="st">"../Ribasim/python/ribasim"</span><span class="op">, </span><span class="dt">editable</span><span class="op"> =</span> <span class="cn">true</span><span class="op"> }</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>The Pixi CLI only accepts absolute paths, but relative paths in <code>pixi.toml</code> will also work. The last example will work if you clone Ribasim next to Ribasim-NL.</p>
+<p>For Ribasim developer documentation see https://ribasim.org/dev/.</p>
 
 
+</section>
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
