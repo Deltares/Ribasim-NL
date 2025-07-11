@@ -1,8 +1,4 @@
-"""
-Created on Mon Apr  7 11:03:05 2025
-
-@author: kingma
-"""
+"""Use RWZI data to create a model consisting of FlowBoundary (RWZI) and Terminal (effluent locations)."""
 
 # %%
 import logging

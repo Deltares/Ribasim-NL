@@ -1,3 +1,9 @@
+"""
+Merge standalone model(s) with the RWZI model.
+
+Replaces the Terminals with Junctions and connects them to the underlying Basin.
+"""
+
 # %% Imports
 import logging
 from datetime import datetime
