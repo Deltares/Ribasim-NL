@@ -29,24 +29,22 @@ readme = f"""# Model van (deel)gebieden uit het Landelijk Hydrologisch Model inc
 Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 Ribasim versie: {ribasim.__version__}
 Getest (u kunt simuleren): Nee
-
-** Samengevoegde modellen (beheerder: modelnaam (versie)**
 """
 
 logging.info(readme)
 
 # %% Define the models that we want to merge
 download_latest_model = True
-# upload_model = False
+upload_model = False
 # TODO:discuss what the buffer_distance should be
 buffer_distance = 20  # meter outside the basin which is still clipped
 
 model_specs_to_merge = [
-    {
-        "authority": "Rijkswaterstaat",
-        "model": "lhm_vrij_coupled",
-        "find_toml": True,
-    },
+    # {
+    #     "authority": "Rijkswaterstaat",
+    #     "model": "lhm_vrij_coupled",
+    #     "find_toml": True,
+    # },
     {
         "authority": "DeDommel",
         "model": "DeDommel",
@@ -159,7 +157,7 @@ for idx, model_spec in enumerate(model_specs):
 **{model_spec["authority"]}**: {model_spec["model"]} ({model_version.version})"""
 
 
-# %% Match the terminals and the underlying basins
+# %% functions
 def create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance):
     """
     Match RWZI uitstroom locaties met de onderliggende basins. Wanneer geen match, probeer 20 m buffer.
@@ -231,15 +229,12 @@ def create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance):
     return coupling_lookup, unmatched_rwzi_df
 
 
-coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance)
-
-
-# %% Verwijder de RWZI's die buiten het model vallen
 def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=False):
     """
     Verwijder RWZI‑terminals.
 
-    Verwijder RWZI‑terminals die buiten het model vallen én de daarbij horende flow‑boundary‑knopen uit het LHM‑model en geef het model terug.
+    Verwijder RWZI‑terminals die buiten het model vallen én de daarbij horende
+    flow‑boundary‑knopen uit het LHM‑model en geef het model terug.
     """
     #  1. RWZI‑terminals verwijderen
     terminals_removed = 0
@@ -268,15 +263,11 @@ def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=Fals
     return rwzi_coupled_model, stats
 
 
-rwzi_coupled_model, stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=True)
-
-
-# %% Verander de terminals in junctions en koppel deze aan de bijbehorende basins
 def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     """
-    Zet RWZI-terminals om naar junctions.
+    Zet RWZI-Terminals om naar Junctions.
 
-    Verbind ze daarna met de juiste basin-knoop.
+    Verbind ze daarna met de juiste Basin knoop.
     """
     # 1. terminal naar junction
     terminals = rwzi_coupled_model.terminal.node.df[rwzi_coupled_model.terminal.node.df["meta_rwzi_code"].notna()]
@@ -307,8 +298,10 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
+# %%
+coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance)
+rwzi_coupled_model, stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=True)
 rwzi_coupled_model = terminal2junction(rwzi_coupled_model, coupling_lookup, verbose=True)
-
 
 # %%
 print("write coupled rwzi model")
@@ -324,19 +317,7 @@ rwzi_coupled_model.write(ribasim_toml)
 logging.info(f"There are {len(unmatched_rwzi_df)} RWZI's not incorporated in this model")
 
 # %%
-ribasim_path = r"c:\Program Files\Deltares\ribasim\ribasim.exe"
-
 cloud.joinpath("Basisgegevens", "RWZI", "modellen", f"rwzi_coupled_{authorities[0]}", "readme.md").write_text(readme)
 
-upload_model = True
-
-# TODO: Ik krijg een error hier
-# if upload_model:
-#     cloud.upload_model("Basisgegevens/RWZI", model=f"rwzi_coupled_{authorities[0]}")
-
-
-# result = subprocess.run(
-#     [ribasim_path, ribasim_toml], capture_output=True, encoding="utf-8"
-# )
-
-# %%
+if upload_model:
+    cloud.upload_model("Basisgegevens/RWZI", model=f"rwzi_coupled_{authorities[0]}")

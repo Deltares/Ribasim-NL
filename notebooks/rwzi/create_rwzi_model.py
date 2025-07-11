@@ -1,8 +1,7 @@
 """Use RWZI data to create a model consisting of FlowBoundary (RWZI) and Terminal (effluent locations)."""
 
-# %%
+# %% imports
 import logging
-import os
 from collections import Counter
 from datetime import datetime
 
@@ -19,9 +18,7 @@ from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage
 
-ribasim_path = r"c:/projects/2024/LWKM/06_Ribasim/00_scripts/ribasim_applicatie/ribasim.exe"
-
-# %%
+# %% get input data
 cloud = CloudStorage()
 ribasim_toml = cloud.joinpath("Basisgegevens", "RWZI", "modellen", "rwzi", "rwzi.toml")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -30,17 +27,15 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 model_dir = cloud.joinpath("Basisgegevens", "RWZI", "modellen")
 root_path_local = cloud.joinpath("Basisgegevens", "RWZI")
 
-
-zinfo_influentdebieten_path = os.path.join(
-    root_path_local,
-    r"aangeleverd/Z-info/metingen/zinfo_20160101_20231231_influentdebieten.csv",
+zinfo_influentdebieten_path = (
+    root_path_local / "aangeleverd/Z-info/metingen/zinfo_20160101_20231231_influentdebieten.csv"
 )
+db_file = root_path_local / "aangeleverd/RwziBase/RwziBase2022_RWS_18032024.accdb"
+rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geojson"
 
-db_file = os.path.join(root_path_local, r"aangeleverd/RwziBase/RwziBase2022_RWS_18032024.accdb")
+cloud.synchronize(filepaths=[zinfo_influentdebieten_path, db_file, rwzi_ligging_path])
 
-rwzi_ligging_path = os.path.join(root_path_local, r"aangeleverd/locaties/RWZI_coordinates.geojson")
-
-# model settings
+# %% create empty model
 starttime = "1991-01-01"
 endtime = "2018-01-01"
 time_range = pd.date_range(start=starttime, end=endtime, freq="D")
@@ -53,7 +48,7 @@ model = Model(
 )
 
 
-# %% Laad Z-info data in
+# %% functions
 def process_zinfo_quantity_data(file_path, starttime, endtime):
     """
     Lees de Z-info afvoerdata in en bewaar in een dataframe.
@@ -69,9 +64,6 @@ def process_zinfo_quantity_data(file_path, starttime, endtime):
         df_Zinfo_Q_pivot (DataFrame): dataframe met Z-info debieten per RWZI over de geselecteerde tijdspan.
         RWZI_ids_zinfo (ndarray): Unieke RWZI ID's in de Z-info dataset
     """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"The CSV file does not exist: {file_path}")
-
     df = pd.read_csv(file_path, sep=",")
     df = df.drop(columns=["org", "ehd"]).rename(columns={"ist": "RWZI_ids", "d": "time", "debiet": "debiet_m3d"})
     df = df[(df["time"] >= starttime) & (df["time"] <= endtime)]
@@ -97,10 +89,6 @@ def process_zinfo_quantity_data(file_path, starttime, endtime):
     return df_pivot, RWZI_ids
 
 
-df_Zinfo_influentdebieten, RWZI_ids_zinfo = process_zinfo_quantity_data(zinfo_influentdebieten_path, starttime, endtime)
-
-
-# %% Locaties van de RWZI's in Nederland
 def load_rwzi_geodata(filepath):
     """
     Loads RWZI spatial data from a GeoJSON, Shapefile, or other supported format.
@@ -113,36 +101,30 @@ def load_rwzi_geodata(filepath):
     -------
         GeoDataFrame: Loaded RWZI spatial data.
     """
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(f"RWZI spatial file not found: {filepath}")
-
     gdf = gpd.read_file(filepath)
     logging.info(f"Loaded RWZI GeoDataFrame with {len(gdf)} records from {filepath}")
     return gdf
 
 
-rwzi_gdf = load_rwzi_geodata(rwzi_ligging_path)
+def plot_rwzi_locations(rwzi_gdf):
+    rwzi_gdf = rwzi_gdf.to_crs(epsg=3857)
 
-# Plot alle RWZI's
-rwzi_gdf = rwzi_gdf.to_crs(epsg=3857)
-fig, ax = plt.subplots(figsize=(5, 6))
-rwzi_gdf.plot(ax=ax, color="dodgerblue", edgecolor="black", alpha=0.8, markersize=20)
-ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron)
-ax.set_title("RWZI locaties in Nederland", fontsize=8)
-ax.axis("off")
+    _, ax = plt.subplots(figsize=(5, 6))
+    rwzi_gdf.plot(ax=ax, color="dodgerblue", edgecolor="black", alpha=0.8, markersize=20)
+    ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron)
+    ax.set_title("RWZI locaties in Nederland", fontsize=8)
+    ax.axis("off")
 
-xmin, ymin, xmax, ymax = rwzi_gdf.total_bounds
-xmargin = (xmax - xmin) * 0.05
-ymargin = (ymax - ymin) * 0.05
+    xmin, ymin, xmax, ymax = rwzi_gdf.total_bounds
+    xmargin = (xmax - xmin) * 0.05
+    ymargin = (ymax - ymin) * 0.05
+    ax.set_xlim(xmin - xmargin, xmax + xmargin)
+    ax.set_ylim(ymin - ymargin, ymax + ymargin)
 
-ax.set_xlim(xmin - xmargin, xmax + xmargin)
-ax.set_ylim(ymin - ymargin, ymax + ymargin)
-
-plt.tight_layout()
-plt.show()
+    plt.tight_layout()
+    return ax
 
 
-# %%
 def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten):
     """
     Combineer de Z-info data met de spatial data.
@@ -202,52 +184,6 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     return rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl
 
 
-rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl = process_rwzi_zinfo_data(
-    rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten
-)
-
-
-# %%
-# Extract all unique RWZI names
-rwzi_all_names = rwzi_gdf["Naam rwzi"].unique()
-logging.info(f"Total unique RWZI names found: {len(rwzi_all_names)}")
-
-# Split RWZI GeoDataFrame into those included and excluded in Zinfo data
-gdf_rwzi_zinfo_incl = rwzi_gdf[rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)]
-gdf_rwzi_zinfo_excl = rwzi_gdf[~rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)]
-
-# Extract relevant identifiers and names for included RWZIs
-rwzi_names_zinfo_incl = gdf_rwzi_zinfo_incl["Naam rwzi"].unique()
-rwzi_codeist_zinfo_incl = gdf_rwzi_zinfo_incl["Codeist"].unique()
-
-# Extract relevant identifiers and names for excluded RWZIs
-rwzi_names_zinfo_excl = gdf_rwzi_zinfo_excl["Naam rwzi"].unique()
-rwzi_RwziCode_zinfo_excl = gdf_rwzi_zinfo_excl["RwziCode"].unique()
-
-# Logging summary
-logging.info(f"RWZIs with Zinfo data: {len(rwzi_names_zinfo_incl)} names, {len(rwzi_codeist_zinfo_incl)} Codeist IDs")
-logging.info(f"RWZIs without Zinfo data: {len(rwzi_names_zinfo_excl)} names, {len(rwzi_RwziCode_zinfo_excl)} RwziCodes")
-
-# Rename DataFrame columns: map Codeist to actual RWZI names
-codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"]))
-
-df_Zinfo_influentdebieten_renamed = df_Zinfo_influentdebieten.rename(
-    columns={col: codeist_to_name.get(col, col) for col in df_Zinfo_influentdebieten.columns if col != "time"}
-)
-
-# Preview df with new column names
-print("Zinfo DataFrame with renamed columns:")
-print(df_Zinfo_influentdebieten_renamed.head())
-
-# Filter only the time column and RWZIs with Zinfo data
-rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time"] + list(rwzi_names_zinfo_incl)]
-
-print("Filtered RWZI flow data with common RWZIs:")
-print(rwzi_flow_data.head())
-
-
-# %% RWS Jaardebieten voor overige locaties omzetten naar dagwaardes
-# def process_rws_quantity_data(db_file, rwzi_codes_excl, gdf_excluded):
 def process_rws_quantity_data(db_file, gdf_excluded):
     """
     Haalt jaarafvoeren (omgezet naar dagwaardes) uit de RWS database voor de RWZI's die niet in Z-info staan.
@@ -321,32 +257,6 @@ def process_rws_quantity_data(db_file, gdf_excluded):
 
     logging.info("Finished processing excluded RWZI flow data.")
     return df_daily_values
-
-
-df_rws_influentdebieten = process_rws_quantity_data(
-    db_file=db_file,
-    gdf_excluded=gdf_rwzi_zinfo_excl,
-)
-
-print(df_rws_influentdebieten.head())
-
-# %% Combineer de Z-info data met de RWS database om een complete set te krijgen
-rwzi_flow_data_idxed = rwzi_flow_data.set_index("time")
-df_daily_values_idxed = df_rws_influentdebieten.set_index("time")
-rwzi_flow_data_all = rwzi_flow_data_idxed.combine_first(df_daily_values_idxed)
-rwzi_flow_data_all.reset_index(inplace=True)
-
-rwzi_flow_data_all = rwzi_flow_data_all[
-    (rwzi_flow_data_all["time"] >= starttime) & (rwzi_flow_data_all["time"] < endtime)
-]
-
-# Convert data to m3/s
-SECONDS_PER_DAY = 24 * 3600
-rwzi_flow_data_all.loc[:, rwzi_flow_data_all.columns != "time"] /= SECONDS_PER_DAY
-
-# Log result
-logging.info("Combined RWZI flow data to m3/s")
-print(rwzi_flow_data_all)
 
 
 # %% Define Boundary nodes
@@ -450,16 +360,6 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
     return flow_boundary_nodes, skipped_rwzis, removed_timesteps
 
 
-flow_boundary_nodes, skipped_rwzis, removed_timesteps = create_flow_boundary_nodes(
-    rwzi_gdf=rwzi_gdf,
-    rwzi_flow_data_all=rwzi_flow_data_all,
-    model=model,
-    starttime=starttime,
-    endtime=endtime,
-)
-
-
-# %% Define Terminals
 def create_terminal_nodes_from_gdf(rwzi_gdf, rwzi_flow_data_all, skipped_rwzis, model, start_node_id=999):
     """
     Create terminal nodes from RWZI GeoDataFrame.
@@ -516,16 +416,6 @@ def create_terminal_nodes_from_gdf(rwzi_gdf, rwzi_flow_data_all, skipped_rwzis, 
     return terminal_nodes, node_id_counter
 
 
-terminal_nodes, node_id_counter = create_terminal_nodes_from_gdf(
-    rwzi_gdf=rwzi_gdf,
-    rwzi_flow_data_all=rwzi_flow_data_all,
-    skipped_rwzis=skipped_rwzis,
-    model=model,
-    start_node_id=999,  # TODO: choose logical value
-)
-
-
-# %% Define Edges
 def connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_nodes, model):
     """
     Connectie tussen flow boundary nodes en terminal nodes.
@@ -554,6 +444,99 @@ def connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_node
             logging.warning(f"Terminal node '{terminal_node_name}' not found for RWZI '{rwzi_name}'.")
 
 
+# %% load and process data
+
+df_Zinfo_influentdebieten, RWZI_ids_zinfo = process_zinfo_quantity_data(zinfo_influentdebieten_path, starttime, endtime)
+rwzi_gdf = load_rwzi_geodata(rwzi_ligging_path)
+# plot_rwzi_locations(rwzi_gdf)
+
+rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl = process_rwzi_zinfo_data(
+    rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten
+)
+
+# Extract all unique RWZI names
+rwzi_all_names = rwzi_gdf["Naam rwzi"].unique()
+logging.info(f"Total unique RWZI names found: {len(rwzi_all_names)}")
+
+# Split RWZI GeoDataFrame into those included and excluded in Zinfo data
+is_in_zinfo = rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)
+gdf_rwzi_zinfo_incl = rwzi_gdf[is_in_zinfo]
+gdf_rwzi_zinfo_excl = rwzi_gdf[~is_in_zinfo]
+
+# Extract relevant identifiers and names for included RWZIs
+rwzi_names_zinfo_incl = gdf_rwzi_zinfo_incl["Naam rwzi"].unique()
+rwzi_codeist_zinfo_incl = gdf_rwzi_zinfo_incl["Codeist"].unique()
+
+# Extract relevant identifiers and names for excluded RWZIs
+rwzi_names_zinfo_excl = gdf_rwzi_zinfo_excl["Naam rwzi"].unique()
+rwzi_RwziCode_zinfo_excl = gdf_rwzi_zinfo_excl["RwziCode"].unique()
+
+# Logging summary
+logging.info(f"RWZIs with Zinfo data: {len(rwzi_names_zinfo_incl)} names, {len(rwzi_codeist_zinfo_incl)} Codeist IDs")
+logging.info(f"RWZIs without Zinfo data: {len(rwzi_names_zinfo_excl)} names, {len(rwzi_RwziCode_zinfo_excl)} RwziCodes")
+
+# Rename DataFrame columns: map Codeist to actual RWZI names
+codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"]))
+
+df_Zinfo_influentdebieten_renamed = df_Zinfo_influentdebieten.rename(
+    columns={col: codeist_to_name.get(col, col) for col in df_Zinfo_influentdebieten.columns if col != "time"}
+)
+
+# Preview df with new column names
+print("Zinfo DataFrame with renamed columns:")
+print(df_Zinfo_influentdebieten_renamed.head())
+
+# Filter only the time column and RWZIs with Zinfo data
+rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time"] + list(rwzi_names_zinfo_incl)]
+
+print("Filtered RWZI flow data with common RWZIs:")
+print(rwzi_flow_data.head())
+
+
+df_rws_influentdebieten = process_rws_quantity_data(
+    db_file=db_file,
+    gdf_excluded=gdf_rwzi_zinfo_excl,
+)
+
+print(df_rws_influentdebieten.head())
+
+# %% Combineer de Z-info data met de RWS database om een complete set te krijgen
+rwzi_flow_data_idxed = rwzi_flow_data.set_index("time")
+df_daily_values_idxed = df_rws_influentdebieten.set_index("time")
+rwzi_flow_data_all = rwzi_flow_data_idxed.combine_first(df_daily_values_idxed)
+rwzi_flow_data_all.reset_index(inplace=True)
+
+rwzi_flow_data_all = rwzi_flow_data_all[
+    (rwzi_flow_data_all["time"] >= starttime) & (rwzi_flow_data_all["time"] < endtime)
+]
+
+# Convert data to m3/s
+SECONDS_PER_DAY = 24 * 3600
+rwzi_flow_data_all.loc[:, rwzi_flow_data_all.columns != "time"] /= SECONDS_PER_DAY
+
+# Log result
+logging.info("Combined RWZI flow data to m3/s")
+print(rwzi_flow_data_all)
+
+
+flow_boundary_nodes, skipped_rwzis, removed_timesteps = create_flow_boundary_nodes(
+    rwzi_gdf=rwzi_gdf,
+    rwzi_flow_data_all=rwzi_flow_data_all,
+    model=model,
+    starttime=starttime,
+    endtime=endtime,
+)
+
+
+terminal_nodes, node_id_counter = create_terminal_nodes_from_gdf(
+    rwzi_gdf=rwzi_gdf,
+    rwzi_flow_data_all=rwzi_flow_data_all,
+    skipped_rwzis=skipped_rwzis,
+    model=model,
+    start_node_id=999,  # TODO: choose logical value
+)
+
+
 connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_nodes, model)
 
 # %% Run and Results
@@ -562,22 +545,12 @@ readme = f"""# Model met RWZI's connected aan terminals
 Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 Ribasim versie: {ribasim.__version__}
 Getest (u kunt simuleren): Nee
-
-** Samengevoegde modellen (beheerder: modelnaam (versie)**
 """
 
-# toml_path = base_dir / "ribasim.toml"
 print("write rwzi model")
 model.write(ribasim_toml)
 cloud.joinpath("Basisgegevens", "RWZI", "modellen", "rwzi", "readme.md").write_text(readme)
-upload_model = True
 
+upload_model = False
 if upload_model:
     cloud.upload_model("Basisgegevens/RWZI", model="rwzi")
-
-# %% Model does not run
-# result = subprocess.run(
-#     [ribasim_path, ribasim_toml], capture_output=True, encoding="utf-8"
-# )
-# print(result.stderr)
-# result.check_returncode()
