@@ -568,6 +568,19 @@ class Model(Model):
                 self.add_link(from_node, to_node)
 
     def add_link(self, from_node, to_node, link_type="flow", name="", **kwargs):
+        """Alternative method to add links to the model.
+
+        model.link.add() sometimes raises AttributeError: `Flags`object has no attribute `_allows_duplicate_labels`
+        when calling _concat(). It seems that the gpd.GeoDataFrame to add to the existing link-table, using a pydantic scheme,
+        causes this exception. Untill this can be solved we bypass by concating a non-pydantic-schemed GeoDataFrame to the link-table.
+
+        Args:
+            from_node (int): Node to connect from
+            to_node (int): Node to connect to
+            link_type (str, optional): link-type. Defaults to "flow".
+            name (str, optional): link name. Defaults to "".
+            kwargs: additional attributes that will be passed as meta-values to the row in the dataframe
+        """
         geometry_to_append = [LineString([from_node.geometry, to_node.geometry])]
         link_id = self.link.df.index.max() + 1
         df = gpd.GeoDataFrame(
