@@ -2105,7 +2105,7 @@ def add_continuous_control(ribasim_model: ribasim.Model, **kwargs) -> None:
     if apply_on_outlets:
         outlet = ribasim_model.outlet.static.df.copy()
         selection = outlet[
-            outlet["meta_aanvoer"]
+            outlet["meta_aanvoer"].astype(bool)  # make sure this is boolean and not int
             & (
                 (~outlet["meta_from_node_id"].isin(main_water_system_node_ids))
                 | (

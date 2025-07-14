@@ -20,8 +20,7 @@ static_data_xlsx = cloud.joinpath(
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
-model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
-
+# model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
 # cloud.synchronize(filepaths=[static_data_xlsx])
 # cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
@@ -38,13 +37,25 @@ start_time = time.time()
 # fixes
 model.basin.area.df.loc[model.basin.area.df.node_id == 1975, "meta_streefpeil"] = 0.52
 model.basin.area.df.loc[model.basin.area.df.node_id == 1836, "meta_streefpeil"] = -2.08  # Wulverhorst
-# %%
+
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
-
+# Fixes
+model.basin.area.df.loc[model.basin.area.df.node_id == 1698, "meta_streefpeil"] = 0
+model.basin.area.df.loc[model.basin.area.df.node_id == 1474, "meta_streefpeil"] = -0.48
+model.basin.area.df.loc[model.basin.area.df.node_id == 1492, "meta_streefpeil"] = 0.52
+model.basin.area.df.loc[model.basin.area.df.node_id == 1396, "meta_streefpeil"] = 0.52
+model.basin.area.df.loc[model.basin.area.df.node_id == 1562, "meta_streefpeil"] = 0.52
+model.basin.area.df.loc[model.basin.area.df.node_id == 1387, "meta_streefpeil"] = -2.22
+model.basin.area.df.loc[model.basin.area.df.node_id == 1986, "meta_streefpeil"] = -1.55
+model.basin.area.df.loc[model.basin.area.df.node_id == 1987, "meta_streefpeil"] = -1.55
+model.basin.area.df.loc[model.basin.area.df.node_id == 1516, "meta_streefpeil"] = -2.22
+model.basin.area.df.loc[model.basin.area.df.node_id == 1376, "meta_streefpeil"] = -2.22
+model.basin.area.df.loc[model.basin.area.df.node_id == 1380, "meta_streefpeil"] = -2.22
+model.basin.area.df.loc[model.basin.area.df.node_id == 1572, "meta_streefpeil"] = -2.22
 # %%
 # fixes
 
@@ -81,6 +92,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_f
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 207, "active"] = True
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 358, "active"] = False
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 984, "active"] = False
+
 
 # %%
 # model.solver.maxiters = 100000

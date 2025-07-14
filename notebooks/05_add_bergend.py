@@ -1,11 +1,13 @@
 # %%
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.berging import VdGaastBerging
 
 cloud = CloudStorage()
 
-FIND_POST_FIXES = ["dynamic_model"]
-SELECTION = []
+FIND_POST_FIXES = ["full_control_model"]
+SELECTION: list[str] = ["StichtseRijnlanden"]
 INCLUDE_RESULTS = False
+REBUILD = True
 
 
 def get_model_dir(authority, post_fix):
@@ -16,7 +18,8 @@ if len(SELECTION) == 0:
     authorities = cloud.water_authorities
 else:
     authorities = SELECTION
-
+# %%
+link_data = []
 for authority in authorities:
     # find model directory
     model_dir = next(
@@ -29,21 +32,19 @@ for authority in authorities:
     )
     if model_dir is not None:
         print(authority)
-        # read model
         toml_file = next(model_dir.glob("*.toml"))
         model = Model.read(toml_file)
 
-        # write a local copy in root
-        print(f"copy {toml_file}")
-        toml_file = toml_file.parents[1].joinpath(authority, toml_file.name)
-        model.write(toml_file)
+        # write dynamic model
+        dst_model_dir = model_dir.with_name(f"{authority}_bergend_model")
+        dst_toml_file = dst_model_dir / toml_file.name
 
-        # run model
-        print("simulating...")
-        result = model.run()
-        assert result.exit_code == 0
+        if (not dst_toml_file.exists()) or REBUILD:
+            # add berging
+            add_berging = VdGaastBerging(model=model, cloud=cloud, use_add_api=False)
+            add_berging.add()
 
-        # create version and upload
-        print("uploading...")
-        version = cloud.upload_model(authority=authority, model=authority, include_results=INCLUDE_RESULTS)
-        print(f"uploaded version {version.version}")
+            # run model
+            model.write(dst_toml_file)
+            result = model.run()
+            assert result.exit_code == 0

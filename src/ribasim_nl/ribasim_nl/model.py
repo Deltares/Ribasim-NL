@@ -11,6 +11,7 @@ import shapely
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
+from ribasim.utils import _concat
 
 try:
     from ribasim.validation import flow_edge_neighbor_amount as edge_amount
@@ -193,6 +194,9 @@ class Model(Model):
         Args:
             time_stamp (pd.Timestamp | None, optional): Timestamp in results to update basin.state with . Defaults to None.
         """
+        if not self.valid_state():
+            self.run()
+
         if time_stamp is None:
             df = self.basin_outstate.df
         else:
@@ -201,6 +205,24 @@ class Model(Model):
         df.index += 1
         df.index.name = "fid"
         self.basin.state.df = df
+
+    def valid_state(self):
+        # only valid if results_path exists
+        valid_state = self.results_path.exists()
+
+        # only valid when states-file exists
+        if valid_state:
+            valid_state = self.basin_outstate.filepath.exists()
+
+            # only valid when length of state equals length of nodes
+            if valid_state:
+                valid_state = len(self.basin.node.df) == len(self.basin_outstate.df)
+
+                # only valid when all node_ids in basin.node.df are in outstate
+                if valid_state:
+                    valid_state = self.basin.node.df.index.isin(self.basin_outstate.df["node_id"]).all()
+
+        return valid_state
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
     def _upstream_nodes(self, node_id, **kwargs):
@@ -514,7 +536,9 @@ class Model(Model):
             **kwargs,
         )
 
-    def add_and_connect_node(self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, **kwargs):
+    def add_and_connect_node(
+        self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, use_add_api: bool = True, **kwargs
+    ):
         if name is None:
             name = ""
 
@@ -531,8 +555,50 @@ class Model(Model):
         )
 
         # add edges from and to node
-        self.edge.add(self.get_node(from_basin_id), node)
-        self.edge.add(node, self.get_node(to_basin_id))
+        for from_node, to_node in [(self.get_node(from_basin_id), node), (node, self.get_node(to_basin_id))]:
+            if use_add_api:
+                try:
+                    self.link.add(from_node=from_node, to_node=to_node)
+                except AttributeError as e:
+                    print(
+                        f"Error in connecting {from_node.node_type} #{from_node.node_id} to {to_node.node_type} #{to_node.node_id}"
+                    )
+                    raise e
+            else:
+                self.add_link(from_node, to_node)
+
+    def add_link(self, from_node, to_node, link_type="flow", name="", **kwargs):
+        """Alternative method to add links to the model.
+
+        model.link.add() sometimes raises AttributeError: `Flags`object has no attribute `_allows_duplicate_labels`
+        when calling _concat(). It seems that the gpd.GeoDataFrame to add to the existing link-table, using a pydantic scheme,
+        causes this exception. Untill this can be solved we bypass by concating a non-pydantic-schemed GeoDataFrame to the link-table.
+
+        Args:
+            from_node (int): Node to connect from
+            to_node (int): Node to connect to
+            link_type (str, optional): link-type. Defaults to "flow".
+            name (str, optional): link name. Defaults to "".
+            kwargs: additional attributes that will be passed as meta-values to the row in the dataframe
+        """
+        geometry_to_append = [LineString([from_node.geometry, to_node.geometry])]
+        link_id = self.link.df.index.max() + 1
+        df = gpd.GeoDataFrame(
+            data={
+                "from_node_id": [from_node.node_id],
+                "to_node_id": [to_node.node_id],
+                "link_type": [link_type],
+                "name": [name],
+                **kwargs,
+            },
+            geometry=geometry_to_append,
+            crs=self.crs,
+            index=pd.Index([link_id], name="link_id"),
+        )
+
+        self.link.df = _concat([self.link.df, df])
+        self.link._used_link_ids.add(link_id)
+        self.link._used_link_ids.max_node_id = self.link.df.index.max()
 
     def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs):
         # define node properties
