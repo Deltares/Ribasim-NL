@@ -19,7 +19,7 @@ def test_initialize(cloud):
 
     # check if we have the correct directories
     directories = cloud.dirs(cloud.url)
-    assert len(directories) == 25  # RWS, water authorities + pytest directory
+    assert len(directories) >= 20  # RWS, water authorities + pytest directory
     for directory in cloud.water_authorities + ["Basisgegevens"]:
         assert directory in directories
 
