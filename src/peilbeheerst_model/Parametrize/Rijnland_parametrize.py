@@ -46,6 +46,7 @@ qlr_path = cloud.joinpath(
     "Basisgegevens", "QGIS_qlr", "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_202502.qlr"
 )
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "RL_aanvoer.shp")
+meteo_path = cloud.joinpath("Basisgegevens", "WIWB")
 
 cloud.synchronize(
     filepaths=[
@@ -55,6 +56,7 @@ cloud.synchronize(
         RWS_grenzen_path,
         qlr_path,
         aanvoer_path,
+        meteo_path,
     ]
 )
 
