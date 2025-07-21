@@ -47,6 +47,7 @@ qlr_path = cloud.joinpath(
 aanvoer_path = cloud.joinpath(
     waterschap, "aangeleverd", "Na_levering", "20240618_peilgebieden_en_polders", "Polders_export_2024-06-18.shp"
 )
+meteo_path = cloud.joinpath("Basisgegevens", "WIWB")
 
 cloud.synchronize(
     filepaths=[
@@ -56,6 +57,7 @@ cloud.synchronize(
         RWS_grenzen_path,
         qlr_path,
         aanvoer_path,
+        meteo_path,
     ]
 )
 
