@@ -48,6 +48,7 @@ qlr_path = cloud.joinpath(
 aanvoer_path = cloud.joinpath(
     waterschap, "aangeleverd", "Na_levering", "Wateraanvoer", "HyDamo_metWasverzachter_20230905.gpkg"
 )
+meteo_path = cloud.joinpath("Basisgegevens", "WIWB")
 
 cloud.synchronize(
     filepaths=[
@@ -57,6 +58,7 @@ cloud.synchronize(
         RWS_grenzen_path,
         qlr_path,
         aanvoer_path,
+        meteo_path,
     ]
 )
 
