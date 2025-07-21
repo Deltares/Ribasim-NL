@@ -55,7 +55,7 @@ ds = ds.chunk(
         "x": n,
     }
 )
-store = zarr.DirectoryStore("LHM_433_budgets.zip")
+store = zarr.DirectoryStore("LHM_433_budget.zip")
 print("writing to zarr-file")
 ds.to_zarr(store=store, mode="w")
 store.close()
