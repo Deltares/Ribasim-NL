@@ -66,6 +66,7 @@ quarto = "*"
 quartodoc = "*"
 rasterstats = "*"
 requests = "*"
+ribasim = "==2025.4.0"
 ruff = "*"
 shapely = ">=2"
 tomli = "*"
@@ -80,4 +81,3 @@ bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
-ribasim = { git = "https://github.com/Deltares/Ribasim.git", branch = "main", subdirectory = "python/ribasim" }
