@@ -36,7 +36,6 @@ ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_b
 FeedbackFormulier_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
 )
-# FeedbackFormulier_path = r"Z:\projects\4750_30\Ribasim_feedback\V1_formulieren\feedback_formulier_HollandseDelta.xlsx"
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt", "Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
@@ -51,7 +50,7 @@ meteo_path = cloud.joinpath("Basisgegevens", "WIWB")
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
-        # FeedbackFormulier_path,
+        FeedbackFormulier_path,
         ws_grenzen_path,
         RWS_grenzen_path,
         qlr_path,
