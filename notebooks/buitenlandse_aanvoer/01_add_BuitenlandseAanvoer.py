@@ -8,12 +8,10 @@ from ribasim.nodes import flow_boundary
 
 from ribasim_nl import CloudStorage, Model
 
-# print("ribasim:", ribasim.__file__)
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", force=True)
+upload_model = False
 
 # %%
-cloud = CloudStorage()
 readme = f"""# Model van (deel)gebieden uit het Landelijk Hydrologisch Model inclusief Buitenlandse aanvoeren
 
 Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -24,12 +22,10 @@ Getest (u kunt simuleren): Nee
 """
 
 logging.info(readme)
-
-# %%  Laad het model in
-
+cloud = CloudStorage()
 authority = "Rijkswaterstaat"
-ribasim_dir = cloud.joinpath(authority, "modellen", "lhm_vrij_coupled_2025_6_1")
-ribasim_toml = ribasim_dir / "lhm.toml"
+ribasim_toml = cloud.joinpath(authority, "modellen", "lhm_vrij_coupled_2025_6_1", "lhm.toml")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 model = Model.read(ribasim_toml)
 
@@ -38,102 +34,137 @@ stop_time = pd.to_datetime("2018-01-01")
 flowboundaries = model.flow_boundary.node.df.name
 logging.info(f"Alle flow boundaries in het model: {flowboundaries}")
 
+BA_data_path = cloud.joinpath("Basisgegevens", "BuitenlandseAanvoer", "aangeleverd", "BuitenlandseAanvoer_V5.xlsx")
+cloud.synchronize(filepaths=[BA_data_path])
+
 # %%
-
-# data_path = cloud.joinpath("Basisgegevens", "BuitenlandseAanvoer","verwerkt", "BuitenlandseAanvoer.xlsx")
-# if not data_path.exists():
-#     logging.info(f"Downloaden data: {data_path}")
-#     url = cloud.joinurl("Basisgegevens", "BuitenlandseAanvoer","verwerkt", "BuitenlandseAanvoer.xlsx")#model_spec["authority"], "modellen", model_version.path_string)
-#     cloud.download_content(url)
-#     print('downloaded the data')
-
-BA_data_path = r"c:\projects\2024\LWKM\01_data\Buitenlandse aanvoer\BuitenlandseAanvoer_V2.xlsx"
+# Importeer de door waterschappen aangeleverde buitenlandse aanvoeren
+# TODO: voor de overige locaties moeten we de buitelandse aanvoeren gaan bepalen op basis van oppervlak van het grensoverschrijdende afvoergebied
 
 
 # Functie die 24:00 naar 00:00 zet
 def fix_date_string(date_str):
+    """
+    Corrigeert datums die de waarde '24:00' bevatten en parseert overige datums met dag-maand-jaar volgorde.
+
+    Parameters
+    ----------
+    date_str : str of pd.Timestamp
+        Datum als string of timestamp, bijvoorbeeld '23-06-2017 24:00'.
+
+    Returns
+    -------
+    pd.Timestamp of pd.NaT
+        Een geldige datetime-waarde. Als parsing faalt, wordt NaT teruggegeven.
+    """
     try:
         if isinstance(date_str, str) and "24:00" in date_str:
+            # Extract the date part
             base_date = datetime.strptime(date_str.split(" ")[0], "%d-%m-%Y")
+            # Add one day, time will be 00:00 of the next day
             return base_date + timedelta(days=1)
-        return pd.to_datetime(date_str)
+        # Use dayfirst=True to parse dates like "23-06-2017"
+        return pd.to_datetime(date_str, dayfirst=True)
     except Exception as e:
-        print(f"Date parse error: {date_str} -> {e}")
+        logging.warning(f"Date parse error: '{date_str}' -> {e}")
         return pd.NaT
 
 
-# Laad de Excel sheet in
-xls = pd.ExcelFile(BA_data_path)
-sheet_names = xls.sheet_names
+def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboundaries, model):
+    """
+    Importeer buitenlandse aanvoer uit een Excelbestand.
 
-filtered_dfs = []
+    Filter de gewenste datums, maakt dagelijkse gemiddelden, interpoleert ontbrekende waarden
+    en koppelt aan flow boundary nodes uit het model.
 
-for sheet in sheet_names:
-    df = pd.read_excel(xls, sheet_name=sheet)
+    Parameters
+    ----------
+    BA_data_path : Path naar het Excelbestand met buitenlandse aanvoer.
+    start_time : Startdatum van het model (pd.Timestamp)
+    stop_time : Einddatum van het modelinterval (pd.Timestamp)
+    flowboundaries : Serie met namen als index en node_ids als waarden.
+    model : Modelobject met `flow_boundary.node.df` attribuut voor node-koppeling.
 
-    if "Datum" in df.columns:
-        df["Datum"] = df["Datum"].apply(fix_date_string)
-        df = df.dropna(subset=["Datum"])  # Drop rows with unparseable dates
-        df.set_index("Datum", inplace=True)  # Make sure "Datum" is the index
-        df_filtered = df[(df.index >= start_time) & (df.index <= stop_time)]
-        df_daily = df_filtered.resample("D").mean()
-        filtered_dfs.append(df_daily)
+    Returns
+    -------
+    dict
+        Dictionary met per locatie een dataframe met tijdreeksen en node_id.
+    """
+    xls = pd.ExcelFile(BA_data_path)
+    sheet_names = xls.sheet_names
 
-# Concat om één df te krijgen
-combined_df = pd.concat(filtered_dfs, axis=0)
-combined_df = combined_df.groupby("Datum").mean(numeric_only=True)
-# buitenlandse_aanvoer_df = combined_df[combined_df.columns.intersection(flowboundaries)]
-buitenlandse_aanvoer_df = combined_df.loc[:, combined_df.columns.intersection(flowboundaries)]
-buitenlandse_aanvoer_df.index.name = "time"
+    df_BA_raw_data = []
 
-# Interpoleer waar data mist
-buitenlandse_aanvoer_df = buitenlandse_aanvoer_df.interpolate(method="time")
+    for sheet in sheet_names:
+        df = pd.read_excel(xls, sheet_name=sheet)
+        if "Datum" in df.columns:
+            logging.info(f"Importeer de data voor: {', '.join(df.columns[1:])}")
+            df["Datum"] = df["Datum"].apply(fix_date_string)
+            df = df.dropna(subset=["Datum"])
+            df.set_index("Datum", inplace=True)
+            df_filtered = df[(df.index >= start_time) & (df.index <= stop_time)].copy()
+            df_numeric = df_filtered.apply(pd.to_numeric, errors="coerce")
+            df_daily = df_numeric.resample("D").mean()
+            df_BA_raw_data.append(df_daily)
 
-# Extrapoleer aan de randen
-#     - forward-fill takes the last known value and projects it forward
-#     - back-fill takes the first known value and projects it backward
-buitenlandse_aanvoer_df = buitenlandse_aanvoer_df.ffill().bfill()
+    # Voeg de data samen
+    df_combined_BA = pd.concat(df_BA_raw_data, axis=0)
+    df_combined_BA = df_combined_BA.groupby("Datum").mean(numeric_only=True)
 
-# Sanity check
-assert not buitenlandse_aanvoer_df.isna().any().any(), "there are nan values!"
+    df_buitenlandse_aanvoer = df_combined_BA.loc[:, df_combined_BA.columns.intersection(flowboundaries)]
+    df_buitenlandse_aanvoer.index.name = "time"
 
-# Sla op in dictionary
-dict_BA = {}
-for loc in buitenlandse_aanvoer_df.columns:
-    df_single = buitenlandse_aanvoer_df[[loc]].copy()
-    df_single.columns = ["flow_rate"]
-    dict_BA[loc] = df_single.reset_index()
+    # Interpoleer om missende data te vullen
+    df_buitenlandse_aanvoer = df_buitenlandse_aanvoer.interpolate(method="time")
+    # Extrapoleer naar de begin en eind data
+    df_buitenlandse_aanvoer = df_buitenlandse_aanvoer.ffill().bfill()
 
-for loc in dict_BA.keys():
-    try:
-        node_id = model.flow_boundary.node.df.reset_index(drop=False).set_index("name").at[loc, "node_id"]
-        dict_BA[loc]["node_id"] = node_id
+    # In het geval van geen data in de gemodelleerde periode: verander afvoer naar 0
+    # TODO: netter om een gemiddelde waarde te gebruiken uit de totale data serie
+    cols_with_nan = df_buitenlandse_aanvoer.columns[df_buitenlandse_aanvoer.isna().any()]
+    for col in cols_with_nan:
+        logging.warning(f"Column '{col}' has no measurements during the modelled interval; filling NaNs with 0.")
+        df_buitenlandse_aanvoer[col].fillna(0, inplace=True)
+    # Controleer op NaN values
+    assert not df_buitenlandse_aanvoer.isna().any().any(), "There are NaN values remaining!"
 
-    except KeyError:
-        print(f"Warning: '{loc}' not found in model.flow_boundary.node.df")
-# BA_locaties = pd.DataFrame(rows)
-# print(dict_BA)
-logging.info(f"Dictionary aangemaakt met de buitenlandse aanvoeren: {dict_BA}")
+    # Omzetten naar dictionary
+    dict_BA = {}
+    for loc in df_buitenlandse_aanvoer.columns:
+        df_single = df_buitenlandse_aanvoer[[loc]].copy()
+        df_single.columns = ["flow_rate"]
+        dict_BA[loc] = df_single.reset_index()
+
+    for loc in dict_BA.keys():
+        try:
+            node_id = model.flow_boundary.node.df.reset_index(drop=False).set_index("name").at[loc, "node_id"]
+            dict_BA[loc]["node_id"] = node_id
+        except KeyError:
+            logging.warning(f"Warning: '{loc}' not found in model.flow_boundary.node.df")
+
+    logging.info(f"Dictionary aangemaakt met de buitenlandse aanvoeren: {dict_BA}")
+    return dict_BA
 
 
-# %% Voeg de flowboundaries toe aan het model
-flowboundaries_time_df = pd.concat(dict_BA.values(), axis=0)
-model.flow_boundary.time = flow_boundary.Time(**flowboundaries_time_df.to_dict(orient="list"))
+dict_BA = importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboundaries, model)
 
+# %% Voeg de flowboundaries toe aan het model en sla het model op
+df_flowboundaries_time = pd.concat(dict_BA.values(), axis=0)
+model.flow_boundary.time = flow_boundary.Time(**df_flowboundaries_time.to_dict(orient="list"))
+included_node_ids = df_flowboundaries_time.node_id.unique()
+included_names = flowboundaries[flowboundaries.index.isin(included_node_ids)].tolist()
+logging.info(f"Flowboundaries included in data: {', '.join(included_names)}")
 
-# #TODO: moeten de fixed values van static verwijderd worden?
+# TODO: vraag: moeten de fixed values van static verwijderd worden?
 # model.flow_boundary.static.df = model.flow_boundary.static.df[
 #     ~model.flow_boundary.static.df.node_id.isin(bc_time_df.node_id.unique())
 # ]
 
-# %% Sla de modellen op
-
 # TODO: Bepaal de goede locaties en naamgeving voor de modellen
-logging.info("Sla het model met Buitenlandse Aanvoeren op")
-# model.write(ribasim_toml)
 ribasim_toml = cloud.joinpath("Basisgegevens", "BuitenlandseAanvoer", "modellen", "BA_totaal_run", "BA.toml")
 model.write(ribasim_toml)
-cloud.upload_model("Basisgegevens/BuitenlandseAanvoer", model="BA_totaal_run")
+if upload_model:
+    logging.info("Upload het model met Buitenlandse Aanvoeren")
+    cloud.upload_model("Basisgegevens/BuitenlandseAanvoer", model="BA_totaal_run")
 
 # model.run()
-# upload_model = True
