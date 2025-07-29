@@ -1,10 +1,11 @@
-import os
 from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
 import requests
 from shapely.geometry import Point
+
+from ribasim_nl import settings
 
 # # Voorbereiding
 #
@@ -14,11 +15,9 @@ from shapely.geometry import Point
 # `CRS`: De projectile waarin de ruimtelijke data moet worden opgeslagen (28992 = Rijksdriehoekstelsel)
 
 
-# environmnt variables
-DATA_DIR = os.getenv("RIBASIM_NL_DATA_DIR")
-RIBASIM_NL_CLOUD_PASS = os.getenv("RIBASIM_NL_CLOUD_PASS")
-assert DATA_DIR is not None
-assert RIBASIM_NL_CLOUD_PASS is not None
+# environment variables
+DATA_DIR = settings.ribasim_nl_data_dir
+RIBASIM_NL_CLOUD_PASS = settings.ribasim_nl_cloud_pass
 
 EXCEL_FILE = r"# Overzicht kunstwerken primaire keringen waterschappen_ET.xlsx"
 CRS = 28992

@@ -1,4 +1,4 @@
-# %%
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -9,7 +9,38 @@ import pandas as pd
 from ribasim_nl import Model
 
 
+def model_loaded(func: callable) -> callable:
+    """Wrapper-function to assert that the model data is loaded before using methods that analyse this data.
+
+    :param func: class-method
+    :type func: callable
+
+    :return: wrapper
+    :rtype: callable
+    """
+
+    def wrapper(*args, **kwargs) -> dict:
+        """Wrapper-function to assert that the model is loaded before using methods that analyse the data.
+
+        :param args: positional arguments
+        :param kwargs: optional arguments
+
+        :return: control dictionary
+        :rtype: dict
+        """
+        co = args[0]
+        assert isinstance(co, Control)
+        assert all(getattr(co, k) is not None for k in ("df_basin", "df_link", "model"))
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 class Control:
+    df_basin: pd.DataFrame = None
+    df_link: pd.DataFrame = None
+    model: Model = None
+
     def __init__(self, qlr_path=None, work_dir=None, ribasim_toml=None):
         if (work_dir is None) and (ribasim_toml is None):
             raise ValueError("provide either work_dir or ribasim_toml")
@@ -41,6 +72,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def initial_final_level(self, control_dict):
         basin_level = self.df_basin.sort_values(
             by=["time", "node_id"], ascending=True
@@ -74,6 +106,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def min_max_level(self, control_dict):
         basin_level = self.df_basin.sort_values(
             by=["level", "node_id"], ascending=True
@@ -111,6 +144,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def error(self, control_dict):
         error_gdf = gpd.GeoDataFrame()
         basin_error = self.df_basin.copy()
@@ -146,6 +180,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def stationary(self, control_dict):
         def is_stationary(group):
             group = group.sort_values(by="time")
@@ -183,24 +218,19 @@ class Control:
 
         return control_dict
 
-    def find_stationary_flow(self, control_dict, n_hours_mean=24):
+    @model_loaded
+    def find_mean_flow(self, control_dict):
         df_link = self.df_link.copy()
         df_link["time"] = pd.to_datetime(df_link["time"])  # convert to time column
+        df_link = df_link.sort_values(by=["time", "link_id"], ascending=True).copy()  # sort values, just in case
 
-        if "link_id" in df_link.columns:
-            df_link = df_link.sort_values(by=["time", "link_id"], ascending=True).copy()  # sort values, just in case
-        else:
-            df_link = df_link.sort_values(by=["time", "link_id"], ascending=True).copy()
-        last_time = df_link["time"].max()  # retireve max time value
-        time_threshold = last_time - pd.Timedelta(hours=n_hours_mean)  # determine the time threshold, likely 24 hours
+        # convert flow_rate to absolute values (in case of Manning Nodes)
+        df_link["flow_rate"] = df_link["flow_rate"].abs()
+        print("MAX VALUE DF_LINK", df_link["flow_rate"].max())
 
-        df_link_24h = df_link[df_link["time"] >= time_threshold].copy()  # seelct above the threshold
+        # Group by 'link_id' and calculate the average flow rate
+        grouper = df_link.groupby("link_id", as_index=False)
 
-        # Group by 'link_id' and calculate the average flow rate over the last 24 hours
-        if "link_id" in df_link_24h.columns:
-            grouper = df_link_24h.groupby("link_id", as_index=False)
-        else:
-            grouper = df_link_24h.groupby("link_id", as_index=False)
         df_link_avg = grouper.agg(
             {
                 "flow_rate": "mean",  # take the mean, as the pumps may not show stationairy results in one timestep
@@ -223,6 +253,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def water_aanvoer_areas(self, control_dict):
         """Retrieve the areas (polygons) of the wateraanvoer gebieden."""
         aanvoer_areas = self.model.basin.area.df.copy(deep=True)
@@ -239,6 +270,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def water_aanvoer_afvoer_basin_nodes(self, control_dict):
         """Retrieve the nodes (points) of the wateraanvoer gebieden basin, as well as afvoer basin nodes"""
         aanvoer_areas = self.model.basin.area.df.copy(deep=True)
@@ -264,6 +296,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def water_aanvoer_afvoer_pumps(self, control_dict):
         """Retrieve the nodes (points) of the wateraan- and afvoer pumps"""
         aanvoer_afvoer_pumps = self.model.pump.static.df.copy(deep=True)
@@ -287,6 +320,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def water_aanvoer_outlets(self, control_dict):
         """Retrieve the nodes (points) of the wateraan outlets"""
         aanvoer_outlets = self.model.outlet.static.df.copy(deep=True)
@@ -302,14 +336,16 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def mask_basins(self, control_dict):
-        if "meta_check_basin_level" in self.model.basin.node.df.columns:
+        if "meta_gestuwd" in self.model.basin.node.df.columns:
             control_dict["mask_afvoer"] = self.model.basin.node.df[
-                self.model.basin.node.df["meta_check_basin_level"] == "False"
+                self.model.basin.node.df["meta_gestuwd"] == "False"
             ].reset_index()[["node_id", "geometry"]]
 
         return control_dict
 
+    @model_loaded
     def flow_rate(self, control_dict):
         time_stamp = self.model.flow_results.df.index.max()
         flow_rate = self.model.flow_results.df.loc[time_stamp].reset_index().set_index("link_id").flow_rate
@@ -319,6 +355,7 @@ class Control:
 
         return control_dict
 
+    @model_loaded
     def store_data(self, data, output_path):
         """Store the control_dict"""
         for key in data.keys():
@@ -340,11 +377,12 @@ class Control:
         control_dict = self.min_max_level(control_dict)
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
-        control_dict = self.find_stationary_flow(control_dict)
+        control_dict = self.find_mean_flow(control_dict)
         control_dict = self.water_aanvoer_areas(control_dict)
         control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
         control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
         control_dict = self.water_aanvoer_outlets(control_dict)
+        control_dict = self.mask_basins(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
@@ -356,10 +394,178 @@ class Control:
         control_dict = self.min_max_level(control_dict)
         control_dict = self.error(control_dict)
         control_dict = self.stationary(control_dict)
-        control_dict = self.find_stationary_flow(control_dict)
+        control_dict = self.find_mean_flow(control_dict)
         control_dict = self.mask_basins(control_dict)
         control_dict = self.flow_rate(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
 
+        return control_dict
+
+    @model_loaded
+    def water_level_bounds(self, control_dict: dict, skip_time_steps: int = 0) -> dict:
+        """Determine the minimum and maximum water levels within the basins occurring over time.
+
+        As there might be some water level differences related to the initialisation, the bounds are analysed after a
+        number of time steps, which is provided using the `skip_time_steps`-argument. This optional argument defaults to
+        zero (0), which implies that the whole time-series of basin water levels is used in the analysis by default.
+
+        :param control_dict: analysed data collector
+        :param skip_time_steps: number of time steps skipped before determining the water level bounds, defaults to 0
+
+        :type control_dict: dict
+        :type skip_time_steps: int, optional
+
+        :return: updated analysed data collector
+        :rtype: dict
+        """
+        start_time = (
+            self.df_basin.sort_values(by="time", ascending=True)
+            .drop_duplicates(subset="time", keep="first")
+            .reset_index(drop=True)["time"]
+        )[skip_time_steps]
+
+        # minimum water level
+        min_basin_level = (
+            self.df_basin[self.df_basin["time"] >= start_time]
+            .groupby(by="node_id")["level"]
+            .agg("min")
+            .reset_index(drop=False)
+        )
+
+        # maximum water level
+        max_basin_level = (
+            self.df_basin[self.df_basin["time"] >= start_time]
+            .groupby(by="node_id")["level"]
+            .agg("max")
+            .reset_index(drop=False)
+        )
+
+        # collect analysed data in GeoDataFrame
+        gdf_min_basin_level = min_basin_level.merge(
+            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+        ).set_geometry("geometry")
+        gdf_max_basin_level = max_basin_level.merge(
+            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+        ).set_geometry("geometry")
+        control_dict.update(
+            {
+                "min_basin_level": gdf_min_basin_level,
+                "max_basin_level": gdf_max_basin_level,
+            }
+        )
+
+        # return updated analysed data collector
+        return control_dict
+
+    @model_loaded
+    def error_bounds(self, control_dict: dict, autofill_missing_data: bool = True) -> dict:
+        """Determine the minimum and maximum basin water level error occurring over time.
+
+        Prior to calculating the error bounds, the water level bounds must be determined. If this is not done, the
+        method `.water_level_bounds()` will be called within this method-call if `autofill_missing_data=True`. This
+        auto-call will give the water level bounds using the default settings. This functionality can be disabled by
+        setting `autofill_missing_data=False`.
+
+        :param control_dict: analysed data collector
+        :param autofill_missing_data: autofill water level bounds if missing, defaults to True
+
+        :type control_dict: dict
+        :type autofill_missing_data: bool, optional
+
+        :return: updated analysed data collector
+        :rtype: dict
+
+        :raise ValueError: if data is missing in the collector and not auto-filled.
+        """
+        # validate available analysed data
+        _keys = "min_basin_level", "max_basin_level"
+        if not all(k in control_dict for k in _keys):
+            logging.info(f"Water level bounds not yet determined and `autofill_missing_data={autofill_missing_data}`:")
+            if autofill_missing_data:
+                logging.info("Water level bounds auto-filled: Default settings used.")
+                control_dict = self.water_level_bounds(control_dict)
+            else:
+                _data = {k: control_dict.get(k) for k in _keys}
+                msg = f"Not all required data in `control_dict` and autofill disabled: {_data}"
+                raise ValueError(msg)
+
+        # get water level bounds data
+        min_basin_level = control_dict["min_basin_level"]
+        max_basin_level = control_dict["max_basin_level"]
+
+        # initial water level is considered the target level
+        initial_basin_level = (
+            self.df_basin.sort_values(by=["time", "node_id"], ascending=True)
+            .drop_duplicates(subset="node_id", keep="first")
+            .reset_index(drop=True)[["node_id", "level"]]
+        )
+
+        # water level differences
+        min_difference_level = (
+            (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
+            .reset_index(drop=False)
+            .rename(columns={"level": "level_difference"})
+        )
+        max_difference_level = (
+            (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
+            .reset_index(drop=False)
+            .rename(columns={"level": "level_difference"})
+        )
+
+        # collect analysed data in GeoDataFrame
+        gdf_min_basin_level = min_difference_level.merge(
+            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+        ).set_geometry("geometry")
+        gdf_max_basin_level = max_difference_level.merge(
+            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+        ).set_geometry("geometry")
+        control_dict.update(
+            {
+                "error_min_basin_level": gdf_min_basin_level,
+                "error_max_basin_level": gdf_max_basin_level,
+            }
+        )
+
+        # return updated analysed data collector
+        return control_dict
+
+    def run_dynamic_forcing(self, **kwargs) -> dict:
+        """Run the output control formatting for varying forcing conditions.
+
+        :param kwargs: optional arguments, which are passed on to the various method-calls within this collective data
+            analysis call
+
+        :key autofill_missing_data: autofill water level bounds if missing, defaults to False
+        :key skip_time_steps: number of time-steps considered as spin-up time and so skipped in analysis, defaults to 0
+        :key suppress_file_warning: suppress warning for potentially incompatible *.qlr-file, defaults to False
+
+        :return: analysed data collector
+        :rtype: dict
+        """
+        # optional arguments
+        autofill_missing_data: bool = kwargs.get("autofill_missing_data", False)
+        skip_time_steps: int = kwargs.get("skip_time_steps", 0)
+        suppress_file_warning: bool = kwargs.get("suppress_file_warning", False)
+
+        # analyse output data
+        control_dict = self.read_model_output()
+        control_dict = self.water_level_bounds(control_dict, skip_time_steps=skip_time_steps)
+        control_dict = self.error_bounds(control_dict, autofill_missing_data=autofill_missing_data)
+        control_dict = self.water_aanvoer_areas(control_dict)
+        control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
+        control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
+        control_dict = self.water_aanvoer_outlets(control_dict)
+        control_dict = self.find_mean_flow(control_dict)
+
+        # check for dynamic forcing specific *.qlr
+        filename_cc_qlr = "output_controle_cc.qlr"
+        if not suppress_file_warning and not str(self.qlr_path).endswith(filename_cc_qlr):
+            logging.warning(f"*.qlr-file is different from default for dynamic forcing: {filename_cc_qlr}")
+            logging.warning(f"*.qlr-file may not be compatible with dynamic forcing: {self.qlr_path}")
+
+        # export analysed data
+        self.store_data(control_dict, self.path_control_dict_path)
+
+        # return analysed data collector
         return control_dict

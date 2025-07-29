@@ -1,14 +1,19 @@
+# %%
 from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import rasterio
+import tqdm
 from geopandas import GeoDataFrame
 from rasterio.windows import from_bounds
 from rasterstats import zonal_stats
+from ribasim import Model, Node
 from ribasim.nodes import basin, tabulated_rating_curve
-from shapely.geometry import Polygon
+from shapely.geometry import Point, Polygon
+
+from ribasim_nl.cloud import CloudStorage
 
 BANDEN = {
     "maaiveld": 1,
@@ -232,6 +237,7 @@ def get_basin_profile(
 
     # In pandas for magic
     df = pd.DataFrame({"level": np.round(level, decimals=2), "area": np.round(area)})
+    df.loc[df["area"] == 0, "area"] = 1  # 0m2 area doesn't work
     df.sort_values(by="level", inplace=True)
     df = df.set_index("level").cumsum().reset_index()
     df.dropna(inplace=True)
@@ -239,3 +245,80 @@ def get_basin_profile(
 
     # Return profile
     return basin.Profile(area=df.area, level=df.level)
+
+
+class VdGaastBerging:
+    def __init__(self, model: Model, cloud: CloudStorage, use_add_api: bool = True):
+        self.model = model
+        self.cloud = cloud
+        self.use_add_api = use_add_api
+
+        # check and add rasters paths
+        lhm_raster_file = self.cloud.joinpath("Basisgegevens", "LHM", "4.3", "input", "LHM_data.tif")
+        ma_raster_file = self.cloud.joinpath("Basisgegevens", "VanDerGaast_QH", "spafvoer1.tif")
+        self.cloud.synchronize([lhm_raster_file, ma_raster_file])
+        self.lhm_raster_file = lhm_raster_file
+        self.ma_raster_file = ma_raster_file
+
+    def add(self):
+        model = self.model
+
+        # get basin_area and add statistics
+        print("compute basin statistics")
+        basin_area_df = model.basin.area.df.dissolve("node_id").copy()
+        basin_area_df = add_basin_statistics(
+            df=basin_area_df, lhm_raster_file=self.lhm_raster_file, ma_raster_file=self.ma_raster_file
+        )
+
+        for row in tqdm.tqdm(
+            model.basin.node.df.itertuples(), total=len(model.basin.node.df), desc="add storage nodes"
+        ):
+            # get basin_id and basin polygon
+            basin_id = row.Index
+            basin_row = basin_area_df.loc[basin_id]
+            basin_polygon = basin_row.geometry
+
+            # define storage basin node
+            node = Node(
+                meta_categorie="bergend",
+                geometry=Point(row.geometry.x + 10, row.geometry.y),
+            )
+
+            # define storage basin data
+            max_level = max_level = basin_area_df.at[basin_id, "maaiveld_max"]
+            min_level = max_level = basin_area_df.at[basin_id, "maaiveld_min"]
+            if min_level == max_level:
+                min_level -= 0.1
+            basin_profile = get_basin_profile(
+                basin_polygon=basin_polygon,
+                polygon=basin_polygon,
+                max_level=max_level,
+                min_level=min_level,
+                lhm_raster_file=self.lhm_raster_file,
+            )
+            data = [
+                basin_profile,
+                basin.State(level=[basin_profile.df.level.min() + 0.1]),
+                basin.Area(geometry=[basin_polygon]),
+            ]
+
+            # add storage basin
+            basin_node = model.basin.add(node=node, tables=data)
+
+            # add connector
+            if any(pd.isna(getattr(basin_row, i)) for i in ["ghg", "glg", "ma"]):
+                raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
+            else:
+                # get tabulated rating curve data
+                data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
+
+                # connect storage basin with basin with a tabulated rating curve
+                model.add_and_connect_node(
+                    basin_node.node_id,
+                    to_basin_id=basin_id,
+                    geometry=Point(row.geometry.x + 5, row.geometry.y),
+                    node_type="TabulatedRatingCurve",
+                    tables=data,
+                    use_add_api=self.use_add_api,
+                    meta_categorie="bergend",
+                )

@@ -2,33 +2,60 @@
 title: "Cloud storage"
 ---
 
-# Connecting The Good Cloud
+For hosting data Ribasim-NL makes extensive use of this cloud storage: https://deltares.thegood.cloud/.
+The input data is not open, but the output models are, see the links below.
+This page explains how the cloud storage is setup and used.
+For the API docs, see the [CloudStorage reference](reference/CloudStorage.qmd).
 
-## OS environment variables
-We recommend to set the following OS environment variables:
+## Access configuration
+
+Before you can interact with the cloud storage, you need to configure the access.
+The section on [environment variables](/dev/index.qmd#sec-environment-variables) documents how to do this.
+The two relevant variables here are:
+
 - `RIBASIM_NL_CLOUD_PASS`: password for the cloud, to be requested at Deltares
 - `RIBASIM_NL_DATA_DIR`: directory with your local copy of data in the Ribasim-NL cloud
 
+The password can currently only be shared among project collaborators since not all input data is public.
+The output models, both nationwide (folder Rijkswaterstaat) and per water board, are public.
+Share links for the models are below. Sort on "Modified" to find the latest versions.
+
+- [Rijkswaterstaat](https://deltares.thegood.cloud/s/7gNBzyFmi66iTjX)
+- [AaenMaas](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
+- [AmstelGooienVecht](https://deltares.thegood.cloud/s/wko9RjGAYAsj6dG)
+- [BrabantseDelta](https://deltares.thegood.cloud/s/KHieyrrZZdcBBHo)
+- [DeDommel](https://deltares.thegood.cloud/s/4ozjqW39eJakmao)
+- [Delfland](https://deltares.thegood.cloud/s/2XjDdsHqPYkepHt)
+- [DrentsOverijsselseDelta](https://deltares.thegood.cloud/s/TLtTk3xmgk2SAW8)
+- [HollandsNoorderkwartier](https://deltares.thegood.cloud/s/CxJLoxSnzySJHTt)
+- [HollandseDelta](https://deltares.thegood.cloud/s/ZBJSH7mJsdxbsMr)
+- [HunzeenAas](https://deltares.thegood.cloud/s/3Q2eGKqwpqdLkE8)
+- [Limburg](https://deltares.thegood.cloud/s/MW2kiQMyXwFM4xw)
+- [Noorderzijlvest](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
+- [RijnenIJssel](https://deltares.thegood.cloud/s/e8LbgZrgjsetPYn)
+- [Rijnland](https://deltares.thegood.cloud/s/H4jtGLYiccMLeYH)
+- [Rivierenland](https://deltares.thegood.cloud/s/TTri9ZqGXWcXHaW)
+- [Scheldestromen](https://deltares.thegood.cloud/s/GJBcCL3wwNjMNty)
+- [SchielandendeKrimpenerwaard](https://deltares.thegood.cloud/s/Sjb98JNdSErRJir)
+- [StichtseRijnlanden](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+- [ValleienVeluwe](https://deltares.thegood.cloud/s/YgWfw7AEWLSbcGa)
+- [Vechtstromen](https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT)
+- [WetterskipFryslan](https://deltares.thegood.cloud/s/pDGmwTriotLCpxz)
+- [Zuiderzeeland](https://deltares.thegood.cloud/s/9mRsdEGrXWQfBgN)
+
 ## Initialize the cloud
-Import the `Cloud`` and initialize it
-```
+Import the `Cloud` and initialize it.
+
+```py
 from ribasim_nl import CloudStorage
-```
 
-If you have set OS environment variables:
-```
 cloud_store = CloudStorage()
-```
-
-And else
-```
-cloud_storage = CloudStorage(password=password, data_dir=my_data_dir)
 ```
 
 ## Download sources (basisgegevens)
 Find all sources
 
-```
+```py
 # find all sources, `PBL_watertypenkaart`
 sources = cloud_storage.source_data
 # download, `PBL_watertypenkaart`
@@ -37,12 +64,14 @@ cloud.download_basisgegevens(bronnen=["PBL_watertypenkaart"])
 
 ## Find water authorities
 To find available water authorities:
-```
+
+```py
 cloud_storage.water_authorities
 ```
 
 ## Download water authority datasets
-```
+
+```py
 authority = "Rijkswaterstaat"
 
 # to download external data (aangeleverd) only
@@ -56,14 +85,16 @@ cloud_storage.download_all(authority)
 ```
 
 ## Upload manipulated data (aangeleverd)
-```
+
+```py
 authority = "Rijkswaterstaat"
 # upload local `aangeleverd` directory to cloud-storage
 cloud_storage.upload_aangeleverd(authority, overwrite=True)
 ```
 
 ## Upload models
-```
+
+```py
 authority = "Rijkswaterstaat"
 cloud_storage.uploaded_models(authority) # to see which models have been uploaded
 

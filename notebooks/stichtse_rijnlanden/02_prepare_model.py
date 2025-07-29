@@ -1,7 +1,10 @@
 # %%
+import inspect
+
 import geopandas as gpd
 import pandas as pd
 
+from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
@@ -23,6 +26,8 @@ hydroobject_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydroobject.gpk
 peilgebieden_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden.gpkg")
 peilgebieden_vig_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden_vigerend.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
+model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_extra.gpkg")
+model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[peilgebieden_gpkg, top10NL_gpkg])
 
@@ -46,6 +51,72 @@ else:
     fix_link_geometries(model, network, max_straight_line_ratio=5)
     model.edge.df.reset_index().to_file(link_geometries_gpkg)
 
+
+# %% Quick fix basins
+
+actions = [
+    "remove_basin_area",
+    "add_basin",
+    "add_basin_area",
+    "update_node",
+    "redirect_edge",
+]
+actions = [i for i in actions if i in gpd.list_layers(model_edits_extra_gpkg).name.to_list()]
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_extra_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+
+
+# %%
+actions = ["add_basin", "update_node", "connect_basins"]
+actions = [i for i in actions if i in gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()]
+for action in actions:
+    print(action)
+    # get method and args
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+    for row in df.itertuples():
+        # filter kwargs by keywords
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        method(**kwargs)
+# %%
+#   Model fixes
+model.remove_node(node_id=663, remove_edges=True)
+model.remove_node(node_id=86, remove_edges=True)
+model.remove_node(node_id=669, remove_edges=True)
+model.remove_node(node_id=737, remove_edges=True)
+# model.remove_node(node_id=1197, remove_edges=True)
+model.merge_basins(basin_id=1408, to_basin_id=1672)
+model.merge_basins(basin_id=1524, to_basin_id=1975)
+model.merge_basins(basin_id=1425, to_basin_id=1558)
+model.merge_basins(basin_id=1995, to_basin_id=1646)
+model.merge_basins(basin_id=1692, to_basin_id=1646)
+model.merge_basins(basin_id=1514, to_basin_id=1577)
+model.merge_basins(basin_id=1522, to_basin_id=1507)
+model.merge_basins(basin_id=1681, to_basin_id=1763)
+model.merge_basins(basin_id=1638, to_basin_id=1762)
+model.merge_basins(basin_id=1761, to_basin_id=1724)
+model.merge_basins(basin_id=1724, to_basin_id=1754)
+model.merge_basins(basin_id=1754, to_basin_id=1765)
+model.merge_basins(basin_id=1765, to_basin_id=1778)
+model.merge_basins(basin_id=1735, to_basin_id=1778)
+
+model.redirect_edge(edge_id=2272, from_node_id=1572)
+model.update_node(node_id=1194, node_type="Outlet")
+model.update_node(node_id=678, node_type="Outlet")
+model.update_node(node_id=730, node_type="Outlet")
 
 # %%
 # add streefpeilen
@@ -128,7 +199,6 @@ for node_id in node_ids:
     levels.append(level)
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
-
 static_data.add_series(node_type="Outlet", series=min_upstream_level)
 
 
@@ -284,7 +354,6 @@ streefpeil.name = "streefpeil"
 
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
-
 # %%
 ## PUMP.flow_rate
 gkw_gemaal_df = get_data_from_gkw(authority=authority, layers=["gemaal"])
@@ -302,6 +371,18 @@ model.basin.area.df["meta_streefpeil"] = pd.to_numeric(model.basin.area.df["meta
 model.basin.area.df.reset_index(drop=False, inplace=True)
 model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
+
+
+# # koppelen
+ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+assign = AssignAuthorities(
+    ribasim_model=model,
+    waterschap=authority,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+)
+model = assign.assign_authorities()
 
 # %%
 static_data.write()

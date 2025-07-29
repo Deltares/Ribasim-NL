@@ -11,6 +11,7 @@ import shapely
 from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
+from ribasim.utils import _concat
 
 try:
     from ribasim.validation import flow_edge_neighbor_amount as edge_amount
@@ -120,17 +121,37 @@ class Model(Model):
     def total_flow_boundary_static_inflow(self):
         return self.flow_boundary.static.df.flow_rate
 
-    def level_boundary_inflow(self, time_stamp: pd.Timestamp | None = None):
-        # filter link_results on timestamp
-        if time_stamp is None:
-            time_stamp = self.flow_results.df.index.max()
-        flow_results = self.flow_results.df.loc[time_stamp]
+    def upstream_connection_node_ids(self, node_type="Outlet"):
+        """Get all most upstream connection node ids that are connected to a LevelBoundary on upstream side."""
+        # get all possible node_ids
+        node_ids = getattr(self, pascal_to_snake_case(node_type)).node.df.index.to_numpy()
 
-        # get inflow edges
-        node_ids = self.level_boundary.node.df.index
-        link_ids = self.link.df[self.link.df.from_node_id.isin(node_ids)].index
+        # get all downstream nodes of level-boundaries
+        level_boundary_ds_node_ids = [self.downstream_node_id(i) for i in self.level_boundary.node.df.index]
+        level_boundary_ds_node_ids_df = (
+            pd.Series([i.to_numpy() if isinstance(i, pd.Series) else i for i in level_boundary_ds_node_ids])
+            .explode()
+            .dropna()
+            .sort_values()
+        )
 
-        return flow_results[flow_results.link_id.isin(link_ids)].reset_index().set_index("link_id").flow_rate
+        return level_boundary_ds_node_ids_df[level_boundary_ds_node_ids_df.isin(node_ids)].to_list()
+
+    def downstream_connection_node_ids(self, node_type="Outlet"):
+        """Get all most upstream connection node ids that are connected to a LevelBoundary on upstream side."""
+        # get all possible node_ids
+        node_ids = getattr(self, pascal_to_snake_case(node_type)).node.df.index.to_numpy()
+
+        # get all downstream nodes of level-boundaries
+        level_boundary_ds_node_ids = [self.upstream_node_id(i) for i in self.level_boundary.node.df.index]
+        level_boundary_ds_node_ids_df = (
+            pd.Series([i.to_numpy() if isinstance(i, pd.Series) else i for i in level_boundary_ds_node_ids])
+            .explode()
+            .dropna()
+            .sort_values()
+        )
+
+        return level_boundary_ds_node_ids_df[level_boundary_ds_node_ids_df.isin(node_ids)].to_list()
 
     @property
     def graph(self):
@@ -173,6 +194,9 @@ class Model(Model):
         Args:
             time_stamp (pd.Timestamp | None, optional): Timestamp in results to update basin.state with . Defaults to None.
         """
+        if not self.valid_state():
+            self.run()
+
         if time_stamp is None:
             df = self.basin_outstate.df
         else:
@@ -181,6 +205,24 @@ class Model(Model):
         df.index += 1
         df.index.name = "fid"
         self.basin.state.df = df
+
+    def valid_state(self):
+        # only valid if results_path exists
+        valid_state = self.results_path.exists()
+
+        # only valid when states-file exists
+        if valid_state:
+            valid_state = self.basin_outstate.filepath.exists()
+
+            # only valid when length of state equals length of nodes
+            if valid_state:
+                valid_state = len(self.basin.node.df) == len(self.basin_outstate.df)
+
+                # only valid when all node_ids in basin.node.df are in outstate
+                if valid_state:
+                    valid_state = self.basin.node.df.index.isin(self.basin_outstate.df["node_id"]).all()
+
+        return valid_state
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
     def _upstream_nodes(self, node_id, **kwargs):
@@ -403,7 +445,11 @@ class Model(Model):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
             else:
                 linestring = self.edge.df[self.edge.df["to_node_id"] == to_node_id].iloc[0].geometry
-                node_geom = Point(linestring.parallel_offset(node_offset, "left").coords[-1])
+                lo = linestring.parallel_offset(node_offset, "left")
+                if lo.geom_type == "MultiLineString":
+                    node_geom = Point(lo.geoms[-1].coords[-1])
+                else:
+                    node_geom = Point(lo.coords[-1])
                 to_node_id = [to_node_id]
 
         node_id = self.next_node_id
@@ -490,7 +536,9 @@ class Model(Model):
             **kwargs,
         )
 
-    def add_and_connect_node(self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, **kwargs):
+    def add_and_connect_node(
+        self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, use_add_api: bool = True, **kwargs
+    ):
         if name is None:
             name = ""
 
@@ -507,8 +555,50 @@ class Model(Model):
         )
 
         # add edges from and to node
-        self.edge.add(self.get_node(from_basin_id), node)
-        self.edge.add(node, self.get_node(to_basin_id))
+        for from_node, to_node in [(self.get_node(from_basin_id), node), (node, self.get_node(to_basin_id))]:
+            if use_add_api:
+                try:
+                    self.link.add(from_node=from_node, to_node=to_node)
+                except AttributeError as e:
+                    print(
+                        f"Error in connecting {from_node.node_type} #{from_node.node_id} to {to_node.node_type} #{to_node.node_id}"
+                    )
+                    raise e
+            else:
+                self.add_link(from_node, to_node)
+
+    def add_link(self, from_node, to_node, link_type="flow", name="", **kwargs):
+        """Alternative method to add links to the model.
+
+        model.link.add() sometimes raises AttributeError: `Flags`object has no attribute `_allows_duplicate_labels`
+        when calling _concat(). It seems that the gpd.GeoDataFrame to add to the existing link-table, using a pydantic scheme,
+        causes this exception. Untill this can be solved we bypass by concating a non-pydantic-schemed GeoDataFrame to the link-table.
+
+        Args:
+            from_node (int): Node to connect from
+            to_node (int): Node to connect to
+            link_type (str, optional): link-type. Defaults to "flow".
+            name (str, optional): link name. Defaults to "".
+            kwargs: additional attributes that will be passed as meta-values to the row in the dataframe
+        """
+        geometry_to_append = [LineString([from_node.geometry, to_node.geometry])]
+        link_id = self.link.df.index.max() + 1
+        df = gpd.GeoDataFrame(
+            data={
+                "from_node_id": [from_node.node_id],
+                "to_node_id": [to_node.node_id],
+                "link_type": [link_type],
+                "name": [name],
+                **kwargs,
+            },
+            geometry=geometry_to_append,
+            crs=self.crs,
+            index=pd.Index([link_id], name="link_id"),
+        )
+
+        self.link.df = _concat([self.link.df, df])
+        self.link._used_link_ids.add(link_id)
+        self.link._used_link_ids.max_node_id = self.link.df.index.max()
 
     def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs):
         # define node properties
@@ -625,6 +715,7 @@ class Model(Model):
         gpkg = self.filepath.with_name("internal_basins.gpkg")
         df = self.basin.node.df[~self.basin.node.df.index.isin(self.edge.df.from_node_id)]
         df.to_file(gpkg)
+        return df
 
     def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None):
         """Find the closest basin_node."""

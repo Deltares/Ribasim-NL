@@ -23,7 +23,30 @@ download_latest_model = True
 upload_model = False
 
 RESET_TABLES = []
-INCLUDE_MODELS = ["Rijkswaterstaat", "AmstelGooienVecht", "Rijnland", "HollandseDelta", "Delfland"]
+INCLUDE_MODELS = [
+    "Rijkswaterstaat",
+    "AmstelGooienVecht",
+    "Delfland",
+    "HollandsNoorderkwartier",
+    "HollandseDelta",
+    "Rijnland",
+    "Rivierenland",
+    "Scheldestromen",
+    "SchielandendeKrimpenerwaard",
+    "WetterskipFryslan",
+    "Zuiderzeeland",
+    "AaenMaas",
+    "BrabantseDelta",
+    "DeDommel",
+    "DrentsOverijsselseDelta",
+    "HunzeenAas",
+    "Limburg",
+    "Noorderzijlvest",
+    "RijnenIJssel",
+    "StichtseRijnlanden",
+    "ValleienVeluwe",
+    "Vechtstromen",
+]
 
 model_specs = [
     {
@@ -197,8 +220,9 @@ for idx, model_spec in enumerate(model_specs):
     # run model
     if not model.basin_outstate.filepath.exists():
         print("run model to update state")
-        returncode = model.run()
-        if returncode != 0:
+        model.write(model_path)  # forced migration
+        result = model.run()
+        if result.exit_code != 0:
             raise Exception("model won't run successfully!")
     model.update_state()
 
