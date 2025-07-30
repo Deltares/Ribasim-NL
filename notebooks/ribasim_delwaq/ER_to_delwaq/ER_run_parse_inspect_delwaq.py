@@ -1,12 +1,13 @@
 # %% Import necessary libraries
 import subprocess
 from pathlib import Path
+import os
 
 from ribasim.delwaq import parse, plot_fraction
 
 # %% Set path of Ribasim model
-model_path = Path("c:/Users/leeuw_je/Projecten/LWKM_Ribasim/lhm_rwzi_delwaq_Dommel")
-toml_path = model_path / "lhm_rwzi_delwaq.toml"
+model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
+toml_path = model_path / "dommel.toml"
 output_path = model_path / "delwaq"
 assert toml_path.is_file()
 
@@ -16,9 +17,7 @@ assert toml_path.is_file()
 # if not working use the command line
 # dimr_path should probably also become an environment variable
 
-dimr_path = Path(
-    "C:/Program Files/Deltares/Delft3D FM Suite 2025.02 HMWQ/plugins/DeltaShell.Dimr/kernels/x64/bin/run_dimr.bat"
-)
+dimr_path = Path(os.environ["DIMR_PATH"])
 dimr_config_path = output_path / "dimr_config.xml"
 
 result = subprocess.run([dimr_path, dimr_config_path], cwd=output_path, capture_output=True, encoding="utf-8")
@@ -37,7 +36,7 @@ substances.add("P")
 nmodel = parse(toml_path, graph, substances, output_folder=output_path)
 
 
-# %% check added loads
+# %% check added loads in specified Ribasim nodes
 plot_fraction(nmodel, 99991010, ["N"])  # node where load is added
 plot_fraction(nmodel, 99991360, ["N"])  # a node somewhat downstream of the added load
 plot_fraction(nmodel, 99991543, ["N"])  # a node far downstream of the added load

@@ -1,10 +1,10 @@
 import geopandas as gpd
 
 
-def compute_overlap_df(gaf_path, basin_path, basin_layer):
+def compute_overlap_df(gaf_path, basin_path):
     # Load layers
     gaf = gpd.read_file(gaf_path)
-    basin = gpd.read_file(basin_path, layer=basin_layer)
+    basin = gpd.read_file(basin_path, layer="Basin / area")
 
     # Filter invalid geometries
     gaf = gaf[gaf.is_valid]
@@ -28,5 +28,5 @@ def compute_overlap_df(gaf_path, basin_path, basin_layer):
     # Retain desired fields
     df = intersected[["AI_CODE", "node_id", "frac"]].copy()
     df.columns = ["GAF-eenheid", "NodeId", "fractie"]  # Rename to match ER coupling script
-
+    
     return df

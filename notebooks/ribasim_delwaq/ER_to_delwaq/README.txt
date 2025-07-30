@@ -1,3 +1,15 @@
+### DIMR_PATH environment variable ###
+
+Om de conversie van ER naar Delwaq uit te voeren, zorg ervoor dat de
+environment variable DIMR_PATH is ingesteld op het pad naar de DIMR executable.
+Dit is vereist om de conversiescripts te kunnen draaien.
+
+Voorbeeld:
+
+DIMR_PATH=c:\Program Files\Deltares\Delft3D FM Suite 2025.02 HMWQ\plugins\DeltaShell.Dimr\kernels\x64\bin\run_dimr.bat
+
+
+
 ### Databronnen ###
 
 Bestandlocaties in python scripts dienen te worden aangepast
@@ -14,32 +26,42 @@ Conversiescript ER_data_conversion_delwaq.py is bewerking van p:/krw-verkenner/0
 
 ### Stappenplan ER koppeling ###
 
-1. download data
-	ER export
-	GAF polygonen
-	Ribasim schematisatie
-2. Optioneel: pyQGIS script draaien (via QGIS) ER_GAF_fractions_via_QGIS.py
-3. ER conversiescript draaien ER_data_conversion_delwaq.py
-	Dit levert B6.inc op
-4. ER_setup_delwaq.py draaien
-	Dit levert bndlist.inc op voor de loads in B6
-5. B6 en bndlist in delwaq map plaatsen
-6. handmatig het .inp bestand aanpassen:
+1. download Ribasim model via notebooks/rwzi/add_rwzi_model.py
+
+	zorg ervoor dat de environment variable "RIBASIM_NL_DATA_DIR" wordt gebruikt als locatie
+
+2. draai Ribasim model voor gewenste periode (mag kort zijn voor tests)
+
+	periode aan te passen in .toml bestand van het model
+
+3. draai ER_setup_delwaq.py
+
+	dit levert de meeste input bestanden voor delwaq via generate.py
+
+	genereert los delwaq_bndlist.inc
+
+4. draai ER_data_conversion_delwaq.py
+
+	dit levert B6_loads.inc op
+
+6. handmatig het delwaq.inp aanpassen:
 
 	B1: 	'N' en 'P' als substances toevoegen
 			totaal aantal stoffen +2
 
 	B6: 	verwijder 0; number of loads
-			toevoegen:	INCLUDE delwaq.bndlist.inc
-						INCLUDE B6_loads_on_basins.inc
+			toevoegen:	INCLUDE delwaq_bndlist.inc
+						INCLUDE B6_loads.inc
 
 	B8:		alles weghalen
-			toevoegen:	INITIALS{alle stoffen zonder '' met enkel spaties ertussen}
-						{de IC waarden met spaties ertussen}
+			toevoegen:	INITIALS {alle stoffen zonder '' met enkel spaties ertussen}
+						DEFAULTS {de IC waarden met spaties ertussen}
+			voorbeeld: 	INITIALS Continuity Drainage FlowBoundary Initial LevelBoundary Precipitation Terminal UserDemand N P
+						DEFAULTS 1.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0
 
 7. delwaq runnen via cmd of python
+
 8. ER_run_parse_inspect.py draaien voor postprocessing/validatie:
 	check substances en run eventueel:
 		substances.add 'N'
 		substances.add 'P'
-	code cell vanaf parse draaien

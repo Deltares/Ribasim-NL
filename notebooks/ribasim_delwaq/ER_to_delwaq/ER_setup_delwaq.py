@@ -2,19 +2,19 @@
 
 # %% importing general libraries
 from pathlib import Path
+import os
 
 import pandas as pd
 from ribasim.delwaq import generate
 
 # %% set path of Ribasim model
 
-# would ideally be preceded by importing a fully functioning goodcloud model
-# could use an instance on public drive but local is better for testing
-# model_path should use the environment variable "RIBASIM_NL_DATA_DIR"
-# example: model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
+# this step should be preceded by importing and running a fully functioning ribasim model
+# right now this is done in notebooks/rwzi/add_rwzi_model.py
+# model_path uses the environment variable "RIBASIM_NL_DATA_DIR" to find the model
 
-model_path = Path("c:/Users/leeuw_je/Projecten/LWKM_Ribasim/lhm_rwzi_delwaq_Dommel")
-toml_path = model_path / "lhm_rwzi_delwaq.toml"
+model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
+toml_path = model_path / "dommel.toml"
 assert toml_path.is_file()
 
 
@@ -41,3 +41,5 @@ with open(output_path / "delwaq_bndlist.inc", "w") as f:
 
 ## Manually edit the delwaq input files before running model (see README.txt for detailed instructions)
 ## example check of bdlist: node2node.loc[(node2node["ribasim_id"] == 99991010) & (node2node["type"] == "Drainage")]
+
+# %%

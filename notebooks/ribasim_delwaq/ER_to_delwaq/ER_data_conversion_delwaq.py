@@ -1,8 +1,14 @@
-"""Script to convert ER data to KRW-V input.
+"""Script to convert ER data to ribasim-delwaq input.
 
 created: 01-2019 by: Wilfred Altena
 modified: 03-2019 by: Annelotte van der Linden
-@Last modified: 02-2024 by: Steven Kelderman
+modified: 02-2024 by: Steven Kelderman
+last modified: 08-2025 by: Jesse van Leeuwen
+
+Aanpassing van conversie van ER data naar KRW-V input 
+In 'Functions' en tussen code onder 'Overige emissies ER' en boven 'Export B6_loads' 
+is de code van 02-2024 onveranderd gebleven. Hieronder de toelichting van deze versie:
+
 
 Script om emissieoorzaken vanuit de ER in de laden en om te zetten naar KRW-verkenner
 invoerbestanden. Hierbij wordt onderscheid gemaakt in emissieoorzaak en de daarbij
@@ -14,13 +20,16 @@ Deltares. Hierbij hoeft alleen de ruimtelijke verdeling van GAF90eenheden te wor
 geinterpoleerd. 3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steekjaren
 bekend en wordt er tussen deze jaren geinterpoleerd.
 
+
+
+
 """
 # -------------------------------conversion-------------------------------------
 
 import sys
-
 print(sys.executable)
 
+from pathlib import Path
 
 import os
 
@@ -179,43 +188,20 @@ schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur kome
 
 # # -------------------------------Directories------------------------------------
 
-inputdir = (
-    "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
-)
-
-# rootdir = "P:/krw-verkenner/Landsdekkende schematisatie/LKM25 schematisatie/"
-
-# inputdir = os.path.join(rootdir, "OverigeEmissies")
-
-# outputdir = os.path.join(rootdir, "LKM25/Stoffen/OverigeEmissies_val_2024")
-# outputdir_val = os.path.join(rootdir, "LKM25/Stoffen/OverigeEmissies_val_2024")
-# outputdir_prog = os.path.join(rootdir, "LKM25/Stoffen/OverigeEmissies_prog_2024")
-
-### eigen directories - Staat uit
-# rootdir = "c:/Users/leeuw_je/Projecten/LWKM_Ribasim/"
-
-# inputdir = os.path.join(rootdir, "ER_input_conversie/")
-
-# outputdir = os.path.join(inputdir, "out")
-# outputdir_val = os.path.join(inputdir, "out_val")
-# outputdir_prog = os.path.join(inputdir, "out_prog")
-
+inputdir = "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
+model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
+basin_node_path = model_path / "database.gpkg"
 
 # -------------------------------Import data------------------------------------
-# emissies_bedrijven = pd.read_csv(os.path.join(InputDir, 'emissiebedrijven_2010-2019.csv'), delimiter=';', encoding='latin1')
-
-# emissies_overig = pd.read_csv(os.path.join(InputDir, 'ER_V5_invoersheet_script.csv'), delimiter=';', encoding='latin1')
-
-# Connection between ER GAF90 and KRW NodeIDs #$ changed colnames to match with original coupling file
-# koppeling = pd.read_csv(os.path.join(inputdir, 'GAF_fractions.csv'), delimiter=',', encoding='latin1', skiprows=1, names=['GAF-eenheid', 'NodeId', 'fractie'])
 
 from ER_GAF_fractions_func import compute_overlap_df
 
 koppeling = compute_overlap_df(
     gaf_path="P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp",
-    basin_path="C:/Users/leeuw_je/Projecten/LWKM_Ribasim/lhm_rwzi_delwaq_Dommel/database.gpkg",
-    basin_layer="Basin / area",
+    basin_path=basin_node_path,
 )
+
+koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
 
 # $ check voor nieuwe koppeling
 sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index()
@@ -482,10 +468,6 @@ OverigeEmissies_bedrijven_long = pd.melt(
 OverigeEmissies_bedrijven_long["Year"] = OverigeEmissies_bedrijven_long["Year"].astype(int)
 
 
-# %%#####
-
-# %%#####
-
 # ---------------------------------Output---------------------------------------
 
 # voeg beide dataframes samen in 1 dataframe per GAF
@@ -689,17 +671,16 @@ elif d["run"] == "prognose":
     pass
 
 
-############################
-# Jesse - vanaf hier bevat DifusseEmissions_OE de juiste data voor export naar B6 inc bestand
-############################
 
-# directories same as ER_setup_delwaq.py
-model_path = Path("c:/Users/leeuw_je/Projecten/LWKM_Ribasim/lhm_rwzi_delwaq_Dommel")
+# ---------------------------------Export B6_loads--------------------------------------- 
+
+# vanaf hier bevat DifusseEmissions_OE de juiste data voor export naar B6_loads.inc bestand
+
 output_path = model_path / "delwaq"
 
 grouped = DifusseEmissions_OE.groupby(["NodeId", "VariableId"])
 
-with open(output_path / "B6_loads_on_basins.inc", "w") as f:
+with open(output_path / "B6_loads.inc", "w") as f:
     for (node_id, variable_id), group in grouped:
         f.write(f"ITEM 'Basin_{node_id}' CONCENTRATIONS '{variable_id}' LINEAR TIME LINEAR DATA '{variable_id}'\n")
 
