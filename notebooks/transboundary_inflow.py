@@ -24,8 +24,13 @@ Getest (u kunt simuleren): Nee
 logging.info(readme)
 cloud = CloudStorage()
 authority = "Rijkswaterstaat"
-ribasim_toml = cloud.joinpath(authority, "modellen", "lhm_vrij_coupled_2025_6_1", "lhm.toml")
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+# Download the Ribasim model
+model_name = "lhm_vrij_coupled_2025_6_1"
+url = cloud.joinurl("Rijkswaterstaat", "modellen", model_name)
+cloud.download_content(url)
+ribasim_toml = cloud.joinpath(authority, "modellen", model_name, "lhm.toml")
+
 database_gpkg = ribasim_toml.with_name("database.gpkg")
 model = Model.read(ribasim_toml)
 
@@ -62,7 +67,7 @@ def fix_date_string(date_str):
             # Extract the date part
             base_date = datetime.strptime(date_str.split(" ")[0], "%d-%m-%Y")
             # Add one day, time will be 00:00 of the next day
-            return base_date + timedelta(days=1)
+            return pd.Timestamp(base_date + timedelta(days=1))
         # Use dayfirst=True to parse dates like "23-06-2017"
         return pd.to_datetime(date_str, dayfirst=True)
     except Exception as e:
@@ -111,7 +116,9 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
     df_combined_BA = pd.concat(df_BA_raw_data, axis=0)
     df_combined_BA = df_combined_BA.groupby("Datum").mean(numeric_only=True)
 
-    df_buitenlandse_aanvoer = df_combined_BA.loc[:, df_combined_BA.columns.intersection(flowboundaries)]
+    # Filter columns that exist in flowboundaries
+    available_columns = [col for col in df_combined_BA.columns if col in flowboundaries.values]
+    df_buitenlandse_aanvoer = df_combined_BA[available_columns].copy()
     df_buitenlandse_aanvoer.index.name = "time"
 
     # Interpoleer om missende data te vullen
@@ -135,12 +142,19 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
         df_single.columns = ["flow_rate"]
         dict_BA[loc] = df_single.reset_index()
 
+    # Add node_id to each location and filter out locations not found in model
+    locations_to_remove = []
     for loc in dict_BA.keys():
         try:
             node_id = model.flow_boundary.node.df.reset_index(drop=False).set_index("name").at[loc, "node_id"]
             dict_BA[loc]["node_id"] = node_id
         except KeyError:
-            logging.warning(f"Warning: '{loc}' not found in model.flow_boundary.node.df")
+            logging.warning(f"Warning: '{loc}' not found in model.flow_boundary.node.df. Will be removed from dict_BA.")
+            locations_to_remove.append(loc)
+
+    # Remove locations that were not found in the model
+    for loc in locations_to_remove:
+        dict_BA.pop(loc, None)
 
     logging.info(f"Dictionary aangemaakt met de buitenlandse aanvoeren: {dict_BA}")
     return dict_BA
@@ -150,7 +164,10 @@ dict_BA = importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, fl
 
 # %% Voeg de flowboundaries toe aan het model en sla het model op
 df_flowboundaries_time = pd.concat(dict_BA.values(), axis=0)
-model.flow_boundary.time = flow_boundary.Time(**df_flowboundaries_time.to_dict(orient="list"))
+# Convert to dictionary with proper type casting
+flow_data_dict = df_flowboundaries_time.to_dict(orient="list")
+# Ensure all values are properly typed for the flow_boundary.Time constructor
+model.flow_boundary.time = flow_boundary.Time(**flow_data_dict)
 included_node_ids = df_flowboundaries_time.node_id.unique()
 included_names = flowboundaries[flowboundaries.index.isin(included_node_ids)].tolist()
 logging.info(f"Flowboundaries included in data: {', '.join(included_names)}")
@@ -168,3 +185,5 @@ if upload_model:
     cloud.upload_model("Basisgegevens/BuitenlandseAanvoer", model="BA_totaal_run")
 
 # model.run()
+
+# %%
