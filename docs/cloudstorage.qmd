@@ -41,7 +41,7 @@ Share links for the models are below. Sort on "Modified" to find the latest vers
 - [ValleienVeluwe](https://deltares.thegood.cloud/s/YgWfw7AEWLSbcGa)
 - [Vechtstromen](https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT)
 - [WetterskipFryslan](https://deltares.thegood.cloud/s/pDGmwTriotLCpxz)
-- [Zuiderzeeland](https://deltares.thegood.cloud/s/pDGmwTriotLCpxz)
+- [Zuiderzeeland](https://deltares.thegood.cloud/s/9mRsdEGrXWQfBgN)
 
 ## Initialize the cloud
 Import the `Cloud` and initialize it.

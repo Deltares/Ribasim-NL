@@ -202,8 +202,10 @@ for idx, model_spec in enumerate(model_specs):
     # find toml
     if model_spec["find_toml"]:
         tomls = list(model_path.glob("*.toml"))
-        if len(tomls) > 1:
-            raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one!")
+        if len(tomls) == 0:
+            raise ValueError(f"No TOML file found at: {model_path}")
+        elif len(tomls) > 1:
+            raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
         else:
             model_path = tomls[0]
     else:
