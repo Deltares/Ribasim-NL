@@ -44,27 +44,27 @@ The conversion script `ER_data_conversion_delwaq.py` is an adaptation of:
 
 5. **Manually adjust** `delwaq.inp`:
 
-   **B1:** Add 'N' and 'P' as substances
-          Total number of substances +2
+   - **B1:** Add 'N' and 'P' as substances
+     Total number of substances +2
 
-   **B6:** Remove `0; number of loads`
-          Add:
-          ```
-          INCLUDE delwaq_bndlist.inc
-          INCLUDE B6_loads.inc
-          ```
+   - **B6:** Remove `0; number of loads`
+     Add:
+     ```
+     INCLUDE delwaq_bndlist.inc
+     INCLUDE B6_loads.inc
+     ```
 
-   **B8:** Remove everything
-          Add:
-          ```
-          INITIALS {all substances without quotes, separated by spaces}
-          DEFAULTS {IC values separated by spaces}
-          ```
-          Example:
-          ```
-          INITIALS Continuity Drainage FlowBoundary Initial LevelBoundary Precipitation Terminal UserDemand N P
-          DEFAULTS 1.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0
-          ```
+   - **B8:** Remove everything
+     Add:
+     ```
+     INITIALS {all substances without quotes, separated by spaces}
+     DEFAULTS {IC values separated by spaces}
+     ```
+     Example:
+     ```
+     INITIALS Continuity Drainage FlowBoundary Initial LevelBoundary Precipitation Terminal UserDemand N P
+     DEFAULTS 1.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0
+     ```
 
 6. **Run Delwaq** via cmd or Python
 
