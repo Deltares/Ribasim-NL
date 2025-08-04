@@ -68,6 +68,7 @@ rasterstats = "*"
 requests = "*"
 ribasim = "==2025.4.0"
 ruff = "*"
+seaborn = "*"
 shapely = ">=2"
 tomli = "*"
 tomli-w = "*"
@@ -75,7 +76,6 @@ tqdm = "*"
 types-requests = "*"
 xlwings = "*"
 xugrid = "*"
-seaborn = "*"
 
 [pypi-dependencies]
 bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
