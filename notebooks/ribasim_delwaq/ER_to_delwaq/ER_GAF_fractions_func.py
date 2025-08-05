@@ -28,5 +28,5 @@ def compute_overlap_df(gaf_path, basin_path):
     # Retain desired fields
     df = intersected[["AI_CODE", "node_id", "frac"]].copy()
     df.columns = ["GAF-eenheid", "NodeId", "fractie"]  # Rename to match ER coupling script
-    
+
     return df

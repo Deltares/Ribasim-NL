@@ -1,8 +1,8 @@
 ### officieel test bestand voor delwaq-ER koppeling
 
 # %% importing general libraries
-from pathlib import Path
 import os
+from pathlib import Path
 
 import pandas as pd
 from ribasim.delwaq import generate

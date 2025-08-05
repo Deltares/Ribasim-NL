@@ -1,8 +1,9 @@
 # %% Import necessary libraries
+import os
 import subprocess
 from pathlib import Path
-import os
 
+from IPython.display import display
 from ribasim.delwaq import parse, plot_fraction
 
 # %% Set path of Ribasim model
@@ -28,6 +29,12 @@ result.check_returncode()
 
 
 # %% before parsing model: include manually added substance/load
+
+# dummy substances and graph
+# TODO don't rely on variables defined in ER_setup_delwaq.py
+graph = []
+substances = set()
+
 substances.add("N")
 substances.add("P")
 
