@@ -19,7 +19,7 @@ Getest (u kunt simuleren): Nee
 """
 
 download_latest_model = True
-
+write_intermediate_models = True
 upload_model = False
 
 RESET_TABLES = []
@@ -239,7 +239,8 @@ for idx, model_spec in enumerate(model_specs):
 
     # prefix index so ids will be unique
     try:
-        model = prefix_index(model=model, prefix_id=waterbeheercode[model_spec["authority"]])
+        # TODO reduce max_digits back to 4 after fixing #364
+        model = prefix_index(model=model, max_digits=5, prefix_id=waterbeheercode[model_spec["authority"]])
     except KeyError as e:
         print("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
         raise e
@@ -252,6 +253,10 @@ for idx, model_spec in enumerate(model_specs):
         lhm_model._validate_model()
         readme += f"""
 **{model_spec["authority"]}**: {model_spec["model"]} ({model_version.version})"""
+
+    if write_intermediate_models:
+        ribasim_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx:02}/lhm-{idx:02}.toml")
+        lhm_model.write(ribasim_toml)
 
 
 # %%
