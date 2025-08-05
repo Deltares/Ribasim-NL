@@ -49,8 +49,22 @@ def prefix_index(
     Returns
     -------
         ribasim.Model: reindexed model
+
+    Raises
+    ------
+        ValueError: If any node_id exceeds the max_digits limit
     """
     node_ids = model.node_table().df.index
+
+    # Check if any node_id exceeds max_digits
+    max_node_id = node_ids.max()
+    actual_digits = len(str(max_node_id))
+    if actual_digits > max_digits:
+        model_info = f" (model: {model.filepath})" if hasattr(model, "filepath") and model.filepath else ""
+        raise ValueError(
+            f"Node ID {max_node_id} has {actual_digits} digits, which exceeds the max_digits limit of {max_digits}. "
+            f"Either increase max_digits to at least {actual_digits} or ensure all node IDs fit within {max_digits} digits{model_info}."
+        )
 
     # create a node_index and reindex nodes
     node_index = pd.Series(
@@ -60,6 +74,17 @@ def prefix_index(
 
     # create an edge_index and reindex edges
     edge_ids = model.edge.df.index
+
+    # Check if any edge_id exceeds max_digits
+    max_edge_id = edge_ids.max()
+    actual_edge_digits = len(str(max_edge_id))
+    if actual_edge_digits > max_digits:
+        model_info = f" (model: {model.filepath})" if hasattr(model, "filepath") and model.filepath else ""
+        raise ValueError(
+            f"Edge ID {max_edge_id} has {actual_edge_digits} digits, which exceeds the max_digits limit of {max_digits}. "
+            f"Either increase max_digits to at least {actual_edge_digits} or ensure all edge IDs fit within {max_digits} digits{model_info}."
+        )
+
     model.edge.df.index = pd.Index(
         [int(f"{prefix_id}{edge_id:0>{max_digits}}") for edge_id in edge_ids], name="edge_id"
     )
