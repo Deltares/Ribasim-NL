@@ -181,9 +181,9 @@ class Flushing:
                 ),
             ),
             [
+                # Do not implement a demand_priority yet
                 flow_demand.Time(
                     time=uniq_times,
-                    # demand_priority=[],
                     demand=len(uniq_times) * [demand],
                 ),
             ],
@@ -269,7 +269,8 @@ class Flushing:
         for df in [dfu[dfu.aanvoer], dfu]:
             coversets = self._exact_cover_minimum(df)
             if len(coversets) == 1 and len(coversets[0]) == 0:
-                pass
+                # No optimal set
+                continue
             elif len(coversets) == 1:
                 best_sources = coversets[0]
             elif len(coversets) > 1:
@@ -362,7 +363,7 @@ class Flushing:
 
     def _all_upstream_paths(
         self,
-        G: DiGraph,
+        graph: DiGraph,
         start_node: int,
         all_nodes: gpd.GeoDataFrame,
         limit_geom: MultiPolygon | Polygon | None = None,
@@ -371,7 +372,7 @@ class Flushing:
 
         Parameters
         ----------
-        G : DiGraph
+        graph : DiGraph
             NetworkX directed graph representing the network
         start_node : int
             Node ID to start the search from
@@ -389,13 +390,13 @@ class Flushing:
         end_paths = []
 
         # Recursively fill the paths with a depth-first search
-        self._dfs(G, [start_node], end_paths, all_nodes, limit_geom)
+        self._dfs(graph, [start_node], end_paths, all_nodes, limit_geom)
 
         return end_paths
 
     def _dfs(
         self,
-        G: DiGraph,
+        graph: DiGraph,
         path: list[int],
         end_paths: list[list[int]],
         all_nodes: gpd.GeoDataFrame,
@@ -405,7 +406,7 @@ class Flushing:
 
         Parameters
         ----------
-        G : DiGraph
+        graph : DiGraph
             NetworkX directed graph representing the network
         path : list[int]
             Current path being explored
@@ -419,7 +420,7 @@ class Flushing:
         last_node = path[-1]
         # Get predecessors that are not already in the path
         unvisited_predecessors = []
-        for n in G.predecessors(last_node):
+        for n in graph.predecessors(last_node):
             if n not in path and (limit_geom is None or all_nodes.geometry.at[n].intersects(limit_geom)):
                 unvisited_predecessors.append(n)
 
@@ -430,7 +431,7 @@ class Flushing:
 
         # Recurse in predecessors
         for predecessor in unvisited_predecessors:
-            self._dfs(G, path + [predecessor], end_paths, all_nodes, limit_geom)
+            self._dfs(graph, path + [predecessor], end_paths, all_nodes, limit_geom)
 
     def _sync_files(
         self,
