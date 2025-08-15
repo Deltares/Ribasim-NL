@@ -287,62 +287,59 @@ class Flushing:
 
         return dfu
 
+        # Update the optimal choice
+        if len(best_sources) > 0:
+            dfu.loc[dfu.node_id.isin(best_sources), "optimal_choice"] = True
+
+        return dfu
+
     def _exact_cover_minimum(self, df: pd.DataFrame) -> list[list[int]]:
-        """Find minimum exact cover for the given nodes.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            DataFrame containing node relationships
-
-        Returns
-        -------
-        list
-            List of sorted solutions for minimum exact cover
-        """
-        # Create start to ends
         start_to_ends = {}
         for from_nid, group in df.groupby("node_id"):
             start_to_ends[from_nid] = set(group.basin.tolist())
 
-        # Create ends to start
         ends = sorted({e for es in start_to_ends.values() for e in es})
         end_to_starts = {e: {s for s, es in start_to_ends.items() if e in es} for e in ends}
         best_solution = [None, []]  # [best_length, list_of_solutions]
+        best_partial = [0, []]  # [max_exact_once_count, partial_solution]
 
-        # Run search
-        self._search_exact_cover(start_to_ends, end_to_starts, set(ends), [], best_solution)
+        self._search_exact_cover(start_to_ends, end_to_starts, set(ends), [], best_solution, best_partial)
 
-        return sorted(best_solution[1])
+        if best_solution[1]:
+            return sorted(best_solution[1], key=lambda x: tuple(x))
+        else:
+            # No perfect cover → return best partial
+            return [best_partial[1]] if best_partial[1] else []
 
-    def _search_exact_cover(self, start_to_ends, end_to_starts, remaining_ends, partial_solution, best_solution):
-        """Recursively search for exact cover solutions.
+    def _search_exact_cover(
+        self,
+        start_to_ends,
+        end_to_starts,
+        remaining_ends,
+        partial_solution,
+        best_solution,
+        best_partial,
+    ):
+        # Track partial coverage
+        covered_now = set()
+        for s in partial_solution:
+            covered_now |= start_to_ends[s]
+        covered_exactly_once = [e for e in covered_now if sum(e in start_to_ends[s] for s in partial_solution) == 1]
+        if len(covered_exactly_once) > best_partial[0]:
+            best_partial[0] = len(covered_exactly_once)
+            best_partial[1] = sorted(partial_solution)
 
-        Parameters
-        ----------
-        start_to_ends : dict
-            Dictionary mapping start nodes to their end nodes
-        end_to_starts : dict
-            Dictionary mapping end nodes to their start nodes
-        remaining_ends : set
-            Set of remaining end nodes to cover
-        partial_solution : list
-            Current partial solution being built
-        best_solution : list
-            Reference to the best solution found [best_length, solutions]
-        """
-        # Prune if longer than the best length found so far
+        # Prune if longer than the best length found so far (for perfect covers)
         if best_solution[0] is not None and len(partial_solution) > best_solution[0]:
             return
 
-        # If no endpoints remain, we found a complete cover
+        # If no endpoints remain → perfect cover
         if not remaining_ends:
             if best_solution[0] is None or len(partial_solution) < best_solution[0]:
-                # Found a better (shorter) solution → reset list
                 best_solution[0] = len(partial_solution)
-                best_solution[1] = [sorted(partial_solution)]
+                best_solution[1].clear()
+                best_solution[1].append(sorted(partial_solution))
             elif len(partial_solution) == best_solution[0]:
-                # Found another equally good minimal solution
                 best_solution[1].append(sorted(partial_solution))
             return
 
@@ -359,7 +356,9 @@ class Flushing:
                 continue
 
             new_remaining = remaining_ends - start_to_ends[s]
-            self._search_exact_cover(start_to_ends, end_to_starts, new_remaining, partial_solution + [s], best_solution)
+            self._search_exact_cover(
+                start_to_ends, end_to_starts, new_remaining, partial_solution + [s], best_solution, best_partial
+            )
 
     def _all_upstream_paths(
         self,
