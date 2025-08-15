@@ -101,6 +101,7 @@ class Flushing:
             basin_matches = df_basin.iloc[df_basin.sindex.query(flushing_row.geometry, predicate="intersects")].copy()
             basin_matches["area_match"] = basin_matches.intersection(flushing_row.geometry).area
             basin_matches["rel_area_match"] = basin_matches.area_match / basin_matches.area
+            basin_matches["rel_area_flush"] = basin_matches.area_match / flushing_row.geometry.area
             basin_matches = basin_matches[basin_matches.rel_area_match >= self.significant_overlap]
             basin_matches = basin_matches.reset_index(drop=False)
 
@@ -131,8 +132,16 @@ class Flushing:
 
             # The result should contain at least one node
             if not dfu.optimal_choice.any():
-                print(f"WARNING: Polygon {flush_id=} has upstream nodes but no optimal choice")
+                print(f"WARNING: Polygon {flush_id=} has upstream nodes, but no valid optimal choice")
                 continue
+
+            # Check if all basins are connected
+            basins_cov = dfu[dfu.optimal_choice].basin.unique().tolist()
+            basins_mis = basin_matches.node_id[~basin_matches.node_id.isin(basins_cov)].tolist()
+            if len(basins_mis) > 0:
+                coverage = basin_matches.rel_area_flush.sum() * 100
+                flush_coverage = basin_flush.rel_area_flush.sum() * 100
+                print(f"WARNING: Polygon {flush_id=} missing upstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}. Current cover: {coverage:.1f}%, (max {flush_coverage:.1f}%)")
 
             # Determine the contribution of each matching basin
             basin_flush = basin_matches[basin_matches.node_id.isin(dfu[dfu.optimal_choice].basin.tolist())].copy()
@@ -140,7 +149,8 @@ class Flushing:
 
             for (target_nid, target_type), group in dfu[dfu.optimal_choice].groupby(["node_id", "node_type"]):
                 # Determine the flushing value and convert to m3/s
-                contrib = basin_flush[basin_flush.node_id.isin(group.basin.tolist())].rel_contrib.sum()
+                group_basins = group.basin.tolist()
+                contrib = basin_flush[basin_flush.node_id.isin(group_basins)].rel_contrib.sum()
                 demand = contrib * flushing_row.geometry.area * flush_val
                 demand = demand * self.convert_to_m3s
 
@@ -177,7 +187,7 @@ class Flushing:
         df_static = getattr(getattr(model, pascal_to_snake_case(target_node.node_type)), "static").df
         max_flow_rate = df_static.set_index("node_id").loc[target_node.node_id, ["flow_rate", "max_flow_rate"]].max()
         if max_flow_rate < demand:
-            print(f"WARNING: {target_node} has {max_flow_rate=}m3/s, setting a greater {demand=:.2e}m3/s")
+            print(f"WARNING: {target_node} has {max_flow_rate=:.2e}m3/s, setting a greater {demand=:.2e}m3/s")
 
         uniq_times = model.basin.time.df.time.unique()
         new_flow_demand = model.flow_demand.add(
