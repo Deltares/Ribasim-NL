@@ -265,27 +265,34 @@ class Flushing:
             DataFrame with upstream nodes and their properties
         """
         dfu["optimal_choice"] = False
-        best_sources = None
+        all_basins = set(dfu.basin.tolist())
+        covered_basins = set()
+        best_sources = []
         for df in [dfu[dfu.aanvoer], dfu]:
+            # Find a minimal coverage set
             coversets = self._exact_cover_minimum(df)
             if len(coversets) == 1 and len(coversets[0]) == 0:
                 # No optimal set
                 continue
             elif len(coversets) == 1:
-                best_sources = coversets[0]
+                sources = coversets[0]
             elif len(coversets) > 1:
                 # Multiple similar choices, chose the most upstream one
                 # based on the sum of upstream indices
                 weights = []
                 for coverset in coversets:
                     weights.append(df[df.node_id.isin(coverset)].upstream_index.sum())
-                best_sources = coversets[np.argmax(weights)]
+                sources = coversets[np.argmax(weights)]
 
-            if best_sources is not None:
-                dfu.loc[dfu.node_id.isin(best_sources), "optimal_choice"] = True
-                return dfu
+            # Update the covered basins if this iteration provides better coverage
+            basins = set(df[df.node_id.isin(sources)].basin.tolist())
+            if len(basins) > len(covered_basins):
+                covered_basins = basins.copy()
+                best_sources = sources.copy()
 
-        return dfu
+            # Stop in case the coverage is complete
+            if covered_basins == all_basins:
+                break
 
         # Update the optimal choice
         if len(best_sources) > 0:
