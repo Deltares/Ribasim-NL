@@ -135,22 +135,23 @@ class Flushing:
                 print(f"WARNING: Polygon {flush_id=} has upstream nodes, but no valid optimal choice")
                 continue
 
-            # Check if all basins are connected
+            # Determine the contribution of each matching basin
             basins_cov = dfu[dfu.optimal_choice].basin.unique().tolist()
+            df_flush = basin_matches[basin_matches.node_id.isin(basins_cov)].copy()
+            df_flush["rel_contrib"] = df_flush.area_match / df_flush.area_match.sum()
+
+            # Check if all basins are connected
             basins_mis = basin_matches.node_id[~basin_matches.node_id.isin(basins_cov)].tolist()
             if len(basins_mis) > 0:
-                coverage = basin_matches.rel_area_flush.sum() * 100
-                flush_coverage = basin_flush.rel_area_flush.sum() * 100
-                print(f"WARNING: Polygon {flush_id=} missing upstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}. Current cover: {coverage:.1f}%, (max {flush_coverage:.1f}%)")
+                max_cover = basin_matches.rel_area_flush.sum() * 100
+                current_cover = df_flush.rel_area_flush.sum() * 100
+                print(f"WARNING: Polygon {flush_id=} missing upstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}, {current_cover=:.1f}%, {max_cover=:.1f}%")
 
-            # Determine the contribution of each matching basin
-            basin_flush = basin_matches[basin_matches.node_id.isin(dfu[dfu.optimal_choice].basin.tolist())].copy()
-            basin_flush["rel_contrib"] = basin_flush.area_match / basin_flush.area_match.sum()
 
             for (target_nid, target_type), group in dfu[dfu.optimal_choice].groupby(["node_id", "node_type"]):
                 # Determine the flushing value and convert to m3/s
                 group_basins = group.basin.tolist()
-                contrib = basin_flush[basin_flush.node_id.isin(group_basins)].rel_contrib.sum()
+                contrib = df_flush[df_flush.node_id.isin(group_basins)].rel_contrib.sum()
                 demand = contrib * flushing_row.geometry.area * flush_val
                 demand = demand * self.convert_to_m3s
 
