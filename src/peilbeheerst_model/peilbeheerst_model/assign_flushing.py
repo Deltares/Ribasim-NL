@@ -25,6 +25,7 @@ class Flushing:
         flushing_col: str = "doorsp_mmj",
         significant_overlap: float = 0.5,
         convert_to_m3s: float = 1 / (1000 * 365 * 24 * 3600),
+        dissolve_by_val: bool = True,
     ):
         """Initialize the Flushing class for adding flushing information to a Ribasim model.
 
@@ -44,6 +45,8 @@ class Flushing:
             Threshold for considering area overlap significant, by default 0.5
         convert_to_m3s : float, optional
             Conversion factor to convert flushing_col to m3/s, by default 1 / (1000 * 365 * 24 * 3600)
+        dissolve_by_val: bool, optional
+            Dissolve geospatially by the integer value of 'flushing_col', by default True
         """
         self.cloud = CloudStorage()
         self.model = model
@@ -53,6 +56,7 @@ class Flushing:
         self.flushing_col = flushing_col
         self.significant_overlap = significant_overlap
         self.convert_to_m3s = convert_to_m3s
+        self.dissolve_by_val = dissolve_by_val
 
     def add_flushing(
         self,
@@ -69,6 +73,10 @@ class Flushing:
 
         # Reduce flushing data to non-null and matching data
         df_flushing_subset = df_flushing[~pd.isna(df_flushing[self.flushing_col])].copy()
+        df_flushing_subset = df_flushing_subset[[self.flushing_id, self.flushing_col, "geometry"]].copy()
+
+        if self.dissolve_by_val:
+            df_flushing_subset = self._dissolve_flushing_data(df_flushing_subset)
 
         # Get handles to relevant tables
         all_nodes = model.node_table().df[["node_type", "geometry"]].copy()
@@ -438,6 +446,40 @@ class Flushing:
         # Recurse in predecessors
         for predecessor in unvisited_predecessors:
             self._dfs(graph, path + [predecessor], end_paths, all_nodes, limit_geom)
+
+    def _dissolve_flushing_data(self, df_flushing: pd.DataFrame) -> pd.DataFrame:
+        # Round flushing_col to nearest integer value
+        df = df_flushing.copy()
+        df[self.flushing_col] = df[self.flushing_col].round().astype(int)
+
+        # First step: dissolve by flushing_col and id if these are equal
+        df = df.dissolve(by=[self.flushing_id, self.flushing_col])
+        df = df.reset_index()
+
+        # Second step: iteratively merge overlapping geometries with the
+        # same flushing_col value
+        new_rows = []
+        for _, group in df.groupby(self.flushing_col):
+            group["geometry"] = group.buffer(0.1)
+            visited = []
+            for cur_idx, row in group.iterrows():
+                if cur_idx in visited:
+                    continue
+                subgroup = group[~group.index.isin(visited)].copy()
+                idxs, midxs = [], [cur_idx]
+                while len(midxs) > len(idxs):
+                    idxs = midxs
+                    midxs = subgroup.sindex.query(subgroup.loc[idxs].union_all(), predicate="intersects")
+                    midxs = subgroup.index[midxs].tolist()
+                if len(idxs) > 0:
+                    new_row = row.copy()
+                    new_row[self.flushing_id] = ",".join(map(str, subgroup.loc[idxs, self.flushing_id].tolist()))
+                    new_row["geometry"] = subgroup.loc[idxs, "geometry"].union_all()
+                    new_rows.append(new_row)
+                    visited += idxs
+        df = pd.concat(new_rows, axis=1).T
+
+        return df
 
     def _sync_files(
         self,
