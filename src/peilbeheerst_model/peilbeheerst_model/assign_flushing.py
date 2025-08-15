@@ -145,8 +145,9 @@ class Flushing:
             if len(basins_mis) > 0:
                 max_cover = basin_matches.rel_area_flush.sum() * 100
                 current_cover = df_flush.rel_area_flush.sum() * 100
-                print(f"WARNING: Polygon {flush_id=} missing upstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}, {current_cover=:.1f}%, {max_cover=:.1f}%")
-
+                print(
+                    f"WARNING: Polygon {flush_id=} missing upstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}, {current_cover=:.1f}%, {max_cover=:.1f}%"
+                )
 
             for (target_nid, target_type), group in dfu[dfu.optimal_choice].groupby(["node_id", "node_type"]):
                 # Determine the flushing value and convert to m3/s
