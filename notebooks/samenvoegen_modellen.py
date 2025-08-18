@@ -6,7 +6,6 @@ import ribasim
 from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.case_conversions import pascal_to_snake_case
-from ribasim_nl.reset_static_tables import reset_static_tables
 
 # %%
 cloud = CloudStorage()
@@ -22,7 +21,6 @@ download_latest_model = True
 write_intermediate_models = True
 upload_model = False
 
-RESET_TABLES = []
 INCLUDE_MODELS = [
     "Rijkswaterstaat",
     "AmstelGooienVecht",
@@ -52,111 +50,133 @@ model_specs = [
     {
         "authority": "Rijkswaterstaat",
         "model": "hws",
+        "rdo": None,
         "find_toml": False,
     },
     {
         "authority": "AmstelGooienVecht",
         "model": "AmstelGooienVecht_parameterized",
+        "rdo": "RDO-West-Midden",
         "find_toml": True,
     },
     {
         "authority": "Delfland",
         "model": "Delfland_parameterized",
-        "find_toml": True,
-    },
-    {
-        "authority": "HollandseDelta",
-        "model": "HollandseDelta_parameterized",
+        "rdo": "RDO-West-Midden",
         "find_toml": True,
     },
     {
         "authority": "HollandsNoorderkwartier",
         "model": "HollandsNoorderkwartier_parameterized",
+        "rdo": "RDO-Noord",
         "find_toml": True,
     },
     {
         "authority": "Rijnland",
         "model": "Rijnland_parameterized",
+        "rdo": "RDO-West-Midden",
         "find_toml": True,
     },
     {
         "authority": "Rivierenland",
         "model": "Rivierenland_parameterized",
+        "rdo": "RDO-Gelderland",
         "find_toml": True,
     },
     {
         "authority": "Scheldestromen",
         "model": "Scheldestromen_parameterized",
+        "rdo": "RDO-Zuid-West",
         "find_toml": True,
     },
     {
         "authority": "SchielandendeKrimpenerwaard",
         "model": "SchielandendeKrimpenerwaard_parameterized",
+        "rdo": "RDO-West-Midden",
         "find_toml": True,
     },
     {
         "authority": "WetterskipFryslan",
         "model": "WetterskipFryslan_parameterized",
+        "rdo": "RDO-Noord",
         "find_toml": True,
     },
     {
         "authority": "Zuiderzeeland",
         "model": "Zuiderzeeland_parameterized",
+        "rdo": "RDO-Noord",
         "find_toml": True,
     },
     {
         "authority": "AaenMaas",
         "model": "AaenMaas",
+        "rdo": "RDO-Zuid-Oost",
         "find_toml": True,
     },
     {
         "authority": "BrabantseDelta",
         "model": "BrabantseDelta",
+        "rdo": "RDO-Zuid-West",
         "find_toml": True,
     },
     {
         "authority": "DeDommel",
         "model": "DeDommel",
+        "rdo": "RDO-Zuid-Oost",
         "find_toml": True,
     },
     {
         "authority": "DrentsOverijsselseDelta",
         "model": "DrentsOverijsselseDelta",
+        "rdo": "RDO-Twentekanalen",
         "find_toml": True,
     },
     {
         "authority": "HunzeenAas",
         "model": "HunzeenAas",
+        "rdo": "RDO-Noord",
         "find_toml": True,
     },
     {
         "authority": "Limburg",
         "model": "Limburg",
+        "rdo": "RDO-Zuid-Oost",
         "find_toml": True,
     },
     {
         "authority": "Noorderzijlvest",
         "model": "Noorderzijlvest",
+        "rdo": "RDO-Noord",
         "find_toml": True,
     },
     {
         "authority": "RijnenIJssel",
         "model": "RijnenIJssel",
+        "rdo": "RDO-Gelderland",
         "find_toml": True,
     },
     {
         "authority": "StichtseRijnlanden",
         "model": "StichtseRijnlanden",
+        "rdo": "RDO-West-Midden",
         "find_toml": True,
     },
     {
         "authority": "ValleienVeluwe",
         "model": "ValleienVeluwe",
+        "rdo": "RDO-Gelderland",
         "find_toml": True,
     },
     {
         "authority": "Vechtstromen",
         "model": "Vechtstromen",
+        "rdo": "RDO-Twentekanalen",
+        "find_toml": True,
+    },
+    {
+        "authority": "HollandseDelta",
+        "model": "HollandseDelta_parameterized",
+        "rdo": "RDO-West-Midden",
         "find_toml": True,
     },
 ]
@@ -176,7 +196,6 @@ for idx, model_spec in enumerate(model_specs):
     # get version
     if "model_version" in model_spec.keys():
         model_version = model_spec["model_version"]
-
     else:
         model_versions = [i for i in cloud.uploaded_models(model_spec["authority"]) if i.model == model_spec["model"]]
         if model_versions:
@@ -213,11 +232,6 @@ for idx, model_spec in enumerate(model_specs):
 
     # read model
     model = Model.read(model_path)
-
-    # TODO: make sure this isn't needed next round!
-    if model_spec["authority"] in RESET_TABLES:
-        model.remove_unassigned_basin_area()
-        model = reset_static_tables(model)
 
     # run model
     if not model.basin_outstate.filepath.exists():
