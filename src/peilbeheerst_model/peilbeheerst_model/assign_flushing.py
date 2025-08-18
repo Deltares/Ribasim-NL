@@ -443,8 +443,14 @@ class Flushing:
         # Initialize the return variable
         end_paths = []
 
+        # Precompute nodes that intersect with limit_geom
+        if limit_geom is not None:
+            valid_nodes = set(all_nodes.index[all_nodes.sindex.query(limit_geom, predicate="intersects")])
+        else:
+            valid_nodes = set(all_nodes.index)
+
         # Recursively fill the paths with a depth-first search
-        self._dfs(graph, [start_node], end_paths, all_nodes, limit_geom)
+        self._dfs(graph, [start_node], end_paths, valid_nodes)
 
         return end_paths
 
@@ -453,8 +459,7 @@ class Flushing:
         graph: DiGraph,
         path: list[int],
         end_paths: list[list[int]],
-        all_nodes: gpd.GeoDataFrame,
-        limit_geom: MultiPolygon | Polygon | None,
+        valid_nodes: set[int],
     ):
         """Perform depth-first search to find upstream paths.
 
@@ -466,17 +471,13 @@ class Flushing:
             Current path being explored
         end_paths : list[list[int]]
             List to store complete paths
-        all_nodes : gpd.GeoDataFrame
-            GeoDataFrame containing all nodes and their geometries
-        limit_geom : MultiPolygon | Polygon | None
-            Geometry to limit the search area
+        valid_nodes : set[int]
+            Set of node IDs that are valid for the search
         """
         last_node = path[-1]
-        # Get predecessors that are not already in the path
-        unvisited_predecessors = []
-        for n in graph.predecessors(last_node):
-            if n not in path and (limit_geom is None or all_nodes.geometry.at[n].intersects(limit_geom)):
-                unvisited_predecessors.append(n)
+
+        # Get predecessors that are not already in the path and are in valid_nodes
+        unvisited_predecessors = [n for n in graph.predecessors(last_node) if n not in path and n in valid_nodes]
 
         # Stop looking in case of a dead end or a cycle
         if not unvisited_predecessors:
@@ -485,7 +486,7 @@ class Flushing:
 
         # Recurse in predecessors
         for predecessor in unvisited_predecessors:
-            self._dfs(graph, path + [predecessor], end_paths, all_nodes, limit_geom)
+            self._dfs(graph, path + [predecessor], end_paths, valid_nodes)
 
     def _dissolve_flushing_data(self, df_flushing: pd.DataFrame) -> pd.DataFrame:
         # Round flushing_col to nearest integer value
