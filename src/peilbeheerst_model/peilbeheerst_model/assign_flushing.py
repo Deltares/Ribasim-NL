@@ -252,6 +252,23 @@ class Flushing:
         df_control_links = model.link.df[model.link.df.link_type == "control"]
         df_control_links = df_control_links.set_index("to_node_id")
 
+        # Some areas have a lot of paths with duplicate nodes. Improve
+        # performance by caching the response for unique nodes
+        uniq_nodes = np.unique(np.concatenate(paths))
+        node_lookup = {}
+        for nid in uniq_nodes:
+            nid_type = all_nodes.node_type.at[nid]
+            # @TODO in a future version of ribasim a FlowDemand and
+            # ContinousControl will be allowed simultaneously
+            if nid_type in ["Outlet", "Pump"] and nid not in df_control_links.index:
+                if all_nodes.node_type.at[nid] == "Outlet":
+                    bool_aanvoer = bool(df_outlet_static.at[nid, "meta_aanvoer"])
+                elif all_nodes.node_type.at[nid] == "Pump":
+                    bool_aanvoer = bool(df_pump_static.at[nid, "meta_func_aanvoer"])
+                else:
+                    raise TypeError(nid_type)
+                node_lookup[nid] = (nid_type, bool_aanvoer)
+
         dfu = {
             "basin": [],
             "path_id": [],
@@ -260,25 +277,25 @@ class Flushing:
             "node_type": [],
             "aanvoer": [],
         }
+        is_added = {}
         for pid, path in enumerate(paths):
-            for i, nid in enumerate(path):
-                nid_type = all_nodes.node_type.at[nid]
-                if nid_type in ["Outlet", "Pump"] and nid not in df_control_links.index:
-                    if all_nodes.node_type.at[nid] == "Outlet":
-                        bool_aanvoer = bool(df_outlet_static.at[nid, "meta_aanvoer"])
-                    elif all_nodes.node_type.at[nid] == "Pump":
-                        bool_aanvoer = bool(df_pump_static.at[nid, "meta_func_aanvoer"])
-                    else:
-                        raise TypeError(nid_type)
-                    dfu["basin"].append(path[0])
-                    dfu["path_id"].append(pid)
-                    dfu["upstream_index"].append(i)
-                    dfu["node_id"].append(nid)
-                    dfu["node_type"].append(nid_type)
-                    dfu["aanvoer"].append(bool_aanvoer)
+            basin_nid = path[0]
 
-        # Drop duplicate upstream node_id's originating from the same basin
-        dfu = pd.DataFrame(dfu).drop_duplicates(subset=["basin", "node_id"])
+            for i, nid in enumerate(path):
+                # We don't need duplicate upstream node_id's originating from
+                # the same basin or non-applicable nodes
+                if nid not in node_lookup or (basin_nid, nid) in is_added:
+                    continue
+
+                nid_type, bool_aanvoer = node_lookup[nid]
+                dfu["basin"].append(basin_nid)
+                dfu["path_id"].append(pid)
+                dfu["upstream_index"].append(i)
+                dfu["node_id"].append(nid)
+                dfu["node_type"].append(nid_type)
+                dfu["aanvoer"].append(bool_aanvoer)
+                is_added[(basin_nid, nid)] = True
+        dfu = pd.DataFrame(dfu)
 
         return dfu
 
