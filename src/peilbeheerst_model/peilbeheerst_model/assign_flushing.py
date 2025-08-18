@@ -151,7 +151,7 @@ class Flushing:
 
             for (target_nid, target_type), group in dfu[dfu.optimal_choice].groupby(["node_id", "node_type"]):
                 # Determine the flushing value and convert to m3/s
-                group_basins = group.basin.tolist()
+                group_basins = group.basin.unique().tolist()
                 contrib = df_flush[df_flush.node_id.isin(group_basins)].rel_contrib.sum()
                 demand = contrib * flushing_row.geometry.area * flush_val
                 demand = demand * self.convert_to_m3s
@@ -160,7 +160,11 @@ class Flushing:
                 target_node = getattr(model, pascal_to_snake_case(target_type))[target_nid]
 
                 # Create and link the flow_demand
-                model = self.add_flushing_demand(model, target_node, demand)
+                metadata = {
+                    "meta_{self.flushing_id}": flush_id,
+                    "meta_basin_nid": ", ".join(map(str, group_basins)),
+                }
+                model = self.add_flushing_demand(model, target_node, demand, metadata=metadata)
 
         return model
 
@@ -169,6 +173,7 @@ class Flushing:
         model: ModelNL | Model,
         target_node: NodeData,
         demand: float,
+        metadata: dict[str, str] | None,
     ):
         """Add a flushing demand node to the model and connect it to a target node.
 
@@ -180,6 +185,8 @@ class Flushing:
             The node to connect the flushing demand to
         demand : float
             The constant demand value to apply at all timesteps
+        metadata : dict[str, str]
+            meta data as column - value, defaults to None
 
         Returns
         -------
@@ -191,6 +198,9 @@ class Flushing:
         if max_flow_rate < demand:
             print(f"WARNING: {target_node} has {max_flow_rate=:.2e}m3/s, setting a greater {demand=:.2e}m3/s")
 
+        if metadata is None:
+            metadata = {}
+
         uniq_times = model.basin.time.df.time.unique()
         new_flow_demand = model.flow_demand.add(
             Node(
@@ -199,6 +209,7 @@ class Flushing:
                     target_node.geometry.x + 5,
                     target_node.geometry.y,
                 ),
+                **metadata,
             ),
             [
                 # Do not implement a demand_priority yet
