@@ -359,70 +359,140 @@ class Flushing:
         return dfu
 
     def _exact_cover_minimum(self, df: pd.DataFrame) -> list[list[int]]:
-        start_to_ends = {}
-        for from_nid, group in df.groupby("node_id"):
-            start_to_ends[from_nid] = set(group.basin.tolist())
+        """Find approximate minimal set of nodes that cover basins using a greedy approach.
 
-        ends = sorted({e for es in start_to_ends.values() for e in es})
-        end_to_starts = {e: {s for s, es in start_to_ends.items() if e in es} for e in ends}
-        best_solution = [None, []]  # [best_length, list_of_solutions]
-        best_partial = [0, []]  # [max_exact_once_count, partial_solution]
+        Uses a modified greedy algorithm optimized for large datasets.
 
-        self._search_exact_cover(start_to_ends, end_to_starts, set(ends), [], best_solution, best_partial)
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame with node_id, basin and upstream_index columns
 
-        if best_solution[1]:
-            return sorted(best_solution[1], key=lambda x: tuple(x))
-        else:
-            # No perfect cover → return best partial
-            return [best_partial[1]] if best_partial[1] else []
+        Returns
+        -------
+        list[list[int]]
+            List containing single solution as list of node IDs
+        """
+        # Pre-compute node information for efficient access
+        node_info = {}
+        for node_id, group in df.groupby("node_id"):
+            node_info[node_id] = {"basins": set(group.basin), "upstream_index": group.upstream_index.max()}
+
+        # Track basins that still need coverage
+        all_basins = set(df.basin.unique())
+        uncovered = all_basins.copy()
+        solution = []
+        available_nodes = set(node_info.keys())
+
+        while uncovered and available_nodes:
+            # Score each node based on new coverage and position
+            scores = []
+            for node_id in available_nodes:
+                info = node_info[node_id]
+                new_coverage = info["basins"] & uncovered
+                if new_coverage:  # Only consider nodes that add coverage
+                    scores.append(
+                        (
+                            len(new_coverage),  # Primary: number of new basins covered
+                            info["upstream_index"],  # Secondary: upstream position
+                            node_id,  # For stable sorting
+                        )
+                    )
+
+            # If no nodes provide new coverage, stop
+            if not scores:
+                break
+
+            # Select node with best coverage and upstream position
+            best_coverage, best_upstream, best_node = max(scores)
+
+            # Update tracking
+            uncovered -= node_info[best_node]["basins"]
+            solution.append(best_node)
+            available_nodes.remove(best_node)
+
+        return [sorted(solution)] if solution else [[]]
 
     def _search_exact_cover(
         self,
-        start_to_ends,
-        end_to_starts,
-        remaining_ends,
-        partial_solution,
-        best_solution,
-        best_partial,
+        all_basins: set[int],
+        start_to_ends: dict[int, set[int]],
+        end_to_starts: dict[int, set[int]],
+        remaining_ends: set[int],
+        partial_solution: list[int],
+        best_solution: dict,
+        seen_coverage: set[frozenset],
     ):
-        # Track partial coverage
-        covered_now = set()
-        for s in partial_solution:
-            covered_now |= start_to_ends[s]
-        covered_exactly_once = [e for e in covered_now if sum(e in start_to_ends[s] for s in partial_solution) == 1]
-        if len(covered_exactly_once) > best_partial[0]:
-            best_partial[0] = len(covered_exactly_once)
-            best_partial[1] = sorted(partial_solution)
+        """Recursively search for minimal set cover solutions.
 
-        # Prune if longer than the best length found so far (for perfect covers)
-        if best_solution[0] is not None and len(partial_solution) > best_solution[0]:
+        Parameters
+        ----------
+        all_basins : set[int]
+            All basins that need to be covered
+        start_to_ends : dict[int, set[int]]
+            Maps each node to the basins it covers
+        end_to_starts : dict[int, set[int]]
+            Maps each basin to nodes that can cover it
+        remaining_ends : set[int]
+            Basins still needing coverage
+        partial_solution : list[int]
+            Current partial solution being built
+        best_solution : dict
+            Tracks best solutions found so far
+        seen_coverage : set[frozenset]
+            Set of basin coverages already seen
+        """
+        # Get current coverage
+        covered = set().union(*(start_to_ends[s] for s in partial_solution)) if partial_solution else set()
+        coverage = frozenset(covered)
+
+        # Skip if we've seen this coverage before
+        if coverage in seen_coverage:
             return
+        seen_coverage.add(coverage)
 
-        # If no endpoints remain → perfect cover
+        # Update best partial solution if this one is better
+        if (
+            not best_solution["partial"]
+            or len(covered) > best_solution["partial"][0]
+            or (len(covered) == best_solution["partial"][0] and len(partial_solution) < best_solution["partial"][1])
+        ):
+            best_solution["partial"] = [len(covered), len(partial_solution), partial_solution.copy()]
+
+        # Found a perfect cover
         if not remaining_ends:
-            if best_solution[0] is None or len(partial_solution) < best_solution[0]:
-                best_solution[0] = len(partial_solution)
-                best_solution[1].clear()
-                best_solution[1].append(sorted(partial_solution))
-            elif len(partial_solution) == best_solution[0]:
-                best_solution[1].append(sorted(partial_solution))
+            curr_len = len(partial_solution)
+            if not best_solution["perfect"] or curr_len < best_solution["perfect"][0]:
+                best_solution["perfect"] = [curr_len, [partial_solution.copy()]]
+            elif curr_len == best_solution["perfect"][0]:
+                best_solution["perfect"][1].append(partial_solution.copy())
             return
 
-        # Choose endpoint with fewest available starts
-        e = min(remaining_ends, key=lambda ep: len(end_to_starts[ep]))
-        for s in sorted(end_to_starts[e]):  # sorted for deterministic order
-            # Explicit overlap check
-            overlap_found = False
-            for sel in partial_solution:
-                if start_to_ends[s] & start_to_ends[sel]:
-                    overlap_found = True
-                    break
-            if overlap_found:
-                continue
+        # Prune if we can't improve on best solution
+        if best_solution["perfect"] and len(partial_solution) >= best_solution["perfect"][0]:
+            return
 
-            new_remaining = remaining_ends - start_to_ends[s]
+        # Try each remaining node that could help cover uncovered basins
+        # Get node that covers most remaining basins
+        candidates = []
+        for node in set().union(*(end_to_starts[e] for e in remaining_ends)):
+            coverage = start_to_ends[node] & remaining_ends
+            if coverage:  # Only consider nodes that cover some remaining basins
+                candidates.append(
+                    (len(coverage), -sum(1 for s in partial_solution if start_to_ends[s] & start_to_ends[node]), node)
+                )
+
+        # Try most promising nodes first (most coverage, least overlap)
+        for _, _, node in sorted(candidates, reverse=True):
+            new_remaining = remaining_ends - start_to_ends[node]
             self._search_exact_cover(
-                start_to_ends, end_to_starts, new_remaining, partial_solution + [s], best_solution, best_partial
+                all_basins,
+                start_to_ends,
+                end_to_starts,
+                new_remaining,
+                partial_solution + [node],
+                best_solution,
+                seen_coverage,
             )
 
     def _all_upstream_paths(
