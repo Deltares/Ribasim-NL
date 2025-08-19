@@ -258,15 +258,25 @@ class Flushing:
         node_lookup = {}
         for nid in uniq_nodes:
             nid_type = all_nodes.node_type.at[nid]
-            # @TODO in a future version of ribasim a FlowDemand and
-            # ContinousControl will be allowed simultaneously
-            if nid_type in ["Outlet", "Pump"] and nid not in df_control_links.index:
+            if nid_type in ["Outlet", "Pump"]:
+                if nid in df_control_links.index:
+                    # This node has incoming control links, check if a
+                    # FlowDemand node is present already
+                    incoming_nids = df_control_links.loc[[nid], "from_node_id"].tolist()
+                    incoming_types = all_nodes.loc[incoming_nids, "node_type"].tolist()
+                    allowed = "FlowDemand" not in incoming_types
+                else:
+                    # No incoming control link, so this node is allowed
+                    allowed = True
+
+                # Skip nodes that are not allowed
+                if not allowed:
+                    continue
+
                 if all_nodes.node_type.at[nid] == "Outlet":
                     bool_aanvoer = bool(df_outlet_static.at[nid, "meta_aanvoer"])
                 elif all_nodes.node_type.at[nid] == "Pump":
                     bool_aanvoer = bool(df_pump_static.at[nid, "meta_func_aanvoer"])
-                else:
-                    raise TypeError(nid_type)
                 node_lookup[nid] = (nid_type, bool_aanvoer)
 
         dfu = {
