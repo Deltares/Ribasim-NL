@@ -38,7 +38,6 @@ start_time = pd.to_datetime("2017-01-01")
 stop_time = pd.to_datetime("2018-01-01")
 flowboundaries = model.flow_boundary.node.df.name
 logging.info(f"Alle flow boundaries in het model: {flowboundaries}")
-
 BA_data_path = cloud.joinpath("Basisgegevens", "BuitenlandseAanvoer", "aangeleverd", "BuitenlandseAanvoer_V5.xlsx")
 cloud.synchronize(filepaths=[BA_data_path])
 
@@ -97,7 +96,7 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
     """
     xls = pd.ExcelFile(BA_data_path)
     sheet_names = xls.sheet_names
-
+    print("sheet_names", sheet_names)
     df_BA_raw_data = []
 
     for sheet in sheet_names:
@@ -111,6 +110,8 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
             df_numeric = df_filtered.apply(pd.to_numeric, errors="coerce")
             df_daily = df_numeric.resample("D").mean()
             df_BA_raw_data.append(df_daily)
+        else:
+            print("sheet without datum:", sheet)
 
     # Voeg de data samen
     df_combined_BA = pd.concat(df_BA_raw_data, axis=0)
@@ -121,17 +122,28 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
     df_buitenlandse_aanvoer = df_combined_BA[available_columns].copy()
     df_buitenlandse_aanvoer.index.name = "time"
 
-    # Interpoleer om missende data te vullen
-    df_buitenlandse_aanvoer = df_buitenlandse_aanvoer.interpolate(method="time")
-    # Extrapoleer naar de begin en eind data
-    df_buitenlandse_aanvoer = df_buitenlandse_aanvoer.ffill().bfill()
+    # Interpoleer missende waarden binnen de tijdreeks
+    df_buitenlandse_aanvoer = df_buitenlandse_aanvoer.interpolate(method="time", limit_area="inside")
+
+    # Vul NaN's aan de randen met het gemiddelde afvoer op die locatie
+    for col in df_buitenlandse_aanvoer.columns:
+        mean_value = df_buitenlandse_aanvoer[col].mean()
+        df_buitenlandse_aanvoer[col] = df_buitenlandse_aanvoer[col].fillna(mean_value)
 
     # In het geval van geen data in de gemodelleerde periode: verander afvoer naar 0
-    # TODO: netter om een gemiddelde waarde te gebruiken uit de totale data serie
     cols_with_nan = df_buitenlandse_aanvoer.columns[df_buitenlandse_aanvoer.isna().any()]
     for col in cols_with_nan:
-        logging.warning(f"Column '{col}' has no measurements during the modelled interval; filling NaNs with 0.")
-        df_buitenlandse_aanvoer[col].fillna(0, inplace=True)
+        mean_value = df_buitenlandse_aanvoer[col].mean()
+        if pd.isna(mean_value):  # hele kolom is leeg
+            logging.warning(f"Locatie '{col}' heeft geen metingen; filling NaNs with 0.")
+            df_buitenlandse_aanvoer[col] = df_buitenlandse_aanvoer[col].fillna(0)
+        else:
+            logging.warning(
+                f"Locatie '{col}' heeft  geen metingen gedurende de gemodelleerde periode; "
+                f"filling NaNs with mean value ({mean_value:.2f})."
+            )
+            df_buitenlandse_aanvoer[col] = df_buitenlandse_aanvoer[col].fillna(mean_value)
+
     # Controleer op NaN values
     assert not df_buitenlandse_aanvoer.isna().any().any(), "There are NaN values remaining!"
 
@@ -185,5 +197,3 @@ if upload_model:
     cloud.upload_model("Basisgegevens/BuitenlandseAanvoer", model="BA_totaal_run")
 
 # model.run()
-
-# %%
