@@ -462,10 +462,7 @@ class Flushing:
 
         # Pre-build adjacency sets for faster lookups during DFS
         # Performs a set intersection operation with valid_nodes
-        predecessors = {
-            node: set(graph.predecessors(node)) & valid_nodes
-            for node in valid_nodes
-        }
+        predecessors = {node: set(graph.predecessors(node)) & valid_nodes for node in valid_nodes}
 
         # Recursively fill the paths with a depth-first search
         self._dfs(graph, [start_node], end_paths, valid_nodes, predecessors)
