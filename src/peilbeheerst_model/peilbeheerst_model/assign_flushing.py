@@ -23,6 +23,7 @@ class Flushing:
         flushing_layer: str = "lsw_flushing_lhm43",
         flushing_id: str = "LSWNR",
         flushing_col: str = "doorsp_mmj",
+        flushing_geom_offset: float = 50.0,
         significant_overlap: float = 0.5,
         convert_to_m3s: float = 1 / (1000 * 365 * 24 * 3600),
         dissolve_by_val: bool = True,
@@ -42,6 +43,8 @@ class Flushing:
             Column name with the flushing IDs, by default "LSWNR"
         flushing_col : str, optional
             Column name with the flushing values, by default "doorsp_mmj"
+        flushing_geom_offset: float, optional
+            Horizontal offset used for placing the FlowDemand node (relative to the basin)
         significant_overlap : float, optional
             Threshold for considering area overlap significant, by default 0.5
         convert_to_m3s : float, optional
@@ -57,6 +60,7 @@ class Flushing:
         self.flushing_layer = flushing_layer
         self.flushing_id = flushing_id
         self.flushing_col = flushing_col
+        self.flushing_geom_offset = flushing_geom_offset
         self.significant_overlap = significant_overlap
         self.convert_to_m3s = convert_to_m3s
         self.dissolve_by_val = dissolve_by_val
@@ -216,7 +220,7 @@ class Flushing:
             Node(
                 model.node_table().df.index.max() + 1,
                 Point(
-                    target_node.geometry.x + 5,
+                    target_node.geometry.x + self.flushing_geom_offset,
                     target_node.geometry.y,
                 ),
                 **metadata,
