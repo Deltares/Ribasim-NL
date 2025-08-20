@@ -26,6 +26,7 @@ class Flushing:
         significant_overlap: float = 0.5,
         convert_to_m3s: float = 1 / (1000 * 365 * 24 * 3600),
         dissolve_by_val: bool = True,
+        debug_output: bool = False,
     ):
         """Initialize the Flushing class for adding flushing information to a Ribasim model.
 
@@ -47,6 +48,8 @@ class Flushing:
             Conversion factor to convert flushing_col to m3/s, by default 1 / (1000 * 365 * 24 * 3600)
         dissolve_by_val: bool, optional
             Dissolve geospatially by the integer value of 'flushing_col', by default True
+        debug_output: bool, optional
+            Print debug node - basin choices, by default True
         """
         self.cloud = CloudStorage()
         self.model = model
@@ -57,6 +60,7 @@ class Flushing:
         self.significant_overlap = significant_overlap
         self.convert_to_m3s = convert_to_m3s
         self.dissolve_by_val = dissolve_by_val
+        self.debug_output = debug_output
 
     def add_flushing(
         self,
@@ -148,6 +152,12 @@ class Flushing:
                 print(
                     f"WARNING: Polygon {flush_id=} missing upstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}, {current_cover=:.1f}%, {max_cover=:.1f}%"
                 )
+
+            if self.debug_output:
+                debug_str = []
+                for nid, group in dfu[dfu.optimal_choice].groupby("node_id"):
+                    debug_str.append(f"node {nid} connects basins {group.basin.tolist()}")
+                print(f"Polygon {flush_id=}, {', '.join(debug_str)}")
 
             for (target_nid, target_type), group in dfu[dfu.optimal_choice].groupby(["node_id", "node_type"]):
                 # Determine the flushing value and convert to m3/s
