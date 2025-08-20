@@ -90,6 +90,7 @@ class Model(Model):
     def __init__(self, **data):
         super().__init__(**data)
         self._parameterize = Parameterize(model=self)
+        self._set_arrow_input()
 
     def parameterize(self, **kwargs):
         self._parameterize.run(**kwargs)
@@ -1135,3 +1136,10 @@ class Model(Model):
             raise ValueError(
                 f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[['link_id', 'from_node_id', 'to_node_id']].to_dict(orient='index').values())}"
             )
+
+    def _set_arrow_input(self):
+        """Avoid bloating the database by writing these to Arrow if they exist"""
+        self.input_dir = Path("input")
+        self.basin.time.set_filepath(Path("basin-time.arrow"))
+        self.flow_boundary.time.set_filepath(Path("flow-boundary-time.arrow"))
+        self.level_boundary.time.set_filepath(Path("level-boundary-time.arrow"))
