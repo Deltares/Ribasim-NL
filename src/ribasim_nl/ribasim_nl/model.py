@@ -1138,8 +1138,9 @@ class Model(Model):
             )
 
     def _set_arrow_input(self):
-        """Avoid bloating the database by writing these to Arrow if they exist"""
+        """Use "input" dir and avoid large databases by writing some tables to Arrow"""
         self.input_dir = Path("input")
-        self.basin.time.set_filepath(Path("basin-time.arrow"))
-        self.flow_boundary.time.set_filepath(Path("flow-boundary-time.arrow"))
-        self.level_boundary.time.set_filepath(Path("level-boundary-time.arrow"))
+        self.basin.time.set_filepath(Path("basin_time.arrow"))
+        # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
+        self.basin.model_fields_set.add("time")
+        self.model_fields_set.add("basin")
