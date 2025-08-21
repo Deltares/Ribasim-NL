@@ -226,9 +226,10 @@ class Flushing:
                 **metadata,
             ),
             [
-                # Do not implement a demand_priority yet
+                # @TODO hardcoded demand_priority=1 for now
                 flow_demand.Time(
                     time=uniq_times,
+                    demand_priority=1,
                     demand=len(uniq_times) * [demand],
                 ),
             ],
