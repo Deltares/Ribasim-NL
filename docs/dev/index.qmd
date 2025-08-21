@@ -88,7 +88,7 @@ pixi add --pypi 'ribasim @ file://absolute/path/to/Ribasim/python/ribasim' --edi
 
 The Pixi CLI only accepts absolute paths, but relative paths in `pixi.toml` will also work.
 
-For Ribasim developer documentation see https://ribasim.org/dev/.
+For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/dev/).
 
 ## Environment variables {#sec-environment-variables}
 
