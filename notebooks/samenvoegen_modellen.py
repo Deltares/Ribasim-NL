@@ -22,7 +22,7 @@ write_rdo = True
 # Write one national model
 write_lhm = True
 # Write intermediate models for debugging or scaling tests
-write_intermediate_models = True
+write_intermediate_models = False
 upload_model = False
 
 # Remove any model from this list to skip it
@@ -77,10 +77,11 @@ model_specs = [
         "find_toml": True,
     },
     {
+        # HollandsNoorderkwartier_parameterized_2025_8_0 has flushing but no dynamic forcing
         "authority": "HollandsNoorderkwartier",
-        "model": "HollandsNoorderkwartier_parameterized",
+        "model": "HollandsNoorderkwartier_parameterized_2025_7_1",
         "rdo": "RDO-Noord",
-        "find_toml": True,
+        "find_toml": False,
     },
     {
         "authority": "Rijnland",
