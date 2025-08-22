@@ -112,6 +112,7 @@ processor.run()
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model.set_crs("EPSG:28992")
 
 # Uitlaat toevoegen at Ter Schelling
 level_boundary_node = ribasim_model.level_boundary.add(
