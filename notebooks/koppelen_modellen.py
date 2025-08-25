@@ -108,7 +108,7 @@ def create_link_geometry(
     return geometry
 
 
-def add_continuous_control(
+def add_control(
     model: Model,
     couple_authority: str,
     has_control: bool,
@@ -116,7 +116,7 @@ def add_continuous_control(
     upstream_basin: int | None,
     downstream_basin: int | None,
 ) -> None:
-    """Add continuous control for non-RWS boundaries when needed.
+    """Add control for non-RWS boundaries when needed.
 
     Args:
         model: Model to add control to
@@ -133,19 +133,22 @@ def add_continuous_control(
         and upstream_basin is not None
         and downstream_basin is not None
     ):
+        ctrl_type = "DiscreteControl"  # Changed from ContinuousControl
+        data = []  # Simplified for now - needs proper control data structure
         print(
-            f"Adding ContinuousControl for {connector_node_id.iloc[0]}, "
+            f"Adding {ctrl_type} for {connector_node_id.iloc[0]}, "
             f"while having {len(connector_node_id)} connector nodes."
         )
         # Note: The continuous_control parameters may need adjustment based on actual API
         # This is a placeholder implementation
         try:
-            model.add_control_node(
-                to_node_id=connector_node_id.iloc[0],
-                data=[],  # Simplified for now - needs proper control data structure
-                ctrl_type="DiscreteControl",  # Changed from ContinuousControl
-                node_offset=20,
-            )
+            if data != []:
+                model.add_control_node(
+                    to_node_id=connector_node_id.iloc[0],
+                    data=data,  # Simplified for now - needs proper control data structure
+                    ctrl_type=ctrl_type,
+                    node_offset=20,
+                )
         except Exception as e:
             print(f"Failed to add control node: {e}")
 
@@ -266,10 +269,9 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 has_control = any(df.listen_node_id == boundary_node_id)
                 df.loc[df.listen_node_id == boundary_node_id, "listen_node_id"] = couple_with_basin_id
 
-        # Add ContinuousControl for non RWS boundaries when no control node is yet present
-        add_continuous_control(
-            model, couple_authority, has_control, connector_node_id, upstream_basin, downstream_basin
-        )
+        # Add control node for non RWS boundaries when no control node is yet present
+        # Disabled since no data is supplied yet to the control node
+        add_control(model, couple_authority, has_control, connector_node_id, upstream_basin, downstream_basin)
 
         # Remove boundary node from model
         model.remove_node(boundary_node_id, remove_edges=True)
@@ -476,7 +478,7 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 
 rdos = ["RDO-Gelderland", "RDO-Noord", "RDO-Twentekanalen", "RDO-West-Midden", "RDO-Zuid-Oost", "RDO-Zuid-West"]
 
-for rdo in rdos[5:]:
+for rdo in rdos:
     print(f"### Processing RDO: {rdo}")
     # toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm.toml")
     toml_file = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
