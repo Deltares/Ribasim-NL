@@ -434,6 +434,16 @@ class CloudStorage:
                     out_file = plots_dir / file.name
                     out_file.write_bytes(file.read_bytes())
 
+        # if input, copy too
+        if model_dir.joinpath("input").exists():
+            files = list(model_dir.joinpath("input").glob("*.*"))
+            if files:
+                input_dir = model_version_dir.joinpath("input")
+                input_dir.mkdir()
+                for file in files:
+                    out_file = input_dir / file.name
+                    out_file.write_bytes(file.read_bytes())
+
         # create dir in CloudStorage and upload content
         self.create_dir(authority, "modellen", model_version_dir.name)
         self.upload_content(model_version_dir)
