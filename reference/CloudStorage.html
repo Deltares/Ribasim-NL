@@ -287,7 +287,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>User can specify a path to the directory with additional arguments.</p>
 <section id="examples" class="level4 doc-section doc-section-examples">
 <h4 class="doc-section doc-section-examples anchored" data-anchor-id="examples">Examples</h4>
-<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud <span class="op">=</span> Cloud()</span>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud <span class="op">=</span> CloudStorage()</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs()</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"AaenMaas"</span>, <span class="st">"AmselGooienVecht"</span>, ...]</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> cloud.dirs(<span class="st">"AaenMaas"</span>)</span>
@@ -422,13 +422,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td>include_results</td>
-<td></td>
+<td>bool</td>
 <td>to include results dir in upload; yes/no = True/False. defaults to False.</td>
 <td><code>False</code></td>
 </tr>
 <tr class="even">
 <td>include_plots</td>
-<td></td>
+<td>bool</td>
 <td>to include plots dir in upload; yes/no = True/False. defaults to False.</td>
 <td><code>False</code></td>
 </tr>
