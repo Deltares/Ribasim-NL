@@ -177,7 +177,7 @@ class CloudStorage:
 
         Examples
         --------
-        >>> cloud = Cloud()
+        >>> cloud = CloudStorage()
         >>> cloud.dirs()
             ["AaenMaas", "AmselGooienVecht", ...]
         >>> cloud.dirs("AaenMaas")
