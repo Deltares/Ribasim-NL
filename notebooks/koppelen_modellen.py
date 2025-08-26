@@ -1,5 +1,7 @@
 # %%
 
+from pathlib import Path
+
 import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
@@ -13,8 +15,8 @@ MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
 
 # Configuration
-cloud = CloudStorage()
-upload_model = False
+cloud: CloudStorage = CloudStorage()
+upload_model: bool = False
 
 
 # %% Functions
@@ -32,7 +34,7 @@ def get_basin_link(
     return LineString()
 
 
-def initialize_models(cloud: CloudStorage, toml_file) -> tuple[Model, Network, pd.DataFrame]:
+def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
     """Initialize and load the model and network data.
 
     Parameters
@@ -332,7 +334,7 @@ def fix_basin_profiles(model: Model) -> None:
 
 
 def save_model_and_outputs(
-    model: Model, all_link_table: list[dict], cloud: CloudStorage, toml_file, upload_model: bool = False
+    model: Model, all_link_table: list[dict], cloud: CloudStorage, toml_file: Path, upload_model: bool = False
 ) -> None:
     """Save the model and create output files.
 
@@ -340,14 +342,15 @@ def save_model_and_outputs(
         model: Model to save
         all_link_table: Link table data
         cloud: CloudStorage instance
-        toml_file: Path to the input TOML file
+        toml_file: Path to the input/decoupled TOML file
         upload_model: Whether to upload the model
     """
     # Derive model path from input toml_file, adding -coupled to folder and file name
     root = toml_file.parents[1]
-    model_name = toml_file.stem
-    model_path = root / f"{model_name}-coupled"
-    output_toml_file = model_path / f"{model_name}-coupled.toml"
+    decoupled_model_name = toml_file.stem
+    model_name = f"{decoupled_model_name}_coupled"
+    model_path = root / model_name
+    output_toml_file = model_path / f"{model_name}.toml"
     model.write(output_toml_file)
 
     # Save links
@@ -479,17 +482,10 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 rdos = ["RDO-Gelderland", "RDO-Noord", "RDO-Twentekanalen", "RDO-West-Midden", "RDO-Zuid-Oost", "RDO-Zuid-West"]
 
 for rdo in rdos:
-    print(f"### Processing RDO: {rdo}")
-    # toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm.toml")
     toml_file = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
 
-    model, network, basin_areas_df = initialize_models(cloud, toml_file)
-
-    model.starttime = pd.Timestamp("2017-01-01")
-    model.endtime = pd.Timestamp("2018-01-01")
-    model.ribasim_version = "2025.4.0"
-
-    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-    fix_basin_profiles(model)
-    save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
-    print(f"### Finished processing RDO: {rdo}")
+toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm.toml")
+model, network, basin_areas_df = initialize_models(cloud, toml_file)
+all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+fix_basin_profiles(model)
+save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
