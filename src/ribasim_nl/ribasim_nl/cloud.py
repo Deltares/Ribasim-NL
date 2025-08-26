@@ -44,7 +44,7 @@ WATER_AUTHORITIES = [
 HIDDEN_DIRS = ["D-HYDRO modeldata"]  # somehow this dir-name still exists :-(
 
 
-def is_dir(item):
+def is_dir(item: str) -> bool:
     """Check if path suggests a directory (even if it doesn't exist yet)"""
     return Path(item).suffix == ""
 
@@ -57,15 +57,15 @@ class ModelVersion:
     revision: int
 
     @property
-    def version(self):
+    def version(self) -> str:
         return f"{self.year}.{self.month}.{self.revision}"
 
     @property
-    def path_string(self):
+    def path_string(self) -> str:
         return f"{self.model}_{self.year}_{self.month}_{self.revision}"
 
     @property
-    def sorter(self):
+    def sorter(self) -> str:
         return f"{self.year}.{str(self.month).zfill(2)}.{str(self.revision).zfill(3)}"
 
 
@@ -73,12 +73,12 @@ class ModelVersion:
 class CloudStorage:
     """Connect a local 'data_dir` to cloud-storage."""
 
-    data_dir: str | Path = settings.ribasim_nl_data_dir
+    data_dir: Path = settings.ribasim_nl_data_dir
     user: str = RIBASIM_NL_CLOUD_USER
-    url: list[str] = BASE_URL
+    url: str = BASE_URL
     password: str = field(repr=False, default=settings.ribasim_nl_cloud_pass)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # check if user and password are specified
         if self.user is None:
             raise ValueError("""'user' is None. Provide it.""")
@@ -91,11 +91,11 @@ class CloudStorage:
         else:
             response.raise_for_status()
 
-        # check if data_dir is specified
+        # check if data_dir is specified and convert to Path
         if self.data_dir is None:
             raise ValueError("""'data_dir' is None. Provide it or set environment variable RIBASIM_NL_DATA_DIR.""")
-        else:
-            self.data_dir = Path(self.data_dir)
+
+        self.data_dir = Path(self.data_dir)
 
         # create data_dir if it doesn't exist
         if not self.data_dir.exists():
@@ -118,7 +118,7 @@ class CloudStorage:
         """List of all water authorities (directories)"""
         return WATER_AUTHORITIES
 
-    def validate_authority(self, authority):
+    def validate_authority(self, authority: str) -> None:
         if authority not in self.water_authorities:
             raise ValueError(f"""'{authority}' not in {self.water_authorities}""")
 
@@ -130,23 +130,23 @@ class CloudStorage:
     def relative_url(self, file_url: str) -> str:
         return file_url[len(self.url) + 1 :]
 
-    def file_path(self, file_url):
+    def file_path(self, file_url: str) -> Path:
         relative_url = self.relative_url(file_url)
         return self.data_dir.joinpath(relative_url)
 
-    def relative_path(self, file_path: str | Path):
+    def relative_path(self, file_path: str | Path) -> Path:
         return Path(file_path).relative_to(self.data_dir)
 
-    def joinurl(self, *args: str):
+    def joinurl(self, *args: str) -> str:
         if args:
             return f"{self.url}/{'/'.join(args)}"
         else:
             return self.url
 
-    def joinpath(self, *args: str):
+    def joinpath(self, *args: str) -> Path:
         return self.data_dir.joinpath(*args)
 
-    def upload_file(self, file_path: Path):
+    def upload_file(self, file_path: Path) -> None:
         # get url
         url = self.file_url(file_path)
 
@@ -155,7 +155,7 @@ class CloudStorage:
             r = requests.put(url, data=f, auth=self.auth)
         r.raise_for_status()
 
-    def download_file(self, file_url: str):
+    def download_file(self, file_url: str) -> None:
         # get local file-path
         file_path = self.file_path(file_url)
 
@@ -170,7 +170,7 @@ class CloudStorage:
         with open(file_path, "wb") as f:
             f.write(r.content)
 
-    def content(self, url) -> list[str] | None:
+    def content(self, url: str) -> list[str]:
         """List all content in a directory
 
         User can specify a path to the directory with additional arguments.
@@ -209,12 +209,12 @@ class CloudStorage:
         content = [
             elem.text
             for elem in xml_tree.findall(".//D:displayname", namespaces=namespaces)
-            if elem.text not in excluded_content  # Exclude the parent directory
+            if elem.text is not None and elem.text not in excluded_content  # Exclude the parent directory
         ]
 
         return content
 
-    def dirs(self, *args) -> list[str]:
+    def dirs(self, *args: str) -> list[str]:
         """List sub-directories in a directory
 
         User can specify a path to the directory with additional arguments.
@@ -232,11 +232,11 @@ class CloudStorage:
         list[str]
             List of directories in a specified path
         """
-        content = self.content(*args)
+        content = self.content(self.joinurl(*args))
 
         return [item for item in content if is_dir(item)]
 
-    def create_dir(self, *args):
+    def create_dir(self, *args: str) -> None:
         if args:
             url = self.joinurl(*args)
             requests.request(
@@ -248,7 +248,7 @@ class CloudStorage:
                 auth=self.auth,
             )
 
-    def download_content(self, url, overwrite: bool = False):
+    def download_content(self, url: str, overwrite: bool = False) -> None:
         """Download content of a directory recursively."""
         # get all content (files and directories from url)
         content = self.content(url)
@@ -272,7 +272,7 @@ class CloudStorage:
                     logger.info(f"downloading file {path}")
                     self.download_file(file_url=item_url)
 
-    def upload_content(self, dir_path: Path, overwrite: bool = False):
+    def upload_content(self, dir_path: Path, overwrite: bool = False) -> None:
         """Upload content of a directory recursively."""
         # get all remote content
         content = self.content(self.joinurl(self.relative_path(dir_path).as_posix()))
@@ -294,21 +294,21 @@ class CloudStorage:
                 self.create_dir(remote_path)
                 self.upload_content(dir_path=dir_path.joinpath(path.stem), overwrite=overwrite)
 
-    def download_aangeleverd(self, authority: str, overwrite: bool = False):
+    def download_aangeleverd(self, authority: str, overwrite: bool = False) -> None:
         """Download all files in folder 'aangeleverd'"""
         self.validate_authority(authority)
 
         url = self.joinurl(authority, "aangeleverd")
         self.download_content(url, overwrite=overwrite)
 
-    def download_verwerkt(self, authority: str, overwrite: bool = False):
+    def download_verwerkt(self, authority: str, overwrite: bool = False) -> None:
         """Download all files in folder 'verwerkt'"""
         self.validate_authority(authority)
 
         url = self.joinurl(authority, "verwerkt")
         self.download_content(url, overwrite=overwrite)
 
-    def download_basisgegevens(self, bronnen: list[str] = [], overwrite=True):
+    def download_basisgegevens(self, bronnen: list[str] = [], overwrite: bool = True) -> None:
         """Download sources in the folder 'Basisgegevens'"""
         source_data = self.source_data
         if not bronnen:
@@ -321,23 +321,23 @@ class CloudStorage:
                 url = self.joinurl("Basisgegevens", bron)
                 self.download_content(url, overwrite=overwrite)
 
-    def upload_verwerkt(self, authority: str, overwrite: bool = False):
+    def upload_verwerkt(self, authority: str, overwrite: bool = False) -> None:
         """Upload all files in folder 'verwerkt'"""
         self.validate_authority(authority)
 
         dir_path = self.joinpath(authority, "verwerkt")
         self.upload_content(dir_path, overwrite=overwrite)
 
-    def download_all(self, authority, overwrite: bool = False):
+    def download_all(self, authority: str, overwrite: bool = False) -> None:
         """Download all files for authority."""
         url = self.joinurl(authority)
         self.download_content(url, overwrite=overwrite)
 
-    def uploaded_models(self, authority):
+    def uploaded_models(self, authority: str) -> list[ModelVersion]:
         """Get all model versions uploaded for an authority"""
 
         # function to strip version from a models dir
-        def strip_version(dir: str):
+        def strip_version(dir: str) -> ModelVersion | None:
             pattern = r"^(.*)_([\d]+)_([\d]+)_([\d]+)$"
             match = re.match(pattern, dir)
             if match is None:
@@ -356,10 +356,12 @@ class CloudStorage:
         uploaded_models = self.content(models_url)
 
         # get versions
-        versions = [strip_version(i) for i in uploaded_models if strip_version(i) is not None]
+        versions = [version for i in uploaded_models if (version := strip_version(i)) is not None]
         return versions
 
-    def upload_model(self, authority: str, model: str, include_results=False, include_plots=False):
+    def upload_model(
+        self, authority: str, model: str, include_results: bool = False, include_plots: bool = False
+    ) -> ModelVersion:
         """Upload a model to a water authority
 
         Parameters
@@ -385,7 +387,7 @@ class CloudStorage:
         model_dir = self.joinpath(authority, "modellen", model)
 
         if not model_dir.exists():
-            raise ValueError(f"""model at '{model_dir}' does not exis.""")
+            raise ValueError(f"""model at '{model_dir}' does not exist.""")
 
         # check previously uploaded models to get a revision number
         uploaded_models = self.uploaded_models(authority=authority)
@@ -438,7 +440,7 @@ class CloudStorage:
 
         return ModelVersion(model, today.year, today.month, revision)
 
-    def synchronize(self, filepaths: list[Path], check_on_remote: bool = True):
+    def synchronize(self, filepaths: list[Path], check_on_remote: bool = True) -> None:
         for path in filepaths:
             path = Path(path)
             url = self.joinurl(*path.relative_to(self.data_dir).parts)
