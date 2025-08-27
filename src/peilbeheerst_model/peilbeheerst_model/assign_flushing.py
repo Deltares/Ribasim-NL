@@ -118,11 +118,11 @@ class Flushing:
                 continue
 
             # Find all upstream paths from the matching basins, contained by
-            # the contour of the basin geometry and flushing geometry
+            # the contour of the basins geometry and flushing geometry
             upstream_paths = []
+            geom = shapely.union_all([flushing_row.geometry.buffer(0.1)] + basin_matches.geometry.buffer(0.1).tolist())
             for match in basin_matches.itertuples():
                 # Find the upstream path(s) for this basin
-                geom = shapely.union_all([flushing_row.geometry.buffer(0.1), match.geometry.buffer(0.1)])
                 upstream_paths += self._all_upstream_paths(model.graph, match.node_id, all_nodes, limit_geom=geom)
 
             # Make a DataFrame of the allowed nodes (node type) present in the
