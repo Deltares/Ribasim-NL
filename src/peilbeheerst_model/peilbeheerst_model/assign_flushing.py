@@ -4,7 +4,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
-from networkx import DiGraph
+from networkx import DiGraph, simple_cycles
 from ribasim import Model, Node
 from ribasim.geometry.link import NodeData
 from ribasim.nodes import flow_demand
@@ -264,12 +264,21 @@ class Flushing:
         pd.DataFrame
             DataFrame containing upstream nodes and their properties
         """
-        df_control_links = model.link.df[model.link.df.link_type == "control"]
-        df_control_links = df_control_links.set_index("to_node_id")
+        # Find unique nodes over all paths
+        uniq_nodes = np.unique(np.concatenate(paths))
+
+        # Ignore nodes in cycles
+        cycles = list(simple_cycles(model.graph.subgraph(uniq_nodes)))
+        if len(cycles) == 0:
+            ignore_nodes = np.array([])
+        else:
+            ignore_nodes = np.unique(np.concatenate(cycles))
+        uniq_nodes = uniq_nodes[~np.isin(uniq_nodes, ignore_nodes)]
 
         # Some areas have a lot of paths with duplicate nodes. Improve
         # performance by caching the response for unique nodes
-        uniq_nodes = np.unique(np.concatenate(paths))
+        df_control_links = model.link.df[model.link.df.link_type == "control"]
+        df_control_links = df_control_links.set_index("to_node_id")
         node_lookup = {}
         for nid in uniq_nodes:
             nid_type = all_nodes.node_type.at[nid]
