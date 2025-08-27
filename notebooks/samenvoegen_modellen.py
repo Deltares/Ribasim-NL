@@ -1,14 +1,17 @@
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 import ribasim
 
 from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.cloud import ModelVersion
 
 # %%
 cloud = CloudStorage()
-readme = f"""# Model voor het Landelijk Hydrologisch Model
+readme: str = f"""# Model voor het Landelijk Hydrologisch Model
 Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 Ribasim versie: {ribasim.__version__}
 Getest (u kunt simuleren): Nee
@@ -16,17 +19,17 @@ Getest (u kunt simuleren): Nee
 ** Samengevoegde modellen (beheerder: modelnaam (versie)**
 """
 
-download_latest_model = True
+download_latest_model: bool = True
 # Write each unique Regionaal Droogte Overleg area to a separate model
-write_rdo = True
+write_rdo: bool = False
 # Write one national model
-write_lhm = True
+write_lhm: bool = True
 # Write intermediate models for debugging or scaling tests
-write_intermediate_models = False
-upload_model = False
+write_intermediate_models: bool = False
+upload_model: bool = False
 
 # Remove any model from this list to skip it
-INCLUDE_MODELS = [
+INCLUDE_MODELS: list[str] = [
     "Rijkswaterstaat",
     "AmstelGooienVecht",
     "Delfland",
@@ -52,153 +55,136 @@ INCLUDE_MODELS = [
 ]
 
 # A spec consists of the following keys:
-# - authority: The authority responsible for the model, used to find it
-# - model: The name of the TOML model
-# - rdo: The RDO (Regionaal Droogte Overleg) the model belongs to
-# - find_toml: Whether to find one *.toml, or rely on the model key
-hws_spec = {
+# - authority: str; The authority responsible for the model
+#     e.g. "HollandsNoorderkwartier"
+# - model: str; The name of the model folder excluding the version
+#     e.g. "HollandsNoorderkwartier_parameterized"
+# - model_version: ModelVersion; Option
+#     e.g. ModelVersion("HollandsNoorderkwartier_parameterized", 2025, 7, 1)
+# - rdo: str; The RDO (Regionaal Droogte Overleg) the model belongs to
+#     e.g. "RDO-Noord"
+hws_spec: dict[str, Any] = {
     "authority": "Rijkswaterstaat",
     "model": "hws",
     "rdo": None,
-    "find_toml": False,
 }
 
-model_specs = [
+model_specs: list[dict[str, Any]] = [
+    {
+        # HollandsNoorderkwartier_parameterized_2025_8_0 has flushing but no dynamic forcing
+        "authority": "HollandsNoorderkwartier",
+        "model": "HollandsNoorderkwartier_parameterized",
+        "model_version": ModelVersion("HollandsNoorderkwartier_parameterized", 2025, 7, 1),
+        "rdo": "RDO-Noord",
+    },
     {
         "authority": "AmstelGooienVecht",
         "model": "AmstelGooienVecht_parameterized",
         "rdo": "RDO-West-Midden",
-        "find_toml": True,
     },
     {
         "authority": "Delfland",
         "model": "Delfland_parameterized",
         "rdo": "RDO-West-Midden",
-        "find_toml": True,
-    },
-    {
-        # HollandsNoorderkwartier_parameterized_2025_8_0 has flushing but no dynamic forcing
-        "authority": "HollandsNoorderkwartier",
-        "model": "HollandsNoorderkwartier_parameterized_2025_7_1",
-        "rdo": "RDO-Noord",
-        "find_toml": False,
     },
     {
         "authority": "Rijnland",
         "model": "Rijnland_parameterized",
         "rdo": "RDO-West-Midden",
-        "find_toml": True,
     },
     {
         "authority": "Rivierenland",
         "model": "Rivierenland_parameterized",
         "rdo": "RDO-Gelderland",
-        "find_toml": True,
     },
     {
         "authority": "Scheldestromen",
         "model": "Scheldestromen_parameterized",
         "rdo": "RDO-Zuid-West",
-        "find_toml": True,
     },
     {
         "authority": "SchielandendeKrimpenerwaard",
         "model": "SchielandendeKrimpenerwaard_parameterized",
         "rdo": "RDO-West-Midden",
-        "find_toml": True,
     },
     {
         "authority": "WetterskipFryslan",
         "model": "WetterskipFryslan_parameterized",
         "rdo": "RDO-Noord",
-        "find_toml": True,
     },
     {
         "authority": "Zuiderzeeland",
         "model": "Zuiderzeeland_parameterized",
         "rdo": "RDO-Noord",
-        "find_toml": True,
     },
     {
         "authority": "AaenMaas",
         "model": "AaenMaas",
         "rdo": "RDO-Zuid-Oost",
-        "find_toml": True,
     },
     {
         "authority": "BrabantseDelta",
         "model": "BrabantseDelta",
         "rdo": "RDO-Zuid-West",
-        "find_toml": True,
     },
     {
         "authority": "DeDommel",
         "model": "DeDommel",
         "rdo": "RDO-Zuid-Oost",
-        "find_toml": True,
     },
     {
         "authority": "DrentsOverijsselseDelta",
         "model": "DrentsOverijsselseDelta",
         "rdo": "RDO-Twentekanalen",
-        "find_toml": True,
     },
     {
         "authority": "HunzeenAas",
         "model": "HunzeenAas",
         "rdo": "RDO-Noord",
-        "find_toml": True,
     },
     {
         "authority": "Limburg",
         "model": "Limburg",
         "rdo": "RDO-Zuid-Oost",
-        "find_toml": True,
     },
     {
         "authority": "Noorderzijlvest",
         "model": "Noorderzijlvest",
         "rdo": "RDO-Noord",
-        "find_toml": True,
     },
     {
         "authority": "RijnenIJssel",
         "model": "RijnenIJssel",
         "rdo": "RDO-Gelderland",
-        "find_toml": True,
     },
     {
         "authority": "StichtseRijnlanden",
         "model": "StichtseRijnlanden",
         "rdo": "RDO-West-Midden",
-        "find_toml": True,
     },
     {
         "authority": "ValleienVeluwe",
         "model": "ValleienVeluwe",
         "rdo": "RDO-Gelderland",
-        "find_toml": True,
     },
     {
         "authority": "Vechtstromen",
         "model": "Vechtstromen",
         "rdo": "RDO-Twentekanalen",
-        "find_toml": True,
     },
     {
         "authority": "HollandseDelta",
         "model": "HollandseDelta_parameterized",
         "rdo": "RDO-West-Midden",
-        "find_toml": True,
     },
 ]
 
 
-def get_model_path(model, model_version):
+def get_model_path(model: dict[str, Any], model_version: ModelVersion) -> Path:
     return cloud.joinpath(model["authority"], "modellen", model_version.path_string)
 
 
-def get_latest_model_version(model_spec):
+def get_latest_model_version(model_spec: dict[str, Any]) -> ModelVersion:
     if "model_version" in model_spec.keys():
         return model_spec["model_version"]
     model_versions = [
@@ -211,7 +197,7 @@ def get_latest_model_version(model_spec):
     raise ValueError(f"No models with name {model_spec['model']} in the cloud")
 
 
-def ensure_model_downloaded(model_spec, model_version):
+def ensure_model_downloaded(model_spec: dict[str, Any], model_version: ModelVersion) -> Path:
     model_path = get_model_path(model_spec, model_version)
     if not model_path.exists():
         if download_latest_model:
@@ -235,19 +221,16 @@ def ensure_model_downloaded(model_spec, model_version):
     return model_path
 
 
-def find_toml_path(model_spec, model_path):
-    if model_spec["find_toml"]:
-        tomls = list(model_path.glob("*.toml"))
-        if len(tomls) == 0:
-            raise ValueError(f"No TOML file found at: {model_path}")
-        elif len(tomls) > 1:
-            raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
-        return tomls[0]
-    else:
-        return model_path.joinpath(f"{model_spec['model']}.toml")
+def find_toml_path(model_dir: Path) -> Path:
+    tomls = list(model_dir.glob("*.toml"))
+    if len(tomls) == 0:
+        raise ValueError(f"No TOML file found at: {model_dir}")
+    elif len(tomls) > 1:
+        raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
+    return tomls[0]
 
 
-def read_and_prepare_model(model_path):
+def read_and_prepare_model(model_path: Path) -> Model:
     model = Model.read(model_path)
     if not model.basin_outstate.filepath.exists():
         print("run model to update state")
@@ -259,19 +242,21 @@ def read_and_prepare_model(model_path):
     return model
 
 
-def add_meta_waterbeheerder(model, authority):
+def add_meta_waterbeheerder(model: Model, authority: str) -> None:
     for node_type in model.node_table().df.node_type.unique():
         ribasim_node = getattr(model, pascal_to_snake_case(node_type))
         ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = authority
 
 
-def process_model_spec(idx, model_spec, lhm_model, readme, write_toml=None):
+def process_model_spec(
+    idx: int, model_spec: dict[str, Any], lhm_model: Model | None, readme: str, write_toml: Path | None = None
+) -> tuple[Model | None, str]:
     if model_spec["authority"] not in INCLUDE_MODELS:
         return lhm_model, readme
     print(f"{model_spec['authority']} - {model_spec['model']}")
     model_version = get_latest_model_version(model_spec)
-    model_path = ensure_model_downloaded(model_spec, model_version)
-    model_path = find_toml_path(model_spec, model_path)
+    model_dir = ensure_model_downloaded(model_spec, model_version)
+    model_path = find_toml_path(model_dir)
     model = read_and_prepare_model(model_path)
     add_meta_waterbeheerder(model, model_spec["authority"])
     if model_spec["authority"] == "Rijkswaterstaat":
@@ -286,11 +271,13 @@ def process_model_spec(idx, model_spec, lhm_model, readme, write_toml=None):
         lhm_model = model
     else:
         lhm_model = concat([lhm_model, model], keep_original_index=True)
+        assert lhm_model is not None
         lhm_model._validate_model()
         version_str = getattr(model_version, "version", "unknown")
         readme += f"""
 **{model_spec["authority"]}**: {model_spec["model"]} ({version_str})"""
     if write_intermediate_models and write_toml is not None:
+        assert lhm_model is not None
         lhm_model.write(write_toml)
     return lhm_model, readme
 
