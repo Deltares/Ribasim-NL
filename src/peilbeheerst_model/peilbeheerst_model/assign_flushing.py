@@ -175,7 +175,7 @@ class Flushing:
 
                 # Create and link the flow_demand
                 metadata = {
-                    "meta_{self.flushing_id}": flush_id,
+                    f"meta_{self.flushing_id}": flush_id,
                     "meta_basin_nid": ",".join(map(str, group_basins)),
                 }
                 model = self.add_flushing_demand(model, target_node, demand, metadata=metadata)
