@@ -5,8 +5,8 @@ modified: 03-2019 by: Annelotte van der Linden
 modified: 02-2024 by: Steven Kelderman
 last modified: 08-2025 by: Jesse van Leeuwen
 
-Aanpassing van conversie van ER data naar KRW-V input 
-In 'Functions' en tussen code onder 'Overige emissies ER' en boven 'Export B6_loads' 
+Aanpassing van conversie van ER data naar KRW-V input
+In 'Functions' en tussen code onder 'Overige emissies ER' en boven 'Export B6_loads'
 is de code van 02-2024 onveranderd gebleven. Hieronder de toelichting van deze versie:
 
 
@@ -19,25 +19,27 @@ in dit script. 2. emissieoorzaken met gedetailleerde jaarlijkse totalen vanuit
 Deltares. Hierbij hoeft alleen de ruimtelijke verdeling van GAF90eenheden te worden
 geinterpoleerd. 3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steekjaren
 bekend en wordt er tussen deze jaren geinterpoleerd.
-
-
-
-
 """
-# -------------------------------conversion-------------------------------------
 
+# --------------------------------- Imports ------------------------------------
+
+# Standard library
+import os
 import sys
-print(sys.executable)
-
 from pathlib import Path
 
-import os
-
+# Third-party
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 # import openpyxl
-import seaborn as sns
+# Local
+from ER_GAF_fractions_func import compute_overlap_df
+
+# -------------------------------conversion-------------------------------------
+
+print(sys.executable)
 
 conv_yr2sec = 60 * 60 * 24 * 365.25
 conv_kg2g = 1000
@@ -188,13 +190,13 @@ schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur kome
 
 # # -------------------------------Directories------------------------------------
 
-inputdir = "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
+inputdir = (
+    "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
+)
 model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
 basin_node_path = model_path / "database.gpkg"
 
 # -------------------------------Import data------------------------------------
-
-from ER_GAF_fractions_func import compute_overlap_df
 
 koppeling = compute_overlap_df(
     gaf_path="P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp",
@@ -671,8 +673,7 @@ elif d["run"] == "prognose":
     pass
 
 
-
-# ---------------------------------Export B6_loads--------------------------------------- 
+# ---------------------------------Export B6_loads---------------------------------------
 
 # vanaf hier bevat DifusseEmissions_OE de juiste data voor export naar B6_loads.inc bestand
 
