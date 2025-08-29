@@ -34,8 +34,16 @@ def run(
 
     if ribasim_exe is not None:
         ribasim_exe = Path(ribasim_exe)
+        # Check if ribasim_exe exists, or if it's in PATH by running '--version'
         if not ribasim_exe.exists():
-            raise FileNotFoundError(f"{ribasim_exe} does not exist!")
+            try:
+                subprocess.run(
+                    [ribasim_exe.as_posix(), "--version"],
+                    capture_output=True,
+                    check=True,
+                )
+            except Exception:
+                raise FileNotFoundError(f"{ribasim_exe} does not exist and is not found in PATH!")
         args = [ribasim_exe.as_posix(), toml_path.absolute().as_posix()]
     else:
         args = ["ribasim", toml_path.absolute().as_posix()]

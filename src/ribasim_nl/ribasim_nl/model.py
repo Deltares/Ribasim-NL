@@ -90,6 +90,7 @@ class Model(Model):
     def __init__(self, **data):
         super().__init__(**data)
         self._parameterize = Parameterize(model=self)
+        self._set_arrow_input()
 
     def parameterize(self, **kwargs):
         self._parameterize.run(**kwargs)
@@ -1135,3 +1136,11 @@ class Model(Model):
             raise ValueError(
                 f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[['link_id', 'from_node_id', 'to_node_id']].to_dict(orient='index').values())}"
             )
+
+    def _set_arrow_input(self):
+        """Use "input" dir and avoid large databases by writing some tables to Arrow"""
+        self.input_dir = Path("input")
+        self.basin.time.set_filepath(Path("basin_time.arrow"))
+        # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
+        self.basin.model_fields_set.add("time")
+        self.model_fields_set.add("basin")

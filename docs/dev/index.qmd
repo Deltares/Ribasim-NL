@@ -52,47 +52,43 @@ If you encounter issues related to Pixi dependencies, it might help to clean you
 
 Ribasim-NL pins to a specific Ribasim version in the `pixi.toml`.
 Generally this will be the latest release.
-During development sometimes you may want to tet out the latest unreleased development version of Ribasim.
+During development sometimes you may want to test out the latest unreleased development version of Ribasim.
 
-To do so, first remove the Ribasim Conda dependency:
-
-```sh
-pixi remove ribasim
-```
-
-Then add it back via GitHub:
-
-```sh
-pixi add --git https://github.com/Deltares/Ribasim.git ribasim --branch main --pypi --subdir python/ribasim
-```
-
-This will add Ribasim like this in the `pixi.toml`:
+To do so, open `pixi.toml` in your editor.
+Remove `ribasim` from the `[dependencies]` section, and add it like below under the `[pypi-dependencies]`
 
 ```toml
 [pypi-dependencies]
 ribasim = { git = "https://github.com/Deltares/Ribasim.git", branch = "main", subdirectory = "python/ribasim" }
 ```
 
-You can change the branch name if needed, or use a specific commit with for example `--rev 0075d4a`.
+You can change the branch name if needed, or use a specific commit with for example `rev = "0075d4a"`.
 
 If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub.
 This can be done using this syntax:
-
-```sh
-pixi add --pypi 'ribasim @ file://absolute/path/to/Ribasim/python/ribasim' --editable
-```
-
-This will add Ribasim like this in the `pixi.toml`:
 
 ```toml
 [pypi-dependencies]
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 ```
 
-The Pixi CLI only accepts absolute paths, but relative paths in `pixi.toml` will also work.
-The last example will work if you clone Ribasim next to Ribasim-NL.
+This path will work if you clone Ribasim next to Ribasim-NL.
 
-For Ribasim developer documentation see https://ribasim.org/dev/.
+After you are done modifying `pixi.toml`, you can run `pixi install` to ensure the PyPI dependencies are installed.
+
+We recommend modifying the TOML, but using the Pixi CLI is also possible:
+
+```sh
+pixi remove ribasim
+# and
+pixi add --git https://github.com/Deltares/Ribasim.git ribasim --branch main --pypi --subdir python/ribasim
+# or
+pixi add --pypi 'ribasim @ file://absolute/path/to/Ribasim/python/ribasim' --editable
+```
+
+The Pixi CLI only accepts absolute paths, but relative paths in `pixi.toml` will also work.
+
+For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/dev/).
 
 ## Environment variables {#sec-environment-variables}
 
