@@ -21,25 +21,13 @@ geinterpoleerd. 3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steek
 bekend en wordt er tussen deze jaren geinterpoleerd.
 """
 
-# --------------------------------- Imports ------------------------------------
-
-# Standard library
 import os
-import sys
 from pathlib import Path
 
-# Third-party
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-
-# import openpyxl
-# Local
 from ER_GAF_fractions_func import compute_overlap_df
-
-# -------------------------------conversion-------------------------------------
-
-print(sys.executable)
 
 conv_yr2sec = 60 * 60 * 24 * 365.25
 conv_kg2g = 1000
