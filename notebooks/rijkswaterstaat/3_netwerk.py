@@ -14,7 +14,6 @@ print("read basins")
 basins_gdf = gpd.read_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg"),
     layer="ribasim_basins",
-    engine="pyogrio",
 )
 
 print("read osm fairway")
@@ -25,33 +24,28 @@ fairway_osm_gdf = gpd.read_file(
         "Nederland_Belgie",
         "waterway_fairway.gpkg",
     ),
-    engine="pyogrio",
 )
 
 print("read osm river")
 river_osm_gdf = gpd.read_file(
     cloud.joinpath("basisgegevens", "OSM", "Nederland_Belgie", "waterway_river.gpkg"),
-    engine="pyogrio",
 )
 
 print("read osm canals")
 canal_osm_gdf = gpd.read_file(
     cloud.joinpath("basisgegevens", "OSM", "Nederland_Belgie", "waterway_canal.gpkg"),
-    engine="pyogrio",
 )
 
 print("read extra lijnen")
 extra_lines_gdf = gpd.read_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "model_user_data.gpkg"),
     layer="extra_netwerk_lijnen_2",
-    engine="pyogrio",
 )
 
 print("read verwijder lijnen")
 remove_lines_gdf = gpd.read_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "model_user_data.gpkg"),
     layer="verwijder_lijn_2",
-    engine="pyogrio",
 )
 
 
@@ -173,7 +167,6 @@ lines.rename(columns={"name": "naam"}, inplace=True)
 lines.to_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg"),
     layer="hydroobject",
-    engine="pyogrio",
 )
 
 # %%

@@ -148,21 +148,18 @@ nodes_gdf = network.nodes
 
 boundary_gdf = gpd.read_file(
     model_user_data_gpkg,
-    engine="pyogrio",
     layer="boundary",
     fid_as_index=True,
 )
 
 verdeelpunten_gdf = gpd.read_file(
     model_user_data_gpkg,
-    engine="pyogrio",
     layer="verdeelpunten",
     fid_as_index=True,
 ).set_index("verdeelpunt")
 
 verdeelsleutel_gdf = gpd.read_file(
     model_user_data_gpkg,
-    engine="pyogrio",
     layer="verdeelsleutels",
     fid_as_index=True,
 ).set_index("verdeelsleutel")
@@ -170,7 +167,6 @@ verdeelsleutel_gdf = gpd.read_file(
 basin_poly_gdf = gpd.read_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg"),
     layer="ribasim_basins",
-    engine="pyogrio",
     fid_as_index=True,
 )
 
@@ -192,7 +188,6 @@ kwks_df.loc[:, "code"] = kwks_df["code"].astype(str)
 kwks_gdf = gpd.read_file(
     cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg"),
     layer="kunstwerken",
-    engine="pyogrio",
     fid_as_index=True,
 )
 

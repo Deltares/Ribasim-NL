@@ -80,7 +80,7 @@ ADD_PRIMAIRE_KERINGEN = ["KD.32.gm.015", "KD.44.gm.001"]
 def photo_url(code):
     """Add photo url from Excel"""
     if code in kwk_media.index:
-        return kwk_media.at[code, "photo_url"]  # noqa: PD008
+        return kwk_media.at[code, "photo_url"]
     else:
         return r"https://www.hydrobase.nl/static/icons/photo_placeholder.png"
 
@@ -271,6 +271,6 @@ kunstwerken_gdf.loc[:, ["photo_url"]] = kunstwerken_gdf["code"].apply(photo_url)
 
 # Save results to GeoPackage files
 output_file = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
-kunstwerken_gdf.to_file(output_file, layer="kunstwerken", driver="GPKG", engine="pyogrio")
+kunstwerken_gdf.to_file(output_file, layer="kunstwerken", driver="GPKG")
 
 # %%
