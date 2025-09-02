@@ -7,7 +7,7 @@ import shapely
 from networkx import DiGraph, simple_cycles
 from ribasim import Model, Node
 from ribasim.geometry.link import NodeData
-from ribasim.nodes import flow_demand
+from ribasim.nodes import flow_demand, level_demand
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from ribasim_nl import CloudStorage
@@ -117,36 +117,31 @@ class Flushing:
                 # No (sufficiently) matching basins, continue
                 continue
 
-            # Find all upstream paths from the matching basins, contained by
+            # Find all downstream paths from the matching basins, contained by
             # the contour of the basins geometry and flushing geometry
-            upstream_paths = []
+            downstream_paths = []
             geom = shapely.union_all([flushing_row.geometry.buffer(0.1)] + basin_matches.geometry.buffer(0.1).tolist())
             for match in basin_matches.itertuples():
-                # Find the upstream path(s) for this basin
-                upstream_paths += self._all_upstream_paths(model.graph, match.node_id, all_nodes, limit_geom=geom)
+                # Find the downstream path(s) for this basin
+                downstream_paths += self._all_downstream_paths(model.graph, match.node_id, all_nodes, limit_geom=geom)
 
             # Make a DataFrame of the allowed nodes (node type) present in the
-            # paths found.
-            dfu = self._find_upstream_nodes(model, upstream_paths, all_nodes, df_outlet_static, df_pump_static)
+            # paths found. For downstream nodes, we want all pumps that are
+            # designated as 'afvoer'.
+            dfd = self._find_downstream_nodes(model, downstream_paths, all_nodes, df_outlet_static, df_pump_static)
+            dfd = dfd[dfd.afvoer].copy()
 
-            # No allowed upstream nodes found at all, log warning and continue
-            if len(dfu) == 0:
+            # No allowed downstream nodes found at all, log warning and continue
+            if len(dfd) == 0:
                 basin_nids = basin_matches.node_id.tolist()
                 print(f"WARNING: Polygon {flush_id=} with basin node_id's={basin_nids} has no valid upstream nodes")
                 continue
 
-            # Select the least amount of required flushing upstream nodes
-            dfu = self._find_upstream_candidates(dfu)
-
-            # The result should contain at least one node
-            if not dfu.optimal_choice.any():
-                print(f"WARNING: Polygon {flush_id=} has upstream nodes, but no valid optimal choice")
-                continue
-
             # Determine the contribution of each matching basin
-            basins_cov = dfu[dfu.optimal_choice].basin.unique().tolist()
+            basins_cov = dfd.basin.unique().tolist()
             df_flush = basin_matches[basin_matches.node_id.isin(basins_cov)].copy()
             df_flush["rel_contrib"] = df_flush.area_match / df_flush.area_match.sum()
+            df_flush = df_flush.set_index("node_id")
 
             # Check if all basins are connected
             basins_mis = basin_matches.node_id[~basin_matches.node_id.isin(basins_cov)].tolist()
@@ -159,19 +154,38 @@ class Flushing:
 
             if self.debug_output:
                 debug_str = []
-                for nid, group in dfu[dfu.optimal_choice].groupby("node_id"):
+                for nid, group in dfd.groupby("node_id"):
                     debug_str.append(f"node {nid} connects basins {group.basin.tolist()}")
                 print(f"Polygon {flush_id=}, {', '.join(debug_str)}")
 
-            for (target_nid, target_type), group in dfu[dfu.optimal_choice].groupby(["node_id", "node_type"]):
-                # Determine the flushing value and convert to m3/s
-                group_basins = group.basin.unique().tolist()
-                contrib = df_flush[df_flush.node_id.isin(group_basins)].rel_contrib.sum()
-                demand = contrib * flushing_row.geometry.area * flush_val
+            # Determine flow demand. Each basin can have one or more multiple
+            # downstream nodes. In case of multiple downstream nodes, divide
+            # the demand of the basin evenly over all connected nodes.
+            dfd["flow_demand"] = 0.0
+            for basin_nid, group in dfd.groupby("basin"):
+                demand = df_flush.at[basin_nid, "rel_contrib"] * flushing_row.geometry.area * flush_val
                 demand = demand * self.convert_to_m3s
+                dfd.loc[group.index, "flow_demand"] += demand / len(group.path_id.unique())
+
+                # add level demands to each basin to indicate streefpeil
+                demand = float(model.basin.area.df[model.basin.area.df.node_id == basin_nid].meta_streefpeil.iat[0])
+                model = self.add_level_demand(model, model.basin[basin_nid], demand)
+
+            # Add flow demand as ribasim nodes to the selected nodes. In case
+            # multiple basins are connected to the same node, sum individual
+            # demands.
+            for (target_nid, target_type), group in dfd.groupby(["node_id", "node_type"]):
+                # Determine the connected basins and the flushing demand
+                group_basins = group.basin.unique().tolist()
+                demand = group.flow_demand.sum()
+
+                # Dont add a flow demand if the demand is zero
+                if demand == 0:
+                    continue
 
                 # Select the target node
-                target_node = getattr(model, pascal_to_snake_case(target_type))[target_nid]
+                subpart = getattr(model, pascal_to_snake_case(target_type))
+                target_node = subpart[target_nid]
 
                 # Create and link the flow_demand
                 metadata = {
@@ -179,6 +193,10 @@ class Flushing:
                     "meta_basin_nid": ",".join(map(str, group_basins)),
                 }
                 model = self.add_flushing_demand(model, target_node, demand, metadata=metadata)
+
+                # Release min_upstream_level
+                if target_type == "Pump":
+                    subpart.static.df.loc[subpart.static.df.node_id == target_nid, "min_upstream_level"] = pd.NA
 
         return model
 
@@ -238,7 +256,52 @@ class Flushing:
 
         return model
 
-    def _find_upstream_nodes(
+    def add_level_demand(
+        self,
+        model: ModelNL | Model,
+        target_node: NodeData,
+        demand: float,
+    ):
+        """Add a level demand node to the model and connect it to a target node.
+
+        Parameters
+        ----------
+        model : ModelNL | Model
+            The model to add the level demand to
+        target_node : NodeData
+            The node to connect the level demand to
+        demand : float
+            The constant demand value to apply at all timesteps
+
+        Returns
+        -------
+        None
+
+        """
+        uniq_times = model.basin.time.df.time.unique()
+        new_level_demand = model.level_demand.add(
+            Node(
+                model.node_table().df.index.max() + 1,
+                Point(
+                    target_node.geometry.x + self.flushing_geom_offset,
+                    target_node.geometry.y,
+                ),
+            ),
+            [
+                # @TODO hardcoded demand_priority=2 for now
+                level_demand.Time(
+                    time=uniq_times,
+                    demand_priority=2,
+                    min_level=len(uniq_times) * [demand],
+                    max_level=len(uniq_times) * [demand],
+                ),
+            ],
+        )
+        model.link.add(new_level_demand, target_node)
+
+        return model
+
+    def _find_downstream_nodes(
         self,
         model: ModelNL | Model,
         paths: list[list[int]],
@@ -282,7 +345,7 @@ class Flushing:
         node_lookup = {}
         for nid in uniq_nodes:
             nid_type = all_nodes.node_type.at[nid]
-            if nid_type in ["Outlet", "Pump"]:
+            if nid_type in ["Pump"]:  # ignore outlet for now
                 if nid in df_control_links.index:
                     # This node has incoming control links, check if a
                     # FlowDemand node is present already
@@ -297,19 +360,19 @@ class Flushing:
                 if not allowed:
                     continue
 
-                if all_nodes.node_type.at[nid] == "Outlet":
-                    bool_aanvoer = bool(df_outlet_static.at[nid, "meta_aanvoer"])
-                elif all_nodes.node_type.at[nid] == "Pump":
-                    bool_aanvoer = bool(df_pump_static.at[nid, "meta_func_aanvoer"])
-                node_lookup[nid] = (nid_type, bool_aanvoer)
+                # Only pumps for now
+                if all_nodes.node_type.at[nid] == "Pump":
+                    bool_afvoer = bool(df_pump_static.at[nid, "meta_func_afvoer"])
+                    bool_afvoer = bool_afvoer or bool(df_pump_static.at[nid, "meta_func_circulair"])
+                node_lookup[nid] = (nid_type, bool_afvoer)
 
-        dfu = {
+        dfd = {
             "basin": [],
             "path_id": [],
-            "upstream_index": [],
+            "downstream_index": [],
             "node_id": [],
             "node_type": [],
-            "aanvoer": [],
+            "afvoer": [],
         }
         is_added = {}
         for pid, path in enumerate(paths):
@@ -321,130 +384,26 @@ class Flushing:
                 if nid not in node_lookup or (basin_nid, nid) in is_added:
                     continue
 
-                nid_type, bool_aanvoer = node_lookup[nid]
-                dfu["basin"].append(basin_nid)
-                dfu["path_id"].append(pid)
-                dfu["upstream_index"].append(i)
-                dfu["node_id"].append(nid)
-                dfu["node_type"].append(nid_type)
-                dfu["aanvoer"].append(bool_aanvoer)
+                nid_type, bool_afvoer = node_lookup[nid]
+                dfd["basin"].append(basin_nid)
+                dfd["path_id"].append(pid)
+                dfd["downstream_index"].append(i)
+                dfd["node_id"].append(nid)
+                dfd["node_type"].append(nid_type)
+                dfd["afvoer"].append(bool_afvoer)
                 is_added[(basin_nid, nid)] = True
-        dfu = pd.DataFrame(dfu)
+        dfd = pd.DataFrame(dfd)
 
-        return dfu
+        return dfd
 
-    def _find_upstream_candidates(self, dfu: pd.DataFrame) -> pd.DataFrame:
-        """Find the best upstream candidates for flushing.
-
-        Parameters
-        ----------
-        dfu : pd.DataFrame
-            DataFrame with upstream nodes and their properties
-
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame with upstream nodes and their properties
-        """
-        dfu["optimal_choice"] = False
-        all_basins = set(dfu.basin.tolist())
-        covered_basins = set()
-        best_sources = []
-        for df in [dfu[dfu.aanvoer], dfu]:
-            # Find a minimal coverage set
-            coversets = self._exact_cover_minimum(df)
-            if len(coversets) == 1 and len(coversets[0]) == 0:
-                # No optimal set
-                continue
-            elif len(coversets) == 1:
-                sources = coversets[0]
-            elif len(coversets) > 1:
-                # Multiple similar choices, chose the most upstream one
-                # based on the sum of upstream indices
-                weights = []
-                for coverset in coversets:
-                    weights.append(df[df.node_id.isin(coverset)].upstream_index.sum())
-                sources = coversets[np.argmax(weights)]
-
-            # Update the covered basins if this iteration provides better coverage
-            basins = set(df[df.node_id.isin(sources)].basin.tolist())
-            if len(basins) > len(covered_basins):
-                covered_basins = basins.copy()
-                best_sources = sources.copy()
-
-            # Stop in case the coverage is complete
-            if covered_basins == all_basins:
-                break
-
-        # Update the optimal choice
-        if len(best_sources) > 0:
-            dfu.loc[dfu.node_id.isin(best_sources), "optimal_choice"] = True
-
-        return dfu
-
-    def _exact_cover_minimum(self, df: pd.DataFrame) -> list[list[int]]:
-        """Find approximate minimal set of nodes that cover basins using a greedy approach.
-
-        Uses a modified greedy algorithm optimized for large datasets.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            DataFrame with node_id, basin and upstream_index columns
-
-        Returns
-        -------
-        list[list[int]]
-            List containing single solution as list of node IDs
-        """
-        # Pre-compute node information for efficient access
-        node_info = {}
-        for node_id, group in df.groupby("node_id"):
-            node_info[node_id] = {"basins": set(group.basin), "upstream_index": group.upstream_index.max()}
-
-        # Track basins that still need coverage
-        all_basins = set(df.basin.unique())
-        uncovered = all_basins.copy()
-        solution = []
-        available_nodes = set(node_info.keys())
-
-        while uncovered and available_nodes:
-            # Score each node based on new coverage and position
-            scores = []
-            for node_id in available_nodes:
-                info = node_info[node_id]
-                new_coverage = info["basins"] & uncovered
-                if new_coverage:  # Only consider nodes that add coverage
-                    scores.append(
-                        (
-                            len(new_coverage),  # Primary: number of new basins covered
-                            info["upstream_index"],  # Secondary: upstream position
-                            node_id,  # For stable sorting
-                        )
-                    )
-
-            # If no nodes provide new coverage, stop
-            if not scores:
-                break
-
-            # Select node with best coverage and upstream position
-            best_coverage, best_upstream, best_node = max(scores)
-
-            # Update tracking
-            uncovered -= node_info[best_node]["basins"]
-            solution.append(best_node)
-            available_nodes.remove(best_node)
-
-        return [sorted(solution)] if solution else [[]]
-
-    def _all_upstream_paths(
+    def _all_downstream_paths(
         self,
         graph: DiGraph,
         start_node: int,
         all_nodes: gpd.GeoDataFrame,
         limit_geom: MultiPolygon | Polygon | None = None,
     ) -> list[list[int]]:
-        """Find all upstream paths from a starting node.
+        """Find all downstream paths from a starting node.
 
         Parameters
         ----------
@@ -474,10 +433,10 @@ class Flushing:
 
         # Pre-build adjacency sets for faster lookups during DFS
         # Performs a set intersection operation with valid_nodes
-        predecessors = {node: set(graph.predecessors(node)) & valid_nodes for node in valid_nodes}
+        successors = {node: set(graph.successors(node)) & valid_nodes for node in valid_nodes}
 
         # Recursively fill the paths with a depth-first search
-        self._dfs(graph, [start_node], end_paths, valid_nodes, predecessors)
+        self._dfs(graph, [start_node], end_paths, valid_nodes, successors)
 
         return end_paths
 
@@ -487,7 +446,7 @@ class Flushing:
         path: list[int],
         end_paths: list[list[int]],
         valid_nodes: set[int],
-        predecessors: dict[int, set[int]],
+        successors: dict[int, set[int]],
     ):
         """Perform depth-first search to find upstream paths.
 
@@ -501,22 +460,22 @@ class Flushing:
             List to store complete paths
         valid_nodes : set[int]
             Set of node IDs that are valid for the search
-        predecessors : dict[int, set[int]]
+        successors : dict[int, set[int]]
             Pre-computed adjacency sets for faster lookups
         """
         last_node = path[-1]
 
-        # Get predecessors that are not already in the path and are in valid_nodes
-        unvisited_predecessors = predecessors[last_node] - set(path)
+        # Get successors that are not already in the path and are in valid_nodes
+        unvisited_predecessors = successors[last_node] - set(path)
 
         # Stop looking in case of a dead end or a cycle
         if not unvisited_predecessors:
             end_paths.append(path)
             return
 
-        # Recurse in predecessors
-        for predecessor in sorted(unvisited_predecessors):
-            self._dfs(graph, path + [predecessor], end_paths, valid_nodes, predecessors)
+        # Recurse in successors
+        for successor in sorted(unvisited_predecessors):
+            self._dfs(graph, path + [successor], end_paths, valid_nodes, successors)
 
     def _dissolve_flushing_data(self, df_flushing: pd.DataFrame) -> pd.DataFrame:
         # Round flushing_col to nearest integer value
