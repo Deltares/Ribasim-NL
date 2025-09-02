@@ -76,7 +76,7 @@ def ReadOutputFile(model_folder, filetype) -> pd.DataFrame:
         return data
 
 
-def LaadKoppeltabel(loc_koppeltabel):
+def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = None):
     """The function `LaadKoppeltabel` reads an Excel file, parses lists in the 'link_id' column, and converts the 'geometry' column to a geometry object.
 
     Parameters
@@ -84,6 +84,8 @@ def LaadKoppeltabel(loc_koppeltabel):
     loc_koppeltabel
         The `loc_koppeltabel` parameter in the `LaadKoppeltabel` function is expected to be a file location
     pointing to an Excel file that contains data for a koppeltabel (linking table).
+    apply_for_water_authority
+        Optional specification to read koppeltabel for a specific water authority. Defaults to None
 
     Returns
     -------
@@ -93,8 +95,14 @@ def LaadKoppeltabel(loc_koppeltabel):
     """
     koppeltabel = pd.read_excel(loc_koppeltabel)
 
+    if apply_for_water_authority is not None:
+        koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
+        koppel_link_id_column = "meta_edge_id_waterbeheerder"
+    else:
+        koppel_link_id_column = "new_link_id"
+
     # Convert the lists in link_id to lists if possible
-    koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList)
+    koppeltabel["link_id_parsed"] = koppeltabel[koppel_link_id_column].apply(ParseList)
 
     # Parse the geometry
     koppeltabel["geometry_parsed"] = koppeltabel["geometry"].apply(lambda x: wkt.loads(x))
@@ -110,7 +118,9 @@ def get_unique(items):
     return seen
 
 
-def CompareOutputMeasurements(loc_koppeltabel, meas_folder, model_folder, filetype="flow") -> None:
+def CompareOutputMeasurements(
+    loc_koppeltabel, meas_folder, model_folder, filetype="flow", apply_for_water_authority: str | None = None
+) -> None:
     """Compares model output measurements with actual measurements, calculates statistics, and saves the results in a geopackage per waterboard as well as producing the necessary figures.
 
     Parameters
@@ -124,13 +134,15 @@ def CompareOutputMeasurements(loc_koppeltabel, meas_folder, model_folder, filety
     filetype
         The `filetype` parameter specifies the type of output file to be read from the `model_folder`.
         By default, it is set to `'flow'`, but you can change it to
+    apply_for_water_authority
+        Optional specification to read koppeltabel for a specific water authority. Defaults to None
 
     Returns
     -------
     The function returns nothing, but saves the results in .png figures and a geopackage
 
     """
-    koppeltabel = LaadKoppeltabel(loc_koppeltabel)
+    koppeltabel = LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority=apply_for_water_authority)
     data = ReadOutputFile(model_folder, filetype)
 
     measurements = LoadMeasurements(meas_folder)
@@ -438,9 +450,8 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
         bbox={"facecolor": "white", "edgecolor": "darkgrey", "boxstyle": "round"},
     )
     # Save the figure in the right location
-    fig_name_clean = fig_name.replace(" ", "_")
+    fig_name_clean = fig_name.replace(" ", "_").replace("/", "_")  # remove / as it will raise FileNotFoundError
     fig_path = os.path.join(output_folder, bron_meting, fig_name_clean + ".png")
-    fig_path = fig_path.replace("/", "_")  # remove / as it will raise FileNotFoundError
     fig.savefig(fig_path, bbox_inches="tight", dpi=200)
     plt.close()
 
