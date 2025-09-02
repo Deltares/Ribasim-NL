@@ -1,5 +1,4 @@
 # %%
-
 import ast
 import os
 
@@ -29,6 +28,7 @@ loc_ref_koppeltabel = cloud.joinpath(base, "Koppeltabel_uitgangspunt.xlsx")
 # paths:
 #!TODO: Nog niet mogelijk om lhm-coupled model op GC in te lezen
 # met huidige ribasim dev versie
+
 rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
 latest_lhm_version = sorted(
     [i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", "")
@@ -67,7 +67,7 @@ versie = 1
 wegschrijven_nieuwe_tabel = cloud.joinpath(base, f"Transformed_koppeltabel_versie{versie}.xlsx")
 
 # synchronize paths
-cloud.synchronize([loc_ref_koppeltabel, model_folder])
+cloud.synchronize([base, model_folder])
 
 #!TODO: weghalen als lhm-coupled met huidige ribasim versie kan worden ingelezen
 model_folder_temporary = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_werkend\lhm_coupled"
@@ -390,9 +390,12 @@ koppeling_spatial = spatial_match(
     link_columns=link_columns,
     apply_mapping=False,
     write_buffer_shp=True,
-    output_buffer_shapefile=cloud.joinpath(base, "suggestie_automatische_koppeling", "Buffers_match_metingen.shp"),
+    output_buffer_shapefile=cloud.joinpath(
+        base, "suggestie_automatische_koppeling", f"Buffers_match_metingen_v{versie}.gpkg"
+    ),
     # output_buffer_shapefile=os.path.join(loc_model, "Koppeltabellen updaten", "suggestie_automatische_koppeling", "Buffers_match_metingen.shp")
     #!!TODO: uploaden naar de cloud op de juiste manier
+    cloud_sync=cloud,
     filter_waterschappen=filter_waterschappen,
     lijst_filter_waterschappen=waterschapsnaam,
 )
@@ -403,17 +406,17 @@ koppeling_spatial = spatial_match(
 
 # Wegschrijven van de koppeltabel die automatisch gemaakt wordt op basis van de geometry van de meetpunten
 
-koppeling_spatial.to_excel(
-    cloud.joinpath(base, "suggestie_automatische_koppeling", "Automatische_spatialmatch_test.xlsx"), index=False
-)
+path_excel = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.xlsx")
+
+koppeling_spatial.to_excel(path_excel, index=False)
+cloud.upload_file(path_excel)
+
 
 koppeling_spatial.set_crs(epsg=28992, inplace=True)
 
-koppeling_spatial.to_file(
-    cloud.joinpath(base, "suggestie_automatische_koppeling", "Automatische_spatialmatch_test.gpkg"),
-    driver="GPKG",
-)
-
+path_gpkg = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.gpkg")
+koppeling_spatial.to_file(path_gpkg, driver="GPKG")
+cloud.upload_file(path_gpkg)
 
 # %%
 # ---------------------------------------------
@@ -725,6 +728,9 @@ for index, row in koppeltabel.iterrows():
 # koppeltabel.to_csv(wegschrijven_nieuwe_tabel, index=False)
 koppeltabel.to_excel(wegschrijven_nieuwe_tabel, index=False)
 
+cloud.upload_file(wegschrijven_nieuwe_tabel)
+
+
 gdf = gpd.GeoDataFrame(koppeltabel, geometry="geometry")
 
 # Set CRS (e.g., EPSG:28992 for RD New, modify as needed)
@@ -734,5 +740,6 @@ output_path = os.path.splitext(wegschrijven_nieuwe_tabel)[0] + ".gpkg"
 
 gdf.to_file(output_path, layer="Koppeling_model_meting", driver="GPKG")
 
+cloud.upload_file(output_path)
 
 # %%

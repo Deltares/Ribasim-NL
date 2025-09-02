@@ -435,6 +435,7 @@ def spatial_match(
     waterschap_mapping=None,
     write_buffer_shp=False,
     output_buffer_shapefile=None,
+    cloud_sync=None,
     filter_waterschappen=False,
     lijst_filter_waterschappen=None,
 ):
@@ -639,9 +640,14 @@ def spatial_match(
     shape_koppeling = shape_koppeling.rename(columns=rename_columns)
 
     # Save matched buffers as a shapefile
-    if matched_buffers and write_buffer_shp and output_buffer_shapefile:
+    if matched_buffers and write_buffer_shp and output_buffer_shapefile and cloud_sync:
         buffer_gdf = gpd.GeoDataFrame(matched_buffers, geometry="geometry", crs=shape_koppeling.crs)
         os.makedirs(os.path.dirname(output_buffer_shapefile), exist_ok=True)
         buffer_gdf.to_file(output_buffer_shapefile)
+        buffer_gdf.to_file(output_buffer_shapefile)
+        cloud_sync.upload_file(output_buffer_shapefile)
 
     return shape_koppeling
+
+
+# %%

@@ -27,6 +27,7 @@ def update_koppeltabel_with_feedback(
     feedback_koppeltabel_path,
     lhm_model,
     output_path,
+    cloud_sync=None,
     keep_all_columns=True,
     columns_to_keep=None,
     remove_meetreeksc=None,
@@ -143,7 +144,8 @@ def update_koppeltabel_with_feedback(
     else:
         new_filename = f"{base_without_feedback}_Feedback_Verwerkt{ext}"
 
-    opslaan_path = os.path.join(output_path, new_filename)
+    if cloud_sync:
+        opslaan_path = cloud_sync.joinpath(output_path, new_filename)
 
     def update_specifiek_column(input_koppeltabel: pd.DataFrame, feedback_koppeltabel: pd.DataFrame) -> pd.DataFrame:
         # Check if "Specifiek" is in feedback
@@ -181,5 +183,8 @@ def update_koppeltabel_with_feedback(
 
     # Save the updated koppeltabel
     input_koppeltabel.to_excel(opslaan_path, index=False)
+
+    if cloud_sync:
+        cloud_sync.upload_file(opslaan_path)
 
     return input_koppeltabel

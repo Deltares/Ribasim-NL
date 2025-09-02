@@ -15,7 +15,6 @@ cloud = CloudStorage()
 
 locatie_koppeltabellen = cloud.joinpath("Landelijk", "resultaatvergelijking", "koppeltabel")
 
-
 # paths:
 
 #!TODO: Nog niet mogelijk om lhm-coupled model op GC in te lezen
@@ -76,6 +75,7 @@ updated_koppeltabel = update_koppeltabel_with_feedback(
     feedback_koppeltabel_path,
     lhm_model,
     output_path,
+    cloud_sync=cloud,
     keep_all_columns=False,
     columns_to_keep=columns_to_keep,
     remove_meetreeksc=None,
