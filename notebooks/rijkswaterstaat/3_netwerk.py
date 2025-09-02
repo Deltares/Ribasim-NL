@@ -8,44 +8,43 @@ from ribasim_nl import CloudStorage, Network
 
 cloud = CloudStorage()
 
+# input on cloud
+stream_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_stream_the_netherlands.gpkg")
+river_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_river_the_netherlands.gpkg")
+canal_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_canals_the_netherlands.gpkg")
+model_user_data_path = cloud.joinpath("Rijkswaterstaat/verwerkt/model_user_data.gpkg")
+
+cloud.synchronize(filepaths=[stream_osm_path, river_osm_path, canal_osm_path, model_user_data_path])
+
+# input from previous step
+basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
+
+# output
+hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
+network_path = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
+
+
 # %% read files
 
 print("read basins")
-basins_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg"),
-    layer="ribasim_basins",
-)
+basins_gdf = gpd.read_file(basins_path, layer="ribasim_basins")
 
-print("read osm fairway")
-fairway_osm_gdf = gpd.read_file(
-    cloud.joinpath(
-        "basisgegevens",
-        "OSM",
-        "Nederland_Belgie",
-        "waterway_fairway.gpkg",
-    ),
-)
+print("read osm stream")
+stream_osm_gdf = gpd.read_file(stream_osm_path)
 
 print("read osm river")
-river_osm_gdf = gpd.read_file(
-    cloud.joinpath("basisgegevens", "OSM", "Nederland_Belgie", "waterway_river.gpkg"),
-)
+river_osm_gdf = gpd.read_file(river_osm_path)
 
 print("read osm canals")
-canal_osm_gdf = gpd.read_file(
-    cloud.joinpath("basisgegevens", "OSM", "Nederland_Belgie", "waterway_canal.gpkg"),
-)
+canal_osm_gdf = gpd.read_file(canal_osm_path)
 
 print("read extra lijnen")
-extra_lines_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "model_user_data.gpkg"),
-    layer="extra_netwerk_lijnen_2",
-)
+extra_lines_gdf = gpd.read_file(model_user_data_path, layer="extra_netwerk_lijnen")
 
 print("read verwijder lijnen")
 remove_lines_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "model_user_data.gpkg"),
-    layer="verwijder_lijn_2",
+    model_user_data_path,
+    layer="krw_split_lijnen",
 )
 
 
@@ -67,7 +66,7 @@ network_lines_gdf = pd.concat(
     [
         river_osm_gdf,
         canal_osm_gdf,
-        fairway_osm_gdf,
+        stream_osm_gdf,
     ],
     ignore_index=True,
 )
@@ -164,15 +163,12 @@ network = Network(network_lines_gdf, tolerance=1, id_col="id", name_col="name")
 print("write to hydamo")
 lines = network.links
 lines.rename(columns={"name": "naam"}, inplace=True)
-lines.to_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg"),
-    layer="hydroobject",
-)
+lines.to_file(hydamo_path, layer="hydroobject")
 
 # %%
 print("write network")
 gdf_subdivided = subdivide_geodataframe(network_lines_gdf, max_length=450)
 network = Network(gdf_subdivided, tolerance=1, id_col="id", name_col="name")
-network.to_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+network.to_file(network_path)
 
 # %%

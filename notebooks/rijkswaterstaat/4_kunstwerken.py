@@ -102,24 +102,44 @@ def name_from_intake_tag(string):
 
 # %% Inlezen bestanden
 
-# Inlezen bestanden
+# input
+krw_lichaam = cloud.joinpath("Basisgegevens/KRW/krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
 
-# paden naar bestanden
-krw_lichaam = cloud.joinpath("Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
+baseline = cloud.joinpath("baseline-nl_land-j23_6-v1/baseline.gdb")
 
-nis_hws = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "NIS", "nis_all_kunstwerken_hws_2019.gpkg")
-baseline = cloud.joinpath("baseline-nl_land-j23_6-v1", "baseline.gdb")
-osm_scheeresluis = cloud.joinpath("basisgegevens", "osm", "Nederland_Belgie", "osm_scheeresluis.gpkg")
-osm_sluizen_belgie = cloud.joinpath("basisgegevens", "osm", "Nederland_Belgie", "lock_belgium.gpkg")
-osm_stuwen_belgie = cloud.joinpath("basisgegevens", "osm", "Nederland_Belgie", "waterway_weir_belgium.gpkg")
+nis_hws = cloud.joinpath("Rijkswaterstaat/aangeleverd/NIS/nis_all_kunstwerken_hws_2019.gpkg")
+nis_hwvn = cloud.joinpath("Rijkswaterstaat/aangeleverd/NIS/nis_alle_kunstwerken_hwvn_2019.gpkg")
 
-nis_hwvn = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "NIS", "nis_alle_kunstwerken_hwvn_2019.gpkg")
-primaire_kunstwerken = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "kunstwerken_primaire_waterkeringen.gpkg")
+osm_scheeresluis = cloud.joinpath("Basisgegevens/osm/Nederland_Belgie/osm_scheeresluis.gpkg")
+osm_sluizen_belgie = cloud.joinpath("Basisgegevens/osm/Nederland_Belgie/lock_belgium.gpkg")
+osm_stuwen_belgie = cloud.joinpath("Basisgegevens/osm/Nederland_Belgie/waterway_weir_belgium.gpkg")
 
-onttrekkingen = cloud.joinpath("Onttrekkingen", "onttrekkingen.gpkg")
+primaire_kunstwerken = cloud.joinpath("Rijkswaterstaat/aangeleverd/kunstwerken_primaire_waterkeringen.gpkg")
+
+onttrekkingen = cloud.joinpath("Landelijk/onttrekkingen/onttrekkingen.gpkg")
+
+kwk_media_path = cloud.joinpath("Rijkswaterstaat/verwerkt/kwk_media.csv")
+
+cloud.synchronize(
+    filepaths=[
+        baseline,
+        krw_lichaam,
+        kwk_media_path,
+        nis_hws,
+        nis_hwvn,
+        onttrekkingen,
+        osm_scheeresluis,
+        osm_sluizen_belgie,
+        osm_stuwen_belgie,
+        primaire_kunstwerken,
+    ]
+)
+
+# output
+output_file = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
 
 # media Excel
-kwk_media = pd.read_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "kwk_media.csv"))
+kwk_media = pd.read_csv(kwk_media_path)
 kwk_media.set_index("code", inplace=True)
 
 # geoDataFrames
@@ -270,7 +290,6 @@ kunstwerken_gdf = pd.concat(
 kunstwerken_gdf.loc[:, ["photo_url"]] = kunstwerken_gdf["code"].apply(photo_url)
 
 # Save results to GeoPackage files
-output_file = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
 kunstwerken_gdf.to_file(output_file, layer="kunstwerken", driver="GPKG")
 
 # %%
