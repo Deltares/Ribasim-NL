@@ -163,6 +163,8 @@ class Flushing:
             # the demand of the basin evenly over all connected nodes.
             dfd["flow_demand"] = 0.0
             for basin_nid, group in dfd.groupby("basin"):
+                # Divide by the number of unique paths in the group, not the
+                # unique nodes: nodes in series should get the same demand.
                 demand = df_flush.at[basin_nid, "rel_contrib"] * flushing_row.geometry.area * flush_val
                 demand = demand * self.convert_to_m3s
                 dfd.loc[group.index, "flow_demand"] += demand / len(group.path_id.unique())
