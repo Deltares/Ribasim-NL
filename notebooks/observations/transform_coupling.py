@@ -3,11 +3,12 @@ import ast
 import os
 
 import geopandas as gdf
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 from ribasim import Model
-from spatial_coupling import search_geometry_nodes, search_type_nodes
 from shapely import wkt
+from spatial_coupling import spatial_match
 
 from ribasim_nl import CloudStorage
 
