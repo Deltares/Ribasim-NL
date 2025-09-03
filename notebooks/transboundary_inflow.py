@@ -4,12 +4,27 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 import ribasim
-from ribasim.nodes import flow_boundary
 
 from ribasim_nl import CloudStorage, Model
 
+cloud = CloudStorage()
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", force=True)
 upload_model = False
+
+# input
+BA_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
+model_name = "lhm_vrij_coupled_2025_6_1"
+url = cloud.joinurl("Rijkswaterstaat/modellen", model_name)
+authority = "Rijkswaterstaat"
+
+# download the ribasim model
+cloud.download_content(url)
+ribasim_toml_input = cloud.joinpath(authority, "modellen", model_name, "lhm.toml")
+
+cloud.synchronize(filepaths=[BA_data_path])
+
+ribasim_toml_output = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/modellen/BA_totaal_run/BA.toml")
 
 # %%
 readme = f"""# Model van (deel)gebieden uit het Landelijk Hydrologisch Model inclusief Buitenlandse aanvoeren
@@ -22,24 +37,13 @@ Getest (u kunt simuleren): Nee
 """
 
 logging.info(readme)
-cloud = CloudStorage()
-authority = "Rijkswaterstaat"
 
-# Download the Ribasim model
-model_name = "lhm_vrij_coupled_2025_6_1"
-url = cloud.joinurl("Rijkswaterstaat", "modellen", model_name)
-cloud.download_content(url)
-ribasim_toml = cloud.joinpath(authority, "modellen", model_name, "lhm.toml")
-
-database_gpkg = ribasim_toml.with_name("database.gpkg")
-model = Model.read(ribasim_toml)
+model = Model.read(ribasim_toml_input)
 
 start_time = pd.to_datetime("2017-01-01")
 stop_time = pd.to_datetime("2018-01-01")
 flowboundaries = model.flow_boundary.node.df.name
 logging.info(f"Alle flow boundaries in het model: {flowboundaries}")
-BA_data_path = cloud.joinpath("Basisgegevens", "BuitenlandseAanvoer", "aangeleverd", "BuitenlandseAanvoer_V5.xlsx")
-cloud.synchronize(filepaths=[BA_data_path])
 
 # %%
 # Importeer de door waterschappen aangeleverde buitenlandse aanvoeren
@@ -176,24 +180,34 @@ dict_BA = importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, fl
 
 # %% Voeg de flowboundaries toe aan het model en sla het model op
 df_flowboundaries_time = pd.concat(dict_BA.values(), axis=0)
-# Convert to dictionary with proper type casting
-flow_data_dict = df_flowboundaries_time.to_dict(orient="list")
-# Ensure all values are properly typed for the flow_boundary.Time constructor
-model.flow_boundary.time = flow_boundary.Time(**flow_data_dict)
+
 included_node_ids = df_flowboundaries_time.node_id.unique()
 included_names = flowboundaries[flowboundaries.index.isin(included_node_ids)].tolist()
 logging.info(f"Flowboundaries included in data: {', '.join(included_names)}")
 
-# TODO: vraag: moeten de fixed values van static verwijderd worden?
-# model.flow_boundary.static.df = model.flow_boundary.static.df[
-#     ~model.flow_boundary.static.df.node_id.isin(bc_time_df.node_id.unique())
-# ]
+# remove the static flow rates when we have timeseries
+if model.flow_boundary.static.df is not None:
+    model.flow_boundary.static.df = model.flow_boundary.static.df[
+        ~model.flow_boundary.static.df["node_id"].isin(included_node_ids)
+    ]
+# remove possible existing timeseries with the same node ID
+if model.flow_boundary.time.df is not None:
+    model.flow_boundary.time.df = model.flow_boundary.time.df[
+        ~model.flow_boundary.time.df["node_id"].isin(included_node_ids)
+    ]
+# add the rows of df_flowboundaries_time to the existing df
+if model.flow_boundary.time.df is None:
+    model.flow_boundary.time.df = df_flowboundaries_time
+else:
+    model.flow_boundary.time.df = pd.concat([model.flow_boundary.time.df, df_flowboundaries_time])
+
 
 # TODO: Bepaal de goede locaties en naamgeving voor de modellen
-ribasim_toml = cloud.joinpath("Basisgegevens", "BuitenlandseAanvoer", "modellen", "BA_totaal_run", "BA.toml")
-model.write(ribasim_toml)
+model.write(ribasim_toml_output)
 if upload_model:
     logging.info("Upload het model met Buitenlandse Aanvoeren")
     cloud.upload_model("Basisgegevens/BuitenlandseAanvoer", model="BA_totaal_run")
 
 # model.run()
+
+# %%
