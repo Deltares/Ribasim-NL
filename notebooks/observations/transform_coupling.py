@@ -6,7 +6,7 @@ import geopandas as gdf
 import numpy as np
 import pandas as pd
 from ribasim import Model
-from Ruimtelijke_koppeling_functies import *
+from spatial_coupling import search_geometry_nodes, search_type_nodes
 from shapely import wkt
 
 from ribasim_nl import CloudStorage

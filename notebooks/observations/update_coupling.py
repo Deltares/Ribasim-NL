@@ -17,7 +17,7 @@ import ast
 import os
 
 import pandas as pd
-from Ruimtelijke_koppeling_functies import search_geometry_nodes, search_type_nodes
+from spatial_coupling import search_geometry_nodes, search_type_nodes
 
 # %%
 

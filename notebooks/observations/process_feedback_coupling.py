@@ -4,8 +4,7 @@ import os
 from ribasim import Model
 
 # Importeren van de update koppeltabel
-# from UpdateKoppeltabel import update_koppeltabel_with_feedback
-from Update_Final_Transformed_koppeltabel import update_koppeltabel_with_feedback
+from update_coupling import update_koppeltabel_with_feedback
 
 from ribasim_nl import CloudStorage
 
