@@ -19,15 +19,16 @@ DEFAULT_PROFILE = pd.DataFrame(
 )
 
 # input
-raster_path = cloud.joinpath("Rijkswaterstaat", "verwerkt", "bathymetrie", "bathymetrie-merged.tif")
-watervlak_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "categorie_oppervlaktewater.gpkg")
-basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_user_data.gpkg")
-osm_basins_path = cloud.joinpath("Rijkswaterstaat", "verwerkt", "oppervlaktewater_belgie.gpkg")
+raster_path = cloud.joinpath("Rijkswaterstaat/verwerkt/bathymetrie/bathymetrie-merged.tif")
+watervlak_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/categorie_oppervlaktewater.gpkg")
+basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_user_data.gpkg")
+osm_basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/oppervlaktewater_belgie.gpkg")
 
 cloud.synchronize(filepaths=[raster_path, watervlak_gpkg, basins_user_data_gpkg, osm_basins_path])
 
 # output
-basins_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg")
+basins_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
+basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")
 
 watervlak_diss_gdf = gpd.read_file(watervlak_gpkg, layer="watervlak", fid_as_index=True)
 cut_lines_gdf = gpd.read_file(basins_user_data_gpkg, layer="cut_lines", fid_as_index=True)
@@ -189,6 +190,6 @@ for row in basins_gdf.itertuples():
 
 df = pd.concat(dfs)
 
-df.to_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_level_area.csv"))
+df.to_csv(basin_profile_path)
 
 # %%

@@ -39,12 +39,12 @@ print("read osm canals")
 canal_osm_gdf = gpd.read_file(canal_osm_path)
 
 print("read extra lijnen")
-extra_lines_gdf = gpd.read_file(model_user_data_path, layer="extra_netwerk_lijnen")
+extra_lines_gdf = gpd.read_file(model_user_data_path, layer="extra_netwerk_lijnen_2")
 
 print("read verwijder lijnen")
 remove_lines_gdf = gpd.read_file(
     model_user_data_path,
-    layer="krw_split_lijnen",
+    layer="verwijder_lijn_2",
 )
 
 

@@ -110,9 +110,9 @@ baseline = cloud.joinpath("baseline-nl_land-j23_6-v1/baseline.gdb")
 nis_hws = cloud.joinpath("Rijkswaterstaat/aangeleverd/NIS/nis_all_kunstwerken_hws_2019.gpkg")
 nis_hwvn = cloud.joinpath("Rijkswaterstaat/aangeleverd/NIS/nis_alle_kunstwerken_hwvn_2019.gpkg")
 
-osm_scheeresluis = cloud.joinpath("Basisgegevens/osm/Nederland_Belgie/osm_scheeresluis.gpkg")
-osm_sluizen_belgie = cloud.joinpath("Basisgegevens/osm/Nederland_Belgie/lock_belgium.gpkg")
-osm_stuwen_belgie = cloud.joinpath("Basisgegevens/osm/Nederland_Belgie/waterway_weir_belgium.gpkg")
+osm_scheeresluis = cloud.joinpath("Basisgegevens/OSM/osm_scheeresluis.gpkg")
+osm_sluizen_belgie = cloud.joinpath("Basisgegevens/OSM/lock_belgium.gpkg")
+osm_stuwen_belgie = cloud.joinpath("Basisgegevens/OSM/waterway_weir_belgium.gpkg")
 
 primaire_kunstwerken = cloud.joinpath("Rijkswaterstaat/aangeleverd/kunstwerken_primaire_waterkeringen.gpkg")
 
@@ -136,7 +136,7 @@ cloud.synchronize(
 )
 
 # output
-output_file = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
+hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
 
 # media Excel
 kwk_media = pd.read_csv(kwk_media_path)
@@ -183,7 +183,7 @@ nis_points_gdf = nis_points_gdf[nis_points_gdf["kw_soort"].isin(desired_kw_soort
 
 # Remove all nis_points that are far from baseline
 nis_points_gdf.loc[:, ["nearest_distance"]] = [
-    filtered_point["geometry"].distance(baseline_in_model.unary_union)
+    filtered_point["geometry"].distance(baseline_in_model.union_all())
     for _, filtered_point in nis_points_gdf.iterrows()
 ]
 nis_points_gdf = nis_points_gdf[nis_points_gdf["nearest_distance"] < 500]
@@ -290,6 +290,6 @@ kunstwerken_gdf = pd.concat(
 kunstwerken_gdf.loc[:, ["photo_url"]] = kunstwerken_gdf["code"].apply(photo_url)
 
 # Save results to GeoPackage files
-kunstwerken_gdf.to_file(output_file, layer="kunstwerken", driver="GPKG")
+kunstwerken_gdf.to_file(hydamo_path, layer="kunstwerken", driver="GPKG")
 
 # %%

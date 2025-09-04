@@ -141,9 +141,26 @@ def read_pid(control_properties, control_basin_id):
 cloud = CloudStorage()
 # %% read files
 
-model_user_data_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "model_user_data.gpkg")
+# input
+model_user_data_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/model_user_data.gpkg")
+kwk_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/kunstwerken")
+kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
+verdeelsleutels_xlsx = kwk_dir.joinpath("verdeelsleutels.xlsx")
+outlets_path = cloud.joinpath("Rijkswaterstaat/verwerkt/outlets.gpkg")
 
-network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+# input from previous step
+network_path = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
+basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
+basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")
+hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
+
+cloud.synchronize(filepaths=[model_user_data_gpkg, kwk_xlsx, verdeelsleutels_xlsx, outlets_path])
+
+# output
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_netwerk/hws.toml")
+database_gpkg = ribasim_toml.parent / "input/database.gpkg"
+
+network = Network.from_network_gpkg(network_path)
 nodes_gdf = network.nodes
 
 boundary_gdf = gpd.read_file(
@@ -165,20 +182,15 @@ verdeelsleutel_gdf = gpd.read_file(
 ).set_index("verdeelsleutel")
 
 basin_poly_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg"),
+    basins_path,
     layer="ribasim_basins",
     fid_as_index=True,
 )
 
-basin_profile_df = pd.read_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_level_area.csv"))[
-    ["level", "area", "id"]
-].set_index("id")
+basin_profile_df = pd.read_csv(basin_profile_path)[["level/area", "id"]].set_index("id")
 
 # %% kunstwerken inlezen
 
-kwk_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerken")
-kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
-verdeelsleutels_xlsx = kwk_dir.joinpath("verdeelsleutels.xlsx")
 kwks_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
 
 
@@ -186,7 +198,7 @@ kwks_df.loc[:, "code"] = kwks_df["code"].astype(str)
 # kwks_df = kwks_df[kwks_df.in_model]
 
 kwks_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg"),
+    hydamo_path,
     layer="kunstwerken",
     fid_as_index=True,
 )
@@ -376,7 +388,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
 
 # %% verdeelsleutels toevoegen
 
-outlets_gdf = gpd.read_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "outlets.gpkg"))
+outlets_gdf = gpd.read_file(outlets_path)
 verdeelsleutel_node_id = 1000001
 # itereren per verdelsleutel
 for verdeelsleutel in VERDEELSLEUTELS:
@@ -744,10 +756,8 @@ for row in model.manning_resistance.static.df.itertuples():
 
 # %%wegschrijven model
 print("write ribasim model")
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_netwerk", "hws.toml")
 model.use_validation = True
 model.write(ribasim_toml)
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 
 gpd.GeoDataFrame(profile_geometries, crs=28992).to_file(database_gpkg, layer="ManningResistance / profile")
 
