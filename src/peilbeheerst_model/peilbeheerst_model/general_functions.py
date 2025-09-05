@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def read_gpkg_layers(gpkg_path, engine="fiona", print_var=False):
+def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
     """
     Read specified layers from a GeoPackage (GPKG) file and return them as a dictionary.
 
