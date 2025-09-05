@@ -146,6 +146,7 @@ model_user_data_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/model_user_data.
 kwk_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/kunstwerken")
 kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 verdeelsleutels_xlsx = kwk_dir.joinpath("verdeelsleutels.xlsx")
+ijsselmeer_markermeer_path = kwk_dir / "IJsselmeer-Markermeer.xlsx"
 outlets_path = cloud.joinpath("Rijkswaterstaat/verwerkt/outlets.gpkg")
 
 # input from previous step
@@ -154,7 +155,9 @@ basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
 basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")
 hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
 
-cloud.synchronize(filepaths=[model_user_data_gpkg, kwk_xlsx, verdeelsleutels_xlsx, outlets_path])
+cloud.synchronize(
+    filepaths=[model_user_data_gpkg, kwk_xlsx, verdeelsleutels_xlsx, ijsselmeer_markermeer_path, outlets_path]
+)
 
 # output
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_netwerk/hws.toml")
@@ -187,7 +190,7 @@ basin_poly_gdf = gpd.read_file(
     fid_as_index=True,
 )
 
-basin_profile_df = pd.read_csv(basin_profile_path)[["level/area", "id"]].set_index("id")
+basin_profile_df = pd.read_csv(basin_profile_path)[["level", "area", "id"]].set_index("id")
 
 # %% kunstwerken inlezen
 
@@ -231,7 +234,7 @@ model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
 # Toevoegen Boundaries
 # We voegen de boundaries toe aan het netwerk
 
-level_ijsselmeer_df = pd.read_excel(kwk_dir / "IJsselmeer-Markermeer.xlsx", sheet_name="IJsselmeer", skiprows=4)
+level_ijsselmeer_df = pd.read_excel(ijsselmeer_markermeer_path, sheet_name="IJsselmeer", skiprows=4)
 level_ijsselmeer_df.index = [i.day_of_year for i in level_ijsselmeer_df.datum]
 
 
@@ -289,6 +292,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
     print(f"{gebied}")
     # get sheet-names
     file_name = kwk_dir / f"{gebied}.xlsx"
+    cloud.synchronize(filepaths=[file_name])
     workbook = openpyxl.open(file_name)
     sheet_names = workbook.sheetnames
     workbook.close()
