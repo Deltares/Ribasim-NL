@@ -29,7 +29,7 @@ def ParseList(val):
         The `ParseList` function is designed to parse a string representation of a list. If the input `val`
     is a string that starts with '[' and ends with ']', it attempts to evaluate the string using
     `ast.literal_eval` to convert it into a Python list. If the evaluation is successful and the result
-    is a list, it returns the first element of the list if the list has only one element.
+    is a list, it returns the first element of the list if the list has only one element in it.
 
     """
     if isinstance(val, str) and val.strip().startswith("[") and val.strip().endswith("]"):
