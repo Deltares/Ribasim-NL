@@ -197,6 +197,10 @@ class AssignMetaData:
 
         # Add the matching areas to the ribasim model
         for row in self.model.basin.area.df.itertuples():
+            if hasattr(row, "meta_node_id") and row.node_id != row.meta_node_id:
+                # Skip "bergend"
+                continue
+
             # Find overlapping area(s)
             idxs = df_area.sindex.query(row.geometry, predicate="intersects")
             dfa = df_area.iloc[idxs].copy()
@@ -210,10 +214,10 @@ class AssignMetaData:
             dfa = dfa.sort_values(["i_area", "t_area"], ascending=False)
 
             if len(dfa) == 0:
-                print(f"  - Warning: Found no matching basin area for {row.node_id=}")
+                print(f"  - Warning: Found no matching area for basin #{row.node_id}")
                 continue
             elif len(dfa) > 1:
-                print(f"  - Warning: Multiple overlapping areas for {row.node_id=}, using the largest overlap")
+                print(f"  - Warning: Multiple overlapping areas for basin #{row.node_id}, using the largest overlap")
 
             # Assign metadata
             matching_row = dfa.iloc[0]

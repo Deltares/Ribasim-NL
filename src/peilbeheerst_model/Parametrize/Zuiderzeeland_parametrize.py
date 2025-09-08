@@ -111,6 +111,7 @@ processor.run()
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model.set_crs("EPSG:28992")
 
 # merge the smallest basins together
 ribasim_model.merge_basins(node_id=30, to_node_id=29)  # 4363 m2
