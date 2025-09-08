@@ -194,9 +194,19 @@ def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name
                 # Filter the connector_df by the current waterboard if information is available
                 if not connector_df["meta_waterbeheerder"].isna().all():
                     filtered_connector_gdf = connector_df[connector_df["meta_waterbeheerder"] == waterboard_name]
+
                     if not filtered_connector_gdf.empty:
                         filtered_connector_gdf = filtered_connector_gdf.reset_index()
+
+                    else:
+                        # met het lhm_ctwq_compat is in meta_waterbeheerder
+                        # alleen "Rijkswaterstaat", we zoeken dus niet meer binnen de
+                        # specfieke waterschaps nodes en linkjes.
+
+                        filtered_connector_gdf = connector_df.reset_index()
+
                     filtered_connector_gdfs[node_name] = filtered_connector_gdf
+
                 else:
                     filtered_connector_gdfs[node_name] = connector_df.reset_index()
             else:
