@@ -5,16 +5,16 @@ from ribasim_nl.analyse_results import CompareOutputMeasurements
 cloud = CloudStorage()
 water_authorities = [
     "AaenMaas",
-    "BrabantseDelta",
-    "DeDommel",
-    "DrentsOverijsselseDelta",
-    "HunzeenAas",
-    "Limburg",
-    "Noorderzijlvest",
-    "RijnenIJssel",
-    "StichtseRijnlanden",
-    "ValleienVeluwe",
-    "Vechtstromen",
+    # "BrabantseDelta",
+    # "DeDommel",
+    # "DrentsOverijsselseDelta",
+    # "HunzeenAas",
+    # "Limburg",
+    # "Noorderzijlvest",
+    # "RijnenIJssel",
+    # "StichtseRijnlanden",
+    # "ValleienVeluwe",
+    # "Vechtstromen",
 ]
 
 # specify koppeltabel and meas_folder

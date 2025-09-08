@@ -1,3 +1,4 @@
+# %%
 """Script met verschillende functies om de uitvoer van de Ribasim modellen te vergelijken met meetreeksen"""
 
 import ast
@@ -188,7 +189,9 @@ def CompareOutputMeasurements(
             }
 
         if isinstance(link, list):
-            subset_modeloutput = data[data["link_id"] == link[0]]
+            # subset_modeloutput = data[data["link_id"] == link[0]]
+            subset_modeloutput = data[data["link_id"].isin(link)].groupby("time").sum()
+
             # TODO: Edit this part to make sure that the links are properly added together
             # for n, link_id in enumerate(meetlocatie['link_id_parsed']):
             #     part_subset_modeloutput = data[data['link_id'] == link_id]
