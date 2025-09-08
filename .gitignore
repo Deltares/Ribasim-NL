@@ -38,3 +38,4 @@ notebooks/rijkswaterstaat/plots/
 /src/peilbeheerst_model/ribasim
 
 .env
+venv/
