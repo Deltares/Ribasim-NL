@@ -5,7 +5,7 @@ from ribasim_nl.berging import VdGaastBerging
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+SELECTION: list[str] = []
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -45,6 +45,12 @@ for authority in authorities:
             add_berging.add()
 
             # run model
-            model.write(dst_toml_file)
+            try:
+                model.write(dst_toml_file)
+            except ValueError:
+                # see https://github.com/Deltares/Ribasim/issues/2417
+                model.basin.profile.df.replace(-0, 0, inplace=True)
+                model.tabulated_rating_curve.static.df.replace(-0, 0, inplace=True)
+                model.write(dst_toml_file)
             result = model.run()
             assert result.exit_code == 0

@@ -27,19 +27,18 @@ def add_forcing(model, cloud, starttime, endtime):
 
 FIND_POST_FIXES = ["bergend_model"]
 SELECTION: list[str] = [
-    "AaenMaas",
-    "BrabantseDelta",
-    "DeDommel",
-    "DrentsOverijsselseDelta",
-    "HunzeenAas",
-    "Limburg",
-    "Noorderzijlvest",
-    "RijnenIJssel",
-    "StichtseRijnlanden",
-    "ValleienVeluwe",
-    "Vechtstromen",
+    # "AaenMaas",
+    # "BrabantseDelta",
+    # "DeDommel",
+    # "DrentsOverijsselseDelta",
+    # "HunzeenAas",
+    # "Limburg",
+    # "Noorderzijlvest",
+    # "RijnenIJssel",
+    # "StichtseRijnlanden",
+    # "ValleienVeluwe",
+    # "Vechtstromen",
 ]
-INCLUDE_RESULTS = False
 REBUILD = False
 COMPARE_MEASEUREMENTS = True
 

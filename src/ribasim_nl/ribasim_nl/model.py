@@ -1037,7 +1037,7 @@ class Model(Model):
 
         return outlet_a
 
-    def invalid_topology_at_node(self, edge_type: str = "flow") -> gpd.GeoDataFrame:
+    def invalid_topology_at_node(self, link_type: str = "flow") -> gpd.GeoDataFrame:
         df_graph = self.edge.df
         df_node = self.node_table().df
         # Join df_edge with df_node to get to_node_type
@@ -1052,7 +1052,7 @@ class Model(Model):
         errors = []
 
         # filter graph by edge type
-        df_graph = df_graph.loc[df_graph["edge_type"] == edge_type]
+        df_graph = df_graph.loc[df_graph["link_type"] == link_type]
 
         # count occurrence of "from_node" which reflects the number of outneighbors
         from_node_count = (
