@@ -513,8 +513,13 @@ model.outlet.node.df["meta_gestuwd"] = False
 model.pump.node.df["meta_gestuwd"] = True
 
 # set stuwen als gestuwd
-
 model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"] == "stuw", "meta_gestuwd"] = True
+
+# toevoegen 261HTE, zo goed mogelijk
+df = gpd.read_file(hydamo_gpkg, layer="stuw")
+geometry = df.set_index("code").at["261HTE", "geometry"]
+
+model.connect_basins(from_basin_id=1280, to_basin_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node_table().df

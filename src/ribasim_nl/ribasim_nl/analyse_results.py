@@ -119,6 +119,23 @@ def get_unique(items):
     return seen
 
 
+def make_popup_img_element(fig_name: str, waterschap: str | None = None) -> str:
+    """Generate an img-element for the popup figure
+
+    Args:
+        fig_name (str): _description_
+        waterschap (str | None, optional): _description_. Defaults to None.
+
+    Returns
+    -------
+        str: <img> element for popup figure
+    """
+    if waterschap is None:
+        return f'<img src="../figures/{fig_name}.png" width=300 height=300>'
+    else:
+        return f'<img src="../figures/{waterschap}/{fig_name}.png" width=300 height=300>'
+
+
 def CompareOutputMeasurements(
     loc_koppeltabel, meas_folder, model_folder, filetype="flow", apply_for_water_authority: str | None = None
 ) -> None:
@@ -249,16 +266,18 @@ def CompareOutputMeasurements(
         # Deal with the daily values
         full_title = " - ".join(existing_measurements)
         fig_name = full_title.split(" - ")[0]
+        fig_waterschap = None if apply_for_water_authority else meetlocaties_link.iloc[0]["Waterschap"]
         PlotAndSave(
             combined_df=combined_df,
             stats=stats,
             koppelinfo=full_title,
             fig_name=fig_name,
-            bron_meting=meetlocaties_link.iloc[0]["Waterschap"],
+            bron_meting=fig_waterschap,
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
-        pop_up_figure = f'<img src="../figures/{meetlocaties_link.iloc[0]["Waterschap"]}/{fig_name_clean}.png" width=300 height=300>'
+
+        pop_up_figure = make_popup_img_element(fig_name_clean, waterschap=fig_waterschap)
 
         # Save the resulting statistics per measurement
         results_measurements[meetlocaties_link.iloc[0]["Waterschap"]]["koppelinfo"].append(fig_name_clean)
@@ -282,11 +301,11 @@ def CompareOutputMeasurements(
             stats=stats_dec,
             koppelinfo=full_title,
             fig_name=fig_name,
-            bron_meting=meetlocaties_link.iloc[0]["Waterschap"],
+            bron_meting=fig_waterschap,
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
-        pop_up_figure = f'<img src="../figures/{meetlocaties_link.iloc[0]["Waterschap"]}/{fig_name_clean}.png" width=300 height=300>'
+        pop_up_figure = make_popup_img_element(fig_name_clean, waterschap=fig_waterschap)
 
         # Save the resulting statistics per measurement
         results_measurements_decade[meetlocaties_link.iloc[0]["Waterschap"]]["koppelinfo"].append(fig_name_clean)
@@ -304,14 +323,16 @@ def CompareOutputMeasurements(
 
     # Save the results in a geopackage per waterboard
     for waterschap, results in results_measurements.items():
+        layer = waterschap if apply_for_water_authority is None else "dag"
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
         results_gdf.set_crs(epsg="28992", inplace=True)
-        results_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten.gpkg"), layer=waterschap)
+        results_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten.gpkg"), layer=layer)
 
     for waterschap, results in results_measurements_decade.items():
+        layer = waterschap if apply_for_water_authority is None else "decade"
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
         results_gdf.set_crs(epsg="28992", inplace=True)
-        results_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten_dec.gpkg"), layer=waterschap)
+        results_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten.gpkg"), layer=layer)
 
 
 def ConvertToDecade(combined_df):
@@ -415,8 +436,15 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
         within that folder, the plot will be saved as a PNG file with the name supplied by 'koppelinfo'
 
     """
+    # Create fig-path and mkdir
+    fig_name_clean = fig_name.replace(" ", "_").replace("/", "_")  # remove / as it will raise FileNotFoundError
     # Create the folder where the plot can be saved
-    os.makedirs(os.path.join(output_folder, bron_meting), exist_ok=True)
+    if bron_meting is None:
+        os.makedirs(os.path.join(output_folder), exist_ok=True)
+        fig_path = os.path.join(output_folder, fig_name_clean + ".png")
+    else:
+        os.makedirs(os.path.join(output_folder, bron_meting), exist_ok=True)
+        fig_path = os.path.join(output_folder, bron_meting, fig_name_clean + ".png")
 
     font = "Arial"
 
@@ -453,8 +481,6 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
         bbox={"facecolor": "white", "edgecolor": "darkgrey", "boxstyle": "round"},
     )
     # Save the figure in the right location
-    fig_name_clean = fig_name.replace(" ", "_").replace("/", "_")  # remove / as it will raise FileNotFoundError
-    fig_path = os.path.join(output_folder, bron_meting, fig_name_clean + ".png")
     fig.savefig(fig_path, bbox_inches="tight", dpi=200)
     plt.close()
 

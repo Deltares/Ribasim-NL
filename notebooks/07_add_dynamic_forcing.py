@@ -2,6 +2,7 @@
 from datetime import datetime
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl.analyse_results import CompareOutputMeasurements
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 cloud = CloudStorage()
@@ -25,9 +26,22 @@ def add_forcing(model, cloud, starttime, endtime):
 
 
 FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = []
+SELECTION: list[str] = [
+    "AaenMaas",
+    "BrabantseDelta",
+    "DeDommel",
+    "DrentsOverijsselseDelta",
+    "HunzeenAas",
+    "Limburg",
+    "Noorderzijlvest",
+    "RijnenIJssel",
+    "StichtseRijnlanden",
+    "ValleienVeluwe",
+    "Vechtstromen",
+]
 INCLUDE_RESULTS = False
 REBUILD = False
+COMPARE_MEASEUREMENTS = True
 
 
 def get_model_dir(authority, post_fix):
@@ -62,6 +76,17 @@ if len(SELECTION) == 0:
     authorities = cloud.water_authorities
 else:
     authorities = SELECTION
+
+
+# specify koppeltabel and meas_folder
+if COMPARE_MEASEUREMENTS:
+    loc_koppeltabel = cloud.joinpath(
+        "Landelijk", "resultaatvergelijking", "koppeltabel", "Transformed_koppeltabel_test_met_suggestie.xlsx"
+    )
+    meas_folder = cloud.joinpath("Landelijk", "resultaatvergelijking", "meetreeksen")
+    cloud.synchronize([loc_koppeltabel, meas_folder])
+
+
 # %%
 for authority in authorities:
     # find model directory
@@ -85,8 +110,6 @@ for authority in authorities:
 
         if check_build(dst_toml_file):
             model = Model.read(toml_file)
-            # update state so we start smooth/empty
-            model.update_state()
 
             # add categorie to basin / state
             series = model.basin.node.df.loc[model.basin.state.df["node_id"].to_numpy()]["meta_categorie"]
@@ -99,3 +122,22 @@ for authority in authorities:
             # run model
             model.write(dst_toml_file)
             model.run()
+            # update state so we start smooth/empty
+            model.update_state()
+
+        else:
+            # update state so we have a reasonable start
+            model = Model.read(dst_toml_file)
+
+        if COMPARE_MEASEUREMENTS:
+            model.update_state()
+            model.write(dst_toml_file)
+            model.run()
+
+            model_folder = model.filepath.parent
+            compare = CompareOutputMeasurements(
+                loc_koppeltabel=loc_koppeltabel,
+                meas_folder=meas_folder,
+                model_folder=model_folder,
+                apply_for_water_authority=authority,
+            )
