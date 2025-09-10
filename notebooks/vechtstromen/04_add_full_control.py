@@ -156,6 +156,7 @@ node_ids = model.outlet.node.df[model.outlet.node.df["meta_object_type"] == "dui
 mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.1
 
+
 # %% fixes:
 
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 508, "max_downstream_level"] = 3.98
@@ -165,8 +166,13 @@ model.remove_node(305, remove_edges=True)
 # Sluis Koning Willem Allexander
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 40, "max_flow_rate"] = 0
 # Geen flow anders veel te veel door Manning knoop
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 26, "min_upstream_level"] = 12.6
-
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 26, "min_upstream_level"] = 12
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 52, "max_downstream_level"] = 9.15
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1269, "max_downstream_level"] = 9.15
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1269, "min_upstream_level"] = 9.15
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 982, "max_downstream_level"] = 9.15
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 982, "min_upstream_level"] = 9.15
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 34, "level"] = 9.17
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)
