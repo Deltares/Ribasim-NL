@@ -38,45 +38,41 @@ cloud.synchronize(
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
-update_basin_static(model=model, evaporation_mm_per_day=1)
+update_basin_static(model=model, precipitation_mm_per_day=1)
 
 # alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
-update_levels = model.basin_outstate.df.set_index("node_id")["level"]
-basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
-mask = model.basin.area.df["node_id"].isin(basin_ids)
-model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
-    lambda x: update_levels[x]
-)
+# update_levels = model.basin_outstate.df.set_index("node_id")["level"]
+# basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
+# mask = model.basin.area.df["node_id"].isin(basin_ids)
+# model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
+#     lambda x: update_levels[x]
+# )
 add_from_to_nodes_and_levels(model)
 
 # re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=False)
-ribasim_parametrization.determine_min_upstream_max_downstream_levels(model, AUTHORITY)
+ribasim_parametrization.set_aanvoer_flags(model, str(aanvoer_path), overruling_enabled=True)
+ribasim_parametrization.determine_min_upstream_max_downstream_levels(
+    model,
+    AUTHORITY,
+    aanvoer_upstream_offset=0.02,
+    aanvoer_downstream_offset=0.0,
+    afvoer_upstream_offset=0.02,
+    afvoer_downstream_offset=0.0,
+)
 check_basin_level.add_check_basin_level(model=model)
 
-# TODO: The addition of `ContinuousControl`-nodes is subsequently a minor modification:
-"""To allow the addition of `ContinuousControl`-nodes, the branch 'continuous_control' must be merged first to access
-the required function: `ribasim_parametrization.add_continuous_control(<model>)`. The expansion of adding the continuous
-control requires a proper working schematisation of both 'afvoer'- and 'aanvoer'-situations, and so these should be
-fixed and up-and-running beforehand.
-"""
-# ribasim_parametrization.add_continuous_control(model)
 
-"""For the addition of `ContinuousControl`-nodes, it might be necessary to set `model.basin.static.df=None`, as the
-`ContinuousControl`-nodes require `Time`-tables instead of `Static`-tables. If both are defined (for the same node,
-Ribasim will raise an error and thus not execute.
-"""
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
-model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
+model.outlet.static.df.flow_rate = 100
+model.pump.static.df.flow_rate = 100
+model.outlet.static.df.max_flow_rate = 100
+model.pump.static.df.max_flow_rate = 100
 
 
-# set upstream level boundaries at 999 meters
-# boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
-# %% bovenstroomse outlets op 10m3/s zetten
+# %% bovenstroomse outlets op 10m3/s zetten en boundary afvoer pumps/outlets
+# geen downstreamm level en aanvoer  pumps/outlets geen upstream level
 def set_values_where(df, updates, node_ids=None, key_col="node_id", mask=None):
     if mask is None:
         mask = df[key_col].isin(node_ids)
@@ -95,29 +91,31 @@ downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
 # === 1a. Upstream outlets met aanvoer: max_downstream = min_upstream + 0.02 en min_upstream = NA
 out_static = model.outlet.static.df
 pump_static = model.pump.static.df
+mask_upstream_aanvoer = out_static["node_id"].isin(upstream_outlet_nodes)
+# & (out_static["meta_aanvoer"] == 1)
 
-mask_upstream_aanvoer = out_static["node_id"].isin(upstream_outlet_nodes) & (out_static["meta_aanvoer"] == 1)
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_categorie"] == "hoofdwater"].index
+mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
-# === 1a. Upstream outlets met aanvoer ===
+# %%
+# === 1a. Upstream outlets (bij boundaries) met aanvoer ===
 set_values_where(
     out_static,
     mask=mask_upstream_aanvoer,
     updates={
         "max_downstream_level": lambda d: d["min_upstream_level"] + 0.02,
-        "min_upstream_level": pd.NA,
+        "min_upstream_level": lambda d: d["min_upstream_level"] + 0.04,
     },
 )
 
 updates_plan = [
     # Upstream boundary: Outlets en Pumps
-    (out_static, upstream_outlet_nodes, {"flow_rate": 10, "max_flow_rate": 10}),
-    (pump_static, upstream_pump_nodes, {"flow_rate": 10, "max_flow_rate": 10, "min_upstream_level": pd.NA}),
+    (out_static, upstream_outlet_nodes, {"flow_rate": 100, "max_flow_rate": 100}),
+    (pump_static, upstream_pump_nodes, {"flow_rate": 100, "max_flow_rate": 100, "min_upstream_level": pd.NA}),
     # Downstream boundary: Outlets en Pumps
     (out_static, downstream_outlet_nodes, {"max_downstream_level": pd.NA}),
     (pump_static, downstream_pump_nodes, {"max_downstream_level": pd.NA}),
-    # Offset-aanpassingen
-    (out_static, downstream_outlet_nodes, {"min_upstream_level": lambda d: d["min_upstream_level"] + 0.02}),
-    (out_static, upstream_outlet_nodes, {"min_upstream_level": lambda d: d["min_upstream_level"] + 0.02}),
 ]
 
 for df, nodes, updates in updates_plan:
@@ -130,12 +128,15 @@ set_values_where(
     updates={"max_downstream_level": lambda d: d["max_downstream_level"] - 0.02},
 )
 
-# %% sturing uit alle niet-gestuwde outlets halen
+# set upstream level boundaries
+boundary_node_ids = [i for i in model.level_boundary.node.df.index if model.upstream_node_id(i) is None]
+mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
+model.level_boundary.static.df.loc[mask, "level"] += 0.02
 
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
+# set downstream level boundaries
+boundary_node_ids = [i for i in model.level_boundary.node.df.index if model.upstream_node_id(i) is not None]
+mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
+model.level_boundary.static.df.loc[mask, "level"] -= 1
 
 # %%
 # write model

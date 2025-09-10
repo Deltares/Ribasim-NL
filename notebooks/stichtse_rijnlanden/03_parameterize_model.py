@@ -87,11 +87,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_
 node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 0.1
 
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 206, "active"] = True
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 207, "active"] = True
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 358, "active"] = False
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 984, "active"] = False
-
 
 # %%
 # model.solver.maxiters = 100000

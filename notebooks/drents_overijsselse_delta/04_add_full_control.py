@@ -108,7 +108,7 @@ set_values_where(
     out_static,
     mask=mask_upstream_aanvoer,
     updates={
-        "max_downstream_level": lambda d: d["min_upstream_level"],
+        "max_downstream_level": lambda d: d["min_upstream_level"] + 0.02,
         "min_upstream_level": pd.NA,
     },
 )

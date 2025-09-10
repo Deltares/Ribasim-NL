@@ -12,9 +12,9 @@ water_authorities = [
     # "Limburg",
     # "Noorderzijlvest",
     # "RijnenIJssel",
-    # "StichtseRijnlanden",
+    "StichtseRijnlanden",
     # "ValleienVeluwe",
-    "Vechtstromen",
+    # "Vechtstromen",
 ]
 
 # specify koppeltabel and meas_folder

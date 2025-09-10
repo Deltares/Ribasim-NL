@@ -37,13 +37,6 @@ model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, precipitation_mm_per_day=1)
 
-# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
-# update_levels = model.basin_outstate.df.set_index("node_id")["level"]
-# basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
-# mask = model.basin.area.df["node_id"].isin(basin_ids)
-# model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
-#    lambda x: update_levels[x]
-# )
 add_from_to_nodes_and_levels(model)
 
 # re-parameterize
@@ -57,16 +50,6 @@ ribasim_parametrization.determine_min_upstream_max_downstream_levels(
     afvoer_downstream_offset=0.0,
 )
 check_basin_level.add_check_basin_level(model=model)
-
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
-mask = model.outlet.static.df["meta_aanvoer"] == 0
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
-model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
-
-# set upstream level boundaries at 999 meters
-# boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
@@ -141,6 +124,7 @@ set_values_where(
 boundary_node_ids = [i for i in model.level_boundary.node.df.index if model.upstream_node_id(i) is None]
 mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
 model.level_boundary.static.df.loc[mask, "level"] += 0.2
+
 # set downstream level boundaries
 boundary_node_ids = [i for i in model.level_boundary.node.df.index if model.upstream_node_id(i) is not None]
 mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
