@@ -1199,7 +1199,7 @@ class RibasimNetwork:
                 "node_id": [],
                 "listen_feature_id": [],
                 "variable": "level",
-                "greater_than": 0.52,
+                "threshold_high": 0.52,
             }
         )
 

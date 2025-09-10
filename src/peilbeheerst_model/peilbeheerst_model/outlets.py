@@ -150,7 +150,7 @@ class case1:
                 ),
                 discrete_control.Condition(
                     compound_variable_id=1,
-                    greater_than=[2.95, self.characteristics["basin1_target_level"]],
+                    threshold_high=[2.95, self.characteristics["basin1_target_level"]],
                 ),
                 discrete_control.Logic(
                     truth_state=["FF", "FT", "TF", "TT"],
@@ -176,7 +176,7 @@ class case1:
                 ),
                 discrete_control.Condition(
                     compound_variable_id=2,
-                    greater_than=[
+                    threshold_high=[
                         self.characteristics["basin1_target_level"] - 0.05,
                         self.characteristics["basin2_target_level"],
                     ],
@@ -199,7 +199,7 @@ class case1:
                 ),
                 discrete_control.Condition(
                     compound_variable_id=3,
-                    greater_than=[self.characteristics["basin2_target_level"]],
+                    threshold_high=[self.characteristics["basin2_target_level"]],
                 ),
                 discrete_control.Logic(truth_state=["F", "T"], control_state=["block", "pass"]),
             ],
@@ -433,7 +433,7 @@ class case2:
                 ),
                 discrete_control.Condition(
                     compound_variable_id=4,
-                    greater_than=[2.95, self.characteristics["basin3_target_level"]],
+                    threshold_high=[2.95, self.characteristics["basin3_target_level"]],
                 ),
                 discrete_control.Logic(
                     truth_state=["FF", "FT", "TF", "TT"], control_state=["block", "block", "pass", "block"]
@@ -453,7 +453,7 @@ class case2:
                 ),
                 discrete_control.Condition(
                     compound_variable_id=5,
-                    greater_than=[
+                    threshold_high=[
                         self.characteristics["basin3_target_level"] - 0.05,
                         self.characteristics["basin1_target_level"],
                     ],
@@ -476,7 +476,7 @@ class case2:
                 ),
                 discrete_control.Condition(
                     compound_variable_id=6,
-                    greater_than=[
+                    threshold_high=[
                         self.characteristics["basin3_target_level"] - 0.05,
                         self.characteristics["basin2_target_level"],
                     ],
@@ -499,7 +499,7 @@ class case2:
                 ),
                 discrete_control.Condition(
                     compound_variable_id=7,
-                    greater_than=[self.characteristics["basin3_target_level"] - 0.05, 295],
+                    threshold_high=[self.characteristics["basin3_target_level"] - 0.05, 295],
                 ),
                 discrete_control.Logic(
                     truth_state=["FF", "FT", "TF", "TT"], control_state=["block", "block", "pass", "block"]

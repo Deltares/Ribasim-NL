@@ -233,8 +233,8 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 ),
                 discrete_control.Condition(
                     compound_variable_id=1,
-                    greater_than=condition_df["greater_than"].to_list(),
-                    condition_id=list(range(1, len(condition_df["greater_than"]) + 1)),
+                    threshold_high=condition_df["threshold_high"].to_list(),
+                    condition_id=list(range(1, len(condition_df["threshold_high"]) + 1)),
                 ),
                 discrete_control.Logic(
                     truth_state=logic_df.truth_state.to_list(),
