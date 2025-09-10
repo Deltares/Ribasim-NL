@@ -137,21 +137,21 @@ set_values_where(
     updates={"max_downstream_level": lambda d: d["max_downstream_level"] - 0.02},
 )
 
-# set upstream level boundaries at 999 meters
+# set upstream level boundaries
 boundary_node_ids = [i for i in model.level_boundary.node.df.index if model.upstream_node_id(i) is None]
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
 model.level_boundary.static.df.loc[mask, "level"] += 0.2
-
+# set downstream level boundaries
 boundary_node_ids = [i for i in model.level_boundary.node.df.index if model.upstream_node_id(i) is not None]
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
 model.level_boundary.static.df.loc[mask, "level"] -= 1
 
+# Inlaten max_downstream verlagen zodat ze niet onbeperkt doorstromen
 node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()
 mask = model.outlet.static.df.node_id.isin(node_ids)
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.02
-# model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_flow_rate"] = 10
+
+# %%Duikers voor nu op 0.1m3/s ! Nog verbeteren
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_object_type"] == "duikersifonhevel"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.1
