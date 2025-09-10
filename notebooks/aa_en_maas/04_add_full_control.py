@@ -72,17 +72,63 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
 model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 
+
 # set upstream level boundaries at 999 meters
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
 # model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 # %% bovenstroomse outlets op 10m3/s zetten
-# Hoofdinlaten krijgen 10m3/s
-model.outlet.static.df.loc[
-    model.outlet.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Outlet")), "flow_rate"
-] = 10
-model.pump.static.df.loc[
-    model.pump.static.df.node_id.isin(model.upstream_connection_node_ids(node_type="Pump")), "flow_rate"
-] = 10
+def set_values_where(df, updates, node_ids=None, key_col="node_id", mask=None):
+    if mask is None:
+        mask = df[key_col].isin(node_ids)
+    sub = df.loc[mask]
+    for col, val in updates.items():
+        df.loc[mask, col] = val(sub) if callable(val) else val
+    return int(mask.sum())
+
+
+# === 1. Bepaal upstream/downstream connection nodes ===
+upstream_outlet_nodes = model.upstream_connection_node_ids(node_type="Outlet")
+downstream_outlet_nodes = model.downstream_connection_node_ids(node_type="Outlet")
+upstream_pump_nodes = model.upstream_connection_node_ids(node_type="Pump")
+downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
+
+# === 1a. Upstream outlets met aanvoer: max_downstream = min_upstream + 0.02 en min_upstream = NA
+out_static = model.outlet.static.df
+pump_static = model.pump.static.df
+
+mask_upstream_aanvoer = out_static["node_id"].isin(upstream_outlet_nodes) & (out_static["meta_aanvoer"] == 1)
+
+# === 1a. Upstream outlets met aanvoer ===
+set_values_where(
+    out_static,
+    mask=mask_upstream_aanvoer,
+    updates={
+        "max_downstream_level": lambda d: d["min_upstream_level"] + 0.02,
+        "min_upstream_level": pd.NA,
+    },
+)
+
+updates_plan = [
+    # Upstream boundary: Outlets en Pumps
+    (out_static, upstream_outlet_nodes, {"flow_rate": 10, "max_flow_rate": 10}),
+    (pump_static, upstream_pump_nodes, {"flow_rate": 10, "max_flow_rate": 10, "min_upstream_level": pd.NA}),
+    # Downstream boundary: Outlets en Pumps
+    (out_static, downstream_outlet_nodes, {"max_downstream_level": pd.NA}),
+    (pump_static, downstream_pump_nodes, {"max_downstream_level": pd.NA}),
+    # Offset-aanpassingen
+    (out_static, downstream_outlet_nodes, {"min_upstream_level": lambda d: d["min_upstream_level"] + 0.02}),
+    (out_static, upstream_outlet_nodes, {"min_upstream_level": lambda d: d["min_upstream_level"] + 0.02}),
+]
+
+for df, nodes, updates in updates_plan:
+    set_values_where(df, node_ids=nodes, updates=updates)
+
+# Alle pumps corrigeren met offset
+set_values_where(
+    pump_static,
+    mask=pump_static.index.notna(),  # alle rijen
+    updates={"max_downstream_level": lambda d: d["max_downstream_level"] - 0.02},
+)
 
 # %% sturing uit alle niet-gestuwde outlets halen
 

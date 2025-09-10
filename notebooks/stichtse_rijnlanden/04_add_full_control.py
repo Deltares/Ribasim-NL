@@ -39,6 +39,7 @@ cloud.synchronize(
     ]
 )
 
+# %%
 # read model
 model = Model.read(ribasim_toml)
 aanvoergebieden_df = gpd.read_file(aanvoer_path)
@@ -63,8 +64,8 @@ model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_
 
 
 # %%
-
 add_from_to_nodes_and_levels(model)
+
 # re-parameterize
 ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=True)
 ribasim_parametrization.determine_min_upstream_max_downstream_levels(
@@ -77,18 +78,6 @@ ribasim_parametrization.determine_min_upstream_max_downstream_levels(
 )
 check_basin_level.add_check_basin_level(model=model)
 
-# TODO: The addition of `ContinuousControl`-nodes is subsequently a minor modification:
-"""To allow the addition of `ContinuousControl`-nodes, the branch 'continuous_control' must be merged first to access
-the required function: `ribasim_parametrization.add_continuous_control(<model>)`. The expansion of adding the continuous
-control requires a proper working schematisation of both 'afvoer'- and 'aanvoer'-situations, and so these should be
-fixed and up-and-running beforehand.
-"""
-# ribasim_parametrization.add_continuous_control(model)
-
-"""For the addition of `ContinuousControl`-nodes, it might be necessary to set `model.basin.static.df=None`, as the
-`ContinuousControl`-nodes require `Time`-tables instead of `Static`-tables. If both are defined (for the same node,
-Ribasim will raise an error and thus not execute.
-"""
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
@@ -99,10 +88,6 @@ model.outlet.static.df.max_flow_rate = 20
 model.pump.static.df.max_flow_rate = 20
 # model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
 model.basin.area.df["meta_streefpeil"] = model.basin.area.df["meta_streefpeil"] - 0.02
-# set upstream level boundaries at 999 meters
-# boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
-
 
 # %% Alle inlaten op max debiet gezet.
 node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
@@ -169,7 +154,7 @@ set_values(
     },
 )
 
-# === 2b. Verhoog mmin_upstream_level met offset voor downstream Outlets
+# === 2b. Verhoog min_upstream_level met offset voor downstream Outlets
 mask = model.outlet.static.df["node_id"].isin(downstream_outlet_nodes)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.02
 mask = model.pump.static.df["node_id"].isin(downstream_pump_nodes)
@@ -189,23 +174,6 @@ model.pump.static.df.loc[mask, "min_upstream_level"] -= 0.0
 # === 4. Zet max/min levels op NA voor niet-gestuwde, niet-verbonden outlets ===
 non_control_nodes = model.outlet.node.df.query("meta_gestuwd == 'False'").index
 excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
-# model.outlet.static.df.loc[
-#    model.outlet.static.df["node_id"].isin(non_control_nodes) & ~model.outlet.static.df["node_id"].isin(excluded_nodes),
-#    ["max_downstream_level", "min_upstream_level"],
-# ] = pd.NA
-
-
-# Afronden
-# def round_to_2_decimals(x):
-#     return round(x, 2) if pd.notnull(x) else x
-
-
-# model.outlet.static.df["min_upstream_level"] = model.outlet.static.df["min_upstream_level"].apply(round_to_2_decimals)
-# model.outlet.static.df["max_downstream_level"] = model.outlet.static.df["max_downstream_level"].apply(
-#     round_to_2_decimals
-# )
-# model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"].apply(round_to_2_decimals)
-# model.pump.static.df["max_downstream_level"] = model.pump.static.df["max_downstream_level"].apply(round_to_2_decimals)
 
 # %%
 model.discrete_control.add(
@@ -239,8 +207,6 @@ model.link.add(model.discrete_control[2113], model.pump[2114])
 
 
 # %%
-
-
 model.pump.static.df.flow_rate = 20
 
 
@@ -271,7 +237,7 @@ upstream_basin_set = set(upstream_basin_nodes_pump)
 filtered_outlet_nodes = [
     outlet for outlet, basin in outlet_to_downstream_basin.items() if basin not in upstream_basin_set
 ]
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(filtered_outlet_nodes), "min_upstream_level"] -= 0.001
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(filtered_outlet_nodes), "min_upstream_level"] -= 0.002
 
 
 # Outlets aan hoofdwaterlopen mogen niet omlaag! Nog script maken
@@ -298,12 +264,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 742, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 79, "min_upstream_level"] += 0.001
 
 # %% Add inlaat
-# Waaiergemaal iets hoger (numeriek handig om peil te houden)
-# model.pump.static.df.loc[model.pump.static.df.node_id == 567, "min_upstream_level"] = 0.56
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 759, "min_upstream_level"] = 0.56
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 756, "min_upstream_level"] = 0.56
-
-
 model.pump.static.df.loc[model.pump.static.df.node_id == 1138, "min_upstream_level"] = 0.55
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2106, "min_upstream_level"] = 0.55
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1172, "min_upstream_level"] = 0.55
@@ -329,11 +289,8 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 562, "min_upstream_leve
 # Afvoer pomp
 model.pump.static.df.loc[model.pump.static.df.node_id == 572, "max_downstream_level"] = pd.NA
 model.pump.static.df.loc[model.pump.static.df.node_id == 578, "max_downstream_level"] = pd.NA
-
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 529, "min_upstream_level"] = 0.46
 model.pump.static.df.loc[model.pump.static.df.node_id == 1373, "min_upstream_level"] = 0.46
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 105, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 155, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 196, "min_upstream_level"] = 0.52
@@ -362,7 +319,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 386, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 411, "max_downstream_level"] = -2.20
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstream_level"] = -2.20
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 806, "max_downstream_level"] = -2.2
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 889, "max_downstream_level"] = -2.20
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 762, "max_downstream_level"] = -2.20
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 921, "max_downstream_level"] = -2.20
@@ -370,7 +326,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 922, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "max_downstream_level"] = -2.20
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 962, "max_downstream_level"] = -2.2
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1052, "max_downstream_level"] = -2.20
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 340, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 339, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 341, "min_upstream_level"] = 0.52
@@ -390,7 +345,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 265, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 266, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 333, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 557, "max_downstream_level"] = 1.55
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 959, "max_downstream_level"] = -1.08
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 408, "max_downstream_level"] = -1.08
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 315, "max_downstream_level"] = -1.08
@@ -405,10 +359,8 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 836, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 107, "min_upstream_level"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 258, "min_upstream_level"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 743, "min_upstream_level"] = 0.01
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2111, "max_downstream_level"] = -2.18
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 2108, "level"] = -2
-
 model.basin.area.df.loc[model.basin.area.df.node_id == 1698, "meta_streefpeil"] = 0
 model.basin.area.df.loc[model.basin.area.df.node_id == 1474, "meta_streefpeil"] = -0.48
 model.basin.area.df.loc[model.basin.area.df.node_id == 1492, "meta_streefpeil"] = 0.52
@@ -459,26 +411,17 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 261, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 920, "max_downstream_level"] = -1.75
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 779, "max_downstream_level"] = -1.75
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 818, "max_downstream_level"] = -1.75
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1067, "max_downstream_level"] = -1.53
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "max_downstream_level"] = -1.53
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 246, "max_downstream_level"] = -1.53
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1156, "max_downstream_level"] = -1.53
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 420, "min_upstream_level"] = -1.55
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1005, "min_upstream_level"] = -1.55
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 487, "max_downstream_level"] = -1.53
-
-# model.pump.static.df.loc[model.pump.static.df.node_id == 543, "max_downstream_level"] = -2.29
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 678, "min_upstream_level"] = -1.55
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 678, "max_downstream_level"] = -1.75
-# %% Bij een pomp mag de max_downstream_level van outlets die water krijgen van hoofdwaterloop nooit hoger zijn dan min_upstream_level van pump.
-# #Echter moeten de afvoernodes naar de pomp wel een max_downstream_level hebben die lager is dan de pump zodat ze in afvoersituaties kunne afvoeren. Doordat
-# min_upstream_level van een pump net wat hoger is dan de setting.
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 887, "max_downstream_level"] = -2.2
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstream_level"] = -2.2
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_flow_rate"] = 0.1
 # Keulevaart
 model.pump.static.df.loc[model.pump.static.df.node_id == 623, "min_upstream_level"] = -2.20
@@ -499,7 +442,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 929, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 866, "max_downstream_level"] = 0.57
 model.pump.static.df.loc[model.pump.static.df.node_id == 561, "max_downstream_level"] = 1.27
 model.pump.static.df.loc[model.pump.static.df.node_id == 792, "max_downstream_level"] = 0.57
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1194, "min_upstream_level"] = -1.22
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1279, "min_upstream_level"] = pd.NA
 

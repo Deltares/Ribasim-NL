@@ -35,7 +35,7 @@ cloud.synchronize(
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
-update_basin_static(model=model, evaporation_mm_per_day=1)
+update_basin_static(model=model, precipitation_mm_per_day=1)
 
 # alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
 update_levels = model.basin_outstate.df.set_index("node_id")["level"]
@@ -44,11 +44,6 @@ mask = model.basin.area.df["node_id"].isin(basin_ids)
 model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
     lambda x: update_levels[x]
 )
-
-# model basin area
-model.basin.area.df["meta_streefpeil"] = model.basin.area.df["meta_streefpeil"] + 0.02
-model.outlet.static.df["min_upstream_level"] = model.outlet.static.df["min_upstream_level"] + 0.02
-model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"] + 0.02
 
 # %%
 add_from_to_nodes_and_levels(model)
@@ -74,17 +69,10 @@ check_basin_level.add_check_basin_level(model=model)
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = 20
-model.pump.static.df.flow_rate = 20
-# model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.max_flow_rate
-model.outlet.static.df.max_flow_rate = 20
-model.pump.static.df.max_flow_rate = 20
-# model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
-model.basin.area.df["meta_streefpeil"] = model.basin.area.df["meta_streefpeil"] - 0.02
-
-# %%
-node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_flow_rate"] = 0.1
+model.outlet.static.df.flow_rate = 100
+model.pump.static.df.flow_rate = 100
+model.outlet.static.df.max_flow_rate = 100
+model.pump.static.df.max_flow_rate = 100
 
 
 # %% bovenstroomse outlets op 10m3/s zetten en boundary afvoer pumps/outlets
@@ -107,29 +95,31 @@ downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
 # === 1a. Upstream outlets met aanvoer: max_downstream = min_upstream + 0.02 en min_upstream = NA
 out_static = model.outlet.static.df
 pump_static = model.pump.static.df
+mask_upstream_aanvoer = out_static["node_id"].isin(upstream_outlet_nodes)
+# & (out_static["meta_aanvoer"] == 1)
 
-mask_upstream_aanvoer = out_static["node_id"].isin(upstream_outlet_nodes) & (out_static["meta_aanvoer"] == 1)
+node_ids = model.outlet.node.df[model.outlet.node.df["meta_categorie"] == "hoofdwater"].index
+mask = model.outlet.static.df["node_id"].isin(node_ids)
+model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
-# === 1a. Upstream outlets met aanvoer ===
+# %%
+# === 1a. Upstream outlets (bij boundaries) met aanvoer ===
 set_values_where(
     out_static,
     mask=mask_upstream_aanvoer,
     updates={
-        "max_downstream_level": lambda d: d["min_upstream_level"] + 0.02,
+        "max_downstream_level": lambda d: d["min_upstream_level"],
         "min_upstream_level": pd.NA,
     },
 )
 
 updates_plan = [
     # Upstream boundary: Outlets en Pumps
-    (out_static, upstream_outlet_nodes, {"flow_rate": 10, "max_flow_rate": 10}),
-    (pump_static, upstream_pump_nodes, {"flow_rate": 10, "max_flow_rate": 10, "min_upstream_level": pd.NA}),
+    (out_static, upstream_outlet_nodes, {"flow_rate": 100, "max_flow_rate": 100}),
+    (pump_static, upstream_pump_nodes, {"flow_rate": 100, "max_flow_rate": 100, "min_upstream_level": pd.NA}),
     # Downstream boundary: Outlets en Pumps
     (out_static, downstream_outlet_nodes, {"max_downstream_level": pd.NA}),
     (pump_static, downstream_pump_nodes, {"max_downstream_level": pd.NA}),
-    # Offset-aanpassingen
-    (out_static, downstream_outlet_nodes, {"min_upstream_level": lambda d: d["min_upstream_level"] + 0.02}),
-    (out_static, upstream_outlet_nodes, {"min_upstream_level": lambda d: d["min_upstream_level"] + 0.02}),
 ]
 
 for df, nodes, updates in updates_plan:
@@ -142,44 +132,37 @@ set_values_where(
     updates={"max_downstream_level": lambda d: d["max_downstream_level"] - 0.02},
 )
 
-# model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"] + 0.02
-model.level_boundary.static.df["level"] = model.level_boundary.static.df["level"] + 0.02
+# Downstream boundary nodes
+model.level_boundary.static.df["level"] = -999
 
-# %% Outlets bij pompen down_stream_level 0.0001m omlaag zodat er afvoer kan ontstaan
-# Behalve outlets die in zelfde basins liggen als pumps anders krijg je rondpompen
-# 1. Haal alle pomp-node IDs op
-pump_ids = model.pump.node.df.index
-
-# 2. Downstream basin nodes van pompen (één stap)
-downstream_basin_nodes_pump = pd.Series([model.downstream_node_id(i) for i in pump_ids]).explode().dropna().unique()
-
-# 3. Upstream basin nodes van pompen (voor de filter later)
-upstream_basin_nodes_pump = pd.Series([model.upstream_node_id(i) for i in pump_ids]).explode().dropna().unique()
-
-# 4. Eén extra stap downstream vanaf de basin nodes van de pomp
-step2_nodes = pd.Series([model.downstream_node_id(i) for i in downstream_basin_nodes_pump]).explode().dropna().unique()
-
-# 5. Alleen de nodes die daadwerkelijk outlets zijn
-outlet_ids = model.outlet.node.df.index
-outlet_nodes_downstream = [nid for nid in step2_nodes if nid in outlet_ids]
-
-# 6. Bepaal downstream basin node per outlet
-outlet_to_downstream_basin = {outlet: model.downstream_node_id(outlet) for outlet in outlet_nodes_downstream}
-
-# 7. Filter: verwijder outlets waarvan downstream basin node in upstream_basin_nodes_pump zit
-upstream_basin_set = set(upstream_basin_nodes_pump)
-
-filtered_outlet_nodes = [
-    outlet for outlet, basin in outlet_to_downstream_basin.items() if basin not in upstream_basin_set
-]
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(filtered_outlet_nodes), "min_upstream_level"] -= 0.001
+# set upstream level boundaries at 999 meters
+boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
 
 # %%%
+# %%
+node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_flow_rate"] = 0.1
+
+node_ids_duikers = model.outlet.static.df[model.outlet.static.df["meta_code"].str.startswith("duiker", na=False)][
+    "node_id"
+].to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids_duikers), "max_flow_rate"] = 0.1
 
 # fixes vistrap eruit
 model.remove_node(1414, remove_edges=True)
+model.remove_node(1441, remove_edges=True)
 # fixes flow_rate sluis max 0.1m3/s
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 523, "max_flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1089, "max_downstream_level"] = pd.NA
+# Streefpeil te laag
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 959, "min_upstream_level"] = 11
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 971, "min_upstream_level"] = 11
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1238, "min_upstream_level"] = 11
+
+# Manning moet outlet zijn
+model.update_node(node_id=1468, node_type="Outlet")
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1468, "min_upstream_level"] = 2.63
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
@@ -190,17 +173,6 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    # TODO: Different ways of executing the model; choose the one that suits you best:
     ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
-    # exit_code = model.run()
-
-    # assert exit_code == 0
-
-    """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
-    successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the
-    outlets on 'aanvoer' instead of the more suitable 'afvoer'. This should no longer be a problem once the next step of
-    adding `ContinuousControl`-nodes is implemented.
-    """
-
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()

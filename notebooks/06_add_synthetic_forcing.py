@@ -10,8 +10,8 @@ endtime = datetime(2018, 1, 1)
 
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = []
-REBUILD = False
+SELECTION: list[str] = ["StichtseRijnlanden"]
+REBUILD = True
 
 
 def get_model_dir(authority, post_fix):

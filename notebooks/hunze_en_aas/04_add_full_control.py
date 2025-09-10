@@ -101,6 +101,7 @@ for action in actions:
         method(**kwargs)
 
 
+# %%
 def set_values(df, node_ids, values: dict):
     """Hulpfunctie om meerdere kolommen tegelijk te updaten voor bepaalde node_ids."""
     mask = df["node_id"].isin(node_ids)

@@ -54,13 +54,7 @@ else:
 
 # %% Quick fix basins
 
-actions = [
-    "remove_basin_area",
-    "add_basin",
-    "add_basin_area",
-    "update_node",
-    "redirect_edge",
-]
+actions = ["remove_basin_area", "add_basin", "add_basin_area", "update_node", "redirect_edge", "move_node"]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_extra_gpkg).name.to_list()]
 for action in actions:
     print(action)

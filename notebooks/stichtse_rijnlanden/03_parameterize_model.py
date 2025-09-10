@@ -15,7 +15,7 @@ static_data_xlsx = cloud.joinpath(
     authority,
     "verwerkt",
     "parameters",
-    "static_data_template.xlsx",
+    "static_data.xlsx",
 )
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
@@ -25,25 +25,24 @@ qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.q
 # cloud.synchronize(filepaths=[static_data_xlsx])
 # cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
-# %% fixes
-
-
 # %%
 # read
 model = Model.read(ribasim_toml)
 start_time = time.time()
 
 # %%
-# fixes
 model.basin.area.df.loc[model.basin.area.df.node_id == 1975, "meta_streefpeil"] = 0.52
 model.basin.area.df.loc[model.basin.area.df.node_id == 1836, "meta_streefpeil"] = -2.08  # Wulverhorst
-
+model.basin.area.df.loc[model.basin.area.df.node_id == 1988, "meta_streefpeil"] = -1.55
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # Fixes
+model.basin.area.df.loc[model.basin.area.df.node_id == 1975, "meta_streefpeil"] = 0.52
+model.basin.area.df.loc[model.basin.area.df.node_id == 1836, "meta_streefpeil"] = -2.08  # Wulverhorst
+
 model.basin.area.df.loc[model.basin.area.df.node_id == 1698, "meta_streefpeil"] = 0
 model.basin.area.df.loc[model.basin.area.df.node_id == 1474, "meta_streefpeil"] = -0.48
 model.basin.area.df.loc[model.basin.area.df.node_id == 1492, "meta_streefpeil"] = 0.52
