@@ -45,13 +45,6 @@ original_model = model.model_copy(deep=True)
 update_basin_static(model=model, precipitation_mm_per_day=1)
 
 # %%
-# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
-update_levels = model.basin_outstate.df.set_index("node_id")["level"]
-basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
-mask = model.basin.area.df["node_id"].isin(basin_ids)
-model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
-    lambda x: update_levels[x]
-)
 add_from_to_nodes_and_levels(model)
 
 aanvoergebieden_df = gpd.read_file(aanvoer_path)
@@ -135,12 +128,21 @@ set_values_where(
     updates={"max_downstream_level": lambda d: d["max_downstream_level"] - 0.02},
 )
 
-# Downstream boundary nodes
-model.level_boundary.static.df["level"] = -999
+# set upstream level boundaries
+boundary_node_ids = [i for i in model.level_boundary.node.df.index if model.upstream_node_id(i) is None]
+mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
+model.level_boundary.static.df.loc[mask, "level"] += 0.2
 
-# set upstream level boundaries at 999 meters
-boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id.isin(boundary_node_ids), "level"] = 999
+# set downstream level boundaries
+boundary_node_ids = [i for i in model.level_boundary.node.df.index if model.upstream_node_id(i) is not None]
+mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
+model.level_boundary.static.df.loc[mask, "level"] -= 1
+# %%
+# Inlaten
+node_ids = model.outlet.static.df[model.outlet.static.df["meta_name"].str.startswith("INL", case=False, na=False)][
+    "node_id"
+].to_numpy()
+model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_downstream_level"] += 0.02
 
 # %%
 
