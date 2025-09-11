@@ -17,6 +17,7 @@ import ast
 import os
 
 import pandas as pd
+from shapely.geometry import Point
 from spatial_coupling import search_geometry_nodes, search_type_nodes
 
 # %%
@@ -122,9 +123,13 @@ def update_koppeltabel_with_feedback(
     # Iterate through the feedback koppeltabel to match and update rows in the input koppeltabel
     for index, feedback_row in feedback_koppeltabel.iterrows():
         meetreeks_c = feedback_row["MeetreeksC"]
+        aan_af_value = feedback_row["Aan/Af"]
 
-        # Find rows in input koppeltabel matching "MeetreeksC"
-        matching_rows = input_koppeltabel[input_koppeltabel["MeetreeksC"] == meetreeks_c]
+        # # Find rows in input koppeltabel matching "MeetreeksC"
+        # matching_rows = input_koppeltabel[input_koppeltabel["MeetreeksC"] == meetreeks_c]
+        matching_rows = input_koppeltabel[
+            (input_koppeltabel["MeetreeksC"] == meetreeks_c) & (input_koppeltabel["Aan/Af"] == aan_af_value)
+        ]
 
         for input_index, input_row in matching_rows.iterrows():
             link_ids = feedback_row["link_id_correct"]
@@ -207,3 +212,14 @@ def update_koppeltabel_with_feedback(
         cloud_sync.upload_file(opslaan_path)
 
     return input_koppeltabel
+
+
+# %%
+# Function to convert strings like "POINT (69775 438562)" into shapely.geometry.Point
+def convert_to_point(geometry_str):
+    if isinstance(geometry_str, str):  # Ensure the input is a string
+        geometry_str = geometry_str.replace("POINT (", "").replace(")", "")
+        x, y = map(float, geometry_str.split())
+        return Point(x, y)
+    else:
+        raise ValueError(f"Unexpected value in geometry column: {geometry_str}")
