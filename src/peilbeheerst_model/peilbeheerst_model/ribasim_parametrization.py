@@ -638,7 +638,7 @@ def add_discrete_control_nodes(ribasim_model):
                 ),
                 ribasim.nodes.discrete_control.Condition(
                     compound_variable_id=compound_variable_id,
-                    greater_than=[df_streefpeilen.at[listen_node_id, "level"]],  # streefpeil
+                    threshold_high=[df_streefpeilen.at[listen_node_id, "level"]],  # streefpeil
                 ),
                 ribasim.nodes.discrete_control.Logic(
                     truth_state=["F", "T"],  # aan uit wanneer groter dan streefpeil
@@ -1827,7 +1827,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
     # formatting
     DC_condition_us.rename(
         columns={
-            "level": "greater_than",
+            "level": "threshold_high",
             "from_node_id": "meta_listen_node_id",
             "from_node_type": "meta_listen_node_type",
         },
@@ -1837,7 +1837,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
         [
             "node_id",
             "compound_variable_id",
-            "greater_than",
+            "threshold_high",
             "meta_listen_node_id",
             "meta_listen_node_type",
             "meta_to_control_node_id",
@@ -1865,11 +1865,15 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
     # formatting
     DC_condition_ds.rename(
-        columns={"level": "greater_than", "to_node_id": "meta_listen_node_id", "to_node_type": "meta_listen_node_type"},
+        columns={
+            "level": "threshold_high",
+            "to_node_id": "meta_listen_node_id",
+            "to_node_type": "meta_listen_node_type",
+        },
         inplace=True,
     )
     DC_condition_ds = DC_condition_ds[
-        ["node_id", "compound_variable_id", "greater_than", "meta_listen_node_id", "meta_listen_node_type"]
+        ["node_id", "compound_variable_id", "threshold_high", "meta_listen_node_id", "meta_listen_node_type"]
     ]
     DC_condition_ds["meta_downstream"] = 1  # add a column to sort it later on
 
@@ -1885,7 +1889,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
     DC_condition = pd.concat([DC_condition_us, DC_condition_ds])
 
     # every basin should have a target level by this part of the code. However, LevelBoundaries may not. Implement it
-    DC_condition.greater_than.fillna(value=default_level, inplace=True)
+    DC_condition.threshold_high.fillna(value=default_level, inplace=True)
 
     # concat the entire DC_condition to the ribasim model
     ribasim_model.discrete_control.condition.df = pd.concat([ribasim_model.discrete_control.condition.df, DC_condition])
