@@ -312,7 +312,7 @@ def CompareOutputMeasurements(
         subset_measurements = dagmetingen[["time"] + existing_measurements].copy()
 
         # If multiple measurements series refer to the same link, take the sum of the measurements
-        subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1)
+        subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1, min_count=1)
 
         # Get the specific operations for the measurements
         subset_specs = specifics[
@@ -320,7 +320,7 @@ def CompareOutputMeasurements(
             & (specifics["Aan/Af"] == meetlocaties_link.iloc[0]["Aan/Af"])
         ]
 
-        if link == 8046341:
+        if link == 8059555:
             None
         if len(pd.Series.unique(subset_specs["Specifiek"])) > 1:
             print(
