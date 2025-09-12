@@ -9,12 +9,13 @@ from ribasim_nl import CloudStorage, Network
 cloud = CloudStorage()
 
 # input on cloud
-stream_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_stream_the_netherlands.gpkg")
+# TODO fairway not on cloud, stream is, but not used
+fairway_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_fairway_the_netherlands.gpkg")
 river_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_river_the_netherlands.gpkg")
 canal_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_canals_the_netherlands.gpkg")
 model_user_data_path = cloud.joinpath("Rijkswaterstaat/verwerkt/model_user_data.gpkg")
 
-cloud.synchronize(filepaths=[stream_osm_path, river_osm_path, canal_osm_path, model_user_data_path])
+cloud.synchronize(filepaths=[fairway_osm_path, river_osm_path, canal_osm_path, model_user_data_path])
 
 # input from previous step
 basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
@@ -29,8 +30,8 @@ network_path = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
 print("read basins")
 basins_gdf = gpd.read_file(basins_path, layer="ribasim_basins")
 
-print("read osm stream")
-stream_osm_gdf = gpd.read_file(stream_osm_path)
+print("read osm fairway")
+fairway_osm_gdf = gpd.read_file(fairway_osm_path)
 
 print("read osm river")
 river_osm_gdf = gpd.read_file(river_osm_path)
@@ -66,7 +67,7 @@ network_lines_gdf = pd.concat(
     [
         river_osm_gdf,
         canal_osm_gdf,
-        stream_osm_gdf,
+        fairway_osm_gdf,
     ],
     ignore_index=True,
 )
