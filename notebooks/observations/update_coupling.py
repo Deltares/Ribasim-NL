@@ -17,6 +17,7 @@ import ast
 import os
 
 import pandas as pd
+from shapely.geometry import Point
 from spatial_coupling import search_geometry_nodes, search_type_nodes
 
 # %%
@@ -27,6 +28,7 @@ def update_koppeltabel_with_feedback(
     feedback_koppeltabel_path,
     lhm_model,
     output_path,
+    versie,
     cloud_sync=None,
     keep_all_columns=True,
     columns_to_keep=None,
@@ -57,6 +59,48 @@ def update_koppeltabel_with_feedback(
     input_koppeltabel = pd.read_excel(input_koppeltabel_path)
     feedback_koppeltabel = pd.read_excel(feedback_koppeltabel_path)
 
+    excel_specifieke_bewerking = feedback_koppeltabel[["Waterschap", "MeetreeksC", "Aan/Af", "Specifiek"]].copy()
+
+    excel_specifieke_bewerking = excel_specifieke_bewerking[excel_specifieke_bewerking["Specifiek"] != "verwijderen"]
+
+    # 2. Remove substring "fout schematisatie" but keep row
+    excel_specifieke_bewerking["Specifiek"] = (
+        excel_specifieke_bewerking["Specifiek"].str.replace("fout schematisatie", "", regex=False).str.strip()
+    )
+
+    path_specifiek_bewerking = cloud_sync.joinpath(output_path, f"Specifiek_bewerking_versie{versie}.xlsx")
+
+    excel_specifieke_bewerking.to_excel(path_specifiek_bewerking, index=False)
+
+    if cloud_sync:
+        cloud_sync.upload_file(path_specifiek_bewerking)
+
+    # def update_specifiek_column(input_koppeltabel: pd.DataFrame, feedback_koppeltabel: pd.DataFrame) -> pd.DataFrame:
+    #     # Check if "Specifiek" is in feedback
+    #     if "Specifiek" not in feedback_koppeltabel.columns:
+    #         return input_koppeltabel.copy()
+
+    #     updated_df = input_koppeltabel.copy()
+
+    #     if "Specifiek" in updated_df.columns:
+    #         # Case 1: Update only matching rows
+    #         updated_df = updated_df.merge(
+    #             feedback_koppeltabel[["MeetreeksC", "Aan/Af" ,"Specifiek"]], on="MeetreeksC", how="left", suffixes=("", "_fb")
+    #         )
+
+    #         updated_df["Specifiek"] = updated_df["Specifiek_fb"].combine_first(updated_df["Specifiek"])
+    #         updated_df = updated_df.drop(columns=["Specifiek_fb"])
+
+    #     else:
+    #         # Case 2: Add new Specifiek column
+    #         updated_df = updated_df.merge(
+    #             feedback_koppeltabel[["MeetreeksC", "Aan/Af", "Specifiek"]], on="MeetreeksC", how="left"
+    #         )
+
+    #     return updated_df
+
+    # input_koppeltabel = update_specifiek_column(input_koppeltabel, feedback_koppeltabel)
+
     # Add missing columns from feedback_koppeltabel to input_koppeltabel
     # Toevoegen als we een model voor een specifiek waterschaps model draaien
     # Dan is deze info niet aanwezig tov van een samengevoegd model
@@ -79,9 +123,13 @@ def update_koppeltabel_with_feedback(
     # Iterate through the feedback koppeltabel to match and update rows in the input koppeltabel
     for index, feedback_row in feedback_koppeltabel.iterrows():
         meetreeks_c = feedback_row["MeetreeksC"]
+        aan_af_value = feedback_row["Aan/Af"]
 
-        # Find rows in input koppeltabel matching "MeetreeksC"
-        matching_rows = input_koppeltabel[input_koppeltabel["MeetreeksC"] == meetreeks_c]
+        # # Find rows in input koppeltabel matching "MeetreeksC"
+        # matching_rows = input_koppeltabel[input_koppeltabel["MeetreeksC"] == meetreeks_c]
+        matching_rows = input_koppeltabel[
+            (input_koppeltabel["MeetreeksC"] == meetreeks_c) & (input_koppeltabel["Aan/Af"] == aan_af_value)
+        ]
 
         for input_index, input_row in matching_rows.iterrows():
             link_ids = feedback_row["link_id_correct"]
@@ -147,30 +195,6 @@ def update_koppeltabel_with_feedback(
     if cloud_sync:
         opslaan_path = cloud_sync.joinpath(output_path, new_filename)
 
-    def update_specifiek_column(input_koppeltabel: pd.DataFrame, feedback_koppeltabel: pd.DataFrame) -> pd.DataFrame:
-        # Check if "Specifiek" is in feedback
-        if "Specifiek" not in feedback_koppeltabel.columns:
-            return input_koppeltabel.copy()
-
-        updated_df = input_koppeltabel.copy()
-
-        if "Specifiek" in updated_df.columns:
-            # Case 1: Update only matching rows
-            updated_df = updated_df.merge(
-                feedback_koppeltabel[["MeetreeksC", "Specifiek"]], on="MeetreeksC", how="left", suffixes=("", "_fb")
-            )
-            updated_df["Specifiek"] = updated_df["Specifiek_fb"].combine_first(updated_df["Specifiek"])
-            updated_df = updated_df.drop(columns=["Specifiek_fb"])
-        else:
-            # Case 2: Add new Specifiek column
-            updated_df = updated_df.merge(
-                feedback_koppeltabel[["MeetreeksC", "Specifiek"]], on="MeetreeksC", how="left"
-            )
-
-        return updated_df
-
-    input_koppeltabel = update_specifiek_column(input_koppeltabel, feedback_koppeltabel)
-
     # Welke columns behouden we:
     if not keep_all_columns:
         input_koppeltabel = input_koppeltabel[columns_to_keep]
@@ -188,3 +212,14 @@ def update_koppeltabel_with_feedback(
         cloud_sync.upload_file(opslaan_path)
 
     return input_koppeltabel
+
+
+# %%
+# Function to convert strings like "POINT (69775 438562)" into shapely.geometry.Point
+def convert_to_point(geometry_str):
+    if isinstance(geometry_str, str):  # Ensure the input is a string
+        geometry_str = geometry_str.replace("POINT (", "").replace(")", "")
+        x, y = map(float, geometry_str.split())
+        return Point(x, y)
+    else:
+        raise ValueError(f"Unexpected value in geometry column: {geometry_str}")

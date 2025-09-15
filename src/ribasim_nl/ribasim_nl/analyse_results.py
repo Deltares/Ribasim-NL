@@ -29,7 +29,7 @@ def ParseList(val):
         The `ParseList` function is designed to parse a string representation of a list. If the input `val`
     is a string that starts with '[' and ends with ']', it attempts to evaluate the string using
     `ast.literal_eval` to convert it into a Python list. If the evaluation is successful and the result
-    is a list, it returns the first element of the list if the list has only one element.
+    is a list, it returns the first element of the list if the list has only one element in it.
 
     """
     if isinstance(val, str) and val.strip().startswith("[") and val.strip().endswith("]"):
@@ -98,6 +98,7 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
     if apply_for_water_authority is not None:
         koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
         koppel_link_id_column = "meta_edge_id_waterbeheerder"
+
     else:
         koppel_link_id_column = "new_link_id"
 
@@ -110,6 +111,26 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
     return koppeltabel
 
 
+def LaadSpecifiekeBewerking(loc_specifics) -> pd.DataFrame:
+    """
+    The function `LaadSpecifiekeBewerking` reads specific modifications from an Excel file and returns it.
+
+    Parameters
+    ----------
+    loc_specifics:
+        The `loc_specifics` parameter in the `LaadSpecifiekeBewerking` function is
+        expected to be a file location pointing to an Excel file that contains specific modifications.
+
+    Returns
+    -------
+    The function `LaadSpecifiekeBewerking` is returning the data read from an Excel file
+    located at the path specified by the `loc_specifics` parameter as a pandas DataFrame
+    """
+    specifics = pd.read_excel(loc_specifics, header=0)
+
+    return specifics
+
+
 def get_unique(items):
     seen = []
     for item in items:
@@ -118,8 +139,84 @@ def get_unique(items):
     return seen
 
 
+def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
+    """
+    The function `ApplySpecificOperation`  performs specific operations on the input data.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The function `ApplySpecificOperation` takes in a pandas DataFrame `data`, a list of link IDs
+    `link`, and a specific operation `spec_op` to be applied on the data. The function then performs
+    different operations based on the value of `spec_op`.
+    link : list | int
+        The `link` parameter in the function `ApplySpecificOperation` is used to specify the link or links
+    for which the specific operation will be applied. It can be either an integer or a list of integers
+    representing the link IDs. If it is an integer, it will be converted to a list containing
+    spec_op : str
+        The `spec_op` parameter in the `ApplySpecificOperation` function represents a specific operation
+    that can be performed on the data based on the provided conditions. The function uses a `match`
+    statement to determine the specific operation to be applied. The possible values for `spec_op` and
+    their corresponding operations are 'optellen','optellen_en_negatief_maken','negatief_maken', np.nan, or a
+    custom formula. A custom formula needs to refer to the specific links as link1, link2 etc.
+
+    Returns
+    -------
+    A subset of the data with a special operation applied (if any)
+    """
+    # Make sure the link is a list
+    if isinstance(link, int):
+        link = [link]
+
+    # There are four options for the specific operation
+    match spec_op:
+        case "optellen":
+            # Tel de links bij elkaar op wanneer de specifieke bewerking hierom vraagt
+            subset_links = data[data["link_id"].isin(link)]
+            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum()
+
+        case "negatief_maken":
+            # Maak de meetreeks negatief
+            subset_output = data[data["link_id"].isin(link)].copy()
+            subset_output["flow_rate"] = subset_output["flow_rate"] * -1
+
+        case "optellen_en_negatief_maken":
+            # Tel op en maak de reeks negatief
+            subset_links = data[data["link_id"].isin(link)]
+            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()
+            subset_output["flow_rate"] = subset_output["flow_rate"] * -1
+
+        case _ if pd.isna(spec_op):
+            # Als er geen specifieke bewerking nodig is, selecteer de link
+            subset_output = data[data["link_id"].isin(link)]
+
+        case _:
+            # Handel de specifieke formule af
+            # Create a mapping between link numbers and link IDs
+            link_mapping = {f"link{i + 1}": ID for i, ID in enumerate(link)}
+
+            # Select the dataframe with the specified links
+            subset_links = data[data["link_id"].isin(link)]
+            subset_pivot = subset_links.pivot(index="time", columns="link_id", values="flow_rate")
+            env = {placeholder: subset_pivot[link_id] for placeholder, link_id in link_mapping.items()}
+
+            # Evaluate the formula and add the results to the pivoted dataframe
+            subset_pivot["result"] = eval(spec_op, {}, env)
+
+            # Rename the results to 'flow_rate'
+            subset_output = subset_pivot["result"].reset_index().rename(columns={"result": "flow_rate"})
+
+    return subset_output
+
+
 def CompareOutputMeasurements(
-    loc_koppeltabel, meas_folder, model_folder, filetype="flow", apply_for_water_authority: str | None = None
+    loc_koppeltabel,
+    loc_specifics,
+    meas_folder,
+    model_folder,
+    filetype="flow",
+    apply_for_water_authority: str | None = None,
+    save_results_combined: bool = False,
 ) -> None:
     """Compares model output measurements with actual measurements, calculates statistics, and saves the results in a geopackage per waterboard as well as producing the necessary figures.
 
@@ -127,6 +224,8 @@ def CompareOutputMeasurements(
     ----------
     loc_koppeltabel
         The location of the koppeltabel (Excel file):
+    loc_specifics
+        The location of the table with specific operations per measurement (Excel file)
     meas_folder
         The `meas_folder` refers to the folder location where measurements data is stored.
     model_folder
@@ -136,6 +235,9 @@ def CompareOutputMeasurements(
         By default, it is set to `'flow'`, but you can change it to
     apply_for_water_authority
         Optional specification to read koppeltabel for a specific water authority. Defaults to None
+    save_results_combined
+        Optional boolean to check if all the results are to be written to a single layer in a geopackage instead of
+        one per water authority. Defaults to False
 
     Returns
     -------
@@ -143,6 +245,7 @@ def CompareOutputMeasurements(
 
     """
     koppeltabel = LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority=apply_for_water_authority)
+    specifics = LaadSpecifiekeBewerking(loc_specifics)
     data = ReadOutputFile(model_folder, filetype)
 
     measurements = LoadMeasurements(meas_folder)
@@ -159,10 +262,11 @@ def CompareOutputMeasurements(
                 continue
         except:  # noqa: E722 TODO: do not use bare except
             None
+
         # for n, meetlocatie in tqdm.tqdm(koppeltabel.iterrows(), total=len(koppeltabel), desc='Verwerken metingen'):
         mask = koppeltabel["link_id_parsed"].apply(lambda x: x == link)
         meetlocaties_link = koppeltabel[mask]
-        # meetlocaties_link = koppeltabel[koppeltabel['link_id_parsed']==link]
+
         # Create a result dictionary per waterschap
         if meetlocaties_link.iloc[0]["Waterschap"] not in results_measurements.keys():
             results_measurements[meetlocaties_link.iloc[0]["Waterschap"]] = {
@@ -187,20 +291,6 @@ def CompareOutputMeasurements(
                 "figure_path": [],
             }
 
-        if isinstance(link, list):
-            subset_modeloutput = data[data["link_id"] == link[0]]
-            # TODO: Edit this part to make sure that the links are properly added together
-            # for n, link_id in enumerate(meetlocatie['link_id_parsed']):
-            #     part_subset_modeloutput = data[data['link_id'] == link_id]
-
-            #     if n == 0:
-            #         subset_modeloutput = part_subset_modeloutput #FIXME Add the different columns together
-            #     else:
-            #         subset_modeloutput += subset_modeloutput
-
-        else:
-            subset_modeloutput = data[data["link_id"] == link]
-
         # Loop over the locations in case two need to be summed
         # Two locs cannot be summed if the type of discharge differs
         if len(np.unique(meetlocaties_link["Aan/Af"])) > 1:
@@ -220,13 +310,34 @@ def CompareOutputMeasurements(
                 print(f"Cannot find the daily measurements for {col}")
 
         subset_measurements = dagmetingen[["time"] + existing_measurements].copy()
-        subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1)
 
-        if np.average(subset_measurements["sum"]) < 0:
-            # Flip the measurements
-            subset_measurements["sum"] = subset_measurements["sum"] * -1
+        # If multiple measurements series refer to the same link, take the sum of the measurements
+        subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1, min_count=1)
 
-        # summed_measurements = subset_measurements.groupby('time')[existing_measurements].sum().reset_index()
+        # Get the specific operations for the measurements
+        subset_specs = specifics[
+            (specifics["MeetreeksC"].isin(existing_measurements))
+            & (specifics["Aan/Af"] == meetlocaties_link.iloc[0]["Aan/Af"])
+        ]
+
+        if link == 8059555:
+            None
+        if len(pd.Series.unique(subset_specs["Specifiek"])) > 1:
+            print(
+                f"Two different operations found for the same set of links. A.o. in measurements {existing_measurements}"
+            )
+            continue
+
+        # Set the specific operation
+        spec_op = subset_specs["Specifiek"].iloc[0]
+
+        # If a list of links is present, a specific operation is required.
+        if isinstance(link, list) & pd.isna(spec_op):
+            print(f"No specific operation found for measurements {existing_measurements}, around link {link}")
+            continue
+
+        # Apply the special operation to get the subset of model output
+        subset_modeloutput = ApplySpecificOperation(data, link, spec_op)
 
         # Combine the measurements with the modeloutput in one dataframe
         combined_df = subset_modeloutput.merge(subset_measurements[["time", "sum"]], on=["time"], how="left")
@@ -299,19 +410,33 @@ def CompareOutputMeasurements(
         )
         results_measurements_decade[meetlocaties_link.iloc[0]["Waterschap"]]["figure_path"].append(pop_up_figure)
 
+    results_combined = []
+    results_dec_combined = []
     # Save the results in a geopackage per waterboard
     for waterschap, results in results_measurements.items():
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
         results_gdf.set_crs(epsg="28992", inplace=True)
+        results_combined.append(results_gdf)
         results_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten.gpkg"), layer=waterschap)
 
     for waterschap, results in results_measurements_decade.items():
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
         results_gdf.set_crs(epsg="28992", inplace=True)
+        results_dec_combined.append(results_gdf)
         results_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten_dec.gpkg"), layer=waterschap)
 
+    # Save all the results in one geopackage to make handling in QGIS or HTML easier
+    if save_results_combined:
+        final_gdf = pd.concat(results_combined, ignore_index=True)
+        final_dec_gdf = pd.concat(results_dec_combined, ignore_index=True)
 
-def ConvertToDecade(combined_df):
+        final_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten_all.gpkg"), layer="Compleet")
+        final_dec_gdf.to_file(
+            os.path.join(model_folder, "results", "Validatie_resultaten_dec_all.gpkg"), layer="Compleet"
+        )
+
+
+def ConvertToDecade(combined_df_results):
     def get_decade(ts):
         day = ts.day
         if day <= 10:
@@ -321,14 +446,14 @@ def ConvertToDecade(combined_df):
         else:
             return 3
 
-    combined_df["Time"] = pd.to_datetime(combined_df["time"])  # ensure Time is datetime
+    combined_df_results["Time"] = pd.to_datetime(combined_df_results["time"])  # ensure Time is datetime
 
-    combined_df["year"] = combined_df["time"].dt.year
-    combined_df["month"] = combined_df["time"].dt.month
-    combined_df["decade"] = combined_df["time"].apply(get_decade)
+    combined_df_results["year"] = combined_df_results["time"].dt.year
+    combined_df_results["month"] = combined_df_results["time"].dt.month
+    combined_df_results["decade"] = combined_df_results["time"].apply(get_decade)
 
     # Group by year-month-decade
-    grouped = combined_df.groupby(["year", "month", "decade"], as_index=False).agg(
+    grouped = combined_df_results.groupby(["year", "month", "decade"], as_index=False).agg(
         {
             "flow_rate": "mean",  # or 'sum', depending on what you want
             "sum": "mean",  # adjust aggregation as needed
@@ -477,9 +602,14 @@ def GetStatisticsComparison(combined_df):
     stats = {}
 
     # NSE
-    targets = combined_df[combined_df.columns[-1]]
+    targets = combined_df["sum"]
     model_output = combined_df["flow_rate"]
-    stats["NSE"] = 1 - (np.sum((targets - model_output) ** 2) / np.sum((targets - np.mean(targets)) ** 2))
+
+    denom = np.sum((targets - np.mean(targets)) ** 2)
+    if denom != 0:
+        stats["NSE"] = 1 - (np.sum((targets - model_output) ** 2) / denom)
+    else:
+        stats["NSE"] = -999
 
     # RMSE
     stats["RMSE"] = np.sqrt(np.mean((model_output - targets) ** 2))
@@ -494,26 +624,34 @@ if __name__ == "__main__":
     # init cloud
     cloud = CloudStorage()
 
-    # specify koppeltabel and meas_folder
+    # # specify koppeltabel and meas_folder
     loc_koppeltabel = cloud.joinpath(
-        "Landelijk", "resultaatvergelijking", "koppeltabel", "Transformed_koppeltabel_test_met_suggestie.xlsx"
+        "Landelijk",
+        "resultaatvergelijking",
+        "koppeltabel",
+        "Transformed_koppeltabel_versie_lhm_ctwq_compat_Feedback_Verwerkt_HydroLogic.xlsx",
+    )
+    loc_specifieke_bewerking = cloud.joinpath(
+        "Landelijk", "resultaatvergelijking", "koppeltabel", "Specifiek_bewerking_versielhm_ctwq_compat.xlsx"
     )
     meas_folder = cloud.joinpath("Landelijk", "resultaatvergelijking", "meetreeksen")
 
     # get latest coupled LHM model
     rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
     latest_lhm_version = sorted(
-        [i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", "")
+        [i for i in rws_model_versions if i.model == "lhm_ctwq"], key=lambda x: getattr(x, "sorter", "")
     )[-1]
     model_folder = cloud.joinpath("Rijkswaterstaat", "modellen", latest_lhm_version.path_string)
 
-    # synchronize paths
-    cloud.synchronize([loc_koppeltabel, meas_folder, model_folder])
+    # # synchronize paths
+    cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, meas_folder, model_folder])
 
     # run compare output measurements
     CompareOutputMeasurements(
         loc_koppeltabel=loc_koppeltabel,
+        loc_specifics=loc_specifieke_bewerking,
         meas_folder=meas_folder,
         model_folder=model_folder,
         filetype="flow",
+        save_results_combined=True,
     )

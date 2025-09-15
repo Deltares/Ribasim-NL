@@ -23,7 +23,12 @@ cloud = CloudStorage()
 base = cloud.joinpath("Landelijk", "resultaatvergelijking", "koppeltabel")
 
 # Draaien vanuit de uitgangskoppeltabel op basis van alle nieuw aangeleverde metingen en feedback
-loc_ref_koppeltabel = cloud.joinpath(base, "Koppeltabel_uitgangspunt.xlsx")
+# loc_ref_koppeltabel = cloud.joinpath(base, "Koppeltabel_uitgangspunt.xlsx")
+
+# loc_ref_koppeltabel = cloud.joinpath(base, "Transformed_koppeltabel_versie1_Feedback_Verwerkt_HydroLogic.xlsx")
+loc_ref_koppeltabel = cloud.joinpath(
+    base, "Transformed_koppeltabel_versie_lhm_ctwq_compat_Feedback_Verwerkt_HydroLogic.xlsx"
+)
 
 
 # paths:
@@ -50,7 +55,9 @@ filter_waterschappen = False
 
 waterschapsnaam = None
 
-toml_naam = "lhm-coupled.toml"
+# toml_naam = "lhm-coupled.toml"
+toml_naam = "lhm_ctwq.toml"
+
 
 # Als we wel een geometry hadden opgeslagen in de input koppeltabel, maar we kunnen in de buurt in het nieuwe model
 # geen connector knoopjes vinden dan hebben we dus geen verbinding meer en willen we wel of niet een nieuwe suggestie op basis van een nieuw gevonden
@@ -62,16 +69,18 @@ nieuwe_suggestie_als_oude_geometry_ontbreekt = True
 # Als dit NIET zo is --> eerste_tabel= True
 # Anders --> eerste_tabel= False
 
-eerste_tabel = True
+# eerste_tabel = True
+eerste_tabel = False
 
-versie = 1
-wegschrijven_nieuwe_tabel = cloud.joinpath(base, f"Transformed_koppeltabel_versie{versie}.xlsx")
+versie = "lhm_ctwq_compat"
+wegschrijven_nieuwe_tabel = cloud.joinpath(base, f"Transformed_koppeltabel_versie_{versie}.xlsx")
 
 # synchronize paths
 cloud.synchronize([base, model_folder])
 
 #!TODO: weghalen als lhm-coupled met huidige ribasim versie kan worden ingelezen
-model_folder_temporary = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_werkend\lhm_coupled"
+# model_folder_temporary = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_werkend\lhm_coupled"
+model_folder_temporary = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_2017\lhm_ctwq_compat"
 
 
 # %% functions
@@ -329,6 +338,10 @@ connector_nodes_df = combine_nodes_from_model(
         "outlet",
         "manning_resistance",
         "linear_resistance",
+        "junction",
+        "level_boundary",
+        "flow_boundary",
+        "user_demand",
     ],
 )
 
@@ -344,6 +357,10 @@ all_nodes_df = combine_nodes_from_model(
         "level_boundary",
         "flow_boundary",
         "continuous_control",
+        "junction",
+        "level_boundary",
+        "flow_boundary",
+        "user_demand",
     ],
 )
 
@@ -357,12 +374,23 @@ gdf_koppeling = gdf_koppeling[["Waterschap", "MeetreeksC", "Aan/Af", "geometry"]
 lhm_model = model
 
 # List of connector nodes
+# connector_nodes = [
+#     "tabulated_rating_curve",
+#     "pump",
+#     "outlet",
+#     "manning_resistance",
+#     "linear_resistance",
+# ]
+
 connector_nodes = [
     "tabulated_rating_curve",
     "pump",
     "outlet",
     "manning_resistance",
     "linear_resistance",
+    "flow_boundary",
+    "level_boundary",
+    "junction",
 ]
 
 
@@ -390,7 +418,7 @@ koppeling_spatial = spatial_match(
     buffer_range_links=buffer_range_links,
     link_columns=link_columns,
     apply_mapping=False,
-    write_buffer_shp=True,
+    write_buffer_shp=False,
     output_buffer_shapefile=cloud.joinpath(
         base, "suggestie_automatische_koppeling", f"Buffers_match_metingen_v{versie}.gpkg"
     ),
