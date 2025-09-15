@@ -36,7 +36,7 @@ rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geo
 cloud.synchronize(filepaths=[zinfo_influentdebieten_path, db_file, rwzi_ligging_path])
 
 # %% create empty model
-starttime = "1991-01-01"
+starttime = "2017-01-01"
 endtime = "2018-01-01"
 time_range = pd.date_range(start=starttime, end=endtime, freq="D")
 logging.info(f"Setting up Ribasim-RWZI model between {starttime} and {endtime} in {model_dir}.")
@@ -315,13 +315,14 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         valid_flow_rates = flow_rates[valid_mask]
 
         # Skip RWZIs with no valid data after removing NaNs
+        # TODO should we create the FlowBoundary but with static 0.0 flow_rate?
         if valid_flow_rates.empty:
             skipped_rwzis.append(rwzi_name)
             logging.info(f"No valid data remaining for RWZI '{rwzi_name}'. Skipping.")
             continue
 
-        # Normalize the time and adjust it to 12:00 PM of each day
-        valid_times = valid_times.dt.normalize() + pd.Timedelta(hours=12)
+        # Normalize the time
+        valid_times = valid_times.dt.normalize()
 
         # Create the flow boundary node
         try:
