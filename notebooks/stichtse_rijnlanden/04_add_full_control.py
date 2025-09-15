@@ -220,7 +220,7 @@ model.discrete_control.add(
             compound_variable_id=1,
             condition_id=[1, 2],
             # min, max
-            greater_than=[-2.21, -1.9],
+            threshold_high=[-2.21, -1.9],
         ),
         discrete_control.Logic(
             truth_state=["FF", "TF", "TT"],

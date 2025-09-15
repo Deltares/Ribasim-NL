@@ -12,7 +12,7 @@ def condition(
     variable: str = "flow_rate",
     name: str | None = None,
 ) -> DataFrame:
-    df = DataFrame({"greater_than": values})
+    df = DataFrame({"threshold_high": values})
     df.loc[:, ["node_id"]] = node_id
     df.loc[:, ["listen_feature_id"]] = listen_feature_id
     df.loc[:, ["variable"]] = variable

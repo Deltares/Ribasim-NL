@@ -434,7 +434,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
     #     ),
     #     discrete_control.Condition(
     #         compound_variable_id=1,
-    #         greater_than=control_flow_rate,
+    #         threshold_high=control_flow_rate,
     #         condition_id=list(range(1, len(control_flow_rate) + 1)),
     #         meta_control_state=control_state,
     #     ),
