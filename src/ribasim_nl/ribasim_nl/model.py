@@ -25,7 +25,7 @@ from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import split_basin
 from ribasim_nl.parametrization.parameterize import Parameterize
-from ribasim_nl.run_model import run
+from ribasim_nl.run_model import parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
 
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -184,6 +184,19 @@ class Model(Model):
     @property
     def next_node_id(self):
         return self.node_table().df.index.max() + 1
+
+    @property
+    def computation_time(self):
+        """Get computation time of last run as timedelta"""
+        ribasim_log = self.results_path / "ribasim.log"
+        if not ribasim_log.exists():
+            return None  # model has never been run
+        with open(ribasim_log, encoding="utf-8") as src:
+            for line in src:
+                if "Computation time" in line:
+                    computation_time = parse_computation_time(line)
+                    if computation_time is not None:
+                        return computation_time
 
     def run(self, **kwargs):
         """Run your Ribasim model"""
