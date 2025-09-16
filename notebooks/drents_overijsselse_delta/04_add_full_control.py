@@ -132,6 +132,17 @@ set_values_where(
     updates={"max_downstream_level": lambda d: d["max_downstream_level"] - 0.02},
 )
 
+set_values_where(
+    pump_static,
+    node_ids=downstream_pump_nodes,
+    updates={"min_upstream_level": lambda d: pd.to_numeric(d["min_upstream_level"], errors="coerce") + 0.02},
+)
+set_values_where(
+    out_static,
+    node_ids=downstream_outlet_nodes,
+    updates={"min_upstream_level": lambda d: pd.to_numeric(d["min_upstream_level"], errors="coerce") + 0.02},
+)
+
 # Downstream boundary nodes
 model.level_boundary.static.df["level"] = -999
 
@@ -152,13 +163,57 @@ model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids_duike
 # fixes vistrap eruit
 model.remove_node(1414, remove_edges=True)
 model.remove_node(1441, remove_edges=True)
+
 # fixes flow_rate sluis max 0.1m3/s
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 523, "max_flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 538, "max_flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1280, "max_flow_rate"] = 0.1  # Inlaat
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1361, "max_flow_rate"] = 0  # Sluis
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2607, "max_flow_rate"] = 0.1  # Sluis
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2604, "max_flow_rate"] = 0  # check met hysterese
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 544, "max_flow_rate"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1089, "max_downstream_level"] = pd.NA
 # Streefpeil te laag
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 959, "min_upstream_level"] = 11
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 971, "min_upstream_level"] = 11
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1238, "min_upstream_level"] = 11
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 544, "min_upstream_level"] = -0.2
+
+# Afvoer outlets en pumpen geen downstream waterlevel bij waterloop Paraduisslijs, basin levels kloppen niet
+model.pump.static.df.loc[model.pump.static.df.node_id == 2594, "max_downstream_level"] = pd.NA
+model.pump.static.df.loc[model.pump.static.df.node_id == 2595, "max_downstream_level"] = pd.NA
+model.pump.static.df.loc[model.pump.static.df.node_id == 646, "max_downstream_level"] = pd.NA
+model.pump.static.df.loc[model.pump.static.df.node_id == 664, "max_downstream_level"] = pd.NA
+model.pump.static.df.loc[model.pump.static.df.node_id == 680, "max_downstream_level"] = pd.NA
+model.pump.static.df.loc[model.pump.static.df.node_id == 1101, "max_downstream_level"] = pd.NA
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1382, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 541, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 454, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1081, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 932, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1219, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 387, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 490, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 519, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1066, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 988, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 445, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 520, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1036, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 543, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 926, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 446, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1368, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 521, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 953, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1325, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 464, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1406, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 515, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 965, "max_downstream_level"] = pd.NA
+
 
 # Manning moet outlet zijn
 model.update_node(node_id=1468, node_type="Outlet")

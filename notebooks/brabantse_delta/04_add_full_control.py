@@ -35,7 +35,7 @@ cloud.synchronize(
 # read model
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
-update_basin_static(model=model, evaporation_mm_per_day=0.5)
+update_basin_static(model=model, precipitation_mm_per_day=1)
 
 # alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
 update_levels = model.basin_outstate.df.set_index("node_id")["level"]

@@ -10,7 +10,7 @@ from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 # execute model run
-MODEL_EXEC: bool = False
+MODEL_EXEC: bool = True
 
 # model settings
 AUTHORITY: str = "Noorderzijlvest"
@@ -139,12 +139,17 @@ mask = model.level_boundary.static.df.node_id.isin(boundary_node_ids)
 model.level_boundary.static.df.loc[mask, "level"] -= 1
 # %%
 # Inlaten
-node_ids = model.outlet.static.df[model.outlet.static.df["meta_name"].str.startswith("INL", case=False, na=False)][
+node_ids = model.outlet.static.df[model.outlet.static.df["meta_name"].str.startswith("INL", na=False)][
     "node_id"
 ].to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_downstream_level"] += 0.02
 
 # %%
+# Afvoer altijd mogelijk door max_downstream op NA te zetten
+mask = ~model.pump.static.df["meta_code"].str.contains("iKGM|_i", case=False, na=False)
+node_ids = model.pump.static.df.loc[mask, "node_id"].to_numpy()
+model.pump.static.df.loc[model.pump.static.df["node_id"].isin(node_ids), "max_downstream_level"] = pd.NA
+
 
 model.pump.static.df.loc[
     model.pump.static.df.node_id == 34, "min_upstream_level"
@@ -157,6 +162,13 @@ model.pump.static.df.loc[
     model.pump.static.df.node_id == 209, "min_upstream_level"
 ] = -1.26  # Check! Bij min_upstream_level =-1.14m NP geen aanvoer mogelijk. Outlet 722 lijkt niet OK. Bovenstrooms peil lagen dan benedenstrooms peil
 
+model.pump.static.df.loc[
+    model.pump.static.df.node_id == 40, "min_upstream_level"
+] = -0.36  # Check! Bij min_upstream_level =-0.35m NP geen afvoer mogelijk.
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1746, "max_flow_rate"] = 0.1  # Check! Sluis
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1747, "max_flow_rate"] = 0.1  # Check! Sluis
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1748, "max_flow_rate"] = 0.1  # Check! Sluis
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")

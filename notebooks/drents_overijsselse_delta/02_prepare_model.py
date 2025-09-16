@@ -324,6 +324,8 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] 
     "node_id"
 ).at[1769, "meta_streefpeil"]
 
+model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.19
+
 
 # %%
 
