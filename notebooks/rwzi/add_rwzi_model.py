@@ -12,9 +12,7 @@ import geopandas as gpd
 import pandas as pd
 import ribasim
 
-from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
-from ribasim_nl.aquo import waterbeheercode
-from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl import CloudStorage, Model, concat, prefix_index
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", force=True)
 
@@ -39,112 +37,32 @@ upload_model = False
 # TODO:discuss what the buffer_distance should be
 buffer_distance = 20  # meter outside the basin which is still clipped
 
-model_specs_to_merge = [
-    # {
-    #     "authority": "Rijkswaterstaat",
-    #     "model": "lhm_vrij_coupled",
-    #     "find_toml": True,
-    # },
-    {
-        "authority": "DeDommel",
-        "model": "DeDommel",
-        "find_toml": True,
-    },
-    # {
-    #     "authority": "WetterskipFryslan",
-    #     "model": "WetterskipFryslan_boezemmodel",
-    #     "find_toml": True,
-    # },
+
+model_paths = [
+    cloud.joinpath("Rijkswaterstaat/modellen/lhm_transboundary/lhm.toml"),
+    cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/rwzi.toml"),
 ]
-
-model_specs = model_specs_to_merge + [
-    {
-        "authority": "Basisgegevens/RWZI",
-        "model": "rwzi",
-        "find_toml": True,
-    }
-]
-
-
-def get_model_path(model, model_version):
-    return cloud.joinpath(model["authority"], "modellen", model_version.path_string)
-
-
-authorities = [item["authority"] for item in model_specs_to_merge]
-logging.info(f"Adding the RWZI's to {authorities}")
 
 
 # %% Download models and update state
-for idx, model_spec in enumerate(model_specs):
-    logging.info(f"{model_spec['authority']} - {model_spec['model']}")
-
-    # get version
-    if "model_version" in model_spec.keys():
-        model_version = model_spec["model_version"]
-        logging.info("model version: %s", model_version)
-
-    else:
-        model_versions = [i for i in cloud.uploaded_models(model_spec["authority"]) if i.model == model_spec["model"]]
-        if model_versions:
-            model_version = sorted(model_versions, key=lambda x: x.sorter)[-1]
-        else:
-            raise ValueError(f"No models with name {model_spec['model']} in the cloud")
-        logging.info("model version not defined, latest is: %s", model_version)
-    model_path = get_model_path(model_spec, model_version)
-
-    # download model if not yet downloaded
-    if not model_path.exists():
-        if download_latest_model:
-            logging.info(f"Downloaden versie: {model_version.version}")
-            url = cloud.joinurl(model_spec["authority"], "modellen", model_version.path_string)
-            cloud.download_content(url)
-        else:
-            model_versions = sorted(model_versions, key=lambda x: x.version, reverse=True)
-            model_paths = (get_model_path(model_spec, i) for i in model_versions)
-            model_path = next((i for i in model_paths if i.exists()), None)
-            if model_path is None:
-                raise ValueError(f"No models with name {model_spec['model']} on local drive")
-
-    # find toml
-    if model_spec["find_toml"]:
-        tomls = list(model_path.glob("*.toml"))
-        if len(tomls) > 1:
-            raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one!")
-        else:
-            model_path = tomls[0]
-            logging.info("found 1 toml-file")
-    else:
-        model_path = model_path.joinpath(f"{model_spec['model']}.toml")
+for idx, model_path in enumerate(model_paths):
+    logging.info(model_path)
 
     # read model
     model = Model.read(model_path)
     logging.info("model is loaded")
 
-    # add meta_waterbeheerder
-    for node_type in model.node_table().df.node_type.unique():
-        ribasim_node = getattr(model, pascal_to_snake_case(node_type))
-        ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = model_spec["authority"]
-
-    if model_spec["authority"] == "Rijkswaterstaat":
-        model = reset_index(model)
-
-    # TODO: give the RWZI models a good prefix_id
-    if model_spec["authority"] == "Basisgegevens/RWZI":
+    if model_path.stem == "rwzi":
         prefix_id = 999
         logging.warning("this model still needs a proper prefix_id")
-
-    else:
-        prefix_id = waterbeheercode[model_spec["authority"]]
-
-    try:
-        model = prefix_index(
-            model=model,
-            prefix_id=prefix_id,
-        )
-
-    except KeyError as e:
-        logging.info("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
-        raise e
+        try:
+            model = prefix_index(
+                model=model,
+                prefix_id=prefix_id,
+            )
+        except KeyError as e:
+            logging.info("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
+            raise e
 
     if idx == 0:
         rwzi_coupled_model = model
@@ -152,9 +70,6 @@ for idx, model_spec in enumerate(model_specs):
     else:
         # concat and do not mess with original_index as it has been preserved
         rwzi_coupled_model = concat([rwzi_coupled_model, model], keep_original_index=True)
-        readme += f"""
-
-**{model_spec["authority"]}**: {model_spec["model"]} ({model_version.version})"""
 
 
 # %% functions
@@ -305,19 +220,7 @@ rwzi_coupled_model = terminal2junction(rwzi_coupled_model, coupling_lookup, verb
 
 # %%
 print("write coupled rwzi model")
-ribasim_toml = cloud.joinpath(
-    "Basisgegevens",
-    "RWZI",
-    "modellen",
-    f"rwzi_coupled_{authorities[0]}",
-    "rwzi_coupled.toml",
-)
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm_rwzi/lhm.toml")
 rwzi_coupled_model.write(ribasim_toml)
 
 logging.info(f"There are {len(unmatched_rwzi_df)} RWZI's not incorporated in this model")
-
-# %%
-cloud.joinpath("Basisgegevens", "RWZI", "modellen", f"rwzi_coupled_{authorities[0]}", "readme.md").write_text(readme)
-
-if upload_model:
-    cloud.upload_model("Basisgegevens/RWZI", model=f"rwzi_coupled_{authorities[0]}")

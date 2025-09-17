@@ -149,7 +149,7 @@ network.overlay(basin_area_gdf)  # basin_id toekennen aan netwerk
 
 
 # %% Drinkwater
-drinkwater_gdf = gpd.read_file(onttrekkingen_gpkg, layer_name="Drinkwater_oppervlaktewater", engine="pyogrio")
+drinkwater_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Drinkwater_oppervlaktewater")
 drinkwater_gdf.dropna(subset=["productie"], inplace=True)
 
 
@@ -170,14 +170,14 @@ for row in drinkwater_gdf.itertuples():
     )
 
 # %% Energie
-energie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales", engine="pyogrio")
+energie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales")
 
-energie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales-inlaat", engine="pyogrio")
+energie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales-inlaat")
 energie_inlet_gdf.drop_duplicates("osm_id_Energiecentrales", inplace=True)
 
 mask = ~energie_inlet_gdf.naam.isin(["Centrale Bergum", "Pallas Reactor"])
 
-energie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales-uitlaat", engine="pyogrio")
+energie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales-uitlaat")
 
 priority = 2
 return_factor = 0.95
@@ -213,9 +213,9 @@ for row in energie_inlet_gdf[mask].itertuples():
     )
 
 # %% Industrie
-industrie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrieen", engine="pyogrio")
+industrie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrieen")
 
-industrie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-inlaat", engine="pyogrio")
+industrie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-inlaat")
 industrie_inlet_gdf.rename(columns={"debiet(m3/s)": "demand"}, inplace=True)
 industrie_inlet_gdf.loc[:, "basin_id"] = industrie_inlet_gdf.geometry.apply(
     lambda x: basin_area_gdf.set_index("basin_id").distance(x).idxmin()
@@ -225,7 +225,7 @@ industrie_inlet_gdf = industrie_inlet_gdf[industrie_inlet_gdf["demand"] != 0]
 
 mask = ~industrie_inlet_gdf.naam.isin(["Avebe", "Evides Geervliet", "Evides Veerweg", "Evides KPE Zinker"])
 
-industrie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-uitlaat", engine="pyogrio")
+industrie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-uitlaat")
 
 #
 maas_line = model.edge.df[model.edge.df.name == "Maas"].union_all()
