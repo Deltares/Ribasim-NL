@@ -465,6 +465,7 @@ assign = AssignAuthorities(
         940: "Rijkswaterstaat",
         939: "Rijkswaterstaat",
         1004: "Rijkswaterstaat",
+        1005: "Rijkswaterstaat",
     },
 )
 ribasim_model = assign.assign_authorities()

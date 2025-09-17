@@ -336,7 +336,9 @@ assign = AssignAuthorities(
     waterschap=waterschap,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes=None,
+    custom_nodes={
+        532: "Rijkswaterstaat",
+    },
 )
 ribasim_model = assign.assign_authorities()
 
