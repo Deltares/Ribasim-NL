@@ -209,6 +209,43 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
     return subset_output
 
 
+def AddCumulative(data, decade=False):
+    """
+    Calculates cumulative flow rates and sums for model output and measurements, respectively, with an option to adjust for decadal data.
+
+    Parameters
+    ----------
+    data
+        The `data` parameter is a DataFrame containing the measurement data (column 'sum') and model data (column 'flow_rate')
+    decade, optional
+        The `decade` parameter is a boolean parameter that determines whether the data should be treated as decadal data. If `decade` is set to `True`, the function will
+    multiply the cumulative values by 10 to represent decadal data.
+
+    Returns
+    -------
+        The function `AddCumulative` returns a new dataset with two additional columns: "flow_rate_cum" and
+    "sum_cum". The "flow_rate_cum" column contains the cumulative sum of the "flow_rate" data multiplied
+    by a multiplier (which is 86400 by default, or 864000 if the `decade` parameter is set to True). The
+    "sum_cum" column contains the cumulative sum of the measurements in the column 'sum'
+
+    """
+    # If decadal data is given, multiply by 10 to get the cumulative graph
+    multiplier_s_to_d = 86400
+    if decade:
+        multiplier_s_to_d *= 10
+
+    # Get the cumulative data for both the model output and the measurements
+    new_data = data.copy()
+
+    # Get cumulative of model output in
+    new_data["flow_rate_cum"] = np.cumsum(new_data["flow_rate"]) * multiplier_s_to_d
+
+    # Get cumulative data of measurements by filling the gaps
+    new_data["sum_cum"] = np.cumsum(new_data["sum"].ffill()) * multiplier_s_to_d
+
+    return new_data
+
+
 def CompareOutputMeasurements(
     loc_koppeltabel,
     loc_specifics,
@@ -351,14 +388,19 @@ def CompareOutputMeasurements(
 
         combined_df_decade = ConvertToDecade(combined_df)
 
+        # Calculate the required statistics
         stats = GetStatisticsComparison(combined_df)
         stats_dec = GetStatisticsComparison(combined_df_decade)
+
+        # Add the cumulative discharges to the dataframe
+        combined_df_cum = AddCumulative(combined_df)
+        combined_df_decade_cum = AddCumulative(combined_df_decade, decade=True)
 
         # Deal with the daily values
         full_title = " - ".join(existing_measurements)
         fig_name = full_title.split(" - ")[0]
         PlotAndSave(
-            combined_df=combined_df,
+            combined_df=combined_df_cum,
             stats=stats,
             koppelinfo=full_title,
             fig_name=fig_name,
@@ -366,7 +408,7 @@ def CompareOutputMeasurements(
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
-        pop_up_figure = f'<img src="../figures/{meetlocaties_link.iloc[0]["Waterschap"]}/{fig_name_clean}.png" width=300 height=300>'
+        pop_up_figure = f'<img src="../figures/{meetlocaties_link.iloc[0]["Waterschap"]}/{fig_name_clean}.png" width=400 height=300>'
 
         # Save the resulting statistics per measurement
         results_measurements[meetlocaties_link.iloc[0]["Waterschap"]]["koppelinfo"].append(fig_name_clean)
@@ -386,7 +428,7 @@ def CompareOutputMeasurements(
         full_title = " - ".join(existing_measurements)
         fig_name = full_title.split(" - ")[0] + "_decade"
         PlotAndSave(
-            combined_df=combined_df_decade,
+            combined_df=combined_df_decade_cum,
             stats=stats_dec,
             koppelinfo=full_title,
             fig_name=fig_name,
@@ -394,7 +436,7 @@ def CompareOutputMeasurements(
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
-        pop_up_figure = f'<img src="../figures/{meetlocaties_link.iloc[0]["Waterschap"]}/{fig_name_clean}.png" width=300 height=300>'
+        pop_up_figure = f'<img src="../figures/{meetlocaties_link.iloc[0]["Waterschap"]}/{fig_name_clean}.png" width=400 height=300>'
 
         # Save the resulting statistics per measurement
         results_measurements_decade[meetlocaties_link.iloc[0]["Waterschap"]]["koppelinfo"].append(fig_name_clean)
@@ -544,14 +586,31 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
 
     # Set up the figure
     fig, ax = plt.subplots(figsize=(6, 6))
-    ax.plot(combined_df["time"], combined_df["flow_rate"], label="Ribasim")
-    ax.plot(combined_df["time"], combined_df["sum"], label="Meting")
+    (model_line,) = ax.plot(combined_df["time"], combined_df["flow_rate"], label="Ribasim", color="tab:blue")
+    (meas_line,) = ax.plot(combined_df["time"], combined_df["sum"], label="Meting", color="tab:orange")
     ax.grid()
     ax.set_xticks(ticks=ax.get_xticks(), labels=ax.get_xticklabels(), rotation=45, fontname=font)
     # ax.set_xticklabels(labels=ax.get_xticklabels())
     ax.set_ylabel("Debiet [m$^3$/s]", fontdict={"fontsize": 12, "fontname": font})
     ax.set_title(koppelinfo, fontname=font, wrap=True)
-    ax.legend(prop={"family": font})
+
+    # Set the cumulative axis
+    ax2 = ax.twinx()
+    (model_cum_line,) = ax2.plot(
+        combined_df["time"],
+        combined_df["flow_rate_cum"] / 1_000_000,
+        linestyle="--",
+        color="#0047b3",
+        label="Rib. cum.",
+    )
+    (meas_cum_line,) = ax2.plot(
+        combined_df["time"], combined_df["sum_cum"] / 1_000_000, linestyle="--", color="#cc6600", label="Meting cum."
+    )
+    ax2.set_ylabel("Cumulatief debiet [Mm$^3$]")
+    lines = [model_line, meas_line, model_cum_line, meas_cum_line]
+    labels = [line.get_label() for line in lines]
+
+    ax.legend(lines, labels, prop={"family": font}, loc="lower left", bbox_to_anchor=(1.10, 0))
 
     # Add a textbox with the right statistics
     fig_text = rf"""
@@ -566,8 +625,8 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
     {np.round(stats["MAE"], 2)}
     """
     fig.text(
-        0.92,
-        0.8,
+        1.05,
+        0.90,
         fig_text,
         ha="left",
         va="top",
@@ -629,17 +688,17 @@ if __name__ == "__main__":
         "Landelijk",
         "resultaatvergelijking",
         "koppeltabel",
-        "Transformed_koppeltabel_versie_lhm_ctwq_compat_Feedback_Verwerkt_HydroLogic.xlsx",
+        "Transformed_koppeltabel_versie_lhm_coupled_2025_9_0_Feedback_Verwerkt_HydroLogic.xlsx",
     )
     loc_specifieke_bewerking = cloud.joinpath(
-        "Landelijk", "resultaatvergelijking", "koppeltabel", "Specifiek_bewerking_versielhm_ctwq_compat.xlsx"
+        "Landelijk", "resultaatvergelijking", "koppeltabel", "Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
     )
     meas_folder = cloud.joinpath("Landelijk", "resultaatvergelijking", "meetreeksen")
 
     # get latest coupled LHM model
     rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
     latest_lhm_version = sorted(
-        [i for i in rws_model_versions if i.model == "lhm_ctwq"], key=lambda x: getattr(x, "sorter", "")
+        [i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", "")
     )[-1]
     model_folder = cloud.joinpath("Rijkswaterstaat", "modellen", latest_lhm_version.path_string)
 
