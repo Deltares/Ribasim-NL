@@ -52,6 +52,7 @@ openpyxl = "*"
 pandas = "*"
 pandas-stubs = "*"
 pip = "*"
+plotly = "*"
 pre-commit = "*"
 pyarrow = "*"
 pydantic = ">=2"
@@ -66,6 +67,7 @@ quarto = "*"
 quartodoc = "*"
 rasterstats = "*"
 requests = "*"
+ribasim = "==2025.5.0"
 ruff = "*"
 seaborn = "*"
 shapely = ">=2"
@@ -81,4 +83,3 @@ bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
-ribasim = { git = "https://github.com/Deltares/Ribasim.git", branch = "main", subdirectory = "python/ribasim" }

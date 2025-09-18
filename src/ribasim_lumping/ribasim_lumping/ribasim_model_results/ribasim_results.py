@@ -325,7 +325,7 @@ def plot_results_basin_ribasim_model(
     basin.storage.interpolate().rename("Storage").plot(ax=ax2, style="-o", markersize=2)
     # if control_storage is not None:
     #     ax1.hlines(
-    #         y=control_storage.greater_than.values,
+    #         y=control_storage.threshold_high.values,
     #         xmin=xmin, xmax=xmax, linestyle="--", color='grey'
     #     )
 
@@ -456,7 +456,7 @@ def plot_results_basin_ribasim_model(
 
     # if control_level is not None:
     #     for i, clevel in control_level.iterrows():
-    #         if clevel["greater_than"] > 5000.0:
+    #         if clevel["threshold_high"] > 5000.0:
     #             continue
     #         control_node_id = clevel["node_id"]
     #         controlled_node_id = (ribasim_model.edge.df[
@@ -465,7 +465,7 @@ def plot_results_basin_ribasim_model(
     #         ]["to_node_id"].iloc[0])
     #         node_name = ribasim_model.network.node.df.loc[controlled_node_id, "name"]
     #         ax1.hlines(
-    #             y=clevel["greater_than"],
+    #             y=clevel["threshold_high"],
     #             xmin=xmin,
     #             xmax=xmax,
     #             linestyle="--",
@@ -473,7 +473,7 @@ def plot_results_basin_ribasim_model(
     #             label=f'Control level {node_name} ({controlled_node_id})'
     #         )
     #         ax4.hlines(
-    #             y=clevel["greater_than"],
+    #             y=clevel["threshold_high"],
     #             xmin=0.0,
     #             xmax=basin_results.outflow.max()*1.1,
     #             linestyle="--",
@@ -481,7 +481,7 @@ def plot_results_basin_ribasim_model(
     #             label=f'Control level {node_name} ({controlled_node_id})'
     #         )
     #         ax5.hlines(
-    #             y=clevel["greater_than"],
+    #             y=clevel["threshold_high"],
     #             xmin=0.0,
     #             xmax=basin_profile.area.max()*1.1,
     #             linestyle="--",
