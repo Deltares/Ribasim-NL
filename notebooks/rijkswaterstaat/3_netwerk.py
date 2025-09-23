@@ -159,6 +159,7 @@ network_lines_gdf = network_lines_gdf[
     ~network_lines_gdf["name"].isin(["Geul", "Derde Diem"])
 ]  # brute verwijdering wegens sifon onder Julianakanaal
 
+network_lines_gdf = network_lines_gdf[network_lines_gdf.length > 0.5]
 network = Network(network_lines_gdf, tolerance=1, id_col="id", name_col="name")
 
 print("write to hydamo")
