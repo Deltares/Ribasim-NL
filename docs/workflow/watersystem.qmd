@@ -1,0 +1,18 @@
+---
+title: "Waterschappen watersystem"
+---
+
+Per waterschap wordt het watersysteem beschrevn middels de belangrijkste inlaten en uitlaten beschreven.
+
+# `Noorderzijlvest`
+![Image caption](../img/kunstwerken_NZV_DM.png)
+
+- Gemaal Dongerdielen (Ezumazuil) ()
+Dit gemaal loost vanuit Wetterskip Fryslân op het Lauwersmeer.
+max capaciteit: 15.2 m3/s
+min bovenstrooms peil: -1.25m
+
+- Gemaal Nieuw Robbengat (KGM016)
+Dit gemaal voert het water van de Marnewaard af op het Lauwersmeer.
+max capaciteit: 3.6m3/s
+min bovenstrooms peil: -2.67m
