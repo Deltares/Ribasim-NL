@@ -128,7 +128,6 @@ set_values_where(
 # %% sturing uit alle niet-gestuwde outlets halen
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
 non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
-# model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
 
 # Upstream levels kloppen niet
