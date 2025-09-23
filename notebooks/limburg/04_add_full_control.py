@@ -112,6 +112,7 @@ updates_plan = [
     # Downstream boundary: Outlets en Pumps
     (out_static, downstream_outlet_nodes, {"max_downstream_level": pd.NA}),
     (pump_static, downstream_pump_nodes, {"max_downstream_level": pd.NA}),
+]
 
 for df, nodes, updates in updates_plan:
     set_values_where(df, node_ids=nodes, updates=updates)
