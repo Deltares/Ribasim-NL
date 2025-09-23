@@ -10,9 +10,9 @@ cloud = CloudStorage()
 
 # input on cloud
 # TODO fairway not on cloud, stream is, but not used
-fairway_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_fairway_the_netherlands.gpkg")
-river_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_river_the_netherlands.gpkg")
-canal_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_canals_the_netherlands.gpkg")
+fairway_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_fairway.gpkg")
+river_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_river.gpkg")
+canal_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_canal.gpkg")
 model_user_data_path = cloud.joinpath("Rijkswaterstaat/verwerkt/model_user_data.gpkg")
 
 cloud.synchronize(filepaths=[fairway_osm_path, river_osm_path, canal_osm_path, model_user_data_path])
