@@ -84,6 +84,7 @@ class Model(Model):
     _basin_results: Results | None = None
     _basin_outstate: Results | None = None
     _flow_results: Results | None = None
+    _link_results: Results | None = None
     _graph: nx.Graph | None = None
     _parameterize: Parameterize | None = None
 
@@ -101,6 +102,13 @@ class Model(Model):
             filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
             self._basin_results = Results(filepath=filepath)
         return self._basin_results
+
+    @property
+    def link_results(self):
+        if self._link_results is None:
+            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.arrow").absolute().resolve()
+            self._link_results = Results(filepath=filepath)
+        return self._link_results
 
     @property
     def flow_results(self):
