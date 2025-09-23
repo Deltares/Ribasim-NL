@@ -742,21 +742,23 @@ for boundary_node_id in model.level_boundary.node.df[
 # Deze knopen zijn verbonden met 1 basin náást een node die wél de juiste basins verbindt.
 # We verwijderen deze knopen.
 # Later kunnen we het stuk bij basins verbeteren
-model.remove_node(node_id=5594, remove_edges=True)
-model.remove_node(node_id=5410, remove_edges=True)
-model.remove_node(node_id=8716, remove_edges=True)
 
 for row in model.manning_resistance.static.df.itertuples():
-    edge_to = model.edge.df[model.edge.df["to_node_id"] == row.node_id].iloc[0]
-    edge_from = model.edge.df[model.edge.df["from_node_id"] == row.node_id].iloc[0]
+    try:
+        edge_to = model.edge.df[model.edge.df["to_node_id"] == row.node_id].iloc[0]
+        edge_from = model.edge.df[model.edge.df["from_node_id"] == row.node_id].iloc[0]
 
-    # length = sum of both lengths
-    length = edge_to.geometry.length + edge_from.geometry.length
+        # length = sum of both lengths
+        length = edge_to.geometry.length + edge_from.geometry.length
 
-    model.manning_resistance.static.df.loc[
-        model.manning_resistance.static.df.node_id == row.node_id,
-        ["length"],
-    ] = length
+        model.manning_resistance.static.df.loc[
+            model.manning_resistance.static.df.node_id == row.node_id,
+            ["length"],
+        ] = length
+    except IndexError:
+        # deze knoop is niet verbonden met twee kanten, dus verwijderen
+        model.remove_node(row.node_id, remove_edges=True)
+
 
 # %%wegschrijven model
 print("write ribasim model")
