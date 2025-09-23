@@ -2,7 +2,6 @@ import configparser
 import os
 from collections import OrderedDict
 from pathlib import Path
-from typing import TypeVar
 
 import fiona
 import geopandas as gpd
@@ -94,7 +93,7 @@ def find_nearest_nodes(search_locations: gpd.GeoDataFrame, nodes: gpd.GeoDataFra
     nearest_node_ids = []
     for index, row in search_locations.iterrows():
         point = row.geometry
-        multipoint = nodes.drop(index, axis=0).geometry.unary_union
+        multipoint = nodes.drop(index, axis=0).geometry.union_all()
         _, nearest_geom = nearest_points(point, multipoint)
         nearest_node = nodes.loc[nodes["geometry"] == nearest_geom]
         nearest_node_ids.append(nearest_node[id_column].iloc[0])
@@ -882,10 +881,9 @@ def _remove_holes(geom, min_area):
         return geom
 
 
-_Geom = TypeVar("_Geom", Polygon, MultiPolygon, gpd.GeoSeries, gpd.GeoDataFrame)
-
-
-def remove_holes_from_polygons(geom: _Geom, min_area: float) -> _Geom:
+def remove_holes_from_polygons[Geom: (Polygon, MultiPolygon, gpd.GeoSeries, gpd.GeoDataFrame)](
+    geom: Geom, min_area: float
+) -> Geom:
     """Remove all holes from a geometry that satisfy the filter function."""
     if isinstance(geom, gpd.GeoSeries):
         return geom.apply(_remove_holes, min_area=min_area)

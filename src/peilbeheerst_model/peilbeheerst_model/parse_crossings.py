@@ -875,17 +875,17 @@ class ParseCrossings:
             df_line_conn = df_line_conn[df_line_conn.intersects(point_buffer1)].copy()
             df_line_conn = df_line_conn.intersection(point_buffer1)
 
-        line_conn = df_line_conn[~df_line_conn.is_empty].unary_union
+        line_conn = df_line_conn[~df_line_conn.is_empty].union_all()
         if line_conn.geom_type == "MultiLineString":
             line_conn = shapely.ops.linemerge(line_conn)
 
         if line_conn.is_closed:
-            check = df_line_conn.boundary.intersection(df_line.unary_union)
+            check = df_line_conn.boundary.intersection(df_line.union_all())
             check = check[~check.index.isin(df_line.index) & (check.geom_type == "MultiPoint") & (~check.is_empty)]
             if len(check) > 0:
                 # Remove line(s) which might lead to a closed line.
                 df_line_conn = df_line_conn[~df_line_conn.index.isin(check.index)]
-                line_conn = df_line_conn[~df_line_conn.is_empty].unary_union
+                line_conn = df_line_conn[~df_line_conn.is_empty].union_all()
                 if line_conn.geom_type == "MultiLineString":
                     line_conn = shapely.ops.linemerge(line_conn)
 

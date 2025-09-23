@@ -50,7 +50,7 @@ watervlak_diss_gdf = pd.concat([watervlak_diss_gdf, osm_basins_gdf, add_basins_g
 data = {"naam": [], "geometry": []}
 for name, df in watervlak_diss_gdf[watervlak_diss_gdf.categorie == "nationaal hoofdwater"].groupby(by="naam"):
     # dissolve touching polygons (magic!)
-    geometry = df.geometry.buffer(0.1).unary_union.buffer(-0.1)
+    geometry = df.geometry.buffer(0.1).union_all().buffer(-0.1)
     # make sure we have a list of single polygons
     if isinstance(geometry, MultiPolygon):
         geometries = list(geometry.geoms)
@@ -86,7 +86,7 @@ for line in merge_lines_gdf.itertuples():
         raise ValueError(f"line with index {line.Index} does not end in a polygon")
     if idx_from == idx_to:
         print(f"line with index {line.Index} is contained within a polygon")
-    basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].unary_union
+    basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].union_all()
     basins_gdf = basins_gdf[basins_gdf.index != idx_from]
 
 basins_gdf.to_file(basins_gpkg, layer="merged_basins")

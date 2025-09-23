@@ -2869,11 +2869,11 @@ packages:
 - pypi: ./src/bokeh_helpers
   name: bokeh-helpers
   version: 0.1.0
-  sha256: 0ccdd0ad5587dcb53d0ff5e907b64837b3afe208b504bfd483799a793353891d
+  sha256: 31578fb67b201108b79c02b5b9030eaaf7b80c94ef4d88a63b52be292946e0ee
   requires_dist:
   - bokeh>=3.0
   - pytest ; extra == 'tests'
-  requires_python: '>=3.10'
+  requires_python: '>=3.13'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/bottleneck-1.5.0-py313ha014f3b_0.conda
   sha256: 9dddd51a6bf587e13f7bc42749447bd31a60e2f2404489d7a238f52580b73ac2
@@ -5719,11 +5719,11 @@ packages:
 - pypi: ./src/hydamo
   name: hydamo
   version: 0.1.0
-  sha256: 8981c9d89f3f7f7dd48c6c5cf14396677feed3971cc661e63f398f3b57ae6f4c
+  sha256: 59745f33cabec8fd73b5cb92b221cc8642e99fefe473bdba8a8a0dbec007ba35
   requires_dist:
   - geopandas
   - pytest ; extra == 'tests'
-  requires_python: '>=3.10'
+  requires_python: '>=3.13'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/hyperframe-6.1.0-pyhd8ed1ab_0.conda
   sha256: 77af6f5fe8b62ca07d09ac60127a30d9069fdc3c68d6b256754d0ffb1f7779f8
@@ -12602,7 +12602,7 @@ packages:
 - pypi: ./src/peilbeheerst_model
   name: peilbeheerst-model
   version: 0.1.0
-  sha256: 9ec22544800123361c4449542c548c1e3739a3f8d9d5bbe2f91a8d50d304fac5
+  sha256: 0f23b8e3a87049adbec272ddec6b917e74a1ae2d25ab15f12190fe3a2678eae0
   requires_dist:
   - fiona
   - geopandas
@@ -12614,7 +12614,7 @@ packages:
   - shapely
   - tqdm
   - pytest ; extra == 'tests'
-  requires_python: '>=3.10'
+  requires_python: '>=3.13'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/pexpect-4.9.0-pyhd8ed1ab_1.conda
   sha256: 202af1de83b585d36445dc1fda94266697341994d1a3328fabde4989e1b3d07a
@@ -14645,11 +14645,11 @@ packages:
 - pypi: ./src/ribasim_nl
   name: ribasim-nl
   version: 0.1.0
-  sha256: c88a53d538c83ac90850bab1b6312861cccdd0308477e30cc3d8879643db57c0
+  sha256: fb1ff1d4d1881274fe728d3e4ee93ccc47ad97ae3c8a8712cd0b7b6c8f55bae4
   requires_dist:
   - geopandas
   - pytest ; extra == 'tests'
-  requires_python: '>=3.10'
+  requires_python: '>=3.13'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/rich-14.1.0-pyhe01879c_0.conda
   sha256: 3bda3cd6aa2ca8f266aeb8db1ec63683b4a7252d7832e8ec95788fb176d0e434

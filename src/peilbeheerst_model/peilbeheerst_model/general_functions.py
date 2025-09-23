@@ -231,7 +231,7 @@ def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_perc
 #     possible_matches = peilgebied_praktijk.iloc[unique_candidate_matches]
 
 #     possible_matches.to_file('possible_matches_Rijnland.shp')
-#     un_un = possible_matches.intersects(peilgebied_afwijking.unary_union)
+#     un_un = possible_matches.intersects(peilgebied_afwijking.union_all())
 # #     print('un_un =')
 # #     display(un_un)
 # #     print()

@@ -685,15 +685,15 @@ if __name__ == "__main__":
 
     # # specify koppeltabel and meas_folder
     loc_koppeltabel = cloud.joinpath(
-        "Landelijk",
+        "Basisgegevens",
         "resultaatvergelijking",
         "koppeltabel",
         "Transformed_koppeltabel_versie_lhm_coupled_2025_9_0_Feedback_Verwerkt_HydroLogic.xlsx",
     )
     loc_specifieke_bewerking = cloud.joinpath(
-        "Landelijk", "resultaatvergelijking", "koppeltabel", "Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
+        "Basisgegevens", "resultaatvergelijking", "koppeltabel", "Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
     )
-    meas_folder = cloud.joinpath("Landelijk", "resultaatvergelijking", "meetreeksen")
+    meas_folder = cloud.joinpath("Basisgegevens", "resultaatvergelijking", "meetreeksen")
 
     # get latest coupled LHM model
     rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
