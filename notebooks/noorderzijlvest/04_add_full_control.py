@@ -65,10 +65,10 @@ check_basin_level.add_check_basin_level(model=model)
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = 100
-model.pump.static.df.flow_rate = 100
-model.outlet.static.df.max_flow_rate = 100
-model.pump.static.df.max_flow_rate = 100
+# model.outlet.static.df.flow_rate = 100
+# model.pump.static.df.flow_rate = 100
+# model.outlet.static.df.max_flow_rate = 100
+# model.pump.static.df.max_flow_rate = 100
 
 
 # %% bovenstroomse outlets op 10m3/s zetten en boundary afvoer pumps/outlets
@@ -111,8 +111,8 @@ set_values_where(
 
 updates_plan = [
     # Upstream boundary: Outlets en Pumps
-    (out_static, upstream_outlet_nodes, {"flow_rate": 100, "max_flow_rate": 100}),
-    (pump_static, upstream_pump_nodes, {"flow_rate": 100, "max_flow_rate": 100, "min_upstream_level": pd.NA}),
+    # (out_static, upstream_outlet_nodes, {"flow_rate": 100, "max_flow_rate": 100}),
+    (pump_static, upstream_pump_nodes, {"min_upstream_level": pd.NA}),  # "flow_rate": 100, "max_flow_rate": 100,
     # Downstream boundary: Outlets en Pumps
     (out_static, downstream_outlet_nodes, {"max_downstream_level": pd.NA}),
     (pump_static, downstream_pump_nodes, {"max_downstream_level": pd.NA}),
@@ -166,9 +166,21 @@ model.pump.static.df.loc[
     model.pump.static.df.node_id == 40, "min_upstream_level"
 ] = -0.36  # Check! Bij min_upstream_level =-0.35m NP geen afvoer mogelijk.
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1746, "max_flow_rate"] = 0.1  # Check! Sluis
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1747, "max_flow_rate"] = 0.1  # Check! Sluis
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1748, "max_flow_rate"] = 0.1  # Check! Sluis
+# Outlets Lauwersmeer aanpassen
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1748, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1754, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1755, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1747, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1748, "min_upstream_level"] = -0.95
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1754, "min_upstream_level"] = -0.95
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1755, "min_upstream_level"] = -0.95
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1747, "min_upstream_level"] = -0.95
+
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1746, "max_flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1756, "max_flow_rate"] = 0.0  # Check! Sluis
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1747, "max_flow_rate"] = 0.0  # Check! Sluis
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1748, "max_flow_rate"] = 0.0  # Check! Sluis
+
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
