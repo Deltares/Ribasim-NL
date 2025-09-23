@@ -39,14 +39,6 @@ cloud.synchronize(
 model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, precipitation_mm_per_day=1)
-
-# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
-# update_levels = model.basin_outstate.df.set_index("node_id")["level"]
-# basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
-# mask = model.basin.area.df["node_id"].isin(basin_ids)
-# model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
-#     lambda x: update_levels[x]
-# )
 add_from_to_nodes_and_levels(model)
 
 # re-parameterize
@@ -92,7 +84,6 @@ downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
 out_static = model.outlet.static.df
 pump_static = model.pump.static.df
 mask_upstream_aanvoer = out_static["node_id"].isin(upstream_outlet_nodes)
-# & (out_static["meta_aanvoer"] == 1)
 
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_categorie"] == "hoofdwater"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)

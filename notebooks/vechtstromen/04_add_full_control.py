@@ -81,7 +81,6 @@ downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
 out_static = model.outlet.static.df
 pump_static = model.pump.static.df
 mask_upstream_aanvoer = out_static["node_id"].isin(upstream_outlet_nodes)
-# & (out_static["meta_aanvoer"] == 1)
 
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_categorie"] == "hoofdwater"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
