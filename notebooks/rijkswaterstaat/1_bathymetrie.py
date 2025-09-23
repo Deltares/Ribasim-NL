@@ -21,18 +21,21 @@ from ribasim_nl import CloudStorage
 cloud = CloudStorage()
 
 
-out_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "bathymetrie")
+out_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/bathymetrie")
 out_dir.mkdir(exist_ok=True)
 baseline_file = cloud.joinpath(
     "baseline-nl_land-j23_6-v1/baseline.gdb"
 )  # dit bestand is read-only voor D2HYDRO ivm verwerkersovereenkomst
 layer = "bedlevel_points"
 
-krw_poly_gpkg = cloud.joinpath("Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
+krw_poly_gpkg = cloud.joinpath("Basisgegevens/KRW/krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
 
-bathymetrie_nl = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "bathymetrie")
+bathymetrie_nl = cloud.joinpath("Rijkswaterstaat/aangeleverd/bathymetrie")
 
-cloud.synchronize(filepaths=[bathymetrie_nl, krw_poly_gpkg, baseline_file])
+water_mask_path = out_dir / "water-mask.gpkg"
+
+
+cloud.synchronize(filepaths=[bathymetrie_nl, krw_poly_gpkg, baseline_file, water_mask_path])
 
 res = 5
 tile_size = 10000
@@ -70,7 +73,7 @@ with rasterio.open(out_dir / "bathymetrie-nl.tif", mode="w", **profile) as dst:
 
 # %%
 print("read mask")
-water_geometries = gpd.read_file(out_dir / "water-mask.gpkg")
+water_geometries = gpd.read_file(water_mask_path)
 with fiona.open(baseline_file, layer=layer) as src:
     xmin, ymin, xmax, ymax = src.bounds
     xmin = math.floor(xmin / tile_size) * tile_size
