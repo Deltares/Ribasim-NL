@@ -112,10 +112,6 @@ updates_plan = [
     # Downstream boundary: Outlets en Pumps
     (out_static, downstream_outlet_nodes, {"max_downstream_level": pd.NA}),
     (pump_static, downstream_pump_nodes, {"max_downstream_level": pd.NA}),
-    # Offset-aanpassingen
-    #  (out_static, downstream_outlet_nodes, {"min_upstream_level": lambda d: d["min_upstream_level"] + 0.02}),
-    #  (out_static, upstream_outlet_nodes, {"min_upstream_level": lambda d: d["min_upstream_level"] + 0.02}),
-]
 
 for df, nodes, updates in updates_plan:
     set_values_where(df, node_ids=nodes, updates=updates)
