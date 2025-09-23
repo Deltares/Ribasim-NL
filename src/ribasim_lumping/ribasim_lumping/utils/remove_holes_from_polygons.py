@@ -23,7 +23,9 @@ def _remove_holes(geom, min_area):
 _Geom = TypeVar("_Geom", Polygon, MultiPolygon, gpd.GeoSeries, gpd.GeoDataFrame)
 
 
-def remove_holes_from_polygons(geom: _Geom, min_area: float) -> _Geom:
+def remove_holes_from_polygons[Geom: (Polygon, MultiPolygon, gpd.GeoSeries, gpd.GeoDataFrame)](
+    geom: Geom, min_area: float
+) -> Geom:
     """Remove all holes from a geometry that satisfy the filter function."""
     if isinstance(geom, gpd.GeoSeries):
         return geom.apply(_remove_holes, min_area=min_area)

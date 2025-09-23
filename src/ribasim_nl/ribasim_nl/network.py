@@ -644,7 +644,7 @@ class Network:
 
         if self.tolerance is not None:
             geoseries = (
-                GeoSeries([geoseries.buffer(self.tolerance / 2).union_all()()])
+                GeoSeries([geoseries.buffer(self.tolerance / 2).union_all()])
                 .explode(index_parts=False)
                 .reset_index(drop=True)
                 .centroid
