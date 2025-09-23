@@ -134,7 +134,7 @@ Wetterskip["streefpeil"] = gpd.GeoDataFrame(Wetterskip["streefpeil"])
 
 # buffer_polygon = gdf_buffer.geometry.iat[0].intersection(gdf_grens.geometry.iat[0])
 # buffer_polygon = buffer_polygon.difference(shapely.geometry.MultiPolygon(gdf_hws.geometry.tolist()))
-# buffer_polygon = buffer_polygon.difference(shapely.ops.unary_union(Wetterskip['peilgebied'].geometry.tolist()))
+# buffer_polygon = buffer_polygon.difference(shapely.ops.union_all()(Wetterskip['peilgebied'].geometry.tolist()))
 
 # buffer_polygon = gpd.GeoDataFrame(buffer_polygon)
 # buffer_polygon = buffer_polygon.set_geometry(0)

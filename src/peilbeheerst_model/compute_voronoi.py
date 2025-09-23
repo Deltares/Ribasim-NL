@@ -20,7 +20,7 @@ df_crossings = df_crossings[df_crossings.agg_links_in_use].copy()
 
 
 # Merge polygons with a small buffer. Ook nodig om verbindingen te krijgen in sommige smalle watergangen.
-df_merged = df.buffer(1.0).unary_union
+df_merged = df.buffer(1.0).union_all()
 df_merged = gpd.GeoDataFrame(geometry=list(df_merged.geoms), crs=df.crs)
 
 # add merged id to original polygons

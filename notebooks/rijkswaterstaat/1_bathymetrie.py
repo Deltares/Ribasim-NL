@@ -144,8 +144,8 @@ with rasterio.open(
                 cube.ELEVATION.attrs["scale_factor"] = 0.01
 
                 print("clip cube")
-                mask = water_geometries_select.geometry.unary_union.intersection(area_poly)
-                convex_hull = gdf.unary_union.convex_hull
+                mask = water_geometries_select.geometry.union_all().intersection(area_poly)
+                convex_hull = gdf.union_all().convex_hull
                 if isinstance(mask, MultiPolygon):
                     mask = [i.intersection(convex_hull) for i in mask.geoms if i.intersects(convex_hull)]
 

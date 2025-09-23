@@ -60,7 +60,7 @@ ijsselmeer_basins = [
     "IJsselmeer",
 ]  # ijsselmeer komt uit extra lijnen
 osm_basins_gdf = basins_gdf[~basins_gdf["naam"].isin(ijsselmeer_basins)]
-ijsselmeer_poly = basins_gdf[basins_gdf["naam"].isin(ijsselmeer_basins)].unary_union
+ijsselmeer_poly = basins_gdf[basins_gdf["naam"].isin(ijsselmeer_basins)].union_all()
 
 # samenvoegen van alle OSM lijnen
 network_lines_gdf = pd.concat(
