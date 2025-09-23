@@ -135,7 +135,8 @@ ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_sturing", "hws
 model = Model.read(ribasim_toml)
 
 hydamo = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
-onttrekkingen_gpkg = cloud.joinpath("Onttrekkingen", "onttrekkingen.gpkg")
+onttrekkingen_gpkg = cloud.joinpath("Basisgegevens", "Onttrekkingen", "onttrekkingen.gpkg")
+cloud.synchronize([onttrekkingen_gpkg])
 
 network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
 
