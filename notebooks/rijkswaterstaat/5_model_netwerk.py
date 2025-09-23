@@ -757,6 +757,7 @@ for row in model.manning_resistance.static.df.itertuples():
         ] = length
     except IndexError:
         # deze knoop is niet verbonden met twee kanten, dus verwijderen
+        print(f"remove manning_resistance node {row.node_id} not connected on both sides")
         model.remove_node(row.node_id, remove_edges=True)
 
 

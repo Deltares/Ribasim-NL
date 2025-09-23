@@ -14,7 +14,7 @@ from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 
-locatie_koppeltabellen = cloud.joinpath("Landelijk", "resultaatvergelijking", "koppeltabel")
+locatie_koppeltabellen = cloud.joinpath("Basisgegevens", "resultaatvergelijking", "koppeltabel")
 
 # paths:
 

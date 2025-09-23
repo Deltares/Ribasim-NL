@@ -34,7 +34,7 @@ for authority in authorities:
 # concat buitenlandse aanvoer
 df = pd.concat(dfs)
 
-buitenlandse_aanvoer_dir = cloud.joinpath("Landelijk", "buitenlandse_aanvoer")
+buitenlandse_aanvoer_dir = cloud.joinpath("Basisgegevens", "buitenlandse_aanvoer")
 buitenlandse_aanvoer_dir.mkdir(exist_ok=True)
 buitenlandse_aanvoer_gpkg = buitenlandse_aanvoer_dir / "buitenlandse_aanvoer.gpkg"
 df.to_file(buitenlandse_aanvoer_dir / "buitenlandse_aanvoer.gpkg")

@@ -20,9 +20,9 @@ water_authorities = [
 # specify koppeltabel and meas_folder
 
 loc_koppeltabel = cloud.joinpath(
-    "Landelijk", "resultaatvergelijking", "koppeltabel", "Transformed_koppeltabel_test_met_suggestie.xlsx"
+    "Basisgegevens/resultaatvergelijking/koppeltabel/Transformed_koppeltabel_test_met_suggestie.xlsx"
 )
-meas_folder = cloud.joinpath("Landelijk", "resultaatvergelijking", "meetreeksen")
+meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen")
 cloud.synchronize([loc_koppeltabel, meas_folder])
 
 for water_authority in water_authorities:
