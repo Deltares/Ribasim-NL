@@ -19,12 +19,14 @@ class AssignAuthorities:
         waterschap,
         ws_grenzen_path,
         RWS_grenzen_path,
+        Noordzee_grenzen_path=None,
         ws_buffer=1000,
         RWS_buffer=1000,
         custom_nodes=None,
     ):
         self.ws_grenzen_path = ws_grenzen_path
         self.RWS_grenzen_path = RWS_grenzen_path
+        self.Noordzee_grenzen_path = Noordzee_grenzen_path
 
         self.ws_buffer = ws_buffer
         self.RWS_buffer = RWS_buffer
@@ -72,8 +74,8 @@ class AssignAuthorities:
 
     def retrieve_geodataframe(self):
         """Main function which calls the other functions."""
-        ws_grenzen, RWS_grenzen = self.load_data()
-        authority_borders = self.clip_and_buffer(ws_grenzen, RWS_grenzen)
+        ws_grenzen, RWS_grenzen, Noordzee_grenzen = self.load_data()
+        authority_borders = self.clip_and_buffer(ws_grenzen, RWS_grenzen, Noordzee_grenzen)
         authority_borders = self.extent_authority_borders(authority_borders)
 
         return authority_borders
@@ -82,6 +84,8 @@ class AssignAuthorities:
         """Loads and processes the authority areas of the waterschappen and RWS."""
         ws_grenzen = gpd.read_file(self.ws_grenzen_path)
         RWS_grenzen = gpd.read_file(self.RWS_grenzen_path)
+        if self.Noordzee_grenzen_path is not None:
+            Noordzee_grenzen = gpd.read_file(self.Noordzee_grenzen_path)
 
         # Removing "\n", "waterschap", "Hoogheemraadschap", "van" and spaces and commas
         ws_grenzen["naam"] = ws_grenzen["naam"].str.replace(r"\n", "", regex=True)
@@ -107,9 +111,9 @@ class AssignAuthorities:
         RWS_grenzen["geometry"] = RWS_grenzen.buffer(self.RWS_buffer)
         RWS_grenzen = RWS_grenzen.dissolve()[["geometry"]]
 
-        return ws_grenzen, RWS_grenzen
+        return ws_grenzen, RWS_grenzen, Noordzee_grenzen
 
-    def clip_and_buffer(self, ws_grenzen, RWS_grenzen):
+    def clip_and_buffer(self, ws_grenzen, RWS_grenzen, Noordzee_grenzen):
         """Clips the waterboard boundaries by removing the RWS areas and applies a buffer to the remaining polygons."""
         # Remove the RWS area in each WS
         ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how="symmetric_difference", keep_geom_type=True)
@@ -121,9 +125,14 @@ class AssignAuthorities:
         # add a buffer to each waterschap. Within this strip an authority will be found.
         ws_grenzen_cut_out["geometry"] = ws_grenzen_cut_out.buffer(self.ws_buffer)
 
+        # if Noordzee_grenzen is not None, add it as well
+        to_concat = [ws_grenzen_cut_out, RWS_grenzen]
+        if Noordzee_grenzen is not None:
+            Noordzee_grenzen["naam"] = "Noordzee"
+            to_concat.append(Noordzee_grenzen)
+
         # add the two layers together
-        authority_borders = pd.concat([ws_grenzen_cut_out, RWS_grenzen])
-        authority_borders = authority_borders.reset_index(drop=True)
+        authority_borders = pd.concat(to_concat, ignore_index=True)
         authority_borders = gpd.GeoDataFrame(authority_borders, geometry="geometry").set_crs(crs="EPSG:28992")
 
         return authority_borders
@@ -140,6 +149,9 @@ class AssignAuthorities:
 
     def embed_authorities_in_model(self, ribasim_model, waterschap, authority_borders):
         """Assigns authority to each LevelBoundary node using spatial intersection."""
+        # remember the borders so we can inspect them later if needed
+        self.authority_borders = authority_borders
+
         # create a temp copy of the level boundary df
         temp_LB_node = ribasim_model.level_boundary.node.df.copy().reset_index()
         temp_LB_node = temp_LB_node[["node_id", "node_type", "geometry"]]
@@ -151,7 +163,7 @@ class AssignAuthorities:
         joined = joined.loc[joined.naam != waterschap]
 
         # if authority areas overlap, duplicates may form. Retain the Rijkswaterstaat one
-        joined = pd.concat([joined.loc[joined.naam == "Rijkswaterstaat"], joined.loc[joined.naam != "Rijkswaterstaat"]])
+
         joined = joined.drop_duplicates(subset="node_id", keep="first")
         joined = joined.sort_values(by="node_id")
 
