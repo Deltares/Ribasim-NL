@@ -33,13 +33,12 @@ static_data.write()
 # # koppelen
 ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
 RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
-Noordzee_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "noordzee.gpkg")
 assign = AssignAuthorities(
     ribasim_model=model,
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    Noordzee_grenzen_path=Noordzee_grenzen_path,
+    custom_nodes={21: "Noordzee", 27: "Noordzee"},
 )
 model = assign.assign_authorities()
 
