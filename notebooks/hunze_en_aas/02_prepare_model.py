@@ -4,6 +4,7 @@ import pandas as pd
 
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from ribasim_nl import CloudStorage, Model, Network
+from ribasim_nl.assign_neighbors_at_boundaries import assign_noordzee
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
@@ -315,9 +316,10 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={3: "Noordzee", 4: "Noordzee", 5: "Noordzee", 6: "Noordzee", 14: "Noordzee"},
+    # custom_nodes={3: "Noordzee", 4: "Noordzee", 5: "Noordzee", 6: "Noordzee", 14: "Noordzee"},
 )
 model = assign.assign_authorities()
+assign_noordzee(model=model)
 
 # %%
 # defaults
