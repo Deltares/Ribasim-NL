@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 def find_common_linestring(
     linestrings: list[shapely.LineString],
+    converging=True,
 ) -> tuple[list[shapely.LineString], list[int | None], list[shapely.LineString]]:
     """Given a list of linestrings, returns the overlapping parts starting from the end.
 
@@ -25,10 +26,13 @@ def find_common_linestring(
         Independent linestrings will have None in their mapping position.
     """
     if len(linestrings) <= 1:
-        return [], [None] * len(linestrings)
+        return [], [None] * len(linestrings), linestrings
 
     # Convert linestrings to coordinate arrays (reversed to start from end)
-    coords_list = [list(ls.coords)[::-1] for ls in linestrings]
+    if converging:
+        coords_list = [list(ls.coords)[::-1] for ls in linestrings]
+    else:
+        coords_list = [list(ls.coords) for ls in linestrings]
 
     # Build sparse adjacency matrix of overlap lengths between linestrings
     n = len(linestrings)
@@ -46,7 +50,9 @@ def find_common_linestring(
                 else:
                     break
 
-            if common_length >= 2:  # Need at least 2 points to form a line
+            if common_length >= 2 and (
+                common_length != len(coords_i) and common_length != len(coords_j)
+            ):  # Need at least 2 points to form a line, and skip identical lines
                 overlap_lengths[(i, j)] = common_length
 
     # Process overlaps to find groups of overlapping linestrings
@@ -89,43 +95,62 @@ def find_common_linestring(
 
     for i, (gid, indices) in enumerate(reverse_groups.items()):
         length = lengths[gid]
-        common_coords = list(linestrings.iloc[indices[0]].coords)[-length:]
+        if converging:
+            common_coords = list(linestrings.iloc[indices[0]].coords)[-length:]
+        else:
+            common_coords = list(linestrings.iloc[indices[0]].coords)[:length]
         common_linestrings.append(shapely.LineString(common_coords))
         for idx in indices:
             linestring_mapping[idx] = i
-            stripped_linestrings[idx] = shapely.LineString(
-                list(linestrings.iloc[idx].coords)[: -length + 1]
-            )  # Keep last point for connectivity
+            if converging:
+                stripped_linestrings[idx] = shapely.LineString(
+                    list(linestrings.iloc[idx].coords)[: -length + 1]
+                )  # Keep last point for connectivity
+            else:
+                stripped_linestrings[idx] = shapely.LineString(
+                    list(linestrings.iloc[idx].coords)[length - 1 :]
+                )  # Keep first point for connectivity
 
     return common_linestrings, linestring_mapping, stripped_linestrings
 
 
-def _junctionfy(links):
+def _junctionfy(links, converging=True):
     junction_ids = []
-    grouped_links = links.groupby("to_node_id")
-    for to_node_id, group in grouped_links:
+    field = "to_node_id" if converging else "from_node_id"
+    grouped_links = links.groupby(field)
+    for node_id, group in grouped_links:
         if len(group) == 1:
             continue
-        print(f"Processing links with to_node_id #{to_node_id} with {len(group)} links")
-        common_linestrings, linestring_mapping, stripped_linestrings = find_common_linestring(group.geometry)
+        print(f"Processing links with {field} #{node_id} with {len(group)} links")
+        common_linestrings, linestring_mapping, stripped_linestrings = find_common_linestring(
+            group.geometry, converging
+        )
         # Introduce Junction for each overlapping part
         # And change the to_node_id of the lines to that junction
         group.geometry = stripped_linestrings
         for i, common_linestring in enumerate(common_linestrings):
-            junction = model.junction.add(Node(geometry=shapely.Point(common_linestring.coords[0])))
+            idx = 0 if converging else -1
+            junction = model.junction.add(Node(geometry=shapely.Point(common_linestring.coords[idx])))
             junction_ids.append(junction.node_id)
-            model.link.add(
-                from_node=junction,
-                to_node=Node(to_node_id, shapely.Point(0, 0), node_type="Junction"),
-                geometry=common_linestring,
-            )
+            if converging:
+                model.link.add(
+                    from_node=junction,
+                    to_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),
+                    geometry=common_linestring,
+                )
+            else:
+                model.link.add(
+                    from_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),
+                    to_node=junction,
+                    geometry=common_linestring,
+                )
             print(
-                f"  Added Junction #{x.node_id} for common linestring {i} with {len(common_linestring.coords)} points"
+                f"  Added Junction #{junction.node_id} for common linestring {i} with {len(common_linestring.coords)} points"
             )
             for idx, mapping in enumerate(linestring_mapping):
                 if mapping == i:
-                    print(f"    Updating link #{group.index[idx]} to new to_node_id Junction #{x.node_id}")
-                    model.link.df.loc[group.index[idx], "to_node_id"] = junction.node_id
+                    print(f"    Updating link #{group.index[idx]} to new {field} Junction #{junction.node_id}")
+                    model.link.df.loc[group.index[idx], field] = junction.node_id
                     model.link.df.loc[group.index[idx], "geometry"] = stripped_linestrings[idx]
 
     return junction_ids
@@ -135,12 +160,23 @@ def junctionfy(
     model,
 ):
     links = model.link.df[model.link.df.link_type == "flow"]
-    new_junctions = _junctionfy(links)
+    links = links[[geom is not None for geom in links.geometry]]
+    new_junctions = _junctionfy(links, converging=True)
     iteration = 0
     while len(new_junctions) > 0:
         print("Iteration", iteration, "with", len(new_junctions), "new junctions")
         nlinks = model.link.df[model.link.df.to_node_id.isin(new_junctions)]
-        new_junctions = _junctionfy(nlinks)
+        new_junctions = _junctionfy(nlinks, converging=True)
+        iteration += 1
+
+    links = model.link.df[model.link.df.link_type == "flow"]
+    links = links[[geom is not None for geom in links.geometry]]
+    new_junctions = _junctionfy(links, converging=False)
+    iteration = 0
+    while len(new_junctions) > 0:
+        print("Iteration", iteration, "with", len(new_junctions), "new junctions")
+        nlinks = model.link.df[model.link.df.from_node_id.isin(new_junctions)]
+        new_junctions = _junctionfy(nlinks, converging=False)
         iteration += 1
 
     return model
