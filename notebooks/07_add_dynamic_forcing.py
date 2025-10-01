@@ -25,7 +25,7 @@ def add_forcing(model, cloud, starttime, endtime):
 
 
 FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = ["Noorderzijlvest"]
+SELECTION: list[str] = ["DrentsOverijsselseDelta"]
 INCLUDE_RESULTS = False
 REBUILD = True
 

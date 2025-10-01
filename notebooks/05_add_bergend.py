@@ -5,7 +5,7 @@ from ribasim_nl.berging import VdGaastBerging
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["Noorderzijlvest"]
+SELECTION: list[str] = ["DrentsOverijsselseDelta"]
 INCLUDE_RESULTS = False
 REBUILD = True
 
