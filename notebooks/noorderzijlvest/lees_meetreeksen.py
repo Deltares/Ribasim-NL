@@ -1,4 +1,4 @@
-# %%
+# %% TODO: koppeling met metingen fixen, zodat dit weer weg kan
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -24,11 +24,10 @@ SEC_PER_DAY = 1.0
 
 # === Helpers ===
 def read_selecties(path: Path) -> pd.DataFrame:
-    """
-    Leest selectie met kolommen:
-      - Locatie
-      - Link_id_1, Link_id_2, Link_id_3 (optioneel, hoofdletter-L)
-    """
+    """Leest selectie met kolommen.
+    - Locatie
+    - Link_id_1, Link_id_2, Link_id_3 (optioneel, hoofdletter-L)
+    """  # noqa: D205
     df = pd.read_excel(path)
     df.columns = [str(c).strip() for c in df.columns]
     if "Locatie" not in df.columns:
@@ -59,7 +58,7 @@ def read_wide_measure_table(path: Path) -> pd.DataFrame:
     Lees wide-meetbestand:
       - 1e kolom = datum (YYYY-MM-DD)
       - overige kolommen = locatienamen (dagtotalen)
-    """
+    """  # noqa: D205
     df = _read_csv_smart(path) if path.suffix.lower() == ".csv" else pd.read_excel(path)
     df.columns = [str(c).strip() for c in df.columns]
     date_col = df.columns[0]
@@ -91,7 +90,7 @@ def read_flow_arrow_sum_links(path: Path, link_ids: list[int]) -> pd.DataFrame:
     Herkent kolommen: time/datetime/date/timestep, link_id/edge_id/link/id, flow_rate/flow/discharge/q/value.
     Sommeert flow (m3/s) over opgegeven link_ids per tijdstap.
     Retourneert: ['Datum','flow_rate'] in m3/s (zonder middelen).
-    """
+    """  # noqa: D205
     try:
         df = pd.read_feather(path)
     except Exception as e:
@@ -128,7 +127,7 @@ def plot_locatie(loc: str, meas_df_m3s: pd.DataFrame | None, model_m3s: pd.DataF
     """
     Één y-as (rechts) in m³/s. Linker as verborgen.
     Zowel metingen (m³/s) als model (m³/s) op dezelfde as.
-    """
+    """  # noqa: D205
     has_meas = meas_df_m3s is not None and not meas_df_m3s.empty
     has_model = model_m3s is not None and not model_m3s.empty
     if not (has_meas or has_model):
