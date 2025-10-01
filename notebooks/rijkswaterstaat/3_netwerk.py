@@ -10,9 +10,9 @@ cloud = CloudStorage()
 
 # input on cloud
 # TODO fairway not on cloud, stream is, but not used
-fairway_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_fairway_the_netherlands.gpkg")
-river_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_river_the_netherlands.gpkg")
-canal_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_canals_the_netherlands.gpkg")
+fairway_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_fairway.gpkg")
+river_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_river.gpkg")
+canal_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_canal.gpkg")
 model_user_data_path = cloud.joinpath("Rijkswaterstaat/verwerkt/model_user_data.gpkg")
 
 cloud.synchronize(filepaths=[fairway_osm_path, river_osm_path, canal_osm_path, model_user_data_path])
@@ -60,7 +60,7 @@ ijsselmeer_basins = [
     "IJsselmeer",
 ]  # ijsselmeer komt uit extra lijnen
 osm_basins_gdf = basins_gdf[~basins_gdf["naam"].isin(ijsselmeer_basins)]
-ijsselmeer_poly = basins_gdf[basins_gdf["naam"].isin(ijsselmeer_basins)].unary_union
+ijsselmeer_poly = basins_gdf[basins_gdf["naam"].isin(ijsselmeer_basins)].union_all()
 
 # samenvoegen van alle OSM lijnen
 network_lines_gdf = pd.concat(
@@ -159,6 +159,7 @@ network_lines_gdf = network_lines_gdf[
     ~network_lines_gdf["name"].isin(["Geul", "Derde Diem"])
 ]  # brute verwijdering wegens sifon onder Julianakanaal
 
+network_lines_gdf = network_lines_gdf[network_lines_gdf.length > 0.5]
 network = Network(network_lines_gdf, tolerance=1, id_col="id", name_col="name")
 
 print("write to hydamo")

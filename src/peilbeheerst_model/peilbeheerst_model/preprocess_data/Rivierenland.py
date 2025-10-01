@@ -146,7 +146,7 @@ def intersect_using_spatial_index(peilgebied_praktijk, peilgebied_afwijking, che
 
     # Conduct the actual intersect
     overlapping_pg_praktijk = possible_matches.loc[
-        possible_matches.intersects(peilgebied_afwijking.unary_union)
+        possible_matches.intersects(peilgebied_afwijking.union_all())
     ]  # the entire peilgebied praktijk polygons
 
     # remove the peilgebied afwijking from the peilgebied praktijk

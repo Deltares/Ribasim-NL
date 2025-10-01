@@ -20,7 +20,7 @@ from ribasim_nl import CloudStorage
 cloud = CloudStorage()
 
 # paths:
-base = cloud.joinpath("Landelijk", "resultaatvergelijking", "koppeltabel")
+base = cloud.joinpath("Basisgegevens", "resultaatvergelijking", "koppeltabel")
 
 # Draaien vanuit de uitgangskoppeltabel op basis van alle nieuw aangeleverde metingen en feedback
 # loc_ref_koppeltabel = cloud.joinpath(base, "Koppeltabel_uitgangspunt.xlsx")

@@ -116,7 +116,7 @@ osm_stuwen_belgie = cloud.joinpath("Basisgegevens/OSM/waterway_weir_belgium.gpkg
 
 primaire_kunstwerken = cloud.joinpath("Rijkswaterstaat/aangeleverd/kunstwerken_primaire_waterkeringen.gpkg")
 
-onttrekkingen = cloud.joinpath("Landelijk/onttrekkingen/onttrekkingen.gpkg")
+onttrekkingen = cloud.joinpath("Basisgegevens/onttrekkingen/onttrekkingen.gpkg")
 
 kwk_media_path = cloud.joinpath("Rijkswaterstaat/verwerkt/kwk_media.csv")
 
