@@ -440,13 +440,11 @@ df.loc[mask, "flow_rate"] = 0.0
 # Rondpompen voorkomen bij 2 aanvoer en afvoer gemaal direct naast elkaar, min_upstream en max_downstream gelijk maken
 # === INLINE: max_downstream_level(iKGM/iKST-pumps) = min_upstream_level(KGM/KST peer: pump óf outlet) ===
 
-import pandas as pd
-
 
 # --- helpers ---
 def bump(v, delta):
     # verhoog/verlaag scalar of lijst; NaN blijft NaN
-    if isinstance(v, (list, tuple, np.ndarray)):
+    if isinstance(v, list | tuple | np.ndarray):
         arr = pd.to_numeric(np.asarray(v), errors="coerce")
         arr = np.where(np.isnan(arr), arr, arr + float(delta))
         return arr.tolist()
@@ -552,7 +550,7 @@ def build_discrete_controls(
 
     def _flow_open_from_value(val, default=flow_open_default):
         """Bepaal open-flow uit scalar of lijst; kies grootste niet-NaN, >0. Anders default."""
-        if isinstance(val, (list, tuple, np.ndarray)):
+        if isinstance(val, list | tuple | np.ndarray):
             arr = pd.to_numeric(np.asarray(val), errors="coerce")
             if arr.size == 0 or np.all(np.isnan(arr)):
                 return float(default)
@@ -703,7 +701,7 @@ th_low = th_high - DELTA_LOW  # nu niet gebruikt
 
 # === Helpers ===
 def _flow_open_from_pump_row(val, default=1.0):
-    if isinstance(val, (list, tuple, np.ndarray)):
+    if isinstance(val, list | tuple | np.ndarray):
         arr = pd.to_numeric(np.asarray(val), errors="coerce")
         if np.all(np.isnan(arr)):
             return float(default)
@@ -722,7 +720,7 @@ def _scalar_from(df, node_id, col_candidates):
             if s.empty or pd.isna(s.iloc[0]):
                 continue
             v = s.iloc[0]
-            if isinstance(v, (list, tuple, np.ndarray)):
+            if isinstance(v, list | tuple | np.ndarray):
                 if len(v) == 0 or pd.isna(v[0]):
                     continue
                 try:
@@ -913,7 +911,7 @@ th_low = th_high - DELTA_LOW  # nu niet gebruikt
 
 # === Helpers ===
 def _flow_open_from_pump_row(val, default=1.0):
-    if isinstance(val, (list, tuple, np.ndarray)):
+    if isinstance(val, list | tuple | np.ndarray):
         arr = pd.to_numeric(np.asarray(val), errors="coerce")
         if np.all(np.isnan(arr)):
             return float(default)
@@ -932,7 +930,7 @@ def _scalar_from(df, node_id, col_candidates):
             if s.empty or pd.isna(s.iloc[0]):
                 continue
             v = s.iloc[0]
-            if isinstance(v, (list, tuple, np.ndarray)):
+            if isinstance(v, list | tuple | np.ndarray):
                 if len(v) == 0 or pd.isna(v[0]):
                     continue
                 try:
