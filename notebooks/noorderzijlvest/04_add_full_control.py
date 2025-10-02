@@ -440,6 +440,8 @@ df.loc[mask, "flow_rate"] = 0.0
 # Rondpompen voorkomen bij 2 aanvoer en afvoer gemaal direct naast elkaar, min_upstream en max_downstream gelijk maken
 # === INLINE: max_downstream_level(iKGM/iKST-pumps) = min_upstream_level(KGM/KST peer: pump óf outlet) ===
 
+import pandas as pd
+
 
 # --- helpers ---
 def bump(v, delta):
@@ -523,17 +525,18 @@ if code_to_min_upstream_peer:
                 lambda v: bump(v, -0.02)
             )
 
+
 # %%
-
-
 # Discrete control toevoegen aan alle upstream outlets met aanvoer
 def build_discrete_controls(
     model,
     out_static: pd.DataFrame,
     mask_upstream_aanvoer: pd.Series,
     exclude_ids=None,
-    listen_node_id: int = 1493,
-    band=(7.62, 7.68),
+    #  listen_node_id: int = 1493,
+    #  band=(7.62, 7.68),
+    listen_node_id: int = 1613,
+    band=(-0.36, -0.34),
     flow_open_default: float = 20.0,  # <- default fallback
     delta_h: float = 0.05,
     dc_offset: float = 10.0,  # x-offset voor DC-node
@@ -544,7 +547,7 @@ def build_discrete_controls(
     # kandidaat-outlets (als ints) en uitsluiters eruit
     upstream_outlet_ids = out_static.loc[mask_upstream_aanvoer, "node_id"].to_numpy(dtype=int)
     if exclude:
-        upstream_outlet_ids = upstream_outlet_ids[~np.isin(upstream_outlet_ids, list(exclude))]
+        upstream_outlet_ids = upstream_outlet_ids[~np.isin(upstream_outlet_ids, list(exclude))].astype(int)
 
     th_low, th_high = band
 
@@ -633,8 +636,10 @@ build_discrete_controls(
     out_static=out_static,
     mask_upstream_aanvoer=mask_upstream_aanvoer,
     exclude_ids=exclude_ids,
-    listen_node_id=1493,
-    band=(7.62, 7.68),
+    # listen_node_id=1493,
+    # band=(7.62, 7.68),
+    listen_node_id=1613,
+    band=(-0.34, -0.34),
     flow_open_default=20.0,
     delta_h=0.05,
 )
@@ -674,13 +679,9 @@ selected_node_ids = [
     42,
     43,
     731,
-    67,
-    40,
-    732,
-    29,
-    728,
 ]
-LISTEN_NODE_ID = 1493
+# LISTEN_NODE_ID = 1493
+LISTEN_NODE_ID = 1613
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -693,7 +694,8 @@ row = basin.loc[basin["node_id"] == LISTEN_NODE_ID]
 if not row.empty and "meta_streefpeil" in row.columns:
     val = row["meta_streefpeil"].iloc[0]
     if pd.notna(val):
-        th_high = float(val) - 0.02
+        #  th_high = float(val) - 0.02
+        th_high = -0.34
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
 th_low = th_high - DELTA_LOW  # nu niet gebruikt
@@ -768,8 +770,8 @@ for nid in selected_node_ids:
         outlet_static_obj = _static_obj(
             outlet.Static,
             control_state=["open", "closed"],
-            flow_rate=[100.0, 0.0],
-            max_downstream_level=[9999, h_out],
+            flow_rate=[10.0, 0.1],
+            max_downstream_level=[9999, 9999],
             min_upstream_level=[m_out, m_out] if m_out is not None else None,
         )
 
@@ -816,7 +818,187 @@ for nid in selected_node_ids:
         pump_static_obj = _static_obj(
             pump.Static,
             control_state=["closed", "open"],
-            flow_rate=[0.0, float(flow_open)],
+            flow_rate=[0.1, float(flow_open)],
+            min_upstream_level=[m_pump, m_pump] if m_pump is not None else None,
+            max_downstream_level=[h_pump, 9999] if h_pump is not None else None,
+        )
+
+        model.update_node(
+            node_id=nid_int,
+            node_type="Pump",
+            data=[pump_static_obj],
+        )
+
+        geom = model.pump[nid_int].geometry
+        x0, y0 = geom.x, geom.y
+        dc_node_id = int(900000 + nid_int)
+
+        dc = model.discrete_control.add(
+            Node(dc_node_id, Point(x0 + 10, y0)),
+            [
+                discrete_control.Variable(
+                    compound_variable_id=1,
+                    listen_node_id=LISTEN_NODE_ID,
+                    variable=["level"],
+                ),
+                discrete_control.Condition(
+                    compound_variable_id=1,
+                    condition_id=[1],
+                    threshold_high=[th_high],
+                    # threshold_low=[th_low],
+                ),
+                discrete_control.Logic(
+                    truth_state=["T", "F"],
+                    control_state=["open", "closed"],
+                ),
+            ],
+        )
+        model.link.add(dc, model.pump[nid_int])
+
+    else:
+        print(f"[skip] node {nid_int}: geen Outlet of Pump in static.df gevonden")
+
+# aanvoer en afvoer outlets die uitkomen op Manning waterloop die geen aanvoer nodig heeft. Bij aanvoer moet flow op 0 staan zodat ze niet Manning waterlopen gaan aanvullen
+# Bij afvoer mag flow niet op 0 staan anders werkt de afvoer niet meer. Gemaal Waterwolf/Abelstok en Schaphalsterzijl staat in aanvoersituaties uit, Evt afvoer via sluis
+# === Aanvoergemalen/aanvoerpumps Grote pompen en outlets===
+selected_node_ids = [67, 40, 732, 29, 728]
+LISTEN_NODE_ID = 1613
+DELTA_LOW = 0.07
+
+basin = model.basin.area.df
+out_static = model.outlet.static.df
+pump_static = model.pump.static.df
+
+# === 1) TH_HIGH uit basin.meta_streefpeil ===
+th_high = None
+row = basin.loc[basin["node_id"] == LISTEN_NODE_ID]
+if not row.empty and "meta_streefpeil" in row.columns:
+    val = row["meta_streefpeil"].iloc[0]
+    if pd.notna(val):
+        th_high = -0.34
+if th_high is None:
+    raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
+th_low = th_high - DELTA_LOW  # nu niet gebruikt
+
+
+# === Helpers ===
+def _flow_open_from_pump_row(val, default=1.0):
+    if isinstance(val, list | tuple | np.ndarray):
+        arr = pd.to_numeric(np.asarray(val), errors="coerce")
+        if np.all(np.isnan(arr)):
+            return float(default)
+        return float(np.nanmax(arr))
+    try:
+        f = float(val)
+        return f if f > 0 else float(default)
+    except Exception:
+        return float(default)
+
+
+def _scalar_from(df, node_id, col_candidates):
+    for col in col_candidates:
+        if col and (col in df.columns):
+            s = df.loc[df["node_id"] == node_id, col]
+            if s.empty or pd.isna(s.iloc[0]):
+                continue
+            v = s.iloc[0]
+            if isinstance(v, list | tuple | np.ndarray):
+                if len(v) == 0 or pd.isna(v[0]):
+                    continue
+                try:
+                    return float(v[0])
+                except Exception:
+                    continue
+            try:
+                x = float(v)
+                if not pd.isna(x):
+                    return x
+            except Exception:
+                pass
+    return None
+
+
+def _static_obj(factory_cls, **maybe_kwargs):
+    """Maak een Static() object met alleen niet-None kwargs."""
+    kwargs = {k: v for k, v in maybe_kwargs.items() if v is not None}
+    return factory_cls(**kwargs)
+
+
+# Kolomkandidaten
+MIN_US_COLS_OUTLET = ["min_upstream_level", "min_upstream_water_level"]
+MIN_US_COLS_PUMP = ["min_upstream_level", "min_upstream_water_level"]
+MAX_DS_COLS_OUTLET = ["max_downstream_level", "max_downstream_water_level"]
+MAX_DS_COLS_PUMP = ["max_downstream_level", "max_downstream_water_level"]  # optioneel
+
+# Membership-sets
+outlet_ids = set(out_static["node_id"].astype(int)) if "node_id" in out_static else set()
+pump_ids = set(pump_static["node_id"].astype(int)) if "node_id" in pump_static else set()
+
+# === 2) Per geselecteerde node: states + DC ===
+for nid in selected_node_ids:
+    try:
+        nid_int = int(nid)
+    except Exception:
+        print(f"[skip] ongeldige node_id: {nid}")
+        continue
+
+    if nid_int in outlet_ids:
+        # OUTLET
+        h_out = _scalar_from(out_static, nid_int, MAX_DS_COLS_OUTLET)  # max_downstream
+        m_out = _scalar_from(out_static, nid_int, MIN_US_COLS_OUTLET)  # min_upstream (optioneel)
+
+        outlet_static_obj = _static_obj(
+            outlet.Static,
+            control_state=["open", "closed"],
+            flow_rate=[100.0, 2],
+            max_downstream_level=[9999, 9999],
+            min_upstream_level=[m_out, m_out] if m_out is not None else None,
+        )
+
+        model.update_node(
+            node_id=nid_int,
+            node_type="Outlet",
+            data=[outlet_static_obj],
+        )
+
+        geom = model.outlet[nid_int].geometry
+        x0, y0 = geom.x, geom.y
+        dc_node_id = int(900000 + nid_int)
+
+        dc = model.discrete_control.add(
+            Node(dc_node_id, Point(x0 + 10, y0)),
+            [
+                discrete_control.Variable(
+                    compound_variable_id=1,
+                    listen_node_id=LISTEN_NODE_ID,
+                    variable=["level"],
+                ),
+                discrete_control.Condition(
+                    compound_variable_id=1,
+                    condition_id=[1],
+                    threshold_high=[th_high],
+                    # threshold_low=[th_low],
+                ),
+                discrete_control.Logic(
+                    truth_state=["T", "F"],
+                    control_state=["open", "closed"],
+                ),
+            ],
+        )
+        model.link.add(dc, model.outlet[nid_int])
+
+    elif nid_int in pump_ids:
+        # PUMP
+        flow_series = pump_static.loc[pump_static["node_id"] == nid_int, "flow_rate"]
+        flow_open = _flow_open_from_pump_row(flow_series.iloc[0]) if not flow_series.empty else 1.0
+
+        m_pump = _scalar_from(pump_static, nid_int, MIN_US_COLS_PUMP)  # optioneel
+        h_pump = _scalar_from(pump_static, nid_int, MAX_DS_COLS_PUMP)  # optioneel
+
+        pump_static_obj = _static_obj(
+            pump.Static,
+            control_state=["closed", "open"],
+            flow_rate=[0.1, float(flow_open)],
             min_upstream_level=[m_pump, m_pump] if m_pump is not None else None,
             max_downstream_level=[h_pump, 9999] if h_pump is not None else None,
         )
@@ -890,7 +1072,8 @@ selected_node_ids = [
     106,
     143,
 ]
-LISTEN_NODE_ID = 1493
+# LISTEN_NODE_ID = 1493
+LISTEN_NODE_ID = 1613
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -903,7 +1086,8 @@ row = basin.loc[basin["node_id"] == LISTEN_NODE_ID]
 if not row.empty and "meta_streefpeil" in row.columns:
     val = row["meta_streefpeil"].iloc[0]
     if pd.notna(val):
-        th_high = float(val) - 0.02
+        #  th_high = float(val) - 0.02
+        th_high = -0.34
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
 th_low = th_high - DELTA_LOW  # nu niet gebruikt
@@ -911,7 +1095,7 @@ th_low = th_high - DELTA_LOW  # nu niet gebruikt
 
 # === Helpers ===
 def _flow_open_from_pump_row(val, default=1.0):
-    if isinstance(val, list | tuple | np.ndarray):
+    if isinstance(val, (list, tuple, np.ndarray)):
         arr = pd.to_numeric(np.asarray(val), errors="coerce")
         if np.all(np.isnan(arr)):
             return float(default)
@@ -930,7 +1114,7 @@ def _scalar_from(df, node_id, col_candidates):
             if s.empty or pd.isna(s.iloc[0]):
                 continue
             v = s.iloc[0]
-            if isinstance(v, list | tuple | np.ndarray):
+            if isinstance(v, (list, tuple, np.ndarray)):
                 if len(v) == 0 or pd.isna(v[0]):
                     continue
                 try:
