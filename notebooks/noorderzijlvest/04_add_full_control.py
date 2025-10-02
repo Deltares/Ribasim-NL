@@ -440,8 +440,6 @@ df.loc[mask, "flow_rate"] = 0.0
 # Rondpompen voorkomen bij 2 aanvoer en afvoer gemaal direct naast elkaar, min_upstream en max_downstream gelijk maken
 # === INLINE: max_downstream_level(iKGM/iKST-pumps) = min_upstream_level(KGM/KST peer: pump óf outlet) ===
 
-import pandas as pd
-
 
 # --- helpers ---
 def bump(v, delta):
