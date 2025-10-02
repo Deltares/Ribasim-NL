@@ -1095,7 +1095,7 @@ th_low = th_high - DELTA_LOW  # nu niet gebruikt
 
 # === Helpers ===
 def _flow_open_from_pump_row(val, default=1.0):
-    if isinstance(val, (list, tuple, np.ndarray)):
+    if isinstance(val, list | tuple | np.ndarray):
         arr = pd.to_numeric(np.asarray(val), errors="coerce")
         if np.all(np.isnan(arr)):
             return float(default)
@@ -1114,7 +1114,7 @@ def _scalar_from(df, node_id, col_candidates):
             if s.empty or pd.isna(s.iloc[0]):
                 continue
             v = s.iloc[0]
-            if isinstance(v, (list, tuple, np.ndarray)):
+            if isinstance(v, list | tuple | np.ndarray):
                 if len(v) == 0 or pd.isna(v[0]):
                     continue
                 try:
