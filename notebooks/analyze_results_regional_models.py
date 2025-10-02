@@ -21,7 +21,7 @@ water_authorities = [
 # specify koppeltabel and meas_folder
 
 loc_koppeltabel = cloud.joinpath(
-    "Basisgegevens/resultaatvergelijking/koppeltabel/Transformed_koppeltabel_versie_lhm_coupled_2025_9_0_Feedback_Verwerkt_HydroLogic.xlsx"
+    "Basisgegevens/resultaatvergelijking/koppeltabel/Transformed_koppeltabel_20251002.xlsx"
 )
 
 loc_specifieke_bewerking = cloud.joinpath(
@@ -42,4 +42,7 @@ for water_authority in water_authorities:
         meas_folder=meas_folder,
         model_folder=model_folder,
         apply_for_water_authority=water_authority,
+        save_results_combined=True,
     )
+
+# %%
