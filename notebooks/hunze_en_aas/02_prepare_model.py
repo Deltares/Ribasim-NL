@@ -316,7 +316,6 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    # custom_nodes={3: "Noordzee", 4: "Noordzee", 5: "Noordzee", 6: "Noordzee", 14: "Noordzee"},
 )
 model = assign.assign_authorities()
 assign_noordzee(model=model)
