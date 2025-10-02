@@ -163,7 +163,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 487, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 729, "min_upstream_level"] = -1.07
 
 # flow inlaten naar custom
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1750, "flow_rate"] = 3
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1750, "flow_rate"] = 0.5
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 687, "flow_rate"] = 0.5
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 698, "flow_rate"] = 0.5
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 699, "flow_rate"] = 0.5
@@ -224,15 +224,10 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 37, "max_downstream_lev
 # Driewegsluis max_downstream verhogen, Manning knopen
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1750, "max_downstream_level"] = -1.24
 
-
 # Aanvoergemaal Klei
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 507, "max_downstream_level"] = pd.NA
 model.pump.static.df.loc[model.pump.static.df.node_id == 129, "max_downstream_level"] = -0.75
-# waterwolf gemaal dicht bij aanvoer
-# model.pump.static.df.loc[model.pump.static.df.node_id == 29, "flow_rate"] = 0
-# model.pump.static.df.loc[model.pump.static.df.node_id == 30, "flow_rate"] = 0
-# model.pump.static.df.loc[model.pump.static.df.node_id == 145, "flow_rate"] = 0
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "flow_rate"] = 0
+
 # HD Louwes
 model.pump.static.df.loc[model.pump.static.df.node_id == 30, "min_upstream_level"] = -0.93
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 479, "max_downstream_level"] = 8.75
@@ -311,8 +306,8 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 35, "min_upstream_level
 model.pump.static.df.loc[model.pump.static.df.node_id == 35, "max_downstream_level"] = -1.16
 
 # Waterwolf spuisluizen
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "flow_rate"] = 200
+# model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "max_downstream_level"] = -0.9
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "flow_rate"] = 9999
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "min_upstream_level"] = -0.93
 model.pump.static.df.loc[model.pump.static.df.node_id == 29, "min_upstream_level"] = -0.93
 
@@ -417,7 +412,7 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 139, "max_downstream_le
 model.reverse_edge(edge_id=2033)
 model.reverse_edge(edge_id=2032)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1752, "flow_rate"] = 0.0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1753, "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1753, "flow_rate"] = 5.0
 
 # Afvoer outlets die naast aanvoergemaal liggen moet min_upstrem gelijk aan max_downstrem
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 545, "min_upstream_level"] += 0.02
@@ -531,10 +526,10 @@ def build_discrete_controls(
     out_static: pd.DataFrame,
     mask_upstream_aanvoer: pd.Series,
     exclude_ids=None,
-    #  listen_node_id: int = 1493,
-    #  band=(7.62, 7.68),
-    listen_node_id: int = 1613,
-    band=(-0.36, -0.34),
+    listen_node_id: int = 1493,
+    band=(7.62, 7.68),
+    # listen_node_id: int = 1613,
+    # band=(-0.36, -0.34),
     flow_open_default: float = 20.0,  # <- default fallback
     delta_h: float = 0.05,
     dc_offset: float = 10.0,  # x-offset voor DC-node
@@ -543,11 +538,12 @@ def build_discrete_controls(
     exclude = set(map(int, exclude_ids or []))
 
     # kandidaat-outlets (als ints) en uitsluiters eruit
-    upstream_outlet_ids = out_static.loc[mask_upstream_aanvoer, "node_id"].to_numpy(dtype=int)
+    upstream_outlet_ids = out_static.loc[mask_upstream_aanvoer, "node_id"].to_numpy(dtype=int).flatten()
     if exclude:
         upstream_outlet_ids = upstream_outlet_ids[~np.isin(upstream_outlet_ids, list(exclude))].astype(int)
 
-    th_low, th_high = band
+    th_low = band[0]
+    th_high = band[1]
 
     def _flow_open_from_value(val, default=flow_open_default):
         """Bepaal open-flow uit scalar of lijst; kies grootste niet-NaN, >0. Anders default."""
@@ -624,7 +620,7 @@ def build_discrete_controls(
         model.link.add(dc, model.outlet[outlet_id])
 
 
-exclude_ids = {1745, 1746, 1740, 1756, 1738, 716, 683, 1752}  # scheepvaartsluizen moeten op flow_rate=0
+exclude_ids = {1745, 1746, 1740, 1756, 1738, 716, 683, 1752, 1753}  # scheepvaartsluizen moeten op flow_rate=0
 df = model.outlet.static.df
 mask = df["node_id"].isin(exclude_ids)
 df.loc[mask, "flow_rate"] = 0.05
@@ -634,10 +630,10 @@ build_discrete_controls(
     out_static=out_static,
     mask_upstream_aanvoer=mask_upstream_aanvoer,
     exclude_ids=exclude_ids,
-    # listen_node_id=1493,
-    # band=(7.62, 7.68),
-    listen_node_id=1613,
-    band=(-0.34, -0.34),
+    listen_node_id=1493,
+    band=(7.62, 7.68),
+    # listen_node_id=1613,
+    # band=(-0.34, -0.34),
     flow_open_default=20.0,
     delta_h=0.05,
 )
@@ -677,9 +673,15 @@ selected_node_ids = [
     42,
     43,
     731,
+    181,
+    182,
+    721,
+    67,
+    40,
+    732,
 ]
-# LISTEN_NODE_ID = 1493
-LISTEN_NODE_ID = 1613
+LISTEN_NODE_ID = 1493
+# LISTEN_NODE_ID = 1613
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -693,7 +695,7 @@ if not row.empty and "meta_streefpeil" in row.columns:
     val = row["meta_streefpeil"].iloc[0]
     if pd.notna(val):
         #  th_high = float(val) - 0.02
-        th_high = -0.34
+        th_high = 7.68
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
 th_low = th_high - DELTA_LOW  # nu niet gebruikt
@@ -768,8 +770,8 @@ for nid in selected_node_ids:
         outlet_static_obj = _static_obj(
             outlet.Static,
             control_state=["open", "closed"],
-            flow_rate=[10.0, 0.1],
-            max_downstream_level=[9999, 9999],
+            flow_rate=[20.0, 0.0],
+            max_downstream_level=[h_out, 9999],
             min_upstream_level=[m_out, m_out] if m_out is not None else None,
         )
 
@@ -816,7 +818,7 @@ for nid in selected_node_ids:
         pump_static_obj = _static_obj(
             pump.Static,
             control_state=["closed", "open"],
-            flow_rate=[0.1, float(flow_open)],
+            flow_rate=[0.0, float(flow_open)],
             min_upstream_level=[m_pump, m_pump] if m_pump is not None else None,
             max_downstream_level=[h_pump, 9999] if h_pump is not None else None,
         )
@@ -857,10 +859,11 @@ for nid in selected_node_ids:
         print(f"[skip] node {nid_int}: geen Outlet of Pump in static.df gevonden")
 
 # aanvoer en afvoer outlets die uitkomen op Manning waterloop die geen aanvoer nodig heeft. Bij aanvoer moet flow op 0 staan zodat ze niet Manning waterlopen gaan aanvullen
-# Bij afvoer mag flow niet op 0 staan anders werkt de afvoer niet meer. Gemaal Waterwolf/Abelstok en Schaphalsterzijl staat in aanvoersituaties uit, Evt afvoer via sluis
+# Bij afvoer mag flow niet op 0 staan anders werkt de afvoer niet meer. Gemaal Waterwolf afvoer via sluis
 # === Aanvoergemalen/aanvoerpumps Grote pompen en outlets===
-selected_node_ids = [67, 40, 732, 29, 728]
-LISTEN_NODE_ID = 1613
+selected_node_ids = [29, 728]
+LISTEN_NODE_ID = 1493
+# LISTEN_NODE_ID = 1613
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -873,7 +876,7 @@ row = basin.loc[basin["node_id"] == LISTEN_NODE_ID]
 if not row.empty and "meta_streefpeil" in row.columns:
     val = row["meta_streefpeil"].iloc[0]
     if pd.notna(val):
-        th_high = -0.34
+        th_high = 7.68
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
 th_low = th_high - DELTA_LOW  # nu niet gebruikt
@@ -942,14 +945,14 @@ for nid in selected_node_ids:
 
     if nid_int in outlet_ids:
         # OUTLET
-        h_out = _scalar_from(out_static, nid_int, MAX_DS_COLS_OUTLET)  # max_downstream
+        h_out = _scalar_from(out_static, nid_int, MAX_DS_COLS_OUTLET) + 0.02  # max_downstream
         m_out = _scalar_from(out_static, nid_int, MIN_US_COLS_OUTLET)  # min_upstream (optioneel)
 
         outlet_static_obj = _static_obj(
             outlet.Static,
             control_state=["open", "closed"],
-            flow_rate=[100.0, 2],
-            max_downstream_level=[9999, 9999],
+            flow_rate=[9999, 0],
+            max_downstream_level=[h_out, 9999],
             min_upstream_level=[m_out, m_out] if m_out is not None else None,
         )
 
@@ -996,7 +999,7 @@ for nid in selected_node_ids:
         pump_static_obj = _static_obj(
             pump.Static,
             control_state=["closed", "open"],
-            flow_rate=[0.1, float(flow_open)],
+            flow_rate=[0.0, float(flow_open)],
             min_upstream_level=[m_pump, m_pump] if m_pump is not None else None,
             max_downstream_level=[h_pump, 9999] if h_pump is not None else None,
         )
@@ -1069,9 +1072,11 @@ selected_node_ids = [
     146,
     106,
     143,
+    711,
+    1753,
 ]
-# LISTEN_NODE_ID = 1493
-LISTEN_NODE_ID = 1613
+LISTEN_NODE_ID = 1493
+# LISTEN_NODE_ID = 1613
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -1085,7 +1090,7 @@ if not row.empty and "meta_streefpeil" in row.columns:
     val = row["meta_streefpeil"].iloc[0]
     if pd.notna(val):
         #  th_high = float(val) - 0.02
-        th_high = -0.34
+        th_high = 7.68
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
 th_low = th_high - DELTA_LOW  # nu niet gebruikt
@@ -1254,10 +1259,6 @@ for nid in selected_node_ids:
 
 
 # %%
-
-
-# %%
-
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)
