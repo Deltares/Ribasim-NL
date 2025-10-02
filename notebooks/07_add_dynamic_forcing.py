@@ -1,6 +1,8 @@
 # %%
 from datetime import datetime
 
+import pandas as pd
+
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
@@ -9,19 +11,45 @@ starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 
 
-def add_forcing(model, cloud, starttime, endtime):
-    forcing = SetDynamicForcing(
-        model=model,
-        cloud=cloud,
-        startdate=starttime,
-        enddate=endtime,
-    )
+def add_forcing(model, cloud, starttime, endtime, cache_forcing: bool = True):
+    cache_file = model.filepath.parents[1] / "basin_time.arrow"
 
-    model = forcing.add()
+    def build_forcing() -> bool:
+        """Check if we have a cached forcing that matches the time period"""
+        # build if we don't want to use cache
+        if cache_forcing is False:
+            return True
 
-    # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
-    offline_budgets.compute_budgets(model)
+        # build if cach-file doesn't exist
+        if not cache_file.exists():
+            return True
+
+        # build if basin nodes don't match
+        df = pd.read_feather(cache_file)
+        if not pd.Series(df["node_id"].unique(), name="node_id").equals(model.basin.node.df.reset_index()["node_id"]):
+            return True
+        else:
+            model.basin.time.df = df
+            return False
+
+    if build_forcing():
+        # compute forcing
+        forcing = SetDynamicForcing(
+            model=model,
+            cloud=cloud,
+            startdate=starttime,
+            enddate=endtime,
+        )
+
+        model = forcing.add()
+
+        # Add dynamic groundwater
+        offline_budgets = AssignOfflineBudgets()
+        offline_budgets.compute_budgets(model)
+
+        # write cache
+        if cache_forcing:
+            model.basin.time.df.to_feather(cache_file)
 
 
 FIND_POST_FIXES = ["bergend_model"]
