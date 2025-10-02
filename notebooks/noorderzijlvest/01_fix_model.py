@@ -6,7 +6,7 @@ import pandas as pd
 from networkx import all_shortest_paths, shortest_path
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
-from shapely.geometry import MultiLineString
+from shapely.geometry import MultiLineString, Point
 from shapely.ops import snap, split
 
 from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
@@ -360,6 +360,8 @@ for row in model.flow_boundary.node.df.itertuples():
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
 
+#
+model.move_node(geometry=Point(233237, 559975), node_id=14)
 
 #  %% write model
 model.use_validation = True
