@@ -1,3 +1,4 @@
+# %%
 """Script met verschillende functies om de uitvoer van de Ribasim modellen te vergelijken met meetreeksen"""
 
 import ast
@@ -13,7 +14,7 @@ from shapely import wkt
 from ribasim_nl import CloudStorage
 
 
-def ParseList(val):
+def ParseList(val, apply_for_water_authority: bool = False):
     """The function `ParseList` checks if a given string represents a list and returns the list or the original value accordingly.
 
     Parameters
@@ -95,15 +96,12 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
     """
     koppeltabel = pd.read_excel(loc_koppeltabel)
 
+    # filter for water authority if specified
     if apply_for_water_authority is not None:
         koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
-        koppel_link_id_column = "meta_edge_id_waterbeheerder"
-
-    else:
-        koppel_link_id_column = "new_link_id"
 
     # Convert the lists in link_id to lists if possible
-    koppeltabel["link_id_parsed"] = koppeltabel[koppel_link_id_column].apply(ParseList)
+    koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList)
 
     # Parse the geometry
     koppeltabel["geometry_parsed"] = koppeltabel["geometry"].apply(lambda x: wkt.loads(x))
