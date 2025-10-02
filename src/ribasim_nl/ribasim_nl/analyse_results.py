@@ -1,3 +1,4 @@
+# %%
 """Script met verschillende functies om de uitvoer van de Ribasim modellen te vergelijken met meetreeksen"""
 
 import ast
@@ -11,9 +12,10 @@ import tqdm
 from shapely import wkt
 
 from ribasim_nl import CloudStorage
+from ribasim_nl.aquo import waterbeheercode
 
 
-def ParseList(val):
+def ParseList(val, prefix_code: int | None) -> list[int] | int:
     """The function `ParseList` checks if a given string represents a list and returns the list or the original value accordingly.
 
     Parameters
@@ -32,15 +34,24 @@ def ParseList(val):
     is a list, it returns the first element of the list if the list has only one element in it.
 
     """
-    if isinstance(val, str) and val.strip().startswith("[") and val.strip().endswith("]"):
-        try:
-            parsed = ast.literal_eval(val)
-            if isinstance(parsed, list):
-                return parsed[0] if len(parsed) == 1 else parsed
-        except Exception:
-            return val
 
-    return val
+    def parse_to_local(int_val: int, prefix_code: int):
+        str_val = str(int_val)
+        if not str_val.startswith(f"{prefix_code}"):
+            raise ValueError(f"Value {int_val} does not start with the specified prefix code {prefix_code}.")
+
+        return int(str_val[len(str(prefix_code)) :])
+
+    parsed = ast.literal_eval(val)
+
+    if prefix_code is not None:
+        parsed = [parse_to_local(v, prefix_code) for v in parsed]
+
+    # val = first item in list
+    if len(parsed) == 1:
+        return parsed[0]
+    else:
+        return parsed
 
 
 def ReadOutputFile(model_folder, filetype) -> pd.DataFrame:
@@ -95,15 +106,13 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
     """
     koppeltabel = pd.read_excel(loc_koppeltabel)
 
+    # filter for water authority if specified
     if apply_for_water_authority is not None:
         koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
-        koppel_link_id_column = "meta_edge_id_waterbeheerder"
-
-    else:
-        koppel_link_id_column = "new_link_id"
+        prefix_code = waterbeheercode[apply_for_water_authority]
 
     # Convert the lists in link_id to lists if possible
-    koppeltabel["link_id_parsed"] = koppeltabel[koppel_link_id_column].apply(ParseList)
+    koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList, args=(prefix_code,))
 
     # Parse the geometry
     koppeltabel["geometry_parsed"] = koppeltabel["geometry"].apply(lambda x: wkt.loads(x))
@@ -404,7 +413,7 @@ def CompareOutputMeasurements(
             stats=stats,
             koppelinfo=full_title,
             fig_name=fig_name,
-            bron_meting=meetlocaties_link.iloc[0]["Waterschap"],
+            bron_meting=None if apply_for_water_authority is not None else meetlocaties_link.iloc[0]["Waterschap"],
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
@@ -432,7 +441,7 @@ def CompareOutputMeasurements(
             stats=stats_dec,
             koppelinfo=full_title,
             fig_name=fig_name,
-            bron_meting=meetlocaties_link.iloc[0]["Waterschap"],
+            bron_meting=None if apply_for_water_authority is not None else meetlocaties_link.iloc[0]["Waterschap"],
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
@@ -454,6 +463,7 @@ def CompareOutputMeasurements(
 
     results_combined = []
     results_dec_combined = []
+
     # Save the results in a geopackage per waterboard
     for waterschap, results in results_measurements.items():
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
@@ -580,7 +590,10 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
 
     """
     # Create the folder where the plot can be saved
-    os.makedirs(os.path.join(output_folder, bron_meting), exist_ok=True)
+    if bron_meting is None:
+        os.makedirs(output_folder, exist_ok=True)
+    else:
+        os.makedirs(os.path.join(output_folder, bron_meting), exist_ok=True)
 
     font = "Arial"
 
@@ -635,7 +648,10 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
     )
     # Save the figure in the right location
     fig_name_clean = fig_name.replace(" ", "_").replace("/", "_")  # remove / as it will raise FileNotFoundError
-    fig_path = os.path.join(output_folder, bron_meting, fig_name_clean + ".png")
+    if bron_meting is None:
+        fig_path = os.path.join(output_folder, fig_name_clean + ".png")
+    else:
+        fig_path = os.path.join(output_folder, bron_meting, fig_name_clean + ".png")
     fig.savefig(fig_path, bbox_inches="tight", dpi=200)
     plt.close()
 
