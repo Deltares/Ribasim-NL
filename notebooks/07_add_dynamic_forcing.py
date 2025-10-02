@@ -11,7 +11,7 @@ starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 
 
-def add_forcing(model, cloud, starttime, endtime, cache_forcing: bool = True):
+def add_forcing(model, cloud, starttime, endtime, cache_forcing: bool = False):
     cache_file = model.filepath.parents[1] / "basin_time.arrow"
 
     def build_forcing() -> bool:
