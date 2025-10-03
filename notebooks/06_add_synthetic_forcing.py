@@ -1,8 +1,9 @@
 # %%
 from datetime import datetime
 
-from ribasim_nl import CloudStorage, Model
 from ribasim_nl.parametrization.basin_tables import add_basin_time_synthetic
+
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)

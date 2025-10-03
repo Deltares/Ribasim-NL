@@ -8,11 +8,11 @@ from networkx import DiGraph, simple_cycles
 from ribasim import Model, Node
 from ribasim.geometry.link import NodeData
 from ribasim.nodes import flow_demand, level_demand
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from ribasim_nl import CloudStorage
 from ribasim_nl import Model as ModelNL
-from ribasim_nl.case_conversions import pascal_to_snake_case
 
 
 class Flushing:
