@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 
 import pytest
-
-from ribasim_nl import CloudStorage
 from ribasim_nl.cloud import WATER_AUTHORITIES  # noqa: F401
 from ribasim_nl.settings import Settings, settings
+
+from ribasim_nl import CloudStorage
 
 
 @pytest.fixture
