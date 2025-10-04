@@ -35,10 +35,6 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
-# %%fixes
-model.remove_node(node_id=1126, remove_edges=True)
-model.remove_node(node_id=1023, remove_edges=True)
-
 
 # %% Flow rates are replaced to max_flow_rate, otherwise it affects the flow ratio
 model.outlet.static.df.max_flow_rate = model.outlet.static.df.flow_rate

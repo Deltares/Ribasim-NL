@@ -26,11 +26,19 @@ def add_forcing(model, cloud, starttime, endtime, cache_forcing: bool = False):
 
         # build if basin nodes don't match
         df = pd.read_feather(cache_file)
-        if not pd.Series(df["node_id"].unique(), name="node_id").equals(model.basin.node.df.reset_index()["node_id"]):
-            return True
-        else:
+        if (
+            pd.Series(df["node_id"].unique(), name="node_id").equals(model.basin.node.df.reset_index()["node_id"])
+            and (df.time.min().to_pydatetime() <= starttime)
+            and (df.time.max().to_pydatetime() >= endtime)
+        ):
+            print("basin forcing from cache")
             model.basin.time.df = df
+            model.basin.static.df = None
+            model.starttime = starttime
+            model.endtime = endtime
             return False
+        else:
+            return True
 
     if build_forcing():
         # compute forcing
@@ -123,7 +131,7 @@ for authority in authorities:
             model.basin.state.df["meta_categorie"] = series.to_numpy()
 
             # add forcing
-            add_forcing(model, cloud, starttime, endtime)
+            add_forcing(model, cloud, starttime, endtime, cache_forcing=True)
 
             # run model
             model.write(dst_toml_file)

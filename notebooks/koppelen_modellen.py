@@ -18,6 +18,14 @@ MIN_BASIN_OUTLET_DIFF = 0.5
 cloud: CloudStorage = CloudStorage()
 upload_model: bool = False
 
+remove_nodes = [
+    3401752,  # Dokwerd NZV
+    3400015,  # Dokwerd NZV
+    3400016,  # Dokwerd NZV
+    3401753,  # Dokwerd NZV
+    3401837,  # Dokwerd NZV
+]
+
 
 # %% Functions
 def get_basin_link(
@@ -51,6 +59,12 @@ def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Netw
     """
     # Load the model
     model = Model.read(toml_file)
+
+    # Remove nodes if exists
+    node_ids = model.node_table().df.index.to_numpy()
+    for i in remove_nodes:
+        if i in node_ids:
+            model.remove_node(node_id=i, remove_edges=True)
 
     # Load the network
     network_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
@@ -479,13 +493,23 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 
 # %% Individual execution blocks for notebook use
 
-rdos = ["RDO-Gelderland", "RDO-Noord", "RDO-Twentekanalen", "RDO-West-Midden", "RDO-Zuid-Oost", "RDO-Zuid-West"]
+sub_models_dir = cloud.joinpath(r"Rijkswaterstaat\modellen\lhm_sub_models")
 
-for rdo in rdos:
-    toml_file = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
+for dir in [i for i in sub_models_dir.glob("*") if "coupled" not in i.name]:
+    toml_file = dir.joinpath(f"{dir.stem}.toml")
+    model, network, basin_areas_df = initialize_models(cloud, toml_file)
+    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+    fix_basin_profiles(model)
+    save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
 
-toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm.toml")
-model, network, basin_areas_df = initialize_models(cloud, toml_file)
-all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-fix_basin_profiles(model)
-save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
+
+# rdos = ["RDO-Gelderland", "RDO-Noord", "RDO-Twentekanalen", "RDO-West-Midden", "RDO-Zuid-Oost", "RDO-Zuid-West"]
+
+# for rdo in rdos:
+#     toml_file = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
+
+# toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm_parts.toml")
+# model, network, basin_areas_df = initialize_models(cloud, toml_file)
+# all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+# fix_basin_profiles(model)
+# save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
