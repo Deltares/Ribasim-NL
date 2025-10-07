@@ -300,8 +300,9 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 120, "max_downstream_le
 model.pump.static.df.loc[model.pump.static.df.node_id == 111, "max_downstream_level"] = -0.45
 
 # Den Deel aanvoergemaal
-model.reverse_edge(edge_id=12)
-model.reverse_edge(edge_id=997)
+# TODO: remove after check as this will be done in script 1, before junctionfy
+# model.reverse_edge(edge_id=12)
+# model.reverse_edge(edge_id=997)
 model.pump.static.df.loc[model.pump.static.df.node_id == 35, "min_upstream_level"] = -1.07
 model.pump.static.df.loc[model.pump.static.df.node_id == 35, "max_downstream_level"] = -1.16
 
@@ -378,25 +379,29 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 421, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 439, "min_upstream_level"] = 7.14
 
 # Usquert inlaat??? Peil verkeerd basin
-model.reverse_edge(edge_id=224)
-model.reverse_edge(edge_id=1178)
+# TODO: remove after check as this will be done in script 1, before junctionfy
+# model.reverse_edge(edge_id=224)
+# model.reverse_edge(edge_id=1178)
 model.pump.static.df.loc[model.pump.static.df.node_id == 169, "min_upstream_level"] = -1.07
 model.pump.static.df.loc[model.pump.static.df.node_id == 169, "max_downstream_level"] = -1.14
 
 # Stad en Lande inlaat
-model.reverse_edge(edge_id=7)
-model.reverse_edge(edge_id=991)
+# TODO: remove after check as this will be done in script 1, before junctionfy
+# model.reverse_edge(edge_id=7)
+# model.reverse_edge(edge_id=991)
 model.pump.static.df.loc[model.pump.static.df.node_id == 32, "min_upstream_level"] = -0.95
 model.pump.static.df.loc[model.pump.static.df.node_id == 32, "max_downstream_level"] = -1
 
 # Schaphalsterzijl
-model.reverse_edge(edge_id=213)
-model.reverse_edge(edge_id=1152)
+# TODO: remove after check as this will be done in script 1, before junctionfy
+# model.reverse_edge(edge_id=213)
+# model.reverse_edge(edge_id=1152)
 model.pump.static.df.loc[model.pump.static.df.node_id == 146, "min_upstream_level"] = -0.95
 model.pump.static.df.loc[model.pump.static.df.node_id == 146, "max_downstream_level"] = -1
 
-model.reverse_edge(edge_id=519)
-model.reverse_edge(edge_id=1491)
+# TODO: remove after check as this will be done in script 1, before junctionfy
+# model.reverse_edge(edge_id=519)
+# model.reverse_edge(edge_id=1491)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 390, "min_upstream_level"] = -0.61
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 390, "max_downstream_level"] = pd.NA
 
@@ -409,8 +414,9 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 139, "min_upstream_leve
 model.pump.static.df.loc[model.pump.static.df.node_id == 139, "max_downstream_level"] = -0.69
 
 # Gemaal Dokwerd is een inlaat naar Hunze en Aa's
-model.reverse_edge(edge_id=2033)
-model.reverse_edge(edge_id=2032)
+# TODO: remove after check as this will be done in script 1, before junctionfy
+# model.reverse_edge(edge_id=2033)
+# model.reverse_edge(edge_id=2032)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1752, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1753, "flow_rate"] = 5.0
 
@@ -1260,7 +1266,7 @@ model.write(ribasim_toml)
 # run model
 if MODEL_EXEC:
     # TODO: Different ways of executing the model; choose the one that suits you best:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
+    result = model.run()
     # exit_code = model.run()
 
     # assert exit_code == 0
