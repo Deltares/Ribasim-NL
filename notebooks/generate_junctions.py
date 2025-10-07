@@ -16,9 +16,10 @@ def find_common_linestring(
     """Given a list of linestrings, returns the overlapping parts starting from the end.
 
     This function finds groups of linestrings that share common coordinate sequences
-    starting from their end points. It returns the common parts as new linestrings,
-    a mapping indicating which original linestring belongs to which common part and
-    a list of the linestrings after being stripped of their common parts.
+    starting from their end points when converging is True, or starting from their start points
+    when converging is False.
+    It returns the common parts as new linestrings, a mapping indicating which original linestring
+    belongs to which common part and a list of the linestrings after being stripped of their common parts.
 
     Example:
         If linestring A ends with [(2,2), (3,3)] and linestring B ends with [(2,2), (3,3)],
@@ -114,7 +115,7 @@ def find_common_linestring(
     return common_linestrings, linestring_mapping, stripped_linestrings
 
 
-def _junctionfy(links, converging=True):
+def _junctionify(links, converging=True):
     junction_ids = []
     field = "to_node_id" if converging else "from_node_id"
     grouped_links = links.groupby(field)
@@ -156,27 +157,35 @@ def _junctionfy(links, converging=True):
     return junction_ids
 
 
-def junctionfy(
+def junctionify(
     model,
 ):
+    """Add Junction nodes in a model inplace where flow links share common geometry.
+
+    Useful for model visualization and debugging, as otherwise there will be many
+    overlapping line segments that are hard to distinguish.
+
+    Currently assumes that all links have a geometry, and that all link geometries
+    between node a and b start with point a and end with point b.
+    """
     links = model.link.df[model.link.df.link_type == "flow"]
     links = links[[geom is not None for geom in links.geometry]]
-    new_junctions = _junctionfy(links, converging=True)
+    new_junctions = _junctionify(links, converging=True)
     iteration = 0
     while len(new_junctions) > 0:
         print("Iteration", iteration, "with", len(new_junctions), "new junctions")
         nlinks = model.link.df[model.link.df.to_node_id.isin(new_junctions)]
-        new_junctions = _junctionfy(nlinks, converging=True)
+        new_junctions = _junctionify(nlinks, converging=True)
         iteration += 1
 
     links = model.link.df[model.link.df.link_type == "flow"]
     links = links[[geom is not None for geom in links.geometry]]
-    new_junctions = _junctionfy(links, converging=False)
+    new_junctions = _junctionify(links, converging=False)
     iteration = 0
     while len(new_junctions) > 0:
         print("Iteration", iteration, "with", len(new_junctions), "new junctions")
         nlinks = model.link.df[model.link.df.from_node_id.isin(new_junctions)]
-        new_junctions = _junctionfy(nlinks, converging=False)
+        new_junctions = _junctionify(nlinks, converging=False)
         iteration += 1
 
     return model
