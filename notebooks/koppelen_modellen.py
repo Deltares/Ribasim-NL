@@ -13,7 +13,7 @@ from ribasim_nl import CloudStorage, Model, Network
 SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
-
+RUN_SELECTION = []
 # Configuration
 cloud: CloudStorage = CloudStorage()
 upload_model: bool = False
@@ -24,7 +24,16 @@ remove_nodes = [
     3400016,  # Dokwerd NZV
     3401753,  # Dokwerd NZV
     3401837,  # Dokwerd NZV
+    3100017,  # Dokkumer Nieuwe Zijlen NZV
+    3100018,  # Dokkumer Nieuwe Zijlen NZV
+    3101754,  # Dokkumer Nieuwe Zijlen NZV
+    3101755,  # Dokkumer Nieuwe Zijlen NZV
+    203706,  # Inlaat hoort bij NZV
+    203840,  # Inlaat hoort bij NZV
 ]
+
+# force LevelBoundary node_id to Basin node_id
+forced_coupling = {3400005: 5901608}
 
 
 # %% Functions
@@ -210,34 +219,38 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
             print(f"Boundary node {boundary_node} is already coupled with {couple_authority}.")
             continue
 
-        # Check whether there are very close LB from the other authority
-        lb_neighbors = model.level_boundary.node.df[
-            model.level_boundary.node.df.meta_waterbeheerder == couple_authority
-        ]
-        distances = lb_neighbors.distance(boundary_node.geometry)
-        lb_neighbors = lb_neighbors[distances < SNAP_DISTANCE]
+        # we check if coupling is overruled
+        if boundary_node_id in forced_coupling.keys():
+            couple_with_basin_id = forced_coupling[boundary_node_id]
+        else:
+            # Check whether there are very close LB from the other authority
+            lb_neighbors = model.level_boundary.node.df[
+                model.level_boundary.node.df.meta_waterbeheerder == couple_authority
+            ]
+            distances = lb_neighbors.distance(boundary_node.geometry)
+            lb_neighbors = lb_neighbors[distances < SNAP_DISTANCE]
 
-        if len(lb_neighbors) > 1:
-            print("Multiple close LB found, please check manually.")
-            continue
-
-        if len(lb_neighbors) == 1:
-            merged_outlet = merge_lb(model, lb_neighbors, boundary_node_id)
-            if merged_outlet is not None:
-                # TODO: Add Continuous control for the merged outlet?
+            if len(lb_neighbors) > 1:
+                print("Multiple close LB found, please check manually.")
                 continue
 
-        distances = basin_areas_df[basin_areas_df.meta_waterbeheerder == couple_authority].distance(
-            boundary_node.geometry
-        )
+            if len(lb_neighbors) == 1:
+                merged_outlet = merge_lb(model, lb_neighbors, boundary_node_id)
+                if merged_outlet is not None:
+                    # TODO: Add Continuous control for the merged outlet?
+                    continue
 
-        # Can happen if we don't couple all models
-        if len(distances) == 0:
-            print(f"Cannot find {couple_authority} basin area for {boundary_node}.")
-            continue
+            distances = basin_areas_df[basin_areas_df.meta_waterbeheerder == couple_authority].distance(
+                boundary_node.geometry
+            )
 
-        # Couple with closest basin area
-        couple_with_basin_id = distances.idxmin()
+            # Can happen if we don't couple all models
+            if len(distances) == 0:
+                print(f"Cannot find {couple_authority} basin area for {boundary_node}.")
+                continue
+
+            # Couple with closest basin area
+            couple_with_basin_id = distances.idxmin()
 
         # Create link table
         link_table = []
@@ -494,8 +507,11 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 # %% Individual execution blocks for notebook use
 
 sub_models_dir = cloud.joinpath(r"Rijkswaterstaat\modellen\lhm_sub_models")
-
-for dir in [i for i in sub_models_dir.glob("*") if "coupled" not in i.name]:
+model_dirs = [i for i in sub_models_dir.glob("*") if i.is_dir() and ("coupled" not in i.name)]
+if RUN_SELECTION:
+    model_dirs = [i for i in model_dirs if i.name in RUN_SELECTION]
+for dir in model_dirs:
+    print(dir.name)
     toml_file = dir.joinpath(f"{dir.stem}.toml")
     model, network, basin_areas_df = initialize_models(cloud, toml_file)
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
