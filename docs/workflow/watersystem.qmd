@@ -1,18 +1,28 @@
 ---
 title: "Waterschappen watersystem"
 ---
-
-Per waterschap wordt het watersysteem beschrevn middels de belangrijkste inlaten en uitlaten beschreven.
+qu
+Per waterschap wordt het watersysteem beschreven middels de belangrijkste inlaten en uitlaten beschreven.
 
 # `Noorderzijlvest`
-![Image caption](../img/kunstwerken_NZV_DM.png)
+![Image caption](../img/kunstwerken_NZV_ribasim.png)
 
-- Gemaal Dongerdielen (Ezumazuil) ()
-Dit gemaal loost vanuit Wetterskip Fryslân op het Lauwersmeer.
-max capaciteit: 15.2 m3/s
-min bovenstrooms peil: -1.25m
+Electraboezem
+De Electraboezem (grijs gearceerd) is het grootste stroomgebied van Noorderzijlvest. Het systeem is deels gestuwd en deels bemalen. Het gestuwde deel loopt vanuit het zuiden tot aan de denkbeeldige lijn Leek–Groningen. De belangrijkste watergangen zijn het Reitdiep en het Van Starkenborghkanaal, die onderling open met elkaar in verbinding staan. Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen—de gemalen H.D. Louwes en De Waterwolf—naar het Lauwersmeergebied. Het Lauwersmeergebied loost vervolgens op de Waddenzee via de sluizen van Lauwersoog.
 
-- Gemaal Nieuw Robbengat (KGM016)
-Dit gemaal voert het water van de Marnewaard af op het Lauwersmeer.
-max capaciteit: 3.6m3/s
-min bovenstrooms peil: -2.67m
+Bij Gaarkeuken kan 24 m³/s uit de Friese boezem worden ingelaten naar de boezem van Noorderzijlvest. Een deel daarvan (tot 20 m³/s) kan door gemaal Dorkwerd worden opgepompt richting waterschap Hunze en Aa’s.
+
+Nabij Assen wordt via een reeks kleine inlaten (Ter Aard, Huis ter Heide, Heideheim en de Jonkersburg-inlaat) water ingebracht vanuit het Noord-Willemskanaal en de Drentse Hoofdvaart (gebied van Hunze en Aa’s). Dit water komt uit in het gestuwde deel en voert af via de Electraboezem. De gezamenlijke capaciteit bedraagt ongeveer 1.5 m3/s? Klopt dit? Dit water kan alleen worden ingelaten als het beschikbaar is bij Hunze en Aa’s.
+
+Fivelingoboezem 
+De Fivelingoboezem is in de kaart het zalmroze gebied. Het gebied loost het water in Delfzijl via het spuicomplex of het gemaal De Drie Delfzijlen. Het gemaal heeft een capaciteit van 25 m3/s en gemiddeld kan over een getij circa 
+140.000 m3 worden gespuid op de Dollard. De Fivelingoboezem kan van water worden voorzien vanuit het Damsterdiep, waarin het water vanuit het Van Starckenborgh kanaal kan worden opgemalen met maximaal 1.5 m3/s. Er wordt geen water uitgewisseld met het Eemskanaal. 
+
+Noordelijke kustpolders 
+Aan de Waddenzee grenzen drie polders, de Marnewaard, de Eemshaven en de Noordelijke kustpolders. Deze lozen direct op de Waddenzee. De Noordelijke kustpolders worden onderscheiden in twee delen (paarse en groene gebied in de kaart) die ongeveer even groot zijn. Beide helften hebben een gemaal (Noordpolderzijl en Spijksterpompen). In droge periodes wordt water uit de Electraboezem opgemalen naar de kustpolders met een aantal kleine poldergemalen. 
+
+De Marnewaard loost met het gemaal Robbengat op het Lauwersmeer en kan vanuit de Electraboezem van water worden voorzien. 
+
+Dongeradeel  
+Dongeradeel is het gebied ten westen van het Lauwersmeer. Dit hoort bij Wetterskip Fryslân. Deze 
+loost met het gemaal Dongeradielen op het Lauwersmeer. 
