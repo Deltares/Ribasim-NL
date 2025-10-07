@@ -540,9 +540,8 @@ def build_discrete_controls(
     # kandidaat-outlets (als ints) en uitsluiters eruit
     upstream_outlet_ids = out_static.loc[mask_upstream_aanvoer, "node_id"].to_numpy(dtype=int).flatten()
     if exclude:
-        upstream_outlet_ids = upstream_outlet_ids[~np.isin(upstream_outlet_ids, list(exclude))].astype(int)
+        upstream_outlet_ids = upstream_outlet_ids[~np.isin(upstream_outlet_ids, list(exclude))].astype(int).flatten()
 
-    th_low = band[0]
     th_high = band[1]
 
     def _flow_open_from_value(val, default=flow_open_default):
@@ -593,10 +592,8 @@ def build_discrete_controls(
         geom = model.outlet[outlet_id].geometry
         x0, y0 = geom.x, geom.y
 
-        dc_node_id = int(900000 + outlet_id)  # uniek DC-node-id
-
         dc = model.discrete_control.add(
-            Node(dc_node_id, Point(x0 + dc_offset, y0)),
+            Node(geometry=Point(x0 + dc_offset, y0)),
             [
                 discrete_control.Variable(
                     compound_variable_id=1,
@@ -783,10 +780,9 @@ for nid in selected_node_ids:
 
         geom = model.outlet[nid_int].geometry
         x0, y0 = geom.x, geom.y
-        dc_node_id = int(900000 + nid_int)
 
         dc = model.discrete_control.add(
-            Node(dc_node_id, Point(x0 + 10, y0)),
+            Node(geometry=Point(x0 + 10, y0)),
             [
                 discrete_control.Variable(
                     compound_variable_id=1,
@@ -831,10 +827,9 @@ for nid in selected_node_ids:
 
         geom = model.pump[nid_int].geometry
         x0, y0 = geom.x, geom.y
-        dc_node_id = int(900000 + nid_int)
 
         dc = model.discrete_control.add(
-            Node(dc_node_id, Point(x0 + 10, y0)),
+            Node(geometry=Point(x0 + 10, y0)),
             [
                 discrete_control.Variable(
                     compound_variable_id=1,
@@ -964,10 +959,9 @@ for nid in selected_node_ids:
 
         geom = model.outlet[nid_int].geometry
         x0, y0 = geom.x, geom.y
-        dc_node_id = int(900000 + nid_int)
 
         dc = model.discrete_control.add(
-            Node(dc_node_id, Point(x0 + 10, y0)),
+            Node(geometry=Point(x0 + 10, y0)),
             [
                 discrete_control.Variable(
                     compound_variable_id=1,
@@ -1012,10 +1006,9 @@ for nid in selected_node_ids:
 
         geom = model.pump[nid_int].geometry
         x0, y0 = geom.x, geom.y
-        dc_node_id = int(900000 + nid_int)
 
         dc = model.discrete_control.add(
-            Node(dc_node_id, Point(x0 + 10, y0)),
+            Node(geometry=Point(x0 + 10, y0)),
             [
                 discrete_control.Variable(
                     compound_variable_id=1,
@@ -1182,10 +1175,9 @@ for nid in selected_node_ids:
 
         geom = model.outlet[nid_int].geometry
         x0, y0 = geom.x, geom.y
-        dc_node_id = int(900000 + nid_int)
 
         dc = model.discrete_control.add(
-            Node(dc_node_id, Point(x0 + 10, y0)),
+            Node(geometry=Point(x0 + 10, y0)),
             [
                 discrete_control.Variable(
                     compound_variable_id=1,
@@ -1230,10 +1222,9 @@ for nid in selected_node_ids:
 
         geom = model.pump[nid_int].geometry
         x0, y0 = geom.x, geom.y
-        dc_node_id = int(900000 + nid_int)
 
         dc = model.discrete_control.add(
-            Node(dc_node_id, Point(x0 + 10, y0)),
+            Node(geometry=Point(x0 + 10, y0)),
             [
                 discrete_control.Variable(
                     compound_variable_id=1,

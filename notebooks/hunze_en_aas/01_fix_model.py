@@ -4,6 +4,7 @@ import inspect
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
+from ribasim import __version__ as ribasim_version
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
@@ -15,7 +16,7 @@ cloud = CloudStorage()
 
 authority = "HunzeenAas"
 name = "hea"
-run_model = False
+run_model = True
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -133,19 +134,19 @@ model.remove_node(node_id=2019, remove_edges=True)
 model.remove_node(node_id=17, remove_edges=True)
 
 # Area basin 1516 niet OK, te klein, model instabiel
-actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+# actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
+# for action in actions:
+#     print(action)
+#     # get method and args
+#     method = getattr(model, action)
+#     keywords = inspect.getfullargspec(method).args
+#     df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+#     if "order" in df.columns:
+#         df.sort_values("order", inplace=True)
+#     for row in df.itertuples():
+#         # filter kwargs by keywords
+#         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+#         method(**kwargs)
 
 
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
@@ -247,7 +248,7 @@ ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
-
+model.ribasim_version = ribasim_version
 # %%
 # %% Test run model
 if run_model:
