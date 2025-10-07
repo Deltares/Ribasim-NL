@@ -1,8 +1,8 @@
 import os
 
+from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
 from ribasim import Model
 
-from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
 from ribasim_nl import settings
 
 base_path = settings.ribasim_nl_data_dir

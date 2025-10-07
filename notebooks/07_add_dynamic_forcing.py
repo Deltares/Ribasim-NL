@@ -2,9 +2,9 @@
 from datetime import datetime
 
 import pandas as pd
+from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing
-from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)

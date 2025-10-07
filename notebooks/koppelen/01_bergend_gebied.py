@@ -3,12 +3,12 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin
-from shapely.geometry import LineString, MultiPolygon
-
-from ribasim_nl import CloudStorage, Model
 from ribasim_nl.berging import add_basin_statistics, get_basin_profile, get_rating_curve
 from ribasim_nl.geodataframe import split_basins
 from ribasim_nl.geometry import basin_to_point
+from shapely.geometry import LineString, MultiPolygon
+
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
