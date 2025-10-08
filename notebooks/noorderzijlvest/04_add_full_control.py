@@ -45,8 +45,70 @@ cloud.synchronize(
 
 # read model
 model = Model.read(ribasim_toml)
+
+
+def get_first_upstream_basins(model: Model, node_id: int):
+    # get first upstream basins of a node
+    us_basins = model.get_upstream_basins(node_id=node_id, stop_at_node_type="Basin")
+    return us_basins[us_basins.node_id != node_id].node_id.to_numpy()
+
+
+def get_first_downstream_basins(model: Model, node_id: int):
+    # Get the first downstream basins of a node
+    ds_basins = model.get_downstream_basins(node_id=node_id, stop_at_node_type="Basin")
+    return ds_basins[ds_basins.node_id != node_id].node_id.to_numpy()
+
+
+def is_controlled_basin(model: Model, node_id: int):
+    # node_id is Basin (!). Check if is controlled (no ManningResistance or LinearResistance)
+    ds_node_ids = model._downstream_nodes(node_id=node_id, stop_at_node_type="Basin")
+    return (
+        not model.node_table().df.loc[list(ds_node_ids)].node_type.isin(["ManningResistance", "LinearResistance"]).any()
+    )
+
+
+def has_all_upstream_controlled_basins(node_id: int, model: Model):
+    # find upstream basin of pump or outlet. So node_id should refer to connector-nodes only (!)
+    us_basins = get_first_upstream_basins(model=model, node_id=node_id)
+    if len(us_basins) == 0:  # No basins, so level boundary
+        return False
+
+    # get all upstream basins
+    us2_basins = get_first_upstream_basins(model=model, node_id=us_basins[0])
+
+    # check if all upstream basins are controlled
+    all_controlled = all(is_controlled_basin(model=model, node_id=i) for i in us2_basins)
+
+    # return True if no ManningResistance or LinearResistance nodes have been found
+    return all_controlled
+
+
+def downstream_basin_is_controlled(node_id: int, model=Model):
+    # find downstream basins of Pump or outlet. So node_id should refer to connector-nodes only (!)
+    ds_basins = get_first_downstream_basins(model=model, node_id=node_id)
+    if len(ds_basins) == 0:  # No basins, so level boundary
+        return False
+    else:  # downstream basin shouldn't have any Manning or Linear Resistance (so controlled by Pump(s) or Outlet(s))
+        return is_controlled_basin(model=model, node_id=ds_basins[0])
+
+
+# @ngoorden deze series kun je gebruiken om pompen en outlets te masken verdrop in het script
+pumps_ds_basins_controlled = model.pump.node.df.apply(
+    (lambda x: downstream_basin_is_controlled(node_id=x.name, model=model)), axis=1
+)
+outlets_ds_basins_controlled = model.outlet.node.df.apply(
+    (lambda x: downstream_basin_is_controlled(node_id=x.name, model=model)), axis=1
+)
+pumps_us_basins_controlled = model.pump.node.df.apply(
+    (lambda x: has_all_upstream_controlled_basins(node_id=x.name, model=model)), axis=1
+)
+outlets_us_basins_controlled = model.outlet.node.df.apply(
+    (lambda x: has_all_upstream_controlled_basins(node_id=x.name, model=model)), axis=1
+)
+
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, precipitation_mm_per_day=2)
+
 
 # %%
 add_from_to_nodes_and_levels(model)
@@ -300,9 +362,6 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 120, "max_downstream_le
 model.pump.static.df.loc[model.pump.static.df.node_id == 111, "max_downstream_level"] = -0.45
 
 # Den Deel aanvoergemaal
-# TODO: remove after check as this will be done in script 1, before junctionfy
-# model.reverse_edge(edge_id=12)
-# model.reverse_edge(edge_id=997)
 model.pump.static.df.loc[model.pump.static.df.node_id == 35, "min_upstream_level"] = -1.07
 model.pump.static.df.loc[model.pump.static.df.node_id == 35, "max_downstream_level"] = -1.16
 
@@ -379,29 +438,17 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 421, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 439, "min_upstream_level"] = 7.14
 
 # Usquert inlaat??? Peil verkeerd basin
-# TODO: remove after check as this will be done in script 1, before junctionfy
-# model.reverse_edge(edge_id=224)
-# model.reverse_edge(edge_id=1178)
 model.pump.static.df.loc[model.pump.static.df.node_id == 169, "min_upstream_level"] = -1.07
 model.pump.static.df.loc[model.pump.static.df.node_id == 169, "max_downstream_level"] = -1.14
 
 # Stad en Lande inlaat
-# TODO: remove after check as this will be done in script 1, before junctionfy
-# model.reverse_edge(edge_id=7)
-# model.reverse_edge(edge_id=991)
 model.pump.static.df.loc[model.pump.static.df.node_id == 32, "min_upstream_level"] = -0.95
 model.pump.static.df.loc[model.pump.static.df.node_id == 32, "max_downstream_level"] = -1
 
 # Schaphalsterzijl
-# TODO: remove after check as this will be done in script 1, before junctionfy
-# model.reverse_edge(edge_id=213)
-# model.reverse_edge(edge_id=1152)
 model.pump.static.df.loc[model.pump.static.df.node_id == 146, "min_upstream_level"] = -0.95
 model.pump.static.df.loc[model.pump.static.df.node_id == 146, "max_downstream_level"] = -1
 
-# TODO: remove after check as this will be done in script 1, before junctionfy
-# model.reverse_edge(edge_id=519)
-# model.reverse_edge(edge_id=1491)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 390, "min_upstream_level"] = -0.61
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 390, "max_downstream_level"] = pd.NA
 
@@ -414,9 +461,6 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 139, "min_upstream_leve
 model.pump.static.df.loc[model.pump.static.df.node_id == 139, "max_downstream_level"] = -0.69
 
 # Gemaal Dokwerd is een inlaat naar Hunze en Aa's
-# TODO: remove after check as this will be done in script 1, before junctionfy
-# model.reverse_edge(edge_id=2033)
-# model.reverse_edge(edge_id=2032)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1752, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1753, "flow_rate"] = 5.0
 
@@ -1265,18 +1309,7 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    # TODO: Different ways of executing the model; choose the one that suits you best:
     result = model.run()
-    # exit_code = model.run()
-
-    # assert exit_code == 0
-
-    """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
-    successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the
-    outlets on 'aanvoer' instead of the more suitable 'afvoer'. This should no longer be a problem once the next step of
-    adding `ContinuousControl`-nodes is implemented.
-    """
-
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()
 
