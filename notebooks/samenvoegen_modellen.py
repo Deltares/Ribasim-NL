@@ -51,7 +51,10 @@ INCLUDE_MODELS: list[str] = [
     "Vechtstromen",
 ]
 
-sub_models: dict[str, list[str]] = {"nzv_hea": ["Noorderzijlvest", "HunzeenAas"]}
+sub_models: dict[str, list[str]] = {
+    "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta"],
+    "RDO-Noord": ["Noorderzijlvest", "HunzeenAas", "WetterskipFryslan", "DrentsOverijsselseDelta"],
+}
 
 
 # A spec consists of the following keys:
@@ -262,6 +265,7 @@ lhm_model = None
 readme = f"# Model voor het Landelijk Hydrologisch Model\nGegenereerd: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\nRibasim versie: {ribasim.__version__}\nGetest (u kunt simuleren): Nee\n\n** Samengevoegde modellen (beheerder: modelnaam (versie)**\n"
 
 for model_name, authorities in sub_models.items():
+    print(model_name)
     lhm_model = None
     readme = f"\n\n## Submodel: {model_name}\n** Samengevoegde modellen (beheerder: modelnaam (versie)**\n"
     for authority in authorities:

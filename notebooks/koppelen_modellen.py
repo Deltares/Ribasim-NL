@@ -13,7 +13,7 @@ from ribasim_nl import CloudStorage, Model, Network
 SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
-RUN_SELECTION = []
+RUN_SELECTION = ["RDO-Noord"]
 # Configuration
 cloud: CloudStorage = CloudStorage()
 upload_model: bool = False
@@ -23,17 +23,30 @@ remove_nodes = [
     3400015,  # Dokwerd NZV
     3400016,  # Dokwerd NZV
     3401753,  # Dokwerd NZV
-    3401837,  # Dokwerd NZV
-    3100017,  # Dokkumer Nieuwe Zijlen NZV
-    3100018,  # Dokkumer Nieuwe Zijlen NZV
-    3101754,  # Dokkumer Nieuwe Zijlen NZV
-    3101755,  # Dokkumer Nieuwe Zijlen NZV
+    3400017,  # Dokkumer Nieuwe Zijlen NZV
+    3400018,  # Dokkumer Nieuwe Zijlen NZV
+    3401754,  # Dokkumer Nieuwe Zijlen NZV
+    3401755,  # Dokkumer Nieuwe Zijlen NZV
     203706,  # Inlaat hoort bij NZV
     203840,  # Inlaat hoort bij NZV
+    202773,  # "Gaarkeuken" Fryslân
+    203809,  # "Gaarkeuken" Fryslân
 ]
 
 # force LevelBoundary node_id to Basin node_id
-forced_coupling = {3400005: 5901608}
+forced_coupling = {
+    3400005: 5901608,
+    3400007: 200184,  # Gaarkeuken naar juiste kanaalpand
+    3400012: 200184,  # Gaarkeuken naar juiste kanaalpand
+    3400004: 200184,  # Gaarkeuken naar juiste kanaalpand
+    210884: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    213460: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    203848: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    203812: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    211639: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    203787: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
+    203804: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
+}
 
 
 # %% Functions
