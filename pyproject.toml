@@ -50,11 +50,12 @@ dependencies = [
 ]
 
 [tool.uv.sources]
+ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
+# ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 bokeh_helpers = { workspace = true }
 hydamo = { workspace = true }
 peilbeheerst_model = { workspace = true }
 ribasim_nl = { workspace = true }
-ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
 
 [tool.uv.workspace]
 members = ["src/*"]
