@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,19 +24,12 @@ setup_logging()
 # %% Define folder locations and synchronize with the Good Cloud
 cloud = CloudStorage()
 logging.info("Synchronizing with file on the Good Cloud")
-
 delwaq_folder = cloud.joinpath("Basisgegevens/Delwaq")
-
 IM_metingen_excel_path = cloud.joinpath(delwaq_folder, "verwerkt/data/combined_IM_Metingen_2016_2022.xlsx")
-
 meetlocaties_IM_path = cloud.joinpath(delwaq_folder, "verwerkt/data/IM_ribasim_mapping.geojson")
-
 zinfo_file_path = cloud.joinpath(delwaq_folder, "aangeleverd/Zinfo/zinfo_20160101_20231231_waterkwaliteit.csv")
-
 boundwq_path = cloud.joinpath(delwaq_folder, "verwerkt/delwaq_input")
-
 figures_path = cloud.joinpath(delwaq_folder, "verwerkt/figures")
-
 cloud.synchronize(
     filepaths=[
         IM_metingen_excel_path,
@@ -65,86 +59,73 @@ parameters_IM = ["NKj", "NO3", "NOx", "sNO3NO2", "Ntot", "PO4", "Ptot"]
 parameters_Zinfo = ["NKj", "NO3", "NOx", "sNO3NO2", "Ntot", "PO4", "Ptot"]
 
 
-# %% Dowload gewenste Ribasim model versie
+# %% Laad het gewenste Ribasim model in
 
 model_spec = {
     "authority": "Rijkswaterstaat",
     "model": "lhm_coupled",
-    "find_toml": True,
+    "model_version": "2025_9_0",
 }
 
-logging.info(f"Download model: {model_spec['authority']} - {model_spec['model']}")
 
+def load_model_from_spec(model_spec):
+    """Locate and load a model TOML file based on a specified model version."""
+    logging.info(
+        f"Checking model: {model_spec['authority']} - {model_spec['model']} (version {model_spec['model_version']})"
+    )
 
-def get_model_path(model, model_version):
-    return cloud.joinpath(model["authority"], "modellen", model_version.path_string)
+    # Build full model path
+    model_path = cloud.joinpath(
+        model_spec["authority"],
+        "modellen",
+        model_spec["model"] + "_" + model_spec["model_version"],
+    )
+    cloud.synchronize([model_path])
 
-
-download_latest_model = True
-
-# get version
-if "model_version" in model_spec:
-    model_version = model_spec["model_version"]
-    logging.info("model version: %s", model_version)
-else:
-    model_versions = [i for i in cloud.uploaded_models(model_spec["authority"]) if i.model == model_spec["model"]]
-    if model_versions:
-        model_version = sorted(model_versions, key=lambda x: x.sorter)[-1]
-    else:
-        raise ValueError(f"No models with name {model_spec['model']} in the cloud")
-    logging.info("model version not defined, latest is: %s", model_version)
-
-model_path = get_model_path(model_spec, model_version)
-
-# download model if not yet downloaded
-if not model_path.exists():
-    if download_latest_model:
-        logging.info(f"Downloaden versie: {model_version.version}")
-        url = cloud.joinurl(model_spec["authority"], "modellen", model_version.path_string)
-        cloud.download_content(url)
-    else:
-        model_versions = sorted(model_versions, key=lambda x: x.version, reverse=True)
-        model_paths = (get_model_path(model_spec, i) for i in model_versions)
-        model_path = next((i for i in model_paths if i.exists()), None)
-        if model_path is None:
-            raise ValueError(f"No models with name {model_spec['model']} on local drive")
-
-# find toml
-if model_spec["find_toml"]:
     tomls = list(model_path.glob("*.toml"))
-    if len(tomls) > 1:
-        raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one!")
-    else:
-        model_path = tomls[0]
-        logging.info("found 1 toml-file")
-else:
-    model_path = model_path.joinpath(f"{model_spec['model']}.toml")
+    if not tomls:
+        logging.error(f"No TOML file found in: {model_path}")
+        return None
+    elif len(tomls) > 1:
+        logging.error(f"Multiple TOML files found in {model_path}. Please keep only one.")
+        return None
 
-# %% Laad het Ribasim model in
-model = Model.read(model_path)
+    toml_file = tomls[0]
+    logging.info(f"Found TOML file: {toml_file}")
+
+    model = Model.read(toml_file)
+    logging.info(f"Loaded model {toml_file}")
+
+    return model
+
+
+model = load_model_from_spec(model_spec)
+
 logging.info("Ribasim model ingeladen")
 df_model_nodes = model.flow_boundary.node.df
 logging.info(f"{len(df_model_nodes)} FlowBoundaries in het model")
 
-df_model_nodes_rwzi = df_model_nodes[df_model_nodes["meta_rwzi_codeist"].notna()]
-df_rwzi_mapping_table = df_model_nodes_rwzi[["meta_rwzi_codeist", "name"]].reset_index()
-df_rwzi_mapping_table["meta_rwzi_codeist"] = (
-    df_rwzi_mapping_table["meta_rwzi_codeist"].str.replace("NL.", "NL", regex=False).str.replace(".", "_", regex=False)
-)
-# print(df_rwzi_mapping_table)
-logging.info(f"Waarvan {len(df_rwzi_mapping_table)} RWZIs")
+if "meta_rwzi_codeist" not in df_model_nodes.columns:
+    logging.error("De RWZI's zijn niet gekoppeld aan dit model — kolom 'meta_rwzi_codeist' ontbreekt.")
+
+else:
+    df_model_nodes_rwzi = df_model_nodes[df_model_nodes["meta_rwzi_codeist"].notna()]
+    df_rwzi_mapping_table = df_model_nodes_rwzi[["meta_rwzi_codeist", "name"]].reset_index()
+    df_rwzi_mapping_table["meta_rwzi_codeist"] = (
+        df_rwzi_mapping_table["meta_rwzi_codeist"]
+        .str.replace("NL.", "NL", regex=False)
+        .str.replace(".", "_", regex=False)
+    )
+    logging.info(f"Waarvan {len(df_rwzi_mapping_table)} RWZIs")
 
 
 # %% Meetlocaties IM-metingen inladen en linken aan de modeldata
 def load_geojson(meetlocaties_path):
-    try:
-        with open(meetlocaties_path, encoding="utf-8") as geojson_file:
-            geojson_data = json.load(geojson_file)
-        logging.info(f"IM meetlocaties ingeladen: {meetlocaties_path}")
-        return geojson_data
-    except FileNotFoundError:
-        logging.error(f"GeoJSN bestaat niet: {meetlocaties_path}")
-        return None
+    # try:
+    with open(meetlocaties_path, encoding="utf-8") as geojson_file:
+        geojson_data = json.load(geojson_file)
+    logging.info(f"IM meetlocaties ingeladen: {meetlocaties_path}")
+    return geojson_data
 
 
 meetlocaties_IM_data = load_geojson(meetlocaties_IM_path)
@@ -209,11 +190,11 @@ def extract_and_add_node_ids(features_df: pd.DataFrame, df_model_nodes: pd.DataF
 
 
 grenspunt_meetobject_df = extract_and_add_node_ids(df_IM_meetlocaties, df_model_nodes)
-# grenspunt_meetobject_codes = grenspunt_meetobject_df["Meetobject.code"]
 
 
 # %% Lezen excel sheet IM-metingen (langzaam)
-def read_excel_file(file_path):
+def read_excel_file(file_path: str) -> pd.DataFrame:
+    """Reads an Excel file and returns its contents as a pandas DataFrame."""
     if not os.path.exists(file_path):
         logging.error(f"Bestand bestaat niet: {file_path}")
         raise FileNotFoundError(f"Het Excel-bestand bestaat niet: {file_path}")
@@ -226,7 +207,9 @@ sheets_dict = read_excel_file(IM_metingen_excel_path)
 logging.info("Excel bestand met IM-metingen ingeladen.")
 
 
-def filter_grenspunt_locations(sheets_dict, grenspunt_meetobject_codes):
+# %%
+def filter_grenspunt_locations(sheets_dict, grenspunt_meetobject_codes) -> dict:
+    """Filters the nodes which have cross-boundary inflows"""
     return {
         sheet_name: df[df["Meetobject.code"].isin(grenspunt_meetobject_codes)] for sheet_name, df in sheets_dict.items()
     }
@@ -235,7 +218,11 @@ def filter_grenspunt_locations(sheets_dict, grenspunt_meetobject_codes):
 filtered_sheets_dict = filter_grenspunt_locations(sheets_dict, grenspunt_meetobject_df["Meetobject.code"])
 
 
-def filter_units(sheets_dict_mgpl):
+def filter_units(sheets_dict_mgpl: dict[str, pd.DataFrame]) -> dict[str, list[str]]:
+    """Filters all sheets to include only rows with 'Eenheid.code' equal to 'mg/l'.
+
+    Logs which units were deleted per parameter.
+    """
     deleted_units = {}
     for par in sheets_dict_mgpl.keys():
         before_filtering = set(sheets_dict_mgpl[par]["Eenheid.code"].unique())
@@ -250,7 +237,8 @@ def filter_units(sheets_dict_mgpl):
 deleted_units = filter_units(filtered_sheets_dict)
 
 
-def log_unique_codes(sheets_dict_mgpl):
+def log_unique_codes(sheets_dict_mgpl: dict[str, pd.DataFrame]) -> None:
+    """Logs all unique 'Eenheid.code' values for each parameter in the measurement sheets."""
     parameters = []
     unique_codes = []
     for par in sheets_dict_mgpl.keys():
@@ -266,7 +254,8 @@ for par, units in deleted_units.items():
     logging.info(f'From parameter "{par}", deleted units: {units}')
 
 
-def combine_measurement_data(sheets_dict_mgpl):
+def combine_measurement_data(sheets_dict_mgpl: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, list[Any]]:
+    """Combines all measurement data into a single DataFrame and extracts unique measurement locations."""
     combined_df = pd.concat(sheets_dict_mgpl.values(), ignore_index=True)
     locations = combined_df["Meetobject.code"].unique()
     logging.info(f"Unieke meetlocaties uit de IM-metingen: {locations}")
@@ -277,21 +266,37 @@ df_IM_metingen, locations_IM = combine_measurement_data(filtered_sheets_dict)
 
 
 # %% Read Zinfo data
-def read_zinfo_data(file_path):
-    if not os.path.exists(file_path):
-        logging.error(f"The file does not exist: {file_path}")
-        raise FileNotFoundError(f"The CSV file does not exist: {file_path}")
+def read_zinfo_data(file_path: str) -> pd.DataFrame:
+    """Reads Z-info measurement data from a CSV file."""
     logging.info(f"Begin met inlezen van Excel-bestand met Z-info metingen: {file_path}")
     df = pd.read_csv(file_path, sep=",")
     return df
 
 
-def filter_zinfo_data(df):
+def filter_zinfo_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Filters Z-info data to include only measurements with unit 'mg/l'."""
     combined_df = df[df["ehd"] == "mg/l"].copy()
     return combined_df
 
 
-def process_zinfo_data(zinfo_file_path):
+def process_zinfo_data(zinfo_file_path: str) -> pd.DataFrame:
+    """
+    Reads, filters, and processes Z-info measurement data.
+
+    Steps:
+        1. Reads the CSV file into a DataFrame.
+        2. Filters only rows with unit 'mg/l'.
+        3. Logs unique parameter codes.
+        4. Renames columns for consistency.
+        5. Formats 'Meetobject.code' and converts dates.
+
+    Args:
+        zinfo_file_path (str): Path to the Z-info CSV file.
+
+    Returns
+    -------
+        pd.DataFrame: Processed DataFrame with zinfo data .
+    """
     df = read_zinfo_data(zinfo_file_path)
     combined_df = filter_zinfo_data(df)
     unique_values = combined_df["par"].unique()
@@ -328,7 +333,31 @@ logging.info(
 
 
 # %% Converteer de meetdata naar gewenste Delwaq parameters
-def process_measurement_data(combined_df, locations, parameters):
+def process_measurement_data(
+    combined_df: pd.DataFrame, locations: list[str], parameters: list[str]
+) -> tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame]]:
+    """
+    Process measurement data and derive desired parameters for each location.
+
+    For each location:
+        1. Pivot the data by 'Begindatum' and 'Begintijd' with 'Parameter.code' as columns.
+        2. Compute derived parameters using fractions and existing measurements.
+        3. Create a binary DataFrame indicating which measurements are present.
+        4. Select the preferred method for each parameter to generate Delwaq input.
+
+    Args:
+        combined_df (pd.DataFrame): Combined measurement data with columns including
+            'Meetobject.code', 'Begindatum', 'Begintijd', 'Parameter.code', 'Numeriekewaarde'.
+        locations (list[str]): List of unique measurement locations to process.
+        parameters (list[str]): List of parameters to consider (used for validation).
+
+    Returns
+    -------
+        tuple:
+            dict_choosen_method (dict[str, pd.DataFrame]): Binary DataFrames indicating
+                available measurement methods for each location.
+            dict_delwaq_input (dict[str, pd.DataFrame]): Delwaq-ready DataFrames for each location.
+    """
     dict_choosen_method = {}
     dict_delwaq_input = {}
 
@@ -474,7 +503,24 @@ logging.info(
 
 
 # %% Schijf de boundarywq.dat files weg
-def write_boundwq_file(boundwq_file, dict_delwaq_input, parameter_delwaq_input):
+def write_boundwq_file(
+    boundwq_file: str, dict_delwaq_input: dict[str, pd.DataFrame], parameter_delwaq_input: list[str]
+) -> None:
+    """
+    Writes BOUNDWQ.DAT file for Delwaq simulations using the measurement data analyzed above.
+
+    Depending on the source of the data (IM or Z-info), appropriate node ID mappings are used.
+
+    Args:
+        boundwq_file (str): Path to output BOUNDWQ.DAT file.
+        dict_delwaq_input (dict[str, pd.DataFrame]): Dictionary mapping locations to
+            DataFrames containing Delwaq-ready measurement data.
+        parameter_delwaq_input (list[str]): List of parameter codes to include in the output.
+
+    Returns
+    -------
+        None
+    """
     # gebruik mapping tabellen om de juiste node_ids van Ribasim te vinden
     use_node_id_im = dict_delwaq_input is dict_delwaq_input_IM
     use_node_id_zinfo = dict_delwaq_input is dict_delwaq_input_Zinfo
@@ -523,7 +569,7 @@ def write_boundwq_file(boundwq_file, dict_delwaq_input, parameter_delwaq_input):
                     node_id = loc
                     ribasim_id = "NA"
 
-                boundwq.write(f"ITEM '{node_id}'; {loc} {ribasim_id}\nABSOLUTE TIME\nCONCENTRATION\n")
+                boundwq.write(f"ITEM 'FlowBound_{node_id}'; {loc} {ribasim_id}\nABSOLUTE TIME\nCONCENTRATION\n")
 
                 for param in parameter_delwaq_input:
                     boundwq.write(f" '{param}'\n")
@@ -883,3 +929,5 @@ if make_plots:
     plt.savefig(file_path, dpi=500, bbox_inches="tight")
     cloud.upload_file(file_path)
     plt.show()
+
+# %%
