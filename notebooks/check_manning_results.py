@@ -1,6 +1,7 @@
 # %%
-from ribasim_nl import CloudStorage, Model
 from ribasim_nl.parametrization.manning_resistance_table import manning_flow_rate
+
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 ribasim_toml = cloud.joinpath("AaenMaas", "modellen", "AaenMaas_parameterized_model", "aam.toml")

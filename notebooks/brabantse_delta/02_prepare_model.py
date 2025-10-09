@@ -1,14 +1,14 @@
 # %%
 import geopandas as gpd
 import pandas as pd
-
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
+
+from ribasim_nl import CloudStorage, Model, Network
 
 cloud = CloudStorage()
 authority = "BrabantseDelta"

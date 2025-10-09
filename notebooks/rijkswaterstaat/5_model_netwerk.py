@@ -15,11 +15,11 @@ from ribasim.nodes import (
     pump,
     tabulated_rating_curve,
 )
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from shapely.geometry import LineString, MultiLineString
 
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl import discrete_control as dc
-from ribasim_nl.case_conversions import pascal_to_snake_case
 
 warnings.filterwarnings(
     action="ignore",
