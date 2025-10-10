@@ -9,7 +9,6 @@
 
 import geopandas as gpd
 import shapely
-
 from peilbeheerst_model.general_functions import *
 
 remove_cat_2 = True

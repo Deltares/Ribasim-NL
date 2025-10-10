@@ -1,7 +1,8 @@
 # %%
 
-from ribasim_nl import CloudStorage
 from ribasim_nl.analyse_results import CompareOutputMeasurements
+
+from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 water_authorities = [

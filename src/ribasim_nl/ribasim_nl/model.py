@@ -247,25 +247,67 @@ class Model(Model):
         return valid_state
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
-    def _upstream_nodes(self, node_id, **kwargs):
+    def _upstream_nodes(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None):
         # get upstream nodes
         #     return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
-        return upstream_nodes(graph=self.graph, node_id=node_id, **kwargs)
+        return upstream_nodes(
+            graph=self.graph, node_id=node_id, stop_at_inlet=stop_at_inlet, stop_at_node_type=stop_at_node_type
+        )
 
-    def _downstream_nodes(self, node_id, **kwargs):
+    def _downstream_nodes(self, node_id, stop_at_outlet: bool = False, stop_at_node_type: str | None = None):
         # get downstream nodes
-        return downstream_nodes(graph=self.graph, node_id=node_id, **kwargs)
+        return downstream_nodes(
+            graph=self.graph, node_id=node_id, stop_at_outlet=stop_at_outlet, stop_at_node_type=stop_at_node_type
+        )
         # return list(nx.traversal.bfs_tree(self.graph, node_id))
 
-    def get_upstream_basins(self, node_id, **kwargs):
+    def get_upstream_basins(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None):
         # get upstream basin area
-        upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
+        upstream_node_ids = self._upstream_nodes(
+            node_id, stop_at_inlet=stop_at_inlet, stop_at_node_type=stop_at_node_type
+        )
         return self.basin.area.df[self.basin.area.df.node_id.isin(upstream_node_ids)]
 
-    def get_downstream_basins(self, node_id, **kwargs):
+    def get_downstream_basins(self, node_id, stop_at_outlet: bool = False, stop_at_node_type: str | None = None):
         # get upstream basin area
-        downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
+        downstream_node_ids = self._downstream_nodes(
+            node_id, stop_at_outlet=stop_at_outlet, stop_at_node_type=stop_at_node_type
+        )
         return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
+
+    # def get_downstream_basin(self, node_id) -> list[int]:
+    #     # keep track of visited nodes
+    #     visited = set()  # To keep track of visited nodes
+
+    #     # BFS using a deque
+    #     queue = deque([node_id])
+    #     basins = []
+
+    #     while queue:
+    #         current_node = queue.popleft()
+
+    #         # Avoid re-visiting nodes
+    #         if current_node in visited:
+    #             continue
+    #         visited.add(current_node)
+
+    #         # Check successors and their types
+    #         successors = list(self.graph.successors(current_node))
+    #         node_types = [self.get_node_type(i) for i in successors]
+
+    #         # get basins from successors
+    #         basins += [i[0] for i in zip(successors, node_types) if i[1] == "Basin"]
+
+    #         # add basins upstream successors if successor is junction
+    #         junctions = [i[0] for i in zip(successors, node_types) if i[1] == "Junction"]
+    #         junction_successors = [list(self.graph.successors(i)) for i in junctions]
+    #         junction_successors = [item for sublist in junction_successors for item in sublist]
+    #         basins += [i for i in junction_successors if self.get_node_type(i) == "Basin"]
+
+    #         if len(basins) == 0:
+    #             queue += successors
+
+    #     return basins
 
     def get_upstream_edges(self, node_id, **kwargs):
         # get upstream edges

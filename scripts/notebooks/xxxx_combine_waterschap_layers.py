@@ -5,9 +5,8 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from shapely.geometry import Polygon
-
 from ribasim_lumping.utils.general_functions import remove_holes_from_polygons
+from shapely.geometry import Polygon
 
 # locatie van de waterschapsmappen
 base_dir = "..\\Ribasim modeldata\\"

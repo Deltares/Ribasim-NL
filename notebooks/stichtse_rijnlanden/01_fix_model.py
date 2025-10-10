@@ -5,12 +5,12 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
-from shapely.geometry import LineString, MultiPolygon, Point
-
-from ribasim_nl import CloudStorage, Model, NetworkValidator
 from ribasim_nl.geometry import split_basin_multi_polygon
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import LineString, MultiPolygon, Point
+
+from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 # Initialize cloud storage and set authority/model parameters
 cloud = CloudStorage()

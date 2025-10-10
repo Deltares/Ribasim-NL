@@ -6,15 +6,15 @@ import pandas as pd
 from networkx import all_shortest_paths, shortest_path
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
-from shapely.geometry import MultiLineString, Point
-from shapely.ops import snap, split
-
-from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import MultiLineString, Point
+from shapely.ops import snap, split
+
+from ribasim_nl import CloudStorage, Model, Network, NetworkValidator, junctionify
 
 cloud = CloudStorage()
 
@@ -363,8 +363,16 @@ for row in model.flow_boundary.node.df.itertuples():
 #
 model.move_node(geometry=Point(233237, 559975), node_id=14)
 
+# %% reverse edges before junctionfy
+for edge_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
+    model.reverse_edge(edge_id=edge_id)
+
+# %% Create junctions
+model = junctionify(model)
+
+
 #  %% write model
-model.use_validation = True
+model.use_validation = False
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()

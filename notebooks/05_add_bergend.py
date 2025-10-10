@@ -1,6 +1,7 @@
 # %%
-from ribasim_nl import CloudStorage, Model
 from ribasim_nl.berging import VdGaastBerging
+
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
