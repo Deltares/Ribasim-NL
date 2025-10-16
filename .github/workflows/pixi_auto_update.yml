@@ -1,4 +1,4 @@
-name: Update Pixi lockfile
+name: Update uv lockfile
 permissions:
   contents: write
   pull-requests: write
@@ -9,27 +9,36 @@ on:
   # on demand
   workflow_dispatch:
 jobs:
-  pixi-update:
+  uv-update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.9.1
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          pixi-version: "latest"
-          run-install: false
+          python-version-file: ".python-version"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.3"
       - name: Update lockfiles
         run: |
-          set -o pipefail
-          pixi update --json | pixi exec pixi-diff-to-markdown >> diff.md
+          uv lock --upgrade > lock_output.txt 2>&1
+          echo "## UV Lock Update" > diff.md
+          echo "" >> diff.md
+          echo "Updated dependencies in uv.lock:" >> diff.md
+          echo "" >> diff.md
+          echo '```' >> diff.md
+          cat lock_output.txt >> diff.md
+          echo '```' >> diff.md
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.CI_PR_PAT }}
-          commit-message: Update pixi lockfile
-          title: Update pixi lockfile
+          commit-message: Update uv lockfile
+          title: Update uv lockfile
           body-path: diff.md
-          branch: update/pixi-lock
+          branch: update/uv-lock
           base: main
           delete-branch: true
-          add-paths: pixi.lock
+          add-paths: uv.lock

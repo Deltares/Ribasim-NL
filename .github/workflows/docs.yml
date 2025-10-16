@@ -16,21 +16,42 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v5
-      - uses: prefix-dev/setup-pixi@v0.9.1
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
         with:
-          pixi-version: "latest"
+          version: 1.8.25
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.3"
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
 
       - name: Check Quarto installation and all engines
-        run: pixi run quarto-check
+        run: uv run quarto check all
+
+      - name: Build API documentation
+        run: uv run quartodoc build
+        working-directory: docs
+
+      - name: Clean up API documentation file
+        run: rm docs/objects.json
 
       - name: Render Quarto Project
-        run: pixi run quarto-render
+        run: uv run quarto render docs --to html --execute
 
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/_site
+        run: uv run quarto publish gh-pages --no-render --no-prompt --no-browser
+        working-directory: docs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRE_COMMIT_ALLOW_NO_CONFIG: "1"
