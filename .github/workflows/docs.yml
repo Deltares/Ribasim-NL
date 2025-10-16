@@ -33,7 +33,7 @@ jobs:
           version: "0.9.3"
 
       - name: Install the project
-        run: uv sync --locked --all-extras --dev
+        run: uv sync --locked
 
       - name: Check Quarto installation and all engines
         run: uv run quarto check all
