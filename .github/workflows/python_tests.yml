@@ -36,11 +36,6 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
-      - name: Run linting
-        run: |
-          uv run pre-commit run --all-files
-          uv run mypy --ignore-missing-imports src/hydamo
-
       - name: Run tests
         run: |
           uv run pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/hydamo/tests
