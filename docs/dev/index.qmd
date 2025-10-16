@@ -48,6 +48,16 @@ Unless the setting `python.terminal.activateEnvironment` is disabled, it will al
 
 If you encounter issues related to uv dependencies, it might help to clean your uv environment with `uv clean`, followed by `uv sync`.
 
+## Install pre-commit git hook scripts
+
+Pre-commit is part of the uv environment, hence you can run:
+
+```sh
+uv run pre-commit install
+```
+
+For more information see https://pre-commit.com/#3-install-the-git-hook-scripts.
+
 ## Co-development with Ribasim
 
 Ribasim-NL pins to a specific Ribasim version in the `pyproject.toml`.
