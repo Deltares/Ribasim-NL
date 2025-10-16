@@ -24,42 +24,52 @@ To continue with the following steps, make the root of the repository your worki
 cd Ribasim-NL
 ```
 
-## Setting up Pixi
+## Setting up uv
 
-First, set up Pixi as described on https://pixi.sh/.
+First, set up uv as described on https://docs.astral.sh/uv/getting-started/installation/.
 
-We require at least Pixi version v0.48.1, but generally recommend the latest release.
-Check the version with `pixi --version`, update with `pixi self-update`.
+We require at least uv version v0.9.3, but generally recommend the latest release.
+Check the version with `uv --version`, update with `uv self update`.
 
 Then set up the environment by running the following command.
-Check out the `pixi.toml` file to see the tasks that are part of this, you can also run them individually.
 
 ```sh
-pixi run install
+uv sync
 ```
 
-The install task automatically installs all required Python packages for development.
-These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled.
-You can do this in a terminal by calling `pixi shell`, or starting programs like `pixi run python`.
-The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment.
+This command automatically installs all required Python packages for development.
+These will not conflict with any pre-installed applications, as uv creates an isolated virtual environment.
+You can run Python commands using `uv run python` or activate the environment with `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows).
+
+The first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter.
 Open the command box with {{< kbd Ctrl+Shift+P >}} ({{< kbd Cmd+Shift+P >}} on macOS) and run `Python: Select Interpreter`.
-Select `('default': Pixi)` in the `/.pixi` folder.
+Select the Python interpreter in the `.venv` folder that uv created.
 Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
 
-If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with `pixi clean`, followed by `pixi run install`.
+If you encounter issues related to uv dependencies, it might help to clean your uv environment with `uv clean`, followed by `uv sync`.
+
+## Install pre-commit git hook scripts
+
+Pre-commit is part of the uv environment, hence you can run:
+
+```sh
+uv run pre-commit install
+```
+
+For more information see https://pre-commit.com/#3-install-the-git-hook-scripts.
 
 ## Co-development with Ribasim
 
-Ribasim-NL pins to a specific Ribasim version in the `pixi.toml`.
+Ribasim-NL pins to a specific Ribasim version in the `pyproject.toml`.
 Generally this will be the latest release.
 During development sometimes you may want to test out the latest unreleased development version of Ribasim.
 
-To do so, open `pixi.toml` in your editor.
-Remove `ribasim` from the `[dependencies]` section, and add it like below under the `[pypi-dependencies]`
+To do so, open `pyproject.toml` in your editor.
+Find the `[tool.uv.sources]` section and uncomment or add the git source like below:
 
 ```toml
-[pypi-dependencies]
-ribasim = { git = "https://github.com/Deltares/Ribasim.git", branch = "main", subdirectory = "python/ribasim" }
+[tool.uv.sources]
+ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
 ```
 
 You can change the branch name if needed, or use a specific commit with for example `rev = "0075d4a"`.
@@ -68,25 +78,13 @@ If you are making changes to the Ribasim repository yourself, it will be more co
 This can be done using this syntax:
 
 ```toml
-[pypi-dependencies]
+[tool.uv.sources]
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 ```
 
 This path will work if you clone Ribasim next to Ribasim-NL.
 
-After you are done modifying `pixi.toml`, you can run `pixi install` to ensure the PyPI dependencies are installed.
-
-We recommend modifying the TOML, but using the Pixi CLI is also possible:
-
-```sh
-pixi remove ribasim
-# and
-pixi add --git https://github.com/Deltares/Ribasim.git ribasim --branch main --pypi --subdir python/ribasim
-# or
-pixi add --pypi 'ribasim @ file://absolute/path/to/Ribasim/python/ribasim' --editable
-```
-
-The Pixi CLI only accepts absolute paths, but relative paths in `pixi.toml` will also work.
+After you are done modifying `pyproject.toml`, you can run `uv sync` to ensure the dependencies are installed.
 
 For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/dev/).
 

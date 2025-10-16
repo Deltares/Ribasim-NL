@@ -108,14 +108,15 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
     # ignores subclassing Any: https://github.com/geopandas/geopandas/discussions/2750
 
     _metadata = [
+        "validation_schema",
         "required_columns",
         "geotype",
         "layer_name",
-    ] + gpd.GeoDataFrame._metadata
+    ]
 
     def __init__(
         self,
-        validation_schema: list[dict[str, Any]],
+        validation_schema: list[dict[str, Any]] | None = None,
         geotype: list[
             Literal[
                 "LineString",
@@ -126,13 +127,19 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
                 "MultiPolygon",
             ]
         ]
-        | None,
+        | None = None,
         layer_name: str = "",
-        required_columns: list[str] = [],
+        required_columns: list[str] | None = None,
         logger=logging,
         *args,
         **kwargs,
     ):
+        # Set defaults for None values
+        if validation_schema is None:
+            validation_schema = []
+        if required_columns is None:
+            required_columns = []
+
         # Check type
         required_columns = [i.lower() for i in required_columns]
 
@@ -281,6 +288,47 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
         """
         geometry.find_nearest_branch(branches=branches, geometries=self, method=snap_method, maxdist=maxdist)
 
+    def copy(self, deep: bool = True):
+        """
+        Make a copy of this ExtendedGeoDataFrame object's indices and data.
+
+        This method overrides the default copy method to properly handle
+        the custom constructor parameters required by ExtendedGeoDataFrame.
+
+        Parameters
+        ----------
+        deep : bool, default True
+            Make a deep copy, including a copy of the data and the indices.
+            With ``deep=False`` neither the indices nor the data are copied.
+
+        Returns
+        -------
+        ExtendedGeoDataFrame
+            Copy of ExtendedGeoDataFrame.
+        """
+        # Get a copy of the underlying GeoDataFrame data
+        copied_gdf = gpd.GeoDataFrame(self).copy(deep=deep)
+
+        # Create a new ExtendedGeoDataFrame with the required parameters
+        result = ExtendedGeoDataFrame(
+            validation_schema=self.validation_schema,
+            geotype=self.geotype,
+            layer_name=self.layer_name,
+            required_columns=self.required_columns.copy() if deep else self.required_columns,
+        )
+
+        # Copy over the data from the copied GeoDataFrame
+        for col in copied_gdf.columns:
+            result[col] = copied_gdf[col]
+
+        # Set the geometry and CRS if they exist
+        if hasattr(copied_gdf, "geometry") and copied_gdf.geometry is not None:
+            result.set_geometry(copied_gdf.geometry, inplace=True)
+        if hasattr(self, "crs") and self.crs is not None:
+            result.crs = self.crs
+
+        return result
+
 
 class HyDAMO:
     """Definition of the HyDAMO datamodel."""
@@ -333,8 +381,8 @@ class HyDAMO:
                 hydamo_layer,
                 ExtendedGeoDataFrame(
                     validation_schema=layer_schema,
-                    layer_name=hydamo_layer,
                     geotype=geotype,
+                    layer_name=hydamo_layer,
                     required_columns=required_columns,
                 ),
             )
