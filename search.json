@@ -272,14 +272,14 @@
     "href": "dev/index.html#setting-up-uv",
     "title": "Contributing",
     "section": "Setting up uv",
-    "text": "Setting up uv\nFirst, set up uv as described on https://docs.astral.sh/uv/getting-started/installation/.\nWe require at least uv version v0.9.3, but generally recommend the latest release. Check the version with uv --version, update with uv self update.\nThen set up the environment by running the following command.\nuv sync\nThis command automatically installs all required Python packages for development. These will not conflict with any pre-installed applications, as uv creates an isolated virtual environment. You can run Python commands using uv run python or activate the environment with source .venv/bin/activate (Linux/macOS) or .venv\\Scripts\\activate (Windows).\nThe first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter. Open the command box with Ctrl+Shift+PCtrl+Shift+P (Cmd+Shift+PCmd+Shift+P on macOS) and run Python: Select Interpreter. Select the Python interpreter in the .venv folder that uv created. Unless the setting python.terminal.activateEnvironment is disabled, it will already activate the environment in your terminal.\nIf you encounter issues related to uv dependencies, it might help to clean your uv environment with uv clean, followed by uv sync."
+    "text": "Setting up uv\nFirst, set up uv as described in the uv documentation.\nWe require at least uv version v0.9.3, but generally recommend the latest release. Check the version with uv --version, update with uv self update.\nThen set up the environment by running the following command.\nuv sync\nThis command automatically installs all required Python packages for development. These will not conflict with any pre-installed applications, as uv creates an isolated virtual environment. You can run Python commands using uv run python or activate the environment with source .venv/bin/activate (Linux/macOS) or .venv\\Scripts\\activate (Windows).\nThe first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter. Open the command box with Ctrl+Shift+PCtrl+Shift+P (Cmd+Shift+PCmd+Shift+P on macOS) and run Python: Select Interpreter. Select the Python interpreter in the .venv folder that uv created. Unless the setting python.terminal.activateEnvironment is disabled, it will already activate the environment in your terminal.\nIf you encounter issues related to uv dependencies, it might help to clean your uv environment with uv clean, followed by uv sync."
   },
   {
     "objectID": "dev/index.html#install-pre-commit-git-hook-scripts",
     "href": "dev/index.html#install-pre-commit-git-hook-scripts",
     "title": "Contributing",
     "section": "Install pre-commit git hook scripts",
-    "text": "Install pre-commit git hook scripts\nPre-commit is part of the uv environment, hence you can run:\nuv run pre-commit install\nFor more information see https://pre-commit.com/#3-install-the-git-hook-scripts."
+    "text": "Install pre-commit git hook scripts\nPre-commit is part of the uv environment, hence you can run:\nuv run pre-commit install\nFor more information see the pre-commit documentation."
   },
   {
     "objectID": "dev/index.html#co-development-with-ribasim",
