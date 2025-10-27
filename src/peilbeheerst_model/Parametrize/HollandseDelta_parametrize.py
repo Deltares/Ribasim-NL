@@ -4,18 +4,19 @@ import datetime
 import os
 import warnings
 
-from ribasim import Node
-from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
-from shapely import Point
-
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim import Node
+from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from shapely import Point
+
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -112,6 +113,7 @@ processor.run()
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model.set_crs("EPSG:28992")
 
 # model specific tweaks
 # merge small basins into larger basins for numerical stability
@@ -737,6 +739,10 @@ if reduce_computation_time:
     ribasim_model.basin.profile.df.area *= meteo_factor  # increase surface area
     ribasim_model.basin.time.df.precipitation /= meteo_factor  # decrease meteo
     ribasim_model.basin.time.df.potential_evaporation /= meteo_factor  # decrease meteo
+
+# Add flushing data
+flush = Flushing(ribasim_model)
+flush.add_flushing()
 
 # set numerical settings
 ribasim_model.use_validation = True

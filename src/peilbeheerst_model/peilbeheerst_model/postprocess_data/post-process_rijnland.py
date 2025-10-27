@@ -10,7 +10,6 @@ from itertools import combinations
 
 import geopandas as gpd
 import numpy as np
-
 from peilbeheerst_model.general_functions import *
 
 remove_cat_2 = True
@@ -150,7 +149,7 @@ Rijnland["streefpeil"] = gpd.GeoDataFrame(Rijnland["streefpeil"])
 #         polygons.append(geom)
 
 # buffer_polygon = buffer_polygon.difference(MultiPolygon(polygons))
-# buffer_polygon = buffer_polygon.difference(shapely.ops.unary_union(Rijnland['peilgebied'].geometry.tolist()))
+# buffer_polygon = buffer_polygon.difference(shapely.ops.union_all()(Rijnland['peilgebied'].geometry.tolist()))
 # buffer_polygon_gdf = gpd.GeoDataFrame([{'geometry': geom} for geom in buffer_polygon], geometry='geometry', crs='EPSG:28992')
 
 # buffer_polygon = gpd.GeoDataFrame(buffer_polygon)

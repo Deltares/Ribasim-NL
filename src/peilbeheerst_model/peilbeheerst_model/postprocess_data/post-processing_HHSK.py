@@ -9,7 +9,6 @@
 
 import geopandas as gpd
 import shapely
-
 from peilbeheerst_model.general_functions import *
 
 remove_cat_2 = True
@@ -185,7 +184,7 @@ HHSK["peilgebied"]["peilgebied_cat"].unique()
 
 # buffer_polygon = gdf_buffer.geometry.iat[0].intersection(gdf_grens.geometry.iat[0])
 # buffer_polygon = buffer_polygon.difference(shapely.geometry.MultiPolygon(gdf_hws.geometry.tolist()))
-# buffer_polygon = buffer_polygon.difference(shapely.ops.unary_union(HHSK['peilgebied'].geometry.tolist()))
+# buffer_polygon = buffer_polygon.difference(shapely.ops.union_all()(HHSK['peilgebied'].geometry.tolist()))
 
 # buffer_polygon = gpd.GeoDataFrame(buffer_polygon)
 # buffer_polygon = buffer_polygon.set_geometry(0)

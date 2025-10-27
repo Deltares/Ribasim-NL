@@ -7,7 +7,7 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-FIND_POST_FIXES = ["parameterized_model"]
+FIND_POST_FIXES = ["dynamic_model"]
 SELECTION = []
 INCLUDE_RESULTS = True
 
@@ -38,7 +38,6 @@ for authority in authorities:
         # read model
         toml_file = next(model_dir.glob("*.toml"))
         model = Model.read(toml_file)
-
         # time model-run
         run_specs = model.run()
         data[authority] = {

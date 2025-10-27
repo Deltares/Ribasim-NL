@@ -15,6 +15,29 @@ from ribasim_nl.settings import settings
 RunSpecs = namedtuple("RunSpecs", ["exit_code", "simulation_time"])
 
 
+def parse_computation_time(line: str) -> timedelta | None:
+    match = re.search(
+        r"Computation time:\s*"
+        r"(?:(\d+)\s+hour?,\s*)?"
+        r"(?:(\d+)\s+minutes?,\s*)?"
+        r"(?:(\d+)\s+seconds?,\s*)?"
+        r"(?:(\d+)\s+milliseconds?)?",
+        line,
+    )
+    if match:
+        hours = int(match.group(1)) if match.group(1) else 0
+        minutes = int(match.group(2)) if match.group(2) else 0
+        seconds = int(match.group(3)) if match.group(3) else 0
+        milliseconds = int(match.group(4)) if match.group(4) else 0
+        return timedelta(
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds,
+            milliseconds=milliseconds,
+        )
+    return None
+
+
 def run(
     toml_path: Path,
     ribasim_exe: Path | None = settings.ribasim_exe,
@@ -74,24 +97,7 @@ def run(
                     print()
                     was_simulating = False
                 if "Computation time" in line:
-                    match = re.search(
-                        r"Computation time:\s*"
-                        r"(?:(\d+)\s+hour?,\s*)?"
-                        r"(?:(\d+)\s+minutes?,\s*)?"
-                        r"(?:(\d+)\s+seconds?,\s*)?"
-                        r"(?:(\d+)\s+milliseconds?)?",
-                        line,
-                    )
-                    hours = int(match.group(1)) if match.group(1) else 0
-                    minutes = int(match.group(2)) if match.group(2) else 0
-                    seconds = int(match.group(3)) if match.group(3) else 0
-                    milliseconds = int(match.group(4)) if match.group(4) else 0
-                    computation_time = timedelta(
-                        hours=hours,
-                        minutes=minutes,
-                        seconds=seconds,
-                        milliseconds=milliseconds,
-                    )
+                    computation_time = parse_computation_time(line)
                 print(line, end="")  # Standard line
             sys.stdout.flush()  # Flush to Jupyter        outs = None
 

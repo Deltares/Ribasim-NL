@@ -23,12 +23,23 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: prefix-dev/setup-pixi@v0.9.0
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          pixi-version: "latest"
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.3"
+
+      - name: Install the project
+        run: uv sync --locked
 
       - name: Run tests
-        run: pixi run tests
+        run: |
+          uv run pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/hydamo/tests
+          uv run pytest --numprocesses=auto --basetemp=src/ribasim_nl/tests/temp src/ribasim_nl/tests
         env:
           RIBASIM_NL_CLOUD_PASS: ${{ secrets.RIBASIM_NL_CLOUD_PASS }}
 

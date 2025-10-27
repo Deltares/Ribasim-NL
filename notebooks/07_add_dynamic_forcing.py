@@ -1,8 +1,9 @@
 # %%
 from datetime import datetime
 
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
@@ -25,9 +26,9 @@ def add_forcing(model, cloud, starttime, endtime):
 
 
 FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = []
+SELECTION: list[str] = ["DrentsOverijsselseDelta"]
 INCLUDE_RESULTS = False
-REBUILD = False
+REBUILD = True
 
 
 def get_model_dir(authority, post_fix):
@@ -52,6 +53,7 @@ def check_build(toml_file):
         build = "meta_categorie" not in model.tabulated_rating_curve.node.df.columns
 
     # we build if we don't have any bergend in meta_categorie
+
     if not build:
         build = not (model.tabulated_rating_curve.node.df["meta_categorie"] == "bergend").any()
 

@@ -1,11 +1,11 @@
 # %%
 import geopandas as gpd
 import pandas as pd
+from ribasim_nl.geodataframe import split_basins
+from ribasim_nl.raster import sample_level_area
 from shapely.geometry import MultiLineString, MultiPolygon, Polygon
 
 from ribasim_nl import CloudStorage
-from ribasim_nl.geodataframe import split_basins
-from ribasim_nl.raster import sample_level_area
 
 cloud = CloudStorage()
 
@@ -18,21 +18,25 @@ DEFAULT_PROFILE = pd.DataFrame(
     }
 )
 
-watervlak_gpkg = cloud.joinpath("Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg")
-watervlak_diss_gdf = gpd.read_file(watervlak_gpkg, layer="watervlak", engine="pyogrio", fid_as_index=True)
+# input
+raster_path = cloud.joinpath("Rijkswaterstaat/verwerkt/bathymetrie/bathymetrie-merged.tif")
+watervlak_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/categorie_oppervlaktewater.gpkg")
+basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_user_data.gpkg")
+osm_basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/oppervlaktewater_belgie.gpkg")
 
-basins_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg")
-basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_user_data.gpkg")
-cut_lines_gdf = gpd.read_file(basins_user_data_gpkg, layer="cut_lines", engine="pyogrio", fid_as_index=True)
+cloud.synchronize(filepaths=[raster_path, watervlak_gpkg, basins_user_data_gpkg, osm_basins_path])
 
-merge_lines_gdf = gpd.read_file(basins_user_data_gpkg, layer="merge_lines", engine="pyogrio", fid_as_index=True)
+# output
+basins_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
+basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")
 
-add_basins_gdf = gpd.read_file(basins_user_data_gpkg, layer="add_basins", engine="pyogrio", fid_as_index=True)
-
+watervlak_diss_gdf = gpd.read_file(watervlak_gpkg, layer="watervlak", fid_as_index=True)
+cut_lines_gdf = gpd.read_file(basins_user_data_gpkg, layer="cut_lines", fid_as_index=True)
+merge_lines_gdf = gpd.read_file(basins_user_data_gpkg, layer="merge_lines", fid_as_index=True)
+add_basins_gdf = gpd.read_file(basins_user_data_gpkg, layer="add_basins", fid_as_index=True)
 
 osm_basins_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "Verwerkt", "oppervlaktewater_belgie.gpkg"),
-    engine="pyogrio",
+    osm_basins_path,
     fid_as_index=True,
 )
 
@@ -46,7 +50,7 @@ watervlak_diss_gdf = pd.concat([watervlak_diss_gdf, osm_basins_gdf, add_basins_g
 data = {"naam": [], "geometry": []}
 for name, df in watervlak_diss_gdf[watervlak_diss_gdf.categorie == "nationaal hoofdwater"].groupby(by="naam"):
     # dissolve touching polygons (magic!)
-    geometry = df.geometry.buffer(0.1).unary_union.buffer(-0.1)
+    geometry = df.geometry.buffer(0.1).union_all().buffer(-0.1)
     # make sure we have a list of single polygons
     if isinstance(geometry, MultiPolygon):
         geometries = list(geometry.geoms)
@@ -60,12 +64,12 @@ basins_gdf = gpd.GeoDataFrame(data, crs=28992)
 basins_gdf.index += 1
 basins_gdf.name = "fid"
 
-basins_gdf.to_file(basins_gpkg, layer="dissolved_basins", engine="pyogrio")
+basins_gdf.to_file(basins_gpkg, layer="dissolved_basins")
 
 # %%
 print("split basins")
 basins_gdf = split_basins(basins_gdf, cut_lines_gdf)
-basins_gdf.to_file(basins_gpkg, layer="split_basins", engine="pyogrio")
+basins_gdf.to_file(basins_gpkg, layer="split_basins")
 
 # %%
 print("merge basins")
@@ -82,10 +86,10 @@ for line in merge_lines_gdf.itertuples():
         raise ValueError(f"line with index {line.Index} does not end in a polygon")
     if idx_from == idx_to:
         print(f"line with index {line.Index} is contained within a polygon")
-    basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].unary_union
+    basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].union_all()
     basins_gdf = basins_gdf[basins_gdf.index != idx_from]
 
-basins_gdf.to_file(basins_gpkg, layer="merged_basins", engine="pyogrio")
+basins_gdf.to_file(basins_gpkg, layer="merged_basins")
 
 # %%
 min_area = 350000
@@ -116,7 +120,7 @@ for basin in basins_gdf[~large_basins_mask].itertuples():
         basins_gdf.loc[idx, "geometry"] = geom
 
 basins_gdf = basins_gdf[large_basins_mask]
-basins_gdf.to_file(basins_gpkg, engine="pyogrio")
+basins_gdf.to_file(basins_gpkg)
 
 # %% for ribasim
 print("for ribasim")
@@ -139,12 +143,10 @@ basins_gdf = basins_gdf[basins_gdf.geometry.area > 1]
 # # re-index and add basin_id
 basins_gdf.reset_index(inplace=True, drop=True)
 basins_gdf.loc[:, ["basin_id"]] = basins_gdf.index + 1
-basins_gdf.to_file(basins_gpkg, layer="ribasim_basins", engine="pyogrio")
+basins_gdf.to_file(basins_gpkg, layer="ribasim_basins")
 # %% sample profiles
 
-raster_path = cloud.joinpath("Rijkswaterstaat", "verwerkt", "bathymetrie", "bathymetrie-merged.tif")
-
-elevation_basins_gdf = gpd.read_file(basins_user_data_gpkg, layer="hoogtes", engine="pyogrio", fid_as_index=True)
+elevation_basins_gdf = gpd.read_file(basins_user_data_gpkg, layer="hoogtes", fid_as_index=True)
 
 elevation_basins_gdf = elevation_basins_gdf.dropna()
 dfs = []
@@ -180,7 +182,7 @@ for row in basins_gdf.itertuples():
                 }
             )
         else:
-            print(f"WARNING: default-profile for for {row.basin_id}. Check data!")
+            print(f"WARNING: default-profile for {row.basin_id}. Check data!")
             df = DEFAULT_PROFILE.copy()
 
         df["id"] = row.basin_id
@@ -188,6 +190,6 @@ for row in basins_gdf.itertuples():
 
 df = pd.concat(dfs)
 
-df.to_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_level_area.csv"))
+df.to_csv(basin_profile_path)
 
 # %%

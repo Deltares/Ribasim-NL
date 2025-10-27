@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def read_gpkg_layers(gpkg_path, engine="fiona", print_var=False):
+def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
     """
     Read specified layers from a GeoPackage (GPKG) file and return them as a dictionary.
 
@@ -231,7 +231,7 @@ def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_perc
 #     possible_matches = peilgebied_praktijk.iloc[unique_candidate_matches]
 
 #     possible_matches.to_file('possible_matches_Rijnland.shp')
-#     un_un = possible_matches.intersects(peilgebied_afwijking.unary_union)
+#     un_un = possible_matches.intersects(peilgebied_afwijking.union_all())
 # #     print('un_un =')
 # #     display(un_un)
 # #     print()

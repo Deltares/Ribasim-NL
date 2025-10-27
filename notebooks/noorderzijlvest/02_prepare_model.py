@@ -2,8 +2,10 @@
 
 
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl.assign_neighbors_at_boundaries import assign_noordzee
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
+
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 authority = "Noorderzijlvest"
@@ -38,9 +40,10 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={21: "Noordzee", 27: "Noordzee"},
+    custom_nodes={28: "Noordzee", 27: "Noordzee"},  # example of custom nodes (node_id: authority_name
 )
 model = assign.assign_authorities()
+assign_noordzee(model=model)
 
 
 # write model

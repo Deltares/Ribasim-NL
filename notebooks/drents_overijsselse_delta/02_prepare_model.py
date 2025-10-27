@@ -3,14 +3,14 @@ import inspect
 
 import geopandas as gpd
 import pandas as pd
-
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
+
+from ribasim_nl import CloudStorage, Model, Network
 
 cloud = CloudStorage()
 authority = "DrentsOverijsselseDelta"
@@ -319,11 +319,12 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 # %%
 
 model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.6
-
 model.basin.area.df.loc[model.basin.area.df.node_id == 1868, "meta_streefpeil"] = 3.5
 model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] = model.basin.area.df.set_index(
     "node_id"
 ).at[1769, "meta_streefpeil"]
+
+model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.19
 
 
 # %%

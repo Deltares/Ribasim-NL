@@ -3,12 +3,12 @@ import inspect
 
 import geopandas as gpd
 import pandas as pd
-
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
+
+from ribasim_nl import CloudStorage, Model, Network
 
 cloud = CloudStorage()
 authority = "StichtseRijnlanden"
@@ -54,13 +54,7 @@ else:
 
 # %% Quick fix basins
 
-actions = [
-    "remove_basin_area",
-    "add_basin",
-    "add_basin_area",
-    "update_node",
-    "redirect_edge",
-]
+actions = ["remove_basin_area", "add_basin", "add_basin_area", "update_node", "redirect_edge", "move_node"]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_extra_gpkg).name.to_list()]
 for action in actions:
     print(action)

@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-
-from ribasim_nl import CloudStorage, Model, NetworkValidator
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+
+from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 
@@ -513,8 +513,13 @@ model.outlet.node.df["meta_gestuwd"] = False
 model.pump.node.df["meta_gestuwd"] = True
 
 # set stuwen als gestuwd
-
 model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"] == "stuw", "meta_gestuwd"] = True
+
+# toevoegen 261HTE, zo goed mogelijk
+df = gpd.read_file(hydamo_gpkg, layer="stuw")
+geometry = df.set_index("code").at["261HTE", "geometry"]
+
+model.connect_basins(from_basin_id=1280, to_basin_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node_table().df

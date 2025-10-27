@@ -25,7 +25,7 @@ from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import split_basin
 from ribasim_nl.parametrization.parameterize import Parameterize
-from ribasim_nl.run_model import run
+from ribasim_nl.run_model import parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
 
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -84,6 +84,7 @@ class Model(Model):
     _basin_results: Results | None = None
     _basin_outstate: Results | None = None
     _flow_results: Results | None = None
+    _link_results: Results | None = None
     _graph: nx.Graph | None = None
     _parameterize: Parameterize | None = None
 
@@ -101,6 +102,13 @@ class Model(Model):
             filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
             self._basin_results = Results(filepath=filepath)
         return self._basin_results
+
+    @property
+    def link_results(self):
+        if self._link_results is None:
+            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.arrow").absolute().resolve()
+            self._link_results = Results(filepath=filepath)
+        return self._link_results
 
     @property
     def flow_results(self):
@@ -184,6 +192,19 @@ class Model(Model):
     @property
     def next_node_id(self):
         return self.node_table().df.index.max() + 1
+
+    @property
+    def computation_time(self):
+        """Get computation time of last run as timedelta"""
+        ribasim_log = self.results_path / "ribasim.log"
+        if not ribasim_log.exists():
+            return None  # model has never been run
+        with open(ribasim_log, encoding="utf-8") as src:
+            for line in src:
+                if "Computation time" in line:
+                    computation_time = parse_computation_time(line)
+                    if computation_time is not None:
+                        return computation_time
 
     def run(self, **kwargs):
         """Run your Ribasim model"""
@@ -1037,7 +1058,7 @@ class Model(Model):
 
         return outlet_a
 
-    def invalid_topology_at_node(self, edge_type: str = "flow") -> gpd.GeoDataFrame:
+    def invalid_topology_at_node(self, link_type: str = "flow") -> gpd.GeoDataFrame:
         df_graph = self.edge.df
         df_node = self.node_table().df
         # Join df_edge with df_node to get to_node_type
@@ -1052,7 +1073,7 @@ class Model(Model):
         errors = []
 
         # filter graph by edge type
-        df_graph = df_graph.loc[df_graph["edge_type"] == edge_type]
+        df_graph = df_graph.loc[df_graph["link_type"] == link_type]
 
         # count occurrence of "from_node" which reflects the number of outneighbors
         from_node_count = (
@@ -1140,7 +1161,8 @@ class Model(Model):
     def _set_arrow_input(self):
         """Use "input" dir and avoid large databases by writing some tables to Arrow"""
         self.input_dir = Path("input")
-        self.basin.time.set_filepath(Path("basin_time.arrow"))
-        # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
-        self.basin.model_fields_set.add("time")
-        self.model_fields_set.add("basin")
+        if self.basin.time.df is not None:
+            self.basin.time.set_filepath(Path("basin_time.arrow"))
+            # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
+            self.basin.model_fields_set.add("time")
+            self.model_fields_set.add("basin")

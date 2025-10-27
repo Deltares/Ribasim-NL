@@ -1,11 +1,12 @@
 # %%
-from ribasim_nl import CloudStorage, Model
 from ribasim_nl.berging import VdGaastBerging
+
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+SELECTION: list[str] = ["DrentsOverijsselseDelta"]
 INCLUDE_RESULTS = False
 REBUILD = True
 

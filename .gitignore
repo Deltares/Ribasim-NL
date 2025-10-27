@@ -38,3 +38,7 @@ notebooks/rijkswaterstaat/plots/
 /src/peilbeheerst_model/ribasim
 
 .env
+venv/
+.venv/
+/notebooks/sturing/level_control
+/notebooks/sturing/level_control_and_flow_demand

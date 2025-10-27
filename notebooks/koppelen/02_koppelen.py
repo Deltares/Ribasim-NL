@@ -1,10 +1,10 @@
 # %%
 from networkx import NetworkXNoPath
+from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.concat import concat
 from shapely.geometry import LineString
 
 from ribasim_nl import CloudStorage, Model, Network, reset_index
-from ribasim_nl.case_conversions import pascal_to_snake_case
-from ribasim_nl.concat import concat
 
 cloud = CloudStorage()
 

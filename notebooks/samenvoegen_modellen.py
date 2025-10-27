@@ -3,11 +3,11 @@ from pathlib import Path
 from typing import Any
 
 import ribasim
-
-from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.cloud import ModelVersion
+
+from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
 
 # %%
 cloud = CloudStorage()
@@ -20,10 +20,6 @@ Getest (u kunt simuleren): Nee
 """
 
 download_latest_model: bool = True
-# Write each unique Regionaal Droogte Overleg area to a separate model
-write_rdo: bool = False
-# Write one national model
-write_lhm: bool = True
 # Write intermediate models for debugging or scaling tests
 write_intermediate_models: bool = False
 upload_model: bool = False
@@ -61,121 +57,95 @@ INCLUDE_MODELS: list[str] = [
 #     e.g. "HollandsNoorderkwartier_parameterized"
 # - model_version: ModelVersion; Option
 #     e.g. ModelVersion("HollandsNoorderkwartier_parameterized", 2025, 7, 1)
-# - rdo: str; The RDO (Regionaal Droogte Overleg) the model belongs to
-#     e.g. "RDO-Noord"
 hws_spec: dict[str, Any] = {
     "authority": "Rijkswaterstaat",
     "model": "hws",
-    "rdo": None,
 }
 
 model_specs: list[dict[str, Any]] = [
     {
-        # HollandsNoorderkwartier_parameterized_2025_8_0 has flushing but no dynamic forcing
         "authority": "HollandsNoorderkwartier",
         "model": "HollandsNoorderkwartier_parameterized",
-        "model_version": ModelVersion("HollandsNoorderkwartier_parameterized", 2025, 7, 1),
-        "rdo": "RDO-Noord",
     },
     {
         "authority": "AmstelGooienVecht",
         "model": "AmstelGooienVecht_parameterized",
-        "rdo": "RDO-West-Midden",
     },
     {
         "authority": "Delfland",
         "model": "Delfland_parameterized",
-        "rdo": "RDO-West-Midden",
     },
     {
         "authority": "Rijnland",
         "model": "Rijnland_parameterized",
-        "rdo": "RDO-West-Midden",
     },
     {
         "authority": "Rivierenland",
         "model": "Rivierenland_parameterized",
-        "rdo": "RDO-Gelderland",
     },
     {
         "authority": "Scheldestromen",
         "model": "Scheldestromen_parameterized",
-        "rdo": "RDO-Zuid-West",
     },
     {
         "authority": "SchielandendeKrimpenerwaard",
         "model": "SchielandendeKrimpenerwaard_parameterized",
-        "rdo": "RDO-West-Midden",
     },
     {
         "authority": "WetterskipFryslan",
         "model": "WetterskipFryslan_parameterized",
-        "rdo": "RDO-Noord",
     },
     {
         "authority": "Zuiderzeeland",
         "model": "Zuiderzeeland_parameterized",
-        "rdo": "RDO-Noord",
     },
     {
         "authority": "AaenMaas",
         "model": "AaenMaas",
-        "rdo": "RDO-Zuid-Oost",
     },
     {
         "authority": "BrabantseDelta",
         "model": "BrabantseDelta",
-        "rdo": "RDO-Zuid-West",
     },
     {
         "authority": "DeDommel",
         "model": "DeDommel",
-        "rdo": "RDO-Zuid-Oost",
     },
     {
         "authority": "DrentsOverijsselseDelta",
         "model": "DrentsOverijsselseDelta",
-        "rdo": "RDO-Twentekanalen",
     },
     {
         "authority": "HunzeenAas",
         "model": "HunzeenAas",
-        "rdo": "RDO-Noord",
     },
     {
         "authority": "Limburg",
         "model": "Limburg",
-        "rdo": "RDO-Zuid-Oost",
     },
     {
         "authority": "Noorderzijlvest",
         "model": "Noorderzijlvest",
-        "rdo": "RDO-Noord",
     },
     {
         "authority": "RijnenIJssel",
         "model": "RijnenIJssel",
-        "rdo": "RDO-Gelderland",
     },
     {
         "authority": "StichtseRijnlanden",
         "model": "StichtseRijnlanden",
-        "rdo": "RDO-West-Midden",
     },
     {
         "authority": "ValleienVeluwe",
         "model": "ValleienVeluwe",
-        "rdo": "RDO-Gelderland",
     },
     {
         "authority": "Vechtstromen",
         "model": "Vechtstromen",
-        "rdo": "RDO-Twentekanalen",
     },
     {
         "authority": "HollandseDelta",
         "model": "HollandseDelta_parameterized",
-        "rdo": "RDO-West-Midden",
     },
 ]
 
@@ -282,45 +252,17 @@ def process_model_spec(
     return lhm_model, readme
 
 
-# --- RDO writing logic ---
-if write_rdo:
-    # Get all unique rdos (excluding None)
-    rdos = sorted({spec["rdo"] for spec in model_specs if spec.get("rdo")})
-    rdo_models = {}
-    rdo_readmes = {}
-    for rdo in rdos:
-        # Start each rdo model with hws
-        rdo_model = None
-        rdo_readme = f"# Model voor RDO: {rdo}\nBegint met hws (Rijkswaterstaat)\n"
-        # Add hws as first model
-        rdo_model, rdo_readme = process_model_spec(1, hws_spec, rdo_model, rdo_readme)
-        for idx, model_spec in enumerate(model_specs):
-            if model_spec.get("rdo") == rdo:
-                write_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}-{idx:02}/{rdo}-{idx:02}.toml")
-                rdo_model, rdo_readme = process_model_spec(
-                    idx + 2, model_spec, rdo_model, rdo_readme, write_toml=write_toml
-                )
-        # Write final rdo model
-        ribasim_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
-        rdo_models[rdo] = rdo_model
-        rdo_readmes[rdo] = rdo_readme
-        if rdo_model is not None:
-            rdo_model.write(ribasim_toml)
-        cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/readme.md").write_text(rdo_readme)
-
-
-if write_lhm:
-    lhm_model = None
-    readme = f"# Model voor het Landelijk Hydrologisch Model\nGegenereerd: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\nRibasim versie: {ribasim.__version__}\nGetest (u kunt simuleren): Nee\n\n** Samengevoegde modellen (beheerder: modelnaam (versie)**\n"
-    lhm_model, readme = process_model_spec(1, hws_spec, lhm_model, readme)
-    for idx, model_spec in enumerate(model_specs):
-        write_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml")
-        lhm_model, readme = process_model_spec(idx + 2, model_spec, lhm_model, readme, write_toml=write_toml)
-    # Write lhm model only if it exists
-    print("write lhm model")
-    ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm.toml")
-    if lhm_model is not None:
-        lhm_model.write(ribasim_toml)
-    cloud.joinpath("Rijkswaterstaat/modellen/lhm/readme.md").write_text(readme)
-    if upload_model:
-        cloud.upload_model("Rijkswaterstaat", model="lhm")
+lhm_model = None
+readme = f"# Model voor het Landelijk Hydrologisch Model\nGegenereerd: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\nRibasim versie: {ribasim.__version__}\nGetest (u kunt simuleren): Nee\n\n** Samengevoegde modellen (beheerder: modelnaam (versie)**\n"
+lhm_model, readme = process_model_spec(1, hws_spec, lhm_model, readme)
+for idx, model_spec in enumerate(model_specs):
+    write_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml")
+    lhm_model, readme = process_model_spec(idx + 2, model_spec, lhm_model, readme, write_toml=write_toml)
+# Write lhm model only if it exists
+print("write lhm model")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/lhm.toml")
+if lhm_model is not None:
+    lhm_model.write(ribasim_toml)
+cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/readme.md").write_text(readme)
+if upload_model:
+    cloud.upload_model("Rijkswaterstaat", model="lhm_parts")

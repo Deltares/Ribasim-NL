@@ -15,11 +15,11 @@ from ribasim.nodes import (
     pump,
     tabulated_rating_curve,
 )
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from shapely.geometry import LineString, MultiLineString
 
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl import discrete_control as dc
-from ribasim_nl.case_conversions import pascal_to_snake_case
 
 warnings.filterwarnings(
     action="ignore",
@@ -141,48 +141,59 @@ def read_pid(control_properties, control_basin_id):
 cloud = CloudStorage()
 # %% read files
 
-model_user_data_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "model_user_data.gpkg")
+# input
+model_user_data_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/model_user_data.gpkg")
+kwk_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/kunstwerken")
+kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
+verdeelsleutels_xlsx = kwk_dir.joinpath("verdeelsleutels.xlsx")
+ijsselmeer_markermeer_path = kwk_dir / "IJsselmeer-Markermeer.xlsx"
+outlets_path = cloud.joinpath("Rijkswaterstaat/verwerkt/outlets.gpkg")
 
-network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+# input from previous step
+network_path = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
+basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
+basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")
+hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
+
+cloud.synchronize(
+    filepaths=[model_user_data_gpkg, kwk_xlsx, verdeelsleutels_xlsx, ijsselmeer_markermeer_path, outlets_path]
+)
+
+# output
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_netwerk/hws.toml")
+database_gpkg = ribasim_toml.parent / "input/database.gpkg"
+
+network = Network.from_network_gpkg(network_path)
 nodes_gdf = network.nodes
 
 boundary_gdf = gpd.read_file(
     model_user_data_gpkg,
-    engine="pyogrio",
     layer="boundary",
     fid_as_index=True,
 )
 
 verdeelpunten_gdf = gpd.read_file(
     model_user_data_gpkg,
-    engine="pyogrio",
     layer="verdeelpunten",
     fid_as_index=True,
 ).set_index("verdeelpunt")
 
 verdeelsleutel_gdf = gpd.read_file(
     model_user_data_gpkg,
-    engine="pyogrio",
     layer="verdeelsleutels",
     fid_as_index=True,
 ).set_index("verdeelsleutel")
 
 basin_poly_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins.gpkg"),
+    basins_path,
     layer="ribasim_basins",
-    engine="pyogrio",
     fid_as_index=True,
 )
 
-basin_profile_df = pd.read_csv(cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_level_area.csv"))[
-    ["level", "area", "id"]
-].set_index("id")
+basin_profile_df = pd.read_csv(basin_profile_path)[["level", "area", "id"]].set_index("id")
 
 # %% kunstwerken inlezen
 
-kwk_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerken")
-kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
-verdeelsleutels_xlsx = kwk_dir.joinpath("verdeelsleutels.xlsx")
 kwks_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
 
 
@@ -190,9 +201,8 @@ kwks_df.loc[:, "code"] = kwks_df["code"].astype(str)
 # kwks_df = kwks_df[kwks_df.in_model]
 
 kwks_gdf = gpd.read_file(
-    cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg"),
+    hydamo_path,
     layer="kunstwerken",
-    engine="pyogrio",
     fid_as_index=True,
 )
 
@@ -224,7 +234,7 @@ model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
 # Toevoegen Boundaries
 # We voegen de boundaries toe aan het netwerk
 
-level_ijsselmeer_df = pd.read_excel(kwk_dir / "IJsselmeer-Markermeer.xlsx", sheet_name="IJsselmeer", skiprows=4)
+level_ijsselmeer_df = pd.read_excel(ijsselmeer_markermeer_path, sheet_name="IJsselmeer", skiprows=4)
 level_ijsselmeer_df.index = [i.day_of_year for i in level_ijsselmeer_df.datum]
 
 
@@ -282,6 +292,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
     print(f"{gebied}")
     # get sheet-names
     file_name = kwk_dir / f"{gebied}.xlsx"
+    cloud.synchronize(filepaths=[file_name])
     workbook = openpyxl.open(file_name)
     sheet_names = workbook.sheetnames
     workbook.close()
@@ -381,7 +392,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
 
 # %% verdeelsleutels toevoegen
 
-outlets_gdf = gpd.read_file(cloud.joinpath("Rijkswaterstaat", "verwerkt", "outlets.gpkg"))
+outlets_gdf = gpd.read_file(outlets_path)
 verdeelsleutel_node_id = 1000001
 # itereren per verdelsleutel
 for verdeelsleutel in VERDEELSLEUTELS:
@@ -423,7 +434,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
     #     ),
     #     discrete_control.Condition(
     #         compound_variable_id=1,
-    #         greater_than=control_flow_rate,
+    #         threshold_high=control_flow_rate,
     #         condition_id=list(range(1, len(control_flow_rate) + 1)),
     #         meta_control_state=control_state,
     #     ),
@@ -731,28 +742,29 @@ for boundary_node_id in model.level_boundary.node.df[
 # Deze knopen zijn verbonden met 1 basin náást een node die wél de juiste basins verbindt.
 # We verwijderen deze knopen.
 # Later kunnen we het stuk bij basins verbeteren
-model.remove_node(node_id=5594, remove_edges=True)
-model.remove_node(node_id=5410, remove_edges=True)
-model.remove_node(node_id=8716, remove_edges=True)
 
 for row in model.manning_resistance.static.df.itertuples():
-    edge_to = model.edge.df[model.edge.df["to_node_id"] == row.node_id].iloc[0]
-    edge_from = model.edge.df[model.edge.df["from_node_id"] == row.node_id].iloc[0]
+    try:
+        edge_to = model.edge.df[model.edge.df["to_node_id"] == row.node_id].iloc[0]
+        edge_from = model.edge.df[model.edge.df["from_node_id"] == row.node_id].iloc[0]
 
-    # length = sum of both lengths
-    length = edge_to.geometry.length + edge_from.geometry.length
+        # length = sum of both lengths
+        length = edge_to.geometry.length + edge_from.geometry.length
 
-    model.manning_resistance.static.df.loc[
-        model.manning_resistance.static.df.node_id == row.node_id,
-        ["length"],
-    ] = length
+        model.manning_resistance.static.df.loc[
+            model.manning_resistance.static.df.node_id == row.node_id,
+            ["length"],
+        ] = length
+    except IndexError:
+        # deze knoop is niet verbonden met twee kanten, dus verwijderen
+        print(f"remove manning_resistance node {row.node_id} not connected on both sides")
+        model.remove_node(row.node_id, remove_edges=True)
+
 
 # %%wegschrijven model
 print("write ribasim model")
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_netwerk", "hws.toml")
 model.use_validation = True
 model.write(ribasim_toml)
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 
 gpd.GeoDataFrame(profile_geometries, crs=28992).to_file(database_gpkg, layer="ManningResistance / profile")
 

@@ -167,7 +167,7 @@ watergangen = [
 
 supply_df = osm_lines_df[osm_lines_df["name"].isin(watergangen)].buffer(10)
 
-supply_df.to_file(r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Landelijk\waterverdeling\supply.gpkg")
+supply_df.to_file(r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Basisgegevens\waterverdeling\supply.gpkg")
 
 hydroobject_df = gpd.read_file(hydamo_gpkg, layer="hydroobject")
 
@@ -250,7 +250,7 @@ all_hydroobject += [hydroobject_select_df]
 # * wegschrijven laag verdeelpunten
 
 
-aanvoergebieden_gpkg = cloud.joinpath("Landelijk", "waterverdeling", "aanvoer.gpkg")
+aanvoergebieden_gpkg = cloud.joinpath("Basisgegevens", "waterverdeling", "aanvoer.gpkg")
 verdeelpunten_df.to_file(aanvoergebieden_gpkg, layer="verdeelpunten")
 pd.concat(all_aanvoergebieden).to_file(aanvoergebieden_gpkg, layer="aanvoergebieden")
 pd.concat(all_hydroobject).to_file(aanvoergebieden_gpkg, layer="hydroobject")

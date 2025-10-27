@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+from hydamo.datamodel import HyDAMO
 from pandas_xlsx_tables import xlsx_tables_to_dfs
 from ribasim_lumping_tools.LHM_data_bewerking_analyse_utils import (
     check_ids_hydamo_data,
@@ -8,8 +9,6 @@ from ribasim_lumping_tools.LHM_data_bewerking_analyse_utils import (
     read_original_data,
     translate_data_to_hydamo_format,
 )
-
-from hydamo.datamodel import HyDAMO
 
 # Vertaal originele data naar Hydamo data zoals gedefinieerd in de tabel hydamo_data_format.xlsx
 

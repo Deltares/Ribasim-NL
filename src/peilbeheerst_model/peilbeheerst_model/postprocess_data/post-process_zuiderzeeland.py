@@ -8,7 +8,6 @@
 
 import geopandas as gpd
 import numpy as np
-
 from peilbeheerst_model.general_functions import *
 
 remove_cat_2 = True
@@ -155,7 +154,7 @@ Zuiderzeeland["streefpeil"] = gpd.GeoDataFrame(Zuiderzeeland["streefpeil"])
 
 # buffer_polygon = gdf_buffer.geometry.iat[0].intersection(gdf_grens.geometry.iat[0])
 # buffer_polygon = buffer_polygon.difference(shapely.geometry.MultiPolygon(gdf_hws.geometry.tolist()))
-# buffer_polygon = buffer_polygon.difference(shapely.ops.unary_union(Zuiderzeeland['peilgebied'].geometry.tolist()))
+# buffer_polygon = buffer_polygon.difference(shapely.ops.union_all()(Zuiderzeeland['peilgebied'].geometry.tolist()))
 
 # buffer_polygon = gpd.GeoDataFrame(buffer_polygon)
 # buffer_polygon = buffer_polygon.set_geometry(0)

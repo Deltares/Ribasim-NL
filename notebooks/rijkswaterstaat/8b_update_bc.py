@@ -12,8 +12,10 @@ cloud = CloudStorage()
 ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_demand", "hws.toml")
 model = Model.read(ribasim_toml)
 
+debieten_xlsx = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx")
+cloud.synchronize([debieten_xlsx])
 df = pd.read_excel(
-    cloud.joinpath("Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx"),
+    debieten_xlsx,
     skiprows=3,
 )
 df.set_index("Unnamed: 0", inplace=True)

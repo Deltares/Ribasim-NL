@@ -6,12 +6,12 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from shapely.geometry import Point, Polygon
-
-from ribasim_nl import CloudStorage, Model, NetworkValidator
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point, Polygon
+
+from ribasim_nl import CloudStorage, Model, NetworkValidator
 
 cloud = CloudStorage()
 authority = "DeDommel"

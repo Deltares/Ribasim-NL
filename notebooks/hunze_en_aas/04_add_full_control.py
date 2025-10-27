@@ -4,12 +4,12 @@ import inspect
 
 import geopandas as gpd
 import pandas as pd
-
-from peilbeheerst_model import ribasim_parametrization
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl import CloudStorage, Model, check_basin_level
 from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+
+from peilbeheerst_model import ribasim_parametrization
+from ribasim_nl import CloudStorage, Model, check_basin_level
 
 # execute model run
 MODEL_EXEC: bool = False
@@ -64,18 +64,6 @@ ribasim_parametrization.determine_min_upstream_max_downstream_levels(
 )
 check_basin_level.add_check_basin_level(model=model)
 
-# TODO: The addition of `ContinuousControl`-nodes is subsequently a minor modification:
-"""To allow the addition of `ContinuousControl`-nodes, the branch 'continuous_control' must be merged first to access
-the required function: `ribasim_parametrization.add_continuous_control(<model>)`. The expansion of adding the continuous
-control requires a proper working schematisation of both 'afvoer'- and 'aanvoer'-situations, and so these should be
-fixed and up-and-running beforehand.
-"""
-# ribasim_parametrization.add_continuous_control(model)
-
-"""For the addition of `ContinuousControl`-nodes, it might be necessary to set `model.basin.static.df=None`, as the
-`ContinuousControl`-nodes require `Time`-tables instead of `Static`-tables. If both are defined (for the same node,
-Ribasim will raise an error and thus not execute.
-"""
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
@@ -101,6 +89,7 @@ for action in actions:
         method(**kwargs)
 
 
+# %%
 def set_values(df, node_ids, values: dict):
     """Hulpfunctie om meerdere kolommen tegelijk te updaten voor bepaalde node_ids."""
     mask = df["node_id"].isin(node_ids)
