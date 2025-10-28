@@ -370,11 +370,11 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
             boundary = df.loc[df.distance(point).idxmin()]
             boundary_node_id = boundary.name
             boundary_node_ids += [boundary_node_id]
-            edge_geom = network.get_line(node_id, boundary_node_id)
-            model.edge.add(
+            link_geom = network.get_line(node_id, boundary_node_id)
+            model.link.add(
                 node_table[node_id],
                 getattr(model, pascal_to_snake_case(boundary.node_type))[boundary_node_id],
-                geometry=edge_geom,
+                geometry=link_geom,
             )
         else:
             # bijhouden basin-connecties
@@ -511,7 +511,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
                 )
                 node = model.tabulated_rating_curve[node_id]
 
-            # toevoegen edge tussen control-node en fractie
+            # toevoegen link tussen control-node en fractie
             # model.link.add(
             #     verdeelsleutel_node,
             #     node,
@@ -538,11 +538,11 @@ for verdeelsleutel in VERDEELSLEUTELS:
                 boundary = df.loc[df.distance(point).idxmin()]
                 boundary_node_id = boundary.name
                 boundary_node_ids += [boundary_node_id]
-                edge_geom = network.get_line(node_id, boundary_node_id)
+                link_geom = network.get_line(node_id, boundary_node_id)
                 model.link.add(
                     node,
                     getattr(model, pascal_to_snake_case(boundary.node_type))[boundary_node_id],
-                    geometry=edge_geom,
+                    geometry=link_geom,
                 )
             else:
                 # bijhouden basin-connecties
@@ -559,7 +559,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
             }
 
 
-# %% ignore edges with "circular structures combinations"
+# %% ignore links with "circular structures combinations"
 ignore_links = []
 kwk_topology = pd.DataFrame.from_dict(kwk_topology, orient="index")
 for kwk in kwk_topology.itertuples():
@@ -687,7 +687,7 @@ for row in basin_poly_gdf.itertuples():
 
     # connect all nodes_from to basin
     for node_id in nodes_from:
-        model.edge.add(
+        model.link.add(
             from_node=getattr(model, nodes_series[node_id])[node_id],
             to_node=model.basin[basin_node_id],
             geometry=network.get_line(node_id, basin_node_id),
@@ -695,7 +695,7 @@ for row in basin_poly_gdf.itertuples():
         )
     # connect all nodes_to to basin
     for node_id in nodes_to:
-        model.edge.add(
+        model.link.add(
             from_node=model.basin[basin_node_id],
             to_node=getattr(model, nodes_series[node_id])[node_id],
             geometry=network.get_line(basin_node_id, node_id),
@@ -724,13 +724,13 @@ for boundary_node_id in model.level_boundary.node.df[
         [outlet.Static(flow_rate=[99999], min_upstream_level=[level])],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[basin_node_id],
         model.outlet[node_id],
         geometry=network.get_line(basin_node_id, node_id),
     )
 
-    model.edge.add(
+    model.link.add(
         model.outlet[node_id],
         model.level_boundary[boundary_node_id],
         geometry=network.get_line(node_id, boundary_node_id),
@@ -745,11 +745,11 @@ for boundary_node_id in model.level_boundary.node.df[
 
 for row in model.manning_resistance.static.df.itertuples():
     try:
-        edge_to = model.edge.df[model.edge.df["to_node_id"] == row.node_id].iloc[0]
-        edge_from = model.edge.df[model.edge.df["from_node_id"] == row.node_id].iloc[0]
+        link_to = model.link.df[model.link.df["to_node_id"] == row.node_id].iloc[0]
+        link_from = model.link.df[model.link.df["from_node_id"] == row.node_id].iloc[0]
 
         # length = sum of both lengths
-        length = edge_to.geometry.length + edge_from.geometry.length
+        length = link_to.geometry.length + link_from.geometry.length
 
         model.manning_resistance.static.df.loc[
             model.manning_resistance.static.df.node_id == row.node_id,

@@ -379,12 +379,12 @@ class Model(Model):
                 else:
                     getattr(table, attr).df = df[df.index != node_id]
 
-        if remove_edges and (self.edge.df is not None):
-            for row in self.edge.df[self.edge.df.from_node_id == node_id].itertuples():
+        if remove_edges and (self.link.df is not None):
+            for row in self.link.df[self.link.df.from_node_id == node_id].itertuples():
                 self.remove_edge(
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
-            for row in self.edge.df[self.edge.df.to_node_id == node_id].itertuples():
+            for row in self.link.df[self.link.df.to_node_id == node_id].itertuples():
                 self.remove_edge(
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
@@ -466,7 +466,7 @@ class Model(Model):
             if isinstance(to_node_id, list):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
             else:
-                linestring = self.edge.df[self.edge.df["to_node_id"] == to_node_id].iloc[0].geometry
+                linestring = self.link.df[self.link.df["to_node_id"] == to_node_id].iloc[0].geometry
                 lo = linestring.parallel_offset(node_offset, "left")
                 if lo.geom_type == "MultiLineString":
                     node_geom = Point(lo.geoms[-1].coords[-1])
@@ -486,7 +486,7 @@ class Model(Model):
 
         # add edges
         for _to_node_id in to_node_id:
-            self.edge.add(table[node_id], self.get_node(_to_node_id))
+            self.link.add(table[node_id], self.get_node(_to_node_id))
 
     def reverse_edge(self, from_node_id: int | None = None, to_node_id: int | None = None, edge_id: int | None = None):
         """Reverse an edge"""
@@ -510,24 +510,24 @@ class Model(Model):
 
     def remove_edge(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
         """Remove an edge and disconnected nodes"""
-        if self.edge.df is not None:
+        if self.link.df is not None:
             # get original edge-data
-            indices = self.edge.df[
-                (self.edge.df.from_node_id == from_node_id) & (self.edge.df.to_node_id == to_node_id)
+            indices = self.link.df[
+                (self.link.df.from_node_id == from_node_id) & (self.link.df.to_node_id == to_node_id)
             ].index
 
             # remove edge from edge-table
-            self.edge.df = self.edge.df[~self.edge.df.index.isin(indices)]
+            self.link.df = self.link.df[~self.link.df.index.isin(indices)]
 
             # remove disconnected nodes
             if remove_disconnected_nodes:
                 for node_id in [from_node_id, to_node_id]:
-                    if node_id not in self.edge.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
+                    if node_id not in self.link.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
                         self.remove_node(node_id)
 
     def remove_edges(self, edge_ids: list[int]):
-        if self.edge.df is not None:
-            self.edge.df = self.edge.df[~self.edge.df.index.isin(edge_ids)]
+        if self.link.df is not None:
+            self.link.df = self.link.df[~self.link.df.index.isin(edge_ids)]
 
     def add_basin(self, node_id, geometry, tables=None, **kwargs):
         # define node properties
