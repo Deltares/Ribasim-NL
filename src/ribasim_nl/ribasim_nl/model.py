@@ -1159,8 +1159,7 @@ class Model(Model):
             )
 
     def _set_arrow_input(self):
-        """Use "input" dir and avoid large databases by writing some tables to Arrow"""
-        self.input_dir = Path("input")
+        """Avoid large databases by writing some tables to Arrow"""
         if self.basin.time.df is not None:
             self.basin.time.set_filepath(Path("basin_time.arrow"))
             # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
