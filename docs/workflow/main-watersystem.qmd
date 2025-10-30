@@ -32,7 +32,7 @@ We combine the result of step 2 till 4 to derive a first ribasim-network that wi
 We take the model of 5 (`.\modellen\hws_netwerk\hws.toml`), add control and write it to (`.\modellen\hws_sturing\hws.toml`)
 
 # 7_model_onttrekkingen.py
-We take the model of 6 (`.\modellen\hws_sturing\hws.toml`), add drinking water, industry and energy demands and write it to (`.\modellen\hws_demand\hws.toml`)
+We take the model of 6 (`.\modellen\hws_sturing\hws.toml`), add drinking water, industry and energy demands. Then we add junctions and write it to (`.\modellen\hws_demand\hws.toml`)
 
 # 8 update bc, state, etc.
 Scripts to provide boundary/initial conditions to the model in `.\modellen\hws_demand\hws.toml` and write it in another location.
