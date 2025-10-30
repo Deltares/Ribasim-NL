@@ -490,7 +490,7 @@ class Network:
             node_geometry = link_geometry.interpolate(link_geometry.project(point))
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
             # add links
-            self.graph.remove_link(node_from, node_to)
+            self.graph.remove_edge(node_from, node_to)
             split_result = split_line(link_geometry, node_geometry)
             if isinstance(split_result, LineString):
                 if self.verbose:
