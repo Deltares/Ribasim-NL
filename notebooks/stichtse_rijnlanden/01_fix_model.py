@@ -58,7 +58,7 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2455143137
 
 # verwijderen duplicated edges
-model.edge.df.drop_duplicates(inplace=True)
+model.link.df.drop_duplicates(inplace=True)
 
 
 # %%
@@ -66,9 +66,9 @@ model.remove_edges(edge_ids=[2677])
 for node_id in [52, 53, 2056, 2053, 2042]:
     model.remove_node(node_id, remove_edges=True)
 
-model.edge.add(model.tabulated_rating_curve[924], model.level_boundary[51])
-model.edge.add(model.tabulated_rating_curve[937], model.level_boundary[51])
-model.edge.add(model.level_boundary[38], model.outlet[85])
+model.link.add(model.tabulated_rating_curve[924], model.level_boundary[51])
+model.link.add(model.tabulated_rating_curve[937], model.level_boundary[51])
+model.link.add(model.level_boundary[38], model.outlet[85])
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2444112017
@@ -82,10 +82,10 @@ for row in basin_nodes_df.itertuples():
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
     # update edge_table
-    model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+    model.link.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
-    model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+    model.link.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
         basin_node.node_id
     )
 
@@ -133,7 +133,7 @@ for node_id in [2078, 733]:
 
 # toevoegen edge
 model.reverse_edge(edge_id=876)
-model.edge.add(model.pump[565], model.level_boundary[56])
+model.link.add(model.pump[565], model.level_boundary[56])
 
 # updaten naar level_boundary
 model.update_node(1965, "LevelBoundary", data=[level_data])
@@ -171,8 +171,8 @@ model.move_node(75, geometry=basin_geom)
 model.update_node(node_id=75, node_type="Basin", data=basin_data)
 
 outlet_node = model.outlet.add(Node(geometry=outlet_geom), tables=[outlet_data])
-model.edge.add(model.basin[75], outlet_node)
-model.edge.add(outlet_node, boundary_node)
+model.link.add(model.basin[75], outlet_node)
+model.link.add(outlet_node, boundary_node)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457334403
@@ -191,8 +191,8 @@ outlet_node = model.outlet.add(
 
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[7950, "geometry"].boundary.geoms[0]), tables=basin_data)
 model.redirect_edge(edge_id=2721, from_node_id=basin_node.node_id)
-model.edge.add(model.level_boundary[74], outlet_node)
-model.edge.add(outlet_node, basin_node)
+model.link.add(model.level_boundary[74], outlet_node)
+model.link.add(outlet_node, basin_node)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457385390
 
@@ -369,8 +369,8 @@ for edge_id in [
 
 
 # fix 2 incorrecte edges
-model.edge.df.loc[916, "from_node_id"] = 1363
-model.edge.df.loc[1330, "from_node_id"] = 1365
+model.link.df.loc[916, "from_node_id"] = 1363
+model.link.df.loc[1330, "from_node_id"] = 1365
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457447764
 

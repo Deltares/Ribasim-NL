@@ -58,7 +58,7 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 
 # %%
 # Verwijderen duplicate edges
-model.edge.df.drop_duplicates(inplace=True)
+model.link.df.drop_duplicates(inplace=True)
 
 # %%
 # toevoegen ontbrekende basins
@@ -72,9 +72,9 @@ for row in basin_nodes_df.itertuples():
 
     # update edge_table
     mask = (basin_edges_df.from_node_id == row.node_id) & (basin_edges_df.distance(row.geometry) < 0.1)
-    model.edge.df.loc[basin_edges_df[mask].index, ["from_node_id"]] = basin_node.node_id
+    model.link.df.loc[basin_edges_df[mask].index, ["from_node_id"]] = basin_node.node_id
     mask = (basin_edges_df.to_node_id == row.node_id) & (basin_edges_df.distance(row.geometry) < 0.1)
-    model.edge.df.loc[basin_edges_df[mask].index, ["to_node_id"]] = basin_node.node_id
+    model.link.df.loc[basin_edges_df[mask].index, ["to_node_id"]] = basin_node.node_id
 
 
 # EINDE ISSUES

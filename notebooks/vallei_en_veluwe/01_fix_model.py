@@ -52,7 +52,7 @@ outlet_data = outlet.Static(flow_rate=[100])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401873626
 # Verwijderen duplicate edges
 
-model.edge.df.drop_duplicates(inplace=True)
+model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401876430
 
@@ -65,10 +65,10 @@ for row in basin_nodes_df.itertuples():
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
     # update edge_table
-    model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+    model.link.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
-    model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+    model.link.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
         basin_node.node_id
     )
 

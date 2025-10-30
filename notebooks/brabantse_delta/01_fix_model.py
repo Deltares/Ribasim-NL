@@ -78,8 +78,8 @@ outlet_node = model.outlet.add(
     Node(geometry=drop_z(hydroobject_gdf.at[13136, "geometry"].boundary.geoms[0])), tables=[outlet_data]
 )
 model.redirect_edge(edge_id=2477, from_node_id=basin_node.node_id, to_node_id=973)
-model.edge.add(basin_node, outlet_node)
-model.edge.add(outlet_node, model.level_boundary[31])
+model.link.add(basin_node, outlet_node)
+model.link.add(outlet_node, model.level_boundary[31])
 
 outlet_node = model.outlet.add(
     Node(geometry=drop_z(hydroobject_gdf.at[13088, "geometry"].boundary.geoms[0])), tables=[outlet_data]

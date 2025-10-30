@@ -56,11 +56,11 @@ model.basin.add(
 model.outlet.add(node=Node(5, geometry=Point(1010, 0)), tables=[outlet.Static(flow_rate=[7.5])])
 model.level_boundary.add(node=Node(6, geometry=Point(1020, 0)), tables=[level_boundary.Static(level=[0.3])])
 
-model.edge.add(model.flow_boundary[1], model.basin[2])
-model.edge.add(model.basin[2], model.manning_resistance[3])
-model.edge.add(model.manning_resistance[3], model.basin[4])
-model.edge.add(model.basin[4], model.outlet[5])
-model.edge.add(model.outlet[5], model.level_boundary[6])
+model.link.add(model.flow_boundary[1], model.basin[2])
+model.link.add(model.basin[2], model.manning_resistance[3])
+model.link.add(model.manning_resistance[3], model.basin[4])
+model.link.add(model.basin[4], model.outlet[5])
+model.link.add(model.outlet[5], model.level_boundary[6])
 
 model.write(ribasim_toml)
 

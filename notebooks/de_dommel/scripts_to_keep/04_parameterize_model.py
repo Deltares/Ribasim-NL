@@ -147,7 +147,7 @@ def get_area_and_profile(node_id):
 
     # if we didn't get an area (of sufficient size) we get it from profiles and edges
     if area_geometry is None:
-        edges_select_df = model.edge.df[(model.edge.df.from_node_id == node_id) | (model.edge.df.to_node_id == node_id)]
+        edges_select_df = model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)]
         selected_profiles_df = profile_df[profile_df.intersects(edges_select_df.union_all())]
         if selected_profiles_df.empty:
             width = 2
@@ -390,7 +390,7 @@ for row in model.node_table().df[model.node_table().df.node_type == "ManningResi
 
     # get length
     length = round(
-        model.edge.df[(model.edge.df.from_node_id == node_id) | (model.edge.df.to_node_id == node_id)].length.sum()
+        model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)].length.sum()
     )
 
     # # update node

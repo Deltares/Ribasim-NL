@@ -29,7 +29,7 @@ basin_area_df = add_basin_statistics(df=basin_area_df, lhm_raster_file=lhm_raste
 
 
 # %%update model
-edge_id = model.edge.df.index.max() + 1
+edge_id = model.link.df.index.max() + 1
 for row in model.basin.node.df.itertuples():
     # row = next(row for row in model.basin.node.df.itertuples() if row.Index == 1013)
     node_id = row.Index
@@ -92,9 +92,9 @@ for row in model.basin.node.df.itertuples():
 
         # add edges
         edge_id += 1  # FIXME: can be removed if issue is closed https://github.com/Deltares/Ribasim/issues/1804
-        model.edge.add(basin_node, tbr_node, edge_id=edge_id, meta_categorie="bergend")
+        model.link.add(basin_node, tbr_node, edge_id=edge_id, meta_categorie="bergend")
         edge_id += 1
-        model.edge.add(tbr_node, model.basin[node_id], edge_id=edge_id, meta_categorie="bergend")
+        model.link.add(tbr_node, model.basin[node_id], edge_id=edge_id, meta_categorie="bergend")
 
     else:
         print(f"Geen basin-vlak voor {node_id}")

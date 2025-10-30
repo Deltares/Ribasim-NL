@@ -225,7 +225,7 @@ def default_model(
         edge_df.drop_duplicates(["from_node_id", "from_node_type", "to_node_id", "to_node_type"], inplace=True)
 
     # convert to edge-table
-    model.edge.df = edge_df
+    model.link.df = edge_df
 
     # define ribasim basin-table
     profile_df = pd.concat(

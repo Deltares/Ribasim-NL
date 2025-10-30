@@ -107,10 +107,10 @@ def fix_link_geometries(
                 point2=node_df.at[upstream_node_ids[idx], "geometry"],
                 max_straight_line_ratio=max_straight_line_ratio,
             ):
-                mask = (model.edge.df["from_node_id"] == upstream_node_ids[idx]) & (
-                    model.edge.df["to_node_id"] == node_id
+                mask = (model.link.df["from_node_id"] == upstream_node_ids[idx]) & (
+                    model.link.df["to_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = geometry
+                model.link.df.loc[mask, ["geometry"]] = geometry
 
         # draw edges to downstream nodes
         for idx, network_node in enumerate(downstream_nodes):
@@ -129,7 +129,7 @@ def fix_link_geometries(
                 point2=node_df.at[downstream_node_ids[idx], "geometry"],
                 max_straight_line_ratio=max_straight_line_ratio,
             ):
-                mask = (model.edge.df["to_node_id"] == downstream_node_ids[idx]) & (
-                    model.edge.df["from_node_id"] == node_id
+                mask = (model.link.df["to_node_id"] == downstream_node_ids[idx]) & (
+                    model.link.df["from_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = geometry
+                model.link.df.loc[mask, ["geometry"]] = geometry

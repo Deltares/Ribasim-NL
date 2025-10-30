@@ -60,7 +60,7 @@ class NetworkValidator:
 
     @property
     def edge_df(self):
-        return self.model.edge.df
+        return self.model.link.df
 
     def node_overlapping(self):
         """Check if the node-geometry overlaps another node within tolerance (default=1m)"""

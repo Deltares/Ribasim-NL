@@ -24,7 +24,7 @@ else:
 model.reset_edge_geometry()
 node_df = model.node_table().df
 data = []
-for row in model.edge.df.itertuples():
+for row in model.link.df.itertuples():
     try:
         # get or add node_from
         from_point = node_df.at[row.from_node_id, "geometry"]
@@ -47,7 +47,7 @@ for row in model.edge.df.itertuples():
             geometry = network.get_line(node_from, node_to)
 
             # replace edge geometry
-            model.edge.df.loc[row.Index, ["geometry"]] = geometry
+            model.link.df.loc[row.Index, ["geometry"]] = geometry
         else:
             print(f"edge not updated for {row.Index} as node_from and node_to cannot be found")
             data += [row]

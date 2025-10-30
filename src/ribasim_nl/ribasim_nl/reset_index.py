@@ -8,8 +8,8 @@ from ribasim_nl.model import Model
 def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder"):
     """Reindex all model-nodes to a new node_index series"""
     # re-number from_node_id and to_node_id
-    model.edge.df.loc[:, ["from_node_id"]] = model.edge.df["from_node_id"].apply(lambda x: node_index[x])
-    model.edge.df.loc[:, ["to_node_id"]] = model.edge.df["to_node_id"].apply(lambda x: node_index[x])
+    model.link.df.loc[:, ["from_node_id"]] = model.link.df["from_node_id"].apply(lambda x: node_index[x])
+    model.link.df.loc[:, ["to_node_id"]] = model.link.df["to_node_id"].apply(lambda x: node_index[x])
 
     # renumber all node-tables (node, static, area, ...)
     for node_type in model.node_table().df.node_type.unique():
@@ -73,7 +73,7 @@ def prefix_index(
     model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
     # create an edge_index and reindex edges
-    edge_ids = model.edge.df.index
+    edge_ids = model.link.df.index
 
     # Check if any edge_id exceeds max_digits
     max_edge_id = edge_ids.max()
@@ -85,13 +85,13 @@ def prefix_index(
             f"Either increase max_digits to at least {actual_edge_digits} or ensure all edge IDs fit within {max_digits} digits{model_info}."
         )
 
-    model.edge.df.index = pd.Index(
+    model.link.df.index = pd.Index(
         [int(f"{prefix_id}{edge_id:0>{max_digits}}") for edge_id in edge_ids], name="edge_id"
     )
 
     # keep original index if
     if original_index_postfix is not None:
-        model.edge.df.loc[:, f"meta_edge_id_{original_index_postfix}"] = edge_ids.astype("int32")
+        model.link.df.loc[:, f"meta_edge_id_{original_index_postfix}"] = edge_ids.astype("int32")
 
     return model
 
@@ -120,16 +120,16 @@ def reset_index(model: Model, node_start=1, edge_start=1, original_index_postfix
         model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
         # only reset nodes if we have to
-        edge_ids = model.edge.df.index
+        edge_ids = model.link.df.index
         edge_id_min = edge_ids.min()
         edge_id_max = edge_ids.max()
         expected_length = edge_id_max - edge_id_min + 1
 
-        if not ((edge_start == edge_id_min) and (expected_length == len(model.edge.df))):
+        if not ((edge_start == edge_id_min) and (expected_length == len(model.link.df))):
             # create a re-index for edges
-            model.edge.df.index = pd.Index([i + node_start for i in range(len(edge_ids))], name="edge_id")
+            model.link.df.index = pd.Index([i + node_start for i in range(len(edge_ids))], name="edge_id")
 
         # keep original index if
         if original_index_postfix is not None:
-            model.edge.df.loc[:, f"meta_edge_id_{original_index_postfix}"] = edge_ids
+            model.link.df.loc[:, f"meta_edge_id_{original_index_postfix}"] = edge_ids
     return model

@@ -42,14 +42,14 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # fix link geometries
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
+    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
-        model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+        model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
             "meta_profielid_waterbeheerder"
         ]
 else:
     fix_link_geometries(model, network, max_straight_line_ratio=5)
-    model.edge.df.reset_index().to_file(link_geometries_gpkg)
+    model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 
 # %% Quick fix basins

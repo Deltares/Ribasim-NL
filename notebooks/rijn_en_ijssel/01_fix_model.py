@@ -52,7 +52,7 @@ outlet_data = outlet.Static(flow_rate=[100])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419605149
 # Verwijderen duplicate edges
 
-model.edge.df.drop_duplicates(inplace=True)
+model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419620184
 # toevoegen ontbrekende basins
@@ -65,21 +65,21 @@ for row in basin_nodes_df.itertuples():
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
     # update edge_table
-    model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+    model.link.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
-    model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+    model.link.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
         basin_node.node_id
     )
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419649171
 # update edge administratie
 
-model.edge.df.loc[516, "from_node_id"] = 666
-model.edge.df.loc[520, "from_node_id"] = 667
-model.edge.df.loc[954, "to_node_id"] = 652
-model.edge.df.loc[1271, "to_node_id"] = 662
-model.edge.df.loc[1281, "to_node_id"] = 667
+model.link.df.loc[516, "from_node_id"] = 666
+model.link.df.loc[520, "from_node_id"] = 667
+model.link.df.loc[954, "to_node_id"] = 652
+model.link.df.loc[1271, "to_node_id"] = 662
+model.link.df.loc[1281, "to_node_id"] = 667
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419747636
 
@@ -105,11 +105,11 @@ outlet_node = model.outlet.add(
     tables=[outlet_data],
 )
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[9528, "geometry"].boundary.geoms[0]))
-model.edge.add(model.tabulated_rating_curve[265], basin_node)
-model.edge.add(basin_node, outlet_node)
-model.edge.add(outlet_node, model.level_boundary[43])
-model.edge.add(basin_node, model.pump[264])
-model.edge.add(model.pump[264], model.level_boundary[44])
+model.link.add(model.tabulated_rating_curve[265], basin_node)
+model.link.add(basin_node, outlet_node)
+model.link.add(outlet_node, model.level_boundary[43])
+model.link.add(basin_node, model.pump[264])
+model.link.add(model.pump[264], model.level_boundary[44])
 
 # %% see https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2422536079
 
@@ -123,7 +123,7 @@ for fid, edge_id, boundary_node_id in ((14276, 1331, 19), (14259, 1337, 25), (14
         tables=[outlet_data],
     )
     model.redirect_edge(edge_id=edge_id, to_node_id=outlet_node.node_id)
-    model.edge.add(outlet_node, model.level_boundary[boundary_node_id])
+    model.link.add(outlet_node, model.level_boundary[boundary_node_id])
 
 # 1349 heeft geen duiker
 outlet_node = model.outlet.add(
@@ -131,7 +131,7 @@ outlet_node = model.outlet.add(
     tables=[outlet_data],
 )
 model.redirect_edge(edge_id=1349, to_node_id=outlet_node.node_id)
-model.edge.add(outlet_node, model.level_boundary[33])
+model.link.add(outlet_node, model.level_boundary[33])
 
 # %%
 # corrigeren knoop-topologie

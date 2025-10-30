@@ -77,7 +77,7 @@ def link_geometry_from_hydroobject(
 
 def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
     # fix edge geometries
-    for row in model.edge.df.itertuples():
+    for row in model.link.df.itertuples():
         try:
             geometry = link_geometry_from_hydroobject(
                 model=model,
@@ -86,7 +86,7 @@ def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
                 to_node_id=row.to_node_id,
                 max_straight_line_ratio=max_straight_line_ratio,
             )
-            model.edge.df.loc[row.Index, "geometry"] = geometry
+            model.link.df.loc[row.Index, "geometry"] = geometry
         except LinkGeometryError as e:
             print(e)
             continue

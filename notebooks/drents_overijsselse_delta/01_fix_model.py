@@ -67,7 +67,7 @@ outlet_data = outlet.Static(flow_rate=[100])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393424844
 # Verwijderen duplicate edges
 
-model.edge.df.drop_duplicates(inplace=True)
+model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393458802
 
@@ -82,10 +82,10 @@ for row in basin_nodes_df.itertuples():
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
     # update edge_table
-    model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+    model.link.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
-    model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+    model.link.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
         basin_node.node_id
     )
 
@@ -115,12 +115,12 @@ outlet_node = model.outlet.add(
     tables=[outlet_data],
 )
 
-model.edge.add(model.level_boundary[10], outlet_node)
-model.edge.add(outlet_node, model.basin[2240])
-model.edge.add(model.manning_resistance[849], model.basin[2240])
-model.edge.add(model.manning_resistance[760], model.basin[2240])
-model.edge.add(model.tabulated_rating_curve[187], model.basin[2240])
-model.edge.add(model.basin[2240], model.pump[1100])
+model.link.add(model.level_boundary[10], outlet_node)
+model.link.add(outlet_node, model.basin[2240])
+model.link.add(model.manning_resistance[849], model.basin[2240])
+model.link.add(model.manning_resistance[760], model.basin[2240])
+model.link.add(model.tabulated_rating_curve[187], model.basin[2240])
+model.link.add(model.basin[2240], model.pump[1100])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393871075
 
@@ -148,13 +148,13 @@ model.remove_edges([3038, 3040, 3037, 3041, 3039])
 
 # nw basin verbinden met gemaal 20, level boundary 94 en alle inlaatduikers
 model.reverse_edge(edge_id=2282)
-model.edge.add(outlet_node, model.level_boundary[94])
-model.edge.add(basin_node, outlet_node)
-model.edge.add(basin_node, model.manning_resistance[1182])
-model.edge.add(basin_node, model.manning_resistance[969])
-model.edge.add(basin_node, model.manning_resistance[1050])
-model.edge.add(basin_node, model.outlet[539])
-model.edge.add(model.pump[701], basin_node)
+model.link.add(outlet_node, model.level_boundary[94])
+model.link.add(basin_node, outlet_node)
+model.link.add(basin_node, model.manning_resistance[1182])
+model.link.add(basin_node, model.manning_resistance[969])
+model.link.add(basin_node, model.manning_resistance[1050])
+model.link.add(basin_node, model.outlet[539])
+model.link.add(model.pump[701], basin_node)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399209787
 
@@ -174,11 +174,11 @@ model.remove_edges([945, 2537, 2536])
 
 boundary_node = model.level_boundary.add(Node(geometry=hydroobject_gdf.at[7778, "geometry"].boundary.geoms[0]))
 
-model.edge.add(model.pump[642], boundary_node)
+model.link.add(model.pump[642], boundary_node)
 model.update_node(1202, "Outlet", data=[outlet_data])
-model.edge.add(boundary_node, model.outlet[1202])
+model.link.add(boundary_node, model.outlet[1202])
 model.update_node(1203, "Outlet", data=[outlet_data])
-model.edge.add(boundary_node, model.outlet[1203])
+model.link.add(boundary_node, model.outlet[1203])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399328441
 
@@ -276,8 +276,8 @@ for edge_id in edge_ids:
     model.redirect_edge(edge_id, to_node_id=basin_node.node_id)
 
 model.remove_edges([2887, 2892])
-model.edge.add(basin_node, model.pump[547])
-model.edge.add(basin_node, model.outlet[540])
+model.link.add(basin_node, model.pump[547])
+model.link.add(basin_node, model.outlet[540])
 
 for edge_id in [2914, 2894]:
     model.redirect_edge(edge_id, to_node_id=31)
@@ -298,9 +298,9 @@ for edge_id in [2956, 2957, 2958, 2959, 2960, 2961]:
     model.redirect_edge(edge_id, to_node_id=basin_node.node_id)
 
 model.remove_node(76, remove_edges=True)
-model.edge.add(basin_node, model.pump[598])
-model.edge.add(basin_node, outlet_node)
-model.edge.add(outlet_node, model.level_boundary[50])
+model.link.add(basin_node, model.pump[598])
+model.link.add(basin_node, outlet_node)
+model.link.add(outlet_node, model.level_boundary[50])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399931763

@@ -15,15 +15,15 @@ for authority in cloud.water_authorities:
         model = Model.read(ribasim_toml)
 
         # duplicated edges
-        duplicated_edges = len(model.edge.df[model.edge.df.duplicated()])
-        model.edge.df.drop_duplicates(inplace=True)
+        duplicated_edges = len(model.link.df[model.link.df.duplicated()])
+        model.link.df.drop_duplicates(inplace=True)
 
         # non existing nodes
-        mask = model.edge.df.to_node_id.isin(model.node_table().df.index) & model.edge.df.from_node_id.isin(
+        mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
             model.node_table().df.index
         )
-        nodes_not_existing = len(model.edge.df[~mask])
-        model.edge.df = model.edge.df[mask]
+        nodes_not_existing = len(model.link.df[~mask])
+        model.link.df = model.link.df[mask]
 
         data += [
             {

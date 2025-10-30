@@ -51,9 +51,9 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # fix link geometries
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
+    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
-        model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+        model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
             "meta_profielid_waterbeheerder"
         ]
     profiles_df = gpd.read_file(profiles_gpkg)
@@ -62,7 +62,7 @@ else:
     profiles_df.to_file(profiles_gpkg)
     fix_link_geometries(model, network)
     add_link_profile_ids(model, profiles=damo_profiles, id_col="globalid")
-    model.edge.df.reset_index().to_file(link_geometries_gpkg)
+    model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 
 
@@ -103,7 +103,7 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=Tr
 # from DAMO profiles
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
-    model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+    model.link.df[model.link.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
 levels = (
     profiles_df.loc[profile_ids]["bottom_level"]
@@ -130,7 +130,7 @@ static_data.add_series(node_type="Pump", series=min_upstream_level)
 # from DAMO profiles
 node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
-    model.edge.df[model.edge.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+    model.link.df[model.link.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
 ]
 levels = (
     profiles_df.loc[profile_ids]["bottom_level"]

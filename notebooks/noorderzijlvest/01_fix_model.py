@@ -91,12 +91,12 @@ pump_data = pump.Static(flow_rate=[10])
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
 # 76 edges bij opgeheven nodes verwijderen
-mask = model.edge.df.to_node_id.isin(model.node_table().df.index) & model.edge.df.from_node_id.isin(
+mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
     model.node_table().df.index
 )
-missing_edges_df = model.edge.df[~mask]
+missing_edges_df = model.link.df[~mask]
 
-model.edge.df = model.edge.df[~model.edge.df.index.isin(missing_edges_df.index)]
+model.link.df = model.link.df[~model.link.df.index.isin(missing_edges_df.index)]
 
 # %% Reset static tables
 
@@ -230,10 +230,10 @@ for node_id in model.basin.node.df.index:
             if edge.length > 0:
                 data += [edge]
 
-                mask = (model.edge.df["from_node_id"] == upstream_node_ids[idx]) & (
-                    model.edge.df["to_node_id"] == node_id
+                mask = (model.link.df["from_node_id"] == upstream_node_ids[idx]) & (
+                    model.link.df["to_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = edge
+                model.link.df.loc[mask, ["geometry"]] = edge
 
     # draw edges to downstream nodes
     for idx, network_node in enumerate(downstream_nodes):
@@ -248,10 +248,10 @@ for node_id in model.basin.node.df.index:
             if edge.length > 0:
                 data += [edge]
 
-                mask = (model.edge.df["to_node_id"] == downstream_node_ids[idx]) & (
-                    model.edge.df["from_node_id"] == node_id
+                mask = (model.link.df["to_node_id"] == downstream_node_ids[idx]) & (
+                    model.link.df["from_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = edge
+                model.link.df.loc[mask, ["geometry"]] = edge
 
     mask = he_df.node_id.isna() & (he_outlet_df.distance(MultiLineString(data)) < 0.75)
     he_df.loc[mask, ["node_id"]] = node_id

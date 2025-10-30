@@ -67,7 +67,7 @@ model.basin.node.df.loc[:, "geometry"] = model.basin.node.df.geometry.apply(drop
 
 # Verwijderen duplicate edges
 
-model.edge.df.drop_duplicates(inplace=True)
+model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2352686763
 
@@ -81,8 +81,8 @@ model.update_node(2250, "LevelBoundary", data=[level_data])
 node_id = 1375
 
 model.basin.node.df.loc[node_id, "geometry"] = hydroobject_gdf.at[3135, "geometry"].interpolate(0.5, normalized=True)
-edge_ids = model.edge.df[
-    (model.edge.df.from_node_id == node_id) | (model.edge.df.to_node_id == node_id)
+edge_ids = model.link.df[
+    (model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)
 ].index.to_list()
 model.reset_edge_geometry(edge_ids=edge_ids)
 
@@ -112,10 +112,10 @@ for fid, node_id in [(1, 1375), (2, 1624)]:
 
     # draw edges
     # FIXME: we force edges to be z-less untill this is solved: https://github.com/Deltares/Ribasim/issues/1854
-    model.edge.add(
+    model.link.add(
         model.basin[node_id], outlet_node, geometry=edge(model.basin[node_id].geometry, outlet_node.geometry)
     )
-    model.edge.add(outlet_node, boundary_node, geometry=edge(outlet_node.geometry, boundary_node.geometry))
+    model.link.add(outlet_node, boundary_node, geometry=edge(outlet_node.geometry, boundary_node.geometry))
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382565944
 
@@ -123,8 +123,8 @@ for fid, node_id in [(1, 1375), (2, 1624)]:
 remove_node_ids = [1562, 1568, 1801, 1804, 1810, 1900, 2114, 2118, 2119, 32]
 
 # remove by edge so we also remove all resistance nodes in between
-edge_df = model.edge.df[
-    model.edge.df.from_node_id.isin(remove_node_ids) | model.edge.df.to_node_id.isin(remove_node_ids)
+edge_df = model.link.df[
+    model.link.df.from_node_id.isin(remove_node_ids) | model.link.df.to_node_id.isin(remove_node_ids)
 ][["from_node_id", "to_node_id"]]
 
 for row in edge_df.itertuples():
@@ -152,10 +152,10 @@ for node_id in connect_node_ids:
     boundary_node = model.level_boundary.add(Node(geometry=boundary_node_geometry), tables=[level_data])
 
     # draw edge in the correct direction
-    if model.edge.df.from_node_id.isin([node_id]).any():  # supply
-        model.edge.add(boundary_node, node, geometry=edge(boundary_node.geometry, node.geometry))
+    if model.link.df.from_node_id.isin([node_id]).any():  # supply
+        model.link.add(boundary_node, node, geometry=edge(boundary_node.geometry, node.geometry))
     else:
-        model.edge.add(node, boundary_node, geometry=edge(node.geometry, boundary_node.geometry))
+        model.link.add(node, boundary_node, geometry=edge(node.geometry, boundary_node.geometry))
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385525533
 
@@ -168,8 +168,8 @@ for node_id in remove_node_ids:
     model.remove_node(node_id, remove_edges=True)
 
 # remove by edge so we also remove all resistance nodes in between
-edge_df = model.edge.df[
-    model.edge.df.from_node_id.isin(remove_node_ids) | model.edge.df.to_node_id.isin(remove_node_ids)
+edge_df = model.link.df[
+    model.link.df.from_node_id.isin(remove_node_ids) | model.link.df.to_node_id.isin(remove_node_ids)
 ][["from_node_id", "to_node_id"]]
 
 for row in edge_df.itertuples():
@@ -178,8 +178,8 @@ for row in edge_df.itertuples():
 # basin met node_id 1436 te verplaatsen naar locatie basin node_id 2259
 basin_id = 1436
 model.basin.node.df.loc[basin_id, "geometry"] = model.basin[2259].geometry
-edge_ids = model.edge.df[
-    (model.edge.df.from_node_id == basin_id) | (model.edge.df.to_node_id == basin_id)
+edge_ids = model.link.df[
+    (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
 ].index.to_list()
 
 model.reset_edge_geometry(edge_ids=edge_ids)
@@ -188,15 +188,15 @@ model.reset_edge_geometry(edge_ids=edge_ids)
 model.remove_node(2259, remove_edges=True)
 
 # stuw ST05005 (node_id 361) verbinden met basin met node_id 1436
-model.edge.add(model.tabulated_rating_curve[361], model.basin[basin_id])
-model.edge.add(model.basin[basin_id], model.pump[635])
+model.link.add(model.tabulated_rating_curve[361], model.basin[basin_id])
+model.link.add(model.basin[basin_id], model.pump[635])
 
 # basin met node_id 2250 verplaatsen naar logische plek bovenstrooms ST05005 en bendenstrooms ST02886 op hydroobjec
 basin_id = 2255
 model.basin.node.df.loc[basin_id, ["geometry"]] = hydroobject_gdf.at[6444, "geometry"].interpolate(0.5, normalized=True)
 
-edge_ids = model.edge.df[
-    (model.edge.df.from_node_id == basin_id) | (model.edge.df.to_node_id == basin_id)
+edge_ids = model.link.df[
+    (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
 ].index.to_list()
 
 model.reset_edge_geometry(edge_ids=edge_ids)
@@ -215,11 +215,11 @@ for false_basin_id in false_basin_ids:
     basin_node = model.basin.add(Node(geometry=basin_geom), tables=basin_data)
 
     # fix edge topology
-    model.edge.df.loc[
+    model.link.df.loc[
         incorrect_edges_df[incorrect_edges_df.from_node_id == false_basin_id].index.to_list(), ["from_node_id"]
     ] = basin_node.node_id
 
-    model.edge.df.loc[
+    model.link.df.loc[
         incorrect_edges_df[incorrect_edges_df.to_node_id == false_basin_id].index.to_list(), ["to_node_id"]
     ] = basin_node.node_id
 
@@ -234,7 +234,7 @@ for node_id in remove_node_ids:
     model.remove_node(node_id, remove_edges=True)
 
 # pump 667 (GM00088) verbinden met basin 1495
-model.edge.add(model.pump[667], model.basin[1495])
+model.link.add(model.pump[667], model.basin[1495])
 
 # model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
 
@@ -245,11 +245,11 @@ model.edge.add(model.pump[667], model.basin[1495])
 model.remove_node(1683, remove_edges=True)
 
 # verbinden basin node_id 1680 met tabulated_rating_curve node_id 101 en 125
-model.edge.add(model.basin[1680], model.tabulated_rating_curve[101])
-model.edge.add(model.basin[1680], model.tabulated_rating_curve[125])
+model.link.add(model.basin[1680], model.tabulated_rating_curve[101])
+model.link.add(model.basin[1680], model.tabulated_rating_curve[125])
 
 # verbinden pump node_id 622 met basin node_id 1680
-model.edge.add(model.pump[622], model.basin[1680])
+model.link.add(model.pump[622], model.basin[1680])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387056481
 
@@ -273,9 +273,9 @@ model.remove_node(574, remove_edges=True)
 model.remove_node(638, remove_edges=True)
 
 # verbind basin node_id 1876 met pump node_ids 626 (GM00248) en 654 (GM00247)
-model.edge.add(model.basin[1876], model.pump[626])
-model.edge.add(model.basin[1876], model.pump[654])
-model.edge.add(model.tabulated_rating_curve[113], model.basin[1876])
+model.link.add(model.basin[1876], model.pump[626])
+model.link.add(model.basin[1876], model.pump[654])
+model.link.add(model.tabulated_rating_curve[113], model.basin[1876])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387815013
 
@@ -295,15 +295,15 @@ for node_id in [2226, 2258, 2242, 1366, 1350]:
     model.remove_node(node_id, remove_edges=True)
 
 # verbinden tabulated_rating_curves 327 (ST03499) en 510 (ST03198) met basin 1897
-model.edge.add(model.basin[1897], model.tabulated_rating_curve[327])
-model.edge.add(model.tabulated_rating_curve[510], model.basin[1897])
+model.link.add(model.basin[1897], model.tabulated_rating_curve[327])
+model.link.add(model.tabulated_rating_curve[510], model.basin[1897])
 
 # verbinden basin 1897 met tabulated_rating_curve 279 (ST03138)
-model.edge.add(model.basin[1897], model.tabulated_rating_curve[279])
+model.link.add(model.basin[1897], model.tabulated_rating_curve[279])
 
 # verbinden basin 1897 met manning_resistance 1351 en 1352
-model.edge.add(model.basin[1897], model.manning_resistance[1351])
-model.edge.add(model.basin[1897], model.manning_resistance[1352])
+model.link.add(model.basin[1897], model.manning_resistance[1351])
+model.link.add(model.basin[1897], model.manning_resistance[1352])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387888742
 
@@ -321,8 +321,8 @@ outlet_node = model.outlet.add(Node(geometry=outlet_node_geometry), tables=[outl
 boundary_node = model.level_boundary.add(Node(geometry=level_boundary_gdf.at[3, "geometry"]), tables=[level_data])
 
 # toevoegen edges vanaf nieuwe basin 33 naar nieuwe outlet naar nieuwe boundary
-model.edge.add(model.basin[33], outlet_node, geometry=edge(model.basin[33].geometry, outlet_node.geometry))
-model.edge.add(outlet_node, boundary_node)
+model.link.add(model.basin[33], outlet_node, geometry=edge(model.basin[33].geometry, outlet_node.geometry))
+model.link.add(outlet_node, boundary_node)
 
 # opheffen manning_resistance 1330 bij GM00213
 model.remove_node(1330, remove_edges=True)
@@ -337,22 +337,22 @@ for edge_id in [2711, 2712, 2713, 2714, 2708]:
 model.move_node(node_id=1873, geometry=hydroobject_gdf.loc[6616].geometry.boundary.geoms[1])
 model.basin.area.df.loc[model.basin.area.df.node_id == 1873, ["node_id"]] = pd.NA
 # ege 2700, 2701, 2702 worden opgeheven
-model.edge.df = model.edge.df[~model.edge.df.index.isin([2700, 2701, 2702])]
+model.link.df = model.link.df[~model.link.df.index.isin([2700, 2701, 2702])]
 
 # basin 1873 wordt verbonden met manning_resistance 1054
-model.edge.add(
+model.link.add(
     model.basin[1873],
     model.manning_resistance[1054],
     geometry=edge(model.basin[1873].geometry, model.manning_resistance[1054].geometry),
 )
 
 # manning_resistance 1308 en 1331 worden verbonden met basin 1873
-model.edge.add(
+model.link.add(
     model.manning_resistance[1308],
     model.basin[1873],
     geometry=edge(model.manning_resistance[1308].geometry, model.basin[1873].geometry),
 )
-model.edge.add(
+model.link.add(
     model.basin[1873],
     model.manning_resistance[1331],
     geometry=edge(model.basin[1873].geometry, model.manning_resistance[1331].geometry),
@@ -366,13 +366,13 @@ boundary_node = model.level_boundary.add(Node(geometry=level_boundary_gdf.at[4, 
 
 
 # basin 1873 wordt verbonden met outlet en outlet met level_boundary
-model.edge.add(
+model.link.add(
     model.outlet[26],
     model.basin[1873],
     geometry=edge(model.outlet[26].geometry, model.basin[1873].geometry),
 )
 
-model.edge.add(boundary_node, model.outlet[26])
+model.link.add(boundary_node, model.outlet[26])
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2388334544
@@ -380,7 +380,7 @@ model.edge.add(boundary_node, model.outlet[26])
 # Kruising Dinkel/Kanaal Almelo Nordhorn corrigeren
 
 # ege 2700, 2701, 2702 worden opgeheven
-model.edge.df = model.edge.df[~model.edge.df.index.isin([2690, 2691, 2692, 2693, 2694, 2695, 2696])]
+model.link.df = model.link.df[~model.link.df.index.isin([2690, 2691, 2692, 2693, 2694, 2695, 2696])]
 
 # basin / area splitten bij rode lijn in twee vlakken
 line = split_line_gdf.at[3, "geometry"]
@@ -404,33 +404,33 @@ kanaal_basin_node = model.basin.add(
 )
 
 # edges v.a. tabulated_rating_curve 298 (ST01865) en 448 (ST01666) naar dinkel-basin
-model.edge.add(
+model.link.add(
     model.tabulated_rating_curve[298],
     dinkel_basin_node,
     geometry=edge(model.tabulated_rating_curve[298].geometry, dinkel_basin_node.geometry),
 )
 
-model.edge.add(
+model.link.add(
     model.tabulated_rating_curve[448],
     dinkel_basin_node,
     geometry=edge(model.tabulated_rating_curve[448].geometry, dinkel_basin_node.geometry),
 )
 
 # edge v.a. manning_resistance 915 naar dinkel basin
-model.edge.add(
+model.link.add(
     model.manning_resistance[915],
     dinkel_basin_node,
     geometry=edge(model.manning_resistance[915].geometry, dinkel_basin_node.geometry),
 )
 
 # edges v.a. dinkel basin naar tabulate_rating_curves 132 (ST02129) en 474 (ST02130)
-model.edge.add(
+model.link.add(
     dinkel_basin_node,
     model.tabulated_rating_curve[132],
     geometry=edge(dinkel_basin_node.geometry, model.tabulated_rating_curve[132].geometry),
 )
 
-model.edge.add(
+model.link.add(
     dinkel_basin_node,
     model.tabulated_rating_curve[474],
     geometry=edge(dinkel_basin_node.geometry, model.tabulated_rating_curve[474].geometry),
@@ -442,27 +442,27 @@ manning_node = model.manning_resistance.add(
 )
 
 # nieuwe basin verbinden met nieuwe manning_resistance en nieuw kanaal basin
-model.edge.add(
+model.link.add(
     dinkel_basin_node,
     manning_node,
     geometry=edge(dinkel_basin_node.geometry, manning_node.geometry),
 )
 
-model.edge.add(
+model.link.add(
     manning_node,
     kanaal_basin_node,
     geometry=edge(manning_node.geometry, kanaal_basin_node.geometry),
 )
 
 # nieuw kanaal-basin vervinden met tabulated_rating_curve 471 (ST01051)
-model.edge.add(
+model.link.add(
     kanaal_basin_node,
     model.tabulated_rating_curve[471],
     geometry=edge(kanaal_basin_node.geometry, model.tabulated_rating_curve[471].geometry),
 )
 
 # nieuw kanaal-basin vervinden met manning_resistance 1346
-model.edge.add(
+model.link.add(
     kanaal_basin_node,
     model.manning_resistance[1346],
     geometry=edge(kanaal_basin_node.geometry, model.manning_resistance[1346].geometry),
@@ -474,13 +474,13 @@ outlet_node = model.outlet.add(
 )
 
 # nieuwe basin verbinden met outlet verbinden met level_boundary 21
-model.edge.add(
+model.link.add(
     outlet_node,
     kanaal_basin_node,
     geometry=edge(outlet_node.geometry, kanaal_basin_node.geometry),
 )
 
-model.edge.add(
+model.link.add(
     model.level_boundary[21],
     outlet_node,
     geometry=edge(model.level_boundary[21].geometry, outlet_node.geometry),
@@ -489,7 +489,7 @@ model.edge.add(
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389192454
 model.reverse_edge(edge_id=2685)
 model.remove_node(node_id=2229, remove_edges=True)
-model.edge.add(
+model.link.add(
     model.basin[1778],
     model.outlet[1080],
     geometry=edge(model.basin[1778].geometry, model.outlet[1080].geometry),
@@ -524,19 +524,19 @@ model.basin.area.df.loc[model.basin.area.df.index.max() + 1, ["geometry"]] = Mul
 model.move_node(node_id=1678, geometry=hydroobject_gdf.loc[6594].geometry.boundary.geoms[1])
 
 # verwijderen edges 809, 814, 807, 810, 1293, 2772
-model.edge.df = model.edge.df[~model.edge.df.index.isin([809, 814, 807, 810, 887])]
+model.link.df = model.link.df[~model.link.df.index.isin([809, 814, 807, 810, 887])]
 
 
 # verbinden manning 1270, 1127 en pumps 644, 579 en 649 met basin 1678
 for node_id in [1270, 1127]:
-    model.edge.add(
+    model.link.add(
         model.manning_resistance[node_id],
         model.basin[1678],
         geometry=edge(model.manning_resistance[node_id].geometry, model.basin[1678].geometry),
     )
 
 for node_id in [644, 579, 649]:
-    model.edge.add(
+    model.link.add(
         model.pump[node_id],
         model.basin[1678],
         geometry=edge(model.pump[node_id].geometry, model.basin[1678].geometry),
@@ -551,13 +551,13 @@ manning_node = model.manning_resistance.add(
 )
 
 # verbinden basin 1897 met manning-node
-model.edge.add(
+model.link.add(
     model.basin[1897],
     manning_node,
     geometry=edge(model.basin[1897].geometry, manning_node.geometry),
 )
 
-model.edge.add(
+model.link.add(
     manning_node,
     model.basin[1678],
     geometry=edge(manning_node.geometry, model.basin[1678].geometry),
@@ -571,17 +571,17 @@ model.edge.add(
 model.move_node(1909, geometry=hydroobject_gdf.loc[6865].geometry.boundary.geoms[1])
 
 # verwijderen edges 780 en 778
-model.edge.df = model.edge.df[~model.edge.df.index.isin([780, 778])]
+model.link.df = model.link.df[~model.link.df.index.isin([780, 778])]
 
 # toevoegen edge tussen tabulated_rating_curve 383 en basin 1909
-model.edge.add(
+model.link.add(
     model.tabulated_rating_curve[383],
     model.basin[1909],
     geometry=edge(model.tabulated_rating_curve[383].geometry, model.basin[1909].geometry),
 )
 
 # toevoegen edge tussen manning_resistance 851 en basin 1909
-model.edge.add(
+model.link.add(
     model.manning_resistance[851],
     model.basin[1909],
     geometry=edge(model.manning_resistance[851].geometry, model.basin[1909].geometry),
@@ -595,11 +595,11 @@ manning_node = model.manning_resistance.add(
 )
 
 model.basin.node.df.loc[1909, "geometry"] = drop_z(model.basin[1909].geometry)
-model.edge.add(model.basin[1909], manning_node)
-model.edge.add(manning_node, model.basin[1539], geometry=edge(manning_node.geometry, model.basin[1539].geometry))
+model.link.add(model.basin[1909], manning_node)
+model.link.add(manning_node, model.basin[1539], geometry=edge(manning_node.geometry, model.basin[1539].geometry))
 
 # verwijderen edge 2716,2718,2718,2719
-model.edge.df = model.edge.df[~model.edge.df.index.isin([2716, 2717, 2718, 2719])]
+model.link.df = model.link.df[~model.link.df.index.isin([2716, 2717, 2718, 2719])]
 
 # opknippen basin 2181 nabij 1881 en verbinden basin 1881 met 2181 via nieuwe manning_knoop
 model.move_node(1881, geometry=hydroobject_gdf.loc[6919].geometry.boundary.geoms[1])
@@ -609,11 +609,11 @@ manning_node = model.manning_resistance.add(
     Node(geometry=line.intersection(hydroobject_gdf.at[6879, "geometry"])), tables=[manning_data]
 )
 model.basin.node.df.loc[1881, "geometry"] = drop_z(model.basin[1881].geometry)
-model.edge.add(model.basin[1881], manning_node)
-model.edge.add(manning_node, model.basin[2181], geometry=edge(manning_node.geometry, model.basin[2181].geometry))
+model.link.add(model.basin[1881], manning_node)
+model.link.add(manning_node, model.basin[2181], geometry=edge(manning_node.geometry, model.basin[2181].geometry))
 
 for node_id in [139, 251, 267, 205]:
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[node_id],
         model.basin[1881],
         geometry=edge(model.tabulated_rating_curve[node_id].geometry, model.basin[1881].geometry),
@@ -629,7 +629,7 @@ model.move_node(1269, hydroobject_gdf.at[7749, "geometry"].interpolate(0.5, norm
 model.remove_node(1903, remove_edges=True)
 
 # verbinden basin 1433 met pump 621
-model.edge.add(
+model.link.add(
     model.basin[1433],
     model.pump[621],
     geometry=edge(model.basin[1433].geometry, model.pump[621].geometry),
@@ -637,7 +637,7 @@ model.edge.add(
 
 # verbinden tabulated_rating_curves 99 en 283 met basin 1433
 for node_id in [99, 283]:
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[node_id],
         model.basin[1433],
         geometry=edge(model.tabulated_rating_curve[node_id].geometry, model.basin[1433].geometry),
@@ -647,12 +647,12 @@ for node_id in [99, 283]:
 
 model.remove_node(1131, remove_edges=True)
 model.remove_node(1757, remove_edges=True)
-model.edge.add(
+model.link.add(
     model.basin[1588],
     model.tabulated_rating_curve[112],
     geometry=edge(model.basin[1588].geometry, model.tabulated_rating_curve[112].geometry),
 )
-model.edge.add(
+model.link.add(
     model.basin[1588],
     model.manning_resistance[57],
     geometry=edge(model.basin[1588].geometry, model.manning_resistance[57].geometry),
@@ -664,7 +664,7 @@ model.edge.add(
 model.remove_node(1905, remove_edges=True)
 
 # verbinden manning_resistance 995 met basin 2148
-model.edge.add(
+model.link.add(
     model.basin[2148],
     model.manning_resistance[995],
 )
@@ -698,16 +698,16 @@ model.move_node(1902, hydroobject_gdf.at[6615, "geometry"].boundary.geoms[1])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391686269
 model.remove_node(2198, remove_edges=True)
 model.remove_node(2200, remove_edges=True)
-model.edge.add(model.basin[2111], model.pump[671])
-model.edge.add(model.tabulated_rating_curve[542], model.basin[2111])
-model.edge.add(model.pump[671], model.basin[2316])
-model.edge.add(model.basin[2316], model.tabulated_rating_curve[542])
+model.link.add(model.basin[2111], model.pump[671])
+model.link.add(model.tabulated_rating_curve[542], model.basin[2111])
+model.link.add(model.pump[671], model.basin[2316])
+model.link.add(model.basin[2316], model.tabulated_rating_curve[542])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391710413
 
 model.remove_node(2202, remove_edges=True)
-model.edge.add(model.basin[1590], model.pump[657])
-model.edge.add(model.manning_resistance[1058], model.basin[1590])
+model.link.add(model.basin[1590], model.pump[657])
+model.link.add(model.manning_resistance[1058], model.basin[1590])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391672700
@@ -739,9 +739,9 @@ model.merge_basins(basin_id=2231, to_node_id=1853)
 # Rondom SL00010 opruimen
 model.remove_node(2230, remove_edges=True)
 model.remove_node(2251, remove_edges=True)
-model.edge.add(model.outlet[41], model.level_boundary[15])
-model.edge.add(model.basin[1442], model.pump[664])
-model.edge.add(model.basin[1442], model.pump[665])
+model.link.add(model.outlet[41], model.level_boundary[15])
+model.link.add(model.basin[1442], model.pump[664])
+model.link.add(model.basin[1442], model.pump[665])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391820198
@@ -771,29 +771,29 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 2256, ["node_id"]] = pd.N
 model.split_basin(split_line_gdf.at[10, "geometry"])
 
 # Edges 446, 1516, 443 en 444 verwijderen
-model.edge.df = model.edge.df[~model.edge.df.index.isin([446, 1516, 443, 444])]
+model.link.df = model.link.df[~model.link.df.index.isin([446, 1516, 443, 444])]
 
 # tabulated_rating_curves 202 en 230 verbinden met basin 2256
-model.edge.add(
+model.link.add(
     model.tabulated_rating_curve[202],
     model.basin[2256],
     geometry=edge(model.tabulated_rating_curve[202].geometry, model.basin[2256].geometry),
 )
-model.edge.add(
+model.link.add(
     model.tabulated_rating_curve[230],
     model.basin[2256],
     geometry=edge(model.tabulated_rating_curve[230].geometry, model.basin[2256].geometry),
 )
 
 # resistance 954 verbinden met basin 2256
-model.edge.add(
+model.link.add(
     model.manning_resistance[954],
     model.basin[2256],
     geometry=edge(model.manning_resistance[954].geometry, model.basin[2256].geometry),
 )
 
 # basin 2256 verbinden met resistance 1106
-model.edge.add(
+model.link.add(
     model.basin[2256],
     model.manning_resistance[1106],
     geometry=edge(model.basin[2256].geometry, model.manning_resistance[1106].geometry),
