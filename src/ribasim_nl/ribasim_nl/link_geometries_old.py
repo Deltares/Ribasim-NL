@@ -33,7 +33,7 @@ def link_geometry_from_hydroobject(
 
     Returns
     -------
-        LineString: Edge geometry
+        LineString: Link geometry
     """
     geometry = None
 

@@ -85,12 +85,12 @@ model.link.df.loc[1281, "to_node_id"] = 667
 
 # fix link_richting
 
-# verplaatsen van `LevelBoundary` 47 binnen de basin, updaten naar `Basin` en reversen van `Edge` 1370
+# verplaatsen van `LevelBoundary` 47 binnen de basin, updaten naar `Basin` en reversen van `Link` 1370
 model.move_node(47, hydroobject_gdf.at[8781, "geometry"].boundary.geoms[0])
 model.update_node(47, "Basin", data=basin_data)
 model.reverse_link(link_id=1370)
 
-# omdraaien richting van `Edge` 196
+# omdraaien richting van `Link` 196
 for link_id in [196, 188, 472, 513, 560, 391, 566]:
     model.reverse_link(link_id=link_id)
 

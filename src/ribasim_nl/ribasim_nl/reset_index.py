@@ -81,7 +81,7 @@ def prefix_index(
     if actual_link_digits > max_digits:
         model_info = f" (model: {model.filepath})" if hasattr(model, "filepath") and model.filepath else ""
         raise ValueError(
-            f"Edge ID {max_link_id} has {actual_link_digits} digits, which exceeds the max_digits limit of {max_digits}. "
+            f"Link ID {max_link_id} has {actual_link_digits} digits, which exceeds the max_digits limit of {max_digits}. "
             f"Either increase max_digits to at least {actual_link_digits} or ensure all link IDs fit within {max_digits} digits{model_info}."
         )
 

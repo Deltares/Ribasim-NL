@@ -327,7 +327,7 @@ model.basin.area.df.loc[:, "geometry"] = model.basin.area.df.buffer(0.1).buffer(
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2459498845
 
-# Edge-richtingen omdraaien
+# Link-richtingen omdraaien
 for link_id in [
     30,
     31,

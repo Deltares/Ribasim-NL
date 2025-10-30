@@ -112,7 +112,7 @@ def generate_ribasim_network(waterschap_path, split_nodes_type_conversion, split
 
     # Export nodes and links
     nodes.drop_duplicates(keep="first").to_file(ribasim_model_path, layer="Node")
-    links.drop_duplicates(keep="first").to_file(ribasim_model_path, layer="Edge")
+    links.drop_duplicates(keep="first").to_file(ribasim_model_path, layer="Link")
 
     print(f" - no of nodes: {len(nodes)}")
     print(f" - no of links: {len(links)}")

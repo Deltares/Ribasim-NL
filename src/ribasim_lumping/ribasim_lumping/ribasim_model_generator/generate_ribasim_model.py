@@ -51,7 +51,7 @@ def generate_ribasim_links(basin_connections: gpd.GeoDataFrame, boundary_connect
     if ribasim_links_static.empty:
         ribasim_links = None
     else:
-        ribasim_links = ribasim.Edge(df=ribasim_links_static)
+        ribasim_links = ribasim.Link(df=ribasim_links_static)
     return ribasim_links
 
 

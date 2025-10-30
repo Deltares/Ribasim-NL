@@ -139,7 +139,7 @@ for node_id in [729, 730, 1990, 1962]:
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2431933060
-# Omkeren edgerichting
+# Omkeren linkrichting
 for link_id in [131, 398, 407, 495, 513, 515, 894]:
     model.reverse_link(link_id=link_id)
 
