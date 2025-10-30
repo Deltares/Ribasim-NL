@@ -1,5 +1,7 @@
 project:
   type: website
+  resources:
+    - CNAME
 
 website:
   title: "Ribasim-NL"
@@ -7,10 +9,21 @@ website:
     left:
       - reference/index.qmd
       - cloudstorage.qmd
+      - text: "Workflows"
+        file: workflow/main-watersystem.qmd
     right:
+      - text: "Contributing"
+        file: dev/index.qmd
       - icon: github
         href: https://github.com/Deltares/Ribasim-NL
         aria-label: GitHub
+  sidebar:
+    - title: "Workflows"
+      contents:
+        - workflow/main-watersystem.qmd
+        - workflow/level-controlled.qmd
+        - workflow/gravity-controlled.qmd
+        - workflow/couple.qmd
 
 format:
   html:

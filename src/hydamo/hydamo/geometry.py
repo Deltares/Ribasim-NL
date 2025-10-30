@@ -43,8 +43,6 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
         Method for determine branch
     maxdist=5 : int or float
         Maximum distance for finding nearest geometry
-    minoffset : int or float
-        Minimum offset from the end of the corresponding branch in case of method=equal
     """
     # Check if method is in allowed methods
     allowed_methods = ["intersecting", "overall", "centroid", "ends"]

@@ -1,6 +1,6 @@
 # ribasim-lumping
 
-This python package is used to develop an aggregated Ribasim network (Deltares, https://github.com/Deltares/Ribasim). Documentation: https://deltares.github.io/Ribasim/
+This python package is used to develop an aggregated Ribasim network (Deltares, https://github.com/Deltares/Ribasim). Documentation: https://ribasim.org/
 
 This code was integrated into the Ribasim-NL repository after development in https://github.com/harm-nomden-sweco/ribasim_lumping.
 

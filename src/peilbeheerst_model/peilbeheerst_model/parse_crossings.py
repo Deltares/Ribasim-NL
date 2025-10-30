@@ -1,6 +1,7 @@
 import itertools
 import logging
 import math
+import os
 import pathlib
 
 import fiona
@@ -12,6 +13,8 @@ import pydantic
 import shapely.ops
 import tqdm.auto as tqdm
 from shapely.geometry import LineString, MultiLineString, MultiPoint, Point, Polygon
+
+from ribasim_nl import CloudStorage, settings
 
 
 class ParseCrossings:
@@ -121,6 +124,8 @@ class ParseCrossings:
         self.disable_progress = disable_progress
 
         # read all layers of geopackage
+        base_path = settings.ribasim_nl_data_dir
+        gpkg_path = os.path.join(base_path, gpkg_path)  # add the base path
         self.df_gpkg = {L: gpd.read_file(gpkg_path, layer=L) for L in fiona.listlayers(gpkg_path)}
 
         # Validate globalids
@@ -146,12 +151,14 @@ class ParseCrossings:
                 raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
 
         # KRW
+        krw_path = os.path.join(base_path, krw_path)  # add the base path
         self.krw_path = krw_path
         self.krw_column_id = krw_column_id
         self.krw_column_name = krw_column_name
         self.krw_min_overlap = krw_min_overlap
 
         # Output path
+        output_path = os.path.join(base_path, output_path)  # add the base path
         self.output_path = output_path
 
         # logger settings
@@ -161,6 +168,8 @@ class ParseCrossings:
         if show_log:
             handlers.append(logging.StreamHandler())
         if logfile is not None:
+            # Prepend base_path to logfile if it's not an absolute path
+            logfile = os.path.join(base_path, logfile) if not os.path.isabs(logfile) else logfile
             handlers.append(logging.FileHandler(pathlib.Path(logfile), "w"))
         for handler in handlers:
             formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
@@ -609,6 +618,11 @@ class ParseCrossings:
         if df_hydro_filter is not None:
             df_hydro_filter.to_file(output_path, layer="crossings_hydroobject_filtered")
 
+        # Write the crossings to the GoodCloud
+        cloud = CloudStorage()
+        crossings_path_cloud_parent = output_path.parent  # Use the parent directory of the output path
+        cloud.upload_content(dir_path=crossings_path_cloud_parent, overwrite=True)
+
     @pydantic.validate_call(config={"strict": True})
     def _classify_from_to_peilgebieden(self, pfrom: str | None, pto: str | None) -> tuple[str, str]:
         """_summary_
@@ -861,17 +875,17 @@ class ParseCrossings:
             df_line_conn = df_line_conn[df_line_conn.intersects(point_buffer1)].copy()
             df_line_conn = df_line_conn.intersection(point_buffer1)
 
-        line_conn = df_line_conn[~df_line_conn.is_empty].unary_union
+        line_conn = df_line_conn[~df_line_conn.is_empty].union_all()
         if line_conn.geom_type == "MultiLineString":
             line_conn = shapely.ops.linemerge(line_conn)
 
         if line_conn.is_closed:
-            check = df_line_conn.boundary.intersection(df_line.unary_union)
+            check = df_line_conn.boundary.intersection(df_line.union_all())
             check = check[~check.index.isin(df_line.index) & (check.geom_type == "MultiPoint") & (~check.is_empty)]
             if len(check) > 0:
                 # Remove line(s) which might lead to a closed line.
                 df_line_conn = df_line_conn[~df_line_conn.index.isin(check.index)]
-                line_conn = df_line_conn[~df_line_conn.is_empty].unary_union
+                line_conn = df_line_conn[~df_line_conn.is_empty].union_all()
                 if line_conn.geom_type == "MultiLineString":
                     line_conn = shapely.ops.linemerge(line_conn)
 
@@ -1118,7 +1132,7 @@ class ParseCrossings:
                                 len(dfo[dfo.globalid == r.peilgebied_to]) == 0
                                 or len(dfo[dfo.globalid == r.peilgebied_from]) == 0
                             ):
-                                # Edge case where a peilgebied just barely
+                                # Link case where a peilgebied just barely
                                 # touches a line. Because of the negative
                                 # buffer it will not touch anymore. Remove
                                 # this crossing from the group.

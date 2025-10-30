@@ -1,18 +1,19 @@
 import pandas as pd
-import ribasim
 from ribasim import Model
 
-from ribasim_nl import reset_index
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.reset_index import reset_index
 
 
-def concat(models: list[Model]) -> Model:
+def concat(models: list[Model], keep_original_index: bool = False) -> Model:
     """Concat existing models to one Ribasim-model
 
     Parameters
     ----------
     models : list[Model]
         List with ribasim.Model
+    keep_original_index: bool
+        Boolean for keeping original index. If not indices will be reset to avoid duplicate indices
 
     Returns
     -------
@@ -20,28 +21,27 @@ def concat(models: list[Model]) -> Model:
         concatenated ribasim.Model
     """
     # models will be concatenated to first model.
-    model = reset_index(models[0])
-    # determine node_start of next model
-    node_start = model.node_table().df.node_id.max() + 1
+    if not keep_original_index:
+        model = reset_index(models[0])
+    else:
+        model = models[0]
 
     # concat all other models into model
     for merge_model in models[1:]:
-        # reset index
-        merge_model = reset_index(merge_model, node_start)
+        if not keep_original_index:
+            # reset index of mergemodel, node_start is max node_id
+            node_start = model.node_table().df.index.max() + 1
+            merge_model = reset_index(merge_model, node_start)
 
-        # determine node_start of next model
-        node_start = model.node_table().df.node_id.max() + 1
-
-        # merge network
-        # model.network.node = ribasim.Node(
-        #     df=pd.concat([model.network.node.df, merge_model.network.node.df])
-        # )
-        model.edge = ribasim.EdgeTable(
-            df=pd.concat([model.edge.df, merge_model.edge.df], ignore_index=True).reset_index(drop=True)
-        )
+        # concat links
+        link_df = pd.concat([model.link.df, merge_model.link.df], ignore_index=not keep_original_index)
+        link_df.index.name = "link_id"
+        model.link.df = link_df
 
         # merge tables
-        for node_type in model.node_table().df.node_type.unique():
+        for node_type in set(model.node_table().df.node_type.unique()).union(
+            merge_model.node_table().df.node_type.unique()
+        ):
             model_node = getattr(model, pascal_to_snake_case(node_type))
             merge_model_node = getattr(merge_model, pascal_to_snake_case(node_type))
             for attr in model_node.model_fields.keys():
@@ -51,7 +51,13 @@ def concat(models: list[Model]) -> Model:
                 if merge_model_df is not None:
                     if model_df is not None:
                         # make sure we concat both df's into the correct ribasim-object
-                        df = pd.concat([model_df, merge_model_df], ignore_index=True)
+                        if "node_id" in model_df.columns:
+                            df = pd.concat([model_df, merge_model_df], ignore_index=True)
+                            df.index.name = "fid"
+                        elif model_df.index.name == "node_id":
+                            df = pd.concat([model_df, merge_model_df], ignore_index=False)
+                        else:
+                            raise Exception(f"{node_type} / {attr} cannot be merged")
                     else:
                         df = merge_model_df
                     model_node_table.df = df

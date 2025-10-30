@@ -1,0 +1,122 @@
+{
+    "Inlaat boezem, stuw": {
+        "upstream_level_offset": 0.1,
+        "downstream_level_offset": 0,
+        "max_flow_rate": 5
+    },
+    "Uitlaat boezem, stuw": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.1,
+        "max_flow_rate": 5
+    },
+    "Reguliere stuw": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.15,
+        "max_flow_rate": 2.5
+    },
+    "Inlaat buitenwater peilgebied, stuw": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0,
+        "max_flow_rate": 5
+    },
+    "Uitlaat buitenwater peilgebied, stuw": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.15,
+        "max_flow_rate": 5
+    },
+    "Uitlaat buitenwater boezem, stuw": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.3,
+        "max_flow_rate": 50
+    },
+    "Inlaat buitenwater boezem, stuw": {
+        "upstream_level_offset": 0.3,
+        "downstream_level_offset": 0,
+        "max_flow_rate": 50
+    },
+    "Boezem boezem, stuw": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.1,
+        "max_flow_rate": 25
+    },
+    "Inlaat boezem, afvoer gemaal": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.3,
+        "max_flow_rate": 1.0
+    },
+    "Inlaat boezem, aanvoer gemaal": {
+        "upstream_level_offset": 0.2,
+        "downstream_level_offset": 0,
+        "max_flow_rate": 1.0
+    },
+    "Uitlaat boezem, afvoer gemaal": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.2,
+        "max_flow_rate": 1.0
+    },
+    "Uitlaat boezem, aanvoer gemaal": {
+        "upstream_level_offset": 0.3,
+        "downstream_level_offset": 0,
+        "max_flow_rate": 0.5
+    },
+    "Regulier afvoer gemaal": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.2,
+        "max_flow_rate": 0.5
+    },
+    "Regulier aanvoer gemaal": {
+        "upstream_level_offset": 0.15,
+        "downstream_level_offset": 0,
+        "max_flow_rate": 0.5
+    },
+    "Uitlaat buitenwater peilgebied, afvoer gemaal": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.15,
+        "max_flow_rate": 1.0
+    },
+    "Uitlaat buitenwater peilgebied, aanvoer gemaal": {
+        "upstream_level_offset": 0.15,
+        "downstream_level_offset": 0.05,
+        "max_flow_rate": 0.5
+    },
+    "Inlaat buitenwater peilgebied, afvoer gemaal": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.15,
+        "max_flow_rate": 1.0
+    },
+    "Inlaat buitenwater peilgebied, aanvoer gemaal": {
+        "upstream_level_offset": 0.15,
+        "downstream_level_offset": 0.05,
+        "max_flow_rate": 0.5
+    },
+    "Inlaat buitenwater boezem, afvoer gemaal": {
+        "upstream_level_offset": 0.05,
+        "downstream_level_offset": 0.3,
+        "max_flow_rate": 50
+    },
+    "Inlaat buitenwater boezem, aanvoer gemaal": {
+        "upstream_level_offset": 0.3,
+        "downstream_level_offset": 0.05,
+        "max_flow_rate": 25
+    },
+    "Uitlaat buitenwater boezem, afvoer gemaal": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.3,
+        "max_flow_rate": 25
+    },
+    "Uitlaat buitenwater boezem, aanvoer gemaal": {
+        "upstream_level_offset": 0.3,
+        "downstream_level_offset": 0.05,
+        "max_flow_rate": 25
+    },
+    "Boezem boezem, afvoer gemaal": {
+        "upstream_level_offset": 0,
+        "downstream_level_offset": 0.15,
+        "max_flow_rate": 50
+    },
+    "Boezem boezem, aanvoer gemaal": {
+        "upstream_level_offset": 0.15,
+        "downstream_level_offset": 0,
+        "max_flow_rate": 25
+    }
+}

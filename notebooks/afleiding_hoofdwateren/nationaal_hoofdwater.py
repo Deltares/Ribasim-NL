@@ -1,8 +1,9 @@
 # %%
 import geopandas as gpd
 import pandas as pd
-from ribasim_nl import CloudStorage
 from shapely.geometry import MultiPolygon
+
+from ribasim_nl import CloudStorage
 
 """
 General method used by Kadaster:
@@ -69,7 +70,7 @@ if RE_DISSOLVE:
     # custom dissolve section. We dissolve only adjacent polygons with the same name and not over sluices, bridges etc (fysiekvoorkomen)
     for (name, voorkomen), df in watervlak_gdf.groupby(by=["naam", "fysiekvoorkomen"]):
         # dissolve touching polygons (magic!)
-        geometry = df.geometry.buffer(0.1).unary_union.buffer(-0.1)
+        geometry = df.geometry.buffer(0.1).union_all().buffer(-0.1)
         # make sure we have a list of single polygons
         if isinstance(geometry, MultiPolygon):
             geometries = list(geometry.geoms)

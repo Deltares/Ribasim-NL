@@ -1,28 +1,37 @@
-name: Pre-commit
-
+name: Pre-commit auto update
 on:
   schedule:
-  # At 03:00 on day 1 of the month
-    - cron: "0 3 1 * *"
+    # At 03:00 on day 3 of the month
+    - cron: "0 3 3 * *"
   # on demand
   workflow_dispatch:
-
 jobs:
   auto-update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-      - uses: actions/setup-python@v5
+          python-version-file: ".python-version"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.11"
-      - uses: browniebroke/pre-commit-autoupdate-action@main
-      - uses: peter-evans/create-pull-request@v6
+          version: "0.9.3"
+      - name: Install the project
+        run: uv sync --locked
+      - name: Update pre-commit hooks
+        run: |
+          uv run pre-commit autoupdate
+      - name: Run pre-commit on all files
+        run: |
+          uv run pre-commit run --all-files
+        continue-on-error: true
+      - uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: update/pre-commit-hooks
+          token: ${{ secrets.CI_PR_PAT }}
+          branch: update/pre-commit
           title: Update pre-commit hooks
           commit-message: "Update pre-commit hooks"
-          body: Update versions of pre-commit hooks to latest version.
           author: "GitHub <noreply@github.com>"
+          delete-branch: true

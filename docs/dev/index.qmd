@@ -1,0 +1,109 @@
+---
+title: "Contributing"
+---
+
+Ribasim-NL welcomes contributions.
+
+# Setting up the developer environment
+
+## Clone Ribasim
+
+In order to have the Ribasim-NL repository locally available, you can clone it with Git.
+Git can be installed from [git-scm.com](https://git-scm.com/downloads).
+Once installed, run the following command at a directory of your choice:
+
+In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
+
+```sh
+git clone https://github.com/Deltares/Ribasim-NL.git
+```
+
+To continue with the following steps, make the root of the repository your working directory by running
+
+```sh
+cd Ribasim-NL
+```
+
+## Setting up uv
+
+First, set up uv as described in the [uv documentation](https://docs.astral.sh/uv/getting-started/installation/).
+
+We require at least uv version v0.9.3, but generally recommend the latest release.
+Check the version with `uv --version`, update with `uv self update`.
+
+Then set up the environment by running the following command.
+
+```sh
+uv sync
+```
+
+This command automatically installs all required Python packages for development.
+These will not conflict with any pre-installed applications, as uv creates an isolated virtual environment.
+You can run Python commands using `uv run python` or activate the environment with `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows).
+
+The first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter.
+Open the command box with {{< kbd Ctrl+Shift+P >}} ({{< kbd Cmd+Shift+P >}} on macOS) and run `Python: Select Interpreter`.
+Select the Python interpreter in the `.venv` folder that uv created.
+Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
+
+If you encounter issues related to uv dependencies, it might help to clean your uv environment with `uv clean`, followed by `uv sync`.
+
+## Install pre-commit git hook scripts
+
+Pre-commit is part of the uv environment, hence you can run:
+
+```sh
+uv run pre-commit install
+```
+
+For more information see the [pre-commit documentation](https://pre-commit.com/#3-install-the-git-hook-scripts).
+
+## Co-development with Ribasim
+
+Ribasim-NL pins to a specific Ribasim version in the `pyproject.toml`.
+Generally this will be the latest release.
+During development sometimes you may want to test out the latest unreleased development version of Ribasim.
+
+To do so, open `pyproject.toml` in your editor.
+Find the `[tool.uv.sources]` section and uncomment or add the git source like below:
+
+```toml
+[tool.uv.sources]
+ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
+```
+
+You can change the branch name if needed, or use a specific commit with for example `rev = "0075d4a"`.
+
+If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub.
+This can be done using this syntax:
+
+```toml
+[tool.uv.sources]
+ribasim = { path = "../Ribasim/python/ribasim", editable = true }
+```
+
+This path will work if you clone Ribasim next to Ribasim-NL.
+
+After you are done modifying `pyproject.toml`, you can run `uv sync` to ensure the dependencies are installed.
+
+For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/dev/).
+
+## Environment variables {#sec-environment-variables}
+
+The Ribasim-NL code downloads from and uploads to [cloud storage](/cloudstorage.qmd).
+The password to access the cloud storage, and local directory it interacts with, both need to be configured.
+To be able to run the Ribasim core, it needs to either find the `ribasim` executable in the Path, or you configure it.
+
+In the root of the repository is a `.env.default` file that can serve as a template to copy to `.env`.
+The `.env` file is gitignored because it is different per developer, and to avoid leaking the password.
+
+Here is an example for a filled in `.env` file:
+
+```ini
+RIBASIM_NL_CLOUD_PASS=your_password_here
+RIBASIM_NL_DATA_DIR=c:\data\ribasim-nl
+RIBASIM_EXE=c:\bin\ribasim\ribasim.exe
+```
+
+These values will be applied using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
+If you prefer to set these environment variables in your OS or terminal that will also work.

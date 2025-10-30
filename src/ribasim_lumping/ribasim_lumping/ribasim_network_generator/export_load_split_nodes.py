@@ -22,7 +22,7 @@ def write_structures_to_excel(
     input: network with structure gdfs, splitnodes, split node type conversion tables
     """
     list_gdfs = [pumps, weirs, orifices, bridges, culverts, uniweirs]
-    structures = pd.DataFrame(columns=["mesh1d_node_id", "mesh1d_nEdges", "geometry", "object_type"])
+    structures = pd.DataFrame(columns=["mesh1d_node_id", "mesh1d_nLinks", "geometry", "object_type"])
 
     if split_nodes is not None:
         splitnodes = split_nodes.copy()

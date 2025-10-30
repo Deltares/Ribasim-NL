@@ -19,7 +19,7 @@
     "Delfland": {
         "init": {
             "gpkg_path": "../../../../Data_postprocessed/Waterschappen/Delfland/Delfland.gpkg",
-            "output_path": "../../../../Data_crossings/Delfland/delfland_crossings_v08.gpkg",
+            "output_path": "../../../../Data_crossings/Delfland/delfland_crossings_v09_reproductie_2025.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
             "agg_peilgebieden_column": "code",
@@ -53,7 +53,7 @@
     "AmstelGooienVecht": {
         "init": {
             "gpkg_path": "../../../../Data_postprocessed/Waterschappen/AmstelGooienVecht/AGV.gpkg",
-            "output_path": "../../../../Data_crossings/AmstelGooienVecht/agv_crossings_v05.gpkg",
+            "output_path": "../../../../Data_crossings/AmstelGooienVecht/agv_crossings_v06_reproductie_2025.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
             "agg_peilgebieden_column": "code",
@@ -121,12 +121,12 @@
     },
     "Wetterskip": {
         "init": {
-            "gpkg_path": "../../../../Data_postprocessed/Waterschappen/Wetterskip/Wetterskip.gpkg",
-            "output_path": "../../../../Data_crossings/Wetterskip/wetterskip_crossings_v06.gpkg",
+            "gpkg_path": "WetterskipFryslan/verwerkt/Data_postprocessed/WetterskipFryslan.gpkg",
+            "output_path": "WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg",
             "search_radius_structure": 60,
             "agg_peilgebieden_layer": "aggregation_area",
             "agg_peilgebieden_column": "code",
-            "krw_path": "../../../../Data_overig/KRW/KRW_lichamen_per_waterschap.gpkg",
+            "krw_path": "Basisgegevens/KRW/KRW_lichamen_per_waterschap.gpkg",
             "krw_column_id": "owmident",
             "krw_column_name": "owmnaam",
             "krw_min_overlap": 0.025

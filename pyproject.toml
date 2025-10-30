@@ -1,0 +1,63 @@
+[project]
+name = "ribasim-nl-root"
+version = "0.1.0"
+description = "Ribasim water resources modeling in the Netherlands"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bokeh_helpers",
+    "bokeh>=3.8.0",
+    "contextily>=1.6.2",
+    "fiona>=1.10.1",
+    "geocube>=0.7.1",
+    "geopandas>=1.1.1",
+    "hydamo",
+    "imod>=0.18.1",
+    "ipykernel>=6.30.1",
+    "jupyterlab>=4.4.9",
+    "matplotlib>=3.10.6",
+    "mypy>=1.18.2",
+    "netcdf4>=1.7.2",
+    "networkx>=3.5",
+    "openpyxl>=3.1.5",
+    "pandas-stubs>=2.3.2.250926",
+    "pandas>=2.3.3",
+    "peilbeheerst_model",
+    "pip>=25.2",
+    "plotly>=6.3.1",
+    "pre-commit>=4.3.0",
+    "pyarrow>=21.0.0",
+    "pydantic-settings>=2.11.0",
+    "pydantic>=2,<2.12",
+    "pyodbc>=5.2.0",
+    "pyogrio>=0.11.1",
+    "pytest-cov>=7.0.0",
+    "pytest-xdist>=3.8.0",
+    "pytest>=8.4.2",
+    "quartodoc>=0.11.1",
+    "rasterstats>=0.20.0",
+    "requests>=2.32.5",
+    "ribasim_nl",
+    "ribasim==2025.6.0",
+    "ruff>=0.14.0",
+    "seaborn>=0.13.2",
+    "shapely>=2.1.2",
+    "tomli-w>=1.2.0",
+    "tomli>=2.2.1",
+    "tqdm>=4.67.1",
+    "types-requests>=2.32.4.20250913",
+    "xlwings>=0.33.15",
+    "xugrid>=0.14.2",
+    "dvc>=3.63.0",
+]
+
+[tool.uv.sources]
+# ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
+# ribasim = { path = "../Ribasim/python/ribasim", editable = true }
+bokeh_helpers = { workspace = true }
+hydamo = { workspace = true }
+peilbeheerst_model = { workspace = true }
+ribasim_nl = { workspace = true }
+
+[tool.uv.workspace]
+members = ["src/*"]

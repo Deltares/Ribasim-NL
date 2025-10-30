@@ -1,6 +1,7 @@
 # %%
 import geopandas as gpd
 import pandas as pd
+
 from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
@@ -15,7 +16,7 @@ canal_osm_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Nederland_Belgie", "wat
 # %%
 clip_poly = gpd.read_file(
     basins_user_data_gpkg, layer="clip_osm_basins", engine="pyogrio", fid_as_index=True
-).unary_union
+).union_all()
 
 basins_osm_gdf = (
     gpd.read_file(basins_osm_gpkg, engine="pyogrio", fid_as_index=True).clip(clip_poly).explode(ignore_index=True)

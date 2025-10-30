@@ -9,26 +9,33 @@ import numpy as np
 import rasterio
 from geocube.api.core import make_geocube
 from geocube.rasterize import rasterize_points_griddata
-from rasterio import features, merge  # noqa: F401
 from rasterio.enums import Resampling
+from rasterio.features import rasterize
+from rasterio.merge import merge
 from rasterio.transform import from_origin
 from rasterio.windows import from_bounds
-from ribasim_nl import CloudStorage
 from shapely.geometry import MultiPolygon, box
+
+from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 
 
-out_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "bathymetrie")
+out_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/bathymetrie")
 out_dir.mkdir(exist_ok=True)
 baseline_file = cloud.joinpath(
-    "baseline-nl_land-j23_6-v1", "baseline.gdb"
+    "baseline-nl_land-j23_6-v1/baseline.gdb"
 )  # dit bestand is read-only voor D2HYDRO ivm verwerkersovereenkomst
 layer = "bedlevel_points"
 
-krw_poly_gpkg = cloud.joinpath("Basisgegevens", "KRW", "krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
+krw_poly_gpkg = cloud.joinpath("Basisgegevens/KRW/krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
 
-bathymetrie_nl = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "bathymetrie")
+bathymetrie_nl = cloud.joinpath("Rijkswaterstaat/aangeleverd/bathymetrie")
+
+water_mask_path = out_dir / "water-mask.gpkg"
+
+
+cloud.synchronize(filepaths=[bathymetrie_nl, krw_poly_gpkg, baseline_file, water_mask_path])
 
 res = 5
 tile_size = 10000
@@ -39,7 +46,7 @@ nodata = -9999
 
 datasets = [rasterio.open(i) for i in bathymetrie_nl.glob("*NAP.tif")]
 
-data, transform = rasterio.merge.merge(datasets, bounds=bounds, res=(res, res), nodata=nodata)
+data, transform = merge(datasets, bounds=bounds, res=(res, res), nodata=nodata)
 
 data = np.where(data != nodata, data * 100, nodata).astype("int16")
 
@@ -66,7 +73,7 @@ with rasterio.open(out_dir / "bathymetrie-nl.tif", mode="w", **profile) as dst:
 
 # %%
 print("read mask")
-water_geometries = gpd.read_file(out_dir / "water-mask.gpkg", engine="pyogrio")
+water_geometries = gpd.read_file(water_mask_path)
 with fiona.open(baseline_file, layer=layer) as src:
     xmin, ymin, xmax, ymax = src.bounds
     xmin = math.floor(xmin / tile_size) * tile_size
@@ -111,7 +118,6 @@ with rasterio.open(
             gdf = gpd.read_file(
                 baseline_file,
                 layer=layer,
-                engine="pyogrio",
                 bbox=area_poly_buffer.bounds,
             )
             gdf = gdf.loc[(gdf.ELEVATION > -60) & (gdf.ELEVATION < 50)]
@@ -138,8 +144,8 @@ with rasterio.open(
                 cube.ELEVATION.attrs["scale_factor"] = 0.01
 
                 print("clip cube")
-                mask = water_geometries_select.geometry.unary_union.intersection(area_poly)
-                convex_hull = gdf.unary_union.convex_hull
+                mask = water_geometries_select.geometry.union_all().intersection(area_poly)
+                convex_hull = gdf.union_all().convex_hull
                 if isinstance(mask, MultiPolygon):
                     mask = [i.intersection(convex_hull) for i in mask.geoms if i.intersects(convex_hull)]
 
@@ -185,7 +191,7 @@ with rasterio.open(out_dir / "bedlevel_points_-20000_300000_320000_660000.tif") 
 
 shapes = (i.geometry for i in water_geometries.itertuples() if i.baseline)
 
-baseline_mask = rasterio.features.rasterize(
+baseline_mask = rasterize(
     shapes,
     out_shape=bathymetry_nl_data.shape,
     transform=transform,

@@ -1,3 +1,4 @@
+# %%
 import logging
 from collections import Counter
 from dataclasses import dataclass, field
@@ -12,6 +13,8 @@ from networkx import DiGraph, Graph, NetworkXNoPath, shortest_path, traversal
 from shapely.geometry import LineString, Point, box
 from shapely.ops import snap, split
 
+from ribasim_nl.geodataframe import snap_line_boundaries
+from ribasim_nl.geometry import drop_z, split_line
 from ribasim_nl.styles import add_styles_to_geopackage
 
 logger = logging.getLogger(__name__)
@@ -67,6 +70,8 @@ class Network:
     name_col: str | None = None
     id_col: str | None = None
     tolerance: float | None = None
+    snap_line_boundaries: bool = True
+    verbose: bool = False
 
     _graph: DiGraph | None = field(default=None, repr=False)
     _graph_undirected: Graph | None = field(default=None, repr=False)
@@ -79,7 +84,8 @@ class Network:
         # check if name_col and id_col are valid values
         for col in [self.name_col, self.id_col]:
             if (col is not None) & (col not in self.lines_gdf.columns):
-                logger.warn(f"{col} not a column in lines_gdf, input will be set to None")
+                if self.verbose:
+                    logger.warning(f"{col} not a column in lines_gdf, input will be set to None")
                 col = None
 
         # check if lines_gdf only contains allowed geometries
@@ -90,6 +96,21 @@ class Network:
         # explode to LineString
         elif "MultiLineString" in geom_types:
             self.lines_gdf = self.lines_gdf.explode(index_parts=False)
+
+        # remove z-coordinates
+        if self.lines_gdf.has_z.any():
+            self.lines_gdf.loc[:, "geometry"] = self.lines_gdf.geometry.apply(lambda x: drop_z(x) if x.has_z else x)
+
+        # remove circle-linestrings (linestrings with no boundaries)
+        self.lines_gdf = self.lines_gdf[self.lines_gdf.boundary.count_geometries() == 2]
+
+        # snap line_boundaries
+        if self.snap_line_boundaries:
+            if self.tolerance is not None:
+                tolerance = self.tolerance
+            else:
+                tolerance = 0.25
+            self.lines_gdf = snap_line_boundaries(self.lines_gdf, tolerance=tolerance)
 
     @classmethod
     def from_lines_gpkg(cls, gpkg_file: str | Path, layer: str | None = None, **kwargs):
@@ -134,7 +155,7 @@ class Network:
         # make sure we have a graph
         _ = self.graph
         gdf = GeoDataFrame.from_dict(
-            {i[0]: i[1] for i in self.graph.nodes.data()},
+            dict(self.graph.nodes.data()),
             orient="index",
             crs=self.lines_gdf.crs,
         )
@@ -159,7 +180,7 @@ class Network:
             for row in nodes_gdf.itertuples():
                 self._graph.add_node(row.Index, geometry=row.geometry)
 
-            # add edges using link_def
+            # add links using link_def
             link_def = {}
             for row in self.lines_gdf.itertuples():
                 geometry = row.geometry
@@ -181,8 +202,8 @@ class Network:
                 else:
                     nodes_select = nodes_select[nodes_select.distance(geometry) <= self.tolerance]
 
-                # Only one node. Skip edge. The geometry.length < self.tolerance, so start/end nodes have been dissolved
-                if len(nodes_select) == 1:
+                # Only one or zero node. Skip link. The geometry.length < self.tolerance, so start/end nodes have been dissolved
+                if len(nodes_select) <= 1:
                     continue
 
                 # More than one node. We order selected nodes by distance from start_node
@@ -193,21 +214,26 @@ class Network:
                 link_def["node_from"] = nodes_select.index[0]
                 link_def["point_from"] = nodes_select.loc[link_def["node_from"]].geometry
 
-                # More than two nodes. Line should be split into parts. We create one extra edge for every extra node
+                # More than two nodes. Line should be split into parts. We create one extra link for every extra node
                 if len(nodes_select) > 2:
                     for node in nodes_select[1:-1].itertuples():
                         link_def["node_to"] = node.Index
                         link_def["point_to"] = nodes_select.loc[link_def["node_to"]].geometry
-                        edge_geometry, geometry = split(
-                            snap(geometry, link_def["point_to"], self.snap_tolerance),
-                            link_def["point_to"],
-                        ).geoms
-                        link_def["geometry"] = edge_geometry
+                        try:
+                            link_geometry, geometry = split(
+                                snap(geometry, link_def["point_to"], self.snap_tolerance),
+                                link_def["point_to"],
+                            ).geoms
+                        except ValueError:
+                            print(f"line with index {row.Index} can't be split. Please inspect input-lines here")
+                            continue
+
+                        link_def["geometry"] = link_geometry
                         self.add_link(**link_def)
                         link_def["node_from"] = link_def["node_to"]
                         link_def["point_from"] = link_def["point_to"]
 
-                # More than one node. We finish the (last) edge
+                # More than one node. We finish the (last) link
                 link_def["node_to"] = nodes_select.index[-1]
                 link_def["point_to"] = nodes_select.loc[link_def["node_to"]].geometry
                 link_def["geometry"] = geometry
@@ -228,11 +254,11 @@ class Network:
         id=None,
         name=None,
     ):
-        """Add a link (edge) to the network"""
-        if self.tolerance is not None:
+        """Add a link (link) to the network"""
+        if not ((point_from is None) | (point_to is None)):
             geometry = LineString([(point_from.x, point_from.y)] + geometry.coords[1:-1] + [(point_to.x, point_to.y)])
 
-        # add edge to graph
+        # add link to graph
         self._graph.add_edge(
             node_from,
             node_to,
@@ -374,7 +400,7 @@ class Network:
         align_distance: float,
         node_types=["connection", "upstream_boundary", "downstream_boundary"],
     ):
-        """Move network nodes and edges to new location
+        """Move network nodes and links to new location
 
         Parameters
         ----------
@@ -383,7 +409,7 @@ class Network:
         max_distance : float
             Max distance to find closes node
         align_distance : float
-            Distance over edge, from node, where vertices will be removed to align adjacent edges with Point
+            Distance over link, from node, where vertices will be removed to align adjacent links with Point
         """
         # take links and nodes as gdf
         nodes_gdf = self.nodes
@@ -399,81 +425,87 @@ class Network:
             # update graph node
             self.graph.nodes[node_id]["geometry"] = point
 
-            # update start-node of edges
-            edges_from = links_gdf[links_gdf.node_from == node_id]
-            for edge in edges_from.itertuples():
-                geometry = edge.geometry
+            # update start-node of links
+            links_from = links_gdf[links_gdf.node_from == node_id]
+            for link in links_from.itertuples():
+                geometry = link.geometry
 
                 # take first node from point
                 coords = list(point.coords)
 
                 # take all in between boundaries only if > REMOVE_VERT_DIST
-                for coord in list(self.graph.edges[(edge.node_from, edge.node_to)]["geometry"].coords)[1:-1]:
+                for coord in list(self.graph.edges[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
                     if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from original geometry
                 coords += [geometry.coords[-1]]
 
-                self.graph.edges[(edge.node_from, edge.node_to)]["geometry"] = LineString(coords)
+                self.graph.edges[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
 
-            # update end-node of edges
-            edges_from = links_gdf[links_gdf.node_to == node_id]
-            for edge in edges_from.itertuples():
-                geometry = edge.geometry
+            # update end-node of links
+            links_from = links_gdf[links_gdf.node_to == node_id]
+            for link in links_from.itertuples():
+                geometry = link.geometry
 
                 # take first from original geometry
                 coords = [geometry.coords[0]]
 
                 # take all in between boundaries only if > REMOVE_VERT_DIST
                 geometry = geometry.reverse()
-                for coord in list(self.graph.edges[(edge.node_from, edge.node_to)]["geometry"].coords)[1:-1]:
+                for coord in list(self.graph.edges[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
                     if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from point
                 coords += [(point.x, point.y)]
 
-                self.graph.edges[(edge.node_from, edge.node_to)]["geometry"] = LineString(coords)
+                self.graph.edges[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
             return node_id
         else:
-            logger.warning(
-                f"No Node moved. Closest node: {node_id}, distance > max_distance ({node_distance} > {max_distance})"
-            )
+            if self.verbose:
+                logger.warning(
+                    f"No Node moved. Closest node: {node_id}, distance > max_distance ({node_distance} > {max_distance})"
+                )
             return None
 
-    def add_node(self, point: Point, max_distance: float):
+    def add_node(self, point: Point, max_distance: float, align_distance: float = 100):
         # set _graph undirected to None
         self._graph_undirected = None
 
         # get links
         links_gdf = self.links
 
-        # get closest edge and distances
+        # get closest link and distances
         distances = links_gdf.distance(point).sort_values()
-        edge_id = distances.index[0]
-        edge_distance = distances.iloc[0]
-        edge_geometry = links_gdf.at[edge_id, "geometry"]  # noqa: PD008
-        node_from = links_gdf.at[edge_id, "node_from"]  # noqa: PD008
-        node_to = links_gdf.at[edge_id, "node_to"]  # noqa: PD008
+        link_id = distances.index[0]
+        link_distance = distances.iloc[0]
+        link_geometry = links_gdf.at[link_id, "geometry"]
+        node_from = links_gdf.at[link_id, "node_from"]
+        node_to = links_gdf.at[link_id, "node_to"]
 
-        if edge_distance <= max_distance:
+        if link_distance <= max_distance:
             # add node
             node_id = max(self.graph.nodes) + 1
-            node_geometry = edge_geometry.interpolate(edge_geometry.project(point))
+            node_geometry = link_geometry.interpolate(link_geometry.project(point))
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
-
-            # add edges
+            # add links
             self.graph.remove_edge(node_from, node_to)
-            us_geometry, ds_geometry = split(snap(edge_geometry, node_geometry, 0.01), node_geometry).geoms
+            split_result = split_line(link_geometry, node_geometry)
+            if isinstance(split_result, LineString):
+                if self.verbose:
+                    logger.warning(f"Splitting link: {link_id} resulted in a single LineString)")
+                return None
+            us_geometry, ds_geometry = split_result.geoms
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
-            return self.move_node(point, max_distance=max_distance, align_distance=100)
+            return self.move_node(point, max_distance=max_distance, align_distance=align_distance)
         else:
-            logger.warning(
-                f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
-            )
+            if self.verbose:
+                logger.warning(
+                    f"No Node added. Closest link: {link_id}, distance > max_distance ({link_distance} > {max_distance})"
+                )
             return None
 
     def reset(self):
@@ -488,15 +520,22 @@ class Network:
             try:
                 return shortest_path(self.graph, node_from, node_to, weight=weight)
             except NetworkXNoPath:
-                print(f"search path undirected between {node_from} and {node_to}")
+                # print(f"search path undirected between {node_from} and {node_to}")
                 return shortest_path(self.graph_undirected, node_from, node_to, weight=weight)
         else:
             return shortest_path(self.graph_undirected, node_from, node_to, weight=weight)
 
     def get_links(self, node_from, node_to, directed=True, weight="length"):
-        path = self.get_path(node_from, node_to, directed, weight)
-        edges_on_path = list(zip(path[:-1], path[1:]))
-        return self.links.set_index(["node_from", "node_to"]).loc[edges_on_path]
+        # get path and links on path
+        path = self.get_path(node_from, node_to, directed=directed, weight=weight)
+        links_on_path = list(zip(path[:-1], path[1:]))
+
+        try:
+            return self.links.set_index(["node_from", "node_to"]).loc[links_on_path]
+        except KeyError:  # if path only undirected we need to fix links_on_path
+            idx = self.links.set_index(["node_from", "node_to"]).index
+            links_on_path = [i if i in idx else (i[1], i[0]) for i in links_on_path]
+            return self.links.set_index(["node_from", "node_to"]).loc[links_on_path]
 
     def subset_links(self, nodes_from, nodes_to):
         gdf = pd.concat([self.get_links(node_from, node_to) for node_from, node_to in product(nodes_from, nodes_to)])
@@ -581,7 +620,9 @@ class Network:
 
     def get_line(self, node_from, node_to, directed=True, weight="length"):
         path = self.get_path(node_from, node_to, directed, weight)
-        return self.path_to_line(path)
+
+        line = self.path_to_line(path)
+        return line
 
     def get_nodes(self) -> GeoDataFrame:
         """Get nodes from lines_gdf
@@ -603,7 +644,7 @@ class Network:
 
         if self.tolerance is not None:
             geoseries = (
-                GeoSeries([geoseries.buffer(self.tolerance / 2).unary_union()])
+                GeoSeries([geoseries.buffer(self.tolerance / 2).union_all()])
                 .explode(index_parts=False)
                 .reset_index(drop=True)
                 .centroid
@@ -637,7 +678,7 @@ class Network:
             raise ValueError(f"{path} is not a GeoPackage, please provide a file with extention 'gpkg'")
 
         # write nodes and links
-        self.nodes.to_file(path, layer="nodes", engine="pyogrio")
+        self.nodes[["geometry", "type"]].to_file(path, layer="nodes", engine="pyogrio")
         self.links.to_file(path, layer="links", engine="pyogrio")
         # add styles
         add_styles_to_geopackage(path)
