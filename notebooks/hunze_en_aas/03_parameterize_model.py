@@ -37,8 +37,8 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # %%fixes
-model.remove_node(node_id=1126, remove_edges=True)
-model.remove_node(node_id=1023, remove_edges=True)
+model.remove_node(node_id=1126, remove_links=True)
+model.remove_node(node_id=1023, remove_links=True)
 
 
 # %% Flow rates are replaced to max_flow_rate, otherwise it affects the flow ratio

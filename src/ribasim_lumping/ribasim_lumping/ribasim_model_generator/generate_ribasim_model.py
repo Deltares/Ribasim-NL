@@ -34,9 +34,9 @@ def generate_ribasim_nodes_static(
     return ribasim_nodes
 
 
-def generate_ribasim_edges(basin_connections: gpd.GeoDataFrame, boundary_connections: gpd.GeoDataFrame):
-    """Generate ribasim edges between nodes, using basin connections and boundary-basin connections"""
-    edges = pd.concat(
+def generate_ribasim_links(basin_connections: gpd.GeoDataFrame, boundary_connections: gpd.GeoDataFrame):
+    """Generate ribasim links between nodes, using basin connections and boundary-basin connections"""
+    links = pd.concat(
         [
             basin_connections[["from_node_id", "to_node_id", "geometry"]],
             boundary_connections[["from_node_id", "to_node_id", "geometry"]],
@@ -44,15 +44,15 @@ def generate_ribasim_edges(basin_connections: gpd.GeoDataFrame, boundary_connect
         ignore_index=True,
     )
 
-    print(f"edges ({len(edges)}x), ", end="", flush=True)
+    print(f"links ({len(links)}x), ", end="", flush=True)
 
-    edges["edge_type"] = "flow"
-    ribasim_edges_static = gpd.GeoDataFrame(data=edges, geometry="geometry", crs=basin_connections.crs)
-    if ribasim_edges_static.empty:
-        ribasim_edges = None
+    links["link_type"] = "flow"
+    ribasim_links_static = gpd.GeoDataFrame(data=links, geometry="geometry", crs=basin_connections.crs)
+    if ribasim_links_static.empty:
+        ribasim_links = None
     else:
-        ribasim_edges = ribasim.Edge(df=ribasim_edges_static)
-    return ribasim_edges
+        ribasim_links = ribasim.Link(df=ribasim_links_static)
+    return ribasim_links
 
 
 def generate_ribasim_basins(
@@ -217,7 +217,7 @@ def generate_ribasim_model(
     results_dir: str = "results",
 ):
     """
-    Generate ribasim model from ribasim nodes and edges
+    Generate ribasim model from ribasim nodes and links
 
     optional input; ribasim basins, level boundary, flow_boundary, pump, tabulated rating curve and manning resistance
     """
@@ -229,7 +229,7 @@ def generate_ribasim_model(
         basins=basins,
     )
 
-    ribasim_edges = generate_ribasim_edges(
+    ribasim_links = generate_ribasim_links(
         basin_connections=basin_connections, boundary_connections=boundary_connections
     )
 
@@ -283,7 +283,7 @@ def generate_ribasim_model(
     endtime = tables["basin_time"]["time"].iloc[-1].strftime("%Y-%m-%d %H:%M")
 
     print("")
-    network = ribasim.Network(node=ribasim_nodes, edge=ribasim_edges, filepath=simulation_filepath)
+    network = ribasim.Network(node=ribasim_nodes, link=ribasim_links, filepath=simulation_filepath)
     ribasim_model = ribasim.Model(
         # modelname=simulation_code,
         network=network,

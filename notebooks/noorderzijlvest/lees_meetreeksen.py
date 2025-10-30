@@ -87,7 +87,7 @@ def _detect_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
 def read_flow_arrow_sum_links(path: Path, link_ids: list[int]) -> pd.DataFrame:
     """
     Lees Ribasim results/flow.arrow.
-    Herkent kolommen: time/datetime/date/timestep, link_id/edge_id/link/id, flow_rate/flow/discharge/q/value.
+    Herkent kolommen: time/datetime/date/timestep, link_id/link_id/link/id, flow_rate/flow/discharge/q/value.
     Sommeert flow (m3/s) over opgegeven link_ids per tijdstap.
     Retourneert: ['Datum','flow_rate'] in m3/s (zonder middelen).
     """  # noqa: D205
@@ -98,7 +98,7 @@ def read_flow_arrow_sum_links(path: Path, link_ids: list[int]) -> pd.DataFrame:
 
     df.columns = [str(c) for c in df.columns]
     time_col = _detect_col(df, ["time", "datetime", "date", "timestep"])
-    id_col = _detect_col(df, ["link_id", "edge_id", "link", "id"])
+    id_col = _detect_col(df, ["link_id", "link_id", "link", "id"])
     q_col = _detect_col(df, ["flow_rate", "flow", "discharge", "q", "value"])
     if not time_col or not id_col or not q_col:
         raise ValueError("Verplichte kolommen niet gevonden in flow.arrow. Gevonden: " + ", ".join(df.columns))

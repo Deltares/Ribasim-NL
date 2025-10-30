@@ -63,14 +63,14 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # fix link geometries
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
-    model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
+    model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
     ]
 else:
     add_link_profile_ids(model, profiles=damo_profiles)
     fix_link_geometries(model, network, max_straight_line_ratio=5)
-    model.edge.df.reset_index().to_file(link_geometries_gpkg)
+    model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 # %%
 # %% Quick fix basins
@@ -78,16 +78,16 @@ else:
 actions = [
     "remove_basin_area",
     #    "remove_node",
-    #    "remove_edge",
+    #    "remove_link",
     "add_basin",
     "add_basin_area",
     # "update_basin_area",
     # "merge_basins",
-    # "reverse_edge",
+    # "reverse_link",
     # "move_node",
     "connect_basins",
     #   "update_node",
-    "redirect_edge",
+    "redirect_link",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()]
 for action in actions:
@@ -302,7 +302,7 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 # %%
 # DAMO-profielen bepalen voor outlets wanneer min_upstream_level nodata
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
-profile_ids = model.edge.df.set_index("to_node_id").loc[node_ids]["meta_profielid_waterbeheerder"]
+profile_ids = model.link.df.set_index("to_node_id").loc[node_ids]["meta_profielid_waterbeheerder"]
 levels = ((profiles_df.loc[profile_ids]["bottom_level"] + profiles_df.loc[profile_ids]["invert_level"]) / 2).to_numpy()
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"

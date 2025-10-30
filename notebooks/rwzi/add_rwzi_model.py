@@ -154,7 +154,7 @@ def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=Fals
     #  1. RWZI‑terminals verwijderen
     terminals_removed = 0
     for node_id in unmatched_rwzi_df.index:
-        rwzi_coupled_model.remove_node(node_id, remove_edges=True)
+        rwzi_coupled_model.remove_node(node_id, remove_links=True)
         terminals_removed += 1
 
     #  2. bijbehorende flow boundaries verwijderen
@@ -163,7 +163,7 @@ def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=Fals
 
     flow_boundaries_removed = 0
     for node_id in flow_boundary_to_remove.index:
-        rwzi_coupled_model.remove_node(node_id, remove_edges=True)
+        rwzi_coupled_model.remove_node(node_id, remove_links=True)
         flow_boundaries_removed += 1
 
     #  samenvatting & return
@@ -202,7 +202,7 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
         if pd.notna(basin_node_id):
             if verbose:
                 print(f"Verbind junction {node_id} met basin {basin_node_id}")
-            rwzi_coupled_model.edge.add(
+            rwzi_coupled_model.link.add(
                 rwzi_coupled_model.get_node(node_id),
                 rwzi_coupled_model.get_node(int(basin_node_id)),
                 name=row["name"],

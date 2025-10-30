@@ -45,31 +45,31 @@ network_validator = NetworkValidator(model)
 # TODO file not in the cloud
 
 
-# %% verwijder duplicated edges
+# %% verwijder duplicated links
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2288780504
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291081244
-model.edge.df = model.edge.df.drop_duplicates(subset=["from_node_id", "to_node_id"])
+model.link.df = model.link.df.drop_duplicates(subset=["from_node_id", "to_node_id"])
 
-if not network_validator.edge_duplicated().empty:
-    raise Exception("nog steeds duplicated edges")
+if not network_validator.link_duplicated().empty:
+    raise Exception("nog steeds duplicated links")
 
 # %% toevoegen bovenstroomse knopen
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291091067
 node_id = model.next_node_id
-edge_id = model.edge.df.loc[model.edge.df.to_node_id == 251].index[0]
-model.edge.df.loc[edge_id, ["from_node_id"]] = node_id
+link_id = model.link.df.loc[model.link.df.to_node_id == 251].index[0]
+model.link.df.loc[link_id, ["from_node_id"]] = node_id
 
-node = Node(node_id, model.edge.df.at[edge_id, "geometry"].boundary.geoms[0])
+node = Node(node_id, model.link.df.at[link_id, "geometry"].boundary.geoms[0])
 model.basin.area.df.loc[model.basin.area.df.node_id == 1009, ["node_id"]] = node_id
 area = basin.Area(geometry=model.basin.area[node_id].geometry.to_list())
 model.basin.add(node, basin_data + [area])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291111647
-for row in network_validator.edge_incorrect_connectivity().itertuples():
-    # drop edge from model
-    model.remove_edge(row.from_node_id, row.to_node_id, remove_disconnected_nodes=False)
+for row in network_validator.link_incorrect_connectivity().itertuples():
+    # drop link from model
+    model.remove_link(row.from_node_id, row.to_node_id, remove_disconnected_nodes=False)
 
     # add basin_node
     area = basin.Area(geometry=model.basin.area[row.from_node_id].geometry.to_list())
@@ -102,25 +102,25 @@ for row in network_validator.edge_incorrect_connectivity().itertuples():
         [outlet_data],
     )
 
-    # add edges
-    model.edge.add(model.basin[row.from_node_id], model.outlet[outlet_node_id])
-    model.edge.add(model.outlet[outlet_node_id], model.level_boundary[row.to_node_id])
+    # add links
+    model.link.add(model.basin[row.from_node_id], model.outlet[outlet_node_id])
+    model.link.add(model.outlet[outlet_node_id], model.level_boundary[row.to_node_id])
 
 
-if not network_validator.edge_incorrect_connectivity().empty:
-    raise Exception("nog steeds edges zonder knopen")
+if not network_validator.link_incorrect_connectivity().empty:
+    raise Exception("nog steeds links zonder knopen")
 
 # %% verwijderen internal basins
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291271525
 for row in network_validator.node_internal_basin().itertuples():
     if row.Index not in model.basin.area.df.node_id.to_numpy():  # remove or change to level-boundary
-        edge_select_df = model.edge.df[model.edge.df.to_node_id == row.Index]
-        if len(edge_select_df) == 1:
-            if model.node_table().df.at[edge_select_df.iloc[0]["from_node_id"], "node_type"] == "FlowBoundary":
+        link_select_df = model.link.df[model.link.df.to_node_id == row.Index]
+        if len(link_select_df) == 1:
+            if model.node_table().df.at[link_select_df.iloc[0]["from_node_id"], "node_type"] == "FlowBoundary":
                 model.remove_node(row.Index)
-                model.remove_node(edge_select_df.iloc[0]["from_node_id"])
-                model.edge.df.drop(index=edge_select_df.index[0], inplace=True)
+                model.remove_node(link_select_df.iloc[0]["from_node_id"])
+                model.link.df.drop(index=link_select_df.index[0], inplace=True)
 
 df = model.node_table().df[model.node_table().df.node_type == "Basin"]
 
@@ -128,15 +128,15 @@ df = model.node_table().df[model.node_table().df.node_type == "Basin"]
 boundary_node = Node(node_id=28, geometry=model.flow_boundary[28].geometry)
 
 for node_id in [29, 1828, 615, 28, 1329]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 level_data = level_boundary.Static(level=[0])
 model.level_boundary.add(boundary_node, [level_data])
 
-model.edge.add(model.tabulated_rating_curve[614], model.level_boundary[28])
+model.link.add(model.tabulated_rating_curve[614], model.level_boundary[28])
 # %%
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2292014475
-model.remove_node(node_id=1898, remove_edges=True)
+model.remove_node(node_id=1898, remove_links=True)
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2292017813
 model.update_node(989, "Outlet", [outlet.Static(flow_rate=[0])])
@@ -145,7 +145,7 @@ model.update_node(1891, "LevelBoundary", [level_data])
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291988317
 # for from_node_id, to_node_id in [799, 1580, 625, 1123, 597, 978]:
 for from_node_id, to_node_id in [[616, 1032], [1030, 616], [393, 1242], [1852, 393], [353, 1700], [1253, 353]]:
-    model.reverse_edge(from_node_id, to_node_id)
+    model.reverse_link(from_node_id, to_node_id)
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2292050862
 
@@ -162,10 +162,10 @@ manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile
 
 model.manning_resistance.add(Node(node_id=node_id, geometry=geometry), [manning_data])
 
-model.edge.df = model.edge.df[~((model.edge.df.from_node_id == 611) & (model.edge.df.to_node_id == 1643))]
-model.edge.add(model.basin[1643], model.manning_resistance[node_id])
-model.edge.add(model.manning_resistance[node_id], model.basin[1182])
-model.edge.add(model.tabulated_rating_curve[611], model.basin[1182])
+model.link.df = model.link.df[~((model.link.df.from_node_id == 611) & (model.link.df.to_node_id == 1643))]
+model.link.add(model.basin[1643], model.manning_resistance[node_id])
+model.link.add(model.manning_resistance[node_id], model.basin[1182])
+model.link.add(model.tabulated_rating_curve[611], model.basin[1182])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2293457160
 model.update_node(417, "Outlet", [outlet.Static(flow_rate=[0])])
@@ -206,13 +206,13 @@ basin_node = model.basin.add(
     basin_data,
 )
 
-model.remove_edge(from_node_id=664, to_node_id=8, remove_disconnected_nodes=False)
-model.edge.add(model.manning_resistance[664], basin_node)
-model.edge.add(basin_node, kst_node)
-model.edge.add(kst_node, model.level_boundary[8])
+model.remove_link(from_node_id=664, to_node_id=8, remove_disconnected_nodes=False)
+model.link.add(model.manning_resistance[664], basin_node)
+model.link.add(basin_node, kst_node)
+model.link.add(kst_node, model.level_boundary[8])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2293486609
-df = network_validator.edge_incorrect_type_connectivity(
+df = network_validator.link_incorrect_type_connectivity(
     from_node_type="ManningResistance", to_node_type="LevelBoundary"
 )
 
@@ -282,7 +282,7 @@ for action in ["merge_basins", "remove_node", "update_node"]:
         method(**kwargs)
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
 
 

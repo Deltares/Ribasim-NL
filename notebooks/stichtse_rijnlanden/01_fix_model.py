@@ -57,35 +57,35 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2455143137
 
-# verwijderen duplicated edges
-model.edge.df.drop_duplicates(inplace=True)
+# verwijderen duplicated links
+model.link.df.drop_duplicates(inplace=True)
 
 
 # %%
-model.remove_edges(edge_ids=[2677])
+model.remove_links(link_ids=[2677])
 for node_id in [52, 53, 2056, 2053, 2042]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
-model.edge.add(model.tabulated_rating_curve[924], model.level_boundary[51])
-model.edge.add(model.tabulated_rating_curve[937], model.level_boundary[51])
-model.edge.add(model.level_boundary[38], model.outlet[85])
+model.link.add(model.tabulated_rating_curve[924], model.level_boundary[51])
+model.link.add(model.tabulated_rating_curve[937], model.level_boundary[51])
+model.link.add(model.level_boundary[38], model.outlet[85])
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2444112017
 # toevoegen ontbrekende basins
 
-basin_edges_df = network_validator.edge_incorrect_connectivity()
+basin_links_df = network_validator.link_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
-    # update edge_table
-    model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+    # update link_table
+    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
-    model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
         basin_node.node_id
     )
 
@@ -129,11 +129,11 @@ model.update_node(
 
 # verwijderen knopen
 for node_id in [2078, 733]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
-# toevoegen edge
-model.reverse_edge(edge_id=876)
-model.edge.add(model.pump[565], model.level_boundary[56])
+# toevoegen link
+model.reverse_link(link_id=876)
+model.link.add(model.pump[565], model.level_boundary[56])
 
 # updaten naar level_boundary
 model.update_node(1965, "LevelBoundary", data=[level_data])
@@ -146,8 +146,8 @@ geometry = Point(117995, 443062.5)
 model.move_node(node_id=889, geometry=geometry)
 model.tabulated_rating_curve.node.df.loc[889, "name"] = "ST1985"
 
-for edge_id in [359, 360, 361]:
-    model.redirect_edge(edge_id=edge_id, to_node_id=1572)
+for link_id in [359, 360, 361]:
+    model.redirect_link(link_id=link_id, to_node_id=1572)
 
 model.basin.area.df.at[1, "geometry"].buffer(0.1).buffer(-0.1)
 
@@ -171,8 +171,8 @@ model.move_node(75, geometry=basin_geom)
 model.update_node(node_id=75, node_type="Basin", data=basin_data)
 
 outlet_node = model.outlet.add(Node(geometry=outlet_geom), tables=[outlet_data])
-model.edge.add(model.basin[75], outlet_node)
-model.edge.add(outlet_node, boundary_node)
+model.link.add(model.basin[75], outlet_node)
+model.link.add(outlet_node, boundary_node)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457334403
@@ -190,9 +190,9 @@ outlet_node = model.outlet.add(
 )
 
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[7950, "geometry"].boundary.geoms[0]), tables=basin_data)
-model.redirect_edge(edge_id=2721, from_node_id=basin_node.node_id)
-model.edge.add(model.level_boundary[74], outlet_node)
-model.edge.add(outlet_node, basin_node)
+model.redirect_link(link_id=2721, from_node_id=basin_node.node_id)
+model.link.add(model.level_boundary[74], outlet_node)
+model.link.add(outlet_node, basin_node)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457385390
 
@@ -293,7 +293,7 @@ model.basin.area.df.loc[436, "node_id"] = 1854
 model.basin.area.df.loc[244, "node_id"] = 2075
 model.basin.area.df.loc[289, "node_id"] = 1518
 model.basin.area.df.loc[154, "node_id"] = 1944
-model.remove_node(node_id=1031, remove_edges=True)
+model.remove_node(node_id=1031, remove_links=True)
 
 # Een aantal basins mergen
 model.merge_basins(basin_id=2018, to_basin_id=1922)
@@ -327,8 +327,8 @@ model.basin.area.df.loc[:, "geometry"] = model.basin.area.df.buffer(0.1).buffer(
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2459498845
 
-# Edge-richtingen omdraaien
-for edge_id in [
+# Link-richtingen omdraaien
+for link_id in [
     30,
     31,
     32,
@@ -365,12 +365,12 @@ for edge_id in [
     2678,
     2684,
 ]:
-    model.reverse_edge(edge_id=edge_id)
+    model.reverse_link(link_id=link_id)
 
 
-# fix 2 incorrecte edges
-model.edge.df.loc[916, "from_node_id"] = 1363
-model.edge.df.loc[1330, "from_node_id"] = 1365
+# fix 2 incorrecte links
+model.link.df.loc[916, "from_node_id"] = 1363
+model.link.df.loc[1330, "from_node_id"] = 1365
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457447764
 
@@ -453,14 +453,14 @@ model.merge_basins(basin_id=1957, to_basin_id=1591)
 model.merge_basins(basin_id=1529, to_basin_id=1428, are_connected=False)
 model.merge_basins(basin_id=1587, to_basin_id=1503)
 model.merge_basins(basin_id=1389, to_basin_id=1390)
-model.remove_node(node_id=687, remove_edges=True)
-model.remove_node(node_id=764, remove_edges=True)
-model.remove_node(node_id=312, remove_edges=True)
-model.remove_node(node_id=1051, remove_edges=True)
-model.remove_node(node_id=741, remove_edges=True)
-model.remove_node(node_id=1343, remove_edges=True)
-model.redirect_edge(edge_id=1547, from_node_id=1914)
-model.redirect_edge(edge_id=838, to_node_id=1524)
+model.remove_node(node_id=687, remove_links=True)
+model.remove_node(node_id=764, remove_links=True)
+model.remove_node(node_id=312, remove_links=True)
+model.remove_node(node_id=1051, remove_links=True)
+model.remove_node(node_id=741, remove_links=True)
+model.remove_node(node_id=1343, remove_links=True)
+model.redirect_link(link_id=1547, from_node_id=1914)
+model.redirect_link(link_id=838, to_node_id=1524)
 model.merge_basins(basin_id=1944, to_basin_id=1523, are_connected=False)
 # EINDE ISSUES
 
@@ -469,11 +469,11 @@ model.merge_basins(basin_id=1944, to_basin_id=1523, are_connected=False)
 # corrigeren knoop-topologie
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
@@ -501,11 +501,11 @@ model.remove_unassigned_basin_area()
 
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet")
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet")
