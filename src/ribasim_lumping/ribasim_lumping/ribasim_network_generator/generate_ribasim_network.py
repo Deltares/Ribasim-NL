@@ -82,7 +82,7 @@ def split_graph_based_on_split_nodes(
     split_nodes_links["downstream_node_no"] = [e[1] for e in split_links]
 
     # remove splitted links from graph and insert the newly split ones
-    graph.remove_links_from(split_links)
+    graph.remove_edges_from(split_links)
     for i_link, new in split_nodes_links.iterrows():
         graph.add_node(new.new_node_no1, pos=new.new_node_pos)
         graph.add_node(new.new_node_no2, pos=new.new_node_pos)
