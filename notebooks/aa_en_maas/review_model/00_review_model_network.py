@@ -32,11 +32,11 @@ mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.d
     model.node_table().df.index
 )
 
-edge_mist_node_df = model.link.df[~mask]
+link_mist_node_df = model.link.df[~mask]
 model.link.df = model.link.df[mask]
 
 mask = model.link.df.geometry.length == 0
-model.link.df[mask].centroid.to_file(modelfouten_gpkg, layer="edge_zonder_lengte")
+model.link.df[mask].centroid.to_file(modelfouten_gpkg, layer="link_zonder_lengte")
 model.link.df = model.link.df[~mask]
 
 # niet-gekoppelde areas
@@ -50,7 +50,7 @@ model.basin.node.df[~model.basin.node.df.index.isin(model.basin.area.df.node_id)
 
 # ontbrekende basins
 network_validator.node_invalid_connectivity().to_file(modelfouten_gpkg, layer="node_mist")
-pd.concat([network_validator.edge_incorrect_connectivity(), edge_mist_node_df]).to_file(
+pd.concat([network_validator.link_incorrect_connectivity(), link_mist_node_df]).to_file(
     modelfouten_gpkg, layer="ege_mist_node"
 )
 

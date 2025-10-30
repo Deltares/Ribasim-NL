@@ -33,11 +33,11 @@ for authority in WATER_AUTHORITIES:
     df = model.node_table().df.reset_index()[["node_id", "name", "node_type", "subnetwork_id"]]
     sheet.range("A2").value = df.to_numpy()
 
-    # add Edge_Data
-    sheet = workbook.sheets["Edge_Data"]
+    # add Link_Data
+    sheet = workbook.sheets["Link_Data"]
     df = model.link.df
-    df.loc[:, "from_node_type"] = model.edge_from_node_type
-    df.loc[:, "to_node_type"] = model.edge_to_node_type
+    df.loc[:, "from_node_type"] = model.link_from_node_type
+    df.loc[:, "to_node_type"] = model.link_to_node_type
     df = model.link.df.reset_index()[
         [
             "link_id",
@@ -46,7 +46,7 @@ for authority in WATER_AUTHORITIES:
             "from_node_id",
             "to_node_type",
             "to_node_id",
-            "edge_type",
+            "link_type",
             "subnetwork_id",
         ]
     ]

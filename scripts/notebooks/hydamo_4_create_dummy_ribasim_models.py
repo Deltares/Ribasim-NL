@@ -52,7 +52,7 @@ for waterschap, waterschap_code in waterschappen.items():
     node_df["meta_code"] = waterschap_code
 
     # read links
-    edge_df = gpd.read_file(old_ribasim_model_gpkg, layer="Edge", engine="pyogrio", fid_as_index=True)
+    link_df = gpd.read_file(old_ribasim_model_gpkg, layer="Edge", engine="pyogrio", fid_as_index=True)
 
     # read basin areas
     basin_areas = gpd.read_file(
@@ -81,7 +81,7 @@ for waterschap, waterschap_code in waterschappen.items():
     node_df.loc[~node_df.meta_krw_id.isna(), "meta_categorie"] = "hoofdwater"
 
     # create default model
-    model = default_model(node_df, edge_df, basin_areas, **DEFAULTS)
+    model = default_model(node_df, link_df, basin_areas, **DEFAULTS)
 
     # write model to disk
     ribasim_toml = Path(new_model_dir, "model.toml")

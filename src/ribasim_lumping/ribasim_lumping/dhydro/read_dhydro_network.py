@@ -163,8 +163,8 @@ def get_dhydro_links_from_network_data(network_data, nodes_gdf, branches_gdf, cr
     links_gdf["geometry"] = links_gdf.apply(
         lambda x: extract_segment_from_linestring(x["geometry_branch"], x["geometry_from"], x["geometry_to"]), axis=1
     )
-    links_gdf["edge_no"] = links_gdf.index
-    links_gdf = links_gdf[["edge_no", "branch_id", "geometry", "from_node", "to_node"]]
+    links_gdf["link_no"] = links_gdf.index
+    links_gdf = links_gdf[["link_no", "branch_id", "geometry", "from_node", "to_node"]]
     print(f" links ({len(links_gdf)})")  # , end="", flush=True)
     return links_gdf
 
@@ -190,8 +190,8 @@ def get_dhydro_structures_locations(structures_file: Path, branches_gdf: gpd.Geo
     )
     structures_gdf = find_nearest_links_no(
         gdf1=structures_gdf,
-        gdf2=links_gdf.set_index("edge_no").sort_index(),
-        new_column="edge_no",
+        gdf2=links_gdf.set_index("link_no").sort_index(),
+        new_column="link_no",
         subset="branch_id",
     )
     object_types = list(structures_gdf.object_type.unique())
@@ -219,7 +219,7 @@ def check_number_of_pumps_at_pumping_station(pumps_gdf: gpd.GeoDataFrame, set_na
                 ("general", "branch_id"): "first",
                 ("general", "object_type"): "first",
                 ("general", "chainage"): "first",
-                ("general", "edge_no"): "first",
+                ("general", "link_no"): "first",
                 ("general", "node_no"): "first",
                 ("structure", "comments"): "first",
                 ("structure", "orientation"): "first",
@@ -261,7 +261,7 @@ def split_dhydro_structures(structures_gdf: gpd.GeoDataFrame, set_name: str):
             structure_gdf.loc[:, "comments"] = structure_gdf.loc[:, "comments"].astype(str)
 
         # create multi-index to separate general values from set-specific values.
-        header_0 = ["structure_id", "branch_id", "object_type", "chainage", "edge_no", "node_no"]
+        header_0 = ["structure_id", "branch_id", "object_type", "chainage", "link_no", "node_no"]
         headers_2 = {
             "weir": ["crestlevel"],
             "uniweir": ["crestlevel"],

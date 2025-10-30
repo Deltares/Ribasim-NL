@@ -161,7 +161,7 @@ model.link.add(outlet_node, model.level_boundary[39])
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426653554
 
 # Correctie Panheelderbeek bij kanaal Wessem-Nederweert
-model.remove_links(edge_ids=[2316, 2309, 2307, 2308, 2310, 2312, 2315, 2317])
+model.remove_links(link_ids=[2316, 2309, 2307, 2308, 2310, 2312, 2315, 2317])
 model.remove_node(114, remove_links=True)
 model.reverse_link(link_id=1999)
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[1649, "geometry"].boundary.geoms[1]), tables=basin_data)
@@ -222,7 +222,7 @@ model.redirect_link(link_id=2325, to_node_id=basin_node.node_id)
 model.link.add(model.tabulated_rating_curve[238], basin_node)
 
 # 2 links die afwateren op Oude Helenavaart
-model.remove_links(edge_ids=[2322, 2324])
+model.remove_links(link_ids=[2322, 2324])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426816843
@@ -237,11 +237,11 @@ model.remove_node(34, remove_links=True)
 # corrigeren knoop-topologie
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
@@ -341,11 +341,11 @@ model.basin.area.df = df
 
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet")
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet")

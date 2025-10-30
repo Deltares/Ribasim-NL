@@ -74,14 +74,14 @@ model.link.df.drop_duplicates(inplace=True)
 # Toevoegen ontbrekende basins (oplossen topologie)
 model.remove_node(7, remove_links=True)
 model.remove_node(84, remove_links=True)
-basin_links_df = network_validator.edge_incorrect_connectivity()
+basin_links_df = network_validator.link_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
-    # update edge_table
+    # update link_table
     model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
@@ -231,7 +231,7 @@ model.remove_node(722, remove_links=True)
 model.remove_node(536, remove_links=True)
 model.remove_node(2506, remove_links=True)
 
-edge_ids = [
+link_ids = [
     2866,
     2867,
     2868,
@@ -272,7 +272,7 @@ edge_ids = [
     2918,
 ]
 
-for link_id in edge_ids:
+for link_id in link_ids:
     model.redirect_link(link_id, to_node_id=basin_node.node_id)
 
 model.remove_links([2887, 2892])
@@ -324,11 +324,11 @@ model.merge_basins(basin_id=2559, to_basin_id=2337, are_connected=False)
 # corrigeren knoop-topologie
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet")
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet")

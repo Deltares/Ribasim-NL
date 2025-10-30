@@ -72,11 +72,11 @@ def prefix_index(
     ).astype("int32")
     model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
-    # create an edge_index and reindex links
-    edge_ids = model.link.df.index
+    # create an link_index and reindex links
+    link_ids = model.link.df.index
 
     # Check if any link_id exceeds max_digits
-    max_link_id = edge_ids.max()
+    max_link_id = link_ids.max()
     actual_link_digits = len(str(max_link_id))
     if actual_link_digits > max_digits:
         model_info = f" (model: {model.filepath})" if hasattr(model, "filepath") and model.filepath else ""
@@ -86,23 +86,23 @@ def prefix_index(
         )
 
     model.link.df.index = pd.Index(
-        [int(f"{prefix_id}{link_id:0>{max_digits}}") for link_id in edge_ids], name="link_id"
+        [int(f"{prefix_id}{link_id:0>{max_digits}}") for link_id in link_ids], name="link_id"
     )
 
     # keep original index if
     if original_index_postfix is not None:
-        model.link.df.loc[:, f"meta_link_id_{original_index_postfix}"] = edge_ids.astype("int32")
+        model.link.df.loc[:, f"meta_link_id_{original_index_postfix}"] = link_ids.astype("int32")
 
     return model
 
 
-def reset_index(model: Model, node_start=1, edge_start=1, original_index_postfix: str | None = "waterbeheerder"):
-    """Reset a model index to a given node_start and edge_start number. Will result in sub-sequent node_ids and edge_ids from node_start and edge_start.
+def reset_index(model: Model, node_start=1, link_start=1, original_index_postfix: str | None = "waterbeheerder"):
+    """Reset a model index to a given node_start and link_start number. Will result in sub-sequent node_ids and link_ids from node_start and link_start.
 
     Args:
         model (Model): ribasim.Model to be reindexed
         node_start (int, optional): start node_id. Defaults to 1.
-        edge_start (int, optional): start link_id. Defaults to 1.
+        link_start (int, optional): start link_id. Defaults to 1.
         original_index_postfix (str | None, optional): if provided the original index will be stored in a meta-column. Defaults to "waterbeheerder".
 
     Returns
@@ -120,16 +120,16 @@ def reset_index(model: Model, node_start=1, edge_start=1, original_index_postfix
         model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
         # only reset nodes if we have to
-        edge_ids = model.link.df.index
-        edge_id_min = edge_ids.min()
-        edge_id_max = edge_ids.max()
-        expected_length = edge_id_max - edge_id_min + 1
+        link_ids = model.link.df.index
+        link_id_min = link_ids.min()
+        link_id_max = link_ids.max()
+        expected_length = link_id_max - link_id_min + 1
 
-        if not ((edge_start == edge_id_min) and (expected_length == len(model.link.df))):
+        if not ((link_start == link_id_min) and (expected_length == len(model.link.df))):
             # create a re-index for links
-            model.link.df.index = pd.Index([i + node_start for i in range(len(edge_ids))], name="link_id")
+            model.link.df.index = pd.Index([i + node_start for i in range(len(link_ids))], name="link_id")
 
         # keep original index if
         if original_index_postfix is not None:
-            model.link.df.loc[:, f"meta_link_id_{original_index_postfix}"] = edge_ids
+            model.link.df.loc[:, f"meta_link_id_{original_index_postfix}"] = link_ids
     return model

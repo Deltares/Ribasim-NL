@@ -57,14 +57,14 @@ model.link.df.drop_duplicates(inplace=True)
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419620184
 # toevoegen ontbrekende basins
 
-basin_links_df = network_validator.edge_incorrect_connectivity()
+basin_links_df = network_validator.link_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
-    # update edge_table
+    # update link_table
     model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
@@ -83,7 +83,7 @@ model.link.df.loc[1281, "to_node_id"] = 667
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419747636
 
-# fix edge_richting
+# fix link_richting
 
 # verplaatsen van `LevelBoundary` 47 binnen de basin, updaten naar `Basin` en reversen van `Edge` 1370
 model.move_node(47, hydroobject_gdf.at[8781, "geometry"].boundary.geoms[0])
@@ -137,11 +137,11 @@ model.link.add(outlet_node, model.level_boundary[33])
 # corrigeren knoop-topologie
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])

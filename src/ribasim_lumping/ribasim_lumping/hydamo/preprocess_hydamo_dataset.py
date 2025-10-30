@@ -281,7 +281,7 @@ def create_nodes_and_links_from_hydroobjects(links, buffer_distance=0.05):
     nodes = gpd.GeoDataFrame((Point(x) for x in nodes), columns=["geometry"]).set_geometry("geometry")
     nodes["node_no"] = nodes.index
     links.index = range(len(links))
-    links["edge_no"] = links.index
+    links["link_no"] = links.index
     return nodes, links
 
 

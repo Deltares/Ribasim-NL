@@ -46,7 +46,7 @@ def generate_ribasim_links(basin_connections: gpd.GeoDataFrame, boundary_connect
 
     print(f"links ({len(links)}x), ", end="", flush=True)
 
-    links["edge_type"] = "flow"
+    links["link_type"] = "flow"
     ribasim_links_static = gpd.GeoDataFrame(data=links, geometry="geometry", crs=basin_connections.crs)
     if ribasim_links_static.empty:
         ribasim_links = None

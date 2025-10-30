@@ -59,10 +59,10 @@ def read_arrow_file(simulation_dir: Path, file_name: str, results_dir: str = "re
 
 def get_inflow_outflow_link_data(ribasim_model: ribasim.Model):
     node_df = ribasim_model.network.node.df
-    edge_df = ribasim_model.network.link.df
+    link_df = ribasim_model.network.link.df
 
     basin_nos = node_df[node_df.node_type == "Basin"].node_id
-    flow_link = edge_df[edge_df.edge_type == "flow"]
+    flow_link = link_df[link_df.link_type == "flow"]
     flow_link = flow_link[(flow_link.to_node_id.isin(basin_nos)) | (flow_link.from_node_id.isin(basin_nos))]
     flow_link = flow_link.merge(
         node_df[["node_id", "node_type", "name"]].rename(
@@ -460,7 +460,7 @@ def plot_results_basin_ribasim_model(
     #             continue
     #         control_node_id = clevel["node_id"]
     #         controlled_node_id = (ribasim_model.link.df[
-    #             (ribasim_model.link.df["edge_type"]=="control") &
+    #             (ribasim_model.link.df["link_type"]=="control") &
     #             (ribasim_model.link.df["from_node_id"]==control_node_id)
     #         ]["to_node_id"].iloc[0])
     #         node_name = ribasim_model.network.node.df.loc[controlled_node_id, "name"]

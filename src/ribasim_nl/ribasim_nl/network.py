@@ -220,7 +220,7 @@ class Network:
                         link_def["node_to"] = node.Index
                         link_def["point_to"] = nodes_select.loc[link_def["node_to"]].geometry
                         try:
-                            edge_geometry, geometry = split(
+                            link_geometry, geometry = split(
                                 snap(geometry, link_def["point_to"], self.snap_tolerance),
                                 link_def["point_to"],
                             ).geoms
@@ -228,7 +228,7 @@ class Network:
                             print(f"line with index {row.Index} can't be split. Please inspect input-lines here")
                             continue
 
-                        link_def["geometry"] = edge_geometry
+                        link_def["geometry"] = link_geometry
                         self.add_link(**link_def)
                         link_def["node_from"] = link_def["node_to"]
                         link_def["point_from"] = link_def["point_to"]
@@ -479,19 +479,19 @@ class Network:
         # get closest link and distances
         distances = links_gdf.distance(point).sort_values()
         link_id = distances.index[0]
-        edge_distance = distances.iloc[0]
-        edge_geometry = links_gdf.at[link_id, "geometry"]
+        link_distance = distances.iloc[0]
+        link_geometry = links_gdf.at[link_id, "geometry"]
         node_from = links_gdf.at[link_id, "node_from"]
         node_to = links_gdf.at[link_id, "node_to"]
 
-        if edge_distance <= max_distance:
+        if link_distance <= max_distance:
             # add node
             node_id = max(self.graph.nodes) + 1
-            node_geometry = edge_geometry.interpolate(edge_geometry.project(point))
+            node_geometry = link_geometry.interpolate(link_geometry.project(point))
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
             # add links
             self.graph.remove_link(node_from, node_to)
-            split_result = split_line(edge_geometry, node_geometry)
+            split_result = split_line(link_geometry, node_geometry)
             if isinstance(split_result, LineString):
                 if self.verbose:
                     logger.warning(f"Splitting link: {link_id} resulted in a single LineString)")
@@ -504,7 +504,7 @@ class Network:
         else:
             if self.verbose:
                 logger.warning(
-                    f"No Node added. Closest link: {link_id}, distance > max_distance ({edge_distance} > {max_distance})"
+                    f"No Node added. Closest link: {link_id}, distance > max_distance ({link_distance} > {max_distance})"
                 )
             return None
 

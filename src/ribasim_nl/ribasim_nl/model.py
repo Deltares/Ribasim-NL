@@ -14,9 +14,9 @@ from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pum
 from ribasim.utils import _concat
 
 try:
-    from ribasim.validation import flow_link_neighbor_amount as edge_amount
+    from ribasim.validation import flow_link_neighbor_amount as link_amount
 except ImportError:
-    from ribasim.validation import flow_link_neighbor_amount as edge_amount
+    from ribasim.validation import flow_link_neighbor_amount as link_amount
 
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
@@ -292,11 +292,11 @@ class Model(Model):
 
         # filter node ids by us and ds node
         if (ds_node_id is not None) or (us_node_id is not None):
-            edge_df = self.link.df
+            link_df = self.link.df
             if ds_node_id is not None:
-                df = df[df.index.isin(edge_df[edge_df.to_node_id == ds_node_id].from_node_id)]
+                df = df[df.index.isin(link_df[link_df.to_node_id == ds_node_id].from_node_id)]
             if us_node_id is not None:
-                df = df[df.index.isin(edge_df[edge_df.from_node_id == us_node_id].to_node_id)]
+                df = df[df.index.isin(link_df[link_df.from_node_id == us_node_id].to_node_id)]
 
         # check if we didn't find 0 or multiple node_ids
         node_ids = df.index.to_list()
@@ -496,17 +496,17 @@ class Model(Model):
                 df = self.link.df.copy()
                 df.loc[:, ["link_id"]] = df.index
                 df = df.set_index(["from_node_id", "to_node_id"], drop=False)
-                edge_data = dict(df.loc[from_node_id, to_node_id])
-                link_id = edge_data["link_id"]
+                link_data = dict(df.loc[from_node_id, to_node_id])
+                link_id = link_data["link_id"]
             else:
-                edge_data = dict(self.link.df.loc[link_id])
+                link_data = dict(self.link.df.loc[link_id])
 
             # revert node ids
-            self.link.df.loc[link_id, ["from_node_id"]] = edge_data["to_node_id"]
-            self.link.df.loc[link_id, ["to_node_id"]] = edge_data["from_node_id"]
+            self.link.df.loc[link_id, ["from_node_id"]] = link_data["to_node_id"]
+            self.link.df.loc[link_id, ["to_node_id"]] = link_data["from_node_id"]
 
             # revert geometry
-            self.link.df.loc[link_id, ["geometry"]] = edge_data["geometry"].reverse()
+            self.link.df.loc[link_id, ["geometry"]] = link_data["geometry"].reverse()
 
     def remove_link(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
         """Remove an link and disconnected nodes"""
@@ -525,9 +525,9 @@ class Model(Model):
                     if node_id not in self.link.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
                         self.remove_node(node_id)
 
-    def remove_links(self, edge_ids: list[int]):
+    def remove_links(self, link_ids: list[int]):
         if self.link.df is not None:
-            self.link.df = self.link.df[~self.link.df.index.isin(edge_ids)]
+            self.link.df = self.link.df[~self.link.df.index.isin(link_ids)]
 
     def add_basin(self, node_id, geometry, tables=None, **kwargs):
         # define node properties
@@ -643,11 +643,11 @@ class Model(Model):
 
         # add links from and to node
         self.link.add(self.basin[basin_id], node)
-        edge_geometry = self.link.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
+        link_geometry = self.link.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
 
         # add boundary
-        geometry = shapely.affinity.scale(edge_geometry, xfact=1.05, yfact=1.05, origin="center").boundary.geoms[1]
-        # geometry = edge_geometry.interpolate(1.05, normalized=True)
+        geometry = shapely.affinity.scale(link_geometry, xfact=1.05, yfact=1.05, origin="center").boundary.geoms[1]
+        # geometry = link_geometry.interpolate(1.05, normalized=True)
         boundary_node = self.level_boundary.add(Node(geometry=geometry), tables=DEFAULT_TABLES.level_boundary)
         self.link.add(node, boundary_node)
 
@@ -721,10 +721,10 @@ class Model(Model):
         table.node.df.loc[node_id, ["geometry"]] = geometry
 
         # reset all links
-        edge_ids = self.link.df[
+        link_ids = self.link.df[
             (self.link.df.from_node_id == node_id) | (self.link.df.to_node_id == node_id)
         ].index.to_list()
-        self.reset_link_geometry(edge_ids=edge_ids)
+        self.reset_link_geometry(link_ids=link_ids)
 
     def report_basin_area(self):
         gpkg = self.filepath.with_name("basin_node_area_errors.gpkg")
@@ -798,10 +798,10 @@ class Model(Model):
         else:
             raise ValueError("Assign a Basin Node to your model first")
 
-    def reset_link_geometry(self, edge_ids: list | None = None):
+    def reset_link_geometry(self, link_ids: list | None = None):
         node_df = self.node_table().df
-        if edge_ids is not None:
-            df = self.link.df[self.link.df.index.isin(edge_ids)]
+        if link_ids is not None:
+            df = self.link.df[self.link.df.index.isin(link_ids)]
         else:
             df = self.link.df
 
@@ -812,12 +812,12 @@ class Model(Model):
             self.link.df.loc[row.Index, ["geometry"]] = geometry
 
     @property
-    def edge_from_node_type(self):
+    def link_from_node_type(self):
         node_df = self.node_table().df
         return self.link.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
     @property
-    def edge_to_node_type(self):
+    def link_to_node_type(self):
         node_df = self.node_table().df
         return self.link.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
@@ -912,7 +912,7 @@ class Model(Model):
             if to_node_id is not None:
                 self.link.df.loc[link_id, ["to_node_id"]] = to_node_id
 
-        self.reset_link_geometry(edge_ids=[link_id])
+        self.reset_link_geometry(link_ids=[link_id])
 
     def deactivate_node(self, node_id: int):
         node_type = self.get_node_type(node_id)
@@ -976,8 +976,8 @@ class Model(Model):
                 self.remove_node(path[1], remove_links=True)
 
         # get a complete link-list to modify
-        edge_ids = self.link.df[self.link.df.from_node_id == node_id].index.to_list()
-        edge_ids += self.link.df[self.link.df.to_node_id == node_id].index.to_list()
+        link_ids = self.link.df[self.link.df.from_node_id == node_id].index.to_list()
+        link_ids += self.link.df[self.link.df.to_node_id == node_id].index.to_list()
 
         # correct link from and to attributes
         self.link.df.loc[self.link.df.from_node_id == node_id, "from_node_id"] = to_node_id
@@ -989,7 +989,7 @@ class Model(Model):
             self.link.df = self.link.df[~mask]
 
         # reset link geometries
-        self.reset_link_geometry(edge_ids=edge_ids)
+        self.reset_link_geometry(link_ids=link_ids)
 
         # merge area if basin has any assigned to it
         if to_node_type == "Basin":
@@ -1035,8 +1035,8 @@ class Model(Model):
         outlet_b = self.outlet.node.df.loc[outlet_b_id]
 
         # correct link from and to attributes
-        edge_ids = self.link.df[self.link.df.to_node_id == outlet_a_id].index.to_list()
-        edge_ids += self.link.df[self.link.df.from_node_id == outlet_b_id].index.to_list()
+        link_ids = self.link.df[self.link.df.to_node_id == outlet_a_id].index.to_list()
+        link_ids += self.link.df[self.link.df.from_node_id == outlet_b_id].index.to_list()
 
         # Remove outlet_b from the links
         self.link.df.loc[self.link.df.from_node_id == outlet_b_id, "from_node_id"] = outlet_a_id
@@ -1054,7 +1054,7 @@ class Model(Model):
 
         # Remove outlet_b
         self.remove_node(outlet_b_id)
-        self.reset_link_geometry(edge_ids=edge_ids)
+        self.reset_link_geometry(link_ids=link_ids)
 
         return outlet_a
 
@@ -1094,14 +1094,14 @@ class Model(Model):
         # loop over all the "from_node" and check if they have enough outneighbor
         for _, row in from_node_info.iterrows():
             # from node's outneighbor
-            if row["from_node_count"] < edge_amount[row["from_node_type"]][2]:
+            if row["from_node_count"] < link_amount[row["from_node_type"]][2]:
                 node_id = row["from_node_id"]
                 errors += [
                     {
                         "geometry": df_node.at[node_id, "geometry"],
                         "node_id": node_id,
                         "node_type": df_node.at[node_id, "node_type"],
-                        "exception": f"must have at least {edge_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})",
+                        "exception": f"must have at least {link_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})",
                     }
                 ]
 
@@ -1121,14 +1121,14 @@ class Model(Model):
 
         # loop over all the "to_node" and check if they have enough inneighbor
         for _, row in to_node_info.iterrows():
-            if row["to_node_count"] < edge_amount[row["to_node_type"]][0]:
+            if row["to_node_count"] < link_amount[row["to_node_type"]][0]:
                 node_id = row["to_node_id"]
                 errors += [
                     {
                         "geometry": df_node.at[node_id, "geometry"],
                         "node_id": node_id,
                         "node_type": df_node.at[node_id, "node_type"],
-                        "exception": f"must have at least {edge_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})",
+                        "exception": f"must have at least {link_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})",
                     }
                 ]
 

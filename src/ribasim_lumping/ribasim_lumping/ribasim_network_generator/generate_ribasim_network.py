@@ -63,20 +63,20 @@ def split_graph_based_on_split_nodes(
     # split on link: delete link, create 2 nodes, create 2 links
     # if all link no in split nodes gdf are -1, than no splitting of links are done
     # TODO: although link stuff below works, it is actually better to split network at split nodes at earlier stage
-    #       this will result in all link no being -1 and only values for node no. so maybe check on that all edge_no
+    #       this will result in all link no being -1 and only values for node no. so maybe check on that all link_no
     #       values need to be -1 should be better.
-    if "edge_no" not in split_nodes.columns:
-        split_nodes["edge_no"] = -1
-    split_nodes_links = split_nodes[split_nodes.edge_no != -1].copy()
+    if "link_no" not in split_nodes.columns:
+        split_nodes["link_no"] = -1
+    split_nodes_links = split_nodes[split_nodes.link_no != -1].copy()
 
-    split_links = links[links.edge_no.isin(split_nodes_links.edge_no.values)].copy()
+    split_links = links[links.link_no.isin(split_nodes_links.link_no.values)].copy()
     # assert len(split_nodes_links) == len(split_links)
     split_links = split_links[["from_node", "to_node"]].to_dict("tight")["data"]
 
     split_links = [coor for coor in split_links if coor in graph.links]
 
-    split_nodes_links["new_node_no1"] = 998_000_000_000 + split_nodes_links.edge_no * 1_000 + 1
-    split_nodes_links["new_node_no2"] = 998_000_000_000 + split_nodes_links.edge_no * 1_000 + 2
+    split_nodes_links["new_node_no1"] = 998_000_000_000 + split_nodes_links.link_no * 1_000 + 1
+    split_nodes_links["new_node_no2"] = 998_000_000_000 + split_nodes_links.link_no * 1_000 + 2
     split_nodes_links["new_node_pos"] = split_nodes_links.geometry.apply(lambda x: (x.x, x.y))
     split_nodes_links["upstream_node_no"] = [e[0] for e in split_links]
     split_nodes_links["downstream_node_no"] = [e[1] for e in split_links]
@@ -183,15 +183,15 @@ def check_if_split_node_is_used(
     split_nodes.loc[split_nodes[split_nodes.node_no.isin(split_nodes_not_used)].index, "status"] = False
 
     # check if nodes connected to split_link have the same basin code
-    split_link_ids = [v for v in split_nodes.edge_no.values if v != -1]
+    split_link_ids = [v for v in split_nodes.link_no.values if v != -1]
     split_links_not_used = []
     for split_link_id in sorted(split_link_ids):
-        end_nodes = list(links[links.edge_no == split_link_id].to_node.values)
-        start_nodes = list(links[links.edge_no == split_link_id].from_node.values)
+        end_nodes = list(links[links.link_no == split_link_id].to_node.values)
+        start_nodes = list(links[links.link_no == split_link_id].from_node.values)
         neighbours = nodes[nodes.node_no.isin(end_nodes + start_nodes)]
         if len(neighbours.basin.unique()) == 1:
             split_links_not_used.append(split_link_id)
-    split_nodes.loc[split_nodes[split_nodes.edge_no.isin(split_links_not_used)].index, "status"] = False
+    split_nodes.loc[split_nodes[split_nodes.link_no.isin(split_links_not_used)].index, "status"] = False
 
     split_nodes["object_type"] = split_nodes["object_type"].fillna("manual")
     split_nodes["split_type"] = split_nodes["object_type"]
@@ -269,21 +269,21 @@ def create_basin_areas_based_on_drainage_areas(
         areas = areas.sjoin(links_sel[["basin", "geometry"]])
         # we want to select the link which is the longest within an area to ultimately select
         # the right basin code
-        edge_lengths = [
+        link_lengths = [
             gpd.GeoDataFrame(links_sel.loc[ir].to_frame().T, geometry="geometry").clip(a).geometry.length.values[0]
             for a, ir in zip(areas.geometry, areas["index_right"])
         ]
-        areas["edge_length"] = edge_lengths
+        areas["link_length"] = link_lengths
         areas = areas.drop(columns=["index_right"]).reset_index(drop=True)
-        areas = areas.groupby(by=["area", "basin"], as_index=False).agg({"edge_length": "sum"})
+        areas = areas.groupby(by=["area", "basin"], as_index=False).agg({"link_length": "sum"})
         # this sorts first such that max link length is first item and in drop_duplicates that first item will be kept
         # effectively method to get areas with basin code based on max link length within area
-        areas = areas.sort_values(by=["area", "edge_length"], ascending=[True, False]).drop_duplicates(
+        areas = areas.sort_values(by=["area", "link_length"], ascending=[True, False]).drop_duplicates(
             subset=["area"], keep="first"
         )
         # insert area geometries back into gdf
         areas = (
-            areas[["area", "basin", "edge_length"]]
+            areas[["area", "basin", "link_length"]]
             .sort_values(by="area")
             .merge(areas_orig, how="outer", left_on="area", right_on="area")
         )
@@ -340,7 +340,7 @@ def create_basins_based_on_subgraphs_and_nodes(
         basins2y = (
             basins2x[["basin", "node_no1", "node_no2"]]
             .merge(
-                links[["basin", "edge_no", "from_node", "to_node"]],
+                links[["basin", "link_no", "from_node", "to_node"]],
                 how="left",
                 left_on=["basin", "node_no1", "node_no2"],
                 right_on=["basin", "from_node", "to_node"],
@@ -350,7 +350,7 @@ def create_basins_based_on_subgraphs_and_nodes(
         )
         basins2z = (
             basins2y.merge(
-                links[["basin", "edge_no", "from_node", "to_node"]],
+                links[["basin", "link_no", "from_node", "to_node"]],
                 how="left",
                 left_on=["basin", "node_no2", "node_no1"],
                 right_on=["basin", "from_node", "to_node"],
@@ -358,13 +358,13 @@ def create_basins_based_on_subgraphs_and_nodes(
             .fillna(-1)
             .astype(int)
         )
-        basins2z.loc[basins2z["edge_no_x"] != -1, "edge_no"] = basins2z["edge_no_x"]
-        basins2z.loc[basins2z["edge_no_y"] != -1, "edge_no"] = basins2z["edge_no_y"]
+        basins2z.loc[basins2z["link_no_x"] != -1, "link_no"] = basins2z["link_no_x"]
+        basins2z.loc[basins2z["link_no_y"] != -1, "link_no"] = basins2z["link_no_y"]
         basins2z.loc[basins2z["from_node_x"] != -1, "from_node"] = basins2z["from_node_x"]
         basins2z.loc[basins2z["from_node_y"] != -1, "from_node"] = basins2z["from_node_y"]
         basins2z.loc[basins2z["to_node_x"] != -1, "to_node"] = basins2z["to_node_x"]
         basins2z.loc[basins2z["to_node_y"] != -1, "to_node"] = basins2z["to_node_y"]
-        basins2z = basins2z.fillna(-1).astype(int).merge(links[["edge_no", "geometry"]], how="left", on="edge_no")
+        basins2z = basins2z.fillna(-1).astype(int).merge(links[["link_no", "geometry"]], how="left", on="link_no")
         basins2s = basins2z[
             ((basins2z.from_node == basins2z.node_no1) & (basins2z.to_node == basins2z.node_no2))
             | ((basins2z.from_node == basins2z.node_no2) & (basins2z.to_node == basins2z.node_no1))
@@ -431,9 +431,9 @@ def create_basin_connections(
     # (2) splitnodes that are original d-hydro nodes
 
     # (1) splitnodes that are located on an link
-    conn_struct = conn.loc[conn["edge_no"] != -1].drop(["node_no", "from_node", "to_node"], axis=1, errors="ignore")
+    conn_struct = conn.loc[conn["link_no"] != -1].drop(["node_no", "from_node", "to_node"], axis=1, errors="ignore")
     # merge with link to find us and ds nodes
-    conn_struct = conn_struct.merge(links[["from_node", "to_node", "edge_no"]], left_on="edge_no", right_on="edge_no")
+    conn_struct = conn_struct.merge(links[["from_node", "to_node", "link_no"]], left_on="link_no", right_on="link_no")
     # TODO: check for each link the maximum absolute flow direction, in case of negative, reverse from_node/to_node
     # merge with node to find us and ds basin
     conn_struct_us = conn_struct.merge(
@@ -441,27 +441,27 @@ def create_basin_connections(
         left_on="from_node",
         right_on="node_no",
     )
-    conn_struct_us = conn_struct_us.drop(columns=["from_node", "to_node", "node_no", "edge_no"])
+    conn_struct_us = conn_struct_us.drop(columns=["from_node", "to_node", "node_no", "link_no"])
     conn_struct_ds = conn_struct.merge(
         nodes[["node_no", "basin"]],
         left_on="to_node",
         right_on="node_no",
-    ).drop(columns=["from_node", "to_node", "node_no", "edge_no"])
+    ).drop(columns=["from_node", "to_node", "node_no", "link_no"])
 
     # (2) splitnodes that are original d-hydro nodes
     # merge splitnodes add connected links
-    conn_nodes = conn.loc[conn["node_no"] != -1].drop(["edge_no", "from_node", "to_node"], axis=1, errors="ignore")
+    conn_nodes = conn.loc[conn["node_no"] != -1].drop(["link_no", "from_node", "to_node"], axis=1, errors="ignore")
 
     conn_nodes_ds = conn_nodes.merge(
-        links[["basin", "from_node", "to_node", "edge_no"]],
+        links[["basin", "from_node", "to_node", "link_no"]],
         left_on="node_no",
         right_on="from_node",
-    ).drop(columns=["from_node", "to_node", "node_no", "edge_no"])
+    ).drop(columns=["from_node", "to_node", "node_no", "link_no"])
     conn_nodes_us = conn_nodes.merge(
-        links[["basin", "from_node", "to_node", "edge_no"]],
+        links[["basin", "from_node", "to_node", "link_no"]],
         left_on="node_no",
         right_on="to_node",
-    ).drop(columns=["from_node", "to_node", "node_no", "edge_no"])
+    ).drop(columns=["from_node", "to_node", "node_no", "link_no"])
 
     # TODO: check for each link the maximum absolute flow direction, in case of negative, cut and past in other dataframe.
     # Combine (1) en (2)

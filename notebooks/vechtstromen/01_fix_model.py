@@ -81,10 +81,10 @@ model.update_node(2250, "LevelBoundary", data=[level_data])
 node_id = 1375
 
 model.basin.node.df.loc[node_id, "geometry"] = hydroobject_gdf.at[3135, "geometry"].interpolate(0.5, normalized=True)
-edge_ids = model.link.df[
+link_ids = model.link.df[
     (model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)
 ].index.to_list()
-model.reset_link_geometry(edge_ids=edge_ids)
+model.reset_link_geometry(link_ids=link_ids)
 
 # verplaats basin 1375 naar het hydroobject
 
@@ -123,11 +123,11 @@ for fid, node_id in [(1, 1375), (2, 1624)]:
 remove_node_ids = [1562, 1568, 1801, 1804, 1810, 1900, 2114, 2118, 2119, 32]
 
 # remove by link so we also remove all resistance nodes in between
-edge_df = model.link.df[
+link_df = model.link.df[
     model.link.df.from_node_id.isin(remove_node_ids) | model.link.df.to_node_id.isin(remove_node_ids)
 ][["from_node_id", "to_node_id"]]
 
-for row in edge_df.itertuples():
+for row in link_df.itertuples():
     model.remove_link(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
 
 # add level_boundaries at twentekanaal for later coupling
@@ -136,7 +136,7 @@ basin_ids = hws_model.node_table().df[hws_model.node_table().df.name.str.contain
 twentekanaal_poly = hws_model.basin.area.df[hws_model.basin.area.df.node_id.isin(basin_ids)].union_all()
 
 connect_node_ids = [
-    i for i in set(edge_df[["from_node_id", "to_node_id"]].to_numpy().flatten()) if i in model._used_node_ids
+    i for i in set(link_df[["from_node_id", "to_node_id"]].to_numpy().flatten()) if i in model._used_node_ids
 ]
 
 for node_id in connect_node_ids:
@@ -168,21 +168,21 @@ for node_id in remove_node_ids:
     model.remove_node(node_id, remove_links=True)
 
 # remove by link so we also remove all resistance nodes in between
-edge_df = model.link.df[
+link_df = model.link.df[
     model.link.df.from_node_id.isin(remove_node_ids) | model.link.df.to_node_id.isin(remove_node_ids)
 ][["from_node_id", "to_node_id"]]
 
-for row in edge_df.itertuples():
+for row in link_df.itertuples():
     model.remove_link(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
 
 # basin met node_id 1436 te verplaatsen naar locatie basin node_id 2259
 basin_id = 1436
 model.basin.node.df.loc[basin_id, "geometry"] = model.basin[2259].geometry
-edge_ids = model.link.df[
+link_ids = model.link.df[
     (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
 ].index.to_list()
 
-model.reset_link_geometry(edge_ids=edge_ids)
+model.reset_link_geometry(link_ids=link_ids)
 
 # basin met node_id 2259 opheffen (klein niets-zeggend bakje)
 model.remove_node(2259, remove_links=True)
@@ -195,17 +195,17 @@ model.link.add(model.basin[basin_id], model.pump[635])
 basin_id = 2255
 model.basin.node.df.loc[basin_id, ["geometry"]] = hydroobject_gdf.at[6444, "geometry"].interpolate(0.5, normalized=True)
 
-edge_ids = model.link.df[
+link_ids = model.link.df[
     (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
 ].index.to_list()
 
-model.reset_link_geometry(edge_ids=edge_ids)
+model.reset_link_geometry(link_ids=link_ids)
 
 model.split_basin(split_line_gdf.at[9, "geometry"])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385409772
 
-incorrect_links_df = network_validator.edge_incorrect_connectivity()
+incorrect_links_df = network_validator.link_incorrect_connectivity()
 false_basin_ids = [1356, 1357, 1358, 1359, 1360, 1361, 1362, 1363, 1364, 1365, 1366, 1367, 1368, 1369, 1370]
 
 for false_basin_id in false_basin_ids:
@@ -877,11 +877,11 @@ model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(mode
 # corrigeren knoop-topologie
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])

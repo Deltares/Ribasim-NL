@@ -129,8 +129,8 @@ for boundary_node_id in boundary_node_ids:
 
         # get from network node
         link_idx = iter(network.links.distance(from_node.geometry).sort_values().index)
-        edge_geometry = None
-        while edge_geometry is None:
+        link_geometry = None
+        while link_geometry is None:
             idx = next(link_idx)
             try:
                 link_geom = network.links.at[idx, "geometry"]
@@ -141,7 +141,7 @@ for boundary_node_id in boundary_node_ids:
                     from_network_node = network.add_node(projected_point, max_distance=9)
                 else:
                     from_network_node = network.nodes.distance(projected_point).idxmin()
-                edge_geometry = network.get_line(from_network_node, to_network_node)
+                link_geometry = network.get_line(from_network_node, to_network_node)
             except NetworkXNoPath:
                 continue
 
@@ -161,8 +161,8 @@ for boundary_node_id in boundary_node_ids:
 
         # get link geometry
         link_idx = iter(network.links.distance(to_node.geometry).sort_values().index)
-        edge_geometry = None
-        while edge_geometry is None:
+        link_geometry = None
+        while link_geometry is None:
             idx = next(link_idx)
             try:
                 link_geom = network.links.at[idx, "geometry"]
@@ -173,7 +173,7 @@ for boundary_node_id in boundary_node_ids:
                     to_network_node = network.add_node(projected_point, max_distance=9)
                 else:
                     to_network_node = network.nodes.distance(projected_point).idxmin()
-                edge_geometry = network.get_line(from_network_node, to_network_node)
+                link_geometry = network.get_line(from_network_node, to_network_node)
             except NetworkXNoPath:
                 continue
 
@@ -185,10 +185,10 @@ for boundary_node_id in boundary_node_ids:
     coupled_model.discrete_control.variable.df.loc[mask, ["listen_node_id"]] = listen_node_id
 
     # construct link-geometry
-    if edge_geometry.boundary.geoms[0].distance(from_node.geometry) > 0.001:
-        edge_geometry = LineString(tuple(from_node.geometry.coords) + tuple(edge_geometry.coords))
-    if edge_geometry.boundary.geoms[1].distance(to_node.geometry) > 0.001:
-        edge_geometry = LineString(tuple(edge_geometry.coords) + tuple(to_node.geometry.coords))
+    if link_geometry.boundary.geoms[0].distance(from_node.geometry) > 0.001:
+        link_geometry = LineString(tuple(from_node.geometry.coords) + tuple(link_geometry.coords))
+    if link_geometry.boundary.geoms[1].distance(to_node.geometry) > 0.001:
+        link_geometry = LineString(tuple(link_geometry.coords) + tuple(to_node.geometry.coords))
 
     # add link
     link_id = coupled_model.link.df.index.max() + 1
@@ -196,7 +196,7 @@ for boundary_node_id in boundary_node_ids:
         link_id=link_id,
         from_node=from_node,
         to_node=to_node,
-        geometry=edge_geometry,
+        geometry=link_geometry,
         meta_from_authority="AmstelGooiEnVecht",
         meta_to_authority="Rijkswaterstaat",
     )

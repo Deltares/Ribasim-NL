@@ -104,7 +104,7 @@ class RibasimLumpingNetwork(BaseModel):
     basins_a_df: pd.DataFrame = None
     basins_v_df: pd.DataFrame = None
     basins_nodes_h_relation: gpd.GeoDataFrame = None
-    edge_q_df: pd.DataFrame = None
+    link_q_df: pd.DataFrame = None
     weir_q_df: pd.DataFrame = None
     uniweir_q_df: pd.DataFrame = None
     orifice_q_df: pd.DataFrame = None
@@ -480,8 +480,8 @@ class RibasimLumpingNetwork(BaseModel):
         links: bool = False,
         structures_ids_to_include: list[str] = [],
         structures_ids_to_exclude: list[str] = [],
-        edge_ids_to_include: list[int] = [],
-        edge_ids_to_exclude: list[int] = [],
+        link_ids_to_include: list[int] = [],
+        link_ids_to_exclude: list[int] = [],
     ) -> gpd.GeoDataFrame:
         """Set split nodes geodataframe in network object. Overwrites previously defined split nodes"""
         self.split_nodes = add_split_nodes_based_on_selection(
@@ -495,8 +495,8 @@ class RibasimLumpingNetwork(BaseModel):
             links=links,
             structures_ids_to_include=structures_ids_to_include,
             structures_ids_to_exclude=structures_ids_to_exclude,
-            edge_ids_to_include=edge_ids_to_include,
-            edge_ids_to_exclude=edge_ids_to_exclude,
+            link_ids_to_include=link_ids_to_include,
+            link_ids_to_exclude=link_ids_to_exclude,
             list_gdfs=[
                 self.stations_gdf,
                 self.pumps_gdf,
@@ -595,7 +595,7 @@ class RibasimLumpingNetwork(BaseModel):
         non_open_water_no_id = split_nodes[~split_nodes["split_node_id"].isnull()]
         open_water_no_id = split_nodes[split_nodes["split_node_id"].isnull()]
         open_water_no_id = gpd.sjoin(
-            open_water_no_id, self.links_gdf[["link_id", "edge_no", "from_node", "to_node", "geometry"]], how="left"
+            open_water_no_id, self.links_gdf[["link_id", "link_no", "from_node", "to_node", "geometry"]], how="left"
         )
         open_water_no_id = open_water_no_id.loc[~open_water_no_id.index.duplicated(keep="first")]
         open_water_no_id["split_node_id"] = open_water_no_id["link_id"]
@@ -630,7 +630,7 @@ class RibasimLumpingNetwork(BaseModel):
 
         # remove non-snapped split nodes and boundaries
         split_nodes_not_on_network = self.split_nodes.loc[
-            (self.split_nodes["edge_no"] == -1) & (self.split_nodes["node_no"] == -1)
+            (self.split_nodes["link_no"] == -1) & (self.split_nodes["node_no"] == -1)
         ]
         print(f" - Remove non-snapped split nodes from dataset ({len(split_nodes_not_on_network)})")
         self.split_nodes = self.split_nodes.loc[
@@ -796,7 +796,7 @@ class RibasimLumpingNetwork(BaseModel):
             node_targetlevel,
             orig_bedlevel,
             basins_nodes_h_relation,
-            edge_q_df,
+            link_q_df,
             weir_q_df,
             uniweir_q_df,
             orifice_q_df,
@@ -834,7 +834,7 @@ class RibasimLumpingNetwork(BaseModel):
         self.basins_a_df = basin_a
         self.basins_v_df = basin_v
         self.basins_nodes_h_relation = basins_nodes_h_relation
-        self.edge_q_df = edge_q_df
+        self.link_q_df = link_q_df
         self.weir_q_df = weir_q_df
         self.uniweir_q_df = uniweir_q_df
         self.orifice_q_df = orifice_q_df
@@ -884,7 +884,7 @@ class RibasimLumpingNetwork(BaseModel):
             laterals_drainage_per_ha=self.laterals_drainage_per_ha,
             basin_h_initial=basin_h_initial,
             saveat=saveat,
-            edge_q_df=edge_q_df,
+            link_q_df=link_q_df,
             weir_q_df=weir_q_df,
             uniweir_q_df=uniweir_q_df,
             orifice_q_df=orifice_q_df,

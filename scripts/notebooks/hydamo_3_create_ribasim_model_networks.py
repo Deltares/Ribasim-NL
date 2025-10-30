@@ -108,7 +108,7 @@ def generate_ribasim_network(waterschap_path, split_nodes_type_conversion, split
         how="left",
         on="to_node_id",
     )
-    links["edge_type"] = "flow"
+    links["link_type"] = "flow"
 
     # Export nodes and links
     nodes.drop_duplicates(keep="first").to_file(ribasim_model_path, layer="Node")
