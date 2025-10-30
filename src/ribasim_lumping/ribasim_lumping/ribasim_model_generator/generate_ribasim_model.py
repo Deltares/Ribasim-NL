@@ -283,7 +283,7 @@ def generate_ribasim_model(
     endtime = tables["basin_time"]["time"].iloc[-1].strftime("%Y-%m-%d %H:%M")
 
     print("")
-    network = ribasim.Network(node=ribasim_nodes, edge=ribasim_edges, filepath=simulation_filepath)
+    network = ribasim.Network(node=ribasim_nodes, link=ribasim_edges, filepath=simulation_filepath)
     ribasim_model = ribasim.Model(
         # modelname=simulation_code,
         network=network,

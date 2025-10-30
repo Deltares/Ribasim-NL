@@ -86,7 +86,7 @@ def add_split_nodes_based_on_selection(
     # exclude split_nodes with id
     split_nodes = split_nodes[~split_nodes.split_node_id.isin(structures_ids_to_exclude)]
 
-    # include/exclude edge centers
+    # include/exclude link centers
     if edges or len(edge_ids_to_include) >= 1:
         additional_split_nodes = None
         if edges:

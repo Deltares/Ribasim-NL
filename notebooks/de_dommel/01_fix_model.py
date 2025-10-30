@@ -68,7 +68,7 @@ model.basin.add(node, basin_data + [area])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291111647
 for row in network_validator.edge_incorrect_connectivity().itertuples():
-    # drop edge from model
+    # drop link from model
     model.remove_edge(row.from_node_id, row.to_node_id, remove_disconnected_nodes=False)
 
     # add basin_node

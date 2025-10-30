@@ -34,11 +34,11 @@ def create_graph_based_on_nodes_edges(
         for i, node in nodes.iterrows():
             graph.add_node(node.node_no, pos=(node.geometry.x, node.geometry.y))
     if edges is not None:
-        for i, edge in edges.iterrows():
+        for i, link in edges.iterrows():
             if add_edge_length_as_weight:
-                graph.add_edge(edge.from_node, edge.to_node, weight=edge.geometry.length)
+                graph.add_edge(link.from_node, link.to_node, weight=link.geometry.length)
             else:
-                graph.add_edge(edge.from_node, edge.to_node)
+                graph.add_edge(link.from_node, link.to_node)
     if print_logmessage:
         print(f" - create network graph from nodes ({len(nodes)}x) and edges ({len(edges)}x)")
     return graph
@@ -60,10 +60,10 @@ def split_graph_based_on_split_nodes(
         [-1] * len(split_nodes), index=split_nodes.index, dtype=object
     )  # force dtype object to be able to insert tuples
 
-    # split on edge: delete edge, create 2 nodes, create 2 edges
-    # if all edge no in split nodes gdf are -1, than no splitting of edges are done
-    # TODO: although edge stuff below works, it is actually better to split network at split nodes at earlier stage
-    #       this will result in all edge no being -1 and only values for node no. so maybe check on that all edge_no
+    # split on link: delete link, create 2 nodes, create 2 edges
+    # if all link no in split nodes gdf are -1, than no splitting of edges are done
+    # TODO: although link stuff below works, it is actually better to split network at split nodes at earlier stage
+    #       this will result in all link no being -1 and only values for node no. so maybe check on that all edge_no
     #       values need to be -1 should be better.
     if "edge_no" not in split_nodes.columns:
         split_nodes["edge_no"] = -1
@@ -267,7 +267,7 @@ def create_basin_areas_based_on_drainage_areas(
         ]
         # spatial join edges to areas that intersect
         areas = areas.sjoin(edges_sel[["basin", "geometry"]])
-        # we want to select the edge which is the longest within an area to ultimately select
+        # we want to select the link which is the longest within an area to ultimately select
         # the right basin code
         edge_lengths = [
             gpd.GeoDataFrame(edges_sel.loc[ir].to_frame().T, geometry="geometry").clip(a).geometry.length.values[0]
@@ -276,8 +276,8 @@ def create_basin_areas_based_on_drainage_areas(
         areas["edge_length"] = edge_lengths
         areas = areas.drop(columns=["index_right"]).reset_index(drop=True)
         areas = areas.groupby(by=["area", "basin"], as_index=False).agg({"edge_length": "sum"})
-        # this sorts first such that max edge length is first item and in drop_duplicates that first item will be kept
-        # effectively method to get areas with basin code based on max edge length within area
+        # this sorts first such that max link length is first item and in drop_duplicates that first item will be kept
+        # effectively method to get areas with basin code based on max link length within area
         areas = areas.sort_values(by=["area", "edge_length"], ascending=[True, False]).drop_duplicates(
             subset=["area"], keep="first"
         )
@@ -427,14 +427,14 @@ def create_basin_connections(
     conn = conn[(conn["split_type"] != "no_split") & (conn["split_type"] != "harde_knip")]
 
     # use different approach for:
-    # (1) splitnodes that are structures and on an edge and
+    # (1) splitnodes that are structures and on an link and
     # (2) splitnodes that are original d-hydro nodes
 
-    # (1) splitnodes that are located on an edge
+    # (1) splitnodes that are located on an link
     conn_struct = conn.loc[conn["edge_no"] != -1].drop(["node_no", "from_node", "to_node"], axis=1, errors="ignore")
-    # merge with edge to find us and ds nodes
+    # merge with link to find us and ds nodes
     conn_struct = conn_struct.merge(edges[["from_node", "to_node", "edge_no"]], left_on="edge_no", right_on="edge_no")
-    # TODO: check for each edge the maximum absolute flow direction, in case of negative, reverse from_node/to_node
+    # TODO: check for each link the maximum absolute flow direction, in case of negative, reverse from_node/to_node
     # merge with node to find us and ds basin
     conn_struct_us = conn_struct.merge(
         nodes[["node_no", "basin"]],
@@ -463,7 +463,7 @@ def create_basin_connections(
         right_on="to_node",
     ).drop(columns=["from_node", "to_node", "node_no", "edge_no"])
 
-    # TODO: check for each edge the maximum absolute flow direction, in case of negative, cut and past in other dataframe.
+    # TODO: check for each link the maximum absolute flow direction, in case of negative, cut and past in other dataframe.
     # Combine (1) en (2)
     conn_ds = pd.concat([conn_nodes_ds, conn_struct_ds])
     conn_us = pd.concat([conn_nodes_us, conn_struct_us])

@@ -131,7 +131,7 @@ model.update_node(
 for node_id in [2078, 733]:
     model.remove_node(node_id, remove_edges=True)
 
-# toevoegen edge
+# toevoegen link
 model.reverse_edge(link_id=876)
 model.link.add(model.pump[565], model.level_boundary[56])
 

@@ -73,7 +73,7 @@ for row in basin_nodes_df.itertuples():
     )
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419649171
-# update edge administratie
+# update link administratie
 
 model.link.df.loc[516, "from_node_id"] = 666
 model.link.df.loc[520, "from_node_id"] = 667

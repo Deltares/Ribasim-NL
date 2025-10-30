@@ -224,7 +224,7 @@ def default_model(
         logger.warning("edge_df contains duplicated node_ids that get dropped")
         edge_df.drop_duplicates(["from_node_id", "from_node_type", "to_node_id", "to_node_type"], inplace=True)
 
-    # convert to edge-table
+    # convert to link-table
     model.link.df = edge_df
 
     # define ribasim basin-table

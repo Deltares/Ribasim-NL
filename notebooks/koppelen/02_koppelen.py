@@ -159,7 +159,7 @@ for boundary_node_id in boundary_node_ids:
         to_node_type = coupled_model.node_table().df.at[to_node_id, "node_type"]
         to_node = getattr(coupled_model, pascal_to_snake_case(to_node_type))[to_node_id]
 
-        # get edge geometry
+        # get link geometry
         link_idx = iter(network.links.distance(to_node.geometry).sort_values().index)
         edge_geometry = None
         while edge_geometry is None:
@@ -184,13 +184,13 @@ for boundary_node_id in boundary_node_ids:
     mask = coupled_model.discrete_control.variable.df.listen_node_id == boundary_node_id
     coupled_model.discrete_control.variable.df.loc[mask, ["listen_node_id"]] = listen_node_id
 
-    # construct edge-geometry
+    # construct link-geometry
     if edge_geometry.boundary.geoms[0].distance(from_node.geometry) > 0.001:
         edge_geometry = LineString(tuple(from_node.geometry.coords) + tuple(edge_geometry.coords))
     if edge_geometry.boundary.geoms[1].distance(to_node.geometry) > 0.001:
         edge_geometry = LineString(tuple(edge_geometry.coords) + tuple(to_node.geometry.coords))
 
-    # add edge
+    # add link
     link_id = coupled_model.link.df.index.max() + 1
     coupled_model.link.add(
         link_id=link_id,

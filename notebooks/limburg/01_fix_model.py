@@ -65,7 +65,7 @@ outlet_data = outlet.Static(flow_rate=[100])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426118811
 
-# Verwijderen edge met 0m lengte
+# Verwijderen link met 0m lengte
 model.remove_node(2434, remove_edges=True)
 model.remove_node(1308, remove_edges=True)
 model.merge_basins(basin_id=2396, to_basin_id=1669, are_connected=False)
@@ -178,7 +178,7 @@ model.link.add(outlet_node, model.level_boundary[115])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426706167
 
-# Correctie edge-richting bij Ijsselsteinseweg
+# Correctie link-richting bij Ijsselsteinseweg
 
 model.reverse_edge(link_id=2332)
 

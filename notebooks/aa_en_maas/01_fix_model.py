@@ -77,7 +77,7 @@ model.link.df.drop_duplicates(inplace=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421959240
 
-# Verwijderen edge met 0m lengte
+# Verwijderen link met 0m lengte
 model.remove_node(34, remove_edges=True)
 model.update_node(1568, "LevelBoundary", data=[level_data], node_properties={"name": ""})
 

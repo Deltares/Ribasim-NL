@@ -325,8 +325,8 @@ def replace_nodes_perpendicular_on_edges(nodes, edges, distance=5, crs="EPSG:289
     for idx, row in merged_dataset.iterrows():
         try:
             node = row["point_geometry"]
-            edge = row["line_geometry"]
-            left = edge.parallel_offset(distance, "left")
+            link = row["line_geometry"]
+            left = link.parallel_offset(distance, "left")
             replaced_node = snap(node, left, distance * 2)
             replaced_nodes.append(replaced_node)
         except AttributeError:
@@ -365,7 +365,7 @@ def get_outlet_nodes(nodes, edges, crs="EPSG:28992"):
 
 def create_graph_based_on_nodes_edges(
     node: gpd.GeoDataFrame,
-    edge: gpd.GeoDataFrame,
+    link: gpd.GeoDataFrame,
     add_edge_length_as_weight: bool = False,
 ) -> nx.DiGraph:
     """
@@ -377,13 +377,13 @@ def create_graph_based_on_nodes_edges(
     if node is not None:
         for i, n in node.iterrows():
             graph.add_node(n.node_id, node_type=n.node_type, pos=(n.geometry.x, n.geometry.y))
-    if edge is not None:
-        for i, e in edge.iterrows():
+    if link is not None:
+        for i, e in link.iterrows():
             if add_edge_length_as_weight:
                 graph.add_edge(e.from_node_id, e.to_node_id, weight=e.geometry.length)
             else:
                 graph.add_edge(e.from_node_id, e.to_node_id)
-    print(f" - create network graph from nodes ({len(node)}x) and edges ({len(edge)}x)")
+    print(f" - create network graph from nodes ({len(node)}x) and edges ({len(link)}x)")
     return graph
 
 

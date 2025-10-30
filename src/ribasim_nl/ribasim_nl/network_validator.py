@@ -76,7 +76,7 @@ class NetworkValidator:
         return self.node_df[mask]
 
     def node_invalid_connectivity(self, tolerance: float = 1.0):
-        """Check if node_from and node_to are correct on edge"""
+        """Check if node_from and node_to are correct on link"""
         node_df = self.node_df
         invalid_edges_df = self.edge_incorrect_connectivity()
         invalid_nodes = []
@@ -101,18 +101,18 @@ class NetworkValidator:
         return df
 
     def edge_duplicated(self):
-        """Check if the `from_node_id` and `to_node_id` in the edge-table is duplicated"""
+        """Check if the `from_node_id` and `to_node_id` in the link-table is duplicated"""
         return self.edge_df[self.edge_df.duplicated(subset=["from_node_id", "to_node_id"], keep=False)]
 
     def edge_missing_nodes(self):
-        """Check if the `from_node_id` and `to_node_id` in the edge-table are both as node-id in the node-table"""
+        """Check if the `from_node_id` and `to_node_id` in the link-table are both as node-id in the node-table"""
         mask = ~(
             self.edge_df.from_node_id.isin(self.node_df.node_id) & self.edge_df.to_node_id.isin(self.node_df.node_id)
         )
         return self.edge_df[mask]
 
     def edge_incorrect_from_node(self):
-        """Check if the `from_node_type` in edge-table in matches the `node_type` of the corresponding node in the node-table"""
+        """Check if the `from_node_type` in link-table in matches the `node_type` of the corresponding node in the node-table"""
         node_df = self.node_df
         mask = ~self.edge_df.apply(
             lambda row: node_df.at[row["from_node_id"], "node_type"] == row["from_node_type"]
@@ -123,7 +123,7 @@ class NetworkValidator:
         return self.edge_df[mask]
 
     def edge_incorrect_to_node(self):
-        """Check if the `to_node_type` in edge-table in matches the `node_type` of the corresponding node in the node-table"""
+        """Check if the `to_node_type` in link-table in matches the `node_type` of the corresponding node in the node-table"""
         node_df = self.node_df
         mask = ~self.edge_df.apply(
             lambda row: node_df.at[row["to_node_id"], "node_type"] == row["to_node_type"]
@@ -134,7 +134,7 @@ class NetworkValidator:
         return self.edge_df[mask]
 
     def edge_incorrect_connectivity(self):
-        """Check if the geometries of the `from_node_id` and `to_node_id` are on the start and end vertices of the edge-geometry within tolerance (default=1m)"""
+        """Check if the geometries of the `from_node_id` and `to_node_id` are on the start and end vertices of the link-geometry within tolerance (default=1m)"""
         node_df = self.node_df
         mask = self.edge_df.apply(
             lambda row: check_node_connectivity(row=row, node_df=node_df, tolerance=self.tolerance), axis=1

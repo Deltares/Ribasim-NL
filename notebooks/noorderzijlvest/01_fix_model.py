@@ -226,14 +226,14 @@ for node_id in model.basin.node.df.index:
         if len(all_paths) != 1:
             all_paths = [shortest_path(network.graph_undirected, source=network_node, target=network_basin_node)]
         else:
-            edge = network.path_to_line(all_paths[0])
-            if edge.length > 0:
-                data += [edge]
+            link = network.path_to_line(all_paths[0])
+            if link.length > 0:
+                data += [link]
 
                 mask = (model.link.df["from_node_id"] == upstream_node_ids[idx]) & (
                     model.link.df["to_node_id"] == node_id
                 )
-                model.link.df.loc[mask, ["geometry"]] = edge
+                model.link.df.loc[mask, ["geometry"]] = link
 
     # draw edges to downstream nodes
     for idx, network_node in enumerate(downstream_nodes):
@@ -244,14 +244,14 @@ for node_id in model.basin.node.df.index:
         if len(all_paths) != 1:
             all_paths = [shortest_path(network.graph_undirected, target=network_node, source=network_basin_node)]
         else:
-            edge = network.path_to_line(all_paths[0])
-            if edge.length > 0:
-                data += [edge]
+            link = network.path_to_line(all_paths[0])
+            if link.length > 0:
+                data += [link]
 
                 mask = (model.link.df["to_node_id"] == downstream_node_ids[idx]) & (
                     model.link.df["from_node_id"] == node_id
                 )
-                model.link.df.loc[mask, ["geometry"]] = edge
+                model.link.df.loc[mask, ["geometry"]] = link
 
     mask = he_df.node_id.isna() & (he_outlet_df.distance(MultiLineString(data)) < 0.75)
     he_df.loc[mask, ["node_id"]] = node_id

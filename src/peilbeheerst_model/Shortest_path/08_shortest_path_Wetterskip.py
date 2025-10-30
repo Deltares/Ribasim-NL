@@ -375,7 +375,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                 # Find the closest node in the largest component
                 closest_node_id = largest_component_gdf.iloc[distances.idxmin()].node_id
 
-                # Add edge between not_connected node and closest node in the largest component
+                # Add link between not_connected node and closest node in the largest component
                 # Note: You might want to calculate the LineString geometry connecting these nodes based on your specific requirements
                 graph.add_edge(
                     nc_node,

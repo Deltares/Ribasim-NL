@@ -202,7 +202,7 @@ class Network:
                 else:
                     nodes_select = nodes_select[nodes_select.distance(geometry) <= self.tolerance]
 
-                # Only one or zero node. Skip edge. The geometry.length < self.tolerance, so start/end nodes have been dissolved
+                # Only one or zero node. Skip link. The geometry.length < self.tolerance, so start/end nodes have been dissolved
                 if len(nodes_select) <= 1:
                     continue
 
@@ -214,7 +214,7 @@ class Network:
                 link_def["node_from"] = nodes_select.index[0]
                 link_def["point_from"] = nodes_select.loc[link_def["node_from"]].geometry
 
-                # More than two nodes. Line should be split into parts. We create one extra edge for every extra node
+                # More than two nodes. Line should be split into parts. We create one extra link for every extra node
                 if len(nodes_select) > 2:
                     for node in nodes_select[1:-1].itertuples():
                         link_def["node_to"] = node.Index
@@ -233,7 +233,7 @@ class Network:
                         link_def["node_from"] = link_def["node_to"]
                         link_def["point_from"] = link_def["point_to"]
 
-                # More than one node. We finish the (last) edge
+                # More than one node. We finish the (last) link
                 link_def["node_to"] = nodes_select.index[-1]
                 link_def["point_to"] = nodes_select.loc[link_def["node_to"]].geometry
                 link_def["geometry"] = geometry
@@ -254,11 +254,11 @@ class Network:
         id=None,
         name=None,
     ):
-        """Add a link (edge) to the network"""
+        """Add a link (link) to the network"""
         if not ((point_from is None) | (point_to is None)):
             geometry = LineString([(point_from.x, point_from.y)] + geometry.coords[1:-1] + [(point_to.x, point_to.y)])
 
-        # add edge to graph
+        # add link to graph
         self._graph.add_edge(
             node_from,
             node_to,
@@ -409,7 +409,7 @@ class Network:
         max_distance : float
             Max distance to find closes node
         align_distance : float
-            Distance over edge, from node, where vertices will be removed to align adjacent edges with Point
+            Distance over link, from node, where vertices will be removed to align adjacent edges with Point
         """
         # take links and nodes as gdf
         nodes_gdf = self.nodes
@@ -427,40 +427,40 @@ class Network:
 
             # update start-node of edges
             edges_from = links_gdf[links_gdf.node_from == node_id]
-            for edge in edges_from.itertuples():
-                geometry = edge.geometry
+            for link in edges_from.itertuples():
+                geometry = link.geometry
 
                 # take first node from point
                 coords = list(point.coords)
 
                 # take all in between boundaries only if > REMOVE_VERT_DIST
-                for coord in list(self.graph.edges[(edge.node_from, edge.node_to)]["geometry"].coords)[1:-1]:
+                for coord in list(self.graph.edges[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
                     if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from original geometry
                 coords += [geometry.coords[-1]]
 
-                self.graph.edges[(edge.node_from, edge.node_to)]["geometry"] = LineString(coords)
+                self.graph.edges[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
 
             # update end-node of edges
             edges_from = links_gdf[links_gdf.node_to == node_id]
-            for edge in edges_from.itertuples():
-                geometry = edge.geometry
+            for link in edges_from.itertuples():
+                geometry = link.geometry
 
                 # take first from original geometry
                 coords = [geometry.coords[0]]
 
                 # take all in between boundaries only if > REMOVE_VERT_DIST
                 geometry = geometry.reverse()
-                for coord in list(self.graph.edges[(edge.node_from, edge.node_to)]["geometry"].coords)[1:-1]:
+                for coord in list(self.graph.edges[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
                     if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from point
                 coords += [(point.x, point.y)]
 
-                self.graph.edges[(edge.node_from, edge.node_to)]["geometry"] = LineString(coords)
+                self.graph.edges[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
             return node_id
         else:
             if self.verbose:
@@ -476,7 +476,7 @@ class Network:
         # get links
         links_gdf = self.links
 
-        # get closest edge and distances
+        # get closest link and distances
         distances = links_gdf.distance(point).sort_values()
         link_id = distances.index[0]
         edge_distance = distances.iloc[0]
@@ -494,7 +494,7 @@ class Network:
             split_result = split_line(edge_geometry, node_geometry)
             if isinstance(split_result, LineString):
                 if self.verbose:
-                    logger.warning(f"Splitting edge: {link_id} resulted in a single LineString)")
+                    logger.warning(f"Splitting link: {link_id} resulted in a single LineString)")
                 return None
             us_geometry, ds_geometry = split_result.geoms
             self.add_link(node_from, node_id, us_geometry)
@@ -504,7 +504,7 @@ class Network:
         else:
             if self.verbose:
                 logger.warning(
-                    f"No Node added. Closest edge: {link_id}, distance > max_distance ({edge_distance} > {max_distance})"
+                    f"No Node added. Closest link: {link_id}, distance > max_distance ({edge_distance} > {max_distance})"
                 )
             return None
 

@@ -91,7 +91,7 @@ for row in basin_nodes_df.itertuples():
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393672367
 
-# Omdraaien edge-richting rondom outlets (inlaten/uitlaten)
+# Omdraaien link-richting rondom outlets (inlaten/uitlaten)
 # for link_id in [2282, ]
 
 # https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393731749

@@ -22,7 +22,7 @@ class LinkGeometryError(Exception):
 def link_geometry_from_hydroobject(
     model: Model, network: Network, from_node_id, to_node_id, max_straight_line_ratio: float = 5
 ) -> LineString:
-    """Get an edge-geometry between two model nodes
+    """Get an link-geometry between two model nodes
 
     Args:
         model (Model): ribasim_nl model
@@ -76,7 +76,7 @@ def link_geometry_from_hydroobject(
 
 
 def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
-    # fix edge geometries
+    # fix link geometries
     for row in model.link.df.itertuples():
         try:
             geometry = link_geometry_from_hydroobject(

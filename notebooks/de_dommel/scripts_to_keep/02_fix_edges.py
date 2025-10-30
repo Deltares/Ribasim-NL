@@ -46,13 +46,13 @@ for row in model.link.df.itertuples():
             # get line geometry
             geometry = network.get_line(node_from, node_to)
 
-            # replace edge geometry
+            # replace link geometry
             model.link.df.loc[row.Index, ["geometry"]] = geometry
         else:
-            print(f"edge not updated for {row.Index} as node_from and node_to cannot be found")
+            print(f"link not updated for {row.Index} as node_from and node_to cannot be found")
             data += [row]
     except:  # noqa: E722
-        print("edge not updated due to Exception")
+        print("link not updated due to Exception")
         data += [row]
         continue
 

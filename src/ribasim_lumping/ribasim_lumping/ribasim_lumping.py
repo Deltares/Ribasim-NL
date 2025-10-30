@@ -744,7 +744,7 @@ class RibasimLumpingNetwork(BaseModel):
         self.basin_connections_gdf = results["basin_connections"]
         self.boundary_connections_gdf = results["boundary_connections"]
 
-        # assign areas to basin areas which have no edge within it so it is not assigned to any basin area
+        # assign areas to basin areas which have no link within it so it is not assigned to any basin area
         # also update the basin and basin area code in edges and nodes
         if assign_unassigned_areas_to_basins:
             results = assign_unassigned_areas_to_basin_areas(

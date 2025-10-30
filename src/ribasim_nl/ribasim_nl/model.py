@@ -164,7 +164,7 @@ class Model(Model):
 
     @property
     def graph(self):
-        # create a DiGraph from edge-table
+        # create a DiGraph from link-table
         if self._graph is None:
             graph = nx.from_pandas_edgelist(
                 df=self.link.df[["from_node_id", "to_node_id"]],
@@ -489,10 +489,10 @@ class Model(Model):
             self.link.add(table[node_id], self.get_node(_to_node_id))
 
     def reverse_edge(self, from_node_id: int | None = None, to_node_id: int | None = None, link_id: int | None = None):
-        """Reverse an edge"""
+        """Reverse an link"""
         if self.link.df is not None:
             if link_id is None:
-                # get original edge-data
+                # get original link-data
                 df = self.link.df.copy()
                 df.loc[:, ["link_id"]] = df.index
                 df = df.set_index(["from_node_id", "to_node_id"], drop=False)
@@ -509,14 +509,14 @@ class Model(Model):
             self.link.df.loc[link_id, ["geometry"]] = edge_data["geometry"].reverse()
 
     def remove_edge(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
-        """Remove an edge and disconnected nodes"""
+        """Remove an link and disconnected nodes"""
         if self.link.df is not None:
-            # get original edge-data
+            # get original link-data
             indices = self.link.df[
                 (self.link.df.from_node_id == from_node_id) & (self.link.df.to_node_id == to_node_id)
             ].index
 
-            # remove edge from edge-table
+            # remove link from link-table
             self.link.df = self.link.df[~self.link.df.index.isin(indices)]
 
             # remove disconnected nodes
@@ -965,7 +965,7 @@ class Model(Model):
             )
 
         if are_connected and (to_node_type != "FlowBoundary"):
-            self._graph = None  # set self._graph to None, so it will regenerate on currend edge-table
+            self._graph = None  # set self._graph to None, so it will regenerate on currend link-table
             paths = [i for i in nx.all_shortest_paths(nx.Graph(self.graph), node_id, to_node_id) if len(i) == 3]
 
             if len(paths) == 0:
@@ -975,20 +975,20 @@ class Model(Model):
             for path in paths:
                 self.remove_node(path[1], remove_edges=True)
 
-        # get a complete edge-list to modify
+        # get a complete link-list to modify
         edge_ids = self.link.df[self.link.df.from_node_id == node_id].index.to_list()
         edge_ids += self.link.df[self.link.df.to_node_id == node_id].index.to_list()
 
-        # correct edge from and to attributes
+        # correct link from and to attributes
         self.link.df.loc[self.link.df.from_node_id == node_id, "from_node_id"] = to_node_id
         self.link.df.loc[self.link.df.to_node_id == node_id, "to_node_id"] = to_node_id
 
-        # remove self-connecting edge in case we merge to flow-boundary
+        # remove self-connecting link in case we merge to flow-boundary
         if to_node_type == "FlowBoundary":
             mask = (self.link.df.from_node_id == to_node_id) & (self.link.df.to_node_id == to_node_id)
             self.link.df = self.link.df[~mask]
 
-        # reset edge geometries
+        # reset link geometries
         self.reset_edge_geometry(edge_ids=edge_ids)
 
         # merge area if basin has any assigned to it
@@ -1034,7 +1034,7 @@ class Model(Model):
         outlet_a = self.outlet.node.df.loc[outlet_a_id]
         outlet_b = self.outlet.node.df.loc[outlet_b_id]
 
-        # correct edge from and to attributes
+        # correct link from and to attributes
         edge_ids = self.link.df[self.link.df.to_node_id == outlet_a_id].index.to_list()
         edge_ids += self.link.df[self.link.df.from_node_id == outlet_b_id].index.to_list()
 
@@ -1069,10 +1069,10 @@ class Model(Model):
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
         df_node = self.node_table().df
 
-        """Check if the neighbor amount of the two nodes connected by the given edge meet the minimum requirements."""
+        """Check if the neighbor amount of the two nodes connected by the given link meet the minimum requirements."""
         errors = []
 
-        # filter graph by edge type
+        # filter graph by link type
         df_graph = df_graph.loc[df_graph["link_type"] == link_type]
 
         # count occurrence of "from_node" which reflects the number of outneighbors
