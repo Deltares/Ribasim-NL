@@ -380,9 +380,9 @@ def create_graph_based_on_nodes_links(
     if link is not None:
         for i, e in link.iterrows():
             if add_link_length_as_weight:
-                graph.add_link(e.from_node_id, e.to_node_id, weight=e.geometry.length)
+                graph.add_edge(e.from_node_id, e.to_node_id, weight=e.geometry.length)
             else:
-                graph.add_link(e.from_node_id, e.to_node_id)
+                graph.add_edge(e.from_node_id, e.to_node_id)
     print(f" - create network graph from nodes ({len(node)}x) and links ({len(link)}x)")
     return graph
 

@@ -36,9 +36,9 @@ def create_graph_based_on_nodes_links(
     if links is not None:
         for i, link in links.iterrows():
             if add_link_length_as_weight:
-                graph.add_link(link.from_node, link.to_node, weight=link.geometry.length)
+                graph.add_edge(link.from_node, link.to_node, weight=link.geometry.length)
             else:
-                graph.add_link(link.from_node, link.to_node)
+                graph.add_edge(link.from_node, link.to_node)
     if print_logmessage:
         print(f" - create network graph from nodes ({len(nodes)}x) and links ({len(links)}x)")
     return graph
@@ -86,8 +86,8 @@ def split_graph_based_on_split_nodes(
     for i_link, new in split_nodes_links.iterrows():
         graph.add_node(new.new_node_no1, pos=new.new_node_pos)
         graph.add_node(new.new_node_no2, pos=new.new_node_pos)
-        graph.add_link(new.upstream_node_no, new.new_node_no1)
-        graph.add_link(new.new_node_no2, new.downstream_node_no)
+        graph.add_edge(new.upstream_node_no, new.new_node_no1)
+        graph.add_edge(new.new_node_no2, new.downstream_node_no)
     # update split nodes gdf with new node no
     new_graph_node_no = list(zip(split_nodes_links["new_node_no1"], split_nodes_links["new_node_no1"]))
     split_nodes.loc[split_nodes_links.index, "graph_node_no"] = pd.Series(
@@ -114,7 +114,7 @@ def split_graph_based_on_split_nodes(
             new_node_id = 999_000_000_000 + split_node_id * 1_000 + i_link
             graph.add_node(new_node_id, pos=split_node_pos)
             new_link_adj = [e if e != split_node_id else new_node_id for e in new_link]
-            graph.add_link(new_link_adj[0], new_link_adj[1])
+            graph.add_edge(new_link_adj[0], new_link_adj[1])
             new_graph_no.append(new_node_id)
         new_graph_node_no.append(tuple(new_graph_no))
     # update split nodes gdf with new node no

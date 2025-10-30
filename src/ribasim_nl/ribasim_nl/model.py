@@ -166,7 +166,7 @@ class Model(Model):
     def graph(self):
         # create a DiGraph from link-table
         if self._graph is None:
-            graph = nx.from_pandas_linklist(
+            graph = nx.from_pandas_edgelist(
                 df=self.link.df[["from_node_id", "to_node_id"]],
                 source="from_node_id",
                 target="to_node_id",
