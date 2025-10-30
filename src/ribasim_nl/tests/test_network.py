@@ -31,7 +31,7 @@ def test_network(tmp_path, link_columns):
 
     network = Network(lines_gdf)
     assert len(network.graph.nodes) == 4
-    assert len(network.graph.links) == 3
+    assert len(network.graph.edges) == 3
     assert all(i in link_columns for i in network.links.columns)
     output_file = tmp_path / "network.gpkg"
     network.to_file(output_file)
@@ -59,7 +59,7 @@ def test_gap_in_network(link_columns):
 
     # we'll find 4 nodes now, as the gap is repaired
     assert len(network.graph.nodes) == 4
-    assert len(network.graph.links) == 3
+    assert len(network.graph.edges) == 3
 
     assert all(i in link_columns for i in network.links.columns)
 
@@ -80,13 +80,13 @@ def test_link_within_tolerance():
 
     # not snapping within tolerance should produce all links and nodes
     network = Network(lines_gdf)
-    assert len(network.graph.links) == 5
+    assert len(network.graph.edges) == 5
     assert len(network.graph.nodes) == 6
 
     network.reset()
     # tolerance >1m should remove link
     network.tolerance = 1.1
-    assert len(network.graph.links) == 4
+    assert len(network.graph.edges) == 4
     assert len(network.graph.nodes) == 5
 
 
@@ -103,14 +103,14 @@ def test_split_intersecting_links():
 
     network = Network(lines_gdf)
 
-    assert len(network.graph.links) == 3
+    assert len(network.graph.edges) == 3
     assert len(network.graph.nodes) == 4
 
 
 def test_osm_lines(osm_lines_gpkg):
     network = Network.from_lines_gpkg(osm_lines_gpkg)
 
-    assert len(network.graph.links) == 42
+    assert len(network.graph.edges) == 42
     assert len(network.graph.nodes) == 35
 
 

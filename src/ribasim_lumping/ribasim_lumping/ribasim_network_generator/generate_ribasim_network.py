@@ -73,7 +73,7 @@ def split_graph_based_on_split_nodes(
     # assert len(split_nodes_links) == len(split_links)
     split_links = split_links[["from_node", "to_node"]].to_dict("tight")["data"]
 
-    split_links = [coor for coor in split_links if coor in graph.links]
+    split_links = [coor for coor in split_links if coor in graph.edges]
 
     split_nodes_links["new_node_no1"] = 998_000_000_000 + split_nodes_links.link_no * 1_000 + 1
     split_nodes_links["new_node_no2"] = 998_000_000_000 + split_nodes_links.link_no * 1_000 + 2
@@ -104,7 +104,7 @@ def split_graph_based_on_split_nodes(
             new_graph_node_no.append(-1)
             continue
         split_node_pos = graph.nodes[split_node_id]["pos"]
-        split_links = [e for e in list(graph.links) if split_node_id in e]
+        split_links = [e for e in list(graph.edges) if split_node_id in e]
 
         # remove old links and node and insert new ones
         graph.remove_links_from(split_links)

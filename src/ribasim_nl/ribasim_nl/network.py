@@ -145,7 +145,7 @@ class Network:
         # make sure we have a graph
         _ = self.graph
         return GeoDataFrame(
-            [{"node_from": i[0], "node_to": i[1], **i[2]} for i in self.graph.links.data()],
+            [{"node_from": i[0], "node_to": i[1], **i[2]} for i in self.graph.edges.data()],
             crs=self.lines_gdf.crs,
         )
 
@@ -434,14 +434,14 @@ class Network:
                 coords = list(point.coords)
 
                 # take all in between boundaries only if > REMOVE_VERT_DIST
-                for coord in list(self.graph.links[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
+                for coord in list(self.graph.edges[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
                     if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from original geometry
                 coords += [geometry.coords[-1]]
 
-                self.graph.links[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
+                self.graph.edges[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
 
             # update end-node of links
             links_from = links_gdf[links_gdf.node_to == node_id]
@@ -453,14 +453,14 @@ class Network:
 
                 # take all in between boundaries only if > REMOVE_VERT_DIST
                 geometry = geometry.reverse()
-                for coord in list(self.graph.links[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
+                for coord in list(self.graph.edges[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
                     if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from point
                 coords += [(point.x, point.y)]
 
-                self.graph.links[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
+                self.graph.edges[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
             return node_id
         else:
             if self.verbose:
@@ -659,8 +659,8 @@ class Network:
 
     def set_node_types(self):
         """Node types to seperate boundaries from connections"""
-        from_nodes = {i[0] for i in self.graph.links}
-        to_nodes = {i[1] for i in self.graph.links}
+        from_nodes = {i[0] for i in self.graph.edges}
+        to_nodes = {i[1] for i in self.graph.edges}
         us_boundaries = [i for i in from_nodes if i not in to_nodes]
         ds_boundaries = [i for i in to_nodes if i not in from_nodes]
         for node_id in self._graph.nodes:
