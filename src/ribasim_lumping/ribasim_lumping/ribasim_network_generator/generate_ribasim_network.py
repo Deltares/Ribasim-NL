@@ -107,7 +107,7 @@ def split_graph_based_on_split_nodes(
         split_links = [e for e in list(graph.edges) if split_node_id in e]
 
         # remove old links and node and insert new ones
-        graph.remove_links_from(split_links)
+        graph.remove_edges_from(split_links)
         graph.remove_node(split_node_id)
         new_graph_no = []
         for i_link, new_link in enumerate(split_links):
