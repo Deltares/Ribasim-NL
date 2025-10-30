@@ -51,7 +51,7 @@ for waterschap, waterschap_code in waterschappen.items():
     node_df = node_df.rename(columns={"type": "node_type"})
     node_df["meta_code"] = waterschap_code
 
-    # read edges
+    # read links
     edge_df = gpd.read_file(old_ribasim_model_gpkg, layer="Edge", engine="pyogrio", fid_as_index=True)
 
     # read basin areas

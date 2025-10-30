@@ -20,7 +20,7 @@ else:
     )
 
     network.to_file(network_gpkg)
-# %% edges follow HydroObjects
+# %% links follow HydroObjects
 model.reset_link_geometry()
 node_df = model.node_table().df
 data = []

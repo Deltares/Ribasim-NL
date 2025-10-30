@@ -65,7 +65,7 @@ outlet_data = outlet.Static(flow_rate=[100])
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393424844
-# Verwijderen duplicate edges
+# Verwijderen duplicate links
 
 model.link.df.drop_duplicates(inplace=True)
 
@@ -101,11 +101,11 @@ for row in basin_nodes_df.itertuples():
 # basin 2484 wordt LevelBoundary (IJssel)
 model.update_node(2484, "LevelBoundary", data=[level_data])
 
-# nodes 1536, 762, 761, 1486 + aangesloten edges gooien we weg
+# nodes 1536, 762, 761, 1486 + aangesloten links gooien we weg
 for node_id in [1536, 762, 761, 1486]:
     model.remove_node(node_id, remove_links=True)
 
-# edges 2841, 2842, 2843, 2846 gooien we weg
+# links 2841, 2842, 2843, 2846 gooien we weg
 model.remove_links([2841, 2842, 2843, 2846])
 
 # duiker 286309 voegen we toe
@@ -167,7 +167,7 @@ model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1717]
 # basin 1682 te veranderen in een LevelBoundary
 model.update_node(1682, "LevelBoundary", [level_data])
 
-# Alle edges die nu naar basin 1717 lopen naar LevelBoundary 1682 of opheffen
+# Alle links die nu naar basin 1717 lopen naar LevelBoundary 1682 of opheffen
 model.remove_node(27, remove_links=True)
 model.remove_node(1556, remove_links=True)
 model.remove_links([945, 2537, 2536])
@@ -182,7 +182,7 @@ model.link.add(boundary_node, model.outlet[1203])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399328441
 
-# Misc pump benedenstroomse edges
+# Misc pump benedenstroomse links
 for link_id in [2862, 3006, 3049]:
     model.reverse_link(link_id=link_id)
 

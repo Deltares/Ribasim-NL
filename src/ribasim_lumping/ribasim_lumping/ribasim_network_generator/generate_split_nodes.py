@@ -43,7 +43,7 @@ def add_split_nodes_based_on_selection(
     bridges: bool = False,
     culverts: bool = False,
     uniweirs: bool = False,
-    edges: bool = False,
+    links: bool = False,
     list_gdfs: list[gpd.GeoDataFrame] = [],
     structures_ids_to_include: list[str] = [],
     structures_ids_to_exclude: list[str] = [],
@@ -87,9 +87,9 @@ def add_split_nodes_based_on_selection(
     split_nodes = split_nodes[~split_nodes.split_node_id.isin(structures_ids_to_exclude)]
 
     # include/exclude link centers
-    if edges or len(edge_ids_to_include) >= 1:
+    if links or len(edge_ids_to_include) >= 1:
         additional_split_nodes = None
-        if edges:
+        if links:
             additional_split_nodes = network_links.copy()
             if len(edge_ids_to_exclude):
                 additional_split_nodes = additional_split_nodes[

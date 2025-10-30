@@ -221,7 +221,7 @@ model.redirect_link(link_id=2325, to_node_id=basin_node.node_id)
 
 model.link.add(model.tabulated_rating_curve[238], basin_node)
 
-# 2 edges die afwateren op Oude Helenavaart
+# 2 links die afwateren op Oude Helenavaart
 model.remove_links(edge_ids=[2322, 2324])
 
 
@@ -272,9 +272,9 @@ for row in selection_df.itertuples():
         are_connected = row.connected
     model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
 
-# %% reverse edges
+# %% reverse links
 
-# reverse edges
+# reverse links
 for link_id in reverse_link_gdf.link_id:
     model.reverse_link(link_id=link_id)
 

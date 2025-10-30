@@ -278,7 +278,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
         # Remove boundary node from model
         model.remove_node(boundary_node_id, remove_links=True)
 
-        # Add edges with geometry
+        # Add links with geometry
         for kwargs in link_table:
             geometry = create_link_geometry(
                 couple_authority, boundary_node_authority, kwargs, network, couple_with_basin_id

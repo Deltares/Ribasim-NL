@@ -57,7 +57,7 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 # HIER KOMEN ISSUES
 
 # %%
-# Verwijderen duplicate edges
+# Verwijderen duplicate links
 model.link.df.drop_duplicates(inplace=True)
 
 # %%

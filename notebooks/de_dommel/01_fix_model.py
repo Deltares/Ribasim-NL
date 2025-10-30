@@ -45,14 +45,14 @@ network_validator = NetworkValidator(model)
 # TODO file not in the cloud
 
 
-# %% verwijder duplicated edges
+# %% verwijder duplicated links
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2288780504
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291081244
 model.link.df = model.link.df.drop_duplicates(subset=["from_node_id", "to_node_id"])
 
 if not network_validator.edge_duplicated().empty:
-    raise Exception("nog steeds duplicated edges")
+    raise Exception("nog steeds duplicated links")
 
 # %% toevoegen bovenstroomse knopen
 
@@ -102,13 +102,13 @@ for row in network_validator.edge_incorrect_connectivity().itertuples():
         [outlet_data],
     )
 
-    # add edges
+    # add links
     model.link.add(model.basin[row.from_node_id], model.outlet[outlet_node_id])
     model.link.add(model.outlet[outlet_node_id], model.level_boundary[row.to_node_id])
 
 
 if not network_validator.edge_incorrect_connectivity().empty:
-    raise Exception("nog steeds edges zonder knopen")
+    raise Exception("nog steeds links zonder knopen")
 
 # %% verwijderen internal basins
 

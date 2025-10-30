@@ -20,7 +20,7 @@ verwerkt_dir.mkdir(exist_ok=True)
 
 modelfouten_gpkg = cloud.joinpath(authority, "verwerkt", "modelfouten.gpkg")
 
-# %% verwijderen duplicated edges
+# %% verwijderen duplicated links
 
 duplicated_links = len(model.link.df[model.link.df.duplicated()])
 model.link.df.drop_duplicates(inplace=True)

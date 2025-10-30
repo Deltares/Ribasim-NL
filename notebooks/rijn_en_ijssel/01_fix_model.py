@@ -50,7 +50,7 @@ outlet_data = outlet.Static(flow_rate=[100])
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419605149
-# Verwijderen duplicate edges
+# Verwijderen duplicate links
 
 model.link.df.drop_duplicates(inplace=True)
 

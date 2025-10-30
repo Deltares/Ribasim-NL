@@ -30,7 +30,7 @@ def update_manning_resistance_static(
     # empty dataframe
     static_df = empty_table_df(model=model, node_type="ManningResistance", table_type="Static")
 
-    # length from length edges
+    # length from length links
     length = [
         round_to_precision(
             model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)].length.sum(),

@@ -34,7 +34,7 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
         to_node_geometry = link_geometry.boundary.geoms[1]
         profile = profiles.loc[profiles.distance(to_node_geometry).idxmin()]
 
-        # try to find a better one on the edges in the same basin
+        # try to find a better one on the links in the same basin
         node_ids = model.link.df.loc[link_id][["from_node_id", "to_node_id"]].to_numpy()
         node_id = next((i for i in node_ids if model.node_table().df.at[i, "node_type"] == "Basin"), None)
         if node_id is not None:

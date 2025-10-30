@@ -35,8 +35,8 @@ def generate_ribasim_nodes_static(
 
 
 def generate_ribasim_links(basin_connections: gpd.GeoDataFrame, boundary_connections: gpd.GeoDataFrame):
-    """Generate ribasim edges between nodes, using basin connections and boundary-basin connections"""
-    edges = pd.concat(
+    """Generate ribasim links between nodes, using basin connections and boundary-basin connections"""
+    links = pd.concat(
         [
             basin_connections[["from_node_id", "to_node_id", "geometry"]],
             boundary_connections[["from_node_id", "to_node_id", "geometry"]],
@@ -44,10 +44,10 @@ def generate_ribasim_links(basin_connections: gpd.GeoDataFrame, boundary_connect
         ignore_index=True,
     )
 
-    print(f"edges ({len(edges)}x), ", end="", flush=True)
+    print(f"links ({len(links)}x), ", end="", flush=True)
 
-    edges["edge_type"] = "flow"
-    ribasim_links_static = gpd.GeoDataFrame(data=edges, geometry="geometry", crs=basin_connections.crs)
+    links["edge_type"] = "flow"
+    ribasim_links_static = gpd.GeoDataFrame(data=links, geometry="geometry", crs=basin_connections.crs)
     if ribasim_links_static.empty:
         ribasim_links = None
     else:
@@ -217,7 +217,7 @@ def generate_ribasim_model(
     results_dir: str = "results",
 ):
     """
-    Generate ribasim model from ribasim nodes and edges
+    Generate ribasim model from ribasim nodes and links
 
     optional input; ribasim basins, level boundary, flow_boundary, pump, tabulated rating curve and manning resistance
     """

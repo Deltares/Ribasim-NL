@@ -57,7 +57,7 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2455143137
 
-# verwijderen duplicated edges
+# verwijderen duplicated links
 model.link.df.drop_duplicates(inplace=True)
 
 
@@ -368,7 +368,7 @@ for link_id in [
     model.reverse_link(link_id=link_id)
 
 
-# fix 2 incorrecte edges
+# fix 2 incorrecte links
 model.link.df.loc[916, "from_node_id"] = 1363
 model.link.df.loc[1330, "from_node_id"] = 1365
 

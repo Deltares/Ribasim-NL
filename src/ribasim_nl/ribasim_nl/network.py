@@ -145,7 +145,7 @@ class Network:
         # make sure we have a graph
         _ = self.graph
         return GeoDataFrame(
-            [{"node_from": i[0], "node_to": i[1], **i[2]} for i in self.graph.edges.data()],
+            [{"node_from": i[0], "node_to": i[1], **i[2]} for i in self.graph.links.data()],
             crs=self.lines_gdf.crs,
         )
 
@@ -180,7 +180,7 @@ class Network:
             for row in nodes_gdf.itertuples():
                 self._graph.add_node(row.Index, geometry=row.geometry)
 
-            # add edges using link_def
+            # add links using link_def
             link_def = {}
             for row in self.lines_gdf.itertuples():
                 geometry = row.geometry
@@ -400,7 +400,7 @@ class Network:
         align_distance: float,
         node_types=["connection", "upstream_boundary", "downstream_boundary"],
     ):
-        """Move network nodes and edges to new location
+        """Move network nodes and links to new location
 
         Parameters
         ----------
@@ -409,7 +409,7 @@ class Network:
         max_distance : float
             Max distance to find closes node
         align_distance : float
-            Distance over link, from node, where vertices will be removed to align adjacent edges with Point
+            Distance over link, from node, where vertices will be removed to align adjacent links with Point
         """
         # take links and nodes as gdf
         nodes_gdf = self.nodes
@@ -425,27 +425,27 @@ class Network:
             # update graph node
             self.graph.nodes[node_id]["geometry"] = point
 
-            # update start-node of edges
-            edges_from = links_gdf[links_gdf.node_from == node_id]
-            for link in edges_from.itertuples():
+            # update start-node of links
+            links_from = links_gdf[links_gdf.node_from == node_id]
+            for link in links_from.itertuples():
                 geometry = link.geometry
 
                 # take first node from point
                 coords = list(point.coords)
 
                 # take all in between boundaries only if > REMOVE_VERT_DIST
-                for coord in list(self.graph.edges[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
+                for coord in list(self.graph.links[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
                     if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from original geometry
                 coords += [geometry.coords[-1]]
 
-                self.graph.edges[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
+                self.graph.links[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
 
-            # update end-node of edges
-            edges_from = links_gdf[links_gdf.node_to == node_id]
-            for link in edges_from.itertuples():
+            # update end-node of links
+            links_from = links_gdf[links_gdf.node_to == node_id]
+            for link in links_from.itertuples():
                 geometry = link.geometry
 
                 # take first from original geometry
@@ -453,14 +453,14 @@ class Network:
 
                 # take all in between boundaries only if > REMOVE_VERT_DIST
                 geometry = geometry.reverse()
-                for coord in list(self.graph.edges[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
+                for coord in list(self.graph.links[(link.node_from, link.node_to)]["geometry"].coords)[1:-1]:
                     if geometry.project(Point(coord)) > align_distance:
                         coords += [coord]
 
                 # take the last from point
                 coords += [(point.x, point.y)]
 
-                self.graph.edges[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
+                self.graph.links[(link.node_from, link.node_to)]["geometry"] = LineString(coords)
             return node_id
         else:
             if self.verbose:
@@ -489,7 +489,7 @@ class Network:
             node_id = max(self.graph.nodes) + 1
             node_geometry = edge_geometry.interpolate(edge_geometry.project(point))
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
-            # add edges
+            # add links
             self.graph.remove_link(node_from, node_to)
             split_result = split_line(edge_geometry, node_geometry)
             if isinstance(split_result, LineString):
@@ -526,16 +526,16 @@ class Network:
             return shortest_path(self.graph_undirected, node_from, node_to, weight=weight)
 
     def get_links(self, node_from, node_to, directed=True, weight="length"):
-        # get path and edges on path
+        # get path and links on path
         path = self.get_path(node_from, node_to, directed=directed, weight=weight)
-        edges_on_path = list(zip(path[:-1], path[1:]))
+        links_on_path = list(zip(path[:-1], path[1:]))
 
         try:
-            return self.links.set_index(["node_from", "node_to"]).loc[edges_on_path]
-        except KeyError:  # if path only undirected we need to fix edges_on_path
+            return self.links.set_index(["node_from", "node_to"]).loc[links_on_path]
+        except KeyError:  # if path only undirected we need to fix links_on_path
             idx = self.links.set_index(["node_from", "node_to"]).index
-            edges_on_path = [i if i in idx else (i[1], i[0]) for i in edges_on_path]
-            return self.links.set_index(["node_from", "node_to"]).loc[edges_on_path]
+            links_on_path = [i if i in idx else (i[1], i[0]) for i in links_on_path]
+            return self.links.set_index(["node_from", "node_to"]).loc[links_on_path]
 
     def subset_links(self, nodes_from, nodes_to):
         gdf = pd.concat([self.get_links(node_from, node_to) for node_from, node_to in product(nodes_from, nodes_to)])
@@ -659,8 +659,8 @@ class Network:
 
     def set_node_types(self):
         """Node types to seperate boundaries from connections"""
-        from_nodes = {i[0] for i in self.graph.edges}
-        to_nodes = {i[1] for i in self.graph.edges}
+        from_nodes = {i[0] for i in self.graph.links}
+        to_nodes = {i[1] for i in self.graph.links}
         us_boundaries = [i for i in from_nodes if i not in to_nodes]
         ds_boundaries = [i for i in to_nodes if i not in from_nodes]
         for node_id in self._graph.nodes:

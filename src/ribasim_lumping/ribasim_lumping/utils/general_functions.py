@@ -128,14 +128,14 @@ def find_nearest_links_no(
 
 def find_nearest_links(
     search_locations: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     id_column: str,
     selection: str = None,
     tolerance: int = 100,
 ) -> gpd.GeoDataFrame:
     """Function to find nearest linestring including nearest location on link"""
     bbox = search_locations.bounds + [-tolerance, -tolerance, tolerance, tolerance]
-    hits = bbox.apply(lambda row: list(edges.sindex.intersection(row)), axis=1)
+    hits = bbox.apply(lambda row: list(links.sindex.intersection(row)), axis=1)
     tmp = pd.DataFrame(
         {
             "split_node_i": np.repeat(hits.index, hits.apply(len)),
@@ -144,14 +144,14 @@ def find_nearest_links(
     )
     if tmp.empty:
         return None
-    if selection is not None and selection in search_locations and selection in edges:
+    if selection is not None and selection in search_locations and selection in links:
         tmp = tmp.merge(
             search_locations.reset_index()[selection],
             how="outer",
             left_on="split_node_i",
             right_index=True,
         ).rename(columns={selection: f"{selection}_x"})
-    tmp = tmp.merge(edges, how="inner", left_on="edge_no", right_on="edge_no")
+    tmp = tmp.merge(links, how="inner", left_on="edge_no", right_on="edge_no")
     tmp = tmp.join(search_locations.geometry.rename("point"), on="split_node_i")
     tmp = gpd.GeoDataFrame(tmp, geometry="geometry", crs=search_locations.crs)
 
@@ -159,7 +159,7 @@ def find_nearest_links(
     tmp = tmp.loc[tmp.snap_dist <= tolerance]
     tmp = tmp.sort_values(by=["snap_dist"])
 
-    if selection is not None and selection in search_locations and selection in edges:
+    if selection is not None and selection in search_locations and selection in links:
         tmp = tmp[tmp[selection] == tmp[f"{selection}_x"]].copy()
         tmp = tmp.drop(columns=[f"{selection}_x"])
 
@@ -181,15 +181,15 @@ def create_objects_gdf(
     data: dict,
     xcoor: list[float],
     ycoor: list[float],
-    edges_gdf: gpd.GeoDataFrame,
+    links_gdf: gpd.GeoDataFrame,
     selection: str = None,
     tolerance: int = 100,
 ):
-    crs = edges_gdf.crs
+    crs = links_gdf.crs
     gdf = gpd.GeoDataFrame(data=data, geometry=gpd.points_from_xy(xcoor, ycoor), crs=crs)
     projected_points = find_nearest_links(
         search_locations=gdf,
-        edges=edges_gdf,
+        links=links_gdf,
         id_column="edge_no",
         selection=selection,
         tolerance=tolerance,
@@ -294,42 +294,42 @@ def log_and_remove_duplicate_geoms(gdf: gpd.GeoDataFrame, colname: str = None) -
     return gdf
 
 
-def generate_nodes_from_links(edges: gpd.GeoDataFrame) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+def generate_nodes_from_links(links: gpd.GeoDataFrame) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
-    Generate start/end nodes from edges and update node information in edges GeoDataFrame.
+    Generate start/end nodes from links and update node information in links GeoDataFrame.
 
-    Return updated edges geodataframe and nodes geodataframe
+    Return updated links geodataframe and nodes geodataframe
 
     Parameters
     ----------
-    edges : gpd.GeoDataFrame
-        Line feature dataset containing edges
+    links : gpd.GeoDataFrame
+        Line feature dataset containing links
 
     Returns
     -------
-    Tuple containing GeoDataFrame with edges and GeoDataFrame with nodes
+    Tuple containing GeoDataFrame with links and GeoDataFrame with nodes
     """
-    edges["edge_no"] = range(len(edges))
-    edges.index = edges["edge_no"].values
+    links["edge_no"] = range(len(links))
+    links.index = links["edge_no"].values
 
-    # Generate nodes from edges and include extra information in edges
-    edges[["from_node", "to_node"]] = [[g.coords[0], g.coords[-1]] for g in edges.geometry]  # generate endpoints
-    _nodes = pd.unique(edges["from_node"].tolist() + edges["to_node"].tolist())  # get unique nodes
+    # Generate nodes from links and include extra information in links
+    links[["from_node", "to_node"]] = [[g.coords[0], g.coords[-1]] for g in links.geometry]  # generate endpoints
+    _nodes = pd.unique(links["from_node"].tolist() + links["to_node"].tolist())  # get unique nodes
     indexer = dict(zip(_nodes, range(len(_nodes))))
     nodes = gpd.GeoDataFrame(
         data={"node_no": [indexer[x] for x in _nodes]},
         index=[indexer[x] for x in _nodes],
         geometry=[Point(x) for x in _nodes],
-        crs=edges.crs,
+        crs=links.crs,
     )
-    edges[["from_node", "to_node"]] = edges[["from_node", "to_node"]].map(indexer.get)  # get node id instead of coords
-    return edges, nodes
+    links[["from_node", "to_node"]] = links[["from_node", "to_node"]].map(indexer.get)  # get node id instead of coords
+    return links, nodes
 
 
 def snap_to_network(
     snap_type: str,
     points: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame = None,
+    links: gpd.GeoDataFrame = None,
     nodes: gpd.GeoDataFrame = None,
     buffer_distance: float = 0.5,
     min_length_link: float = 2.0,
@@ -343,8 +343,8 @@ def snap_to_network(
         Snap type which control how geometries will be snapped to network. Can either be "split_node" or "boundary_id".
     points : gpd.GeoDataFrame
         Point feature dataset containing points to be snapped
-    edges : gpd.GeoDataFrame
-        Line feature dataset containing edges of network
+    links : gpd.GeoDataFrame
+        Line feature dataset containing links of network
     nodes : gpd.GeoDataFrame
         Point feature dataset containing nodes of network
     buffer_distance: float
@@ -356,22 +356,22 @@ def snap_to_network(
     """
     if snap_type == "split_node":
         print(
-            f" - Snapping split nodes: buffer distance to nodes ({buffer_distance * 0.1:.3f} m) or edges ({buffer_distance:.3f} m)..."
+            f" - Snapping split nodes: buffer distance to nodes ({buffer_distance * 0.1:.3f} m) or links ({buffer_distance:.3f} m)..."
         )
         points = snap_points_to_nodes_and_links(
             points,
-            edges=edges,
+            links=links,
             nodes=nodes,
-            edges_bufdist=buffer_distance,
+            links_bufdist=buffer_distance,
             nodes_bufdist=buffer_distance * 0.1,
             n_links_to_node_limit=3,
             min_length_link=min_length_link,
         )
         # get node no or link no on which point is located
-        points = get_node_no_and_link_no_for_points(points, edges=edges, nodes=nodes)
+        points = get_node_no_and_link_no_for_points(points, links=links, nodes=nodes)
         # print out all non-snapped split nodes
         if ((points["node_no"] == -1) & (points["edge_no"] == -1)).any():
-            print(" * The following split nodes could not be snapped to nodes or edges within buffer distance:")
+            print(" * The following split nodes could not be snapped to nodes or links within buffer distance:")
             for i, row in points[(points["node_no"] == -1) & (points["edge_no"] == -1)].iterrows():
                 print(row)
                 print(f"  * Split node {row['split_node']} - split_node_id {row['split_node_id']}")
@@ -380,13 +380,13 @@ def snap_to_network(
         print(f" - Snapping boundaries within buffer distance ({buffer_distance:.3f} m) to nodes...")
         points = snap_points_to_nodes_and_links(
             points,
-            edges=None,  # exclude edges on purpose
+            links=None,  # exclude links on purpose
             nodes=nodes,
             nodes_bufdist=buffer_distance,
             min_length_link=min_length_link,
         )
         # get node no or link no on which point is located
-        points = get_node_no_and_link_no_for_points(points, edges=None, nodes=nodes)
+        points = get_node_no_and_link_no_for_points(points, links=None, nodes=nodes)
         # print out all non-snapped boundaries
         if (points["node_no"] == -1).any():
             print("The following boundaries could not be snapped to nodes within buffer distance:")
@@ -400,9 +400,9 @@ def snap_to_network(
 
 def snap_points_to_nodes_and_links(
     points: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame = None,
+    links: gpd.GeoDataFrame = None,
     nodes: gpd.GeoDataFrame = None,
-    edges_bufdist: float = 0.5,
+    links_bufdist: float = 0.5,
     nodes_bufdist: float = 0.5,
     n_links_to_node_limit: int = 1e10,
     min_length_link: float = 2.0,
@@ -414,26 +414,26 @@ def snap_points_to_nodes_and_links(
     ----------
     points : gpd.GeoDataFrame
         Point feature dataset containing points to be snapped
-    edges : gpd.GeoDataFrame
-        Line feature dataset containing edges. Use None to don't snap point to edges. Note: if nodes are supplied
-        too, this snapping will first try to snap to nodes and if not possible, to edges.
+    links : gpd.GeoDataFrame
+        Line feature dataset containing links. Use None to don't snap point to links. Note: if nodes are supplied
+        too, this snapping will first try to snap to nodes and if not possible, to links.
     nodes : gpd.GeoDataFrame
         Point feature dataset containing nodes. Use None to don't snap point to nodes
-    edges_bufdist : float
-        Buffer distance (in meter) that is used to snap point to edges
+    links_bufdist : float
+        Buffer distance (in meter) that is used to snap point to links
     nodes_bufdist : float
         Buffer distance (in meter) that is used to snap points to nodes
     n_links_to_node_limit : int
-        Limit the snapping to node by the number of edges that is connected to that node. There is no
-        snapping to node if number of connected edges to node is greater or equal than this value
+        Limit the snapping to node by the number of links that is connected to that node. There is no
+        snapping to node if number of connected links to node is greater or equal than this value
         (no snapping if n_connected_links >= n_links_to_node_limit). In order to use this option
-        both nodes and edges need to be supplied.
+        both nodes and links need to be supplied.
 
     Returns
     -------
     GeoDataFrame with snapped points (whether or not it's snapped can be derived from edge_no or node_no column value)
     """
-    print(" - Snapping points to nodes and/or edges")
+    print(" - Snapping points to nodes and/or links")
     new_points = points.geometry.tolist()
     for i, point in points.iterrows():
         if nodes is not None:
@@ -445,13 +445,13 @@ def snap_points_to_nodes_and_links(
                 _ix = ix[np.argmin(_dist_n_to_nodes)]
                 new_point = nodes.loc[_ix, "geometry"]
                 node_no = nodes.loc[_ix, "node_no"]
-                if edges is not None:
-                    # first try with know link/node info for speed-up, otherwise find the connected edges
-                    if "node_no" in edges.columns:
-                        _links = edges.loc[node_no == "node_no"]
+                if links is not None:
+                    # first try with know link/node info for speed-up, otherwise find the connected links
+                    if "node_no" in links.columns:
+                        _links = links.loc[node_no == "node_no"]
                     else:
-                        _links = edges.loc[new_point.buffer(0.000001).intersects(edges.geometry.values)]
-                    # if connected edges less than limit, snap to node
+                        _links = links.loc[new_point.buffer(0.000001).intersects(links.geometry.values)]
+                    # if connected links less than limit, snap to node
                     if len(_links) < n_links_to_node_limit:
                         check = True
                     else:
@@ -464,7 +464,7 @@ def snap_points_to_nodes_and_links(
                         print(point)
                         print(
                             f"  DEBUG - {point_label} can be snapped to node no {node_no} "
-                            f"but number of connected edges ({len(_links)}) is >= than limit ({n_links_to_node_limit})."
+                            f"but number of connected links ({len(_links)}) is >= than limit ({n_links_to_node_limit})."
                         )
                 else:
                     check = True
@@ -472,9 +472,9 @@ def snap_points_to_nodes_and_links(
             if check:
                 new_points[i] = new_point
                 continue  # no need to check snapping to link in this case
-        if edges is not None:
+        if links is not None:
             # if no link is within point combined with buffer distance, skip
-            lines = edges.geometry.values[edges.geometry.intersects(point.geometry.buffer(edges_bufdist))]
+            lines = links.geometry.values[links.geometry.intersects(point.geometry.buffer(links_bufdist))]
             # also skip if line is shorter than 2 m
             lines = lines[[ln.length > min_length_link for ln in lines]]
             if len(lines) == 0:
@@ -488,7 +488,7 @@ def snap_points_to_nodes_and_links(
             _nodes = np.array([ln.interpolate(d) for ln, d in zip(lines, _dist_along_line)], dtype=object)
             _dist_n_to_nodes = np.array([n.distance(point.geometry) for n in _nodes])
             # filter out nodes that is within buffer distance and use one with minimum distance
-            ix = np.where(_dist_n_to_nodes <= edges_bufdist)[0]
+            ix = np.where(_dist_n_to_nodes <= links_bufdist)[0]
             if len(ix) >= 1:
                 # select snapped node that is closest to link
                 _nodes, _dist_n_to_nodes = _nodes[ix], _dist_n_to_nodes[ix]
@@ -503,7 +503,7 @@ def snap_points_to_nodes_and_links(
 
 
 def get_node_no_and_link_no_for_points(
-    points: gpd.GeoDataFrame, edges: gpd.GeoDataFrame = None, nodes: gpd.GeoDataFrame = None
+    points: gpd.GeoDataFrame, links: gpd.GeoDataFrame = None, nodes: gpd.GeoDataFrame = None
 ) -> gpd.GeoDataFrame:
     """
     Get link no or node no for point locations. If value is -1 no node and/or link could be found for point location.
@@ -514,8 +514,8 @@ def get_node_no_and_link_no_for_points(
         Point feature dataset containing point locations
     nodes : gpd.GeoDataFrame
         Point feature dataset containing nodes. Note that it tries to find node first and if not possible tries to find link
-    edges : gpd.GeoDataFrame
-        Line feature dataset containing edges
+    links : gpd.GeoDataFrame
+        Line feature dataset containing links
 
     Returns
     -------
@@ -523,7 +523,7 @@ def get_node_no_and_link_no_for_points(
     """
     print(" - Retrieving link no or node no for point locations...")
     prev_typs = None
-    for typ, gdf in zip(["node_no", "edge_no"], [nodes, edges]):
+    for typ, gdf in zip(["node_no", "edge_no"], [nodes, links]):
         if gdf is not None:
             gdf_no = np.ones(len(points), dtype=int) * -1
             gdf_ix = np.arange(len(gdf))
@@ -549,61 +549,61 @@ def get_node_no_and_link_no_for_points(
 
 
 def split_links_by_split_nodes(
-    split_nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, buffer_distance: float = 0.5
+    split_nodes: gpd.GeoDataFrame, links: gpd.GeoDataFrame, buffer_distance: float = 0.5
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
-    Splits edges (lines) by split node locations.
+    Splits links (lines) by split node locations.
 
-    Split nodes should be (almost) perfectly be aligned to edges (within buffer distance).
-    If not, use .snap_nodes_to_links() before to align them to edges within a buffer distance.
+    Split nodes should be (almost) perfectly be aligned to links (within buffer distance).
+    If not, use .snap_nodes_to_links() before to align them to links within a buffer distance.
 
-    If split nodes gdf contains edge_no column (which is filled with only integers), only those edges will be split. If the column is missing
+    If split nodes gdf contains edge_no column (which is filled with only integers), only those links will be split. If the column is missing
     from gdf or contains None values, it will be ignored and the default (more time consuming) approach will be used.
 
-    The start/end nodes will be regenerated after the edges are split. The link no and node no column value in split nodes gdf will also
-    be updated because of that. Returns new (splitted) edges and new updated (start/end)nodes and split nodes for those edges
+    The start/end nodes will be regenerated after the links are split. The link no and node no column value in split nodes gdf will also
+    be updated because of that. Returns new (splitted) links and new updated (start/end)nodes and split nodes for those links
 
     Parameters
     ----------
     split_nodes : gpd.GeoDataFrame
         Point feature dataset containing split nodes
-    edges : gpd.GeoDataFrame
-        Line feature dataset containing edges
+    links : gpd.GeoDataFrame
+        Line feature dataset containing links
     buffer_distance: float
         Buffer distance (in meter) that is used project split nodes to link
 
     Returns
     -------
-    Tuple containing GeoDataFrame with split nodes, GeoDataFrame with edges and GeoDataFrame (start/end)nodes of edges
+    Tuple containing GeoDataFrame with split nodes, GeoDataFrame with links and GeoDataFrame (start/end)nodes of links
     """
-    print(" - Split edges by split nodes locations...")
+    print(" - Split links by split nodes locations...")
     split_nodes["edge_no"] = [None] * len(split_nodes)
     edge_no_col_present = "edge_no" in split_nodes.columns
     edge_no_col_present = all(x is not None for x in split_nodes["edge_no"]) if edge_no_col_present else False
-    edges_orig = edges.copy()
+    links_orig = links.copy()
     # to speed-up splitting and if edge_no column is present in split nodes gdf, only
-    # split those edges
+    # split those links
     if edge_no_col_present:
         for edge_no in split_nodes["edge_no"].unique():
             if edge_no == -1:
                 continue  # skip
             split_points = split_nodes.loc[split_nodes["edge_no"] == edge_no].geometry.values
-            link = edges_orig.loc[edges_orig["edge_no"] == edge_no, "geometry"].values[0]
+            link = links_orig.loc[links_orig["edge_no"] == edge_no, "geometry"].values[0]
             splitted_links = split_line_in_multiple(link, distances_along_line=[link.project(p) for p in split_points])
             if len(splitted_links) == 0:
                 continue  # skip because link is (somehow) not splitted
-            # update (original) edges gdf
-            edge_row = edges_orig.loc[edges_orig["edge_no"] == edge_no]
-            edges_to_add = pd.concat([edge_row] * len(splitted_links))
-            edges_to_add = gpd.GeoDataFrame(edges_to_add, geometry=splitted_links).set_index(
-                np.arange(len(splitted_links)) + 1 + edges.index.max()
+            # update (original) links gdf
+            edge_row = links_orig.loc[links_orig["edge_no"] == edge_no]
+            links_to_add = pd.concat([edge_row] * len(splitted_links))
+            links_to_add = gpd.GeoDataFrame(links_to_add, geometry=splitted_links).set_index(
+                np.arange(len(splitted_links)) + 1 + links.index.max()
             )
-            edges = pd.concat([edges, edges_to_add], axis=0, ignore_index=True)
-            edges.drop(index=edges_orig.loc[edges_orig["edge_no"] == edge_no].index)
+            links = pd.concat([links, links_to_add], axis=0, ignore_index=True)
+            links.drop(index=links_orig.loc[links_orig["edge_no"] == edge_no].index)
     # otherwise, do default approach
     else:
-        # loop over edges so we can directly split an link with multiple split nodes in one go
-        for i, link in enumerate(edges_orig.geometry):
+        # loop over links so we can directly split an link with multiple split nodes in one go
+        for i, link in enumerate(links_orig.geometry):
             # only check split nodes that are within buffer distance of link
             split_points = split_nodes.geometry.values[split_nodes.geometry.intersects(link.buffer(buffer_distance))]
             if len(split_points) == 0:
@@ -620,54 +620,54 @@ def split_links_by_split_nodes(
             splitted_links = split_line_in_multiple(link, distances_along_line=[link.project(p) for p in split_points])
             if len(splitted_links) == 0:
                 continue  # skip because link is (somehow) not splitted
-            # update (original) edges gdf
-            edge_row = edges_orig.loc[edges_orig.index.values[i]].to_frame().T
-            edges_to_add = pd.concat([edge_row] * len(splitted_links))
-            edges_to_add = gpd.GeoDataFrame(edges_to_add, geometry=splitted_links).set_index(
-                np.arange(len(splitted_links)) + 1 + edges.index.max()
+            # update (original) links gdf
+            edge_row = links_orig.loc[links_orig.index.values[i]].to_frame().T
+            links_to_add = pd.concat([edge_row] * len(splitted_links))
+            links_to_add = gpd.GeoDataFrame(links_to_add, geometry=splitted_links).set_index(
+                np.arange(len(splitted_links)) + 1 + links.index.max()
             )
-            edges = pd.concat([edges, edges_to_add], axis=0)
-            edges.drop(index=edges_orig.index.values[i], inplace=True)
+            links = pd.concat([links, links_to_add], axis=0)
+            links.drop(index=links_orig.index.values[i], inplace=True)
 
     # update link id column if present
-    if "link_id" in edges.columns:
-        edges["link_id"] = edges["link_id"].fillna("dummy")
-        n_max = np.max(np.unique(edges["link_id"], return_counts=True)[1])  # max group size in groupby
+    if "link_id" in links.columns:
+        links["link_id"] = links["link_id"].fillna("dummy")
+        n_max = np.max(np.unique(links["link_id"], return_counts=True)[1])  # max group size in groupby
         split_nrs = np.arange(start=1, stop=n_max + 1)
-        split_nrs = edges.groupby("link_id")["from_node"].transform(lambda x: split_nrs[: len(x)])
-        max_splits = edges.groupby("link_id")["from_node"].transform(lambda x: len(x))
-        edges["link_id"] = [f"{b}_{s}" if m > 1 else b for b, s, m in zip(edges["link_id"], split_nrs, max_splits)]
-    # regenerate start/end nodes of edges
-    edges["edge_no"] = range(len(edges))  # reset link no
-    edges, nodes = generate_nodes_from_links(edges)
+        split_nrs = links.groupby("link_id")["from_node"].transform(lambda x: split_nrs[: len(x)])
+        max_splits = links.groupby("link_id")["from_node"].transform(lambda x: len(x))
+        links["link_id"] = [f"{b}_{s}" if m > 1 else b for b, s, m in zip(links["link_id"], split_nrs, max_splits)]
+    # regenerate start/end nodes of links
+    links["edge_no"] = range(len(links))  # reset link no
+    links, nodes = generate_nodes_from_links(links)
     # update link no and node no columns in split nodes gdf
-    split_nodes = get_node_no_and_link_no_for_points(split_nodes, edges, nodes)
-    return split_nodes, edges, nodes
+    split_nodes = get_node_no_and_link_no_for_points(split_nodes, links, nodes)
+    return split_nodes, links, nodes
 
 
 def split_links_by_dx(
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     dx: float,
 ) -> gpd.GeoDataFrame:
     """
-    Splits edges (lines) by a given distance (in meter) so each splitted section approximates the given distance
+    Splits links (lines) by a given distance (in meter) so each splitted section approximates the given distance
 
     Parameters
     ----------
-    edges : gpd.GeoDataFrame
-        Line feature dataset containing edges
+    links : gpd.GeoDataFrame
+        Line feature dataset containing links
     dx: float
         Distance (in meter) for new splitted sections
 
     Returns
     -------
-    GeoDataFrame with splitted up edges
+    GeoDataFrame with splitted up links
     """
-    edges = edges.copy()
-    edges_to_add = []
-    edges_to_remove = []
-    print(f" - Split up edges so each section approximates dx={dx:.3f} m...")
-    for i, row in edges.iterrows():
+    links = links.copy()
+    links_to_add = []
+    links_to_remove = []
+    print(f" - Split up links so each section approximates dx={dx:.3f} m...")
+    for i, row in links.iterrows():
         line = row["geometry"]
 
         # split up line depending on the length compared to the desired length
@@ -680,35 +680,35 @@ def split_links_by_dx(
         # now split and store
         new_lines = split_line_in_multiple(line, dists_to_split)
         for j, ln in enumerate(new_lines):
-            edges_to_add.append((i, j, ln))
-        edges_to_remove.append(i)
+            links_to_add.append((i, j, ln))
+        links_to_remove.append(i)
 
-    # construct new geodataframe with new edges to add
-    edges_to_add = gpd.GeoDataFrame(
+    # construct new geodataframe with new links to add
+    links_to_add = gpd.GeoDataFrame(
         pd.concat(
             [
-                edges.loc[[x[0] for x in edges_to_add]][[c for c in edges.columns if c != "geometry"]].reset_index(
+                links.loc[[x[0] for x in links_to_add]][[c for c in links.columns if c != "geometry"]].reset_index(
                     drop=True
                 ),
-                gpd.GeoDataFrame(data={"suffix": [x[1] for x in edges_to_add]}, geometry=[x[2] for x in edges_to_add]),
+                gpd.GeoDataFrame(data={"suffix": [x[1] for x in links_to_add]}, geometry=[x[2] for x in links_to_add]),
             ],
             axis=1,
         )
     )
-    # append branch_id column with suffix to identify splitted edges
-    if "branch_id" in edges_to_add.columns:
-        edges_to_add["branch_id"] = [f"{b}___{s}" for b, s in zip(edges_to_add["branch_id"], edges_to_add["suffix"])]
-    edges_to_add.drop(columns=["suffix"], inplace=True)
+    # append branch_id column with suffix to identify splitted links
+    if "branch_id" in links_to_add.columns:
+        links_to_add["branch_id"] = [f"{b}___{s}" for b, s in zip(links_to_add["branch_id"], links_to_add["suffix"])]
+    links_to_add.drop(columns=["suffix"], inplace=True)
 
     # add new lines and remove old ones
-    edges_new = edges.loc[edges.index[~np.isin(edges.index, edges_to_remove)]]
-    edges_new = gpd.GeoDataFrame(pd.concat([edges_new, edges_to_add], ignore_index=True))
-    if "edge_no" in edges_new.columns:
-        edges_new["edge_no"] = np.arange(len(edges_new))
+    links_new = links.loc[links.index[~np.isin(links.index, links_to_remove)]]
+    links_new = gpd.GeoDataFrame(pd.concat([links_new, links_to_add], ignore_index=True))
+    if "edge_no" in links_new.columns:
+        links_new["edge_no"] = np.arange(len(links_new))
 
-    if "branch_id" in edges_new.columns:
-        edges_new = edges_new.rename(columns={"branch_id": "link_id"})
-    return edges_new
+    if "branch_id" in links_new.columns:
+        links_new = links_new.rename(columns={"branch_id": "link_id"})
+    return links_new
 
 
 def split_line_in_two(line: LineString, distance_along_line: float) -> list[LineString]:
@@ -765,9 +765,9 @@ def assign_unassigned_areas_to_basin_areas(
     """
     Assign unassigned areas to basin areas based on neighbouring basin areas within optionally the same drainage area if possible.
 
-    Optionally, if edges are provided, the basin and basin_area columns will be updated in those gdfs for edges
+    Optionally, if links are provided, the basin and basin_area columns will be updated in those gdfs for links
     where no basin/basin_area is filled in (equals to -1). Those will be filled based on overlapping basin area after assignment
-    of unassigned areas. The edges will also be used to assign unassigned areas more logically based on network connections.
+    of unassigned areas. The links will also be used to assign unassigned areas more logically based on network connections.
 
     Parameters
     ----------
@@ -781,7 +781,7 @@ def assign_unassigned_areas_to_basin_areas(
     Returns
     -------
     Dict of basin areas where unassigned areas are assigned to basin areas and areas geodataframe with updated basin codes
-    It will also include edges if they are provided as input
+    It will also include links if they are provided as input
     """
     areas = areas.copy()
     basin_areas = basin_areas.copy()

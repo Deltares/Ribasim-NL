@@ -65,7 +65,7 @@ model.basin.node.df.loc[:, "geometry"] = model.basin.node.df.geometry.apply(drop
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385111465
 
-# Verwijderen duplicate edges
+# Verwijderen duplicate links
 
 model.link.df.drop_duplicates(inplace=True)
 
@@ -110,8 +110,8 @@ for fid, node_id in [(1, 1375), (2, 1624)]:
     from_node_id = model.basin[node_id].node_id
     to_node_id = outlet_node.node_id
 
-    # draw edges
-    # FIXME: we force edges to be z-less untill this is solved: https://github.com/Deltares/Ribasim/issues/1854
+    # draw links
+    # FIXME: we force links to be z-less untill this is solved: https://github.com/Deltares/Ribasim/issues/1854
     model.link.add(
         model.basin[node_id], outlet_node, geometry=link(model.basin[node_id].geometry, outlet_node.geometry)
     )
@@ -320,7 +320,7 @@ outlet_node = model.outlet.add(Node(geometry=outlet_node_geometry), tables=[outl
 # plaatsen nieuwe level_boundary op scholtenskanaal aan H&A zijde scholtenskanaal van outlet
 boundary_node = model.level_boundary.add(Node(geometry=level_boundary_gdf.at[3, "geometry"]), tables=[level_data])
 
-# toevoegen edges vanaf nieuwe basin 33 naar nieuwe outlet naar nieuwe boundary
+# toevoegen links vanaf nieuwe basin 33 naar nieuwe outlet naar nieuwe boundary
 model.link.add(model.basin[33], outlet_node, geometry=link(model.basin[33].geometry, outlet_node.geometry))
 model.link.add(outlet_node, boundary_node)
 
@@ -403,7 +403,7 @@ kanaal_basin_node = model.basin.add(
     Node(geometry=hydroobject_gdf.loc[7720].geometry.boundary.geoms[1]), tables=basin_data
 )
 
-# edges v.a. tabulated_rating_curve 298 (ST01865) en 448 (ST01666) naar dinkel-basin
+# links v.a. tabulated_rating_curve 298 (ST01865) en 448 (ST01666) naar dinkel-basin
 model.link.add(
     model.tabulated_rating_curve[298],
     dinkel_basin_node,
@@ -423,7 +423,7 @@ model.link.add(
     geometry=link(model.manning_resistance[915].geometry, dinkel_basin_node.geometry),
 )
 
-# edges v.a. dinkel basin naar tabulate_rating_curves 132 (ST02129) en 474 (ST02130)
+# links v.a. dinkel basin naar tabulate_rating_curves 132 (ST02129) en 474 (ST02130)
 model.link.add(
     dinkel_basin_node,
     model.tabulated_rating_curve[132],
@@ -523,7 +523,7 @@ model.basin.area.df.loc[model.basin.area.df.index.max() + 1, ["geometry"]] = Mul
 # # verplaatsen basin 1678 naar kruising waterlopen
 model.move_node(node_id=1678, geometry=hydroobject_gdf.loc[6594].geometry.boundary.geoms[1])
 
-# verwijderen edges 809, 814, 807, 810, 1293, 2772
+# verwijderen links 809, 814, 807, 810, 1293, 2772
 model.link.df = model.link.df[~model.link.df.index.isin([809, 814, 807, 810, 887])]
 
 
@@ -570,7 +570,7 @@ model.link.add(
 # verplaatsen basin 1909 nabij tabulated_rating_curve 383 (ST03607)
 model.move_node(1909, geometry=hydroobject_gdf.loc[6865].geometry.boundary.geoms[1])
 
-# verwijderen edges 780 en 778
+# verwijderen links 780 en 778
 model.link.df = model.link.df[~model.link.df.index.isin([780, 778])]
 
 # toevoegen link tussen tabulated_rating_curve 383 en basin 1909
@@ -770,7 +770,7 @@ model.move_node(node_id=2256, geometry=hydroobject_gdf.loc[2896].geometry.bounda
 model.basin.area.df.loc[model.basin.area.df.node_id == 2256, ["node_id"]] = pd.NA
 model.split_basin(split_line_gdf.at[10, "geometry"])
 
-# Edges 446, 1516, 443 en 444 verwijderen
+# Links 446, 1516, 443 en 444 verwijderen
 model.link.df = model.link.df[~model.link.df.index.isin([446, 1516, 443, 444])]
 
 # tabulated_rating_curves 202 en 230 verbinden met basin 2256

@@ -64,7 +64,7 @@ def default_model(
     node_in_df : gpd.GeoDataFrame
         GeoDataFrame with nodes. Should contain a `node_id` and `geometry` column
     edge_in_df : gpd.GeoDataFrame
-        GeoDataFrame with edges. Should contain LineStrings connecting nodes
+        GeoDataFrame with links. Should contain LineStrings connecting nodes
     profile : dict
         default profile to use for all basins, e.g.:
             {
@@ -136,7 +136,7 @@ def default_model(
     model.level_boundary.node.df = node_df[node_df.node_type == "LevelBoundary"]
     model.flow_boundary.node.df = node_df[node_df.node_type == "FlowBoundary"]
 
-    # check and drop duplicated edges
+    # check and drop duplicated links
     if "split_type" in edge_df.columns:
         rename_columns = {
             "object_type": "meta_object_type",

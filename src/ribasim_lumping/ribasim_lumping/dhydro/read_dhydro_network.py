@@ -125,8 +125,8 @@ def get_dhydro_nodes_from_network_data(network_data, crs):
 
 
 def get_dhydro_links_from_network_data(network_data, nodes_gdf, branches_gdf, crs):
-    """Get DHydro edges"""
-    edges_df = pd.DataFrame(
+    """Get DHydro links"""
+    links_df = pd.DataFrame(
         {
             "branch_id": network_data._mesh1d.mesh1d_link_branch_id,
             "chainage": network_data._mesh1d.mesh1d_link_branch_offset,
@@ -136,17 +136,17 @@ def get_dhydro_links_from_network_data(network_data, nodes_gdf, branches_gdf, cr
             "to_node": network_data._mesh1d.mesh1d_link_nodes[:, 1],
         }
     )
-    edges_df["branch_id"] = edges_df["branch_id"].map(branches_gdf["branch_id"].to_dict())
+    links_df["branch_id"] = links_df["branch_id"].map(branches_gdf["branch_id"].to_dict())
 
-    edges_df["geometry"] = ""
-    edges_gdf = edges_df.merge(
+    links_df["geometry"] = ""
+    links_gdf = links_df.merge(
         nodes_gdf[["node_no", "geometry"]],
         how="inner",
         left_on="from_node",
         right_on="node_no",
         suffixes=["", "_from"],
     )
-    edges_gdf = edges_gdf.merge(
+    links_gdf = links_gdf.merge(
         nodes_gdf[["node_no", "geometry"]],
         how="inner",
         left_on="to_node",
@@ -154,22 +154,22 @@ def get_dhydro_links_from_network_data(network_data, nodes_gdf, branches_gdf, cr
         suffixes=["", "_to"],
     )
 
-    edges_gdf["geometry"] = edges_gdf.apply(lambda row: LineString([row["geometry_from"], row["geometry_to"]]), axis=1)
-    edges_gdf = gpd.GeoDataFrame(edges_gdf, geometry="geometry", crs=crs)
+    links_gdf["geometry"] = links_gdf.apply(lambda row: LineString([row["geometry_from"], row["geometry_to"]]), axis=1)
+    links_gdf = gpd.GeoDataFrame(links_gdf, geometry="geometry", crs=crs)
 
-    edges_gdf = edges_gdf.merge(
+    links_gdf = links_gdf.merge(
         branches_gdf.rename(columns={"geometry": "geometry_branch"}), how="left", on="branch_id"
     )
-    edges_gdf["geometry"] = edges_gdf.apply(
+    links_gdf["geometry"] = links_gdf.apply(
         lambda x: extract_segment_from_linestring(x["geometry_branch"], x["geometry_from"], x["geometry_to"]), axis=1
     )
-    edges_gdf["edge_no"] = edges_gdf.index
-    edges_gdf = edges_gdf[["edge_no", "branch_id", "geometry", "from_node", "to_node"]]
-    print(f" edges ({len(edges_gdf)})")  # , end="", flush=True)
-    return edges_gdf
+    links_gdf["edge_no"] = links_gdf.index
+    links_gdf = links_gdf[["edge_no", "branch_id", "geometry", "from_node", "to_node"]]
+    print(f" links ({len(links_gdf)})")  # , end="", flush=True)
+    return links_gdf
 
 
-def get_dhydro_structures_locations(structures_file: Path, branches_gdf: gpd.GeoDataFrame, edges_gdf: gpd.GeoDataFrame):
+def get_dhydro_structures_locations(structures_file: Path, branches_gdf: gpd.GeoDataFrame, links_gdf: gpd.GeoDataFrame):
     """Get DHydro structures locations"""
     # get structure file (e.g. "structures.ini")
     print("  - structures:", end="", flush=True)
@@ -190,7 +190,7 @@ def get_dhydro_structures_locations(structures_file: Path, branches_gdf: gpd.Geo
     )
     structures_gdf = find_nearest_links_no(
         gdf1=structures_gdf,
-        gdf2=edges_gdf.set_index("edge_no").sort_index(),
+        gdf2=links_gdf.set_index("edge_no").sort_index(),
         new_column="edge_no",
         subset="branch_id",
     )
@@ -463,7 +463,7 @@ def get_dhydro_data_from_simulation(
     files = None
     branches_gdf = None
     nodes_gdf = None
-    edges_gdf = None
+    links_gdf = None
     structures_gdf = None
     structures_dict = None
     boundaries_gdf = None
@@ -477,10 +477,10 @@ def get_dhydro_data_from_simulation(
     network_nodes_gdf = get_dhydro_network_nodes_from_network_nc(network_nc, crs)
     branches_gdf = get_dhydro_branches_from_network_data(network_data, crs)
     nodes_gdf = get_dhydro_nodes_from_network_data(network_data, crs)
-    edges_gdf = get_dhydro_links_from_network_data(network_data, nodes_gdf, branches_gdf, crs)
+    links_gdf = get_dhydro_links_from_network_data(network_data, nodes_gdf, branches_gdf, crs)
 
     structures_gdf = get_dhydro_structures_locations(
-        structures_file=files["structure_file"], branches_gdf=branches_gdf, edges_gdf=edges_gdf
+        structures_file=files["structure_file"], branches_gdf=branches_gdf, links_gdf=links_gdf
     )
     structures_dict = split_dhydro_structures(structures_gdf, set_name)
 
@@ -508,7 +508,7 @@ def get_dhydro_data_from_simulation(
         "files": files,
         "branches_gdf": branches_gdf,
         "nodes_gdf": nodes_gdf,
-        "edges_gdf": edges_gdf,
+        "links_gdf": links_gdf,
         "structures_gdf": structures_gdf,
         "structures_dict": structures_dict,
         "boundaries_gdf": boundaries_gdf,

@@ -268,13 +268,13 @@ class Model(Model):
         return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
 
     def get_upstream_links(self, node_id, **kwargs):
-        # get upstream edges
+        # get upstream links
         upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
         mask = self.link.df.from_node_id.isin(upstream_node_ids[1:]) & self.link.df.to_node_id.isin(upstream_node_ids)
         return self.link.df[mask]
 
     def get_downstream_links(self, node_id, **kwargs):
-        # get upstream edges
+        # get upstream links
         downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
         mask = self.link.df.from_node_id.isin(downstream_node_ids) & self.link.df.to_node_id.isin(
             downstream_node_ids[1:]
@@ -484,7 +484,7 @@ class Model(Model):
         # add node properties
         node_properties_to_table(table, node_properties, node_id)
 
-        # add edges
+        # add links
         for _to_node_id in to_node_id:
             self.link.add(table[node_id], self.get_node(_to_node_id))
 
@@ -576,7 +576,7 @@ class Model(Model):
             Node(geometry=geometry, name=name, **node_properties), tables=tables
         )
 
-        # add edges from and to node
+        # add links from and to node
         for from_node, to_node in [(self.get_node(from_basin_id), node), (node, self.get_node(to_basin_id))]:
             if use_add_api:
                 try:
@@ -641,7 +641,7 @@ class Model(Model):
             Node(geometry=geometry, name=name, **node_properties), tables=tables
         )
 
-        # add edges from and to node
+        # add links from and to node
         self.link.add(self.basin[basin_id], node)
         edge_geometry = self.link.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
 
@@ -720,7 +720,7 @@ class Model(Model):
         # update geometry
         table.node.df.loc[node_id, ["geometry"]] = geometry
 
-        # reset all edges
+        # reset all links
         edge_ids = self.link.df[
             (self.link.df.from_node_id == node_id) | (self.link.df.to_node_id == node_id)
         ].index.to_list()
@@ -971,7 +971,7 @@ class Model(Model):
             if len(paths) == 0:
                 raise ValueError(f"basin {node_id} not a direct neighbor of basin {to_node_id}")
 
-            # remove flow-node and connected edges
+            # remove flow-node and connected links
             for path in paths:
                 self.remove_node(path[1], remove_links=True)
 
@@ -1038,7 +1038,7 @@ class Model(Model):
         edge_ids = self.link.df[self.link.df.to_node_id == outlet_a_id].index.to_list()
         edge_ids += self.link.df[self.link.df.from_node_id == outlet_b_id].index.to_list()
 
-        # Remove outlet_b from the edges
+        # Remove outlet_b from the links
         self.link.df.loc[self.link.df.from_node_id == outlet_b_id, "from_node_id"] = outlet_a_id
         self.link.df.loc[self.link.df.to_node_id == outlet_b_id, "to_node_id"] = outlet_a_id
 

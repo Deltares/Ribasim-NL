@@ -33,7 +33,7 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
             node_start = model.node_table().df.index.max() + 1
             merge_model = reset_index(merge_model, node_start)
 
-        # concat edges
+        # concat links
         edge_df = pd.concat([model.link.df, merge_model.link.df], ignore_index=not keep_original_index)
         edge_df.index.name = "link_id"
         model.link.df = edge_df

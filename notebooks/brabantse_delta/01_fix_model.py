@@ -63,7 +63,7 @@ model.remove_node(2288, remove_links=True)
 model.redirect_link(link_id=2450, to_node_id=955)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issue-2535747701
-# Omkeren edges
+# Omkeren links
 edge_ids = [2470, 2468, 2469, 2465, 748, 2476, 2489, 697, 2500, 2487, 2440]
 
 for link_id in edge_ids:

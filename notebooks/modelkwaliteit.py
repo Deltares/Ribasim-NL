@@ -14,7 +14,7 @@ for authority in cloud.water_authorities:
     if ribasim_toml.exists():
         model = Model.read(ribasim_toml)
 
-        # duplicated edges
+        # duplicated links
         duplicated_links = len(model.link.df[model.link.df.duplicated()])
         model.link.df.drop_duplicates(inplace=True)
 

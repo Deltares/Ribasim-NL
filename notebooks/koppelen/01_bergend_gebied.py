@@ -134,7 +134,7 @@ for row in rws_model.basin.node.df[rws_model.basin.node.df.index.isin(basin_area
             data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
         tbr_node = rws_model.tabulated_rating_curve.add(node=node, tables=data)
 
-        # add edges
+        # add links
         link_id += 1  # FIXME: can be removed if issue is closed https://github.com/Deltares/Ribasim/issues/1804
         rws_model.link.add(basin_node, tbr_node, link_id=link_id, meta_categorie="bergend")
         link_id += 1

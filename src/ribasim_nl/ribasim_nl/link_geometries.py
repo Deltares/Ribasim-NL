@@ -65,7 +65,7 @@ def fix_link_geometries(
     if node_ids is None:
         node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index
     for node_id in tqdm(node_ids, desc="fix line geometries"):
-        logger.info(f"fixing edges for {node_df.at[node_id, 'node_type']} {node_id}")
+        logger.info(f"fixing links for {node_df.at[node_id, 'node_type']} {node_id}")
         # get basin_node_id
         network_basin_node = get_network_node(network, node_df.at[node_id, "geometry"])
         if network_basin_node is None:
@@ -93,7 +93,7 @@ def fix_link_geometries(
             get_network_node(network, node_df.at[i, "geometry"]) for i in downstream_node_ids if i is not None
         ]
 
-        # draw edges from upstream nodes
+        # draw links from upstream nodes
         for idx, network_node in enumerate(upstream_nodes):
             if network_node is None:
                 continue
@@ -112,7 +112,7 @@ def fix_link_geometries(
                 )
                 model.link.df.loc[mask, ["geometry"]] = geometry
 
-        # draw edges to downstream nodes
+        # draw links to downstream nodes
         for idx, network_node in enumerate(downstream_nodes):
             if network_node is None:
                 continue

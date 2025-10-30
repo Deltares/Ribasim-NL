@@ -90,7 +90,7 @@ pump_data = pump.Static(flow_rate=[10])
 # %%
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
-# 76 edges bij opgeheven nodes verwijderen
+# 76 links bij opgeheven nodes verwijderen
 mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
     model.node_table().df.index
 )
@@ -217,7 +217,7 @@ for node_id in model.basin.node.df.index:
     # empty list of LineStrings
     data = []
 
-    # draw edges from upstream nodes
+    # draw links from upstream nodes
     for idx, network_node in enumerate(upstream_nodes):
         all_paths = list(all_shortest_paths(network.graph_undirected, source=network_node, target=network_basin_node))
         if len(all_paths) > 1:
@@ -235,7 +235,7 @@ for node_id in model.basin.node.df.index:
                 )
                 model.link.df.loc[mask, ["geometry"]] = link
 
-    # draw edges to downstream nodes
+    # draw links to downstream nodes
     for idx, network_node in enumerate(downstream_nodes):
         all_paths = list(all_shortest_paths(network.graph_undirected, target=network_node, source=network_basin_node))
         if len(all_paths) > 1:

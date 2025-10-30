@@ -145,15 +145,15 @@ def get_area_and_profile(node_id):
         else:
             area_geometry = None
 
-    # if we didn't get an area (of sufficient size) we get it from profiles and edges
+    # if we didn't get an area (of sufficient size) we get it from profiles and links
     if area_geometry is None:
-        edges_select_df = model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)]
-        selected_profiles_df = profile_df[profile_df.intersects(edges_select_df.union_all())]
+        links_select_df = model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)]
+        selected_profiles_df = profile_df[profile_df.intersects(links_select_df.union_all())]
         if selected_profiles_df.empty:
             width = 2
         else:
             width = selected_profiles_df.length.mean()
-        area_geometry = edges_select_df.buffer(width / 2).union_all()
+        area_geometry = links_select_df.buffer(width / 2).union_all()
 
     # select profile
     if not selected_profiles_df.empty:  # we select the profile with the lowest level

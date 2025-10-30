@@ -12,7 +12,7 @@ def within_distance(row, gdf, tolerance=1.0) -> bool:
 def check_node_connectivity(row, node_df, tolerance=1.0) -> bool:
     invalid = True
 
-    # handle zero-length edges
+    # handle zero-length links
     if row.geometry.length == 0:
         point_from = point_to = row.geometry.centroid
     else:
@@ -143,6 +143,6 @@ class NetworkValidator:
         return self.edge_df[mask]
 
     def edge_incorrect_type_connectivity(self, from_node_type="ManningResistance", to_node_type="LevelBoundary"):
-        """Check edges that contain wrong connectivity"""
+        """Check links that contain wrong connectivity"""
         mask = (self.model.edge_from_node_type == from_node_type) & (self.model.edge_to_node_type == to_node_type)
         return self.edge_df[mask]

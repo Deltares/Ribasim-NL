@@ -16,13 +16,13 @@ from ..utils.general_functions import remove_holes_from_polygons
 
 def create_graph_based_on_nodes_links(
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     directional_graph: bool = True,
     add_link_length_as_weight: bool = False,
     print_logmessage: bool = True,
 ) -> nx.Graph | nx.DiGraph:
     """
-    Create networkx graph based on geographic nodes and edges.
+    Create networkx graph based on geographic nodes and links.
 
     Defaults to a directional graph.
     """
@@ -33,26 +33,26 @@ def create_graph_based_on_nodes_links(
     if nodes is not None:
         for i, node in nodes.iterrows():
             graph.add_node(node.node_no, pos=(node.geometry.x, node.geometry.y))
-    if edges is not None:
-        for i, link in edges.iterrows():
+    if links is not None:
+        for i, link in links.iterrows():
             if add_link_length_as_weight:
                 graph.add_link(link.from_node, link.to_node, weight=link.geometry.length)
             else:
                 graph.add_link(link.from_node, link.to_node)
     if print_logmessage:
-        print(f" - create network graph from nodes ({len(nodes)}x) and edges ({len(edges)}x)")
+        print(f" - create network graph from nodes ({len(nodes)}x) and links ({len(links)}x)")
     return graph
 
 
 def split_graph_based_on_split_nodes(
-    graph: nx.DiGraph, split_nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame
+    graph: nx.DiGraph, split_nodes: gpd.GeoDataFrame, links: gpd.GeoDataFrame
 ) -> tuple[nx.DiGraph, gpd.GeoDataFrame]:
     """
     Split networkx graph at split_link or split_node.
 
-    It removes the original edges(s)/node(s) which are the same as split_link and
-    split_node and inserts new edges and nodes such that the graph becomes disconnected at the split point. After this edges don't
-    connect to 1 node (at split point) but each end in each own new node. Because of this removing and adding edges and nodes in the
+    It removes the original links(s)/node(s) which are the same as split_link and
+    split_node and inserts new links and nodes such that the graph becomes disconnected at the split point. After this links don't
+    connect to 1 node (at split point) but each end in each own new node. Because of this removing and adding links and nodes in the
     graph, these new nodes no in graph are added to split_nodes gdf and also returned as result of this function.
     """
     split_nodes = split_nodes.copy()  # copy to make sure gdf variable is not linked
@@ -60,8 +60,8 @@ def split_graph_based_on_split_nodes(
         [-1] * len(split_nodes), index=split_nodes.index, dtype=object
     )  # force dtype object to be able to insert tuples
 
-    # split on link: delete link, create 2 nodes, create 2 edges
-    # if all link no in split nodes gdf are -1, than no splitting of edges are done
+    # split on link: delete link, create 2 nodes, create 2 links
+    # if all link no in split nodes gdf are -1, than no splitting of links are done
     # TODO: although link stuff below works, it is actually better to split network at split nodes at earlier stage
     #       this will result in all link no being -1 and only values for node no. so maybe check on that all edge_no
     #       values need to be -1 should be better.
@@ -69,11 +69,11 @@ def split_graph_based_on_split_nodes(
         split_nodes["edge_no"] = -1
     split_nodes_links = split_nodes[split_nodes.edge_no != -1].copy()
 
-    split_links = edges[edges.edge_no.isin(split_nodes_links.edge_no.values)].copy()
+    split_links = links[links.edge_no.isin(split_nodes_links.edge_no.values)].copy()
     # assert len(split_nodes_links) == len(split_links)
     split_links = split_links[["from_node", "to_node"]].to_dict("tight")["data"]
 
-    split_links = [coor for coor in split_links if coor in graph.edges]
+    split_links = [coor for coor in split_links if coor in graph.links]
 
     split_nodes_links["new_node_no1"] = 998_000_000_000 + split_nodes_links.edge_no * 1_000 + 1
     split_nodes_links["new_node_no2"] = 998_000_000_000 + split_nodes_links.edge_no * 1_000 + 2
@@ -81,7 +81,7 @@ def split_graph_based_on_split_nodes(
     split_nodes_links["upstream_node_no"] = [e[0] for e in split_links]
     split_nodes_links["downstream_node_no"] = [e[1] for e in split_links]
 
-    # remove splitted edges from graph and insert the newly split ones
+    # remove splitted links from graph and insert the newly split ones
     graph.remove_links_from(split_links)
     for i_link, new in split_nodes_links.iterrows():
         graph.add_node(new.new_node_no1, pos=new.new_node_pos)
@@ -94,7 +94,7 @@ def split_graph_based_on_split_nodes(
         new_graph_node_no, index=split_nodes_links.index, dtype=object
     )
 
-    # split_node: delete node and delete x edges, create x nodes, create x edges
+    # split_node: delete node and delete x links, create x nodes, create x links
     if "node_no" not in split_nodes.columns:
         split_nodes["node_no"] = -1
     split_nodes_nodes = split_nodes[split_nodes.node_no != -1]
@@ -104,9 +104,9 @@ def split_graph_based_on_split_nodes(
             new_graph_node_no.append(-1)
             continue
         split_node_pos = graph.nodes[split_node_id]["pos"]
-        split_links = [e for e in list(graph.edges) if split_node_id in e]
+        split_links = [e for e in list(graph.links) if split_node_id in e]
 
-        # remove old edges and node and insert new ones
+        # remove old links and node and insert new ones
         graph.remove_links_from(split_links)
         graph.remove_node(split_node_id)
         new_graph_no = []
@@ -128,20 +128,20 @@ def split_graph_based_on_split_nodes(
 def add_basin_code_from_network_to_nodes_and_links(
     graph: nx.DiGraph,
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     split_nodes: gpd.GeoDataFrame,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Add basin (subgraph) code to nodes and edges"""
-    edges, nodes, split_nodes = (
-        edges.copy(),
+    """Add basin (subgraph) code to nodes and links"""
+    links, nodes, split_nodes = (
+        links.copy(),
         nodes.copy(),
         split_nodes.copy(),
     )  # copy to make sure gdf variable is not linked
     subgraphs = list(nx.weakly_connected_components(graph))
-    if nodes is None or edges is None:
+    if nodes is None or links is None:
         return None, None
     nodes["basin"] = -1
-    edges["basin"] = -1
+    links["basin"] = -1
     # prepare indexer to speed-up finding original node no for graph node no
     ix = split_nodes.index[(split_nodes["graph_node_no"] == -1) | pd.isna(split_nodes["graph_node_no"])]
     split_nodes.loc[ix, "graph_node_no"] = pd.Series(
@@ -151,32 +151,32 @@ def add_basin_code_from_network_to_nodes_and_links(
         gn: no for no, gns in zip(split_nodes["node_no"], split_nodes["graph_node_no"]) for gn in list(gns)
     }
     for i, subgraph in enumerate(subgraphs):
-        # because in the graph nodes and edges can be changed to generate subgraphs we need to find
+        # because in the graph nodes and links can be changed to generate subgraphs we need to find
         # the original node no for the changed nodes. this information is stored in split_nodes_gdf
         node_ids = list(subgraph)
         orig_node_ids = [orig_node_indexer[n] if n in orig_node_indexer.keys() else n for n in node_ids]
 
-        edges.loc[edges["from_node"].isin(orig_node_ids) & edges["to_node"].isin(orig_node_ids), "basin"] = i + 1
+        links.loc[links["from_node"].isin(orig_node_ids) & links["to_node"].isin(orig_node_ids), "basin"] = i + 1
         nodes.loc[nodes["node_no"].isin(orig_node_ids), "basin"] = i + 1
-    print(f" - define numbers Ribasim-Basins ({len(subgraphs)}x) and join edges/nodes")
-    return nodes, edges
+    print(f" - define numbers Ribasim-Basins ({len(subgraphs)}x) and join links/nodes")
+    return nodes, links
 
 
 def check_if_split_node_is_used(
     split_nodes: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
     """Check whether split_nodes are used, split_nodes and split_links"""
     split_nodes = split_nodes.copy()  # copy to make sure gdf variable is not linked
     split_nodes["status"] = True
 
-    # check if edges connected to split_nodes have the same basin code
+    # check if links connected to split_nodes have the same basin code
     split_node_ids = [v for v in split_nodes.node_no.values if v != -1]
     split_nodes_not_used = []
     for split_node_id in split_node_ids:
-        from_nodes = list(edges[edges.from_node == split_node_id].to_node.values)
-        to_nodes = list(edges[edges.to_node == split_node_id].from_node.values)
+        from_nodes = list(links[links.from_node == split_node_id].to_node.values)
+        to_nodes = list(links[links.to_node == split_node_id].from_node.values)
         neighbours = nodes[nodes.node_no.isin(from_nodes + to_nodes)]
         if len(neighbours.basin.unique()) == 1:
             split_nodes_not_used.append(split_node_id)
@@ -186,8 +186,8 @@ def check_if_split_node_is_used(
     split_link_ids = [v for v in split_nodes.edge_no.values if v != -1]
     split_links_not_used = []
     for split_link_id in sorted(split_link_ids):
-        end_nodes = list(edges[edges.edge_no == split_link_id].to_node.values)
-        start_nodes = list(edges[edges.edge_no == split_link_id].from_node.values)
+        end_nodes = list(links[links.edge_no == split_link_id].to_node.values)
+        start_nodes = list(links[links.edge_no == split_link_id].from_node.values)
         neighbours = nodes[nodes.node_no.isin(end_nodes + start_nodes)]
         if len(neighbours.basin.unique()) == 1:
             split_links_not_used.append(split_link_id)
@@ -204,12 +204,12 @@ def check_if_split_node_is_used(
 
 
 def create_basin_areas_based_on_drainage_areas(
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     areas: gpd.GeoDataFrame,
     laterals: gpd.GeoDataFrame = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
-    Find areas with spatial join on edges.
+    Find areas with spatial join on links.
 
     Add subgraph code to areas and combine all areas with certain subgraph code into one Basin.
     """
@@ -217,11 +217,11 @@ def create_basin_areas_based_on_drainage_areas(
         return None, None
     else:
         areas = areas[["code", "area", "geometry"]].copy()
-    if edges is None:
+    if links is None:
         areas["basin"] = -1
         return areas, None
     else:
-        edges = edges.copy()
+        links = links.copy()
 
     def get_area_code_for_lateral(laterals, areas):
         selected_areas = areas[[laterals.find(area) != -1 for area in areas["code"]]]
@@ -245,7 +245,7 @@ def create_basin_areas_based_on_drainage_areas(
         laterals = laterals.copy()
         laterals["area_code_included"] = laterals["id"].apply(lambda x: get_area_code_for_lateral(x, areas))
         laterals_join = laterals.sjoin(
-            gpd.GeoDataFrame(edges["basin"], geometry=edges["geometry"].buffer(1)),
+            gpd.GeoDataFrame(links["basin"], geometry=links["geometry"].buffer(1)),
             op="intersects",
             how="left",
         ).drop(columns=["index_right"])
@@ -254,7 +254,7 @@ def create_basin_areas_based_on_drainage_areas(
         basin_areas = areas.dissolve(by="basin").explode().reset_index().drop(columns=["level_1"])
 
     else:
-        edges_sel = edges.loc[edges["basin"] != -1].copy()
+        links_sel = links.loc[links["basin"] != -1].copy()
         # fix invalid area geometries
         areas_orig = areas.copy()
         areas.geometry = areas.make_valid()
@@ -265,12 +265,12 @@ def create_basin_areas_based_on_drainage_areas(
             else gs
             for gs in areas.geometry
         ]
-        # spatial join edges to areas that intersect
-        areas = areas.sjoin(edges_sel[["basin", "geometry"]])
+        # spatial join links to areas that intersect
+        areas = areas.sjoin(links_sel[["basin", "geometry"]])
         # we want to select the link which is the longest within an area to ultimately select
         # the right basin code
         edge_lengths = [
-            gpd.GeoDataFrame(edges_sel.loc[ir].to_frame().T, geometry="geometry").clip(a).geometry.length.values[0]
+            gpd.GeoDataFrame(links_sel.loc[ir].to_frame().T, geometry="geometry").clip(a).geometry.length.values[0]
             for a, ir in zip(areas.geometry, areas["index_right"])
         ]
         areas["edge_length"] = edge_lengths
@@ -287,7 +287,7 @@ def create_basin_areas_based_on_drainage_areas(
             .sort_values(by="area")
             .merge(areas_orig, how="outer", left_on="area", right_on="area")
         )
-        areas = gpd.GeoDataFrame(areas, geometry="geometry", crs=edges.crs)
+        areas = gpd.GeoDataFrame(areas, geometry="geometry", crs=links.crs)
         areas = areas.sort_values(by="area")
         areas.geometry = areas.make_valid()  # dissolve can fail because of incorrect geoms. fix those first
         basin_areas = areas.dissolve(by="basin").reset_index().drop(columns=["area"])
@@ -301,7 +301,7 @@ def create_basin_areas_based_on_drainage_areas(
 
 
 def create_basins_based_on_subgraphs_and_nodes(
-    graph: nx.DiGraph, nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame
+    graph: nx.DiGraph, nodes: gpd.GeoDataFrame, links: gpd.GeoDataFrame
 ) -> gpd.GeoDataFrame:
     """Create basin nodes based on basin_areas or nodes"""
     connected_components = list(nx.weakly_connected_components(graph))
@@ -340,7 +340,7 @@ def create_basins_based_on_subgraphs_and_nodes(
         basins2y = (
             basins2x[["basin", "node_no1", "node_no2"]]
             .merge(
-                edges[["basin", "edge_no", "from_node", "to_node"]],
+                links[["basin", "edge_no", "from_node", "to_node"]],
                 how="left",
                 left_on=["basin", "node_no1", "node_no2"],
                 right_on=["basin", "from_node", "to_node"],
@@ -350,7 +350,7 @@ def create_basins_based_on_subgraphs_and_nodes(
         )
         basins2z = (
             basins2y.merge(
-                edges[["basin", "edge_no", "from_node", "to_node"]],
+                links[["basin", "edge_no", "from_node", "to_node"]],
                 how="left",
                 left_on=["basin", "node_no2", "node_no1"],
                 right_on=["basin", "from_node", "to_node"],
@@ -364,7 +364,7 @@ def create_basins_based_on_subgraphs_and_nodes(
         basins2z.loc[basins2z["from_node_y"] != -1, "from_node"] = basins2z["from_node_y"]
         basins2z.loc[basins2z["to_node_x"] != -1, "to_node"] = basins2z["to_node_x"]
         basins2z.loc[basins2z["to_node_y"] != -1, "to_node"] = basins2z["to_node_y"]
-        basins2z = basins2z.fillna(-1).astype(int).merge(edges[["edge_no", "geometry"]], how="left", on="edge_no")
+        basins2z = basins2z.fillna(-1).astype(int).merge(links[["edge_no", "geometry"]], how="left", on="edge_no")
         basins2s = basins2z[
             ((basins2z.from_node == basins2z.node_no1) & (basins2z.to_node == basins2z.node_no2))
             | ((basins2z.from_node == basins2z.node_no2) & (basins2z.to_node == basins2z.node_no1))
@@ -381,20 +381,20 @@ def create_basins_based_on_subgraphs_and_nodes(
 
 
 def check_if_nodes_links_within_basin_areas(
-    nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, basin_areas: gpd.GeoDataFrame
+    nodes: gpd.GeoDataFrame, links: gpd.GeoDataFrame, basin_areas: gpd.GeoDataFrame
 ) -> tuple[gpd.GeoDataFrame]:
     """Check whether nodes assigned to a basin are also within the polygon assigned to that basin"""
-    edges, nodes, basin_areas = (
-        edges.copy(),
+    links, nodes, basin_areas = (
+        links.copy(),
         nodes.copy(),
         basin_areas.copy(),
     )  # copy to make sure gdf variable is not linked
     if basin_areas is None:
         nodes["basin_area"] = -1
         nodes["basin_check"] = True
-        edges["basin_area"] = -1
-        edges["basin_check"] = True
-        return nodes, edges
+        links["basin_area"] = -1
+        links["basin_check"] = True
+        return nodes, links
 
     nodes = nodes.drop(columns=["basin_area"], errors="ignore")
     nodes = gpd.sjoin(nodes, basin_areas[["geometry", "basin"]], how="left").drop(columns=["index_right"])
@@ -402,19 +402,19 @@ def check_if_nodes_links_within_basin_areas(
     nodes = nodes.rename(columns={"basin_left": "basin", "basin_right": "basin_area"})
     nodes["basin_check"] = nodes["basin"] == nodes["basin_area"]
 
-    edges = edges.drop(columns=["basin_area"], errors="ignore")
-    edges = gpd.sjoin(edges, basin_areas[["geometry", "basin"]], how="left", predicate="within").drop(
+    links = links.drop(columns=["basin_area"], errors="ignore")
+    links = gpd.sjoin(links, basin_areas[["geometry", "basin"]], how="left", predicate="within").drop(
         columns=["index_right"]
     )
-    edges = edges.rename(columns={"basin_left": "basin", "basin_right": "basin_area"})
-    edges["basin_area"] = edges["basin_area"].fillna(-1).astype(int)
-    edges["basin_check"] = edges["basin"] == edges["basin_area"]
-    return nodes, edges
+    links = links.rename(columns={"basin_left": "basin", "basin_right": "basin_area"})
+    links["basin_area"] = links["basin_area"].fillna(-1).astype(int)
+    links["basin_check"] = links["basin"] == links["basin_area"]
+    return nodes, links
 
 
 def create_basin_connections(
     split_nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
     basins: gpd.GeoDataFrame,
     crs: int = 28992,
@@ -433,7 +433,7 @@ def create_basin_connections(
     # (1) splitnodes that are located on an link
     conn_struct = conn.loc[conn["edge_no"] != -1].drop(["node_no", "from_node", "to_node"], axis=1, errors="ignore")
     # merge with link to find us and ds nodes
-    conn_struct = conn_struct.merge(edges[["from_node", "to_node", "edge_no"]], left_on="edge_no", right_on="edge_no")
+    conn_struct = conn_struct.merge(links[["from_node", "to_node", "edge_no"]], left_on="edge_no", right_on="edge_no")
     # TODO: check for each link the maximum absolute flow direction, in case of negative, reverse from_node/to_node
     # merge with node to find us and ds basin
     conn_struct_us = conn_struct.merge(
@@ -449,16 +449,16 @@ def create_basin_connections(
     ).drop(columns=["from_node", "to_node", "node_no", "edge_no"])
 
     # (2) splitnodes that are original d-hydro nodes
-    # merge splitnodes add connected edges
+    # merge splitnodes add connected links
     conn_nodes = conn.loc[conn["node_no"] != -1].drop(["edge_no", "from_node", "to_node"], axis=1, errors="ignore")
 
     conn_nodes_ds = conn_nodes.merge(
-        edges[["basin", "from_node", "to_node", "edge_no"]],
+        links[["basin", "from_node", "to_node", "edge_no"]],
         left_on="node_no",
         right_on="from_node",
     ).drop(columns=["from_node", "to_node", "node_no", "edge_no"])
     conn_nodes_us = conn_nodes.merge(
-        edges[["basin", "from_node", "to_node", "edge_no"]],
+        links[["basin", "from_node", "to_node", "edge_no"]],
         left_on="node_no",
         right_on="to_node",
     ).drop(columns=["from_node", "to_node", "node_no", "edge_no"])
@@ -486,10 +486,10 @@ def create_basin_connections(
     basin_connections = gpd.GeoDataFrame(basin_connections, geometry="geometry", crs=crs)
 
     if option_links_hydroobjects:
-        print(" - generate basin connections geometry from edges")
-        # make undirectional graph of last updated nodes and edges including length of edges
+        print(" - generate basin connections geometry from links")
+        # make undirectional graph of last updated nodes and links including length of links
         graph = create_graph_based_on_nodes_links(
-            nodes=nodes, edges=edges, directional_graph=False, add_link_length_as_weight=True, print_logmessage=False
+            nodes=nodes, links=links, directional_graph=False, add_link_length_as_weight=True, print_logmessage=False
         )
         # get node no for split node and basin
         _basin_connections = basin_connections.copy()
@@ -510,8 +510,8 @@ def create_basin_connections(
                 _basin_connections["connection"],
             )
         ]
-        # transform shortest paths to a continuous line of the edges
-        _links = edges.copy()
+        # transform shortest paths to a continuous line of the links
+        _links = links.copy()
         _links["nodes1"] = [f"{n1}_{n2}" for n1, n2 in zip(_links["from_node"], _links["to_node"])]
         _links["nodes2"] = [f"{n2}_{n1}" for n1, n2 in zip(_links["from_node"], _links["to_node"])]
         _basin_connections["geometry_from_links"] = [
@@ -550,12 +550,12 @@ def create_basin_connections(
 def create_boundary_connections(
     boundaries: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     basins: gpd.GeoDataFrame,
     split_nodes: gpd.GeoDataFrame,
 ) -> tuple[gpd.GeoDataFrame]:
     """Create boundary-basin connections"""
-    print(" - create Ribasim-Edges between Boundaries and Basins")
+    print(" - create Ribasim-Links between Boundaries and Basins")
     split_nodes = split_nodes[(split_nodes["split_type"] != "no_split") & (split_nodes["split_type"] != "harde_knip")]
     if boundaries is None or nodes is None or basins is None:
         return None, split_nodes, basins
@@ -587,7 +587,7 @@ def create_boundary_connections(
 
     if not waterlevelbnd_conn.empty:
         # Inflow connection
-        waterlevelbnd_conn_in = waterlevelbnd_conn[waterlevelbnd_conn.boundary_node_no.isin(edges.from_node)]
+        waterlevelbnd_conn_in = waterlevelbnd_conn[waterlevelbnd_conn.boundary_node_no.isin(links.from_node)]
         waterlevelbnd_conn_in["geometry"] = None
         if not waterlevelbnd_conn_in.empty:
             waterlevelbnd_conn_in.loc[:, "geometry"] = waterlevelbnd_conn_in.apply(
@@ -596,7 +596,7 @@ def create_boundary_connections(
         waterlevelbnd_conn_in["connection"] = "boundary_to_basin"
 
         # Outflow connection
-        waterlevelbnd_conn_out = waterlevelbnd_conn[waterlevelbnd_conn.boundary_node_no.isin(edges.to_node)]
+        waterlevelbnd_conn_out = waterlevelbnd_conn[waterlevelbnd_conn.boundary_node_no.isin(links.to_node)]
         waterlevelbnd_conn_out["geometry"] = None
         if not waterlevelbnd_conn_out.empty:
             waterlevelbnd_conn_out.loc[:, "geometry"] = waterlevelbnd_conn_out.apply(
@@ -636,7 +636,7 @@ def remove_basins_from_boundary(
     basin_conn: gpd.GeoDataFrame,
     basin: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
 ) -> tuple[gpd.GeoDataFrame]:
     """Remove basins between boundary and first split_node"""
     boun_conn_basins = boun_conn.merge(basin_conn[["basin", "split_node", "geom_split_node"]], how="left", on="basin")
@@ -667,7 +667,7 @@ def remove_basins_from_boundary(
 
     basin_conn = basin_conn[~basin_conn.basin.isin(boun_conn.basin.values)]
     basin = basin[~basin.basin.isin(boun_conn.basin.values)]
-    return boun_conn, basin_conn, basin, nodes, edges
+    return boun_conn, basin_conn, basin, nodes, links
 
 
 def remove_boundary_basins_if_not_needed(
@@ -675,7 +675,7 @@ def remove_boundary_basins_if_not_needed(
     basin_connections: gpd.GeoDataFrame,
     boundary_connections: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     include_flow_boundary_basins: bool = True,
     include_level_boundary_basins: bool = False,
 ):
@@ -689,12 +689,12 @@ def remove_boundary_basins_if_not_needed(
     level_boundary_connections = boundary_connections[boundary_connections.boundary_type == "LevelBoundary"]
 
     if not include_flow_boundary_basins and not flow_boundary_connections.empty:
-        flow_boundary_connections, basin_connections, basins, nodes, edges = remove_basins_from_boundary(
-            flow_boundary_connections, basin_connections, basins, nodes, edges
+        flow_boundary_connections, basin_connections, basins, nodes, links = remove_basins_from_boundary(
+            flow_boundary_connections, basin_connections, basins, nodes, links
         )
     if not include_level_boundary_basins and not level_boundary_connections.empty:
-        level_boundary_connections, basin_connections, basins, nodes, edges = remove_basins_from_boundary(
-            level_boundary_connections, basin_connections, basins, nodes, edges
+        level_boundary_connections, basin_connections, basins, nodes, links = remove_basins_from_boundary(
+            level_boundary_connections, basin_connections, basins, nodes, links
         )
 
     boundary_connections = pd.concat([flow_boundary_connections, level_boundary_connections])
@@ -708,7 +708,7 @@ def remove_boundary_basins_if_not_needed(
         columns=["geom_boundary", "geom_basin", "geom_split_node"], errors="ignore"
     )
     basin_connections = basin_connections.drop(columns=["geom_basin", "geom_split_node"], errors="ignore")
-    return boundary_connections, basin_connections, basins, nodes, edges
+    return boundary_connections, basin_connections, basins, nodes, links
 
 
 def remove_holes_from_basin_areas(basin_areas: gpd.GeoDataFrame, min_area: float):
@@ -724,25 +724,25 @@ def regenerate_node_ids(
     boundary_connections: gpd.GeoDataFrame,
     basin_areas: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     areas: gpd.GeoDataFrame,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Regenerate ribasim node-id for nodes and edges"""
+    """Regenerate ribasim node-id for nodes and links"""
     boundaries, split_nodes, basins, basin_connections = (
         boundaries.copy(),
         split_nodes.copy(),
         basins.copy(),
         basin_connections.copy(),
     )
-    boundary_connections, basin_areas, nodes, edges, areas = (
+    boundary_connections, basin_areas, nodes, links, areas = (
         boundary_connections.copy(),
         basin_areas.copy(),
         nodes.copy(),
-        edges.copy(),
+        links.copy(),
         areas.copy(),
     )
 
-    print(" - regenerate node-ids Ribasim-Nodes and Ribasim-Edges")
+    print(" - regenerate node-ids Ribasim-Nodes and Ribasim-Links")
     # boundaries
     if boundaries is not None:
         if "boundary_node_id" in boundaries.columns:
@@ -807,7 +807,7 @@ def regenerate_node_ids(
 
     areas["basin_node_id"] = areas["basin"].apply(lambda x: x + len_split_nodes + len_boundaries if x > 0 else -1)
     nodes["basin_node_id"] = nodes["basin"].apply(lambda x: x + len_split_nodes + len_boundaries if x > 0 else -1)
-    edges["basin_node_id"] = edges["basin"].apply(lambda x: x + len_split_nodes + len_boundaries if x > 0 else -1)
+    links["basin_node_id"] = links["basin"].apply(lambda x: x + len_split_nodes + len_boundaries if x > 0 else -1)
 
     connections = pd.concat(
         [basin_connections[["from_node_id", "to_node_id"]], boundary_connections[["from_node_id", "to_node_id"]]]
@@ -833,12 +833,12 @@ def regenerate_node_ids(
     basins = basins.drop_duplicates(keep="first")
     basin_areas = basin_areas.drop_duplicates(keep="first")
     nodes = nodes.drop_duplicates(keep="first")
-    edges = edges.drop_duplicates(keep="first")
+    links = links.drop_duplicates(keep="first")
     areas = areas.drop_duplicates(keep="first")
     basin_connections = basin_connections.drop_duplicates(keep="first")
     boundary_connections = boundary_connections.drop_duplicates(keep="first")
 
-    return boundaries, split_nodes, basins, basin_areas, nodes, edges, areas, basin_connections, boundary_connections
+    return boundaries, split_nodes, basins, basin_areas, nodes, links, areas, basin_connections, boundary_connections
 
 
 def check_basins_connected_to_basin_areas(
@@ -866,23 +866,23 @@ def remove_isolated_basins_and_update_administration(
     areas: gpd.GeoDataFrame,
     basin_connections: gpd.GeoDataFrame,
     boundary_connections: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Remove isolated basins (including 1-on-1 connected basin areas) based on basin and boundary connections.
 
-    Update the basin administration in basin areas, areas, edges and nodes
-    Returns basin, basin areas, areas, edges and nodes
+    Update the basin administration in basin areas, areas, links and nodes
+    Returns basin, basin areas, areas, links and nodes
     """
-    basins, basin_areas, edges, nodes = basins.copy(), basin_areas.copy(), edges.copy(), nodes.copy()
+    basins, basin_areas, links, nodes = basins.copy(), basin_areas.copy(), links.copy(), nodes.copy()
 
     # get isolated basins
     connected_basins = np.unique(basin_connections["basin"].tolist() + boundary_connections["basin"].tolist())
     isolated_basins = basins.loc[~np.isin(basins["basin"].values, connected_basins), "basin"].values
     print(f" - removing isolated basins ({len(isolated_basins)}x)")
     if len(isolated_basins) == 0:
-        return basins, basin_areas, edges, nodes  # no isolated basins so no further steps needed
+        return basins, basin_areas, links, nodes  # no isolated basins so no further steps needed
 
     # get mapping of which basin are located within a basin area
     _basin_areas = basin_areas.sjoin(basins, how="left")
@@ -900,27 +900,27 @@ def remove_isolated_basins_and_update_administration(
     }
     isolated_basin_to_basin = {k: int(v[0]) if len(v) > 0 else -(1000 + k) for k, v in isolated_basin_to_basin.items()}
 
-    # update basins, basin areas, edges and nodes. if removed basin is 1-on-1 connected to a basin area, the basin area will be removed.
-    # this also means that the basin and basin area of associated nodes and edges of that removed basin will be removed
+    # update basins, basin areas, links and nodes. if removed basin is 1-on-1 connected to a basin area, the basin area will be removed.
+    # this also means that the basin and basin area of associated nodes and links of that removed basin will be removed
     basins = basins.loc[np.isin(basins["basin"].values, connected_basins)]
     basin_areas["basin"] = [
         isolated_basin_to_basin[b] if b in isolated_basin_to_basin.keys() else b for b in basin_areas["basin"]
     ]
-    edges["basin"] = [isolated_basin_to_basin[b] if b in isolated_basin_to_basin.keys() else b for b in edges["basin"]]
+    links["basin"] = [isolated_basin_to_basin[b] if b in isolated_basin_to_basin.keys() else b for b in links["basin"]]
     nodes["basin"] = [isolated_basin_to_basin[b] if b in isolated_basin_to_basin.keys() else b for b in nodes["basin"]]
     # remove 1-on-1 connected basin areas
-    edges["basin_area"] = [-1 if b < -10 else ba for b, ba in zip(edges["basin"], edges["basin_area"])]
+    links["basin_area"] = [-1 if b < -10 else ba for b, ba in zip(links["basin"], links["basin_area"])]
     nodes["basin_area"] = [-1 if b < -10 else ba for b, ba in zip(nodes["basin"], nodes["basin_area"])]
     basin_areas = basin_areas.loc[basin_areas["basin"] >= 0]
     # update areas
     areas.loc[np.isin(areas["basin"].values, isolated_basins), "basin"] = np.nan
 
-    return basins, basin_areas, areas, edges, nodes
+    return basins, basin_areas, areas, links, nodes
 
 
 def generate_ribasim_network_using_split_nodes(
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
     split_nodes: gpd.GeoDataFrame,
     areas: gpd.GeoDataFrame,
     boundaries: gpd.GeoDataFrame,
@@ -934,32 +934,32 @@ def generate_ribasim_network_using_split_nodes(
     option_links_hydroobjects: bool = False,
 ) -> dict:
     """
-    Create basins (nodes) and basin_areas (large polygons) and connections (edges) based on nodes, edges, split_nodes and areas (discharge units).
+    Create basins (nodes) and basin_areas (large polygons) and connections (links) based on nodes, links, split_nodes and areas (discharge units).
 
     This function calls all other functions
     """
     network_graph = None
     basin_areas = None
     basins = None
-    network_graph = create_graph_based_on_nodes_links(nodes=nodes, edges=edges)
+    network_graph = create_graph_based_on_nodes_links(nodes=nodes, links=links)
     network_graph, split_nodes = split_graph_based_on_split_nodes(
-        graph=network_graph, split_nodes=split_nodes, edges=edges
+        graph=network_graph, split_nodes=split_nodes, links=links
     )
-    nodes, edges = add_basin_code_from_network_to_nodes_and_links(
-        graph=network_graph, split_nodes=split_nodes, nodes=nodes, edges=edges
+    nodes, links = add_basin_code_from_network_to_nodes_and_links(
+        graph=network_graph, split_nodes=split_nodes, nodes=nodes, links=links
     )
-    split_nodes = check_if_split_node_is_used(split_nodes=split_nodes, nodes=nodes, edges=edges)
-    basins = create_basins_based_on_subgraphs_and_nodes(graph=network_graph, nodes=nodes, edges=edges)
+    split_nodes = check_if_split_node_is_used(split_nodes=split_nodes, nodes=nodes, links=links)
+    basins = create_basins_based_on_subgraphs_and_nodes(graph=network_graph, nodes=nodes, links=links)
     if use_laterals_for_basin_area:
-        areas, basin_areas = create_basin_areas_based_on_drainage_areas(edges=edges, areas=areas, laterals=laterals)
+        areas, basin_areas = create_basin_areas_based_on_drainage_areas(links=links, areas=areas, laterals=laterals)
     else:
-        areas, basin_areas = create_basin_areas_based_on_drainage_areas(edges=edges, areas=areas)
-    nodes, edges = check_if_nodes_links_within_basin_areas(nodes=nodes, edges=edges, basin_areas=basin_areas)
+        areas, basin_areas = create_basin_areas_based_on_drainage_areas(links=links, areas=areas)
+    nodes, links = check_if_nodes_links_within_basin_areas(nodes=nodes, links=links, basin_areas=basin_areas)
     basin_connections = create_basin_connections(
         split_nodes=split_nodes,
         basins=basins,
         nodes=nodes,
-        edges=edges,
+        links=links,
         crs=crs,
         option_links_hydroobjects=option_links_hydroobjects,
     )
@@ -968,25 +968,25 @@ def generate_ribasim_network_using_split_nodes(
         split_nodes=split_nodes,
         basins=basins,
         nodes=nodes,
-        edges=edges,
+        links=links,
     )
-    boundary_connections, basin_connections, basins, nodes, edges = remove_boundary_basins_if_not_needed(
+    boundary_connections, basin_connections, basins, nodes, links = remove_boundary_basins_if_not_needed(
         basins=basins,
         basin_connections=basin_connections,
         boundary_connections=boundary_connections,
         include_flow_boundary_basins=include_flow_boundary_basins,
         include_level_boundary_basins=include_level_boundary_basins,
         nodes=nodes,
-        edges=edges,
+        links=links,
     )
     if remove_isolated_basins:
-        basins, basin_areas, areas, edges, nodes = remove_isolated_basins_and_update_administration(
+        basins, basin_areas, areas, links, nodes = remove_isolated_basins_and_update_administration(
             basins=basins,
             basin_areas=basin_areas,
             areas=areas,
             basin_connections=basin_connections,
             boundary_connections=boundary_connections,
-            edges=edges,
+            links=links,
             nodes=nodes,
         )
 
@@ -1000,10 +1000,10 @@ def generate_ribasim_network_using_split_nodes(
         boundary_connections=boundary_connections,
         basin_areas=basin_areas,
         nodes=nodes,
-        edges=edges,
+        links=links,
         areas=areas,
     )
-    boundaries, split_nodes, basins, basin_areas, nodes, edges, areas, basin_connections, boundary_connections = results
+    boundaries, split_nodes, basins, basin_areas, nodes, links, areas, basin_connections, boundary_connections = results
 
     # check_basins_connected_to_basin_areas(
     #     basins=basins,
@@ -1017,7 +1017,7 @@ def generate_ribasim_network_using_split_nodes(
         "basins": basins,
         "areas": areas,
         "nodes": nodes,
-        "edges": edges,
+        "links": links,
         "split_nodes": split_nodes,
         "network_graph": network_graph,
         "basin_connections": basin_connections,

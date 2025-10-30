@@ -85,38 +85,38 @@ def generate_ribasim_network(waterschap_path, split_nodes_type_conversion, split
     # Combine all nodes
     nodes = gpd.GeoDataFrame(pd.concat([boundaries, split_nodes, basins]), crs=28992).reset_index(drop=True)
 
-    # Combine all edges
+    # Combine all links
     basin_connections = gpd.read_file(ribasim_network_path, layer="basin_connections")
     boundary_connections = gpd.read_file(ribasim_network_path, layer="boundary_connections")
 
-    edges_columns = ["from_node_id", "to_node_id", "connection", "geometry"]
-    edges = gpd.GeoDataFrame(
-        pd.concat([basin_connections[edges_columns], boundary_connections[edges_columns]]),
+    links_columns = ["from_node_id", "to_node_id", "connection", "geometry"]
+    links = gpd.GeoDataFrame(
+        pd.concat([basin_connections[links_columns], boundary_connections[links_columns]]),
         geometry="geometry",
         crs=28992,
     )
 
-    edges = edges[["from_node_id", "to_node_id", "geometry"]]
+    links = links[["from_node_id", "to_node_id", "geometry"]]
 
-    edges = edges.merge(
+    links = links.merge(
         nodes[["node_id", "node_type"]].rename(columns={"node_id": "from_node_id", "node_type": "from_node_type"}),
         how="left",
         on="from_node_id",
     )
-    edges = edges.merge(
+    links = links.merge(
         nodes[["node_id", "node_type"]].rename(columns={"node_id": "to_node_id", "node_type": "to_node_type"}),
         how="left",
         on="to_node_id",
     )
-    edges["edge_type"] = "flow"
+    links["edge_type"] = "flow"
 
-    # Export nodes and edges
+    # Export nodes and links
     nodes.drop_duplicates(keep="first").to_file(ribasim_model_path, layer="Node")
-    edges.drop_duplicates(keep="first").to_file(ribasim_model_path, layer="Edge")
+    links.drop_duplicates(keep="first").to_file(ribasim_model_path, layer="Edge")
 
     print(f" - no of nodes: {len(nodes)}")
-    print(f" - no of edges: {len(edges)}")
-    return nodes, edges, split_nodes
+    print(f" - no of links: {len(links)}")
+    return nodes, links, split_nodes
 
 
 base_dir = Path("..\\Ribasim modeldata")
@@ -225,8 +225,8 @@ for waterschap in waterschappen:
     print(f"Waterschap: {waterschap}")
     waterschap_path = Path(base_dir, waterschap, "verwerkt")
     if waterschap == "Noorderzijlvest":
-        nodes, edges, split_nodes = generate_ribasim_network(
+        nodes, links, split_nodes = generate_ribasim_network(
             waterschap_path, split_nodes_type_conversion_dhydro, split_nodes_id_conversion_dhydro
         )
     else:
-        nodes, edges, split_nodes = generate_ribasim_network(waterschap_path, split_nodes_type_conversion_hydamo)
+        nodes, links, split_nodes = generate_ribasim_network(waterschap_path, split_nodes_type_conversion_hydamo)

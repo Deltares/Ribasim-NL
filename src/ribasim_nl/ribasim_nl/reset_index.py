@@ -38,7 +38,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
 def prefix_index(
     model: Model, prefix_id: int, max_digits: int = 4, original_index_postfix: str | None = "waterbeheerder"
 ):
-    """Reindex node-tables and edges with a prefix and a max number of digits
+    """Reindex node-tables and links with a prefix and a max number of digits
 
     Args:
         model (Model): ribasim.Model to be reindexed
@@ -72,7 +72,7 @@ def prefix_index(
     ).astype("int32")
     model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
-    # create an edge_index and reindex edges
+    # create an edge_index and reindex links
     edge_ids = model.link.df.index
 
     # Check if any link_id exceeds max_digits
@@ -126,7 +126,7 @@ def reset_index(model: Model, node_start=1, edge_start=1, original_index_postfix
         expected_length = edge_id_max - edge_id_min + 1
 
         if not ((edge_start == edge_id_min) and (expected_length == len(model.link.df))):
-            # create a re-index for edges
+            # create a re-index for links
             model.link.df.index = pd.Index([i + node_start for i in range(len(edge_ids))], name="link_id")
 
         # keep original index if
