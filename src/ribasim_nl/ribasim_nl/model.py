@@ -167,7 +167,7 @@ class Model(Model):
         # create a DiGraph from edge-table
         if self._graph is None:
             graph = nx.from_pandas_edgelist(
-                df=self.edge.df[["from_node_id", "to_node_id"]],
+                df=self.link.df[["from_node_id", "to_node_id"]],
                 source="from_node_id",
                 target="to_node_id",
                 create_using=nx.DiGraph,
@@ -270,16 +270,16 @@ class Model(Model):
     def get_upstream_edges(self, node_id, **kwargs):
         # get upstream edges
         upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
-        mask = self.edge.df.from_node_id.isin(upstream_node_ids[1:]) & self.edge.df.to_node_id.isin(upstream_node_ids)
-        return self.edge.df[mask]
+        mask = self.link.df.from_node_id.isin(upstream_node_ids[1:]) & self.link.df.to_node_id.isin(upstream_node_ids)
+        return self.link.df[mask]
 
     def get_downstream_edges(self, node_id, **kwargs):
         # get upstream edges
         downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
-        mask = self.edge.df.from_node_id.isin(downstream_node_ids) & self.edge.df.to_node_id.isin(
+        mask = self.link.df.from_node_id.isin(downstream_node_ids) & self.link.df.to_node_id.isin(
             downstream_node_ids[1:]
         )
-        return self.edge.df[mask]
+        return self.link.df[mask]
 
     def find_node_id(self, ds_node_id=None, us_node_id=None, **kwargs) -> int:
         """Find a node_id by it's properties"""
@@ -292,7 +292,7 @@ class Model(Model):
 
         # filter node ids by us and ds node
         if (ds_node_id is not None) or (us_node_id is not None):
-            edge_df = self.edge.df
+            edge_df = self.link.df
             if ds_node_id is not None:
                 df = df[df.index.isin(edge_df[edge_df.to_node_id == ds_node_id].from_node_id)]
             if us_node_id is not None:
@@ -325,7 +325,7 @@ class Model(Model):
 
     def upstream_node_id(self, node_id: int):
         """Get upstream node_id(s)"""
-        _df = self.edge.df.set_index("to_node_id")
+        _df = self.link.df.set_index("to_node_id")
         if node_id in _df.index:
             return _df.loc[node_id].from_node_id
 
@@ -341,7 +341,7 @@ class Model(Model):
 
     def downstream_node_id(self, node_id: int):
         """Get downstream node_id(s)"""
-        _df = self.edge.df.set_index("from_node_id")
+        _df = self.link.df.set_index("from_node_id")
         if node_id in _df.index:
             return _df.loc[node_id].to_node_id
 
@@ -490,23 +490,23 @@ class Model(Model):
 
     def reverse_edge(self, from_node_id: int | None = None, to_node_id: int | None = None, edge_id: int | None = None):
         """Reverse an edge"""
-        if self.edge.df is not None:
+        if self.link.df is not None:
             if edge_id is None:
                 # get original edge-data
-                df = self.edge.df.copy()
+                df = self.link.df.copy()
                 df.loc[:, ["edge_id"]] = df.index
                 df = df.set_index(["from_node_id", "to_node_id"], drop=False)
                 edge_data = dict(df.loc[from_node_id, to_node_id])
                 edge_id = edge_data["edge_id"]
             else:
-                edge_data = dict(self.edge.df.loc[edge_id])
+                edge_data = dict(self.link.df.loc[edge_id])
 
             # revert node ids
-            self.edge.df.loc[edge_id, ["from_node_id"]] = edge_data["to_node_id"]
-            self.edge.df.loc[edge_id, ["to_node_id"]] = edge_data["from_node_id"]
+            self.link.df.loc[edge_id, ["from_node_id"]] = edge_data["to_node_id"]
+            self.link.df.loc[edge_id, ["to_node_id"]] = edge_data["from_node_id"]
 
             # revert geometry
-            self.edge.df.loc[edge_id, ["geometry"]] = edge_data["geometry"].reverse()
+            self.link.df.loc[edge_id, ["geometry"]] = edge_data["geometry"].reverse()
 
     def remove_edge(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
         """Remove an edge and disconnected nodes"""
@@ -642,18 +642,18 @@ class Model(Model):
         )
 
         # add edges from and to node
-        self.edge.add(self.basin[basin_id], node)
-        edge_geometry = self.edge.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
+        self.link.add(self.basin[basin_id], node)
+        edge_geometry = self.link.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
 
         # add boundary
         geometry = shapely.affinity.scale(edge_geometry, xfact=1.05, yfact=1.05, origin="center").boundary.geoms[1]
         # geometry = edge_geometry.interpolate(1.05, normalized=True)
         boundary_node = self.level_boundary.add(Node(geometry=geometry), tables=DEFAULT_TABLES.level_boundary)
-        self.edge.add(node, boundary_node)
+        self.link.add(node, boundary_node)
 
     def reverse_direction_at_node(self, node_id):
-        for edge_id in self.edge.df[
-            (self.edge.df.from_node_id == node_id) | (self.edge.df.to_node_id == node_id)
+        for edge_id in self.link.df[
+            (self.link.df.from_node_id == node_id) | (self.link.df.to_node_id == node_id)
         ].index:
             self.reverse_edge(edge_id=edge_id)
 
@@ -721,8 +721,8 @@ class Model(Model):
         table.node.df.loc[node_id, ["geometry"]] = geometry
 
         # reset all edges
-        edge_ids = self.edge.df[
-            (self.edge.df.from_node_id == node_id) | (self.edge.df.to_node_id == node_id)
+        edge_ids = self.link.df[
+            (self.link.df.from_node_id == node_id) | (self.link.df.to_node_id == node_id)
         ].index.to_list()
         self.reset_edge_geometry(edge_ids=edge_ids)
 
@@ -735,7 +735,7 @@ class Model(Model):
 
     def report_internal_basins(self):
         gpkg = self.filepath.with_name("internal_basins.gpkg")
-        df = self.basin.node.df[~self.basin.node.df.index.isin(self.edge.df.from_node_id)]
+        df = self.basin.node.df[~self.basin.node.df.index.isin(self.link.df.from_node_id)]
         df.to_file(gpkg)
         return df
 
@@ -801,25 +801,25 @@ class Model(Model):
     def reset_edge_geometry(self, edge_ids: list | None = None):
         node_df = self.node_table().df
         if edge_ids is not None:
-            df = self.edge.df[self.edge.df.index.isin(edge_ids)]
+            df = self.link.df[self.link.df.index.isin(edge_ids)]
         else:
-            df = self.edge.df
+            df = self.link.df
 
         for row in df.itertuples():
             from_point = Point(node_df.at[row.from_node_id, "geometry"].x, node_df.at[row.from_node_id, "geometry"].y)
             to_point = Point(node_df.at[row.to_node_id, "geometry"].x, node_df.at[row.to_node_id, "geometry"].y)
             geometry = LineString([from_point, to_point])
-            self.edge.df.loc[row.Index, ["geometry"]] = geometry
+            self.link.df.loc[row.Index, ["geometry"]] = geometry
 
     @property
     def edge_from_node_type(self):
         node_df = self.node_table().df
-        return self.edge.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+        return self.link.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
     @property
     def edge_to_node_type(self):
         node_df = self.node_table().df
-        return self.edge.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+        return self.link.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
     def split_basin(
         self,
@@ -906,11 +906,11 @@ class Model(Model):
             self.basin.area.df.crs = self.crs
 
     def redirect_edge(self, edge_id: int, from_node_id: int | None = None, to_node_id: int | None = None):
-        if self.edge.df is not None:
+        if self.link.df is not None:
             if from_node_id is not None:
-                self.edge.df.loc[edge_id, ["from_node_id"]] = from_node_id
+                self.link.df.loc[edge_id, ["from_node_id"]] = from_node_id
             if to_node_id is not None:
-                self.edge.df.loc[edge_id, ["to_node_id"]] = to_node_id
+                self.link.df.loc[edge_id, ["to_node_id"]] = to_node_id
 
         self.reset_edge_geometry(edge_ids=[edge_id])
 
@@ -976,17 +976,17 @@ class Model(Model):
                 self.remove_node(path[1], remove_edges=True)
 
         # get a complete edge-list to modify
-        edge_ids = self.edge.df[self.edge.df.from_node_id == node_id].index.to_list()
-        edge_ids += self.edge.df[self.edge.df.to_node_id == node_id].index.to_list()
+        edge_ids = self.link.df[self.link.df.from_node_id == node_id].index.to_list()
+        edge_ids += self.link.df[self.link.df.to_node_id == node_id].index.to_list()
 
         # correct edge from and to attributes
-        self.edge.df.loc[self.edge.df.from_node_id == node_id, "from_node_id"] = to_node_id
-        self.edge.df.loc[self.edge.df.to_node_id == node_id, "to_node_id"] = to_node_id
+        self.link.df.loc[self.link.df.from_node_id == node_id, "from_node_id"] = to_node_id
+        self.link.df.loc[self.link.df.to_node_id == node_id, "to_node_id"] = to_node_id
 
         # remove self-connecting edge in case we merge to flow-boundary
         if to_node_type == "FlowBoundary":
-            mask = (self.edge.df.from_node_id == to_node_id) & (self.edge.df.to_node_id == to_node_id)
-            self.edge.df = self.edge.df[~mask]
+            mask = (self.link.df.from_node_id == to_node_id) & (self.link.df.to_node_id == to_node_id)
+            self.link.df = self.link.df[~mask]
 
         # reset edge geometries
         self.reset_edge_geometry(edge_ids=edge_ids)
@@ -1035,12 +1035,12 @@ class Model(Model):
         outlet_b = self.outlet.node.df.loc[outlet_b_id]
 
         # correct edge from and to attributes
-        edge_ids = self.edge.df[self.edge.df.to_node_id == outlet_a_id].index.to_list()
-        edge_ids += self.edge.df[self.edge.df.from_node_id == outlet_b_id].index.to_list()
+        edge_ids = self.link.df[self.link.df.to_node_id == outlet_a_id].index.to_list()
+        edge_ids += self.link.df[self.link.df.from_node_id == outlet_b_id].index.to_list()
 
         # Remove outlet_b from the edges
-        self.edge.df.loc[self.edge.df.from_node_id == outlet_b_id, "from_node_id"] = outlet_a_id
-        self.edge.df.loc[self.edge.df.to_node_id == outlet_b_id, "to_node_id"] = outlet_a_id
+        self.link.df.loc[self.link.df.from_node_id == outlet_b_id, "from_node_id"] = outlet_a_id
+        self.link.df.loc[self.link.df.to_node_id == outlet_b_id, "to_node_id"] = outlet_a_id
 
         # Merge geometry
         avg_x = (outlet_a.geometry.x + outlet_b.geometry.x) / 2
@@ -1059,7 +1059,7 @@ class Model(Model):
         return outlet_a
 
     def invalid_topology_at_node(self, link_type: str = "flow") -> gpd.GeoDataFrame:
-        df_graph = self.edge.df
+        df_graph = self.link.df
         df_node = self.node_table().df
         # Join df_edge with df_node to get to_node_type
         df_graph = df_graph.join(df_node[["node_type"]], on="from_node_id", how="left", rsuffix="_from")

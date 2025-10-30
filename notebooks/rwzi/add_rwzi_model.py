@@ -202,7 +202,7 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
         if pd.notna(basin_node_id):
             if verbose:
                 print(f"Verbind junction {node_id} met basin {basin_node_id}")
-            rwzi_coupled_model.edge.add(
+            rwzi_coupled_model.link.add(
                 rwzi_coupled_model.get_node(node_id),
                 rwzi_coupled_model.get_node(int(basin_node_id)),
                 name=row["name"],

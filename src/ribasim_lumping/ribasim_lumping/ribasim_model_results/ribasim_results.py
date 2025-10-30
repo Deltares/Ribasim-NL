@@ -59,7 +59,7 @@ def read_arrow_file(simulation_dir: Path, file_name: str, results_dir: str = "re
 
 def get_inflow_outflow_edge_data(ribasim_model: ribasim.Model):
     node_df = ribasim_model.network.node.df
-    edge_df = ribasim_model.network.edge.df
+    edge_df = ribasim_model.network.link.df
 
     basin_nos = node_df[node_df.node_type == "Basin"].node_id
     flow_edge = edge_df[edge_df.edge_type == "flow"]
@@ -459,9 +459,9 @@ def plot_results_basin_ribasim_model(
     #         if clevel["threshold_high"] > 5000.0:
     #             continue
     #         control_node_id = clevel["node_id"]
-    #         controlled_node_id = (ribasim_model.edge.df[
-    #             (ribasim_model.edge.df["edge_type"]=="control") &
-    #             (ribasim_model.edge.df["from_node_id"]==control_node_id)
+    #         controlled_node_id = (ribasim_model.link.df[
+    #             (ribasim_model.link.df["edge_type"]=="control") &
+    #             (ribasim_model.link.df["from_node_id"]==control_node_id)
     #         ]["to_node_id"].iloc[0])
     #         node_name = ribasim_model.network.node.df.loc[controlled_node_id, "name"]
     #         ax1.hlines(
