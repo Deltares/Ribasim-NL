@@ -132,7 +132,7 @@ for node_id in [2078, 733]:
     model.remove_node(node_id, remove_edges=True)
 
 # toevoegen edge
-model.reverse_edge(edge_id=876)
+model.reverse_edge(link_id=876)
 model.link.add(model.pump[565], model.level_boundary[56])
 
 # updaten naar level_boundary
@@ -146,8 +146,8 @@ geometry = Point(117995, 443062.5)
 model.move_node(node_id=889, geometry=geometry)
 model.tabulated_rating_curve.node.df.loc[889, "name"] = "ST1985"
 
-for edge_id in [359, 360, 361]:
-    model.redirect_edge(edge_id=edge_id, to_node_id=1572)
+for link_id in [359, 360, 361]:
+    model.redirect_edge(link_id=link_id, to_node_id=1572)
 
 model.basin.area.df.at[1, "geometry"].buffer(0.1).buffer(-0.1)
 
@@ -190,7 +190,7 @@ outlet_node = model.outlet.add(
 )
 
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[7950, "geometry"].boundary.geoms[0]), tables=basin_data)
-model.redirect_edge(edge_id=2721, from_node_id=basin_node.node_id)
+model.redirect_edge(link_id=2721, from_node_id=basin_node.node_id)
 model.link.add(model.level_boundary[74], outlet_node)
 model.link.add(outlet_node, basin_node)
 
@@ -328,7 +328,7 @@ model.basin.area.df.loc[:, "geometry"] = model.basin.area.df.buffer(0.1).buffer(
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2459498845
 
 # Edge-richtingen omdraaien
-for edge_id in [
+for link_id in [
     30,
     31,
     32,
@@ -365,7 +365,7 @@ for edge_id in [
     2678,
     2684,
 ]:
-    model.reverse_edge(edge_id=edge_id)
+    model.reverse_edge(link_id=link_id)
 
 
 # fix 2 incorrecte edges
@@ -459,8 +459,8 @@ model.remove_node(node_id=312, remove_edges=True)
 model.remove_node(node_id=1051, remove_edges=True)
 model.remove_node(node_id=741, remove_edges=True)
 model.remove_node(node_id=1343, remove_edges=True)
-model.redirect_edge(edge_id=1547, from_node_id=1914)
-model.redirect_edge(edge_id=838, to_node_id=1524)
+model.redirect_edge(link_id=1547, from_node_id=1914)
+model.redirect_edge(link_id=838, to_node_id=1524)
 model.merge_basins(basin_id=1944, to_basin_id=1523, are_connected=False)
 # EINDE ISSUES
 

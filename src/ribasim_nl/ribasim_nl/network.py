@@ -478,11 +478,11 @@ class Network:
 
         # get closest edge and distances
         distances = links_gdf.distance(point).sort_values()
-        edge_id = distances.index[0]
+        link_id = distances.index[0]
         edge_distance = distances.iloc[0]
-        edge_geometry = links_gdf.at[edge_id, "geometry"]
-        node_from = links_gdf.at[edge_id, "node_from"]
-        node_to = links_gdf.at[edge_id, "node_to"]
+        edge_geometry = links_gdf.at[link_id, "geometry"]
+        node_from = links_gdf.at[link_id, "node_from"]
+        node_to = links_gdf.at[link_id, "node_to"]
 
         if edge_distance <= max_distance:
             # add node
@@ -494,7 +494,7 @@ class Network:
             split_result = split_line(edge_geometry, node_geometry)
             if isinstance(split_result, LineString):
                 if self.verbose:
-                    logger.warning(f"Splitting edge: {edge_id} resulted in a single LineString)")
+                    logger.warning(f"Splitting edge: {link_id} resulted in a single LineString)")
                 return None
             us_geometry, ds_geometry = split_result.geoms
             self.add_link(node_from, node_id, us_geometry)
@@ -504,7 +504,7 @@ class Network:
         else:
             if self.verbose:
                 logger.warning(
-                    f"No Node added. Closest edge: {edge_id}, distance > max_distance ({edge_distance} > {max_distance})"
+                    f"No Node added. Closest edge: {link_id}, distance > max_distance ({edge_distance} > {max_distance})"
                 )
             return None
 

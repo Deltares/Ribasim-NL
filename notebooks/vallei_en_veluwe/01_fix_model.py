@@ -76,8 +76,8 @@ for row in basin_nodes_df.itertuples():
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401959032
 
 # Oplossen verkeerde takrichting
-for edge_id in [1353, 933, 373, 401, 4, 1338]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [1353, 933, 373, 401, 4, 1338]:
+    model.reverse_edge(link_id=link_id)
 
 # model.invalid_topology_at_node().to_file("topo_errors.gpkg")
 
@@ -216,12 +216,12 @@ for action in actions:
 model.remove_unassigned_basin_area()
 
 # Valleikanaal verkeerd geschematiseerd
-model.redirect_edge(edge_id=138, to_node_id=1095)
-model.redirect_edge(edge_id=137, to_node_id=1095)
-model.redirect_edge(edge_id=136, to_node_id=1095)
-model.redirect_edge(edge_id=24, to_node_id=1115)
-model.redirect_edge(edge_id=560, to_node_id=1)
-model.redirect_edge(edge_id=745, from_node_id=1120)
+model.redirect_edge(link_id=138, to_node_id=1095)
+model.redirect_edge(link_id=137, to_node_id=1095)
+model.redirect_edge(link_id=136, to_node_id=1095)
+model.redirect_edge(link_id=24, to_node_id=1115)
+model.redirect_edge(link_id=560, to_node_id=1)
+model.redirect_edge(link_id=745, from_node_id=1120)
 
 # %% Aanvoer edits
 

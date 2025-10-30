@@ -107,7 +107,7 @@ model.merge_basins(basin_id=1754, to_basin_id=1765)
 model.merge_basins(basin_id=1765, to_basin_id=1778)
 model.merge_basins(basin_id=1735, to_basin_id=1778)
 
-model.redirect_edge(edge_id=2272, from_node_id=1572)
+model.redirect_edge(link_id=2272, from_node_id=1572)
 model.update_node(node_id=1194, node_type="Outlet")
 model.update_node(node_id=678, node_type="Outlet")
 model.update_node(node_id=730, node_type="Outlet")

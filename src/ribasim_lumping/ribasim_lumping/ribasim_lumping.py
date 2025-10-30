@@ -595,10 +595,10 @@ class RibasimLumpingNetwork(BaseModel):
         non_open_water_no_id = split_nodes[~split_nodes["split_node_id"].isnull()]
         open_water_no_id = split_nodes[split_nodes["split_node_id"].isnull()]
         open_water_no_id = gpd.sjoin(
-            open_water_no_id, self.edges_gdf[["edge_id", "edge_no", "from_node", "to_node", "geometry"]], how="left"
+            open_water_no_id, self.edges_gdf[["link_id", "edge_no", "from_node", "to_node", "geometry"]], how="left"
         )
         open_water_no_id = open_water_no_id.loc[~open_water_no_id.index.duplicated(keep="first")]
-        open_water_no_id["split_node_id"] = open_water_no_id["edge_id"]
+        open_water_no_id["split_node_id"] = open_water_no_id["link_id"]
         split_nodes = pd.concat([non_open_water_no_id, open_water_no_id])
 
         split_nodes = split_nodes.reset_index(drop=True)

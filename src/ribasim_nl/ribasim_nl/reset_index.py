@@ -75,7 +75,7 @@ def prefix_index(
     # create an edge_index and reindex edges
     edge_ids = model.link.df.index
 
-    # Check if any edge_id exceeds max_digits
+    # Check if any link_id exceeds max_digits
     max_edge_id = edge_ids.max()
     actual_edge_digits = len(str(max_edge_id))
     if actual_edge_digits > max_digits:
@@ -86,7 +86,7 @@ def prefix_index(
         )
 
     model.link.df.index = pd.Index(
-        [int(f"{prefix_id}{edge_id:0>{max_digits}}") for edge_id in edge_ids], name="edge_id"
+        [int(f"{prefix_id}{link_id:0>{max_digits}}") for link_id in edge_ids], name="link_id"
     )
 
     # keep original index if
@@ -102,7 +102,7 @@ def reset_index(model: Model, node_start=1, edge_start=1, original_index_postfix
     Args:
         model (Model): ribasim.Model to be reindexed
         node_start (int, optional): start node_id. Defaults to 1.
-        edge_start (int, optional): start edge_id. Defaults to 1.
+        edge_start (int, optional): start link_id. Defaults to 1.
         original_index_postfix (str | None, optional): if provided the original index will be stored in a meta-column. Defaults to "waterbeheerder".
 
     Returns
@@ -127,7 +127,7 @@ def reset_index(model: Model, node_start=1, edge_start=1, original_index_postfix
 
         if not ((edge_start == edge_id_min) and (expected_length == len(model.link.df))):
             # create a re-index for edges
-            model.link.df.index = pd.Index([i + node_start for i in range(len(edge_ids))], name="edge_id")
+            model.link.df.index = pd.Index([i + node_start for i in range(len(edge_ids))], name="link_id")
 
         # keep original index if
         if original_index_postfix is not None:

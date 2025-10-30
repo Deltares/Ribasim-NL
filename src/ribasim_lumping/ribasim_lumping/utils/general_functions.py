@@ -630,13 +630,13 @@ def split_edges_by_split_nodes(
             edges.drop(index=edges_orig.index.values[i], inplace=True)
 
     # update edge id column if present
-    if "edge_id" in edges.columns:
-        edges["edge_id"] = edges["edge_id"].fillna("dummy")
-        n_max = np.max(np.unique(edges["edge_id"], return_counts=True)[1])  # max group size in groupby
+    if "link_id" in edges.columns:
+        edges["link_id"] = edges["link_id"].fillna("dummy")
+        n_max = np.max(np.unique(edges["link_id"], return_counts=True)[1])  # max group size in groupby
         split_nrs = np.arange(start=1, stop=n_max + 1)
-        split_nrs = edges.groupby("edge_id")["from_node"].transform(lambda x: split_nrs[: len(x)])
-        max_splits = edges.groupby("edge_id")["from_node"].transform(lambda x: len(x))
-        edges["edge_id"] = [f"{b}_{s}" if m > 1 else b for b, s, m in zip(edges["edge_id"], split_nrs, max_splits)]
+        split_nrs = edges.groupby("link_id")["from_node"].transform(lambda x: split_nrs[: len(x)])
+        max_splits = edges.groupby("link_id")["from_node"].transform(lambda x: len(x))
+        edges["link_id"] = [f"{b}_{s}" if m > 1 else b for b, s, m in zip(edges["link_id"], split_nrs, max_splits)]
     # regenerate start/end nodes of edges
     edges["edge_no"] = range(len(edges))  # reset edge no
     edges, nodes = generate_nodes_from_edges(edges)
@@ -707,7 +707,7 @@ def split_edges_by_dx(
         edges_new["edge_no"] = np.arange(len(edges_new))
 
     if "branch_id" in edges_new.columns:
-        edges_new = edges_new.rename(columns={"branch_id": "edge_id"})
+        edges_new = edges_new.rename(columns={"branch_id": "link_id"})
     return edges_new
 
 

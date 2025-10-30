@@ -77,4 +77,4 @@ model.basin.area.df = area_df
 
 # %% write model
 model.link.df.reset_index(drop=True, inplace=True)
-model.link.df.index.name = "edge_id"
+model.link.df.index.name = "link_id"

@@ -488,25 +488,25 @@ class Model(Model):
         for _to_node_id in to_node_id:
             self.link.add(table[node_id], self.get_node(_to_node_id))
 
-    def reverse_edge(self, from_node_id: int | None = None, to_node_id: int | None = None, edge_id: int | None = None):
+    def reverse_edge(self, from_node_id: int | None = None, to_node_id: int | None = None, link_id: int | None = None):
         """Reverse an edge"""
         if self.link.df is not None:
-            if edge_id is None:
+            if link_id is None:
                 # get original edge-data
                 df = self.link.df.copy()
-                df.loc[:, ["edge_id"]] = df.index
+                df.loc[:, ["link_id"]] = df.index
                 df = df.set_index(["from_node_id", "to_node_id"], drop=False)
                 edge_data = dict(df.loc[from_node_id, to_node_id])
-                edge_id = edge_data["edge_id"]
+                link_id = edge_data["link_id"]
             else:
-                edge_data = dict(self.link.df.loc[edge_id])
+                edge_data = dict(self.link.df.loc[link_id])
 
             # revert node ids
-            self.link.df.loc[edge_id, ["from_node_id"]] = edge_data["to_node_id"]
-            self.link.df.loc[edge_id, ["to_node_id"]] = edge_data["from_node_id"]
+            self.link.df.loc[link_id, ["from_node_id"]] = edge_data["to_node_id"]
+            self.link.df.loc[link_id, ["to_node_id"]] = edge_data["from_node_id"]
 
             # revert geometry
-            self.link.df.loc[edge_id, ["geometry"]] = edge_data["geometry"].reverse()
+            self.link.df.loc[link_id, ["geometry"]] = edge_data["geometry"].reverse()
 
     def remove_edge(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
         """Remove an edge and disconnected nodes"""
@@ -652,10 +652,10 @@ class Model(Model):
         self.link.add(node, boundary_node)
 
     def reverse_direction_at_node(self, node_id):
-        for edge_id in self.link.df[
+        for link_id in self.link.df[
             (self.link.df.from_node_id == node_id) | (self.link.df.to_node_id == node_id)
         ].index:
-            self.reverse_edge(edge_id=edge_id)
+            self.reverse_edge(link_id=link_id)
 
     def select_basin_area(self, geometry):
         geometry = shapely.force_2d(geometry)
@@ -905,14 +905,14 @@ class Model(Model):
         if self.basin.area.df.crs is None:
             self.basin.area.df.crs = self.crs
 
-    def redirect_edge(self, edge_id: int, from_node_id: int | None = None, to_node_id: int | None = None):
+    def redirect_edge(self, link_id: int, from_node_id: int | None = None, to_node_id: int | None = None):
         if self.link.df is not None:
             if from_node_id is not None:
-                self.link.df.loc[edge_id, ["from_node_id"]] = from_node_id
+                self.link.df.loc[link_id, ["from_node_id"]] = from_node_id
             if to_node_id is not None:
-                self.link.df.loc[edge_id, ["to_node_id"]] = to_node_id
+                self.link.df.loc[link_id, ["to_node_id"]] = to_node_id
 
-        self.reset_edge_geometry(edge_ids=[edge_id])
+        self.reset_edge_geometry(edge_ids=[link_id])
 
     def deactivate_node(self, node_id: int):
         node_type = self.get_node_type(node_id)

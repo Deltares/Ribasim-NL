@@ -328,8 +328,8 @@ model.link.add(outlet_node, boundary_node)
 model.remove_node(1330, remove_edges=True)
 
 # verbinden nieuwe basin met outlet en oorspronkijke manning_knopen en pompen in oorspronkelijke richting
-for edge_id in [2711, 2712, 2713, 2714, 2708]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [2711, 2712, 2713, 2714, 2708]:
+    model.reverse_edge(link_id=link_id)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2388009499
 
@@ -487,7 +487,7 @@ model.link.add(
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389192454
-model.reverse_edge(edge_id=2685)
+model.reverse_edge(link_id=2685)
 model.remove_node(node_id=2229, remove_edges=True)
 model.link.add(
     model.basin[1778],
@@ -496,8 +496,8 @@ model.link.add(
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389198178
-model.reverse_edge(edge_id=2715)
-model.reverse_edge(edge_id=2720)
+model.reverse_edge(link_id=2715)
+model.reverse_edge(link_id=2720)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390712613
 
@@ -1121,9 +1121,9 @@ for action in actions:
 model.remove_unassigned_basin_area()
 # %% some customs
 # remove unassigned basin area
-model.redirect_edge(edge_id=89, to_node_id=1561)
-model.redirect_edge(edge_id=1989, from_node_id=2333)
-model.redirect_edge(edge_id=1990, from_node_id=2333)
+model.redirect_edge(link_id=89, to_node_id=1561)
+model.redirect_edge(link_id=1989, from_node_id=2333)
+model.redirect_edge(link_id=1990, from_node_id=2333)
 model.merge_basins(basin_id=2115, to_node_id=1405)
 model.merge_basins(basin_id=1378, to_node_id=1431)
 model.merge_basins(basin_id=2211, to_node_id=1727)

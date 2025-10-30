@@ -107,10 +107,10 @@ for row in basin_nodes_df.itertuples():
 # Binnenstad
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[2788, "geometry"].boundary.geoms[0]), tables=basin_data)
 
-model.reverse_edge(edge_id=2077)
-model.redirect_edge(edge_id=2077, to_node_id=basin_node.node_id)
-model.redirect_edge(edge_id=2078, from_node_id=basin_node.node_id)
-model.redirect_edge(edge_id=2079, from_node_id=basin_node.node_id)
+model.reverse_edge(link_id=2077)
+model.redirect_edge(link_id=2077, to_node_id=basin_node.node_id)
+model.redirect_edge(link_id=2078, from_node_id=basin_node.node_id)
+model.redirect_edge(link_id=2079, from_node_id=basin_node.node_id)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[4999, "geometry"].interpolate(0.5, normalized=True)), tables=[outlet_data]
 )
@@ -121,7 +121,7 @@ model.link.add(outlet_node, basin_node)
 basin_node = model.basin.add(
     Node(geometry=hydroobject_gdf.at[9055, "geometry"].interpolate(0.5, normalized=True)), tables=basin_data
 )
-model.redirect_edge(edge_id=2082, from_node_id=basin_node.node_id)
+model.redirect_edge(link_id=2082, from_node_id=basin_node.node_id)
 
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[9055, "geometry"].interpolate(0.1, normalized=True)), tables=[outlet_data]
@@ -140,8 +140,8 @@ for node_id in [729, 730, 1990, 1962]:
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2431933060
 # Omkeren edgerichting
-for edge_id in [131, 398, 407, 495, 513, 515, 894]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [131, 398, 407, 495, 513, 515, 894]:
+    model.reverse_edge(link_id=link_id)
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2422164355
@@ -149,7 +149,7 @@ for edge_id in [131, 398, 407, 495, 513, 515, 894]:
 # Corrigeren netwerk bij Spuisluis Crèvecoeur
 model.remove_node(411, remove_edges=True)
 model.remove_node(4, remove_edges=True)
-model.redirect_edge(edge_id=2018, to_node_id=1950)
+model.redirect_edge(link_id=2018, to_node_id=1950)
 
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[4825, "geometry"].boundary.geoms[0], name="AKW839"),
@@ -169,18 +169,18 @@ outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[4680, "geometry"].interpolate(0.1, normalized=True)), tables=[outlet_data]
 )
 
-model.redirect_edge(edge_id=2091, from_node_id=56, to_node_id=outlet_node.node_id)
-model.redirect_edge(edge_id=2092, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
-model.redirect_edge(edge_id=2093, from_node_id=653, to_node_id=basin_node.node_id)
-model.redirect_edge(edge_id=2094, from_node_id=basin_node.node_id, to_node_id=82)
+model.redirect_edge(link_id=2091, from_node_id=56, to_node_id=outlet_node.node_id)
+model.redirect_edge(link_id=2092, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
+model.redirect_edge(link_id=2093, from_node_id=653, to_node_id=basin_node.node_id)
+model.redirect_edge(link_id=2094, from_node_id=basin_node.node_id, to_node_id=82)
 
 # nabij afleidingskanaal
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[7466, "geometry"].boundary.geoms[0]), tables=basin_data)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[8456, "geometry"].interpolate(0.1, normalized=True)), tables=[outlet_data]
 )
-model.redirect_edge(edge_id=2089, to_node_id=outlet_node.node_id)
-model.redirect_edge(edge_id=2088, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
+model.redirect_edge(link_id=2089, to_node_id=outlet_node.node_id)
+model.redirect_edge(link_id=2088, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
 model.link.add(model.tabulated_rating_curve[82], basin_node)
 model.link.add(basin_node, model.tabulated_rating_curve[853])
 
@@ -190,7 +190,7 @@ outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[2539, "geometry"].boundary.geoms[0]), tables=[outlet_data]
 )
 
-model.redirect_edge(edge_id=2054, to_node_id=basin_node.node_id)
+model.redirect_edge(link_id=2054, to_node_id=basin_node.node_id)
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[26])
 
@@ -202,9 +202,9 @@ outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[3174, "geometry"].boundary.geoms[0], name="20301"), tables=[outlet_data]
 )
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[6499, "geometry"].boundary.geoms[0]), tables=basin_data)
-model.redirect_edge(edge_id=2102, to_node_id=outlet_node.node_id)
+model.redirect_edge(link_id=2102, to_node_id=outlet_node.node_id)
 model.link.add(outlet_node, basin_node)
-model.redirect_edge(edge_id=2106, to_node_id=2026)
+model.redirect_edge(link_id=2106, to_node_id=2026)
 
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[646, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]

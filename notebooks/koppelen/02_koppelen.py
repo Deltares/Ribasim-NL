@@ -191,9 +191,9 @@ for boundary_node_id in boundary_node_ids:
         edge_geometry = LineString(tuple(edge_geometry.coords) + tuple(to_node.geometry.coords))
 
     # add edge
-    edge_id = coupled_model.link.df.index.max() + 1
+    link_id = coupled_model.link.df.index.max() + 1
     coupled_model.link.add(
-        edge_id=edge_id,
+        link_id=link_id,
         from_node=from_node,
         to_node=to_node,
         geometry=edge_geometry,

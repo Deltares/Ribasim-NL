@@ -35,7 +35,7 @@ def add_hydamo_basis_network(
 
     # Split up hydamo edges with given distance as approximate length of new edges
     if hydamo_split_network_dx is None:
-        edges_gdf = branches_gdf.copy().rename(columns={"branch_id": "edge_id"})
+        edges_gdf = branches_gdf.copy().rename(columns={"branch_id": "link_id"})
     else:
         edges_gdf = split_edges_by_dx(
             edges=branches_gdf,

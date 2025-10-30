@@ -115,8 +115,8 @@ def read_ribasim_model_results(simulation_path: Path):
 
     flow = read_arrow_file(simulation_path, "flow")
     if flow is not None:
-        flow = flow[~flow["edge_id"].isna()]
-        flow["edge_id"] = flow["edge_id"].astype(int)
+        flow = flow[~flow["link_id"].isna()]
+        flow["link_id"] = flow["link_id"].astype(int)
 
     subgrid = read_arrow_file(simulation_path, "subgrid_levels")
 
@@ -164,13 +164,13 @@ def get_ribasim_basin_data_from_model(
     )
     outflow = (
         model_flow[(model_flow["from_node_id"] == basin_no) & (model_flow["from_node_type"] == "Basin")]
-        .drop(columns=["from_node_id", "edge_id"])
+        .drop(columns=["from_node_id", "link_id"])
         .set_index(["to_node_id", "time"])
         .sort_index()
     )
     inflow = (
         model_flow[(model_flow["to_node_id"] == basin_no) & (model_flow["to_node_type"] == "Basin")]
-        .drop(columns=["to_node_id", "edge_id"])
+        .drop(columns=["to_node_id", "link_id"])
         .set_index(["from_node_id", "time"])
         .sort_index()
     )

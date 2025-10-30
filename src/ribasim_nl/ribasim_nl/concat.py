@@ -35,7 +35,7 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
 
         # concat edges
         edge_df = pd.concat([model.link.df, merge_model.link.df], ignore_index=not keep_original_index)
-        edge_df.index.name = "edge_id"
+        edge_df.index.name = "link_id"
         model.link.df = edge_df
 
         # merge tables

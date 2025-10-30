@@ -58,10 +58,10 @@ if not network_validator.edge_duplicated().empty:
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291091067
 node_id = model.next_node_id
-edge_id = model.link.df.loc[model.link.df.to_node_id == 251].index[0]
-model.link.df.loc[edge_id, ["from_node_id"]] = node_id
+link_id = model.link.df.loc[model.link.df.to_node_id == 251].index[0]
+model.link.df.loc[link_id, ["from_node_id"]] = node_id
 
-node = Node(node_id, model.link.df.at[edge_id, "geometry"].boundary.geoms[0])
+node = Node(node_id, model.link.df.at[link_id, "geometry"].boundary.geoms[0])
 model.basin.area.df.loc[model.basin.area.df.node_id == 1009, ["node_id"]] = node_id
 area = basin.Area(geometry=model.basin.area[node_id].geometry.to_list())
 model.basin.add(node, basin_data + [area])

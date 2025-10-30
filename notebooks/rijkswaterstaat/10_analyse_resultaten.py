@@ -8,13 +8,13 @@ from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 CONFIG = {
-    "Venlo": {"edge_id": 171},
+    "Venlo": {"link_id": 171},
     "Heel boven": {"node_id": 8865},
     "Roermond boven": {"node_id": 9126},
     "Belfeld boven": {"node_id": 9422},
     "Bunde (Julianakanaal)": {"node_id": 7928},
     "Echt (Julianakanaal)": {"node_id": 8504},
-    "Eijsden-grens": {"edge_id": 159},
+    "Eijsden-grens": {"link_id": 159},
 }
 
 # Inlezen ribasim model
@@ -45,10 +45,10 @@ meting_df = meting_df.resample("D").mean()
 
 for k, v in CONFIG.items():
     name = k
-    if "edge_id" in v.keys():
+    if "link_id" in v.keys():
         Q_meting = meting_df["Debiet"]["(m3/s)"][name]
         Q_meting.columns = ["meting"]
-        Q_berekening = flow_df[flow_df["edge_id"] == v["edge_id"]][["flow_rate"]].rename(
+        Q_berekening = flow_df[flow_df["link_id"] == v["link_id"]][["flow_rate"]].rename(
             columns={"flow_rate": "berekend"}
         )
 

@@ -92,7 +92,7 @@ for row in basin_nodes_df.itertuples():
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393672367
 
 # Omdraaien edge-richting rondom outlets (inlaten/uitlaten)
-# for edge_id in [2282, ]
+# for link_id in [2282, ]
 
 # https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393731749
 
@@ -130,7 +130,7 @@ for node_id in [81, 839]:
 
 model.update_node(83, "Basin", data=basin_data)
 model.move_node(83, hydroobject_gdf.at[21045, "geometry"].boundary.geoms[0])
-model.reverse_edge(edge_id=3013)
+model.reverse_edge(link_id=3013)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399104407
 
@@ -147,7 +147,7 @@ outlet_node = model.outlet.add(
 model.remove_edges([3038, 3040, 3037, 3041, 3039])
 
 # nw basin verbinden met gemaal 20, level boundary 94 en alle inlaatduikers
-model.reverse_edge(edge_id=2282)
+model.reverse_edge(link_id=2282)
 model.link.add(outlet_node, model.level_boundary[94])
 model.link.add(basin_node, outlet_node)
 model.link.add(basin_node, model.manning_resistance[1182])
@@ -183,20 +183,20 @@ model.link.add(boundary_node, model.outlet[1203])
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399328441
 
 # Misc pump benedenstroomse edges
-for edge_id in [2862, 3006, 3049]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [2862, 3006, 3049]:
+    model.reverse_edge(link_id=link_id)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399355028
 
 # Misc tabulated_rating_curve (stuwen) stroomrichting
-for edge_id in [1884, 2197]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [1884, 2197]:
+    model.reverse_edge(link_id=link_id)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399382478
 
 # Misc manning_resistance (duikers) stroomrichting
-for edge_id in [1081, 518]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [1081, 518]:
+    model.reverse_edge(link_id=link_id)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399425885
 # Opknippen NW boezem
@@ -272,15 +272,15 @@ edge_ids = [
     2918,
 ]
 
-for edge_id in edge_ids:
-    model.redirect_edge(edge_id, to_node_id=basin_node.node_id)
+for link_id in edge_ids:
+    model.redirect_edge(link_id, to_node_id=basin_node.node_id)
 
 model.remove_edges([2887, 2892])
 model.link.add(basin_node, model.pump[547])
 model.link.add(basin_node, model.outlet[540])
 
-for edge_id in [2914, 2894]:
-    model.redirect_edge(edge_id, to_node_id=31)
+for link_id in [2914, 2894]:
+    model.redirect_edge(link_id, to_node_id=31)
 
 model.redirect_edge(461, to_node_id=1585)
 
@@ -294,8 +294,8 @@ outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[12057, "geometry"].interpolate(0.5, normalized=True)), tables=[outlet_data]
 )
 
-for edge_id in [2956, 2957, 2958, 2959, 2960, 2961]:
-    model.redirect_edge(edge_id, to_node_id=basin_node.node_id)
+for link_id in [2956, 2957, 2958, 2959, 2960, 2961]:
+    model.redirect_edge(link_id, to_node_id=basin_node.node_id)
 
 model.remove_node(76, remove_edges=True)
 model.link.add(basin_node, model.pump[598])

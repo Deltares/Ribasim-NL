@@ -40,7 +40,7 @@ for authority in WATER_AUTHORITIES:
     df.loc[:, "to_node_type"] = model.edge_to_node_type
     df = model.link.df.reset_index()[
         [
-            "edge_id",
+            "link_id",
             "name",
             "from_node_type",
             "from_node_id",

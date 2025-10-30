@@ -88,11 +88,11 @@ model.link.df.loc[1281, "to_node_id"] = 667
 # verplaatsen van `LevelBoundary` 47 binnen de basin, updaten naar `Basin` en reversen van `Edge` 1370
 model.move_node(47, hydroobject_gdf.at[8781, "geometry"].boundary.geoms[0])
 model.update_node(47, "Basin", data=basin_data)
-model.reverse_edge(edge_id=1370)
+model.reverse_edge(link_id=1370)
 
 # omdraaien richting van `Edge` 196
-for edge_id in [196, 188, 472, 513, 560, 391, 566]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [196, 188, 472, 513, 560, 391, 566]:
+    model.reverse_edge(link_id=link_id)
 
 # opruimen basin Arnhem nabij Lauwersgracht
 model.remove_node(514, remove_edges=True)
@@ -114,7 +114,7 @@ model.link.add(model.pump[264], model.level_boundary[44])
 # %% see https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2422536079
 
 # corrigeren ontbrekende outlets nabij Rijkswateren
-for fid, edge_id, boundary_node_id in ((14276, 1331, 19), (14259, 1337, 25), (14683, 1339, 27), (3294, 1355, 38)):
+for fid, link_id, boundary_node_id in ((14276, 1331, 19), (14259, 1337, 25), (14683, 1339, 27), (3294, 1355, 38)):
     kdu = duiker_gdf.loc[fid]
     outlet_node = model.outlet.add(
         Node(
@@ -122,7 +122,7 @@ for fid, edge_id, boundary_node_id in ((14276, 1331, 19), (14259, 1337, 25), (14
         ),
         tables=[outlet_data],
     )
-    model.redirect_edge(edge_id=edge_id, to_node_id=outlet_node.node_id)
+    model.redirect_edge(link_id=link_id, to_node_id=outlet_node.node_id)
     model.link.add(outlet_node, model.level_boundary[boundary_node_id])
 
 # 1349 heeft geen duiker
@@ -130,7 +130,7 @@ outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[10080, "geometry"].interpolate(0.5, normalized=True)),
     tables=[outlet_data],
 )
-model.redirect_edge(edge_id=1349, to_node_id=outlet_node.node_id)
+model.redirect_edge(link_id=1349, to_node_id=outlet_node.node_id)
 model.link.add(outlet_node, model.level_boundary[33])
 
 # %%
