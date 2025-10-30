@@ -475,7 +475,7 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
 
 # %% remove_nodes
 for row in remove_nodes_df.itertuples():
-    model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
+    model.remove_node(node_id=row.node_id, remove_links=row.remove_edges)
 
 # %% corrigeren knoop-topologie
 outlet_data = outlet.Static(flow_rate=[100])
