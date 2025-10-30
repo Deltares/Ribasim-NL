@@ -614,7 +614,7 @@ class Network:
         weight = links.length
         weight.loc[mask] = weight[mask] * weight_value
         weight_values = weight.to_dict()
-        nx.set_link_attributes(self._graph, weight_values, "weight")
+        nx.set_edge_attributes(self._graph, weight_values, "weight")
 
         self._graph_undirected = None
 
