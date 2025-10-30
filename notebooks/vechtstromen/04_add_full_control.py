@@ -145,7 +145,7 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.1
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 508, "max_downstream_level"] = 3.98
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 971, "max_flow_rate"] = 100
 # remove vistrap Hancate
-model.remove_node(305, remove_edges=True)
+model.remove_node(305, remove_links=True)
 # Sluis Koning Willem Allexander
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 40, "max_flow_rate"] = 0
 # Geen flow anders veel te veel door Manning knoop

@@ -46,7 +46,7 @@ from .utils.general_functions import (
     log_and_remove_duplicate_geoms,
     read_geom_file,
     snap_to_network,
-    split_edges_by_split_nodes,
+    split_links_by_split_nodes,
 )
 
 
@@ -355,7 +355,7 @@ class RibasimLumpingNetwork(BaseModel):
         layer_name: str = None,
         crs: int = 28992,
         buffer_distance: float = 10.0,
-        min_length_edge: float = 2.0,
+        min_length_link: float = 2.0,
     ):
         """
         Add Ribasim boundaries from file.
@@ -382,7 +382,7 @@ class RibasimLumpingNetwork(BaseModel):
             edges=self.edges_gdf,
             nodes=self.nodes_gdf,
             buffer_distance=buffer_distance,
-            min_length_edge=min_length_edge,
+            min_length_link=min_length_link,
         )
         self.boundaries_gdf["boundary_id"] = self.boundaries_gdf.index + 1
 
@@ -516,7 +516,7 @@ class RibasimLumpingNetwork(BaseModel):
         layer_name: str = None,
         crs: int = 28992,
         buffer_distance: float = 2.0,
-        min_length_edge: float = 2.0,
+        min_length_link: float = 2.0,
     ):
         """Add split nodes in network object from file. Overwrites previously defined split nodes
 
@@ -616,11 +616,11 @@ class RibasimLumpingNetwork(BaseModel):
             edges=self.edges_gdf,
             nodes=self.nodes_gdf,
             buffer_distance=buffer_distance,
-            min_length_edge=min_length_edge,
+            min_length_link=min_length_link,
         )
 
         # split edges by split node locations so we end up with an network where split nodes are only located on nodes (and not edges)
-        self.split_nodes, self.edges_gdf, self.nodes_gdf = split_edges_by_split_nodes(
+        self.split_nodes, self.edges_gdf, self.nodes_gdf = split_links_by_split_nodes(
             self.split_nodes,
             self.edges_gdf,
             buffer_distance=0.1,  # some small buffer to be sure but should actually not be necessary because of previous snap actions
@@ -689,7 +689,7 @@ class RibasimLumpingNetwork(BaseModel):
         include_flow_boundary_basins: bool = True,
         include_level_boundary_basins: bool = False,
         remove_holes_min_area: float = 10.0,
-        option_edges_hydroobjects: bool = False,
+        option_links_hydroobjects: bool = False,
     ) -> dict:
         """
         Generate ribasim_lumping network. This function generates all
@@ -731,7 +731,7 @@ class RibasimLumpingNetwork(BaseModel):
             include_level_boundary_basins=include_level_boundary_basins,
             remove_holes_min_area=remove_holes_min_area,
             crs=self.crs,
-            option_edges_hydroobjects=option_edges_hydroobjects,
+            option_links_hydroobjects=option_links_hydroobjects,
         )
         self.boundaries_gdf = results["boundaries"]
         self.basin_areas_gdf = results["basin_areas"]

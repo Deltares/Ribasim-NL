@@ -94,9 +94,9 @@ pump_data = pump.Static(flow_rate=[10])
 mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
     model.node_table().df.index
 )
-missing_edges_df = model.link.df[~mask]
+missing_links_df = model.link.df[~mask]
 
-model.link.df = model.link.df[~model.link.df.index.isin(missing_edges_df.index)]
+model.link.df = model.link.df[~model.link.df.index.isin(missing_links_df.index)]
 
 # %% Reset static tables
 
@@ -144,11 +144,11 @@ for action in [
     "merge_basins",
     "remove_node",
     "update_node",
-    "reverse_edge",
+    "reverse_link",
     "connect_basins",
     "move_node",
     "add_basin",
-    "remove_edge",
+    "remove_link",
 ]:
     print(action)
     # get method and args

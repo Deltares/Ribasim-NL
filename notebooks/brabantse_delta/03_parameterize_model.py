@@ -88,7 +88,7 @@ model.merge_basins(node_id=2201, to_node_id=1820, are_connected=True)
 model.merge_basins(node_id=2002, to_node_id=2215, are_connected=True)
 model.merge_basins(node_id=2215, to_node_id=2248, are_connected=True)
 model.merge_basins(node_id=2247, to_node_id=1998, are_connected=True)
-model.remove_node(998, remove_edges=True)
+model.remove_node(998, remove_links=True)
 model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_streefpeil"] = 4.1
 model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "meta_streefpeil"] = 0.1
 model.basin.area.df.loc[model.basin.area.df.node_id == 1909, "meta_streefpeil"] = 0.1

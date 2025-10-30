@@ -125,7 +125,7 @@ class Network:
         links_gdf = gpd.read_file(gpkg_file, layer="links", engine="pyogrio").set_index(["node_from", "node_to"])
         graph = DiGraph()
         graph.add_nodes_from(nodes_gdf.to_dict(orient="index").items())
-        graph.add_edges_from([(k[0], k[1], v) for k, v in links_gdf.to_dict(orient="index").items()])
+        graph.add_links_from([(k[0], k[1], v) for k, v in links_gdf.to_dict(orient="index").items()])
 
         result = cls(links_gdf, **kwargs)
         result.set_graph(graph)
@@ -259,7 +259,7 @@ class Network:
             geometry = LineString([(point_from.x, point_from.y)] + geometry.coords[1:-1] + [(point_to.x, point_to.y)])
 
         # add link to graph
-        self._graph.add_edge(
+        self._graph.add_link(
             node_from,
             node_to,
             name=name,
@@ -490,7 +490,7 @@ class Network:
             node_geometry = edge_geometry.interpolate(edge_geometry.project(point))
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
             # add edges
-            self.graph.remove_edge(node_from, node_to)
+            self.graph.remove_link(node_from, node_to)
             split_result = split_line(edge_geometry, node_geometry)
             if isinstance(split_result, LineString):
                 if self.verbose:
@@ -614,7 +614,7 @@ class Network:
         weight = links.length
         weight.loc[mask] = weight[mask] * weight_value
         weight_values = weight.to_dict()
-        nx.set_edge_attributes(self._graph, weight_values, "weight")
+        nx.set_link_attributes(self._graph, weight_values, "weight")
 
         self._graph_undirected = None
 

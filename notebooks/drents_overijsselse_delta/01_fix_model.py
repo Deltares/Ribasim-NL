@@ -72,9 +72,9 @@ model.link.df.drop_duplicates(inplace=True)
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393458802
 
 # Toevoegen ontbrekende basins (oplossen topologie)
-model.remove_node(7, remove_edges=True)
-model.remove_node(84, remove_edges=True)
-basin_edges_df = network_validator.edge_incorrect_connectivity()
+model.remove_node(7, remove_links=True)
+model.remove_node(84, remove_links=True)
+basin_links_df = network_validator.edge_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
@@ -82,10 +82,10 @@ for row in basin_nodes_df.itertuples():
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
     # update edge_table
-    model.link.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
-    model.link.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
         basin_node.node_id
     )
 
@@ -103,10 +103,10 @@ model.update_node(2484, "LevelBoundary", data=[level_data])
 
 # nodes 1536, 762, 761, 1486 + aangesloten edges gooien we weg
 for node_id in [1536, 762, 761, 1486]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 # edges 2841, 2842, 2843, 2846 gooien we weg
-model.remove_edges([2841, 2842, 2843, 2846])
+model.remove_links([2841, 2842, 2843, 2846])
 
 # duiker 286309 voegen we toe
 kdu = duikersifonhevel_gdf.loc[9063]
@@ -126,11 +126,11 @@ model.link.add(model.basin[2240], model.pump[1100])
 
 # Ramsgeul bij Ramspol
 for node_id in [81, 839]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 model.update_node(83, "Basin", data=basin_data)
 model.move_node(83, hydroobject_gdf.at[21045, "geometry"].boundary.geoms[0])
-model.reverse_edge(link_id=3013)
+model.reverse_link(link_id=3013)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399104407
 
@@ -144,10 +144,10 @@ outlet_node = model.outlet.add(
 )
 
 # basin 1623 verbinden met inlaatduikers (3x) en gemaal 1623; overige verbindingen verwijderen.
-model.remove_edges([3038, 3040, 3037, 3041, 3039])
+model.remove_links([3038, 3040, 3037, 3041, 3039])
 
 # nw basin verbinden met gemaal 20, level boundary 94 en alle inlaatduikers
-model.reverse_edge(link_id=2282)
+model.reverse_link(link_id=2282)
 model.link.add(outlet_node, model.level_boundary[94])
 model.link.add(basin_node, outlet_node)
 model.link.add(basin_node, model.manning_resistance[1182])
@@ -168,9 +168,9 @@ model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1717]
 model.update_node(1682, "LevelBoundary", [level_data])
 
 # Alle edges die nu naar basin 1717 lopen naar LevelBoundary 1682 of opheffen
-model.remove_node(27, remove_edges=True)
-model.remove_node(1556, remove_edges=True)
-model.remove_edges([945, 2537, 2536])
+model.remove_node(27, remove_links=True)
+model.remove_node(1556, remove_links=True)
+model.remove_links([945, 2537, 2536])
 
 boundary_node = model.level_boundary.add(Node(geometry=hydroobject_gdf.at[7778, "geometry"].boundary.geoms[0]))
 
@@ -184,19 +184,19 @@ model.link.add(boundary_node, model.outlet[1203])
 
 # Misc pump benedenstroomse edges
 for link_id in [2862, 3006, 3049]:
-    model.reverse_edge(link_id=link_id)
+    model.reverse_link(link_id=link_id)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399355028
 
 # Misc tabulated_rating_curve (stuwen) stroomrichting
 for link_id in [1884, 2197]:
-    model.reverse_edge(link_id=link_id)
+    model.reverse_link(link_id=link_id)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399382478
 
 # Misc manning_resistance (duikers) stroomrichting
 for link_id in [1081, 518]:
-    model.reverse_edge(link_id=link_id)
+    model.reverse_link(link_id=link_id)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399425885
 # Opknippen NW boezem
@@ -226,10 +226,10 @@ model.merge_basins(basin_id=2453, to_basin_id=1686, are_connected=True)
 model.merge_basins(basin_id=1719, to_basin_id=1686, are_connected=True)
 model.merge_basins(basin_id=1858, to_basin_id=1686, are_connected=True)
 
-model.remove_node(1532, remove_edges=True)
-model.remove_node(722, remove_edges=True)
-model.remove_node(536, remove_edges=True)
-model.remove_node(2506, remove_edges=True)
+model.remove_node(1532, remove_links=True)
+model.remove_node(722, remove_links=True)
+model.remove_node(536, remove_links=True)
+model.remove_node(2506, remove_links=True)
 
 edge_ids = [
     2866,
@@ -273,16 +273,16 @@ edge_ids = [
 ]
 
 for link_id in edge_ids:
-    model.redirect_edge(link_id, to_node_id=basin_node.node_id)
+    model.redirect_link(link_id, to_node_id=basin_node.node_id)
 
-model.remove_edges([2887, 2892])
+model.remove_links([2887, 2892])
 model.link.add(basin_node, model.pump[547])
 model.link.add(basin_node, model.outlet[540])
 
 for link_id in [2914, 2894]:
-    model.redirect_edge(link_id, to_node_id=31)
+    model.redirect_link(link_id, to_node_id=31)
 
-model.redirect_edge(461, to_node_id=1585)
+model.redirect_link(461, to_node_id=1585)
 
 model.basin.area.df.loc[model.basin.area.df.node_id == 1545, ["node_id"]] = 1585
 
@@ -295,9 +295,9 @@ outlet_node = model.outlet.add(
 )
 
 for link_id in [2956, 2957, 2958, 2959, 2960, 2961]:
-    model.redirect_edge(link_id, to_node_id=basin_node.node_id)
+    model.redirect_link(link_id, to_node_id=basin_node.node_id)
 
-model.remove_node(76, remove_edges=True)
+model.remove_node(76, remove_links=True)
 model.link.add(basin_node, model.pump[598])
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[50])
@@ -345,8 +345,8 @@ actions = [
     "update_node",
     "add_basin_area",
     "update_basin_area",
-    "redirect_edge",
-    "reverse_edge",
+    "redirect_link",
+    "reverse_link",
     "deactivate_node",
     "move_node",
     "remove_node",

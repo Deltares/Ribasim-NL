@@ -78,9 +78,9 @@ class NetworkValidator:
     def node_invalid_connectivity(self, tolerance: float = 1.0):
         """Check if node_from and node_to are correct on link"""
         node_df = self.node_df
-        invalid_edges_df = self.edge_incorrect_connectivity()
+        invalid_links_df = self.edge_incorrect_connectivity()
         invalid_nodes = []
-        for row in invalid_edges_df.itertuples():
+        for row in invalid_links_df.itertuples():
             geoms = row.geometry.boundary.geoms
 
             for idx, attr in ((0, "from_node_id"), (1, "to_node_id")):

@@ -97,7 +97,7 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
 
     if apply_for_water_authority is not None:
         koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
-        koppel_link_id_column = "meta_edge_id_waterbeheerder"
+        koppel_link_id_column = "meta_link_id_waterbeheerder"
 
     else:
         koppel_link_id_column = "new_link_id"

@@ -14,11 +14,11 @@ from shapely.ops import linemerge
 from ..utils.general_functions import remove_holes_from_polygons
 
 
-def create_graph_based_on_nodes_edges(
+def create_graph_based_on_nodes_links(
     nodes: gpd.GeoDataFrame,
     edges: gpd.GeoDataFrame,
     directional_graph: bool = True,
-    add_edge_length_as_weight: bool = False,
+    add_link_length_as_weight: bool = False,
     print_logmessage: bool = True,
 ) -> nx.Graph | nx.DiGraph:
     """
@@ -35,10 +35,10 @@ def create_graph_based_on_nodes_edges(
             graph.add_node(node.node_no, pos=(node.geometry.x, node.geometry.y))
     if edges is not None:
         for i, link in edges.iterrows():
-            if add_edge_length_as_weight:
-                graph.add_edge(link.from_node, link.to_node, weight=link.geometry.length)
+            if add_link_length_as_weight:
+                graph.add_link(link.from_node, link.to_node, weight=link.geometry.length)
             else:
-                graph.add_edge(link.from_node, link.to_node)
+                graph.add_link(link.from_node, link.to_node)
     if print_logmessage:
         print(f" - create network graph from nodes ({len(nodes)}x) and edges ({len(edges)}x)")
     return graph
@@ -48,9 +48,9 @@ def split_graph_based_on_split_nodes(
     graph: nx.DiGraph, split_nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame
 ) -> tuple[nx.DiGraph, gpd.GeoDataFrame]:
     """
-    Split networkx graph at split_edge or split_node.
+    Split networkx graph at split_link or split_node.
 
-    It removes the original edges(s)/node(s) which are the same as split_edge and
+    It removes the original edges(s)/node(s) which are the same as split_link and
     split_node and inserts new edges and nodes such that the graph becomes disconnected at the split point. After this edges don't
     connect to 1 node (at split point) but each end in each own new node. Because of this removing and adding edges and nodes in the
     graph, these new nodes no in graph are added to split_nodes gdf and also returned as result of this function.
@@ -67,31 +67,31 @@ def split_graph_based_on_split_nodes(
     #       values need to be -1 should be better.
     if "edge_no" not in split_nodes.columns:
         split_nodes["edge_no"] = -1
-    split_nodes_edges = split_nodes[split_nodes.edge_no != -1].copy()
+    split_nodes_links = split_nodes[split_nodes.edge_no != -1].copy()
 
-    split_edges = edges[edges.edge_no.isin(split_nodes_edges.edge_no.values)].copy()
-    # assert len(split_nodes_edges) == len(split_edges)
-    split_edges = split_edges[["from_node", "to_node"]].to_dict("tight")["data"]
+    split_links = edges[edges.edge_no.isin(split_nodes_links.edge_no.values)].copy()
+    # assert len(split_nodes_links) == len(split_links)
+    split_links = split_links[["from_node", "to_node"]].to_dict("tight")["data"]
 
-    split_edges = [coor for coor in split_edges if coor in graph.edges]
+    split_links = [coor for coor in split_links if coor in graph.edges]
 
-    split_nodes_edges["new_node_no1"] = 998_000_000_000 + split_nodes_edges.edge_no * 1_000 + 1
-    split_nodes_edges["new_node_no2"] = 998_000_000_000 + split_nodes_edges.edge_no * 1_000 + 2
-    split_nodes_edges["new_node_pos"] = split_nodes_edges.geometry.apply(lambda x: (x.x, x.y))
-    split_nodes_edges["upstream_node_no"] = [e[0] for e in split_edges]
-    split_nodes_edges["downstream_node_no"] = [e[1] for e in split_edges]
+    split_nodes_links["new_node_no1"] = 998_000_000_000 + split_nodes_links.edge_no * 1_000 + 1
+    split_nodes_links["new_node_no2"] = 998_000_000_000 + split_nodes_links.edge_no * 1_000 + 2
+    split_nodes_links["new_node_pos"] = split_nodes_links.geometry.apply(lambda x: (x.x, x.y))
+    split_nodes_links["upstream_node_no"] = [e[0] for e in split_links]
+    split_nodes_links["downstream_node_no"] = [e[1] for e in split_links]
 
     # remove splitted edges from graph and insert the newly split ones
-    graph.remove_edges_from(split_edges)
-    for i_edge, new in split_nodes_edges.iterrows():
+    graph.remove_links_from(split_links)
+    for i_link, new in split_nodes_links.iterrows():
         graph.add_node(new.new_node_no1, pos=new.new_node_pos)
         graph.add_node(new.new_node_no2, pos=new.new_node_pos)
-        graph.add_edge(new.upstream_node_no, new.new_node_no1)
-        graph.add_edge(new.new_node_no2, new.downstream_node_no)
+        graph.add_link(new.upstream_node_no, new.new_node_no1)
+        graph.add_link(new.new_node_no2, new.downstream_node_no)
     # update split nodes gdf with new node no
-    new_graph_node_no = list(zip(split_nodes_edges["new_node_no1"], split_nodes_edges["new_node_no1"]))
-    split_nodes.loc[split_nodes_edges.index, "graph_node_no"] = pd.Series(
-        new_graph_node_no, index=split_nodes_edges.index, dtype=object
+    new_graph_node_no = list(zip(split_nodes_links["new_node_no1"], split_nodes_links["new_node_no1"]))
+    split_nodes.loc[split_nodes_links.index, "graph_node_no"] = pd.Series(
+        new_graph_node_no, index=split_nodes_links.index, dtype=object
     )
 
     # split_node: delete node and delete x edges, create x nodes, create x edges
@@ -104,17 +104,17 @@ def split_graph_based_on_split_nodes(
             new_graph_node_no.append(-1)
             continue
         split_node_pos = graph.nodes[split_node_id]["pos"]
-        split_edges = [e for e in list(graph.edges) if split_node_id in e]
+        split_links = [e for e in list(graph.edges) if split_node_id in e]
 
         # remove old edges and node and insert new ones
-        graph.remove_edges_from(split_edges)
+        graph.remove_links_from(split_links)
         graph.remove_node(split_node_id)
         new_graph_no = []
-        for i_edge, new_edge in enumerate(split_edges):
-            new_node_id = 999_000_000_000 + split_node_id * 1_000 + i_edge
+        for i_link, new_link in enumerate(split_links):
+            new_node_id = 999_000_000_000 + split_node_id * 1_000 + i_link
             graph.add_node(new_node_id, pos=split_node_pos)
-            new_edge_adj = [e if e != split_node_id else new_node_id for e in new_edge]
-            graph.add_edge(new_edge_adj[0], new_edge_adj[1])
+            new_link_adj = [e if e != split_node_id else new_node_id for e in new_link]
+            graph.add_link(new_link_adj[0], new_link_adj[1])
             new_graph_no.append(new_node_id)
         new_graph_node_no.append(tuple(new_graph_no))
     # update split nodes gdf with new node no
@@ -125,7 +125,7 @@ def split_graph_based_on_split_nodes(
     return graph, split_nodes
 
 
-def add_basin_code_from_network_to_nodes_and_edges(
+def add_basin_code_from_network_to_nodes_and_links(
     graph: nx.DiGraph,
     nodes: gpd.GeoDataFrame,
     edges: gpd.GeoDataFrame,
@@ -167,7 +167,7 @@ def check_if_split_node_is_used(
     nodes: gpd.GeoDataFrame,
     edges: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
-    """Check whether split_nodes are used, split_nodes and split_edges"""
+    """Check whether split_nodes are used, split_nodes and split_links"""
     split_nodes = split_nodes.copy()  # copy to make sure gdf variable is not linked
     split_nodes["status"] = True
 
@@ -182,16 +182,16 @@ def check_if_split_node_is_used(
             split_nodes_not_used.append(split_node_id)
     split_nodes.loc[split_nodes[split_nodes.node_no.isin(split_nodes_not_used)].index, "status"] = False
 
-    # check if nodes connected to split_edge have the same basin code
-    split_edge_ids = [v for v in split_nodes.edge_no.values if v != -1]
-    split_edges_not_used = []
-    for split_edge_id in sorted(split_edge_ids):
-        end_nodes = list(edges[edges.edge_no == split_edge_id].to_node.values)
-        start_nodes = list(edges[edges.edge_no == split_edge_id].from_node.values)
+    # check if nodes connected to split_link have the same basin code
+    split_link_ids = [v for v in split_nodes.edge_no.values if v != -1]
+    split_links_not_used = []
+    for split_link_id in sorted(split_link_ids):
+        end_nodes = list(edges[edges.edge_no == split_link_id].to_node.values)
+        start_nodes = list(edges[edges.edge_no == split_link_id].from_node.values)
         neighbours = nodes[nodes.node_no.isin(end_nodes + start_nodes)]
         if len(neighbours.basin.unique()) == 1:
-            split_edges_not_used.append(split_edge_id)
-    split_nodes.loc[split_nodes[split_nodes.edge_no.isin(split_edges_not_used)].index, "status"] = False
+            split_links_not_used.append(split_link_id)
+    split_nodes.loc[split_nodes[split_nodes.edge_no.isin(split_links_not_used)].index, "status"] = False
 
     split_nodes["object_type"] = split_nodes["object_type"].fillna("manual")
     split_nodes["split_type"] = split_nodes["object_type"]
@@ -380,7 +380,7 @@ def create_basins_based_on_subgraphs_and_nodes(
     return basins
 
 
-def check_if_nodes_edges_within_basin_areas(
+def check_if_nodes_links_within_basin_areas(
     nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, basin_areas: gpd.GeoDataFrame
 ) -> tuple[gpd.GeoDataFrame]:
     """Check whether nodes assigned to a basin are also within the polygon assigned to that basin"""
@@ -418,7 +418,7 @@ def create_basin_connections(
     nodes: gpd.GeoDataFrame,
     basins: gpd.GeoDataFrame,
     crs: int = 28992,
-    option_edges_hydroobjects: bool = False,
+    option_links_hydroobjects: bool = False,
 ) -> gpd.GeoDataFrame:
     """Create basin connections"""
     conn = split_nodes.rename(columns={"geometry": "geom_split_node"})
@@ -485,11 +485,11 @@ def create_basin_connections(
     basin_connections = pd.concat([conn_ds, conn_us])
     basin_connections = gpd.GeoDataFrame(basin_connections, geometry="geometry", crs=crs)
 
-    if option_edges_hydroobjects:
+    if option_links_hydroobjects:
         print(" - generate basin connections geometry from edges")
         # make undirectional graph of last updated nodes and edges including length of edges
-        graph = create_graph_based_on_nodes_edges(
-            nodes=nodes, edges=edges, directional_graph=False, add_edge_length_as_weight=True, print_logmessage=False
+        graph = create_graph_based_on_nodes_links(
+            nodes=nodes, edges=edges, directional_graph=False, add_link_length_as_weight=True, print_logmessage=False
         )
         # get node no for split node and basin
         _basin_connections = basin_connections.copy()
@@ -511,14 +511,14 @@ def create_basin_connections(
             )
         ]
         # transform shortest paths to a continuous line of the edges
-        _edges = edges.copy()
-        _edges["nodes1"] = [f"{n1}_{n2}" for n1, n2 in zip(_edges["from_node"], _edges["to_node"])]
-        _edges["nodes2"] = [f"{n2}_{n1}" for n1, n2 in zip(_edges["from_node"], _edges["to_node"])]
-        _basin_connections["geometry_from_edges"] = [
+        _links = edges.copy()
+        _links["nodes1"] = [f"{n1}_{n2}" for n1, n2 in zip(_links["from_node"], _links["to_node"])]
+        _links["nodes2"] = [f"{n2}_{n1}" for n1, n2 in zip(_links["from_node"], _links["to_node"])]
+        _basin_connections["geometry_from_links"] = [
             linemerge(
                 [
-                    _edges.loc[
-                        (_edges["nodes1"] == f"{n1}_{n2}") | (_edges["nodes2"] == f"{n1}_{n2}"), "geometry"
+                    _links.loc[
+                        (_links["nodes1"] == f"{n1}_{n2}") | (_links["nodes2"] == f"{n1}_{n2}"), "geometry"
                     ].values[0]
                     for n1, n2 in zip(p[:-1], p[1:])
                 ]
@@ -529,19 +529,19 @@ def create_basin_connections(
         for i, row in _basin_connections.iterrows():
             sp = row["split_node_node_no"] if row["connection"] == "split_node_to_basin" else row["basin_node_no"]
             sp = nodes.loc[nodes["node_no"] == sp, "geometry"].values[0].buffer(0.0001)
-            if "LINESTRING" not in str(row["geometry_from_edges"]):
+            if "LINESTRING" not in str(row["geometry_from_links"]):
                 continue  # skip geometries that are not a line
-            if Point(row["geometry_from_edges"].coords[0]).intersects(sp):
+            if Point(row["geometry_from_links"].coords[0]).intersects(sp):
                 # starting point of line matches with desired starting point based on connection type, so leave line as is
                 pass
-            elif Point(row["geometry_from_edges"].coords[-1]).intersects(sp):
+            elif Point(row["geometry_from_links"].coords[-1]).intersects(sp):
                 # last point of line matches with desired starting point based on connection type, so flip direction of line
-                _basin_connections.at[i, "geometry_from_edges"] = row["geometry_from_edges"].reverse()
+                _basin_connections.at[i, "geometry_from_links"] = row["geometry_from_links"].reverse()
             else:
                 # starting point could not be found on begin or end of line. just leave line as is
                 pass
         # assign new basin connections lines to original geodataframe
-        basin_connections["geometry_from_edges"] = _basin_connections["geometry_from_edges"]
+        basin_connections["geometry_from_links"] = _basin_connections["geometry_from_links"]
 
     print(f" - create connections between Basins and split locations ({len(basin_connections)}x)")
     return basin_connections.drop_duplicates(keep="first")
@@ -931,7 +931,7 @@ def generate_ribasim_network_using_split_nodes(
     include_level_boundary_basins: bool = False,
     remove_holes_min_area: float = 10.0,
     crs: int = 28992,
-    option_edges_hydroobjects: bool = False,
+    option_links_hydroobjects: bool = False,
 ) -> dict:
     """
     Create basins (nodes) and basin_areas (large polygons) and connections (edges) based on nodes, edges, split_nodes and areas (discharge units).
@@ -941,11 +941,11 @@ def generate_ribasim_network_using_split_nodes(
     network_graph = None
     basin_areas = None
     basins = None
-    network_graph = create_graph_based_on_nodes_edges(nodes=nodes, edges=edges)
+    network_graph = create_graph_based_on_nodes_links(nodes=nodes, edges=edges)
     network_graph, split_nodes = split_graph_based_on_split_nodes(
         graph=network_graph, split_nodes=split_nodes, edges=edges
     )
-    nodes, edges = add_basin_code_from_network_to_nodes_and_edges(
+    nodes, edges = add_basin_code_from_network_to_nodes_and_links(
         graph=network_graph, split_nodes=split_nodes, nodes=nodes, edges=edges
     )
     split_nodes = check_if_split_node_is_used(split_nodes=split_nodes, nodes=nodes, edges=edges)
@@ -954,14 +954,14 @@ def generate_ribasim_network_using_split_nodes(
         areas, basin_areas = create_basin_areas_based_on_drainage_areas(edges=edges, areas=areas, laterals=laterals)
     else:
         areas, basin_areas = create_basin_areas_based_on_drainage_areas(edges=edges, areas=areas)
-    nodes, edges = check_if_nodes_edges_within_basin_areas(nodes=nodes, edges=edges, basin_areas=basin_areas)
+    nodes, edges = check_if_nodes_links_within_basin_areas(nodes=nodes, edges=edges, basin_areas=basin_areas)
     basin_connections = create_basin_connections(
         split_nodes=split_nodes,
         basins=basins,
         nodes=nodes,
         edges=edges,
         crs=crs,
-        option_edges_hydroobjects=option_edges_hydroobjects,
+        option_links_hydroobjects=option_links_hydroobjects,
     )
     boundary_connections, split_nodes, basins = create_boundary_connections(
         boundaries=boundaries,

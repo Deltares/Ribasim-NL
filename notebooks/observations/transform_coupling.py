@@ -141,7 +141,7 @@ def LaadKoppeltabel(loc_koppeltabel, eerste_tabel=False):
             "from_node_id",
             "to_node_id",
             "link_id",
-            "meta_edge_id_waterbeheerder",
+            "meta_link_id_waterbeheerder",
         ]
         # Convert the lists in link_id to lists if possible
         for col in columns_to_parse_simple:
@@ -399,13 +399,13 @@ buffer_range_nodes = np.arange(0, 100, 5).tolist()
 
 buffer_range_links = np.arange(0, 600, 1).tolist()
 
-# Met een gecombineerd model kunnen we de meta_edge_id_waterbeheerder wel meenemen
+# Met een gecombineerd model kunnen we de meta_link_id_waterbeheerder wel meenemen
 
 link_columns = [
     "from_node_id",
     "to_node_id",
     "link_id",
-    "meta_edge_id_waterbeheerder",
+    "meta_link_id_waterbeheerder",
     "geometry",
 ]
 
@@ -451,7 +451,7 @@ cloud.upload_file(path_gpkg)
 # ---------------------------------------------
 # Step 1. Drop unnecessary columns
 # ---------------------------------------------
-drop_cols = ["status", "match_nodes", "meta_edge_id_waterbeheerder", "from_node_id", "to_node_id"]
+drop_cols = ["status", "match_nodes", "meta_link_id_waterbeheerder", "from_node_id", "to_node_id"]
 koppeltabel = koppeltabel.drop(columns=[c for c in drop_cols if c in koppeltabel.columns])
 
 # ---------------------------------------------
@@ -544,7 +544,7 @@ for index, row in koppeltabel.iterrows():
         from_nodes_id = []
         to_nodes_id = []
         link_id = []
-        # meta_edge_id_waterbeheerder = []
+        # meta_link_id_waterbeheerder = []
         opmerking_transform = []
 
         # loop per rij over de verschillende links (combi van from en to nodes)
@@ -618,7 +618,7 @@ for index, row in koppeltabel.iterrows():
                     from_nodes_id.append(None)
                     to_nodes_id.append(None)
                     link_id.append(None)
-                    # meta_edge_id_waterbeheerder.append(None)
+                    # meta_link_id_waterbeheerder.append(None)
                     opmerking_transform.append(",geen match gevonden,")
 
                     continue
@@ -693,7 +693,7 @@ for index, row in koppeltabel.iterrows():
                 from_nodes_id.append(None)
                 to_nodes_id.append(None)
                 link_id.append(None)
-                # meta_edge_id_waterbeheerder.append(None)
+                # meta_link_id_waterbeheerder.append(None)
                 opmerking_transform.append(",geen match gevonden,")
 
                 continue

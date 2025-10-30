@@ -69,8 +69,8 @@ model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "ma
 
 # %%
 model.update_node(node_id=1401, node_type="Outlet")
-model.reverse_edge(link_id=894)
-model.reverse_edge(link_id=1983)
+model.reverse_link(link_id=894)
+model.reverse_link(link_id=1983)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "min_upstream_level"] = -2.6
 model.pump.static.df.loc[model.pump.static.df.node_id == 600, "min_upstream_level"] = 4
 model.pump.static.df.loc[model.pump.static.df.node_id == 601, "min_upstream_level"] = 4

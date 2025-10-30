@@ -63,7 +63,7 @@ model.link.df.drop_duplicates(inplace=True)
 # %%
 # toevoegen ontbrekende basins
 
-basin_edges_df = network_validator.edge_incorrect_connectivity()
+basin_links_df = network_validator.edge_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
@@ -71,10 +71,10 @@ for row in basin_nodes_df.itertuples():
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
     # update edge_table
-    mask = (basin_edges_df.from_node_id == row.node_id) & (basin_edges_df.distance(row.geometry) < 0.1)
-    model.link.df.loc[basin_edges_df[mask].index, ["from_node_id"]] = basin_node.node_id
-    mask = (basin_edges_df.to_node_id == row.node_id) & (basin_edges_df.distance(row.geometry) < 0.1)
-    model.link.df.loc[basin_edges_df[mask].index, ["to_node_id"]] = basin_node.node_id
+    mask = (basin_links_df.from_node_id == row.node_id) & (basin_links_df.distance(row.geometry) < 0.1)
+    model.link.df.loc[basin_links_df[mask].index, ["from_node_id"]] = basin_node.node_id
+    mask = (basin_links_df.to_node_id == row.node_id) & (basin_links_df.distance(row.geometry) < 0.1)
+    model.link.df.loc[basin_links_df[mask].index, ["to_node_id"]] = basin_node.node_id
 
 
 # EINDE ISSUES
@@ -111,8 +111,8 @@ actions = [
     "update_node",
     "add_basin_area",
     "update_basin_area",
-    "reverse_edge",
-    "redirect_edge",
+    "reverse_link",
+    "redirect_link",
     "merge_basins",
     "move_node",
     "connect_basins",

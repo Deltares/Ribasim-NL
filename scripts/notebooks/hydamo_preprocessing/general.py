@@ -179,8 +179,8 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
     split_lines["preprocessing_split"] = None
 
     for split_action in splits:
-        split_edge = split_action["split_line"]
-        line = lines[lines["code"] == split_edge]
+        split_link = split_action["split_line"]
+        line = lines[lines["code"] == split_link]
         linestring = line["geometry"].values[0]
         nodes_to_add = []
         for node in split_action["split_points"]:

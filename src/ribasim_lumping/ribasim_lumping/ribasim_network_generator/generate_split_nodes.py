@@ -58,7 +58,7 @@ def add_split_nodes_based_on_selection(
 
     returns splitnodes
     """
-    network_edges = list_gdfs[-1]
+    network_links = list_gdfs[-1]
     # get split_nodes based on type
     split_nodes_structures = get_split_nodes_based_on_type(
         stations=stations,
@@ -90,13 +90,13 @@ def add_split_nodes_based_on_selection(
     if edges or len(edge_ids_to_include) >= 1:
         additional_split_nodes = None
         if edges:
-            additional_split_nodes = network_edges.copy()
+            additional_split_nodes = network_links.copy()
             if len(edge_ids_to_exclude):
                 additional_split_nodes = additional_split_nodes[
                     ~additional_split_nodes.edge_no.isin(edge_ids_to_exclude)
                 ]
         elif len(edge_ids_to_include):
-            additional_split_nodes = network_edges[network_edges.edge_no.isin(edge_ids_to_include)][
+            additional_split_nodes = network_links[network_links.edge_no.isin(edge_ids_to_include)][
                 ["edge_no", "branch_id", "geometry"]
             ]
         if additional_split_nodes is not None:

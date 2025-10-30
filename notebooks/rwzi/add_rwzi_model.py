@@ -154,7 +154,7 @@ def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=Fals
     #  1. RWZI‑terminals verwijderen
     terminals_removed = 0
     for node_id in unmatched_rwzi_df.index:
-        rwzi_coupled_model.remove_node(node_id, remove_edges=True)
+        rwzi_coupled_model.remove_node(node_id, remove_links=True)
         terminals_removed += 1
 
     #  2. bijbehorende flow boundaries verwijderen
@@ -163,7 +163,7 @@ def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=Fals
 
     flow_boundaries_removed = 0
     for node_id in flow_boundary_to_remove.index:
-        rwzi_coupled_model.remove_node(node_id, remove_edges=True)
+        rwzi_coupled_model.remove_node(node_id, remove_links=True)
         flow_boundaries_removed += 1
 
     #  samenvatting & return

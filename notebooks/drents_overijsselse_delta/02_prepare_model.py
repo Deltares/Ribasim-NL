@@ -78,16 +78,16 @@ else:
 actions = [
     "remove_basin_area",
     #    "remove_node",
-    #    "remove_edge",
+    #    "remove_link",
     "add_basin",
     "add_basin_area",
     # "update_basin_area",
     # "merge_basins",
-    # "reverse_edge",
+    # "reverse_link",
     # "move_node",
     "connect_basins",
     #   "update_node",
-    "redirect_edge",
+    "redirect_link",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()]
 for action in actions:

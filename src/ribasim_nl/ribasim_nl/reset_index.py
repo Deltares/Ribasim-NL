@@ -76,13 +76,13 @@ def prefix_index(
     edge_ids = model.link.df.index
 
     # Check if any link_id exceeds max_digits
-    max_edge_id = edge_ids.max()
-    actual_edge_digits = len(str(max_edge_id))
-    if actual_edge_digits > max_digits:
+    max_link_id = edge_ids.max()
+    actual_link_digits = len(str(max_link_id))
+    if actual_link_digits > max_digits:
         model_info = f" (model: {model.filepath})" if hasattr(model, "filepath") and model.filepath else ""
         raise ValueError(
-            f"Edge ID {max_edge_id} has {actual_edge_digits} digits, which exceeds the max_digits limit of {max_digits}. "
-            f"Either increase max_digits to at least {actual_edge_digits} or ensure all link IDs fit within {max_digits} digits{model_info}."
+            f"Edge ID {max_link_id} has {actual_link_digits} digits, which exceeds the max_digits limit of {max_digits}. "
+            f"Either increase max_digits to at least {actual_link_digits} or ensure all link IDs fit within {max_digits} digits{model_info}."
         )
 
     model.link.df.index = pd.Index(
@@ -91,7 +91,7 @@ def prefix_index(
 
     # keep original index if
     if original_index_postfix is not None:
-        model.link.df.loc[:, f"meta_edge_id_{original_index_postfix}"] = edge_ids.astype("int32")
+        model.link.df.loc[:, f"meta_link_id_{original_index_postfix}"] = edge_ids.astype("int32")
 
     return model
 
@@ -131,5 +131,5 @@ def reset_index(model: Model, node_start=1, edge_start=1, original_index_postfix
 
         # keep original index if
         if original_index_postfix is not None:
-            model.link.df.loc[:, f"meta_edge_id_{original_index_postfix}"] = edge_ids
+            model.link.df.loc[:, f"meta_link_id_{original_index_postfix}"] = edge_ids
     return model

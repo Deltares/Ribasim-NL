@@ -21,7 +21,7 @@ from ..utils.general_functions import (
     extract_segment_from_linestring,
     find_directory_in_directory,
     find_file_in_directory,
-    find_nearest_edges_no,
+    find_nearest_links_no,
     find_nearest_nodes,
     get_points_on_linestrings_based_on_distances,
     read_ini_file_with_similar_sections,
@@ -124,16 +124,16 @@ def get_dhydro_nodes_from_network_data(network_data, crs):
     return nodes_gdf
 
 
-def get_dhydro_edges_from_network_data(network_data, nodes_gdf, branches_gdf, crs):
+def get_dhydro_links_from_network_data(network_data, nodes_gdf, branches_gdf, crs):
     """Get DHydro edges"""
     edges_df = pd.DataFrame(
         {
-            "branch_id": network_data._mesh1d.mesh1d_edge_branch_id,
-            "chainage": network_data._mesh1d.mesh1d_edge_branch_offset,
-            "X": network_data._mesh1d.mesh1d_edge_x,
-            "Y": network_data._mesh1d.mesh1d_edge_y,
-            "from_node": network_data._mesh1d.mesh1d_edge_nodes[:, 0],
-            "to_node": network_data._mesh1d.mesh1d_edge_nodes[:, 1],
+            "branch_id": network_data._mesh1d.mesh1d_link_branch_id,
+            "chainage": network_data._mesh1d.mesh1d_link_branch_offset,
+            "X": network_data._mesh1d.mesh1d_link_x,
+            "Y": network_data._mesh1d.mesh1d_link_y,
+            "from_node": network_data._mesh1d.mesh1d_link_nodes[:, 0],
+            "to_node": network_data._mesh1d.mesh1d_link_nodes[:, 1],
         }
     )
     edges_df["branch_id"] = edges_df["branch_id"].map(branches_gdf["branch_id"].to_dict())
@@ -185,10 +185,10 @@ def get_dhydro_structures_locations(structures_file: Path, branches_gdf: gpd.Geo
         points_distance_column="chainage",
     )
     structures_gdf = structures_gdf.rename(columns={"type": "object_type"})
-    structures_gdf = find_nearest_edges_no(
+    structures_gdf = find_nearest_links_no(
         gdf1=structures_gdf, gdf2=branches_gdf.set_index("branch_id").sort_index(), new_column="branch_id"
     )
-    structures_gdf = find_nearest_edges_no(
+    structures_gdf = find_nearest_links_no(
         gdf1=structures_gdf,
         gdf2=edges_gdf.set_index("edge_no").sort_index(),
         new_column="edge_no",
@@ -477,7 +477,7 @@ def get_dhydro_data_from_simulation(
     network_nodes_gdf = get_dhydro_network_nodes_from_network_nc(network_nc, crs)
     branches_gdf = get_dhydro_branches_from_network_data(network_data, crs)
     nodes_gdf = get_dhydro_nodes_from_network_data(network_data, crs)
-    edges_gdf = get_dhydro_edges_from_network_data(network_data, nodes_gdf, branches_gdf, crs)
+    edges_gdf = get_dhydro_links_from_network_data(network_data, nodes_gdf, branches_gdf, crs)
 
     structures_gdf = get_dhydro_structures_locations(
         structures_file=files["structure_file"], branches_gdf=branches_gdf, edges_gdf=edges_gdf

@@ -3,7 +3,7 @@ from pathlib import Path
 import fiona
 import geopandas as gpd
 
-from ..utils.general_functions import generate_nodes_from_edges, read_geom_file, split_edges_by_dx
+from ..utils.general_functions import generate_nodes_from_links, read_geom_file, split_links_by_dx
 
 
 def add_hydamo_basis_network(
@@ -30,18 +30,18 @@ def add_hydamo_basis_network(
     """
     branches_gdf = read_geom_file(filepath=hydamo_network_file, layer_name="hydroobject", crs=crs, remove_z_dim=True)
     branches_gdf = branches_gdf.rename(columns={"code": "branch_id"})[["branch_id", "geometry"]]
-    branches_gdf, network_nodes_gdf = generate_nodes_from_edges(branches_gdf)
+    branches_gdf, network_nodes_gdf = generate_nodes_from_links(branches_gdf)
     print(f" - branches ({len(branches_gdf)}x)", end=", ")
 
     # Split up hydamo edges with given distance as approximate length of new edges
     if hydamo_split_network_dx is None:
         edges_gdf = branches_gdf.copy().rename(columns={"branch_id": "link_id"})
     else:
-        edges_gdf = split_edges_by_dx(
+        edges_gdf = split_links_by_dx(
             edges=branches_gdf,
             dx=hydamo_split_network_dx,
         )
-    edges_gdf, nodes_gdf = generate_nodes_from_edges(edges_gdf)
+    edges_gdf, nodes_gdf = generate_nodes_from_links(edges_gdf)
     edges_gdf.index.name = "index"
     print(f" edges ({len(edges_gdf) if edges_gdf is not None else 0}x)", end=", ")
 

@@ -23,7 +23,7 @@ def accept_length(geometry, point1, point2, max_straight_line_ratio: float = 5):
     return geometry.length / point1.distance(point2) < 5
 
 
-def get_edge_geometry(network, source, target, forbidden_nodes):
+def get_link_geometry(network, source, target, forbidden_nodes):
     try:
         all_paths = node_disjoint_paths(network.graph_undirected, s=source, t=target)
         all_paths = [i for i in all_paths if not any(_node_id in forbidden_nodes for _node_id in i)]
@@ -98,7 +98,7 @@ def fix_link_geometries(
             if network_node is None:
                 continue
             forbidden_nodes = [i for i in upstream_nodes + downstream_nodes if i != network_node]
-            geometry = get_edge_geometry(
+            geometry = get_link_geometry(
                 network=network, source=network_node, target=network_basin_node, forbidden_nodes=forbidden_nodes
             )
             if accept_length(
@@ -117,7 +117,7 @@ def fix_link_geometries(
             if network_node is None:
                 continue
             forbidden_nodes = [i for i in upstream_nodes + downstream_nodes if i != network_node]
-            geometry = get_edge_geometry(
+            geometry = get_link_geometry(
                 network=network,
                 target=network_node,
                 source=network_basin_node,

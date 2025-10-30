@@ -439,7 +439,7 @@ def connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_node
             terminal_node = terminal_nodes[terminal_node_name]
 
             # Connect the flow boundary to the terminal node
-            model.link.add(flow_boundary_node, terminal_node, name=f"{rwzi_name}_edge")
+            model.link.add(flow_boundary_node, terminal_node, name=f"{rwzi_name}_link")
             logging.info(f"Connected flow boundary '{rwzi_name}' to terminal '{terminal_node_name}'")
         else:
             logging.warning(f"Terminal node '{terminal_node_name}' not found for RWZI '{rwzi_name}'.")

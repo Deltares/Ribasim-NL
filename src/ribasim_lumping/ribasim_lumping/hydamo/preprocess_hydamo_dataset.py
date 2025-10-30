@@ -67,10 +67,10 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
     split_lines["preprocessing_split"] = None
 
     for split_action in splits:
-        split_edge = split_action["split_line"]
-        line = lines[lines["code"] == split_edge]
+        split_link = split_action["split_line"]
+        line = lines[lines["code"] == split_link]
 
-        # if split_edge == 'OAF-H-02041':
+        # if split_link == 'OAF-H-02041':
         #     break
 
         linestring = line["geometry"].values[0]
@@ -271,7 +271,7 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
 # %% Generate input data for network
 
 
-def create_nodes_and_edges_from_hydroobjects(edges, buffer_distance=0.05):
+def create_nodes_and_links_from_hydroobjects(edges, buffer_distance=0.05):
     warnings.filterwarnings("ignore")
 
     edges[["from_node", "to_node"]] = edges["geometry"].apply(lambda x: pd.Series([x.coords[0], x.coords[-1]]))
@@ -288,7 +288,7 @@ def create_nodes_and_edges_from_hydroobjects(edges, buffer_distance=0.05):
 # %% Replace Nodes
 
 
-def replace_nodes_perpendicular_on_edges(nodes, edges, distance=5, crs="EPSG:28992"):
+def replace_nodes_perpendicular_on_links(nodes, edges, distance=5, crs="EPSG:28992"):
     warnings.filterwarnings("ignore")
 
     edges["line_geometry"] = edges["geometry"]
@@ -363,10 +363,10 @@ def get_outlet_nodes(nodes, edges, crs="EPSG:28992"):
 # %% Ribasim Lumping
 
 
-def create_graph_based_on_nodes_edges(
+def create_graph_based_on_nodes_links(
     node: gpd.GeoDataFrame,
     link: gpd.GeoDataFrame,
-    add_edge_length_as_weight: bool = False,
+    add_link_length_as_weight: bool = False,
 ) -> nx.DiGraph:
     """
     Create networkx graph from ribasim model.
@@ -379,15 +379,15 @@ def create_graph_based_on_nodes_edges(
             graph.add_node(n.node_id, node_type=n.node_type, pos=(n.geometry.x, n.geometry.y))
     if link is not None:
         for i, e in link.iterrows():
-            if add_edge_length_as_weight:
-                graph.add_edge(e.from_node_id, e.to_node_id, weight=e.geometry.length)
+            if add_link_length_as_weight:
+                graph.add_link(e.from_node_id, e.to_node_id, weight=e.geometry.length)
             else:
-                graph.add_edge(e.from_node_id, e.to_node_id)
+                graph.add_link(e.from_node_id, e.to_node_id)
     print(f" - create network graph from nodes ({len(node)}x) and edges ({len(link)}x)")
     return graph
 
 
-def add_basin_code_from_network_to_nodes_and_edges(
+def add_basin_code_from_network_to_nodes_and_links(
     graph: nx.DiGraph,
     nodes: gpd.GeoDataFrame,
     edges: gpd.GeoDataFrame,

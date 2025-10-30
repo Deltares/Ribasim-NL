@@ -15,7 +15,7 @@ for authority in cloud.water_authorities:
         model = Model.read(ribasim_toml)
 
         # duplicated edges
-        duplicated_edges = len(model.link.df[model.link.df.duplicated()])
+        duplicated_links = len(model.link.df[model.link.df.duplicated()])
         model.link.df.drop_duplicates(inplace=True)
 
         # non existing nodes
@@ -33,8 +33,8 @@ for authority in cloud.water_authorities:
                 "basin_verschil": abs(len(model.basin.node.df) - len(model.basin.area.df)),
                 "basin_area_lt_5000m2": len(model.basin.area.df[model.basin.area.df.area < 5000]),
                 "verkeerde_in_uitstroom": len(model.invalid_topology_at_node()),
-                "dubbele_edges": duplicated_edges,
-                "niet-bestaande_knopen_bij_edge": nodes_not_existing,
+                "dubbele_links": duplicated_links,
+                "niet-bestaande_knopen_bij_link": nodes_not_existing,
             }
         ]
 

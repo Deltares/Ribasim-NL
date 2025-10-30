@@ -54,7 +54,7 @@ else:
 
 # %% Quick fix basins
 
-actions = ["remove_basin_area", "add_basin", "add_basin_area", "update_node", "redirect_edge", "move_node"]
+actions = ["remove_basin_area", "add_basin", "add_basin_area", "update_node", "redirect_link", "move_node"]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_extra_gpkg).name.to_list()]
 for action in actions:
     print(action)
@@ -87,11 +87,11 @@ for action in actions:
         method(**kwargs)
 # %%
 #   Model fixes
-model.remove_node(node_id=663, remove_edges=True)
-model.remove_node(node_id=86, remove_edges=True)
-model.remove_node(node_id=669, remove_edges=True)
-model.remove_node(node_id=737, remove_edges=True)
-# model.remove_node(node_id=1197, remove_edges=True)
+model.remove_node(node_id=663, remove_links=True)
+model.remove_node(node_id=86, remove_links=True)
+model.remove_node(node_id=669, remove_links=True)
+model.remove_node(node_id=737, remove_links=True)
+# model.remove_node(node_id=1197, remove_links=True)
 model.merge_basins(basin_id=1408, to_basin_id=1672)
 model.merge_basins(basin_id=1524, to_basin_id=1975)
 model.merge_basins(basin_id=1425, to_basin_id=1558)
@@ -107,7 +107,7 @@ model.merge_basins(basin_id=1754, to_basin_id=1765)
 model.merge_basins(basin_id=1765, to_basin_id=1778)
 model.merge_basins(basin_id=1735, to_basin_id=1778)
 
-model.redirect_edge(link_id=2272, from_node_id=1572)
+model.redirect_link(link_id=2272, from_node_id=1572)
 model.update_node(node_id=1194, node_type="Outlet")
 model.update_node(node_id=678, node_type="Outlet")
 model.update_node(node_id=730, node_type="Outlet")

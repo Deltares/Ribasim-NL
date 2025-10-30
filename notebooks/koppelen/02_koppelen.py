@@ -49,7 +49,7 @@ agv_model.manning_resistance.static.df = agv_model.manning_resistance.static.df[
 ]
 
 # fix boundary-node issue
-agv_model.remove_node(957, remove_edges=False)
+agv_model.remove_node(957, remove_links=False)
 
 # reset index
 agv_model = reset_index(agv_model, node_start=rws_model.next_node_id)
@@ -178,7 +178,7 @@ for boundary_node_id in boundary_node_ids:
                 continue
 
     # remove boundary node
-    coupled_model.remove_node(boundary_node_id, remove_edges=True)
+    coupled_model.remove_node(boundary_node_id, remove_links=True)
 
     # update discrete control
     mask = coupled_model.discrete_control.variable.df.listen_node_id == boundary_node_id

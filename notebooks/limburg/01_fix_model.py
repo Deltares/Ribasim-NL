@@ -37,7 +37,7 @@ basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer=
 rename_basin_area_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="rename_basin_area")
 add_basin_area_gdf = gpd.read_file(model_edits_gpkg, layer="add_basin_area")
 connect_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="connect_basins")
-reverse_edge_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_edge")
+reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_link")
 add_basin_outlet_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="add_basin_outlet")
 remove_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
 update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")
@@ -66,8 +66,8 @@ outlet_data = outlet.Static(flow_rate=[100])
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426118811
 
 # Verwijderen link met 0m lengte
-model.remove_node(2434, remove_edges=True)
-model.remove_node(1308, remove_edges=True)
+model.remove_node(2434, remove_links=True)
+model.remove_node(1308, remove_links=True)
 model.merge_basins(basin_id=2396, to_basin_id=1669, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426151899
@@ -77,7 +77,7 @@ model.merge_basins(basin_id=2396, to_basin_id=1669, are_connected=False)
 geometry = hydroobject_gdf.at[3099, "geometry"]
 basin_node = model.basin.add(Node(geometry=geometry.boundary.geoms[0]), tables=basin_data)
 outlet_node = model.outlet.add(Node(geometry=geometry.interpolate(271)), tables=[outlet_data])
-model.redirect_edge(link_id=2202, from_node_id=outlet_node.node_id)
+model.redirect_link(link_id=2202, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
 for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
@@ -91,20 +91,20 @@ for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (926
         ),
         tables=[outlet_data],
     )
-    model.redirect_edge(link_id=link_id, from_node_id=outlet_node.node_id)
+    model.redirect_link(link_id=link_id, from_node_id=outlet_node.node_id)
     model.link.add(basin_node, outlet_node)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426258242
 
 # Corrigeren netwerk bij Jeker
 for node_id in [276, 2003, 990, 2395, 989]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]))
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[2099, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
-model.redirect_edge(link_id=2257, to_node_id=basin_node.node_id)
+model.redirect_link(link_id=2257, to_node_id=basin_node.node_id)
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[82])
 
@@ -114,14 +114,14 @@ model.link.add(outlet_node, model.level_boundary[82])
 outlet_node = model.outlet.add(
     Node(geometry=model.link.df.at[2357, "geometry"].boundary.geoms[1]), tables=[outlet_data]
 )
-model.redirect_edge(link_id=2357, to_node_id=outlet_node.node_id)
+model.redirect_link(link_id=2357, to_node_id=outlet_node.node_id)
 model.link.add(outlet_node, model.basin[1452])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426401489
 
 # Corrigeren Panheelsebeek
-model.remove_node(node_id=940, remove_edges=True)
-model.reverse_edge(link_id=211)
+model.remove_node(node_id=940, remove_links=True)
+model.reverse_link(link_id=211)
 model.merge_basins(basin_id=2465, to_basin_id=1340, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426443778
@@ -132,14 +132,14 @@ outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[687, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
 
-model.redirect_edge(link_id=2240, to_node_id=basin_node.node_id)
-model.redirect_edge(link_id=2239, from_node_id=basin_node.node_id, to_node_id=outlet_node.node_id)
+model.redirect_link(link_id=2240, to_node_id=basin_node.node_id)
+model.redirect_link(link_id=2239, from_node_id=basin_node.node_id, to_node_id=outlet_node.node_id)
 model.link.add(basin_node, model.manning_resistance[425])
 model.link.add(outlet_node, model.level_boundary[59])
 
 
 # %%
-model.remove_node(node_id=1036, remove_edges=True)
+model.remove_node(node_id=1036, remove_links=True)
 kdu = duiker_gdf.loc[4664]
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[477, "geometry"].boundary.geoms[0]), tables=basin_data)
 outlet_node = model.outlet.add(
@@ -161,9 +161,9 @@ model.link.add(outlet_node, model.level_boundary[39])
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426653554
 
 # Correctie Panheelderbeek bij kanaal Wessem-Nederweert
-model.remove_edges(edge_ids=[2316, 2309, 2307, 2308, 2310, 2312, 2315, 2317])
-model.remove_node(114, remove_edges=True)
-model.reverse_edge(link_id=1999)
+model.remove_links(edge_ids=[2316, 2309, 2307, 2308, 2310, 2312, 2315, 2317])
+model.remove_node(114, remove_links=True)
+model.reverse_link(link_id=1999)
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[1649, "geometry"].boundary.geoms[1]), tables=basin_data)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[4110, "geometry"].boundary.geoms[1]), tables=[outlet_data]
@@ -180,13 +180,13 @@ model.link.add(outlet_node, model.level_boundary[115])
 
 # Correctie link-richting bij Ijsselsteinseweg
 
-model.reverse_edge(link_id=2332)
+model.reverse_link(link_id=2332)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426763136
 
 # Opname Helenavaart
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[112, "geometry"].boundary.geoms[0]), tables=basin_data)
-model.redirect_edge(link_id=2329, to_node_id=basin_node.node_id)
+model.redirect_link(link_id=2329, to_node_id=basin_node.node_id)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[112, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
@@ -196,7 +196,7 @@ model.link.add(outlet_node, model.level_boundary[123])
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[1702, "geometry"].interpolate(0.1, normalized=True)), tables=[outlet_data]
 )
-model.redirect_edge(link_id=2328, to_node_id=outlet_node.node_id)
+model.redirect_link(link_id=2328, to_node_id=outlet_node.node_id)
 model.link.add(outlet_node, basin_node)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426789675
@@ -207,28 +207,28 @@ outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[3277, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
 
-model.redirect_edge(link_id=2327, from_node_id=outlet_node.node_id)
+model.redirect_link(link_id=2327, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[1565, "geometry"].interpolate(0.98, normalized=True)), tables=[outlet_data]
 )
-model.redirect_edge(link_id=2323, from_node_id=outlet_node.node_id)
+model.redirect_link(link_id=2323, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
-model.redirect_edge(link_id=2326, to_node_id=basin_node.node_id)
-model.redirect_edge(link_id=2325, to_node_id=basin_node.node_id)
+model.redirect_link(link_id=2326, to_node_id=basin_node.node_id)
+model.redirect_link(link_id=2325, to_node_id=basin_node.node_id)
 
 model.link.add(model.tabulated_rating_curve[238], basin_node)
 
 # 2 edges die afwateren op Oude Helenavaart
-model.remove_edges(edge_ids=[2322, 2324])
+model.remove_links(edge_ids=[2322, 2324])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426816843
 
 # Verwijderen afwaterende basisn Mooks kanaal
-model.remove_node(34, remove_edges=True)
+model.remove_node(34, remove_links=True)
 
 # EINDE ISSUES
 
@@ -275,13 +275,13 @@ for row in selection_df.itertuples():
 # %% reverse edges
 
 # reverse edges
-for link_id in reverse_edge_gdf.link_id:
-    model.reverse_edge(link_id=link_id)
+for link_id in reverse_link_gdf.link_id:
+    model.reverse_link(link_id=link_id)
 
 
 # %% remove nodes
 for row in remove_node_gdf.itertuples():
-    model.remove_node(node_id=row.node_id, remove_edges=row.remove_edges)
+    model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
 
 
 # %% update nodes
@@ -308,7 +308,7 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].notna()
 
 # remove nodes
 for node_id in basin_node_edits_gdf[basin_node_edits_gdf["remove_node_id"].notna()].node_id:
-    model.remove_node(node_id=node_id, remove_edges=True)
+    model.remove_node(node_id=node_id, remove_links=True)
 
 # %% add and connect basins
 

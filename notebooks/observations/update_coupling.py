@@ -151,8 +151,8 @@ def update_koppeltabel_with_feedback(
                     if "to_node_id" in link_data.columns:
                         to_node_ids.extend(link_data["to_node_id"].tolist())
 
-                    if "meta_edge_id_waterbeheerder" in link_data.columns:
-                        edge_ids.extend(link_data["meta_edge_id_waterbeheerder"].tolist())
+                    if "meta_link_id_waterbeheerder" in link_data.columns:
+                        edge_ids.extend(link_data["meta_link_id_waterbeheerder"].tolist())
 
             from_node_geometries = [search_geometry_nodes(lhm_model, node_id) for node_id in from_node_ids]
             to_node_geometries = [search_geometry_nodes(lhm_model, node_id) for node_id in to_node_ids]

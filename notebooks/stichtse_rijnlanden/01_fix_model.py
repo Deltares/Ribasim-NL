@@ -62,9 +62,9 @@ model.link.df.drop_duplicates(inplace=True)
 
 
 # %%
-model.remove_edges(edge_ids=[2677])
+model.remove_links(edge_ids=[2677])
 for node_id in [52, 53, 2056, 2053, 2042]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 model.link.add(model.tabulated_rating_curve[924], model.level_boundary[51])
 model.link.add(model.tabulated_rating_curve[937], model.level_boundary[51])
@@ -74,7 +74,7 @@ model.link.add(model.level_boundary[38], model.outlet[85])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2444112017
 # toevoegen ontbrekende basins
 
-basin_edges_df = network_validator.edge_incorrect_connectivity()
+basin_links_df = network_validator.edge_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
@@ -82,10 +82,10 @@ for row in basin_nodes_df.itertuples():
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
     # update edge_table
-    model.link.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
-    model.link.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
         basin_node.node_id
     )
 
@@ -129,10 +129,10 @@ model.update_node(
 
 # verwijderen knopen
 for node_id in [2078, 733]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 # toevoegen link
-model.reverse_edge(link_id=876)
+model.reverse_link(link_id=876)
 model.link.add(model.pump[565], model.level_boundary[56])
 
 # updaten naar level_boundary
@@ -147,7 +147,7 @@ model.move_node(node_id=889, geometry=geometry)
 model.tabulated_rating_curve.node.df.loc[889, "name"] = "ST1985"
 
 for link_id in [359, 360, 361]:
-    model.redirect_edge(link_id=link_id, to_node_id=1572)
+    model.redirect_link(link_id=link_id, to_node_id=1572)
 
 model.basin.area.df.at[1, "geometry"].buffer(0.1).buffer(-0.1)
 
@@ -190,7 +190,7 @@ outlet_node = model.outlet.add(
 )
 
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[7950, "geometry"].boundary.geoms[0]), tables=basin_data)
-model.redirect_edge(link_id=2721, from_node_id=basin_node.node_id)
+model.redirect_link(link_id=2721, from_node_id=basin_node.node_id)
 model.link.add(model.level_boundary[74], outlet_node)
 model.link.add(outlet_node, basin_node)
 
@@ -293,7 +293,7 @@ model.basin.area.df.loc[436, "node_id"] = 1854
 model.basin.area.df.loc[244, "node_id"] = 2075
 model.basin.area.df.loc[289, "node_id"] = 1518
 model.basin.area.df.loc[154, "node_id"] = 1944
-model.remove_node(node_id=1031, remove_edges=True)
+model.remove_node(node_id=1031, remove_links=True)
 
 # Een aantal basins mergen
 model.merge_basins(basin_id=2018, to_basin_id=1922)
@@ -365,7 +365,7 @@ for link_id in [
     2678,
     2684,
 ]:
-    model.reverse_edge(link_id=link_id)
+    model.reverse_link(link_id=link_id)
 
 
 # fix 2 incorrecte edges
@@ -453,14 +453,14 @@ model.merge_basins(basin_id=1957, to_basin_id=1591)
 model.merge_basins(basin_id=1529, to_basin_id=1428, are_connected=False)
 model.merge_basins(basin_id=1587, to_basin_id=1503)
 model.merge_basins(basin_id=1389, to_basin_id=1390)
-model.remove_node(node_id=687, remove_edges=True)
-model.remove_node(node_id=764, remove_edges=True)
-model.remove_node(node_id=312, remove_edges=True)
-model.remove_node(node_id=1051, remove_edges=True)
-model.remove_node(node_id=741, remove_edges=True)
-model.remove_node(node_id=1343, remove_edges=True)
-model.redirect_edge(link_id=1547, from_node_id=1914)
-model.redirect_edge(link_id=838, to_node_id=1524)
+model.remove_node(node_id=687, remove_links=True)
+model.remove_node(node_id=764, remove_links=True)
+model.remove_node(node_id=312, remove_links=True)
+model.remove_node(node_id=1051, remove_links=True)
+model.remove_node(node_id=741, remove_links=True)
+model.remove_node(node_id=1343, remove_links=True)
+model.redirect_link(link_id=1547, from_node_id=1914)
+model.redirect_link(link_id=838, to_node_id=1524)
 model.merge_basins(basin_id=1944, to_basin_id=1523, are_connected=False)
 # EINDE ISSUES
 

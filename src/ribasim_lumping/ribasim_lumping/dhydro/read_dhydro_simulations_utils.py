@@ -47,12 +47,12 @@ def get_data_from_simulation(
         his_data = xr.open_mfdataset([his_file], preprocess=dfmt.preprocess_hisnc)
         map_data_xr = xr.open_dataset(map_file)
         map_data = xu.open_dataset(map_file)
-        map_data["mesh1d_edge_nodes"] = map_data_xr["mesh1d_edge_nodes"]
+        map_data["mesh1d_link_nodes"] = map_data_xr["mesh1d_link_nodes"]
     except Exception:
         his_data = xr.open_mfdataset([his_file], preprocess=dfmt.preprocess_hisnc, decode_times=False)
         map_data_xr = xr.open_dataset(map_file, decode_times=False)
         map_data = xu.open_dataset(map_file, decode_times=False)
-        map_data["mesh1d_edge_nodes"] = map_data_xr["mesh1d_edge_nodes"]
+        map_data["mesh1d_link_nodes"] = map_data_xr["mesh1d_link_nodes"]
 
     if isinstance(simulations_ts[0], datetime.datetime | pd.Timestamp):
         his_data = his_data.sel(time=simulations_ts)

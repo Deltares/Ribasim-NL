@@ -21,7 +21,7 @@ else:
 
     network.to_file(network_gpkg)
 # %% edges follow HydroObjects
-model.reset_edge_geometry()
+model.reset_link_geometry()
 node_df = model.node_table().df
 data = []
 for row in model.link.df.itertuples():
@@ -56,8 +56,8 @@ for row in model.link.df.itertuples():
         data += [row]
         continue
 
-out_dir = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_edges")
-gpd.GeoDataFrame(data, crs=28992).to_file(out_dir / "rare_edges.gpkg")
+out_dir = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_links")
+gpd.GeoDataFrame(data, crs=28992).to_file(out_dir / "rare_links.gpkg")
 
 # %% write model
 model.write(out_dir / "model.toml")

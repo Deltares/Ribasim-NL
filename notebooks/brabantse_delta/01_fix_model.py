@@ -59,15 +59,15 @@ outlet_data = outlet.Static(flow_rate=[100])
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2427492528
 
 # Herstellen verbinding Schelde-Rijnverbinding met KDU02582
-model.remove_node(2288, remove_edges=True)
-model.redirect_edge(link_id=2450, to_node_id=955)
+model.remove_node(2288, remove_links=True)
+model.redirect_link(link_id=2450, to_node_id=955)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issue-2535747701
 # Omkeren edges
 edge_ids = [2470, 2468, 2469, 2465, 748, 2476, 2489, 697, 2500, 2487, 2440]
 
 for link_id in edge_ids:
-    model.reverse_edge(link_id=link_id)
+    model.reverse_link(link_id=link_id)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2428677846
 # Toevoegen Donge
@@ -77,15 +77,15 @@ basin_node = model.basin.add(
 outlet_node = model.outlet.add(
     Node(geometry=drop_z(hydroobject_gdf.at[13136, "geometry"].boundary.geoms[0])), tables=[outlet_data]
 )
-model.redirect_edge(link_id=2477, from_node_id=basin_node.node_id, to_node_id=973)
+model.redirect_link(link_id=2477, from_node_id=basin_node.node_id, to_node_id=973)
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[31])
 
 outlet_node = model.outlet.add(
     Node(geometry=drop_z(hydroobject_gdf.at[13088, "geometry"].boundary.geoms[0])), tables=[outlet_data]
 )
-model.redirect_edge(link_id=2497, to_node_id=outlet_node.node_id)
-model.redirect_edge(link_id=2498, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
+model.redirect_link(link_id=2497, to_node_id=outlet_node.node_id)
+model.redirect_link(link_id=2498, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
 
 # EINDE ISSUES
 # %%

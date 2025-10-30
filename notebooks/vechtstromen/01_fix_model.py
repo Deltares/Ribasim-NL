@@ -84,7 +84,7 @@ model.basin.node.df.loc[node_id, "geometry"] = hydroobject_gdf.at[3135, "geometr
 edge_ids = model.link.df[
     (model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)
 ].index.to_list()
-model.reset_edge_geometry(edge_ids=edge_ids)
+model.reset_link_geometry(edge_ids=edge_ids)
 
 # verplaats basin 1375 naar het hydroobject
 
@@ -128,7 +128,7 @@ edge_df = model.link.df[
 ][["from_node_id", "to_node_id"]]
 
 for row in edge_df.itertuples():
-    model.remove_edge(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
+    model.remove_link(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
 
 # add level_boundaries at twentekanaal for later coupling
 hws_model = Model.read(cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml"))
@@ -165,7 +165,7 @@ for node_id in connect_node_ids:
 remove_node_ids = [639, 608, 603]
 
 for node_id in remove_node_ids:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 # remove by link so we also remove all resistance nodes in between
 edge_df = model.link.df[
@@ -173,7 +173,7 @@ edge_df = model.link.df[
 ][["from_node_id", "to_node_id"]]
 
 for row in edge_df.itertuples():
-    model.remove_edge(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
+    model.remove_link(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
 
 # basin met node_id 1436 te verplaatsen naar locatie basin node_id 2259
 basin_id = 1436
@@ -182,10 +182,10 @@ edge_ids = model.link.df[
     (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
 ].index.to_list()
 
-model.reset_edge_geometry(edge_ids=edge_ids)
+model.reset_link_geometry(edge_ids=edge_ids)
 
 # basin met node_id 2259 opheffen (klein niets-zeggend bakje)
-model.remove_node(2259, remove_edges=True)
+model.remove_node(2259, remove_links=True)
 
 # stuw ST05005 (node_id 361) verbinden met basin met node_id 1436
 model.link.add(model.tabulated_rating_curve[361], model.basin[basin_id])
@@ -199,28 +199,28 @@ edge_ids = model.link.df[
     (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
 ].index.to_list()
 
-model.reset_edge_geometry(edge_ids=edge_ids)
+model.reset_link_geometry(edge_ids=edge_ids)
 
 model.split_basin(split_line_gdf.at[9, "geometry"])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385409772
 
-incorrect_edges_df = network_validator.edge_incorrect_connectivity()
+incorrect_links_df = network_validator.edge_incorrect_connectivity()
 false_basin_ids = [1356, 1357, 1358, 1359, 1360, 1361, 1362, 1363, 1364, 1365, 1366, 1367, 1368, 1369, 1370]
 
 for false_basin_id in false_basin_ids:
     basin_geom = (
-        incorrect_edges_df[incorrect_edges_df.from_node_id == false_basin_id].iloc[0].geometry.boundary.geoms[0]
+        incorrect_links_df[incorrect_links_df.from_node_id == false_basin_id].iloc[0].geometry.boundary.geoms[0]
     )
     basin_node = model.basin.add(Node(geometry=basin_geom), tables=basin_data)
 
     # fix link topology
     model.link.df.loc[
-        incorrect_edges_df[incorrect_edges_df.from_node_id == false_basin_id].index.to_list(), ["from_node_id"]
+        incorrect_links_df[incorrect_links_df.from_node_id == false_basin_id].index.to_list(), ["from_node_id"]
     ] = basin_node.node_id
 
     model.link.df.loc[
-        incorrect_edges_df[incorrect_edges_df.to_node_id == false_basin_id].index.to_list(), ["to_node_id"]
+        incorrect_links_df[incorrect_links_df.to_node_id == false_basin_id].index.to_list(), ["to_node_id"]
     ] = basin_node.node_id
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2386671759
@@ -231,7 +231,7 @@ for false_basin_id in false_basin_ids:
 remove_node_ids = [2224, 898, 336, 238]
 
 for node_id in remove_node_ids:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 # pump 667 (GM00088) verbinden met basin 1495
 model.link.add(model.pump[667], model.basin[1495])
@@ -242,7 +242,7 @@ model.link.add(model.pump[667], model.basin[1495])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387026622
 
 # opruimen basin at Amsterdamscheveld
-model.remove_node(1683, remove_edges=True)
+model.remove_node(1683, remove_links=True)
 
 # verbinden basin node_id 1680 met tabulated_rating_curve node_id 101 en 125
 model.link.add(model.basin[1680], model.tabulated_rating_curve[101])
@@ -266,11 +266,11 @@ model.basin.area.df.loc[8, ["geometry"]] = MultiPolygon([basin_polygons.geoms[0]
 model.basin.area.df.loc[model.basin.area.df.index.max() + 1, ["geometry"]] = MultiPolygon([basin_polygons.geoms[1]])
 
 # hef basin node_id 1901 op
-model.remove_node(1901, remove_edges=True)
+model.remove_node(1901, remove_links=True)
 
 # hef pump node_id 574 (GM00246) en node_id 638 (GM00249) op
-model.remove_node(574, remove_edges=True)
-model.remove_node(638, remove_edges=True)
+model.remove_node(574, remove_links=True)
+model.remove_node(638, remove_links=True)
 
 # verbind basin node_id 1876 met pump node_ids 626 (GM00248) en 654 (GM00247)
 model.link.add(model.basin[1876], model.pump[626])
@@ -292,7 +292,7 @@ model.basin.area.df.loc[model.basin.area.df.index.max() + 1, ["geometry"]] = Mul
 
 # verwijderen basin 2226, 2258, 2242 en manning_resistance 1366
 for node_id in [2226, 2258, 2242, 1366, 1350]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 # verbinden tabulated_rating_curves 327 (ST03499) en 510 (ST03198) met basin 1897
 model.link.add(model.basin[1897], model.tabulated_rating_curve[327])
@@ -325,11 +325,11 @@ model.link.add(model.basin[33], outlet_node, geometry=link(model.basin[33].geome
 model.link.add(outlet_node, boundary_node)
 
 # opheffen manning_resistance 1330 bij GM00213
-model.remove_node(1330, remove_edges=True)
+model.remove_node(1330, remove_links=True)
 
 # verbinden nieuwe basin met outlet en oorspronkijke manning_knopen en pompen in oorspronkelijke richting
 for link_id in [2711, 2712, 2713, 2714, 2708]:
-    model.reverse_edge(link_id=link_id)
+    model.reverse_link(link_id=link_id)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2388009499
 
@@ -487,8 +487,8 @@ model.link.add(
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389192454
-model.reverse_edge(link_id=2685)
-model.remove_node(node_id=2229, remove_edges=True)
+model.reverse_link(link_id=2685)
+model.remove_node(node_id=2229, remove_links=True)
 model.link.add(
     model.basin[1778],
     model.outlet[1080],
@@ -496,19 +496,19 @@ model.link.add(
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389198178
-model.reverse_edge(link_id=2715)
-model.reverse_edge(link_id=2720)
+model.reverse_link(link_id=2715)
+model.reverse_link(link_id=2720)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390712613
 
 # Oplossen toplogische situatie kanaal Coevorden
 
 # opheffen basin 2243 en basin 2182
-model.remove_node(2243, remove_edges=True)
-model.remove_node(2182, remove_edges=True)
-model.remove_node(1351, remove_edges=True)
-model.remove_node(1268, remove_edges=True)
-model.remove_node(1265, remove_edges=True)
+model.remove_node(2243, remove_links=True)
+model.remove_node(2182, remove_links=True)
+model.remove_node(1351, remove_links=True)
+model.remove_node(1268, remove_links=True)
+model.remove_node(1265, remove_links=True)
 
 # onknippen basin bij rode lijn
 line = split_line_gdf.at[4, "geometry"]
@@ -626,7 +626,7 @@ model.move_node(1269, hydroobject_gdf.at[7749, "geometry"].interpolate(0.5, norm
 # Molengoot Hardenberg
 
 # opheffen basin 1903
-model.remove_node(1903, remove_edges=True)
+model.remove_node(1903, remove_links=True)
 
 # verbinden basin 1433 met pump 621
 model.link.add(
@@ -645,8 +645,8 @@ for node_id in [99, 283]:
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390898004
 
-model.remove_node(1131, remove_edges=True)
-model.remove_node(1757, remove_edges=True)
+model.remove_node(1131, remove_links=True)
+model.remove_node(1757, remove_links=True)
 model.link.add(
     model.basin[1588],
     model.tabulated_rating_curve[112],
@@ -661,7 +661,7 @@ model.link.add(
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391191673
 
 # verwijderen basin 1905
-model.remove_node(1905, remove_edges=True)
+model.remove_node(1905, remove_links=True)
 
 # verbinden manning_resistance 995 met basin 2148
 model.link.add(
@@ -696,8 +696,8 @@ model.move_node(1902, hydroobject_gdf.at[6615, "geometry"].boundary.geoms[1])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391686269
-model.remove_node(2198, remove_edges=True)
-model.remove_node(2200, remove_edges=True)
+model.remove_node(2198, remove_links=True)
+model.remove_node(2200, remove_links=True)
 model.link.add(model.basin[2111], model.pump[671])
 model.link.add(model.tabulated_rating_curve[542], model.basin[2111])
 model.link.add(model.pump[671], model.basin[2316])
@@ -705,7 +705,7 @@ model.link.add(model.basin[2316], model.tabulated_rating_curve[542])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391710413
 
-model.remove_node(2202, remove_edges=True)
+model.remove_node(2202, remove_links=True)
 model.link.add(model.basin[1590], model.pump[657])
 model.link.add(model.manning_resistance[1058], model.basin[1590])
 
@@ -721,8 +721,8 @@ model.merge_basins(basin_id=2206, to_basin_id=1518, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391734144
 # dood takje uit Overijsselse Vecht
-model.remove_node(2210, remove_edges=True)
-model.remove_node(1294, remove_edges=True)
+model.remove_node(2210, remove_links=True)
+model.remove_node(1294, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391740603
 
@@ -737,8 +737,8 @@ model.merge_basins(basin_id=2231, to_node_id=1853)
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391750536
 
 # Rondom SL00010 opruimen
-model.remove_node(2230, remove_edges=True)
-model.remove_node(2251, remove_edges=True)
+model.remove_node(2230, remove_links=True)
+model.remove_node(2251, remove_links=True)
 model.link.add(model.outlet[41], model.level_boundary[15])
 model.link.add(model.basin[1442], model.pump[664])
 model.link.add(model.basin[1442], model.pump[665])
@@ -803,7 +803,7 @@ model.link.add(
 
 # Merge basin 2261 in basin 1698
 model.merge_basins(basin_id=2261, to_node_id=1698)
-# model.remove_node(390, remove_edges=True)
+# model.remove_node(390, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391995841
 
@@ -825,7 +825,7 @@ model.merge_basins(basin_id=2209, to_node_id=1583, are_connected=False)
 
 # Merge basin 2203 met 2227
 model.merge_basins(basin_id=2203, to_node_id=2227, are_connected=False)
-model.remove_node(1219, remove_edges=True)
+model.remove_node(1219, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392026739
 
@@ -1090,16 +1090,16 @@ sanitize_node_table(
 actions = [
     "remove_basin_area",
     "remove_node",
-    "remove_edge",
+    "remove_link",
     "add_basin",
     "add_basin_area",
     "update_basin_area",
     "merge_basins",
-    "reverse_edge",
+    "reverse_link",
     "connect_basins",
     "move_node",
     "update_node",
-    "redirect_edge",
+    "redirect_link",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 for action in actions:
@@ -1121,9 +1121,9 @@ for action in actions:
 model.remove_unassigned_basin_area()
 # %% some customs
 # remove unassigned basin area
-model.redirect_edge(link_id=89, to_node_id=1561)
-model.redirect_edge(link_id=1989, from_node_id=2333)
-model.redirect_edge(link_id=1990, from_node_id=2333)
+model.redirect_link(link_id=89, to_node_id=1561)
+model.redirect_link(link_id=1989, from_node_id=2333)
+model.redirect_link(link_id=1990, from_node_id=2333)
 model.merge_basins(basin_id=2115, to_node_id=1405)
 model.merge_basins(basin_id=1378, to_node_id=1431)
 model.merge_basins(basin_id=2211, to_node_id=1727)
@@ -1143,50 +1143,50 @@ model.merge_basins(basin_id=1821, to_node_id=2143)
 model.merge_basins(basin_id=2144, to_node_id=2143)
 model.merge_basins(basin_id=2116, to_node_id=1730)
 model.merge_basins(basin_id=2177, to_node_id=1730)
-model.remove_node(node_id=619, remove_edges=True)
-model.remove_node(node_id=660, remove_edges=True)
-model.remove_node(node_id=698, remove_edges=True)
-model.remove_node(node_id=1243, remove_edges=True)
-model.remove_node(node_id=1242, remove_edges=True)
-model.remove_node(node_id=1252, remove_edges=True)
-model.remove_node(node_id=836, remove_edges=True)
-model.remove_node(node_id=80, remove_edges=True)
-model.remove_node(node_id=265, remove_edges=True)
-model.remove_node(node_id=126, remove_edges=True)
-model.remove_node(166, remove_edges=True)
-model.remove_node(313, remove_edges=True)
-model.remove_node(393, remove_edges=True)
-model.remove_node(146, remove_edges=True)
-model.remove_node(835, remove_edges=True)
-model.remove_node(1370, remove_edges=True)
-model.remove_node(358, remove_edges=True)
-model.remove_node(188, remove_edges=True)
-model.remove_node(219, remove_edges=True)
-model.remove_node(345, remove_edges=True)
-model.remove_node(654, remove_edges=True)
-model.remove_node(1045, remove_edges=True)
-model.remove_node(125, remove_edges=True)
-model.remove_node(601, remove_edges=True)
-model.remove_node(121, remove_edges=True)
-model.remove_node(590, remove_edges=True)
-model.remove_node(624, remove_edges=True)
-model.remove_node(573, remove_edges=True)
-model.remove_node(570, remove_edges=True)
-model.remove_node(657, remove_edges=True)
-model.remove_node(652, remove_edges=True)
-model.remove_node(633, remove_edges=True)
-model.remove_node(178, remove_edges=True)
-model.remove_node(319, remove_edges=True)
-model.remove_node(395, remove_edges=True)
-model.remove_node(114, remove_edges=True)
-model.remove_node(442, remove_edges=True)
-model.remove_node(562, remove_edges=True)
-model.remove_node(438, remove_edges=True)
-model.remove_node(167, remove_edges=True)
-model.remove_node(561, remove_edges=True)
-model.remove_node(456, remove_edges=True)
-model.remove_node(673, remove_edges=True)
-model.remove_node(1128, remove_edges=True)
+model.remove_node(node_id=619, remove_links=True)
+model.remove_node(node_id=660, remove_links=True)
+model.remove_node(node_id=698, remove_links=True)
+model.remove_node(node_id=1243, remove_links=True)
+model.remove_node(node_id=1242, remove_links=True)
+model.remove_node(node_id=1252, remove_links=True)
+model.remove_node(node_id=836, remove_links=True)
+model.remove_node(node_id=80, remove_links=True)
+model.remove_node(node_id=265, remove_links=True)
+model.remove_node(node_id=126, remove_links=True)
+model.remove_node(166, remove_links=True)
+model.remove_node(313, remove_links=True)
+model.remove_node(393, remove_links=True)
+model.remove_node(146, remove_links=True)
+model.remove_node(835, remove_links=True)
+model.remove_node(1370, remove_links=True)
+model.remove_node(358, remove_links=True)
+model.remove_node(188, remove_links=True)
+model.remove_node(219, remove_links=True)
+model.remove_node(345, remove_links=True)
+model.remove_node(654, remove_links=True)
+model.remove_node(1045, remove_links=True)
+model.remove_node(125, remove_links=True)
+model.remove_node(601, remove_links=True)
+model.remove_node(121, remove_links=True)
+model.remove_node(590, remove_links=True)
+model.remove_node(624, remove_links=True)
+model.remove_node(573, remove_links=True)
+model.remove_node(570, remove_links=True)
+model.remove_node(657, remove_links=True)
+model.remove_node(652, remove_links=True)
+model.remove_node(633, remove_links=True)
+model.remove_node(178, remove_links=True)
+model.remove_node(319, remove_links=True)
+model.remove_node(395, remove_links=True)
+model.remove_node(114, remove_links=True)
+model.remove_node(442, remove_links=True)
+model.remove_node(562, remove_links=True)
+model.remove_node(438, remove_links=True)
+model.remove_node(167, remove_links=True)
+model.remove_node(561, remove_links=True)
+model.remove_node(456, remove_links=True)
+model.remove_node(673, remove_links=True)
+model.remove_node(1128, remove_links=True)
 model.merge_basins(basin_id=1488, to_basin_id=1834)
 model.merge_basins(basin_id=1848, to_basin_id=2158)
 model.merge_basins(basin_id=1891, to_basin_id=2158)
@@ -1225,11 +1225,11 @@ model.merge_basins(basin_id=2317, to_basin_id=1700)
 model.merge_basins(basin_id=1982, to_basin_id=1431)
 model.merge_basins(basin_id=1589, to_basin_id=1431)
 
-model.remove_node(413, remove_edges=True)
-model.remove_node(842, remove_edges=True)
-model.remove_node(463, remove_edges=True)
-model.remove_node(341, remove_edges=True)
-model.remove_node(235, remove_edges=True)
+model.remove_node(413, remove_links=True)
+model.remove_node(842, remove_links=True)
+model.remove_node(463, remove_links=True)
+model.remove_node(341, remove_links=True)
+model.remove_node(235, remove_links=True)
 model.merge_basins(basin_id=1584, to_basin_id=1817)
 model.merge_basins(basin_id=1817, to_basin_id=2135)
 model.merge_basins(basin_id=1588, to_basin_id=1561)
