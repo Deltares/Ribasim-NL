@@ -1147,6 +1147,19 @@ wheels = [
 ]
 
 [[package]]
+name = "dvc-webdav"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dvc" },
+    { name = "webdav4" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/56/20/7290e6bf073844970706db64109ab1fdad7038ff7a6df57dff3620170767/dvc-webdav-3.0.0.tar.gz", hash = "sha256:65e7eef2ebc83415a8ddbdcb579bf219a3797c67e7a62d4568c5c82de2b6a508", size = 12029, upload-time = "2023-12-15T03:59:57.933Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3d/63/7782c2f04c5371965e6ecf2d204db64d52bdc410931f8a59f7acd88f983a/dvc_webdav-3.0.0-py3-none-any.whl", hash = "sha256:90f19ae5bd6254723bea0a1b47bfafc636769f454777c4ef1d6a9d74dca4e525", size = 9609, upload-time = "2023-12-15T03:59:56.49Z" },
+]
+
+[[package]]
 name = "entrypoints"
 version = "0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -3797,6 +3810,7 @@ dependencies = [
     { name = "bokeh-helpers" },
     { name = "contextily" },
     { name = "dvc" },
+    { name = "dvc-webdav" },
     { name = "fiona" },
     { name = "geocube" },
     { name = "geopandas" },
@@ -3845,6 +3859,7 @@ requires-dist = [
     { name = "bokeh-helpers", editable = "src/bokeh_helpers" },
     { name = "contextily", specifier = ">=1.6.2" },
     { name = "dvc", specifier = ">=3.63.0" },
+    { name = "dvc-webdav", specifier = ">=3.0.0" },
     { name = "fiona", specifier = ">=1.10.1" },
     { name = "geocube", specifier = ">=0.7.1" },
     { name = "geopandas", specifier = ">=1.1.1" },
@@ -4647,6 +4662,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7b/29/061ec845fb58521848f3739e466efd8250b4b7b98c1b6c5bf4d40b419b7e/webcolors-24.11.1.tar.gz", hash = "sha256:ecb3d768f32202af770477b8b65f318fa4f566c22948673a977b00d589dd80f6", size = 45064, upload-time = "2024-11-11T07:43:24.224Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/e8/c0e05e4684d13459f93d312077a9a2efbe04d59c393bc2b8802248c908d4/webcolors-24.11.1-py3-none-any.whl", hash = "sha256:515291393b4cdf0eb19c155749a096f779f7d909f7cceea072791cb9095b92e9", size = 14934, upload-time = "2024-11-11T07:43:22.529Z" },
+]
+
+[[package]]
+name = "webdav4"
+version = "0.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "python-dateutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/08/3d/d604f9d5195689e578f124f196a5d7e80f3106c8404f5c19b2181691de19/webdav4-0.10.0.tar.gz", hash = "sha256:387da6f0ee384e77149dddd9bcfd434afa155882f6c440a529a7cb458624407f", size = 229195, upload-time = "2024-07-13T19:42:42.593Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/60/02/1b77232297fa52f7bedcf70f3ebe3817e9295f302389fb57dd0e6c077329/webdav4-0.10.0-py3-none-any.whl", hash = "sha256:8f915d72483e572089a3af0a2ad20c7e12d04eee9b9134eb718dbfa37af221d8", size = 36350, upload-time = "2024-07-13T19:42:41.087Z" },
 ]
 
 [[package]]
