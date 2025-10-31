@@ -15,14 +15,14 @@ stages:
       nfiles: 15
     - path: data/BrabantseDelta/modellen/BrabantseDelta_2025_9_0
       hash: md5
-      md5: 4e0d0e7b25a3e794d149985a9548728d.dir
-      size: 231216321
-      nfiles: 18
+      md5: 51f7f48612ebb8d42eb70d1419187a11.dir
+      size: 115607977
+      nfiles: 8
     - path: data/DeDommel/modellen/DeDommel_2025_9_0
       hash: md5
-      md5: 49ff611f9b132941f603f0010032a526.dir
-      size: 246608927
-      nfiles: 18
+      md5: 96bfe073b75b985d42aa8d01a8c46404.dir
+      size: 123304292
+      nfiles: 8
     - path: data/Delfland/modellen/Delfland_parameterized_2025_9_1
       hash: md5
       md5: 62687d86223334eed590f9f7e8a693b0.dir
@@ -76,20 +76,20 @@ stages:
       nfiles: 15
     - path: data/Rivierenland/modellen/Rivierenland_parameterized_2025_9_1
       hash: md5
-      md5: 47eeaf4a37ae8b294095efb6485f39d2.dir
-      size: 103102044
-      nfiles: 32
+      md5: 4dcf1b59d5cfa80028be99fc7d4ca15a.dir
+      size: 51551022
+      nfiles: 16
     - path: data/Scheldestromen/modellen/Scheldestromen_parameterized_2025_9_0
       hash: md5
-      md5: a362222ec3e23282fc5275238d40fe15.dir
-      size: 54175188
-      nfiles: 30
+      md5: 008df9f7c617cab700d631df1fa98978.dir
+      size: 27087594
+      nfiles: 15
     - path:
         data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized_2025_9_0
       hash: md5
-      md5: f58d8b697758ad8bf79dc741b6a186af.dir
-      size: 48771114
-      nfiles: 30
+      md5: 700a12cac7bcb5f1cb6b68c8f646d879.dir
+      size: 24385557
+      nfiles: 15
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_2025_9_0
       hash: md5
       md5: 76c363afc3eba1ace093dcce982f3c1c.dir
@@ -118,6 +118,6 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: fd13eb7f47a76a5c4aea2cea27542ac6.dir
+      md5: 91ec20507efe16085dd4073d6e42da51.dir
       size: 6173631922
       nfiles: 3

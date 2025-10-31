@@ -49,3 +49,5 @@ jobs:
         run: |
           uv run dvc pull
           uv run dvc repro
+        env:
+          RIBASIM_NL_CLOUD_PASS: ${{ secrets.RIBASIM_NL_CLOUD_PASS }}

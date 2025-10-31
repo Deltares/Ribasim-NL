@@ -19,7 +19,7 @@ Getest (u kunt simuleren): Nee
 ** Samengevoegde modellen (beheerder: modelnaam (versie)**
 """
 
-download_latest_model: bool = True
+download_latest_model: bool = False
 # Write intermediate models for debugging or scaling tests
 write_intermediate_models: bool = False
 upload_model: bool = False
