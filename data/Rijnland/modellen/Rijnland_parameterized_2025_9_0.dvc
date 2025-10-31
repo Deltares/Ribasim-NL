@@ -1,0 +1,14 @@
+md5: 0e64d2161388f5a7222277f179a33bae
+frozen: true
+deps:
+- md5: 6cb4f8c99340d5b0b1f4e34ba1fafc8a.dir
+  size: 64097032
+  nfiles: 15
+  hash: md5
+  path: remote://modeldata/Rijnland/modellen/Rijnland_parameterized_2025_9_0
+outs:
+- md5: 929d5547a8a8c5156a0c2ec8bf13d49a.dir
+  size: 64097032
+  nfiles: 15
+  hash: md5
+  path: Rijnland_parameterized_2025_9_0

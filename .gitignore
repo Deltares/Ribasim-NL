@@ -42,3 +42,18 @@ venv/
 .venv/
 /notebooks/sturing/level_control
 /notebooks/sturing/level_control_and_flow_demand
+
+# Data
+*.arrow
+*.gpkg
+*.toml
+*.dbf
+*.shp*
+*.prj
+*.sbn
+*.sbx
+*.shx
+*.cpg
+*.log
+*.qlr
+results/

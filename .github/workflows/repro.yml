@@ -1,0 +1,53 @@
+name: DVC Repro
+on:
+  push:
+    branches: [main]
+    paths-ignore: [".teamcity/**"]
+    tags: ["*"]
+  pull_request:
+  merge_group:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    name: Python ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+        arch:
+          - x86
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+      - uses: iterative/setup-dvc@v2
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.3"
+
+      - name: Install the project
+        run: uv sync --locked
+
+      - name: Set up .dvc/config.local with remote credentials
+        run: |
+          mkdir -p ~/.dvc
+
+          echo "['remote \"goodcloud\"']" > ~/.dvc/config.local
+          echo "    user = nhi_api" >> ~/.dvc/config.local
+          echo "    password = ${{ secrets.RIBASIM_NL_CLOUD_PASS }}" >> ~/.dvc/config.local
+          echo "['remote \"modeldata\"']" >> ~/.dvc/config.local
+          echo "    user = nhi_api" >> ~/.dvc/config.local
+          echo "    password = ${{ secrets.RIBASIM_NL_CLOUD_PASS }}" >> ~/.dvc/config.local
+
+      - name: Run DVC commands
+        run: |
+          dvc pull
+          dvc repro
