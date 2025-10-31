@@ -38,14 +38,12 @@ jobs:
 
       - name: Set up .dvc/config.local with remote credentials
         run: |
-          mkdir -p ~/.dvc
-
-          echo "['remote \"goodcloud\"']" > ~/.dvc/config.local
-          echo "    user = nhi_api" >> ~/.dvc/config.local
-          echo "    password = ${{ secrets.RIBASIM_NL_CLOUD_PASS }}" >> ~/.dvc/config.local
-          echo "['remote \"modeldata\"']" >> ~/.dvc/config.local
-          echo "    user = nhi_api" >> ~/.dvc/config.local
-          echo "    password = ${{ secrets.RIBASIM_NL_CLOUD_PASS }}" >> ~/.dvc/config.local
+          echo "['remote \"goodcloud\"']" > .dvc/config.local
+          echo "    user = nhi_api" >> .dvc/config.local
+          echo "    password = ${{ secrets.RIBASIM_NL_CLOUD_PASS }}" >> .dvc/config.local
+          echo "['remote \"modeldata\"']" >> .dvc/config.local
+          echo "    user = nhi_api" >> .dvc/config.local
+          echo "    password = ${{ secrets.RIBASIM_NL_CLOUD_PASS }}" >> .dvc/config.local
 
       - name: Run DVC commands
         run: |
