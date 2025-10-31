@@ -1,0 +1,14 @@
+md5: fc5fc4ca841d1fcd9b2c0ad2264d35fe
+frozen: true
+deps:
+- md5: f49381e7bac8175735b660ad12d20be5.dir
+  size: 51551022
+  nfiles: 16
+  hash: md5
+  path: remote://modeldata/Rivierenland/modellen/Rivierenland_parameterized_2025_9_1
+outs:
+- md5: 4dcf1b59d5cfa80028be99fc7d4ca15a.dir
+  size: 51551022
+  nfiles: 16
+  hash: md5
+  path: Rivierenland_parameterized_2025_9_1

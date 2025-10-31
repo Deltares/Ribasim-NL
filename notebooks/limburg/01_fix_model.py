@@ -37,7 +37,7 @@ basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer=
 rename_basin_area_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="rename_basin_area")
 add_basin_area_gdf = gpd.read_file(model_edits_gpkg, layer="add_basin_area")
 connect_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="connect_basins")
-reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_link")
+reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_edge")
 add_basin_outlet_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="add_basin_outlet")
 remove_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
 update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")

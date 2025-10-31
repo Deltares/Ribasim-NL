@@ -8,9 +8,9 @@ ignore = [
     "D1",
     "D400",
     "D401",
-    "E501", # TODO https://docs.astral.sh/ruff/rules/line-too-long/
-    "F403", # TODO https://docs.astral.sh/ruff/rules/undefined-local-with-import-star/
-    "F405", # TODO https://docs.astral.sh/ruff/rules/undefined-local-with-import-star-usage/
+    "E501",  # TODO https://docs.astral.sh/ruff/rules/line-too-long/
+    "F403",  # TODO https://docs.astral.sh/ruff/rules/undefined-local-with-import-star/
+    "F405",  # TODO https://docs.astral.sh/ruff/rules/undefined-local-with-import-star-usage/
     "PD002",
     "PD003",
     "PD008",
@@ -19,7 +19,6 @@ ignore = [
     "PD011",
     "PD013",
     "PD015",
-    "PD901",
 ]
 fixable = ["ALL"]
 

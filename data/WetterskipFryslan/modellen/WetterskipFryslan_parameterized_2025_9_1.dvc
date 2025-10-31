@@ -1,0 +1,15 @@
+md5: 2d39c612c0fd9d48ba9fc406e6e5dd8c
+frozen: true
+deps:
+- md5: 0ed311a4f3e639c3c7f5e1903488d0b3.dir
+  size: 170981727
+  nfiles: 16
+  hash: md5
+  path:
+    remote://modeldata/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
+outs:
+- md5: b378c2db29dcbc784ebe4417aeb614a4.dir
+  size: 170981727
+  nfiles: 16
+  hash: md5
+  path: WetterskipFryslan_parameterized_2025_9_1

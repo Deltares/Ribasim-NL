@@ -1,0 +1,14 @@
+md5: 24938dd51dc4e950fb08b8d1ec69de2a
+frozen: true
+deps:
+- md5: a4f0769ae54d57e510ce098fa1c45444.dir
+  size: 93678776
+  nfiles: 8
+  hash: md5
+  path: remote://modeldata/AaenMaas/modellen/AaenMaas_2025_9_0
+outs:
+- md5: f95762ba1c46bca62755daa02f44d94b.dir
+  size: 93678776
+  nfiles: 8
+  hash: md5
+  path: AaenMaas_2025_9_0

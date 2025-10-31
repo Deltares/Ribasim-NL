@@ -1,0 +1,28 @@
+stages:
+  samenvoegen:
+    cmd: "uv run python notebooks/samenvoegen_modellen.py"
+    deps:
+      - data/Rijkswaterstaat/modellen/hws_2025_10_0
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized_2025_9_11
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
+      - data/Delfland/modellen/Delfland_parameterized_2025_9_1
+      - data/Rijnland/modellen/Rijnland_parameterized_2025_9_0
+      - data/Rivierenland/modellen/Rivierenland_parameterized_2025_9_1
+      - data/Scheldestromen/modellen/Scheldestromen_parameterized_2025_9_0
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized_2025_9_0
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0
+      - data/AaenMaas/modellen/AaenMaas_2025_9_0
+      - data/BrabantseDelta/modellen/BrabantseDelta_2025_9_0
+      - data/DeDommel/modellen/DeDommel_2025_9_0
+      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
+      - data/HunzeenAas/modellen/HunzeenAas_2025_10_1
+      - data/Limburg/modellen/Limburg_2025_9_0
+      - data/Noorderzijlvest/modellen/Noorderzijlvest_2025_10_3
+      - data/RijnenIJssel/modellen/RijnenIJssel_2025_9_0
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_2025_9_0
+      - data/ValleienVeluwe/modellen/ValleienVeluwe_2025_9_0
+      - data/Vechtstromen/modellen/Vechtstromen_2025_9_0
+      - data/HollandseDelta/modellen/HollandseDelta_parameterized_2025_9_0
+    outs:
+      - data/Rijkswaterstaat/modellen/lhm_parts

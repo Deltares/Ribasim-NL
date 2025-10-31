@@ -488,12 +488,14 @@ model = reset_static_tables(model)
 for action in gpd.list_layers(model_edits_gpkg).name:
     print(action)
     # get method and args
-    method = getattr(model, action)
+    method = getattr(model, action if "edge" not in action else action.replace("edge", "link"))
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        kwargs = {
+            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
+        }
         method(**kwargs)
 
 # remove unassigned basin area
