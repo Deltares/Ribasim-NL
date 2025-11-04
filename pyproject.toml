@@ -8,6 +8,8 @@ dependencies = [
     "bokeh_helpers",
     "bokeh>=3.8.0",
     "contextily>=1.6.2",
+    "dvc-webdav>=3.0.0",
+    "dvc>=3.63.0",
     "fiona>=1.10.1",
     "geocube>=0.7.1",
     "geopandas>=1.1.1",
@@ -48,8 +50,6 @@ dependencies = [
     "types-requests>=2.32.4.20250913",
     "xlwings>=0.33.15",
     "xugrid>=0.14.2",
-    "dvc>=3.63.0",
-    "dvc-webdav>=3.0.0",
 ]
 
 [tool.uv.sources]
