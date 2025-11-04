@@ -48,8 +48,6 @@ dependencies = [
     "types-requests>=2.32.4.20250913",
     "xlwings>=0.33.15",
     "xugrid>=0.14.2",
-    "dvc>=3.63.0",
-    "dvc-webdav>=3.0.0",
 ]
 
 [tool.uv.sources]
