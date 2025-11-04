@@ -1,0 +1,14 @@
+md5: 35dc52f1f86167a4f9b3c83e304131c1
+frozen: true
+deps:
+- md5: a12e224ddb9fc5cb2de6ad1eca80975e.dir
+  size: 92226807
+  nfiles: 13
+  hash: md5
+  path: remote://modeldata/Noorderzijlvest/modellen/Noorderzijlvest_2025_10_3
+outs:
+- md5: ddf4dc0155be37bfeabf420b6da19a07.dir
+  size: 92226807
+  nfiles: 13
+  hash: md5
+  path: Noorderzijlvest_2025_10_3

@@ -46,7 +46,7 @@ he_snap_df = gpd.read_file(he_snap_shp)
 
 lines_gdf = gpd.read_file(
     lines_shp,
-    use_fid_as_indes=True,
+    fid_as_index=True,
 )
 
 points = (
@@ -154,10 +154,13 @@ for action in [
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+    layer = action if "link" not in action else action.replace("link", "edge")
+    df = gpd.read_file(model_edits_path, layer=layer, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        kwargs = {
+            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
+        }
         method(**kwargs)
 
 # %% assign Basin / Area using KWKuit

@@ -19,7 +19,6 @@ cloud = CloudStorage()
 authority = "Vechtstromen"
 name = "vechtstromen"
 run_model = False
-cloud = CloudStorage()
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -29,7 +28,7 @@ fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
 
-cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg])
+cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg, ribasim_areas_gpkg])
 
 # %%
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
@@ -1105,7 +1104,7 @@ actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_
 for action in actions:
     print(action)
     # get method and args
-    method = getattr(model, action)
+    method = getattr(model, action if "edge" not in action else action.replace("edge", "link"))
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     if "order" in df.columns:
         df.sort_values("order", inplace=True)
@@ -1114,7 +1113,9 @@ for action in actions:
         kwargs = row._asdict()
         if inspect.getfullargspec(method).varkw != "kwargs":
             keywords = inspect.getfullargspec(method).args
-            kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+            kwargs = {
+                k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
+            }
         method(**kwargs)
 
 # remove unassigned basin area

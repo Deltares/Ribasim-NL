@@ -25,12 +25,24 @@ static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/WS_PEILGEBIEDPolygon.shp")
-stuwen_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Na_levering_20240418", "stuwen.shp")
-aam_data_gpkg = cloud.joinpath(authority, "verwerkt", "2_voorbewerking", "AanpassinghWh", "20230530AaEnMaasData.gpkg")
-top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
+stuwen_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/Na_levering_20240418/stuwen.shp")
+aam_data_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/AanpassinghWh/20230530AaEnMaasData.gpkg")
+top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
+waterschap_grenzen = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
+rws_waterschap_grenzen = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg")
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
-cloud.synchronize(filepaths=[peilgebieden_path, stuwen_shp, top10NL_gpkg, profiles_gpkg])
+cloud.synchronize(
+    filepaths=[
+        peilgebieden_path,
+        stuwen_shp,
+        top10NL_gpkg,
+        profiles_gpkg,
+        aam_data_gpkg,
+        waterschap_grenzen,
+        rws_waterschap_grenzen,
+    ]
+)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -50,7 +62,7 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 # fix link geometries
 if link_geometries_gpkg.exists():
-    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("edge_id")
+    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
         model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[

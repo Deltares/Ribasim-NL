@@ -24,7 +24,7 @@ hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
 q_data_gpkg = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Geodata", "data_Q42018.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 
-cloud.synchronize(filepaths=[ribasim_dir, areas_gpkg, hydamo_gpkg, q_data_gpkg])
+cloud.synchronize(filepaths=[ribasim_dir, areas_gpkg, hydamo_gpkg, q_data_gpkg, model_edits_gpkg])
 
 basin_data = [
     basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
