@@ -25,11 +25,11 @@ static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/downloads/WS_PEILGEBIEDPolygon.shp")
-stuwen_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Na_levering_20240418", "stuwen.shp")
-aam_data_gpkg = cloud.joinpath(authority, "verwerkt", "2_voorbewerking", "AanpassinghWh", "20230530AaEnMaasData.gpkg")
-top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
-waterschap_grenzen = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
-rws_waterschap_grenzen = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+stuwen_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/Na_levering_20240418/stuwen.shp")
+aam_data_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/AanpassinghWh/20230530AaEnMaasData.gpkg")
+top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
+waterschap_grenzen = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
+rws_waterschap_grenzen = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg")
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
 cloud.synchronize(
