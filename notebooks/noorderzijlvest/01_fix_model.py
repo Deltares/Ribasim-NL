@@ -367,8 +367,8 @@ for row in model.flow_boundary.node.df.itertuples():
 model.move_node(geometry=Point(233237, 559975), node_id=14)
 
 # %% reverse edges before junctionfy
-for edge_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
+    model.reverse_link(link_id=link_id)
 
 # %% Create junctions
 model = junctionify(model)
