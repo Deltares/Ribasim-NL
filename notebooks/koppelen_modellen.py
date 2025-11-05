@@ -316,9 +316,9 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
         add_control(model, couple_authority, has_control, connector_node_id, upstream_basin, downstream_basin)
 
         # Remove boundary node from model
-        model.remove_node(boundary_node_id, remove_edges=True)
+        model.remove_node(boundary_node_id, remove_links=True)
 
-        # Add edges with geometry
+        # Add links with geometry
         for kwargs in link_table:
             geometry = create_link_geometry(
                 couple_authority, boundary_node_authority, kwargs, network, couple_with_basin_id
@@ -334,10 +334,10 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 model.link.df.drop(cycles.index, inplace=True)
                 if kwargs["to_node"].node_type != "Basin":
                     print("Removing node", kwargs["to_node"])
-                    model.remove_node(kwargs["to_node"], remove_edges=True)
+                    model.remove_node(kwargs["to_node"], remove_links=True)
                 else:
                     print("Removing node", kwargs["from_node"])
-                    model.remove_node(kwargs["from_node"].node_id, remove_edges=True)
+                    model.remove_node(kwargs["from_node"].node_id, remove_links=True)
                 continue
 
             model.link.add(**kwargs, geometry=geometry)
@@ -509,8 +509,8 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
         return
 
     # Remove boundary node from model
-    model.remove_node(boundary_node_id, remove_edges=True)
-    model.remove_node(neighbor_id, remove_edges=True)
+    model.remove_node(boundary_node_id, remove_links=True)
+    model.remove_node(neighbor_id, remove_links=True)
 
     # And merge the outlets
     merged_outlet = model.merge_outlets(from_node_ids, to_node_ids)

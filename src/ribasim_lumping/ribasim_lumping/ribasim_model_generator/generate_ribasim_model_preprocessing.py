@@ -487,7 +487,7 @@ def preprocessing_ribasim_model_tables(
     )
     basin_h = generate_waterlevels_for_basins(basins, node_h_node)
     basin_a, basin_v = generate_surface_storage_for_basins(node_a, node_v, nodes)
-    edge_q_df = get_discharges_table_from_simulations(map_data)
+    link_q_df = get_discharges_table_from_simulations(map_data)
     weir_q_df, uniweir_q_df, orifice_q_df, culvert_q_df, bridge_q_df, pump_q_df = (
         get_discharges_table_structures_from_simulations(his_data)
     )
@@ -507,7 +507,7 @@ def preprocessing_ribasim_model_tables(
         node_targetlevel,
         orig_bedlevel,
         basins_nodes_h_relation,
-        edge_q_df,
+        link_q_df,
         weir_q_df,
         uniweir_q_df,
         orifice_q_df,

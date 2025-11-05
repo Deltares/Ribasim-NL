@@ -2,6 +2,7 @@
 import geopandas as gpd
 from ribasim import Node
 from ribasim.nodes import user_demand
+from ribasim_nl.junctions import junctionify
 from shapely.geometry import LineString, Point
 
 from ribasim_nl import CloudStorage, Model, Network
@@ -62,7 +63,7 @@ def add_demand(
     # Find network_node at inlet
     network_to_id = network.nodes[network.nodes.basin_id == inlet_basin_node.node_id].distance(inlet_geometry).idxmin()
 
-    # Edge_geometry from basin to inlet to demand_node
+    # Link_geometry from basin to inlet to demand_node
     line = network.get_line(network_from_id, network_to_id)
 
     # Extend to demand_node
@@ -71,16 +72,16 @@ def add_demand(
     if not line.coords[-1] == geometry.coords:
         line = LineString(list(line.coords) + list(geometry.coords))
 
-    # Edge from inlet_basin to demand_node
-    model.edge.add(inlet_basin_node, model.user_demand[demand_node_id], geometry=line, name=name)
+    # Link from inlet_basin to demand_node
+    model.link.add(inlet_basin_node, model.user_demand[demand_node_id], geometry=line, name=name)
 
     if outlet_as_terminal:
         terminal_node_id = model.node_table().df.index.max() + 1
         model.terminal.add(Node(terminal_node_id, outlet_geometry))
         terminal_node = model.terminal[terminal_node_id]
 
-        # Edge from demand_node to terminal
-        model.edge.add(model.user_demand[demand_node_id], terminal_node, name=name)
+        # Link from demand_node to terminal
+        model.link.add(model.user_demand[demand_node_id], terminal_node, name=name)
 
     elif outlet_geometry is not None:
         # Find network_node at outlet
@@ -96,7 +97,7 @@ def add_demand(
             node_types=["connection", "upstream_boundary"],
         )
 
-        # Edge_geometry from basin to inlet to demand_node
+        # Link_geometry from basin to inlet to demand_node
         line = network.get_line(network_from_id, network_to_id)
 
         # Extend to demand_node
@@ -105,8 +106,8 @@ def add_demand(
         if not line.coords[0] == geometry.coords:
             line = LineString(list(geometry.coords) + list(line.coords))
 
-        # Edge from demand_node to outlet_basin
-        model.edge.add(
+        # Link from demand_node to outlet_basin
+        model.link.add(
             model.user_demand[demand_node_id],
             outlet_basin_node,
             geometry=line,
@@ -116,8 +117,8 @@ def add_demand(
     else:  # we just revert the line via inlet
         line = line.reverse()
 
-        # Edge from demand_node to outlet_basin
-        model.edge.add(
+        # Link from demand_node to outlet_basin
+        model.link.add(
             model.user_demand[demand_node_id],
             outlet_basin_node,
             geometry=line,
@@ -131,14 +132,14 @@ MAX_DISTANCE = 50
 TOLERANCE = 0.1
 
 
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_sturing", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_sturing/hws.toml")
 model = Model.read(ribasim_toml)
 
-hydamo = cloud.joinpath("Rijkswaterstaat", "verwerkt", "hydamo.gpkg")
-onttrekkingen_gpkg = cloud.joinpath("Basisgegevens", "Onttrekkingen", "onttrekkingen.gpkg")
+hydamo = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
+onttrekkingen_gpkg = cloud.joinpath("Basisgegevens/Onttrekkingen/onttrekkingen.gpkg")
 cloud.synchronize([onttrekkingen_gpkg])
 
-network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg"))
 
 # %% add basin_node_ids to network
 basin_area_gdf = model.basin.area.df.copy()
@@ -229,7 +230,7 @@ mask = ~industrie_inlet_gdf.naam.isin(["Avebe", "Evides Geervliet", "Evides Veer
 industrie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-uitlaat")
 
 #
-maas_line = model.edge.df[model.edge.df.name == "Maas"].union_all()
+maas_line = model.link.df[model.link.df.name == "Maas"].union_all()
 index = industrie_outlet_gdf[industrie_outlet_gdf["naam"] == "Chemelot"].index[0]
 point = industrie_outlet_gdf.at[index, "geometry"]
 point = maas_line.interpolate(maas_line.project(point))
@@ -286,8 +287,11 @@ for row in industrie_inlet_gdf[mask].itertuples():
     )
 
 
+# %% add junction nodes
+model = junctionify(model)
+
 # %% wegschrijven model
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_demand", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")
 model.write(ribasim_toml)
 
 # %%

@@ -20,7 +20,7 @@ def add_dhydro_basis_network(
     volume_tool_increment: float = 0.1,
     crs: int = 28992,
 ):
-    """Extracts nodes, edges, weirs, pumps from his/map"""
+    """Extracts nodes, links, weirs, pumps from his/map"""
     basis_simulation_path = Path(model_dir, simulation_name)
     results = get_dhydro_data_from_simulation(
         simulation_path=basis_simulation_path,
@@ -36,7 +36,7 @@ def add_dhydro_basis_network(
         "network_data",
         "branches_gdf",
         "network_nodes_gdf",
-        "edges_gdf",
+        "links_gdf",
         "nodes_gdf",
         "boundaries_gdf",
         "laterals_gdf",
@@ -44,7 +44,7 @@ def add_dhydro_basis_network(
     ]:
         results_gdfs.append(results.get(gdf_name, None))
 
-    network_data, branches_gdf, network_nodes_gdf, edges_gdf, nodes_gdf, boundaries_gdf, laterals_gdf, volume_data = (
+    network_data, branches_gdf, network_nodes_gdf, links_gdf, nodes_gdf, boundaries_gdf, laterals_gdf, volume_data = (
         results_gdfs
     )
 
@@ -66,7 +66,7 @@ def add_dhydro_basis_network(
         network_data,
         branches_gdf,
         network_nodes_gdf,
-        edges_gdf,
+        links_gdf,
         nodes_gdf,
         boundaries_gdf,
         laterals_gdf,

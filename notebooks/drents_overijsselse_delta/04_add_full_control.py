@@ -160,8 +160,8 @@ node_ids_duikers = model.outlet.static.df[model.outlet.static.df["meta_code"].st
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids_duikers), "max_flow_rate"] = 0.1
 
 # fixes vistrap eruit
-model.remove_node(1414, remove_edges=True)
-model.remove_node(1441, remove_edges=True)
+model.remove_node(1414, remove_links=True)
+model.remove_node(1441, remove_links=True)
 
 # fixes flow_rate sluis max 0.1m3/s
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 523, "max_flow_rate"] = 0

@@ -50,25 +50,25 @@ outlet_data = outlet.Static(flow_rate=[100])
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401873626
-# Verwijderen duplicate edges
+# Verwijderen duplicate links
 
-model.edge.df.drop_duplicates(inplace=True)
+model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401876430
 
 # Toevoegen ontbrekende basins (oplossen topologie)
-basin_edges_df = network_validator.edge_incorrect_connectivity()
+basin_links_df = network_validator.link_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
-    # update edge_table
-    model.edge.df.loc[basin_edges_df[basin_edges_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
+    # update link_table
+    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
         basin_node.node_id
     )
-    model.edge.df.loc[basin_edges_df[basin_edges_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
+    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
         basin_node.node_id
     )
 
@@ -76,8 +76,8 @@ for row in basin_nodes_df.itertuples():
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401959032
 
 # Oplossen verkeerde takrichting
-for edge_id in [1353, 933, 373, 401, 4, 1338]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [1353, 933, 373, 401, 4, 1338]:
+    model.reverse_link(link_id=link_id)
 
 # model.invalid_topology_at_node().to_file("topo_errors.gpkg")
 
@@ -86,13 +86,13 @@ for edge_id in [1353, 933, 373, 401, 4, 1338]:
 
 # Veluwemeer at Harderwijk verwijderen
 for node_id in [24, 694]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402229646
 
 # Veluwemeer at Elburg verwijderen
 for node_id in [3, 1277]:
-    model.remove_node(node_id, remove_edges=True)
+    model.remove_node(node_id, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402257101
 
@@ -121,11 +121,11 @@ model.merge_basins(basin_id=1254, to_basin_id=1091, are_connected=False)
 model.merge_basins(basin_id=1260, to_basin_id=1125, are_connected=False)
 model.merge_basins(basin_id=1263, to_basin_id=863)
 model.merge_basins(basin_id=1265, to_basin_id=974)
-model.remove_node(node_id=539, remove_edges=True)
+model.remove_node(node_id=539, remove_links=True)
 model.merge_basins(basin_id=1267, to_basin_id=1177, are_connected=False)
-model.remove_node(1268, remove_edges=True)
-model.remove_node(360, remove_edges=True)
-model.remove_node(394, remove_edges=True)
+model.remove_node(1268, remove_links=True)
+model.remove_node(360, remove_links=True)
+model.remove_node(394, remove_links=True)
 model.merge_basins(basin_id=1269, to_basin_id=1087)
 model.merge_basins(basin_id=1149, to_basin_id=1270, are_connected=False)
 model.merge_basins(basin_id=1187, to_node_id=1028)
@@ -143,9 +143,9 @@ model.merge_basins(basin_id=1142, to_node_id=1066)
 model.merge_basins(basin_id=900, to_node_id=959)
 model.merge_basins(basin_id=1099, to_node_id=811)
 model.merge_basins(basin_id=1033, to_node_id=811)
-model.remove_node(740, remove_edges=True)
-model.remove_node(644, remove_edges=True)
-model.remove_node(736, remove_edges=True)
+model.remove_node(740, remove_links=True)
+model.remove_node(644, remove_links=True)
+model.remove_node(736, remove_links=True)
 model.merge_basins(basin_id=1139, to_node_id=959, are_connected=False)
 model.merge_basins(basin_id=1086, to_node_id=1137, are_connected=True)
 
@@ -156,11 +156,11 @@ model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.
 # corrigeren knoop-topologie
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
@@ -187,41 +187,43 @@ model.write(ribasim_toml)
 actions = [
     "remove_basin_area",
     "remove_node",
-    "remove_edge",
+    "remove_link",
     "add_basin",
     "add_basin_area",
     "update_basin_area",
     "merge_basins",
-    "reverse_edge",
+    "reverse_link",
     "move_node",
     "connect_basins",
     "update_node",
-    "redirect_edge",
+    "redirect_link",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 for action in actions:
     print(action)
     # get method and args
-    method = getattr(model, action)
+    method = getattr(model, action if "edge" not in action else action.replace("edge", "link"))
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     if "order" in df.columns:
         df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        kwargs = {
+            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
+        }
         method(**kwargs)
 
 # remove unassigned basin area
 model.remove_unassigned_basin_area()
 
 # Valleikanaal verkeerd geschematiseerd
-model.redirect_edge(edge_id=138, to_node_id=1095)
-model.redirect_edge(edge_id=137, to_node_id=1095)
-model.redirect_edge(edge_id=136, to_node_id=1095)
-model.redirect_edge(edge_id=24, to_node_id=1115)
-model.redirect_edge(edge_id=560, to_node_id=1)
-model.redirect_edge(edge_id=745, from_node_id=1120)
+model.redirect_link(link_id=138, to_node_id=1095)
+model.redirect_link(link_id=137, to_node_id=1095)
+model.redirect_link(link_id=136, to_node_id=1095)
+model.redirect_link(link_id=24, to_node_id=1115)
+model.redirect_link(link_id=560, to_node_id=1)
+model.redirect_link(link_id=745, from_node_id=1120)
 
 # %% Aanvoer edits
 
@@ -246,33 +248,33 @@ for action in actions:
         method(**kwargs)
 
 # remove node (wrong connection)
-model.remove_node(478, remove_edges=True)
-model.remove_node(672, remove_edges=True)
-model.remove_node(671, remove_edges=True)
-model.remove_node(16, remove_edges=True)
-model.remove_node(17, remove_edges=True)
-model.remove_node(18, remove_edges=True)
-model.remove_node(738, remove_edges=True)
-model.remove_node(443, remove_edges=True)
-model.remove_node(595, remove_edges=True)
-model.remove_node(199, remove_edges=True)
-model.remove_node(585, remove_edges=True)
-model.remove_node(631, remove_edges=True)
-model.remove_node(611, remove_edges=True)
-model.remove_node(710, remove_edges=True)
-model.remove_node(292, remove_edges=True)
-model.remove_node(125, remove_edges=True)
-model.remove_node(696, remove_edges=True)
-model.remove_node(706, remove_edges=True)
-model.remove_node(737, remove_edges=True)
-model.remove_node(182, remove_edges=True)
-model.remove_node(185, remove_edges=True)  # Duiker vervangen door pomp Oostsingel
-model.remove_node(581, remove_edges=True)  # Stuw Asschat, zit er 2 keer in
-model.remove_node(496, remove_edges=True)  # stuw de Groep, zit er 2 keer in
-model.remove_node(649, remove_edges=True)
-model.remove_node(651, remove_edges=True)
-model.remove_node(677, remove_edges=True)
-model.remove_node(652, remove_edges=True)
+model.remove_node(478, remove_links=True)
+model.remove_node(672, remove_links=True)
+model.remove_node(671, remove_links=True)
+model.remove_node(16, remove_links=True)
+model.remove_node(17, remove_links=True)
+model.remove_node(18, remove_links=True)
+model.remove_node(738, remove_links=True)
+model.remove_node(443, remove_links=True)
+model.remove_node(595, remove_links=True)
+model.remove_node(199, remove_links=True)
+model.remove_node(585, remove_links=True)
+model.remove_node(631, remove_links=True)
+model.remove_node(611, remove_links=True)
+model.remove_node(710, remove_links=True)
+model.remove_node(292, remove_links=True)
+model.remove_node(125, remove_links=True)
+model.remove_node(696, remove_links=True)
+model.remove_node(706, remove_links=True)
+model.remove_node(737, remove_links=True)
+model.remove_node(182, remove_links=True)
+model.remove_node(185, remove_links=True)  # Duiker vervangen door pomp Oostsingel
+model.remove_node(581, remove_links=True)  # Stuw Asschat, zit er 2 keer in
+model.remove_node(496, remove_links=True)  # stuw de Groep, zit er 2 keer in
+model.remove_node(649, remove_links=True)
+model.remove_node(651, remove_links=True)
+model.remove_node(677, remove_links=True)
+model.remove_node(652, remove_links=True)
 # merge basins
 # model.merge_basins(basin_id=1044, to_basin_id=1103)
 
@@ -300,11 +302,11 @@ model.merge_basins(basin_id=1159, to_basin_id=1058, are_connected=False)
 
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet")
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet")

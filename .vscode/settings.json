@@ -11,5 +11,6 @@
             "source.fixAll": "explicit",
             "notebook.source.organizeImports": "explicit"
         }
-    }
+    },
+    "python-envs.pythonProjects": []
 }

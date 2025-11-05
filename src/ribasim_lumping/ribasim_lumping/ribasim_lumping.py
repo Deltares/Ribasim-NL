@@ -46,7 +46,7 @@ from .utils.general_functions import (
     log_and_remove_duplicate_geoms,
     read_geom_file,
     snap_to_network,
-    split_edges_by_split_nodes,
+    split_links_by_split_nodes,
 )
 
 
@@ -71,7 +71,7 @@ class RibasimLumpingNetwork(BaseModel):
     network_graph: nx.DiGraph = None
     branches_gdf: gpd.GeoDataFrame = None
     network_nodes_gdf: gpd.GeoDataFrame = None
-    edges_gdf: gpd.GeoDataFrame = None
+    links_gdf: gpd.GeoDataFrame = None
     nodes_gdf: gpd.GeoDataFrame = None
     structures_gdf: gpd.GeoDataFrame = None
     stations_gdf: gpd.GeoDataFrame = None
@@ -104,7 +104,7 @@ class RibasimLumpingNetwork(BaseModel):
     basins_a_df: pd.DataFrame = None
     basins_v_df: pd.DataFrame = None
     basins_nodes_h_relation: gpd.GeoDataFrame = None
-    edge_q_df: pd.DataFrame = None
+    link_q_df: pd.DataFrame = None
     weir_q_df: pd.DataFrame = None
     uniweir_q_df: pd.DataFrame = None
     orifice_q_df: pd.DataFrame = None
@@ -185,7 +185,7 @@ class RibasimLumpingNetwork(BaseModel):
                     self.network_data,
                     self.branches_gdf,
                     self.network_nodes_gdf,
-                    self.edges_gdf,
+                    self.links_gdf,
                     self.nodes_gdf,
                     self.boundaries_gdf,
                     self.laterals_gdf,
@@ -240,7 +240,7 @@ class RibasimLumpingNetwork(BaseModel):
                 (
                     self.branches_gdf,
                     self.network_nodes_gdf,
-                    self.edges_gdf,
+                    self.links_gdf,
                     self.nodes_gdf,
                     self.weirs_gdf,
                     self.culverts_gdf,
@@ -355,7 +355,7 @@ class RibasimLumpingNetwork(BaseModel):
         layer_name: str = None,
         crs: int = 28992,
         buffer_distance: float = 10.0,
-        min_length_edge: float = 2.0,
+        min_length_link: float = 2.0,
     ):
         """
         Add Ribasim boundaries from file.
@@ -375,14 +375,14 @@ class RibasimLumpingNetwork(BaseModel):
         self.boundaries_gdf = log_and_remove_duplicate_geoms(self.boundaries_gdf, colname="boundary_id")
 
         # Because the split node and boundary locations won't always nicely match up with HyDAMO network, we need to adjust this
-        # by snapping split nodes and boundaries to network nodes/edges
+        # by snapping split nodes and boundaries to network nodes/links
         self.boundaries_gdf = snap_to_network(
             snap_type="boundary",
             points=self.boundaries_gdf,
-            edges=self.edges_gdf,
+            links=self.links_gdf,
             nodes=self.nodes_gdf,
             buffer_distance=buffer_distance,
-            min_length_edge=min_length_edge,
+            min_length_link=min_length_link,
         )
         self.boundaries_gdf["boundary_id"] = self.boundaries_gdf.index + 1
 
@@ -477,11 +477,11 @@ class RibasimLumpingNetwork(BaseModel):
         bridges: bool = False,
         culverts: bool = False,
         uniweirs: bool = False,
-        edges: bool = False,
+        links: bool = False,
         structures_ids_to_include: list[str] = [],
         structures_ids_to_exclude: list[str] = [],
-        edge_ids_to_include: list[int] = [],
-        edge_ids_to_exclude: list[int] = [],
+        link_ids_to_include: list[int] = [],
+        link_ids_to_exclude: list[int] = [],
     ) -> gpd.GeoDataFrame:
         """Set split nodes geodataframe in network object. Overwrites previously defined split nodes"""
         self.split_nodes = add_split_nodes_based_on_selection(
@@ -492,11 +492,11 @@ class RibasimLumpingNetwork(BaseModel):
             orifices=orifices,
             culverts=culverts,
             bridges=bridges,
-            edges=edges,
+            links=links,
             structures_ids_to_include=structures_ids_to_include,
             structures_ids_to_exclude=structures_ids_to_exclude,
-            edge_ids_to_include=edge_ids_to_include,
-            edge_ids_to_exclude=edge_ids_to_exclude,
+            link_ids_to_include=link_ids_to_include,
+            link_ids_to_exclude=link_ids_to_exclude,
             list_gdfs=[
                 self.stations_gdf,
                 self.pumps_gdf,
@@ -505,7 +505,7 @@ class RibasimLumpingNetwork(BaseModel):
                 self.bridges_gdf,
                 self.culverts_gdf,
                 self.uniweirs_gdf,
-                self.edges_gdf,
+                self.links_gdf,
             ],
         )
         return self.split_nodes
@@ -516,7 +516,7 @@ class RibasimLumpingNetwork(BaseModel):
         layer_name: str = None,
         crs: int = 28992,
         buffer_distance: float = 2.0,
-        min_length_edge: float = 2.0,
+        min_length_link: float = 2.0,
     ):
         """Add split nodes in network object from file. Overwrites previously defined split nodes
 
@@ -595,10 +595,10 @@ class RibasimLumpingNetwork(BaseModel):
         non_open_water_no_id = split_nodes[~split_nodes["split_node_id"].isnull()]
         open_water_no_id = split_nodes[split_nodes["split_node_id"].isnull()]
         open_water_no_id = gpd.sjoin(
-            open_water_no_id, self.edges_gdf[["edge_id", "edge_no", "from_node", "to_node", "geometry"]], how="left"
+            open_water_no_id, self.links_gdf[["link_id", "link_no", "from_node", "to_node", "geometry"]], how="left"
         )
         open_water_no_id = open_water_no_id.loc[~open_water_no_id.index.duplicated(keep="first")]
-        open_water_no_id["split_node_id"] = open_water_no_id["edge_id"]
+        open_water_no_id["split_node_id"] = open_water_no_id["link_id"]
         split_nodes = pd.concat([non_open_water_no_id, open_water_no_id])
 
         split_nodes = split_nodes.reset_index(drop=True)
@@ -609,20 +609,20 @@ class RibasimLumpingNetwork(BaseModel):
         self.split_nodes = split_nodes.copy()
 
         # Because the split node and boundary locations won't always nicely match up with HyDAMO network, we need to adjust this
-        # by snapping split nodes and boundaries to network nodes/edges
+        # by snapping split nodes and boundaries to network nodes/links
         self.split_nodes = snap_to_network(
             snap_type="split_node",
             points=self.split_nodes,
-            edges=self.edges_gdf,
+            links=self.links_gdf,
             nodes=self.nodes_gdf,
             buffer_distance=buffer_distance,
-            min_length_edge=min_length_edge,
+            min_length_link=min_length_link,
         )
 
-        # split edges by split node locations so we end up with an network where split nodes are only located on nodes (and not edges)
-        self.split_nodes, self.edges_gdf, self.nodes_gdf = split_edges_by_split_nodes(
+        # split links by split node locations so we end up with an network where split nodes are only located on nodes (and not links)
+        self.split_nodes, self.links_gdf, self.nodes_gdf = split_links_by_split_nodes(
             self.split_nodes,
-            self.edges_gdf,
+            self.links_gdf,
             buffer_distance=0.1,  # some small buffer to be sure but should actually not be necessary because of previous snap actions
         )
         if "split_node" not in self.split_nodes.columns or self.split_nodes.split_node.isna().any():
@@ -630,7 +630,7 @@ class RibasimLumpingNetwork(BaseModel):
 
         # remove non-snapped split nodes and boundaries
         split_nodes_not_on_network = self.split_nodes.loc[
-            (self.split_nodes["edge_no"] == -1) & (self.split_nodes["node_no"] == -1)
+            (self.split_nodes["link_no"] == -1) & (self.split_nodes["node_no"] == -1)
         ]
         print(f" - Remove non-snapped split nodes from dataset ({len(split_nodes_not_on_network)})")
         self.split_nodes = self.split_nodes.loc[
@@ -689,7 +689,7 @@ class RibasimLumpingNetwork(BaseModel):
         include_flow_boundary_basins: bool = True,
         include_level_boundary_basins: bool = False,
         remove_holes_min_area: float = 10.0,
-        option_edges_hydroobjects: bool = False,
+        option_links_hydroobjects: bool = False,
     ) -> dict:
         """
         Generate ribasim_lumping network. This function generates all
@@ -709,8 +709,8 @@ class RibasimLumpingNetwork(BaseModel):
             raise ValueError(
                 "no split_nodes defined: use .add_split_nodes(), .add_split_nodes_from_file() or .set_split_nodes()"
             )
-        if self.nodes_gdf is None or self.edges_gdf is None:
-            raise ValueError("no nodes and/or edges defined: add d-hydro simulation results or hydamo network")
+        if self.nodes_gdf is None or self.links_gdf is None:
+            raise ValueError("no nodes and/or links defined: add d-hydro simulation results or hydamo network")
         if self.areas_gdf is None:
             print("no areas defined, will not generate basin_areas")
         if self.boundaries_gdf is None:
@@ -720,7 +720,7 @@ class RibasimLumpingNetwork(BaseModel):
 
         results = generate_ribasim_network_using_split_nodes(
             nodes=self.nodes_gdf,
-            edges=self.edges_gdf,
+            links=self.links_gdf,
             split_nodes=self.split_nodes,
             areas=self.areas_gdf,
             boundaries=self.boundaries_gdf,
@@ -731,32 +731,32 @@ class RibasimLumpingNetwork(BaseModel):
             include_level_boundary_basins=include_level_boundary_basins,
             remove_holes_min_area=remove_holes_min_area,
             crs=self.crs,
-            option_edges_hydroobjects=option_edges_hydroobjects,
+            option_links_hydroobjects=option_links_hydroobjects,
         )
         self.boundaries_gdf = results["boundaries"]
         self.basin_areas_gdf = results["basin_areas"]
         self.basins_gdf = results["basins"]
         self.areas_gdf = results["areas"]
         self.nodes_gdf = results["nodes"]
-        self.edges_gdf = results["edges"]
+        self.links_gdf = results["links"]
         self.split_nodes = results["split_nodes"]
         self.network_graph = results["network_graph"]
         self.basin_connections_gdf = results["basin_connections"]
         self.boundary_connections_gdf = results["boundary_connections"]
 
-        # assign areas to basin areas which have no edge within it so it is not assigned to any basin area
-        # also update the basin and basin area code in edges and nodes
+        # assign areas to basin areas which have no link within it so it is not assigned to any basin area
+        # also update the basin and basin area code in links and nodes
         if assign_unassigned_areas_to_basins:
             results = assign_unassigned_areas_to_basin_areas(
                 self.areas_gdf,
                 self.basin_areas_gdf,
                 self.drainage_areas_gdf,
-                # self.edges_gdf,
+                # self.links_gdf,
             )
             self.areas_gdf = results["areas"]
             self.basin_areas_gdf = results["basin_areas"]
-            if "edges" in results.keys():
-                self.edges_gdf = results["edges"]
+            if "links" in results.keys():
+                self.links_gdf = results["links"]
 
         # Export to geopackage
         self.export_to_geopackage(simulation_code=simulation_code)
@@ -796,7 +796,7 @@ class RibasimLumpingNetwork(BaseModel):
             node_targetlevel,
             orig_bedlevel,
             basins_nodes_h_relation,
-            edge_q_df,
+            link_q_df,
             weir_q_df,
             uniweir_q_df,
             orifice_q_df,
@@ -834,7 +834,7 @@ class RibasimLumpingNetwork(BaseModel):
         self.basins_a_df = basin_a
         self.basins_v_df = basin_v
         self.basins_nodes_h_relation = basins_nodes_h_relation
-        self.edge_q_df = edge_q_df
+        self.link_q_df = link_q_df
         self.weir_q_df = weir_q_df
         self.uniweir_q_df = uniweir_q_df
         self.orifice_q_df = orifice_q_df
@@ -884,7 +884,7 @@ class RibasimLumpingNetwork(BaseModel):
             laterals_drainage_per_ha=self.laterals_drainage_per_ha,
             basin_h_initial=basin_h_initial,
             saveat=saveat,
-            edge_q_df=edge_q_df,
+            link_q_df=link_q_df,
             weir_q_df=weir_q_df,
             uniweir_q_df=uniweir_q_df,
             orifice_q_df=orifice_q_df,
@@ -950,7 +950,7 @@ class RibasimLumpingNetwork(BaseModel):
             "areas": self.areas_gdf,
             "branches": self.branches_gdf,
             "nodes": self.nodes_gdf,
-            "edges": self.edges_gdf,
+            "links": self.links_gdf,
             "stations": self.stations_gdf,
             "pumps": self.pumps_gdf,
             "weirs": self.weirs_gdf,
@@ -1036,8 +1036,8 @@ class RibasimLumpingNetwork(BaseModel):
             self.areas_gdf.plot(ax=ax, facecolor="none", edgecolor="black", linewidth=0.2, label="areas", zorder=1)
         # if self.ribasim_model is not None:
         #     self.ribasim_model.plot(ax=ax)
-        if self.edges_gdf is not None:
-            self.edges_gdf.plot(ax=ax, linewidth=1, color="blue", label="hydro-objecten", zorder=2)
+        if self.links_gdf is not None:
+            self.links_gdf.plot(ax=ax, linewidth=1, color="blue", label="hydro-objecten", zorder=2)
         if self.split_nodes is not None:
             self.split_nodes.plot(ax=ax, color="black", label="split_nodes", zorder=3)
         if self.boundaries_gdf is not None:

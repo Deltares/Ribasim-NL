@@ -29,7 +29,7 @@ top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg
 model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_extra.gpkg")
 model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_gpkg, top10NL_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_gpkg, top10NL_gpkg, hydroobject_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -42,19 +42,19 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # fix link geometries
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
+    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
-        model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+        model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
             "meta_profielid_waterbeheerder"
         ]
 else:
     fix_link_geometries(model, network, max_straight_line_ratio=5)
-    model.edge.df.reset_index().to_file(link_geometries_gpkg)
+    model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 
 # %% Quick fix basins
 
-actions = ["remove_basin_area", "add_basin", "add_basin_area", "update_node", "redirect_edge", "move_node"]
+actions = ["remove_basin_area", "add_basin", "add_basin_area", "update_node", "redirect_link", "move_node"]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_extra_gpkg).name.to_list()]
 for action in actions:
     print(action)
@@ -87,11 +87,11 @@ for action in actions:
         method(**kwargs)
 # %%
 #   Model fixes
-model.remove_node(node_id=663, remove_edges=True)
-model.remove_node(node_id=86, remove_edges=True)
-model.remove_node(node_id=669, remove_edges=True)
-model.remove_node(node_id=737, remove_edges=True)
-# model.remove_node(node_id=1197, remove_edges=True)
+model.remove_node(node_id=663, remove_links=True)
+model.remove_node(node_id=86, remove_links=True)
+model.remove_node(node_id=669, remove_links=True)
+model.remove_node(node_id=737, remove_links=True)
+# model.remove_node(node_id=1197, remove_links=True)
 model.merge_basins(basin_id=1408, to_basin_id=1672)
 model.merge_basins(basin_id=1524, to_basin_id=1975)
 model.merge_basins(basin_id=1425, to_basin_id=1558)
@@ -107,7 +107,7 @@ model.merge_basins(basin_id=1754, to_basin_id=1765)
 model.merge_basins(basin_id=1765, to_basin_id=1778)
 model.merge_basins(basin_id=1735, to_basin_id=1778)
 
-model.redirect_edge(edge_id=2272, from_node_id=1572)
+model.redirect_link(link_id=2272, from_node_id=1572)
 model.update_node(node_id=1194, node_type="Outlet")
 model.update_node(node_id=678, node_type="Outlet")
 model.update_node(node_id=730, node_type="Outlet")

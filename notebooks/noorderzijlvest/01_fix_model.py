@@ -46,7 +46,7 @@ he_snap_df = gpd.read_file(he_snap_shp)
 
 lines_gdf = gpd.read_file(
     lines_shp,
-    use_fid_as_indes=True,
+    fid_as_index=True,
 )
 
 points = (
@@ -90,13 +90,13 @@ pump_data = pump.Static(flow_rate=[10])
 # %%
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
-# 76 edges bij opgeheven nodes verwijderen
-mask = model.edge.df.to_node_id.isin(model.node_table().df.index) & model.edge.df.from_node_id.isin(
+# 76 links bij opgeheven nodes verwijderen
+mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
     model.node_table().df.index
 )
-missing_edges_df = model.edge.df[~mask]
+missing_links_df = model.link.df[~mask]
 
-model.edge.df = model.edge.df[~model.edge.df.index.isin(missing_edges_df.index)]
+model.link.df = model.link.df[~model.link.df.index.isin(missing_links_df.index)]
 
 # %% Reset static tables
 
@@ -144,20 +144,23 @@ for action in [
     "merge_basins",
     "remove_node",
     "update_node",
-    "reverse_edge",
+    "reverse_link",
     "connect_basins",
     "move_node",
     "add_basin",
-    "remove_edge",
+    "remove_link",
 ]:
     print(action)
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+    layer = action if "link" not in action else action.replace("link", "edge")
+    df = gpd.read_file(model_edits_path, layer=layer, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        kwargs = {
+            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
+        }
         method(**kwargs)
 
 # %% assign Basin / Area using KWKuit
@@ -217,7 +220,7 @@ for node_id in model.basin.node.df.index:
     # empty list of LineStrings
     data = []
 
-    # draw edges from upstream nodes
+    # draw links from upstream nodes
     for idx, network_node in enumerate(upstream_nodes):
         all_paths = list(all_shortest_paths(network.graph_undirected, source=network_node, target=network_basin_node))
         if len(all_paths) > 1:
@@ -226,16 +229,16 @@ for node_id in model.basin.node.df.index:
         if len(all_paths) != 1:
             all_paths = [shortest_path(network.graph_undirected, source=network_node, target=network_basin_node)]
         else:
-            edge = network.path_to_line(all_paths[0])
-            if edge.length > 0:
-                data += [edge]
+            link = network.path_to_line(all_paths[0])
+            if link.length > 0:
+                data += [link]
 
-                mask = (model.edge.df["from_node_id"] == upstream_node_ids[idx]) & (
-                    model.edge.df["to_node_id"] == node_id
+                mask = (model.link.df["from_node_id"] == upstream_node_ids[idx]) & (
+                    model.link.df["to_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = edge
+                model.link.df.loc[mask, ["geometry"]] = link
 
-    # draw edges to downstream nodes
+    # draw links to downstream nodes
     for idx, network_node in enumerate(downstream_nodes):
         all_paths = list(all_shortest_paths(network.graph_undirected, target=network_node, source=network_basin_node))
         if len(all_paths) > 1:
@@ -244,14 +247,14 @@ for node_id in model.basin.node.df.index:
         if len(all_paths) != 1:
             all_paths = [shortest_path(network.graph_undirected, target=network_node, source=network_basin_node)]
         else:
-            edge = network.path_to_line(all_paths[0])
-            if edge.length > 0:
-                data += [edge]
+            link = network.path_to_line(all_paths[0])
+            if link.length > 0:
+                data += [link]
 
-                mask = (model.edge.df["to_node_id"] == downstream_node_ids[idx]) & (
-                    model.edge.df["from_node_id"] == node_id
+                mask = (model.link.df["to_node_id"] == downstream_node_ids[idx]) & (
+                    model.link.df["from_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = edge
+                model.link.df.loc[mask, ["geometry"]] = link
 
     mask = he_df.node_id.isna() & (he_outlet_df.distance(MultiLineString(data)) < 0.75)
     he_df.loc[mask, ["node_id"]] = node_id

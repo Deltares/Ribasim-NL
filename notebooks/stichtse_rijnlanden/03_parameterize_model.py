@@ -58,8 +58,8 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1572, "meta_streefpeil"] 
 # %%
 # fixes
 
-for edge_id in [2563, 1238, 91, 1436]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [2563, 1238, 91, 1436]:
+    model.reverse_link(link_id=link_id)
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2103, "max_flow_rate"] = 5
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 809, "max_flow_rate"] = 0.52

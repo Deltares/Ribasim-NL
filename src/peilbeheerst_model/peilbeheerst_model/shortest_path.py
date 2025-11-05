@@ -81,7 +81,7 @@ def connect_components(graph, node1, node2, node_geometries):
     geom1 = node_geometries[node1]
     geom2 = node_geometries[node2]
     new_link_geom = LineString([geom1.coords[0], geom2.coords[0]])
-    graph.add_link(node1, node2, geometry=new_link_geom)
+    graph.add_edge(node1, node2, geometry=new_link_geom)
 
 
 def find_closest_component_pair(largest_gdf, smaller_gdfs):
@@ -263,7 +263,7 @@ def shortest_path(waterschap, DATA, gdf_cross, gdf_rhws):
             for idx0, group in nodes_gdf.groupby(level=0):
                 node_from, node_to = group.node_id
                 line_geom = gdf_object.geometry.at[idx0]
-                graph.add_link(node_from, node_to, length=line_geom.length, geometry=line_geom)
+                graph.add_edge(node_from, node_to, length=line_geom.length, geometry=line_geom)
 
             ### Find distruptions Graph ###
             # The graph often consists of multiple smaller graphs due to links not properly connecting with nodes
@@ -342,7 +342,7 @@ def shortest_path(waterschap, DATA, gdf_cross, gdf_rhws):
 
                     # Add link between not_connected node and closest node in the largest component
                     # Note: You might want to calculate the LineString geometry connecting these nodes based on your specific requirements
-                    graph.add_link(
+                    graph.add_edge(
                         nc_node,
                         closest_node_id,
                         geometry=LineString([node_geometries[nc_node], node_geometries[closest_node_id]]),
