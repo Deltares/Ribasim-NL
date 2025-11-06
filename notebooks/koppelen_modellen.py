@@ -86,7 +86,7 @@ def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Netw
     node_ids = model.node_table().df.index.to_numpy()
     for i in remove_nodes:
         if i in node_ids:
-            model.remove_node(node_id=i, remove_edges=True)
+            model.remove_node(node_id=i, remove_links=True)
 
     # Load the network
     network_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
