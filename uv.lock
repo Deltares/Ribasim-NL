@@ -1196,18 +1196,6 @@ wheels = [
 ]
 
 [[package]]
-name = "fastcore"
-version = "1.8.14"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/41/fc/4782041a7e96ae3de2b6bc7a287693d619688d938f43e6d9e70a23874d51/fastcore-1.8.14.tar.gz", hash = "sha256:869735ef493dbc7e5e8cbfc35fa3310772ce4c768d5b3a82d6a0d571148401be", size = 83648, upload-time = "2025-10-29T05:38:46.285Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ed/c6/236247deaa155fad1b38b6deb95b8b76efd20f5107b4577eee42002cbf11/fastcore-1.8.14-py3-none-any.whl", hash = "sha256:a02a749c26243ffd54d6dd11165cf4a556c7cb08f4c7e47ff67b32c7b0183ce9", size = 86791, upload-time = "2025-10-29T05:38:44.343Z" },
-]
-
-[[package]]
 name = "fastjsonschema"
 version = "2.21.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1628,13 +1616,12 @@ wheels = [
 
 [[package]]
 name = "imod"
-version = "0.18.1"
+version = "1.0.0rc7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "affine" },
     { name = "cftime" },
     { name = "dask" },
-    { name = "fastcore" },
     { name = "filelock" },
     { name = "jinja2" },
     { name = "loguru" },
@@ -1642,6 +1629,7 @@ dependencies = [
     { name = "numba" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "plum-dispatch" },
     { name = "pooch" },
     { name = "pydantic" },
     { name = "scipy" },
@@ -1652,9 +1640,9 @@ dependencies = [
     { name = "xarray" },
     { name = "xugrid" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/29/de/8363b39e0598d089a0694b7479513390bacf8279e4c455e3a79f662c1d7a/imod-0.18.1.tar.gz", hash = "sha256:bd5770b3f980965888b6f502a9c6d4edc7a2ab595c8bc2e572221df807d6c162", size = 617436, upload-time = "2024-11-20T12:13:10.548Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d4/55/0e3ce98e8939968479f81256837fb6670f90c48e6e5f430b52a386245c8b/imod-1.0.0rc7.tar.gz", hash = "sha256:5d82f6ccf8975493b9f981d8e7cacf010db0dbff3100d97df8ea5dd98d6f5ae1", size = 631224, upload-time = "2025-10-28T08:45:13.724Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/5c/bb2bfc98f5a3422597d58c6cb00da93198d75f716a5363730101b1c83cca/imod-0.18.1-py3-none-any.whl", hash = "sha256:a64b9788a08e2446b416c1d1a600691edf935d840e291023c2fd0fda0f88d859", size = 854279, upload-time = "2024-11-20T12:13:07.914Z" },
+    { url = "https://files.pythonhosted.org/packages/67/33/1fed8e85f246035a0d8b1a13b6a1097ae375f7d13c5e0486ec2de12206c5/imod-1.0.0rc7-py3-none-any.whl", hash = "sha256:c07593abafcad43f91ad2c245eacc4dbc28e68ae092eb7857aa96b88563764fc", size = 861848, upload-time = "2025-10-28T08:45:11.563Z" },
 ]
 
 [[package]]
@@ -3909,7 +3897,7 @@ requires-dist = [
     { name = "geocube", specifier = ">=0.7.1" },
     { name = "geopandas", specifier = ">=1.1.1" },
     { name = "hydamo", editable = "src/hydamo" },
-    { name = "imod", specifier = ">=0.18.1" },
+    { name = "imod", specifier = ">=1.0.0rc7" },
     { name = "ipykernel", specifier = ">=6.30.1" },
     { name = "jupyterlab", specifier = ">=4.4.9" },
     { name = "matplotlib", specifier = ">=3.10.6" },
@@ -4545,15 +4533,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8f/28/7c85c8032b91dbe79725b6f17d2fffc595dff06a35c7a30a37bef73a1ab4/typer-0.20.0.tar.gz", hash = "sha256:1aaf6494031793e4876fb0bacfa6a912b551cf43c1e63c800df8b1a866720c37", size = 106492, upload-time = "2025-10-20T17:03:49.445Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/64/7713ffe4b5983314e9d436a90d5bd4f63b6054e2aca783a3cfc44cb95bbf/typer-0.20.0-py3-none-any.whl", hash = "sha256:5b463df6793ec1dca6213a3cf4c0f03bc6e322ac5e16e13ddd622a889489784a", size = 47028, upload-time = "2025-10-20T17:03:47.617Z" },
-]
-
-[[package]]
-name = "types-python-dateutil"
-version = "2.9.0.20251008"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fc/83/24ed25dd0c6277a1a170c180ad9eef5879ecc9a4745b58d7905a4588c80d/types_python_dateutil-2.9.0.20251008.tar.gz", hash = "sha256:c3826289c170c93ebd8360c3485311187df740166dbab9dd3b792e69f2bc1f9c", size = 16128, upload-time = "2025-10-08T02:51:34.93Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/af/5d24b8d49ef358468ecfdff5c556adf37f4fd28e336b96f923661a808329/types_python_dateutil-2.9.0.20251008-py3-none-any.whl", hash = "sha256:b9a5232c8921cf7661b29c163ccc56055c418ab2c6eabe8f917cbcc73a4c4157", size = 17934, upload-time = "2025-10-08T02:51:33.55Z" },
 ]
 
 [[package]]
