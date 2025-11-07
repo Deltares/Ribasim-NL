@@ -1,5 +1,8 @@
 REM make sure python env in sync with uv.lock
-uv sync
+call uv sync
+
+REM activate env
+call .\\.venv\\Scripts\\activate.bat
 
 REM open using ribasim python release
 code . | exit
