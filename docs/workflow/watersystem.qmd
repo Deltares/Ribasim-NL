@@ -5,7 +5,7 @@ title: "Waterschappen watersystem"
 Per waterschap wordt het watersysteem beschreven middels de belangrijkste inlaten en uitlaten beschreven.
 
 # `Noorderzijlvest`
-![Image caption](../img/kunstwerken_NZV_ribasim.png)
+![Kunstwerken Noorderzijlvest](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/kunstwerken_NZV_ribasim.png)
 
 ---
 title: "Electraboezem en omgeving"
