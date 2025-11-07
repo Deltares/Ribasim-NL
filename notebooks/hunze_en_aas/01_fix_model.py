@@ -130,8 +130,8 @@ for action in actions:
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
-model.remove_node(node_id=2019, remove_edges=True)
-model.remove_node(node_id=17, remove_edges=True)
+model.remove_node(node_id=2019, remove_links=True)
+model.remove_node(node_id=17, remove_links=True)
 
 # Area basin 1516 niet OK, te klein, model instabiel
 # actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
