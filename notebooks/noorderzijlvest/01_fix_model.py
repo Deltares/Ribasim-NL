@@ -363,7 +363,7 @@ for row in model.flow_boundary.node.df.itertuples():
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
 
-#
+# Moved t Noord-Willemskanaal
 model.move_node(geometry=Point(233237, 559975), node_id=14)
 
 # %% reverse edges before junctionfy
@@ -375,7 +375,7 @@ model = junctionify(model)
 
 
 #  %% write model
-model.use_validation = False
+model.use_validation = True
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
