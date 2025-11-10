@@ -13,10 +13,40 @@ from ribasim_nl import CloudStorage, Model, Network
 SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
-
+RUN_SELECTION = ["RDO-Noord"]
 # Configuration
 cloud: CloudStorage = CloudStorage()
 upload_model: bool = False
+
+remove_nodes = [
+    3401752,  # Dokwerd NZV
+    3400015,  # Dokwerd NZV
+    3400016,  # Dokwerd NZV
+    3401753,  # Dokwerd NZV
+    3400017,  # Dokkumer Nieuwe Zijlen NZV
+    3400018,  # Dokkumer Nieuwe Zijlen NZV
+    3401754,  # Dokkumer Nieuwe Zijlen NZV
+    3401755,  # Dokkumer Nieuwe Zijlen NZV
+    203706,  # Inlaat hoort bij NZV
+    203840,  # Inlaat hoort bij NZV
+    202773,  # "Gaarkeuken" Fryslân
+    203809,  # "Gaarkeuken" Fryslân
+]
+
+# force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
+forced_coupling = {
+    3400005: 5901608,
+    3400007: 200184,  # Gaarkeuken naar juiste kanaalpand
+    3400012: 200184,  # Gaarkeuken naar juiste kanaalpand
+    3400004: 200184,  # Gaarkeuken naar juiste kanaalpand
+    210884: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    213460: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    203848: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    203812: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    211639: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
+    203787: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
+    203804: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
+}
 
 
 # %% Functions
@@ -51,6 +81,12 @@ def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Netw
     """
     # Load the model
     model = Model.read(toml_file)
+
+    # Remove nodes if exists
+    node_ids = model.node_table().df.index.to_numpy()
+    for i in remove_nodes:
+        if i in node_ids:
+            model.remove_node(node_id=i, remove_links=True)
 
     # Load the network
     network_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
@@ -196,34 +232,38 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
             print(f"Boundary node {boundary_node} is already coupled with {couple_authority}.")
             continue
 
-        # Check whether there are very close LB from the other authority
-        lb_neighbors = model.level_boundary.node.df[
-            model.level_boundary.node.df.meta_waterbeheerder == couple_authority
-        ]
-        distances = lb_neighbors.distance(boundary_node.geometry)
-        lb_neighbors = lb_neighbors[distances < SNAP_DISTANCE]
+        # we check if coupling is overruled
+        if boundary_node_id in forced_coupling:
+            couple_with_basin_id = forced_coupling[boundary_node_id]
+        else:
+            # Check whether there are very close LB from the other authority
+            lb_neighbors = model.level_boundary.node.df[
+                model.level_boundary.node.df.meta_waterbeheerder == couple_authority
+            ]
+            distances = lb_neighbors.distance(boundary_node.geometry)
+            lb_neighbors = lb_neighbors[distances < SNAP_DISTANCE]
 
-        if len(lb_neighbors) > 1:
-            print("Multiple close LB found, please check manually.")
-            continue
-
-        if len(lb_neighbors) == 1:
-            merged_outlet = merge_lb(model, lb_neighbors, boundary_node_id)
-            if merged_outlet is not None:
-                # TODO: Add Continuous control for the merged outlet?
+            if len(lb_neighbors) > 1:
+                print("Multiple close LB found, please check manually.")
                 continue
 
-        distances = basin_areas_df[basin_areas_df.meta_waterbeheerder == couple_authority].distance(
-            boundary_node.geometry
-        )
+            if len(lb_neighbors) == 1:
+                merged_outlet = merge_lb(model, lb_neighbors, boundary_node_id)
+                if merged_outlet is not None:
+                    # TODO: Add Continuous control for the merged outlet?
+                    continue
 
-        # Can happen if we don't couple all models
-        if len(distances) == 0:
-            print(f"Cannot find {couple_authority} basin area for {boundary_node}.")
-            continue
+            distances = basin_areas_df[basin_areas_df.meta_waterbeheerder == couple_authority].distance(
+                boundary_node.geometry
+            )
 
-        # Couple with closest basin area
-        couple_with_basin_id = distances.idxmin()
+            # Can happen if we don't couple all models
+            if len(distances) == 0:
+                print(f"Cannot find {couple_authority} basin area for {boundary_node}.")
+                continue
+
+            # Couple with closest basin area
+            couple_with_basin_id = distances.idxmin()
 
         # Create link table
         link_table = []
@@ -479,13 +519,26 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 
 # %% Individual execution blocks for notebook use
 
-rdos = ["RDO-Gelderland", "RDO-Noord", "RDO-Twentekanalen", "RDO-West-Midden", "RDO-Zuid-Oost", "RDO-Zuid-West"]
+sub_models_dir = cloud.joinpath(r"Rijkswaterstaat\modellen\lhm_sub_models")
+model_dirs = [i for i in sub_models_dir.glob("*") if i.is_dir() and ("coupled" not in i.name)]
+if RUN_SELECTION:
+    model_dirs = [i for i in model_dirs if i.name in RUN_SELECTION]
+for dir in model_dirs:
+    print(dir.name)
+    toml_file = dir.joinpath(f"{dir.stem}.toml")
+    model, network, basin_areas_df = initialize_models(cloud, toml_file)
+    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+    fix_basin_profiles(model)
+    save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
 
-for rdo in rdos:
-    toml_file = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
 
-toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm.toml")
-model, network, basin_areas_df = initialize_models(cloud, toml_file)
-all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-fix_basin_profiles(model)
-save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
+# rdos = ["RDO-Gelderland", "RDO-Noord", "RDO-Twentekanalen", "RDO-West-Midden", "RDO-Zuid-Oost", "RDO-Zuid-West"]
+
+# for rdo in rdos:
+#     toml_file = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
+
+# toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm_parts.toml")
+# model, network, basin_areas_df = initialize_models(cloud, toml_file)
+# all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+# fix_basin_profiles(model)
+# save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)

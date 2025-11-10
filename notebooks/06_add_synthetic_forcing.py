@@ -11,7 +11,7 @@ endtime = datetime(2018, 1, 1)
 
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+SELECTION: list[str] = ["Noorderzijlvest"]
 REBUILD = True
 
 

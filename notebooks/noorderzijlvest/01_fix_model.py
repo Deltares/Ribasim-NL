@@ -8,10 +8,11 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import MultiLineString
+from shapely.geometry import MultiLineString, Point
 from shapely.ops import snap, split
 
 from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
@@ -362,6 +363,16 @@ for row in model.flow_boundary.node.df.itertuples():
     left_link_geometry, right_link_geometry = list(split_line(link_geometry, outlet_node_geometry).geoms)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+
+# Moved t Noord-Willemskanaal so it connects properly with Hunze and Aa's model
+model.move_node(geometry=Point(233237, 559975), node_id=14)
+
+# %% reverse edges before junctionfy
+for link_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
+    model.reverse_link(link_id=link_id)
+
+# %% Create junctions
+model = junctionify(model)
 
 
 #  %% write model

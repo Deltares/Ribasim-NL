@@ -247,24 +247,32 @@ class Model(Model):
         return valid_state
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
-    def _upstream_nodes(self, node_id, **kwargs):
+    def _upstream_nodes(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None):
         # get upstream nodes
         #     return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
-        return upstream_nodes(graph=self.graph, node_id=node_id, **kwargs)
+        return upstream_nodes(
+            graph=self.graph, node_id=node_id, stop_at_inlet=stop_at_inlet, stop_at_node_type=stop_at_node_type
+        )
 
-    def _downstream_nodes(self, node_id, **kwargs):
+    def _downstream_nodes(self, node_id, stop_at_outlet: bool = False, stop_at_node_type: str | None = None):
         # get downstream nodes
-        return downstream_nodes(graph=self.graph, node_id=node_id, **kwargs)
+        return downstream_nodes(
+            graph=self.graph, node_id=node_id, stop_at_outlet=stop_at_outlet, stop_at_node_type=stop_at_node_type
+        )
         # return list(nx.traversal.bfs_tree(self.graph, node_id))
 
-    def get_upstream_basins(self, node_id, **kwargs):
+    def get_upstream_basins(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None):
         # get upstream basin area
-        upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
+        upstream_node_ids = self._upstream_nodes(
+            node_id, stop_at_inlet=stop_at_inlet, stop_at_node_type=stop_at_node_type
+        )
         return self.basin.area.df[self.basin.area.df.node_id.isin(upstream_node_ids)]
 
-    def get_downstream_basins(self, node_id, **kwargs):
+    def get_downstream_basins(self, node_id, stop_at_outlet: bool = False, stop_at_node_type: str | None = None):
         # get upstream basin area
-        downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
+        downstream_node_ids = self._downstream_nodes(
+            node_id, stop_at_outlet=stop_at_outlet, stop_at_node_type=stop_at_node_type
+        )
         return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
 
     def get_upstream_links(self, node_id, **kwargs):
@@ -488,8 +496,13 @@ class Model(Model):
         for _to_node_id in to_node_id:
             self.link.add(table[node_id], self.get_node(_to_node_id))
 
-    def reverse_link(self, from_node_id: int | None = None, to_node_id: int | None = None, link_id: int | None = None):
-        """Reverse an link"""
+    def reverse_link(
+        self,
+        from_node_id: int | None = None,
+        to_node_id: int | None = None,
+        link_id: int | None = None,
+    ):
+        """Reverse a link"""
         if self.link.df is not None:
             if link_id is None:
                 # get original link-data
@@ -1159,7 +1172,8 @@ class Model(Model):
             )
 
     def _set_arrow_input(self):
-        """Avoid large databases by writing some tables to Arrow"""
+        """Use "input" dir and avoid large databases by writing some tables to Arrow"""
+        self.input_dir = Path("input")
         if self.basin.time.df is not None:
             self.basin.time.set_filepath(Path("basin_time.arrow"))
             # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
