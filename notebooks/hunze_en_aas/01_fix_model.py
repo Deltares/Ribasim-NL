@@ -4,7 +4,6 @@ import inspect
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
-from ribasim import __version__ as ribasim_version
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
