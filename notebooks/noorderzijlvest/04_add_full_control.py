@@ -577,8 +577,6 @@ def build_discrete_controls(
     exclude_ids=None,
     listen_node_id: int = 1493,
     band=(7.62, 7.68),
-    # listen_node_id: int = 1613,
-    # band=(-0.36, -0.34),
     flow_open_default: float = 20.0,  # <- default fallback
     delta_h: float = 0.05,
     dc_offset: float = 10.0,  # x-offset voor DC-node
@@ -678,8 +676,6 @@ build_discrete_controls(
     exclude_ids=exclude_ids,
     listen_node_id=1493,
     band=(7.62, 7.68),
-    # listen_node_id=1613,
-    # band=(-0.34, -0.34),
     flow_open_default=20.0,
     delta_h=0.05,
 )
@@ -727,7 +723,6 @@ selected_node_ids = [
     732,
 ]
 LISTEN_NODE_ID = 1493
-# LISTEN_NODE_ID = 1613
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -740,7 +735,6 @@ row = basin.loc[basin["node_id"] == LISTEN_NODE_ID]
 if not row.empty and "meta_streefpeil" in row.columns:
     val = row["meta_streefpeil"].iloc[0]
     if pd.notna(val):
-        #  th_high = float(val) - 0.02
         th_high = 7.68
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
