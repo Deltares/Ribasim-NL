@@ -11,7 +11,7 @@ cloud = CloudStorage()
 # %% update RWS-HWS
 
 # RWS-HWS
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_bergend")
+model_path = cloud.joinpath("Rijkswaterstaat/modellen/hws_bergend")
 toml_file = model_path / "hws.toml"
 rws_model = Model.read(toml_file)
 
@@ -35,7 +35,7 @@ rws_model.write(model_path.with_name("hws_temp") / "hws.toml")
 # %% update AGV
 
 # AGV
-model_path = cloud.joinpath("AmstelGooienVecht", "modellen", "AmstelGooienVecht_parametrized_2024_8_47")
+model_path = cloud.joinpath("AmstelGooienVecht/modellen/AmstelGooienVecht_parametrized_2024_8_47")
 if not model_path.exists():
     model_url = cloud.joinurl("AmstelGooienVecht", "modellen", "AmstelGooienVecht_parametrized_2024_8_47")
     cloud.download_content(model_url)
@@ -61,7 +61,7 @@ agv_model.write(model_path.with_name("AmstelGooienVecht_temp") / "agv.toml")
 # %% update De Dommel
 
 # update De Dommel
-model_path = cloud.joinpath("DeDommel", "modellen", "DeDommel")
+model_path = cloud.joinpath("DeDommel/modellen/DeDommel")
 toml_file = model_path / "model.toml"
 # update_database(toml_file)
 dommel_model = Model.read(toml_file)
@@ -92,7 +92,7 @@ netwerk_mask_poly = agv_model.basin.area.df.union_all()
 models = [rws_model, dommel_model]
 coupled_model = concat(models)
 
-network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg"))
 
 # %% coupling
 
@@ -204,7 +204,7 @@ for boundary_node_id in boundary_node_ids:
 
 # %%
 
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm")
+model_path = cloud.joinpath("Rijkswaterstaat/modellen/lhm")
 toml_file = model_path / "lhm.toml"
 
 coupled_model.write(toml_file)

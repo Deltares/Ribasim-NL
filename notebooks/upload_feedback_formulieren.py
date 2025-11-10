@@ -11,7 +11,7 @@ WATER_AUTHORITIES = [
     "DrentsOverijsselseDelta",
 ]
 
-FEEDBACK_XLS = cloud.joinpath("Basisgegevens", "feedbackformulier", "Feedback Formulier.xlsx")
+FEEDBACK_XLS = cloud.joinpath("Basisgegevens/feedbackformulier/Feedback Formulier.xlsx")
 
 for authority in WATER_AUTHORITIES:
     print(authority)

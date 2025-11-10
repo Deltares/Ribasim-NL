@@ -21,9 +21,9 @@ name = "hdsr"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
-verbeteringen_gpkg = cloud.joinpath("StichtseRijnlanden", "verwerkt", "modelfouten_met_verbeter_acties_BD_311024.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+verbeteringen_gpkg = cloud.joinpath("StichtseRijnlanden/verwerkt/modelfouten_met_verbeter_acties_BD_311024.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, verbeteringen_gpkg, hydamo_gpkg, model_edits_gpkg])
 

@@ -40,15 +40,15 @@ cloud = CloudStorage()
 
 
 # %% Voorbereiden profielen uit HyDAMO
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_areas", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_fix_areas/model.toml")
 model = Model.read(ribasim_toml)
 model.tabulated_rating_curve.static.df = None
 model.manning_resistance.static.df = None
 model.outlet.static.df = None
 
 
-profile_gpkg = cloud.joinpath("DeDommel", "verwerkt", "profile.gpkg")
-hydamo_gpkg = cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg")
+profile_gpkg = cloud.joinpath("DeDommel/verwerkt/profile.gpkg")
+hydamo_gpkg = cloud.joinpath("DeDommel/verwerkt/4_ribasim/hydamo.gpkg")
 stuw_df = gpd.read_file(hydamo_gpkg, layer="stuw", engine="pyogrio")
 stuw_df.loc[stuw_df.CODE.isna(), ["CODE"]] = stuw_df[stuw_df.CODE.isna()].NAAM
 stuw_df.loc[stuw_df.CODE.isna(), ["CODE"]] = stuw_df[stuw_df.CODE.isna()].WS_DOMMELID
@@ -58,7 +58,7 @@ kdu_df = gpd.read_file(hydamo_gpkg, layer="duikersifonhevel", engine="pyogrio").
 
 kgm_df = gpd.read_file(hydamo_gpkg, layer="gemaal", engine="pyogrio").set_index("CODE")
 
-basin_area_df = gpd.read_file(cloud.joinpath("DeDommel", "verwerkt", "basin_area.gpkg"), engine="pyogrio").set_index(
+basin_area_df = gpd.read_file(cloud.joinpath("DeDommel/verwerkt/basin_area.gpkg"), engine="pyogrio").set_index(
     "node_id"
 )
 
@@ -85,7 +85,7 @@ if not profile_gpkg.exists():
     )
 
     area_df = gpd.read_file(
-        cloud.joinpath("DeDommel", "verwerkt", "watervlakken", "LWW_2023_A_water_vlak_V.shp"),
+        cloud.joinpath("DeDommel/verwerkt/watervlakken/LWW_2023_A_water_vlak_V.shp"),
         engine="pyogrio",
         fid_as_index=True,
     )
@@ -434,7 +434,7 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
 ]
 model.flow_boundary.static.df.loc[:, "flow_rate"] = 0
 # %% write model
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_parameterized", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_parameterized/model.toml")
 model.write(ribasim_toml)
 
 # %%

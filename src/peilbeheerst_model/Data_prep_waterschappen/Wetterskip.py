@@ -17,12 +17,7 @@ os.makedirs(post_processed_dir, exist_ok=True)
 post_processed_path = post_processed_dir / f"{authority}.gpkg"
 
 data_delivery = cloud.joinpath(
-    "WetterskipFryslan",
-    "aangeleverd",
-    "Na_levering",
-    "20250404_nieuwe_schematisatie",
-    "beheerregister_WF.gdb",
-    "beheerregister_WF.gdb",
+    "WetterskipFryslan/aangeleverd/Na_levering/20250404_nieuwe_schematisatie/beheerregister_WF.gdb/beheerregister_WF.gdb"
 )
 
 cloud.synchronize(filepaths=[data_delivery])

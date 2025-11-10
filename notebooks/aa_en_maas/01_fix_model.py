@@ -20,21 +20,16 @@ name = "aam"
 
 
 # %% Check if model exist, otherwise download
-ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_dir = cloud.joinpath(authority, f"modellen/{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 afwateringseenheden_shp = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "1_ontvangen_data",
-    "Na_levering_202404",
-    "afwateringseenheden_WAM",
-    "Afwateringseenheden.shp",
+    authority, "verwerkt/1_ontvangen_data/Na_levering_202404/afwateringseenheden_WAM/Afwateringseenheden.shp"
 )
-af_aanvoergebied_shp = cloud.joinpath(authority, "aangeleverd", "Eerste_levering", "AfvoergebiedAanvoergebied.shp")
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+af_aanvoergebied_shp = cloud.joinpath(authority, "aangeleverd/Eerste_levering/AfvoergebiedAanvoergebied.shp")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 cloud.synchronize(
     filepaths=[

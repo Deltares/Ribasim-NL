@@ -29,20 +29,20 @@ cloud = CloudStorage()
 RE_DISSOLVE = False
 MAP_SLUIZEN = {"Reevesluis": "Drontermeer"}
 
-top10_nl_water = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
+top10_nl_water = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 
-watervlak_gpkg = cloud.joinpath("Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg")
+watervlak_gpkg = cloud.joinpath("Rijkswaterstaat/Verwerkt/categorie_oppervlaktewater.gpkg")
 
 
-result_gpkg = cloud.joinpath("Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg")
+result_gpkg = cloud.joinpath("Rijkswaterstaat/Verwerkt/categorie_oppervlaktewater.gpkg")
 
 print("read")
 watervlak_gdf = gpd.read_file(top10_nl_water, layer="top10nl_waterdeel_vlak", engine="pyogrio", fid_as_index=True)
 
 rws_waterlijn_gdf = gpd.read_file(result_gpkg, layer="waterlijnen_rws", engine="pyogrio", fid_as_index=True)
 
-recategorize_xlsx = cloud.joinpath("Rijkswaterstaat", "verwerkt", "recategorize.xlsx")
+recategorize_xlsx = cloud.joinpath("Rijkswaterstaat/verwerkt/recategorize.xlsx")
 
 # %% generate watervlak_diss_gdf
 

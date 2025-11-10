@@ -254,8 +254,8 @@ class VdGaastBerging:
         self.use_add_api = use_add_api
 
         # check and add rasters paths
-        lhm_raster_file = self.cloud.joinpath("Basisgegevens", "LHM", "4.3", "input", "LHM_data.tif")
-        ma_raster_file = self.cloud.joinpath("Basisgegevens", "VanDerGaast_QH", "spafvoer1.tif")
+        lhm_raster_file = self.cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
+        ma_raster_file = self.cloud.joinpath("Basisgegevens/VanDerGaast_QH/spafvoer1.tif")
         self.cloud.synchronize([lhm_raster_file, ma_raster_file])
         self.lhm_raster_file = lhm_raster_file
         self.ma_raster_file = ma_raster_file

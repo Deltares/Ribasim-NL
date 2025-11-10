@@ -21,12 +21,12 @@ name = "dod"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-hydroobject_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
-duikersifonhevel_gpkg = cloud.joinpath(authority, "aangeleverd", "Aanlevering_202311", "HyDAMO_WM_20231117.gpkg")
+hydroobject_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+duikersifonhevel_gpkg = cloud.joinpath(authority, "aangeleverd/Aanlevering_202311/HyDAMO_WM_20231117.gpkg")
 
 
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-fix_user_data_path = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
+model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+fix_user_data_path = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 
 cloud.synchronize(
     filepaths=[ribasim_dir, hydroobject_gpkg, duikersifonhevel_gpkg, model_edits_path, fix_user_data_path]

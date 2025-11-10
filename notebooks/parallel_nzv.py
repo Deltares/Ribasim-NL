@@ -5,7 +5,7 @@ from ribasim_nl import CloudStorage, Model, concat, prefix_index
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("Noorderzijlvest", "modellen", "Noorderzijlvest_2025_3_1", "nzv.toml")
+ribasim_toml = cloud.joinpath("Noorderzijlvest/modellen/Noorderzijlvest_2025_3_1/nzv.toml")
 
 
 data = {}

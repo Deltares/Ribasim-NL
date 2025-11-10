@@ -118,8 +118,8 @@ def read_pid(control_properties, control_basin_id):
 
 
 # %% Paden
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_netwerk", "hws.toml")
-kwk_dir = cloud.joinpath("Rijkswaterstaat", "verwerkt", "kunstwerken")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_netwerk/hws.toml")
+kwk_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/kunstwerken")
 kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 
 # %%Inlezen
@@ -251,11 +251,6 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 
 
 # %% write
-ribasim_toml = cloud.joinpath(
-    "Rijkswaterstaat",
-    "modellen",
-    "hws_sturing",
-    "hws.toml",
-)
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_sturing/hws.toml")
 
 model.write(ribasim_toml)
