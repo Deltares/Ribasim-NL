@@ -15,16 +15,27 @@ from ribasim_nl import CloudStorage
 from ribasim_nl.aquo import waterbeheercode
 
 
-def ParseList(val, prefix_code: int | None) -> list[int] | int:
+def _parse_to_local(int_val: int, prefix_code: int):
+    """The function `parse_to_local` removes a specified prefix code from an integer value."""
+    str_val = str(int_val)
+    if not str_val.startswith(f"{prefix_code}"):
+        raise ValueError(f"Value {int_val} does not start with the specified prefix code {prefix_code}.")
+
+    return int(str_val[len(str(prefix_code)) :])
+
+
+def ParseList(val: int, prefix_code: int | None) -> list[int] | int:
     """The function `ParseList` checks if a given string represents a list and returns the list or the original value accordingly.
 
     Parameters
     ----------
-    val
+    val: int
         The `ParseList` function takes a single parameter `val`, which is expected to be a string. The
     function checks if the string starts and ends with square brackets `[ ]`, indicating a list-like
     structure. If the string meets these conditions, it attempts to parse the string using
     `ast.literal_eval
+    prefix_code : int | None
+        The `prefix_code`, AQUO prefix. If specified it is to be removed from the integer values in the list.
 
     Returns
     -------
@@ -34,18 +45,10 @@ def ParseList(val, prefix_code: int | None) -> list[int] | int:
     is a list, it returns the first element of the list if the list has only one element in it.
 
     """
-
-    def parse_to_local(int_val: int, prefix_code: int):
-        str_val = str(int_val)
-        if not str_val.startswith(f"{prefix_code}"):
-            raise ValueError(f"Value {int_val} does not start with the specified prefix code {prefix_code}.")
-
-        return int(str_val[len(str(prefix_code)) :])
-
     parsed = ast.literal_eval(val)
 
     if prefix_code is not None:
-        parsed = [parse_to_local(v, prefix_code) for v in parsed]
+        parsed = [_parse_to_local(v, prefix_code) for v in parsed]
 
     # val = first item in list
     if len(parsed) == 1:
@@ -110,6 +113,8 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
     if apply_for_water_authority is not None:
         koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
         prefix_code = waterbeheercode[apply_for_water_authority]
+    else:
+        prefix_code = None
 
     # Convert the lists in link_id to lists if possible
     koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList, args=(prefix_code,))
@@ -408,12 +413,13 @@ def CompareOutputMeasurements(
         # Deal with the daily values
         full_title = " - ".join(existing_measurements)
         fig_name = full_title.split(" - ")[0]
+        bron_meting = None if apply_for_water_authority is not None else meetlocaties_link.iloc[0]["Waterschap"]
         PlotAndSave(
             combined_df=combined_df_cum,
             stats=stats,
             koppelinfo=full_title,
             fig_name=fig_name,
-            bron_meting=None if apply_for_water_authority is not None else meetlocaties_link.iloc[0]["Waterschap"],
+            bron_meting=bron_meting,
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
@@ -441,7 +447,7 @@ def CompareOutputMeasurements(
             stats=stats_dec,
             koppelinfo=full_title,
             fig_name=fig_name,
-            bron_meting=None if apply_for_water_authority is not None else meetlocaties_link.iloc[0]["Waterschap"],
+            bron_meting=bron_meting,
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")

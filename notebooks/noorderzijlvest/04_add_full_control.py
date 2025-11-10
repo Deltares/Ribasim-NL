@@ -366,7 +366,6 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 35, "min_upstream_level
 model.pump.static.df.loc[model.pump.static.df.node_id == 35, "max_downstream_level"] = -1.16
 
 # Waterwolf spuisluizen
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "max_downstream_level"] = -0.9
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "flow_rate"] = 9999
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 728, "min_upstream_level"] = -0.93
 model.pump.static.df.loc[model.pump.static.df.node_id == 29, "min_upstream_level"] = -0.93

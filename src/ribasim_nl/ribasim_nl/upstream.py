@@ -11,8 +11,9 @@ def upstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_inlet: bool = False,
     Parameters
     ----------
     - graph (nx.DiGraph): The directed graph.
-    - start_node (int): The node to start the search from.
+    - node_id (int): The node to start the search from.
     - stop_at_inlet (bool): To stop at the next inlet(s)
+    - stop_at_node_type (str | None): To stop at a specific node type (e.g., 'Basin', 'LevelBoundary')
 
     Returns
     -------

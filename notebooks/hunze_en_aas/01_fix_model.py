@@ -102,7 +102,7 @@ model = reset_static_tables(model)
 model.fix_unassigned_basin_area()
 model.explode_basin_area()
 
-# %%
+# %% edits on Sweco model
 
 actions = [
     "remove_basin_area",
