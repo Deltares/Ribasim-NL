@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Waterschappen watersystem – Ribasim-NL</title>
+<title>Electraboezem en omgeving – Ribasim-NL</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -73,7 +73,7 @@ ul.task-list li input[type="checkbox"] {
 <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="nav-fixed quarto-light">
+<body class="nav-sidebar floating nav-fixed quarto-light">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -101,7 +101,7 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Cloud storage</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
+    <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
 <span class="menu-text">Workflows</span></a>
   </li>  
 </ul>
@@ -121,10 +121,61 @@ ul.task-list li input[type="checkbox"] {
 </div>
       </div> <!-- /container-fluid -->
     </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/watersystem.html">Electraboezem en omgeving</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Main watersystem</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/watersystem.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Electraboezem en omgeving</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Level controlled</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Gravity controlled</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Coupling</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active">
@@ -132,15 +183,24 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#noorderzijlvest" id="toc-noorderzijlvest" class="nav-link active" data-scroll-target="#noorderzijlvest"><code>Noorderzijlvest</code></a></li>
+  <li><a href="#electraboezem" id="toc-electraboezem" class="nav-link" data-scroll-target="#electraboezem">Electraboezem</a>
+  <ul class="collapse">
+  <li><a href="#inlaat-gaarkeuken" id="toc-inlaat-gaarkeuken" class="nav-link" data-scroll-target="#inlaat-gaarkeuken">Inlaat Gaarkeuken</a></li>
+  <li><a href="#aanvoergebied-peize-en-eelderdiepfochtellerveen-grijs-gebied" id="toc-aanvoergebied-peize-en-eelderdiepfochtellerveen-grijs-gebied" class="nav-link" data-scroll-target="#aanvoergebied-peize-en-eelderdiepfochtellerveen-grijs-gebied">Aanvoergebied Peize-en Eelderdiep/Fochtellerveen <em>(grijs gebied)</em></a></li>
+  <li><a href="#aanvoergebied-zuidwesten-via-leek-lichtblauw-gebied" id="toc-aanvoergebied-zuidwesten-via-leek-lichtblauw-gebied" class="nav-link" data-scroll-target="#aanvoergebied-zuidwesten-via-leek-lichtblauw-gebied">Aanvoergebied zuidwesten via Leek <em>(lichtblauw gebied)</em></a></li>
+  </ul></li>
+  <li><a href="#fivelingoboezem-geel-gebied" id="toc-fivelingoboezem-geel-gebied" class="nav-link" data-scroll-target="#fivelingoboezem-geel-gebied">Fivelingoboezem <em>(geel gebied)</em></a></li>
+  <li><a href="#noordelijke-kustpolders-rode-en-blauwe-gebieden" id="toc-noordelijke-kustpolders-rode-en-blauwe-gebieden" class="nav-link" data-scroll-target="#noordelijke-kustpolders-rode-en-blauwe-gebieden">Noordelijke kustpolders <em>(rode en blauwe gebieden)</em></a></li>
+  <li><a href="#dongeradeel" id="toc-dongeradeel" class="nav-link" data-scroll-target="#dongeradeel">Dongeradeel</a></li>
   </ul>
-</nav>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="watersystem.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Waterschappen watersystem</h1>
+<h1 class="title">Electraboezem en omgeving</h1>
 </div>
 
 
@@ -157,19 +217,63 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Per waterschap wordt het watersysteem beschrevn middels de belangrijkste inlaten en uitlaten beschreven.</p>
+<p>Per waterschap wordt het watersysteem beschreven middels de belangrijkste inlaten en uitlaten beschreven.</p>
 <section id="noorderzijlvest" class="level1">
 <h1><code>Noorderzijlvest</code></h1>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../img/kunstwerken_NZV_DM.png" class="img-fluid figure-img"></p>
-<figcaption>Image caption</figcaption>
+<p><img src="https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/kunstwerken_NZV_ribasim.png" class="img-fluid figure-img"></p>
+<figcaption>Kunstwerken Noorderzijlvest</figcaption>
 </figure>
 </div>
+</section>
+<section id="electraboezem" class="level1">
+<h1>Electraboezem</h1>
+<p>Het witte gebied op de kaart wordt gevormd door de <strong>Electraboezem</strong>. De belangrijkste waterlopen zijn het <strong>Reitdiep</strong> en het <strong>Van Starkenborghkanaal</strong>, die onderling met elkaar in open verbinding staan. Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de <strong>gemalen H.D. Louwes</strong> en <strong>De Waterwolf</strong> — naar het <strong>Lauwersmeergebied</strong>. Het Lauwersmeergebied loost vervolgens via de sluizen van <strong>Lauwersoog</strong> op de <strong>Waddenzee</strong>.</p>
+<p>Het <strong>Van Starkenborghkanaal</strong> komt uit op de <strong>Oostersluis</strong>. Deze sluis kent alleen <strong>schutverliezen</strong>.</p>
+<section id="inlaat-gaarkeuken" class="level3">
+<h3 class="anchored" data-anchor-id="inlaat-gaarkeuken">Inlaat Gaarkeuken</h3>
 <ul>
-<li><p>Gemaal Dongerdielen (Ezumazuil) () Dit gemaal loost vanuit Wetterskip Fryslân op het Lauwersmeer. max capaciteit: 15.2 m3/s min bovenstrooms peil: -1.25m</p></li>
-<li><p>Gemaal Nieuw Robbengat (KGM016) Dit gemaal voert het water van de Marnewaard af op het Lauwersmeer. max capaciteit: 3.6m3/s min bovenstrooms peil: -2.67m</p></li>
+<li>Bij <strong>Gaarkeuken</strong> kan maximaal <strong>24 m³/s</strong> uit de <strong>Friese boezem</strong> worden ingelaten op de boezem van Noorderzijlvest.</li>
+<li>Een deel daarvan (tot <strong>20 m³/s</strong>) kan via <strong>gemaal Dorkwerd</strong> worden opgepompt richting waterschap <strong>Hunze en Aa’s</strong>/<strong>Eemskanaal</strong>.</li>
+<li>Water dat op de <strong>Electraboezem</strong> nodig is, wordt via de sluis bij Gaarkeuken ingelaten; overschot wordt afgevoerd richting het <strong>Lauwersmeer</strong>.</li>
+<li>Praktisch geldt (volgens inschatting van de hydroloog) een globale verdeling van <strong>1/5</strong> naar de Electraboezem en <strong>4/5</strong> via Dorkwerd naar de <strong>Eemskanaalboezem</strong>.</li>
 </ul>
+</section>
+<section id="aanvoergebied-peize-en-eelderdiepfochtellerveen-grijs-gebied" class="level3">
+<h3 class="anchored" data-anchor-id="aanvoergebied-peize-en-eelderdiepfochtellerveen-grijs-gebied">Aanvoergebied Peize-en Eelderdiep/Fochtellerveen <em>(grijs gebied)</em></h3>
+<p>In het zuidoosten (nabij Assen; grijs in de kaart) wordt via een reeks kleinere inlaten — <strong>Ter Aard</strong>, <strong>Huis ter Heide</strong>, <strong>Heideheim</strong> en de <strong>Jonkersburg-inlaat</strong> — water ingebracht vanuit het <strong>Noord-Willemskanaal</strong> en de <strong>Drentse Hoofdvaart</strong> (gebied van Hunze en Aa’s).</p>
+<ul>
+<li>De inlaten laten <strong>ca. 0.5 m³/s</strong> toe (beschikbaarheid afhankelijk van Hunze en Aa’s).</li>
+<li>Het water komt uit in het <strong>gestuwde deel</strong> en voert vervolgens via de <strong>Electraboezem</strong> af.</li>
+<li>In afvoersituaties kan dit gebied <strong>vrij afstromen</strong> naar het <strong>Lauwersmeer</strong>.</li>
+</ul>
+</section>
+<section id="aanvoergebied-zuidwesten-via-leek-lichtblauw-gebied" class="level3">
+<h3 class="anchored" data-anchor-id="aanvoergebied-zuidwesten-via-leek-lichtblauw-gebied">Aanvoergebied zuidwesten via Leek <em>(lichtblauw gebied)</em></h3>
+<p>Het stroomgebied van het <strong>Leeksterhoofddiep</strong> en <strong>Dwarsdiep</strong> voert water af naar de <strong>Electraboezem</strong> via de <strong>Jonkersluis</strong> (Leeksterhoofddiep) en het <strong>Dwarsdiep</strong>.</p>
+<ul>
+<li><strong>Aanvoer</strong> van water gebeurt via het <strong>aanvoergemaal bij Leek</strong>: dit pompt water <strong>uit de Electraboezem</strong> en loost het op het <strong>Leeksterhoofddiep</strong>.</li>
+<li>Via de waterlopen in het gebied wordt het water naar het <strong>zuidwesten</strong> geleid, richting <strong>landbouwgronden</strong>.</li>
+<li>Een deel wordt gebruikt voor <strong>beregening</strong> en <strong>infiltratie</strong>, een deel voor <strong>doorspoeling</strong>; het resterende deel stroomt via het <strong>Dwarsdiep</strong> terug naar de <strong>Electraboezem</strong>.</li>
+</ul>
+</section>
+</section>
+<section id="fivelingoboezem-geel-gebied" class="level1">
+<h1>Fivelingoboezem <em>(geel gebied)</em></h1>
+<p>De <strong>Fivelingoboezem</strong> (lichtgeel in het oosten) loost op <strong>Delfzijl</strong>: - onder <strong>vrij verval</strong> via het <strong>spuicomplex</strong> (max. <strong>15 m³/s</strong>), of - via <strong>gemaal De Drie Delfzijlen</strong> (max. <strong>25 m³/s</strong>) naar de <strong>Eems</strong>.</p>
+<p>Aanvoer is mogelijk vanuit het <strong>Damsterdiep</strong>, waarin water uit het <strong>Van Starkenborghkanaal</strong> kan worden <strong>opgemalen</strong> met een <strong>booster</strong> (max. <strong>1.5 m³/s</strong>).</p>
+</section>
+<section id="noordelijke-kustpolders-rode-en-blauwe-gebieden" class="level1">
+<h1>Noordelijke kustpolders <em>(rode en blauwe gebieden)</em></h1>
+<p>De <strong>noordelijke kustpolders</strong> lozen <strong>direct</strong> op de <strong>Waddenzee</strong>. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (<strong>Noordpolderzijl</strong> en <strong>Spijksterpompen</strong>).</p>
+<ul>
+<li>In <strong>droge periodes</strong> wordt water uit de <strong>Electraboezem</strong> (via <strong>boezemgemalen Stad en Lande, Schaphalsterzijl, Abelstok, Den Deel en Usquert en nog </strong>) met <strong>kleine poldergemalen</strong> naar de kustpolders <strong>opgemalen</strong>.</li>
+</ul>
+</section>
+<section id="dongeradeel" class="level1">
+<h1>Dongeradeel</h1>
+<p><strong>Dongeradeel</strong> is het gebied ten <strong>westen van het Lauwersmeer</strong> en hoort bij <strong>Wetterskip Fryslân</strong>. De afvoer vindt plaats met <strong>gemaal Dongeradielen</strong> op het <strong>Lauwersmeer</strong> en via de sluis Dokkumer Nieuwezijlen onder vrij verval.</p>
 
 
 </section>
