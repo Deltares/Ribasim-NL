@@ -405,12 +405,8 @@ class Model(Model):
         node_type = self.get_node_type(node_id)
         return getattr(self, pascal_to_snake_case(node_type))[node_id]
 
-    def remove_node(self, node_id: int, remove_links: bool = False, remove_edges: bool | None = None):
+    def remove_node(self, node_id: int, remove_links: bool = False):
         """Remove node from model"""
-        if remove_edges is not None:
-            remove_links = remove_edges
-            DeprecationWarning("Use of remove_edges is deprecated. Use remove_edges instead.")
-
         node_type = self.get_node_type(node_id)
 
         # read existing table
