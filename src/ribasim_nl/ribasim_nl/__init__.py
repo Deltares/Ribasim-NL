@@ -2,7 +2,7 @@ __version__ = "0.1.0"
 
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.concat import concat
-from ribasim_nl.junctionify import junctionify
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.model import Model
 from ribasim_nl.network import Network
 from ribasim_nl.network_validator import NetworkValidator

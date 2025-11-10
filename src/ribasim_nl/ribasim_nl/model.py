@@ -275,40 +275,6 @@ class Model(Model):
         )
         return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
 
-    # def get_downstream_basin(self, node_id) -> list[int]:
-    #     # keep track of visited nodes
-    #     visited = set()  # To keep track of visited nodes
-
-    #     # BFS using a deque
-    #     queue = deque([node_id])
-    #     basins = []
-
-    #     while queue:
-    #         current_node = queue.popleft()
-
-    #         # Avoid re-visiting nodes
-    #         if current_node in visited:
-    #             continue
-    #         visited.add(current_node)
-
-    #         # Check successors and their types
-    #         successors = list(self.graph.successors(current_node))
-    #         node_types = [self.get_node_type(i) for i in successors]
-
-    #         # get basins from successors
-    #         basins += [i[0] for i in zip(successors, node_types) if i[1] == "Basin"]
-
-    #         # add basins upstream successors if successor is junction
-    #         junctions = [i[0] for i in zip(successors, node_types) if i[1] == "Junction"]
-    #         junction_successors = [list(self.graph.successors(i)) for i in junctions]
-    #         junction_successors = [item for sublist in junction_successors for item in sublist]
-    #         basins += [i for i in junction_successors if self.get_node_type(i) == "Basin"]
-
-    #         if len(basins) == 0:
-    #             queue += successors
-
-    #     return basins
-
     def get_upstream_links(self, node_id, **kwargs):
         # get upstream links
         upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
