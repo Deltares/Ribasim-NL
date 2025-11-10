@@ -19,10 +19,10 @@ short_name = "dommel"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 
-areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
-q_data_gpkg = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Geodata", "data_Q42018.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+q_data_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/Geodata/data_Q42018.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, areas_gpkg, hydamo_gpkg, q_data_gpkg, model_edits_gpkg])
 

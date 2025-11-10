@@ -20,12 +20,12 @@ from ribasim_nl import CloudStorage
 
 # %% get input data
 cloud = CloudStorage()
-ribasim_toml = cloud.joinpath("Basisgegevens", "RWZI", "modellen", "rwzi", "rwzi.toml")
+ribasim_toml = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/rwzi.toml")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # datafiles
-model_dir = cloud.joinpath("Basisgegevens", "RWZI", "modellen")
-root_path_local = cloud.joinpath("Basisgegevens", "RWZI")
+model_dir = cloud.joinpath("Basisgegevens/RWZI/modellen")
+root_path_local = cloud.joinpath("Basisgegevens/RWZI")
 
 zinfo_influentdebieten_path = (
     root_path_local / "aangeleverd/Z-info/metingen/zinfo_20160101_20231231_influentdebieten.csv"
@@ -550,7 +550,7 @@ Getest (u kunt simuleren): Nee
 
 print("write rwzi model")
 model.write(ribasim_toml)
-cloud.joinpath("Basisgegevens", "RWZI", "modellen", "rwzi", "readme.md").write_text(readme)
+cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/readme.md").write_text(readme)
 
 upload_model = False
 if upload_model:

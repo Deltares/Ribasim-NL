@@ -20,7 +20,7 @@ from ribasim_nl import CloudStorage
 cloud = CloudStorage()
 
 # paths:
-base = cloud.joinpath("Basisgegevens", "resultaatvergelijking", "koppeltabel")
+base = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel")
 
 # Draaien vanuit de uitgangskoppeltabel op basis van alle nieuw aangeleverde metingen en feedback
 # loc_ref_koppeltabel = cloud.joinpath(base, "Koppeltabel_uitgangspunt.xlsx")
@@ -39,7 +39,7 @@ rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
 latest_lhm_version = sorted(
     [i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", "")
 )[-1]
-model_folder = cloud.joinpath("Rijkswaterstaat", "modellen", latest_lhm_version.path_string)
+model_folder = cloud.joinpath("Rijkswaterstaat/modellen", latest_lhm_version.path_string)
 
 
 # Filteren of gebruiken we een gekoppeld model:

@@ -8,7 +8,7 @@ from ribasim_nl import CloudStorage, Model
 
 model = Model(starttime="2022-01-01", endtime="2023-01-01", crs="EPSG:28992")
 cloud = CloudStorage()
-ribasim_toml = cloud.joinpath("test_models", "manning_test", "manning.toml")
+ribasim_toml = cloud.joinpath("test_models/manning_test/manning.toml")
 ribasim_toml.parent.mkdir(exist_ok=True, parents=True)
 
 expeted_dh = 1

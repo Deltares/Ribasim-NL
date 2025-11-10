@@ -18,7 +18,7 @@ network_validator = NetworkValidator(model)
 verwerkt_dir = cloud.joinpath(authority, "verwerkt")
 verwerkt_dir.mkdir(exist_ok=True)
 
-modelfouten_gpkg = cloud.joinpath(authority, "verwerkt", "modelfouten.gpkg")
+modelfouten_gpkg = cloud.joinpath(authority, "verwerkt/modelfouten.gpkg")
 
 # %% verwijderen duplicated links
 

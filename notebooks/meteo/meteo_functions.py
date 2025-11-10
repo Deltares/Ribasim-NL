@@ -23,7 +23,7 @@ def SyncWiwbMeteoFromCloud(cloud):
     cloud (CloudStorage)
         A cloud storage object that is used to connect to the Cloud facilities for Ribasim
     """
-    WIWB_dir = cloud.joinpath("Basisgegevens", "WIWB")
+    WIWB_dir = cloud.joinpath("Basisgegevens/WIWB")
     WIWB_Precip_path = WIWB_dir / "Meteobase.Precipitation.nc"
     WIWB_Evap_path = WIWB_dir / "Meteobase.Evaporation.Makkink.nc"
 

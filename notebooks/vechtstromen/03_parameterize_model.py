@@ -12,12 +12,7 @@ authority = "Vechtstromen"
 short_name = "vechtstromen"
 run_model = False
 run_period = None
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data.xlsx",
-)
+static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"

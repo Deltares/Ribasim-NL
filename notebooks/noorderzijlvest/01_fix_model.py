@@ -22,12 +22,10 @@ cloud = CloudStorage()
 authority = "Noorderzijlvest"
 short_name = "nzv"
 
-he_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20241113", "HydrologischeEenheden_v45.shp")
-he_snap_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20241113", "HE_v45_snappingpoints.shp")
-lines_shp = cloud.joinpath(
-    authority, "verwerkt", "5_D_HYDRO_export", "hydroobjecten", "Noorderzijlvest_hydroobjecten.shp"
-)
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+he_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20241113/HydrologischeEenheden_v45.shp")
+he_snap_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20241113/HE_v45_snappingpoints.shp")
+lines_shp = cloud.joinpath(authority, "verwerkt/5_D_HYDRO_export/hydroobjecten/Noorderzijlvest_hydroobjecten.shp")
+model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 
@@ -68,7 +66,7 @@ for row in lines_gdf.itertuples():
 lines_gdf = lines_gdf.explode(index_parts=False, ignore_index=True)
 lines_gdf.crs = 28992
 network = Network(lines_gdf.copy())
-network.to_file(cloud.joinpath(authority, "verwerkt", "network.gpkg"))
+network.to_file(cloud.joinpath(authority, "verwerkt/network.gpkg"))
 
 
 # %% some stuff we'll need again
@@ -134,7 +132,7 @@ he_df.set_index("HEIDENT", inplace=True)
 # niet altijd ligt de coordinaat goed
 he_outlet_df.loc["GPGKST0470", ["geometry"]] = model.manning_resistance[892].geometry
 
-he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt", "HydrologischeEenheden_v45_outlets.gpkg"))
+he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt/HydrologischeEenheden_v45_outlets.gpkg"))
 
 # %% Edit network
 

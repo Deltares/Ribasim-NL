@@ -10,8 +10,8 @@ short_name = "dommel"
 model = None
 
 # %%
-basin_area_gpkg = cloud.joinpath("DeDommel", "verwerkt", "basin_area.gpkg")
-area_shp = cloud.joinpath(authority, "verwerkt", "watervlakken", "LWW_2023_A_water_vlak_V.shp")
+basin_area_gpkg = cloud.joinpath("DeDommel/verwerkt/basin_area.gpkg")
+area_shp = cloud.joinpath(authority, "verwerkt/watervlakken/LWW_2023_A_water_vlak_V.shp")
 basin_area_df = model.basin.area.df
 basin_area_df.set_index("node_id", inplace=True)
 area_gdf = gpd.read_file(area_shp)

@@ -7,17 +7,15 @@ cloud = CloudStorage()
 
 
 # %% load model
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_model_network", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_fix_model_network/model.toml")
 model = Model.read(ribasim_toml)
 
 # %% network from HydroObjects
-network_gpkg = cloud.joinpath("DeDommel", "verwerkt", "network.gpkg")
+network_gpkg = cloud.joinpath("DeDommel/verwerkt/network.gpkg")
 if network_gpkg.exists():
     network = Network.from_network_gpkg(network_gpkg)
 else:
-    network = Network.from_lines_gpkg(
-        cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject"
-    )
+    network = Network.from_lines_gpkg(cloud.joinpath("DeDommel/verwerkt/4_ribasim/hydamo.gpkg"), layer="hydroobject")
 
     network.to_file(network_gpkg)
 # %% links follow HydroObjects
@@ -56,7 +54,7 @@ for row in model.link.df.itertuples():
         data += [row]
         continue
 
-out_dir = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_links")
+out_dir = cloud.joinpath("DeDommel/modellen/DeDommel_fix_links")
 gpd.GeoDataFrame(data, crs=28992).to_file(out_dir / "rare_links.gpkg")
 
 # %% write model

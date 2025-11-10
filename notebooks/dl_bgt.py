@@ -5,7 +5,7 @@ import pandas as pd
 from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
-dir = cloud.joinpath("Basisgegevens", "BGT")
+dir = cloud.joinpath("Basisgegevens/BGT")
 
 waterdeel_df = gpd.read_file(dir / "bgt_waterdeel_current.gpkg")
 
@@ -21,7 +21,7 @@ waterdeel_df = gpd.read_file(dir / "bgt_waterdeel_current.gpkg")
 # * eenheden omschrijven naar m3/s
 
 verdeelpunten_df = pd.read_excel(
-    cloud.joinpath("Landelijk", "waterverdeling", "verdeelpunten.xlsx"), sheet_name="verdeelpunten"
+    cloud.joinpath("Landelijk/waterverdeling/verdeelpunten.xlsx"), sheet_name="verdeelpunten"
 )
 verdeelpunten_df = gpd.GeoDataFrame(verdeelpunten_df, geometry=gpd.GeoSeries(None, crs=28992))
 
@@ -47,7 +47,7 @@ all_hydroobject = []
 bronhouder = "W0665"
 hydroobject_buffer = 0.5
 mask = verdeelpunten_df["waterbeheerder"] == "Limburg"
-hydamo_gpkg = cloud.joinpath("Limburg", "verwerkt", "4_ribasim", "hydamo.gpkg")
+hydamo_gpkg = cloud.joinpath("Limburg/verwerkt/4_ribasim/hydamo.gpkg")
 
 # Toevoegen geometrie aan verdeelpunten
 for objecttype in verdeelpunten_df[mask].objecttype.unique():
@@ -59,7 +59,7 @@ for objecttype in verdeelpunten_df[mask].objecttype.unique():
 
 
 # hydroobject filteren
-areas_gpkg = cloud.joinpath("Limburg", "verwerkt", "4_ribasim", "areas.gpkg")
+areas_gpkg = cloud.joinpath("Limburg/verwerkt/4_ribasim/areas.gpkg")
 hydroobject_df = gpd.read_file(hydamo_gpkg, layer="hydroobject")
 supply_df = gpd.read_file(areas_gpkg, layer="supply_areas")
 
@@ -96,8 +96,8 @@ all_hydroobject = [hydroobject_select_df]
 # * Aanvoergebieden maken op basis van hydroobjecten + BGT
 
 bronhouder = "W0654"
-hydamo_gpkg = cloud.joinpath("AaenMaas", "verwerkt", "4_ribasim", "hydamo.gpkg")
-stuwen_shp = cloud.joinpath("AaenMaas", "verwerkt", "1_ontvangen_data", "Na_levering_20240418", "stuw.gpkg")
+hydamo_gpkg = cloud.joinpath("AaenMaas/verwerkt/4_ribasim/hydamo.gpkg")
+stuwen_shp = cloud.joinpath("AaenMaas/verwerkt/1_ontvangen_data/Na_levering_20240418/stuw.gpkg")
 mask = verdeelpunten_df["waterbeheerder"] == "AaenMaas"
 # Toevoegen geometrie aan verdeelpunten
 for objecttype in verdeelpunten_df[mask].objecttype.unique():
@@ -114,10 +114,10 @@ for objecttype in verdeelpunten_df[mask].objecttype.unique():
     ].to_numpy()
 
 
-osm_waterway_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Nederland", "waterway_canal_the_netherlands.gpkg")
-osm_stream_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Nederland", "waterway_stream_the_netherlands.gpkg")
-osm_river_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Nederland", "waterway_stream_the_netherlands.gpkg")
-waterschappen_gpkg = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
+osm_waterway_gpkg = cloud.joinpath("Basisgegevens/OSM/Nederland/waterway_canal_the_netherlands.gpkg")
+osm_stream_gpkg = cloud.joinpath("Basisgegevens/OSM/Nederland/waterway_stream_the_netherlands.gpkg")
+osm_river_gpkg = cloud.joinpath("Basisgegevens/OSM/Nederland/waterway_stream_the_netherlands.gpkg")
+waterschappen_gpkg = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
 waterschappen_df = gpd.read_file(waterschappen_gpkg)
 
 
@@ -250,7 +250,7 @@ all_hydroobject += [hydroobject_select_df]
 # * wegschrijven laag verdeelpunten
 
 
-aanvoergebieden_gpkg = cloud.joinpath("Basisgegevens", "waterverdeling", "aanvoer.gpkg")
+aanvoergebieden_gpkg = cloud.joinpath("Basisgegevens/waterverdeling/aanvoer.gpkg")
 verdeelpunten_df.to_file(aanvoergebieden_gpkg, layer="verdeelpunten")
 pd.concat(all_aanvoergebieden).to_file(aanvoergebieden_gpkg, layer="aanvoergebieden")
 pd.concat(all_hydroobject).to_file(aanvoergebieden_gpkg, layer="hydroobject")

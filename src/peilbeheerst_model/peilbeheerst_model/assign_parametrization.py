@@ -28,12 +28,7 @@ class AssignMetaData:
             self.model = self._get_model_from_cloud()
 
         # Param file
-        self.param_file = self.cloud.joinpath(
-            authority,
-            "verwerkt",
-            "Parametrisatie_data",
-            param_name,
-        )
+        self.param_file = self.cloud.joinpath(authority, "verwerkt/Parametrisatie_data", param_name)
 
     def _get_model_from_cloud(self) -> Model:
         self.cloud.synchronize(filepaths=[self.model_dir], check_on_remote=True)

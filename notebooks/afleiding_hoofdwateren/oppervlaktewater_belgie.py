@@ -6,12 +6,12 @@ from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 
-basins_osm_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Belgie", "water_areas.gpkg")
+basins_osm_gpkg = cloud.joinpath("Basisgegevens/OSM/Belgie/water_areas.gpkg")
 
-basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat", "verwerkt", "basins_user_data.gpkg")
+basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_user_data.gpkg")
 
-rivers_osm_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Nederland_Belgie", "waterway_river.gpkg")
-canal_osm_gpkg = cloud.joinpath("Basisgegevens", "OSM", "Nederland_Belgie", "waterway_canal.gpkg")
+rivers_osm_gpkg = cloud.joinpath("Basisgegevens/OSM/Nederland_Belgie/waterway_river.gpkg")
+canal_osm_gpkg = cloud.joinpath("Basisgegevens/OSM/Nederland_Belgie/waterway_canal.gpkg")
 
 # %%
 clip_poly = gpd.read_file(
@@ -38,7 +38,7 @@ for row in basins_osm_gdf.itertuples():
         basins_osm_gdf.loc[row.Index, ["naam"]] = df["name"].to_list()[0]
 
 basins_osm_gdf.to_file(
-    cloud.joinpath("Rijkswaterstaat", "Verwerkt", "oppervlaktewater_belgie.gpkg"),
+    cloud.joinpath("Rijkswaterstaat/Verwerkt/oppervlaktewater_belgie.gpkg"),
     engine="pyogrio",
 )
 
