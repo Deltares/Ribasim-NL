@@ -31,7 +31,7 @@ model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 
-cloud.synchronize(filepaths=(he_shp, he_snap_shp, lines_shp, model_edits_path, ribasim_dir))
+cloud.synchronize(filepaths=[he_shp, he_snap_shp, lines_shp, model_edits_path, ribasim_dir])
 ribasim_toml = ribasim_dir / "model.toml"
 
 # %% read model
