@@ -233,7 +233,6 @@ ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
-model.ribasim_version = ribasim_version
 # %%
 # %% Test run model
 if run_model:
