@@ -500,13 +500,9 @@ class Model(Model):
         self,
         from_node_id: int | None = None,
         to_node_id: int | None = None,
-        edge_id: int | None = None,
         link_id: int | None = None,
     ):
-        """Reverse an edge"""
-        if edge_id is not None:
-            link_id = edge_id
-            DeprecationWarning("use of edge_id is deprecated. Use link_id instead")
+        """Reverse a link"""
         if self.link.df is not None:
             if link_id is None:
                 # get original link-data
