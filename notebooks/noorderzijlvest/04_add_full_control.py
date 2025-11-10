@@ -47,28 +47,28 @@ cloud.synchronize(
 model = Model.read(ribasim_toml)
 
 
-def get_first_upstream_basins(model: Model, node_id: int):
-    # get first upstream basins of a node
+def get_first_upstream_basins(model: Model, node_id: int) -> np.ndarray:
+    """Get first upstream basins of a node"""
     us_basins = model.get_upstream_basins(node_id=node_id, stop_at_node_type="Basin")
     return us_basins[us_basins.node_id != node_id].node_id.to_numpy()
 
 
-def get_first_downstream_basins(model: Model, node_id: int):
-    # Get the first downstream basins of a node
+def get_first_downstream_basins(model: Model, node_id: int) -> np.ndarray:
+    """Get the first downstream basins of a node"""
     ds_basins = model.get_downstream_basins(node_id=node_id, stop_at_node_type="Basin")
     return ds_basins[ds_basins.node_id != node_id].node_id.to_numpy()
 
 
-def is_controlled_basin(model: Model, node_id: int):
-    # node_id is Basin (!). Check if is controlled (no ManningResistance or LinearResistance)
+def is_controlled_basin(model: Model, node_id: int) -> bool:
+    """node_id is Basin (!). Check if is controlled (no ManningResistance or LinearResistance)"""
     ds_node_ids = model._downstream_nodes(node_id=node_id, stop_at_node_type="Basin")
     return (
         not model.node_table().df.loc[list(ds_node_ids)].node_type.isin(["ManningResistance", "LinearResistance"]).any()
     )
 
 
-def has_all_upstream_controlled_basins(node_id: int, model: Model):
-    # find upstream basin of pump or outlet. So node_id should refer to connector-nodes only (!)
+def has_all_upstream_controlled_basins(node_id: int, model: Model) -> bool:
+    """Find upstream basin of pump or outlet. So node_id should refer to connector-nodes only (!)"""
     us_basins = get_first_upstream_basins(model=model, node_id=node_id)
     if len(us_basins) == 0:  # No basins, so level boundary
         return False
@@ -83,8 +83,8 @@ def has_all_upstream_controlled_basins(node_id: int, model: Model):
     return all_controlled
 
 
-def downstream_basin_is_controlled(node_id: int, model=Model):
-    # find downstream basins of Pump or outlet. So node_id should refer to connector-nodes only (!)
+def downstream_basin_is_controlled(node_id: int, model=Model) -> bool:
+    """Find if downstream basins are controlled by Pump or Outlet. So node_id should refer to connector-nodes only (!)"""
     ds_basins = get_first_downstream_basins(model=model, node_id=node_id)
     if len(ds_basins) == 0:  # No basins, so level boundary
         return False
@@ -166,7 +166,7 @@ set_values_where(
     out_static,
     mask=mask_upstream_aanvoer,
     updates={
-        "max_downstream_level": lambda d: d["min_upstream_level"],  # + 0.02,
+        "max_downstream_level": lambda d: d["min_upstream_level"],
         "min_upstream_level": pd.NA,
     },
 )

@@ -33,7 +33,7 @@ remove_nodes = [
     203809,  # "Gaarkeuken" Fryslân
 ]
 
-# force LevelBoundary node_id to Basin node_id
+# force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
 forced_coupling = {
     3400005: 5901608,
     3400007: 200184,  # Gaarkeuken naar juiste kanaalpand
@@ -233,7 +233,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
             continue
 
         # we check if coupling is overruled
-        if boundary_node_id in forced_coupling.keys():
+        if boundary_node_id in forced_coupling:
             couple_with_basin_id = forced_coupling[boundary_node_id]
         else:
             # Check whether there are very close LB from the other authority
