@@ -107,7 +107,7 @@ outlets_us_basins_controlled = model.outlet.node.df.apply(
 )
 
 original_model = model.model_copy(deep=True)
-update_basin_static(model=model, evaporation_mm_per_day=0.5)
+update_basin_static(model=model, precipitation_mm_per_day=1)
 
 
 # %%
@@ -228,6 +228,9 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 1744, "flow_rate"] = 0
 model.pump.static.df.loc[model.pump.static.df.node_id == 118, "min_upstream_level"] = -1.07
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 487, "max_downstream_level"] = -1.07
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 729, "min_upstream_level"] = -1.07
+
+# Meerweg
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1758, "max_downstream_level"] = -0.89
 
 # flow inlaten naar custom
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1750, "flow_rate"] = 0.5
@@ -515,89 +518,145 @@ df.loc[mask, "flow_rate"] = 0.0
 # %%
 # Rondpompen voorkomen bij 2 aanvoer en afvoer gemaal direct naast elkaar, min_upstream en max_downstream gelijk maken
 # === INLINE: max_downstream_level(iKGM/iKST-pumps) = min_upstream_level(KGM/KST peer: pump óf outlet) ===
+print("=== Corrigeren iKGM/KGM_i & iKST/KST_i-pompen (rondpompen voorkomen) ===")
 
 
-# --- helpers ---
+# --- Helper om waarden iets te verschuiven ---
 def bump(v, delta):
-    # verhoog/verlaag scalar of lijst; NaN blijft NaN
-    if isinstance(v, list | tuple | np.ndarray):
-        arr = pd.to_numeric(np.asarray(v), errors="coerce")
-        arr = np.where(np.isnan(arr), arr, arr + float(delta))
-        return arr.tolist()
+    """Verhoog/verlaag scalar of array met delta; NaN blijft NaN."""
     try:
+        if isinstance(v, (list, tuple, np.ndarray)):
+            arr = pd.to_numeric(np.asarray(v), errors="coerce")
+            arr = np.where(np.isnan(arr), arr, arr + float(delta))
+            return arr.tolist()
         x = float(v)
         return x + float(delta) if not np.isnan(x) else v
     except Exception:
         return v
 
 
-# Bron-dataframes
+# --- Dataframes ---
 pump_static_df = model.pump.static.df
 outlet_static_df = model.outlet.static.df
 
-# Kolommen bepalen (pump)
+# --- Kolommen bepalen ---
 code_col_pump = "meta_code_waterbeheerder" if "meta_code_waterbeheerder" in pump_static_df.columns else "meta_code"
+code_col_outlet = "meta_code_waterbeheerder" if "meta_code_waterbeheerder" in outlet_static_df.columns else "meta_code"
+
 min_us_col_pump = "min_upstream_level" if "min_upstream_level" in pump_static_df.columns else "min_upstream_water_level"
-# Ook max_downstream kolom bepalen voor PUMPS
 max_ds_col_pump = (
     "max_downstream_level" if "max_downstream_level" in pump_static_df.columns else "max_downstream_water_level"
 )
-
-# Kolommen bepalen (outlet)
-code_col_outlet = "meta_code_waterbeheerder" if "meta_code_waterbeheerder" in outlet_static_df.columns else "meta_code"
 min_us_col_outlet = (
     "min_upstream_level" if "min_upstream_level" in outlet_static_df.columns else "min_upstream_water_level"
 )
 
-# --- 1) Peers verzamelen (NIET-i, KGM/KST) met geldige min_upstream ---
+print(f"Gebruik kolommen: Pump={min_us_col_pump}/{max_ds_col_pump}, Outlet={min_us_col_outlet}")
+print(f"Codekolommen: pump={code_col_pump}, outlet={code_col_outlet}")
+
+# -----------------------------------------------------------
+# 1️⃣ Peers verzamelen (KGM/KST met geldige min_upstream)
+# -----------------------------------------------------------
 peer_from_pumps = pump_static_df[[code_col_pump, min_us_col_pump]].copy()
 peer_from_outlet = outlet_static_df[[code_col_outlet, min_us_col_outlet]].copy()
 
-peer_from_pumps["code"] = peer_from_pumps[code_col_pump].astype(str)
-peer_from_outlet["code"] = peer_from_outlet[code_col_outlet].astype(str)
+peer_from_pumps["code"] = peer_from_pumps[code_col_pump].astype(str).str.strip()
+peer_from_outlet["code"] = peer_from_outlet[code_col_outlet].astype(str).str.strip()
 
 peer_from_pumps = peer_from_pumps[
-    peer_from_pumps["code"].str.startswith(("KGM", "KST"), na=False) & peer_from_pumps[min_us_col_pump].notna()
+    peer_from_pumps["code"].str.upper().str.startswith(("KGM", "KST"), na=False)
+    & peer_from_pumps[min_us_col_pump].notna()
 ].rename(columns={min_us_col_pump: "min_upstream_peer"})[["code", "min_upstream_peer"]]
 
 peer_from_outlet = peer_from_outlet[
-    peer_from_outlet["code"].str.startswith(("KGM", "KST"), na=False) & peer_from_outlet[min_us_col_outlet].notna()
+    peer_from_outlet["code"].str.upper().str.startswith(("KGM", "KST"), na=False)
+    & peer_from_outlet[min_us_col_outlet].notna()
 ].rename(columns={min_us_col_outlet: "min_upstream_peer"})[["code", "min_upstream_peer"]]
 
 peer_sources_df = pd.concat([peer_from_pumps, peer_from_outlet], ignore_index=True).drop_duplicates(subset=["code"])
-
 code_to_min_upstream_peer = dict(
-    zip(peer_sources_df["code"].to_numpy(), peer_sources_df["min_upstream_peer"].astype(float).to_numpy())
+    zip(peer_sources_df["code"].str.upper().to_numpy(), peer_sources_df["min_upstream_peer"].astype(float).to_numpy())
 )
 
-# --- 2) Doel: iKGM/iKST-pompen vinden en aanpassen ---
-if code_to_min_upstream_peer:
-    i_pumps_df = pump_static_df[[code_col_pump, "node_id"]].copy()
-    i_pumps_df["icode"] = i_pumps_df[code_col_pump].astype(str)
-    i_pumps_df = i_pumps_df[i_pumps_df["icode"].str.startswith(("iKGM", "iKST"), na=False)]
+print(f"Peers gevonden: {len(peer_sources_df)}")
+if not peer_sources_df.empty:
+    print("Voorbeelden peers:")
+    print(peer_sources_df.head(10))
+else:
+    print("⚠️ Geen peers gevonden (controleer min_upstream-levels).")
 
-    if not i_pumps_df.empty:
-        # Basiscode (zonder 'i')
-        i_pumps_df["base_code"] = i_pumps_df["icode"].str[1:]
-        # Peer-waarde (min_upstream van KGM/KST peer) die we als nieuwe max_downstream willen gebruiken
-        i_pumps_df["new_max_downstream_level"] = i_pumps_df["base_code"].map(code_to_min_upstream_peer)
-        i_pumps_df = i_pumps_df[i_pumps_df["new_max_downstream_level"].notna()]
+# -----------------------------------------------------------
+# 2️⃣ i-pompen vinden (i vooraan of _i achteraan)
+# -----------------------------------------------------------
+i_pumps_df = pump_static_df[[code_col_pump, "node_id", min_us_col_pump, max_ds_col_pump]].copy()
+i_pumps_df["icode"] = i_pumps_df[code_col_pump].astype(str).str.strip()
 
-        if not i_pumps_df.empty:
-            # 2a) max_downstream van de i-pumps gelijk zetten aan peer-min_upstream
-            node_to_new_maxds = dict(
-                zip(i_pumps_df["node_id"].to_numpy(), i_pumps_df["new_max_downstream_level"].to_numpy())
-            )
-            mask_nodes = pump_static_df["node_id"].isin(node_to_new_maxds.keys())
-            pump_static_df.loc[mask_nodes, max_ds_col_pump] = pump_static_df.loc[mask_nodes, "node_id"].map(
-                node_to_new_maxds
-            )
+# Herken zowel iKGM/iKST als KGM_i/KST_i
+mask_i = (
+    i_pumps_df["icode"].str.match(r"(?i)^iKGM")  # iKGM... (case-insensitive)
+    | i_pumps_df["icode"].str.match(r"(?i)^iKST")
+    | i_pumps_df["icode"].str.match(r"(?i)^KGM.*_i$")
+    | i_pumps_df["icode"].str.match(r"(?i)^KST.*_i$")
+)
+i_pumps_df = i_pumps_df[mask_i].copy()
 
-            # 2b) min_upstream van de i-pumps met 0.02 VERLAGEN
-            #     (gebruik juiste kolomnaam en bewerk in pump_static_df, niet in i_pumps_df)
-            pump_static_df.loc[mask_nodes, min_us_col_pump] = pump_static_df.loc[mask_nodes, min_us_col_pump].apply(
-                lambda v: bump(v, -0.02)
-            )
+if i_pumps_df.empty:
+    print("⚠️ Geen iKGM/iKST of KGM_i/KST_i-pompen gevonden.")
+else:
+    # Basiscode bepalen: verwijder leading 'i' of trailing '_i'
+    i_pumps_df["base_code"] = (
+        i_pumps_df["icode"]
+        .str.replace("^i", "", case=False, regex=True)
+        .str.replace("_i$", "", case=False, regex=True)
+        .str.strip()
+    )
+
+    # Koppel met peers
+    i_pumps_df["peer_min_upstream"] = i_pumps_df["base_code"].str.upper().map(code_to_min_upstream_peer)
+
+    # Samenvatting
+    missing = i_pumps_df[i_pumps_df["peer_min_upstream"].isna()]
+    matched = i_pumps_df[i_pumps_df["peer_min_upstream"].notna()]
+
+    print(f"Gevonden i-pompen: {len(i_pumps_df)} (waarvan {len(matched)} met geldige peer)")
+    if not matched.empty:
+        print(matched[[code_col_pump, "base_code", "peer_min_upstream"]].head(10))
+    if not missing.empty:
+        print(f"⚠️ Geen match voor {len(missing)} pompen:")
+        print(missing[[code_col_pump, "base_code"]].head(10))
+
+    # -------------------------------------------------------
+    # 3️⃣ Aanpassen van matched i-pompen
+    # -------------------------------------------------------
+    if not matched.empty:
+        node_to_new_maxds = dict(zip(matched["node_id"], matched["peer_min_upstream"]))
+        mask_nodes = pump_static_df["node_id"].isin(node_to_new_maxds.keys())
+
+        print(f"➡️ Ga {mask_nodes.sum()} pompen aanpassen (up/down-levels).")
+
+        # Oude waarden
+        before = pump_static_df.loc[mask_nodes, [code_col_pump, min_us_col_pump, max_ds_col_pump]].copy()
+
+        # max_downstream = peer.min_upstream
+        pump_static_df.loc[mask_nodes, max_ds_col_pump] = pump_static_df.loc[mask_nodes, "node_id"].map(
+            node_to_new_maxds
+        )
+
+        # min_upstream = min_upstream - 0.02
+        pump_static_df.loc[mask_nodes, min_us_col_pump] = pump_static_df.loc[mask_nodes, min_us_col_pump].apply(
+            lambda v: bump(v, -0.02)
+        )
+
+        # Nieuwe waarden
+        after = pump_static_df.loc[mask_nodes, [code_col_pump, min_us_col_pump, max_ds_col_pump]].copy()
+        merged = before.merge(after, on=code_col_pump, suffixes=("_old", "_new"))
+
+        print("✅ Aanpassingen (eerste 10):")
+        print(merged.head(10))
+    else:
+        print("⚠️ Geen geldige koppelingen gevonden — niets aangepast.")
+
+print("=== Klaar ===")
 
 
 # %%
@@ -607,8 +666,9 @@ def build_discrete_controls(
     out_static: pd.DataFrame,
     mask_upstream_aanvoer: pd.Series,
     exclude_ids=None,
-    listen_node_id: int = 1493,
-    band=(7.62, 7.68),
+    listen_node_id: int = 1132,
+    # band=(2, 3.15),
+    band=(7.622, 7.68),
     flow_open_default: float = 20.0,  # <- default fallback
     delta_h: float = 0.05,
     dc_offset: float = 10.0,  # x-offset voor DC-node
@@ -696,7 +756,22 @@ def build_discrete_controls(
         model.link.add(dc, model.outlet[outlet_id])
 
 
-exclude_ids = {1744, 1745, 1746, 1740, 1756, 1738, 716, 683, 1752, 1753}  # scheepvaartsluizen moeten op flow_rate=0
+exclude_ids = {
+    1744,
+    1745,
+    1746,
+    1748,
+    1740,
+    1747,
+    1755,
+    1754,
+    1756,
+    1738,
+    716,
+    683,
+    1752,
+    1753,
+}  # scheepvaartsluizen moeten op flow_rate=0
 df = model.outlet.static.df
 mask = df["node_id"].isin(exclude_ids)
 df.loc[mask, "flow_rate"] = 0.05
@@ -708,6 +783,8 @@ build_discrete_controls(
     exclude_ids=exclude_ids,
     listen_node_id=1493,
     band=(7.62, 7.68),
+    # listen_node_id=1132,
+    # band=(2, 3.15),
     flow_open_default=20.0,
     delta_h=0.05,
 )
@@ -717,6 +794,7 @@ build_discrete_controls(
 # === afvoerpumps/oulets ===
 selected_node_ids = [
     44,
+    47,
     350,
     431,
     681,
@@ -750,13 +828,18 @@ selected_node_ids = [
     731,
     181,
     182,
-    721,
     67,
     40,
     732,
     519,
+    1748,
+    1755,
+    1754,
+    1747,
 ]
 LISTEN_NODE_ID = 1493
+# LISTEN_NODE_ID = 1132
+
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -770,6 +853,7 @@ if not row.empty and "meta_streefpeil" in row.columns:
     val = row["meta_streefpeil"].iloc[0]
     if pd.notna(val):
         th_high = 7.68
+        # th_high = 3.15
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
 th_low = th_high - DELTA_LOW  # nu niet gebruikt
@@ -935,7 +1019,7 @@ for nid in selected_node_ids:
 # === Aanvoergemalen/aanvoerpumps Grote pompen en outlets===
 selected_node_ids = [29, 728]
 LISTEN_NODE_ID = 1493
-# LISTEN_NODE_ID = 1613
+# LISTEN_NODE_ID = 1132
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -949,6 +1033,7 @@ if not row.empty and "meta_streefpeil" in row.columns:
     val = row["meta_streefpeil"].iloc[0]
     if pd.notna(val):
         th_high = 7.68
+        # th_high = 3.15
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
 th_low = th_high - DELTA_LOW  # nu niet gebruikt
@@ -1114,6 +1199,7 @@ for nid in selected_node_ids:
 # === Aanvoergemalen/aanvoerpumps ===
 selected_node_ids = [
     121,
+    48,
     129,
     708,
     117,
@@ -1145,13 +1231,14 @@ selected_node_ids = [
     106,
     143,
     711,
+    721,
     1753,
     505,
     837,
     142,
 ]
 LISTEN_NODE_ID = 1493
-# LISTEN_NODE_ID = 1613
+# LISTEN_NODE_ID = 1132
 DELTA_LOW = 0.07
 
 basin = model.basin.area.df
@@ -1166,6 +1253,7 @@ if not row.empty and "meta_streefpeil" in row.columns:
     if pd.notna(val):
         #  th_high = float(val) - 0.02
         th_high = 7.68
+        # th_high = 3.15
 if th_high is None:
     raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
 th_low = th_high - DELTA_LOW  # nu niet gebruikt
@@ -1336,6 +1424,7 @@ def add_max_ds_controller(
     target_node_ids,
     listen_node_id: int,
     th_high: float = 7.68,
+    # th_high: float = 3.15,
     offset: float = 10.0,
 ):
     """
@@ -1475,7 +1564,9 @@ add_max_ds_controller(
     model=model,
     target_node_ids=target_nodes,
     listen_node_id=1493,
+    # listen_node_id=1132,
     th_high=7.68,
+    # th_high=3.15,
 )
 # %%
 # write model

@@ -18,6 +18,7 @@ static_data_xlsx = cloud.joinpath(
     "parameters",
     "static_data.xlsx",
 )
+
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
@@ -45,7 +46,8 @@ mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
-
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1758, "min_upstream_level"] = -0.8
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1757, "level"] = -0.8
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 714, "max_downstream_level"] = -2
 # %%
 # Write model

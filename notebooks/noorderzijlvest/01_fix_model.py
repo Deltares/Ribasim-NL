@@ -417,6 +417,12 @@ model.remove_node(node_id=12, remove_links=True)
 model.remove_node(node_id=1750, remove_links=True)
 model.remove_node(node_id=13, remove_links=True)
 
+# voeg inlaat Meerweg toe (n.a.v communicatie met Vincent)
+boundary_node = model.level_boundary.add(Node(geometry=Point(234937, 575821)))
+outlet_node = model.outlet.add(Node(name="Meerweg", geometry=Point(234893, 575872)))
+model.link.add(boundary_node, outlet_node)
+model.link.add(outlet_node, model.basin[1192])
+
 # %% Create junctions
 model = junctionify(model)
 
