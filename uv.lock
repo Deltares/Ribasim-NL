@@ -1616,7 +1616,7 @@ wheels = [
 
 [[package]]
 name = "imod"
-version = "1.0.0rc7"
+version = "1.0.0.post1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "affine" },
@@ -1640,9 +1640,9 @@ dependencies = [
     { name = "xarray" },
     { name = "xugrid" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/55/0e3ce98e8939968479f81256837fb6670f90c48e6e5f430b52a386245c8b/imod-1.0.0rc7.tar.gz", hash = "sha256:5d82f6ccf8975493b9f981d8e7cacf010db0dbff3100d97df8ea5dd98d6f5ae1", size = 631224, upload-time = "2025-10-28T08:45:13.724Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/72/2753a33d73b551d60d4d8c8f471eda059dd6d5ed5612447847711016c094/imod-1.0.0.post1.tar.gz", hash = "sha256:14415c7a569f280f416ee5ad59edb48eb2d3fb6f87a6a4bde2f84e2ca28ab2f1", size = 640148, upload-time = "2025-11-11T16:42:10.24Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/33/1fed8e85f246035a0d8b1a13b6a1097ae375f7d13c5e0486ec2de12206c5/imod-1.0.0rc7-py3-none-any.whl", hash = "sha256:c07593abafcad43f91ad2c245eacc4dbc28e68ae092eb7857aa96b88563764fc", size = 861848, upload-time = "2025-10-28T08:45:11.563Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/3a/79c5f533767dd4f43cdeb13a9aa0c4d615be3be62562745b9125ee86bae7/imod-1.0.0.post1-py3-none-any.whl", hash = "sha256:7344e1a66f0960315656c29bf315e60ea1f486056c634abb3ff3148dcb601bc4", size = 874342, upload-time = "2025-11-11T16:42:07.334Z" },
 ]
 
 [[package]]
@@ -3897,7 +3897,7 @@ requires-dist = [
     { name = "geocube", specifier = ">=0.7.1" },
     { name = "geopandas", specifier = ">=1.1.1" },
     { name = "hydamo", editable = "src/hydamo" },
-    { name = "imod", specifier = ">=1.0.0rc7" },
+    { name = "imod", specifier = ">=1" },
     { name = "ipykernel", specifier = ">=6.30.1" },
     { name = "jupyterlab", specifier = ">=4.4.9" },
     { name = "matplotlib", specifier = ">=3.10.6" },
