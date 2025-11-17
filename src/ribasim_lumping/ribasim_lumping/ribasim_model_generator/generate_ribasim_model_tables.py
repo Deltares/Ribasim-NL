@@ -125,7 +125,7 @@ def generate_basin_time_table_laterals_areas_data(basins, areas, laterals_areas_
     timeseries = timeseries.sort_values(["time", "node_id"]).reset_index(drop=True)
 
     timeseries_variables = ["precipitation", "potential_evaporation", "drainage", "infiltration", "urban_runoff"]
-    timeseries = timeseries[["time", "node_id"] + timeseries_variables]
+    timeseries = timeseries[["time", "node_id", *timeseries_variables]]
     timeseries[timeseries_variables] = timeseries[timeseries_variables].round(6)
 
     return timeseries

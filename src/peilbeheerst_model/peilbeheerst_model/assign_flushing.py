@@ -120,7 +120,7 @@ class Flushing:
             # Find all downstream paths from the matching basins, contained by
             # the contour of the basins geometry and flushing geometry
             downstream_paths = []
-            geom = shapely.union_all([flushing_row.geometry.buffer(0.1)] + basin_matches.geometry.buffer(0.1).tolist())
+            geom = shapely.union_all([flushing_row.geometry.buffer(0.1), *basin_matches.geometry.buffer(0.1).tolist()])
             for match in basin_matches.itertuples():
                 # Find the downstream path(s) for this basin
                 downstream_paths += self._all_downstream_paths(model.graph, match.node_id, all_nodes, limit_geom=geom)
@@ -477,7 +477,7 @@ class Flushing:
 
         # Recurse in successors
         for successor in sorted(unvisited_predecessors):
-            self._dfs(graph, path + [successor], end_paths, valid_nodes, successors)
+            self._dfs(graph, [*path, successor], end_paths, valid_nodes, successors)
 
     def _dissolve_flushing_data(self, df_flushing: pd.DataFrame) -> pd.DataFrame:
         # Round flushing_col to nearest integer value

@@ -100,7 +100,7 @@ def get_inflow_outflow_link_data(ribasim_model: ribasim.Model):
 
 def read_ribasim_model_results(simulation_path: Path):
     if not simulation_path.exists():
-        raise ValueError(f" x simulation_path {str(simulation_path)} does not exist")
+        raise ValueError(f" x simulation_path {simulation_path!s} does not exist")
     ribasim_model = ribasim.Model.read(Path(simulation_path, "ribasim.toml"))
 
     basin = read_arrow_file(simulation_path, "basin")
@@ -244,8 +244,8 @@ def plot_results_basins_ribasim_model(
 
 
 def plot_results_basin_ribasim_model(
-    basin_no: int = None,
-    simulation_path: Path = None,
+    basin_no: int | None = None,
+    simulation_path: Path | None = None,
     ribasim_model: ribasim.Model = None,
     ribasim_results: RibasimModelResults = None,
     basin_results: RibasimBasinResults = None,

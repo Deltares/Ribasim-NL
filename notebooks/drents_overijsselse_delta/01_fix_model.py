@@ -211,7 +211,7 @@ poly1, poly2 = split_basin_multi_polygon(poly2, split_line_gdf.at[17, "geometry"
 model.basin.area.df.loc[model.basin.area.df.index.max() + 1] = {"geometry": poly1, "node_id": 1695}
 model.basin.area.df.crs = model.crs
 
-tables = basin_data + [basin.Area(geometry=[poly2])]
+tables = [*basin_data, basin.Area(geometry=[poly2])]
 basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[19608, "geometry"].boundary.geoms[1]), tables=tables)
 
 

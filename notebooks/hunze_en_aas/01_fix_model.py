@@ -137,7 +137,6 @@ model.remove_node(node_id=17, remove_links=True)
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
 # Create the overlay of areas
 combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 # Calculate area for each geometry
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area

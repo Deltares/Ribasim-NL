@@ -99,13 +99,15 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
             # else:
 
             linestring1 = LineString(
-                list(linestring.coords)[: dist1pos + 1]
-                + [Point(node).coords[0]]
-                + list(linestring.coords)[dist1pos + 1 :]
+                [
+                    *list(linestring.coords)[: dist1pos + 1],
+                    Point(node).coords[0],
+                    *list(linestring.coords)[dist1pos + 1 :],
+                ]
             )
 
             linestring2 = LineString(
-                list(linestring.coords)[:dist1pos] + [Point(node).coords[0]] + list(linestring.coords)[dist1pos:]
+                [*list(linestring.coords)[:dist1pos], Point(node).coords[0], *list(linestring.coords)[dist1pos:]]
             )
 
             linestring = linestring1 if linestring1.length < linestring2.length else linestring2

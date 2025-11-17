@@ -212,7 +212,7 @@ def generate_ribasim_model(
     boundaries: gpd.GeoDataFrame = None,
     basin_connections: gpd.GeoDataFrame = None,
     boundary_connections: gpd.GeoDataFrame = None,
-    tables: dict = None,
+    tables: dict | None = None,
     database_gpkg: str = "database.gpkg",
     results_dir: str = "results",
 ):

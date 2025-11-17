@@ -90,7 +90,7 @@ def find_closest_component_pair(largest_gdf, smaller_gdfs):
     nearest_i, dist2 = sgdf.sindex.nearest(largest_gdf.geometry, return_all=False, return_distance=True)
     li, si = nearest_i[:, np.argmin(dist2)]
 
-    nearest_idx, dist = smaller_gdfs[si].sindex.nearest(
+    nearest_idx, _dist = smaller_gdfs[si].sindex.nearest(
         largest_gdf.geometry.iat[li], return_all=False, return_distance=True
     )
     node_in_smaller = smaller_gdfs[si].index[nearest_idx[1, 0]]
@@ -289,7 +289,7 @@ def shortest_path(waterschap, DATA, gdf_cross, gdf_rhws):
                 smaller_gdfs = [component_to_gdf(comp, node_geometries) for comp in smaller_components]
 
                 # Find the closest smaller_gdf to the largest_gdf
-                closest_index, (node_in_largest, node_in_smaller) = find_closest_component_pair(
+                _closest_index, (node_in_largest, node_in_smaller) = find_closest_component_pair(
                     largest_gdf, smaller_gdfs
                 )
 
@@ -369,7 +369,7 @@ def shortest_path(waterschap, DATA, gdf_cross, gdf_rhws):
 
             ### Plot graph ###
             print("Plotting Output")
-            fig, ax = plt.subplots(figsize=(8, 8))
+            _fig, ax = plt.subplots(figsize=(8, 8))
             plt_paths = gpd.GeoDataFrame(gdf_cross_single, geometry="shortest_path", crs=gdf_cross_single.crs)
             plt_rep = gpd.GeoDataFrame(gdf_rhws_single, geometry="representative_point", crs=gdf_rhws_single.crs)
             plt_rhws = gpd.GeoDataFrame(gdf_rhws_single, geometry="geometry", crs=gdf_rhws_single.crs)

@@ -15,7 +15,7 @@ def add_dhydro_basis_network(
     model_dir: Path,
     set_name: str,
     simulation_name: str,
-    volume_tool_bat_file: Path = None,
+    volume_tool_bat_file: Path | None = None,
     volume_tool_force: bool = False,
     volume_tool_increment: float = 0.1,
     crs: int = 28992,

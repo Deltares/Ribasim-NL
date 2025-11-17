@@ -153,7 +153,7 @@ for group_id, group in tqdm.tqdm(pot_reduce.groupby("merge_group", dropna=True, 
     add_rows.append(single_row)
 
 # Overwrite dataframes
-df_center_single = pd.concat([df_center_single_red] + add_rows)
+df_center_single = pd.concat([df_center_single_red, *add_rows])
 
 df_center_single_boundary = df_center_single.copy()
 df_center_single_boundary["geometry"] = df_center_single.boundary

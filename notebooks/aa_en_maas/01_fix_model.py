@@ -326,7 +326,6 @@ combined_basin_areas_gdf = gpd.overlay(
     ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
 ).explode()
 
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
 non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
 
@@ -345,7 +344,6 @@ combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="code").reset_in
 filtered_drainage_units_gdf = drainage_units_johnny_gdf[
     drainage_units_johnny_gdf["SOORTAFVOE"] != "Deelstroomgebied"
 ].copy()
-filtered_drainage_units_gdf["geometry"] = filtered_drainage_units_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 filtered_drainage_units_gdf = filtered_drainage_units_gdf.to_crs(combined_basin_areas_gdf.crs)
 
@@ -357,9 +355,7 @@ combined_basin_areas_johnny_gdf = combined_basin_areas_johnny_gdf.dissolve(by="C
 
 # Step 1: Separate unassigned from assigned units
 unassigned_units_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].isnull()].copy()
-unassigned_units_gdf["geometry"] = unassigned_units_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 assigned_units_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()].copy()
-assigned_units_gdf["geometry"] = assigned_units_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 # Step 2: Calculate intersection areas between unassigned units and Johnny basins
 overlap_gdf = gpd.overlay(combined_basin_areas_johnny_gdf, unassigned_units_gdf, how="union", keep_geom_type=True)

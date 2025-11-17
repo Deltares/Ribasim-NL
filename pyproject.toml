@@ -72,7 +72,7 @@ line-length = 120
 
 [tool.ruff.lint]
 # See https://docs.astral.sh/ruff/rules/
-select = ["D", "E", "F", "NPY", "PD", "C4", "I", "UP"]
+select = ["D", "E", "F", "NPY", "PD", "C4", "I", "UP", "RUF"]
 ignore = [
     "D1",
     "D400",

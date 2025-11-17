@@ -84,7 +84,7 @@ for sheet_name in sheet_names:
         continue
     # Select correct columns based on CONFIG keys
     column_indices = {name: meting_headers.index(name) for name in available_names}
-    usecols = [0] + list(column_indices.values())
+    usecols = [0, *list(column_indices.values())]
 
     # Read data
     meting_df = pd.read_excel(

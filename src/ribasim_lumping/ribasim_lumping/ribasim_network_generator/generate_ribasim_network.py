@@ -1,3 +1,5 @@
+import itertools
+
 import geopandas as gpd
 import networkx as nx
 import numpy as np
@@ -260,7 +262,7 @@ def create_basin_areas_based_on_drainage_areas(
         areas.geometry = areas.make_valid()
         # due to make_valid() GeometryCollections can be generated. Only take the (multi)polygon from those collections
         areas.geometry = [
-            [g for g in gs.geoms if (isinstance(g, Polygon) or isinstance(g, MultiPolygon))][0]
+            next(g for g in gs.geoms if (isinstance(g, Polygon) or isinstance(g, MultiPolygon)))
             if isinstance(gs, GeometryCollection)
             else gs
             for gs in areas.geometry
@@ -520,7 +522,7 @@ def create_basin_connections(
                     _links.loc[
                         (_links["nodes1"] == f"{n1}_{n2}") | (_links["nodes2"] == f"{n1}_{n2}"), "geometry"
                     ].values[0]
-                    for n1, n2 in zip(p[:-1], p[1:])
+                    for n1, n2 in itertools.pairwise(p)
                 ]
             )
             for p in _basin_connections["paths"]

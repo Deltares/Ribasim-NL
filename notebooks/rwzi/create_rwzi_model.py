@@ -172,7 +172,7 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     )
 
     # Filter columns: only "time" + RWZI names with data
-    rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time"] + list(rwzi_names_zinfo_incl)]
+    rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time", *list(rwzi_names_zinfo_incl)]]
 
     logging.info(
         "Zinfo DataFrame with renamed columns: %s",
@@ -488,7 +488,7 @@ print("Zinfo DataFrame with renamed columns:")
 print(df_Zinfo_influentdebieten_renamed.head())
 
 # Filter only the time column and RWZIs with Zinfo data
-rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time"] + list(rwzi_names_zinfo_incl)]
+rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time", *list(rwzi_names_zinfo_incl)]]
 
 print("Filtered RWZI flow data with common RWZIs:")
 print(rwzi_flow_data.head())

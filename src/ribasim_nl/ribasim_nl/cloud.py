@@ -205,7 +205,7 @@ class CloudStorage:
 
         xml_tree = ElementTree.fromstring(response.text)
         namespaces = {"D": "DAV:"}
-        excluded_content = ["..", Path(url).name] + HIDDEN_DIRS
+        excluded_content = ["..", Path(url).name, *HIDDEN_DIRS]
         content = [
             elem.text
             for elem in xml_tree.findall(".//D:displayname", namespaces=namespaces)

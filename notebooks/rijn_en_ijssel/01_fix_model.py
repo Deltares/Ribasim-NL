@@ -188,7 +188,6 @@ model.remove_unassigned_basin_area()
 # Create the overlay of areas
 ribasim_areas_gdf = ribasim_areas_gdf.to_crs(model.basin.area.df.crs)
 combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 # Calculate area for each geometry
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
