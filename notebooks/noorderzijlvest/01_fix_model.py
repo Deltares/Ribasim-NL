@@ -153,13 +153,10 @@ for action in [
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
-    layer = action if "link" not in action else action.replace("link", "edge")
-    df = gpd.read_file(model_edits_path, layer=layer, fid_as_index=True)
+    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {
-            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
-        }
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
 # %% assign Basin / Area using KWKuit
@@ -365,7 +362,7 @@ for row in model.flow_boundary.node.df.itertuples():
 # Moved t Noord-Willemskanaal so it connects properly with Hunze and Aa's model
 model.move_node(geometry=Point(233237, 559975), node_id=14)
 
-# %% reverse edges before junctionfy
+# %% reverse links before junctionfy
 for link_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
     model.reverse_link(link_id=link_id)
 
