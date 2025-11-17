@@ -107,7 +107,7 @@ outlets_us_basins_controlled = model.outlet.node.df.apply(
 )
 
 original_model = model.model_copy(deep=True)
-update_basin_static(model=model, precipitation_mm_per_day=1)
+update_basin_static(model=model, evaporation_mm_per_day=0.5)
 
 
 # %%
@@ -275,6 +275,8 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 612, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 623, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 536, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 431, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 557, "max_downstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 558, "max_downstream_level"] = pd.NA
 
 
 # kortsluitingen oplossen noordwesten tov Spijksterpompen
@@ -795,6 +797,7 @@ build_discrete_controls(
 selected_node_ids = [
     44,
     47,
+    121,
     350,
     431,
     681,
@@ -802,6 +805,8 @@ selected_node_ids = [
     537,
     401,
     501,
+    521,
+    524,
     455,
     560,
     740,
@@ -1198,7 +1203,7 @@ for nid in selected_node_ids:
 # %%
 # === Aanvoergemalen/aanvoerpumps ===
 selected_node_ids = [
-    121,
+    609,
     48,
     129,
     708,
