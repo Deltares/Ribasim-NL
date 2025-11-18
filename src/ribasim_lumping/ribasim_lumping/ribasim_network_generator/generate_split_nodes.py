@@ -10,7 +10,7 @@ def get_split_nodes_based_on_type(
     bridges: bool = False,
     culverts: bool = False,
     uniweirs: bool = False,
-    list_gdfs: list[gpd.GeoDataFrame] = None,
+    list_gdfs: list[gpd.GeoDataFrame] | None = None,
     crs: int = 28992,
 ):
     """

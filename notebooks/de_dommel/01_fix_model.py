@@ -64,7 +64,7 @@ model.link.df.loc[link_id, ["from_node_id"]] = node_id
 node = Node(node_id, model.link.df.at[link_id, "geometry"].boundary.geoms[0])
 model.basin.area.df.loc[model.basin.area.df.node_id == 1009, ["node_id"]] = node_id
 area = basin.Area(geometry=model.basin.area[node_id].geometry.to_list())
-model.basin.add(node, basin_data + [area])
+model.basin.add(node, [*basin_data, area])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291111647
 for row in network_validator.link_incorrect_connectivity().itertuples():
@@ -74,7 +74,7 @@ for row in network_validator.link_incorrect_connectivity().itertuples():
     # add basin_node
     area = basin.Area(geometry=model.basin.area[row.from_node_id].geometry.to_list())
     basin_node = Node(row.from_node_id, row.geometry.boundary.geoms[0])
-    model.basin.add(basin_node, basin_data + [area])
+    model.basin.add(basin_node, [*basin_data, area])
 
     # eindhovensch kanaal we need to add manning a 99% of the length
     if row.to_node_id == 2:

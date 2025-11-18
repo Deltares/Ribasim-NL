@@ -183,7 +183,7 @@ def update_koppeltabel_with_feedback(
         input_koppeltabel = input_koppeltabel[~input_koppeltabel["MeetreeksC"].isin(remove_meetreeksc)]
 
     # Generate output file name
-    folder, filename = os.path.split(input_koppeltabel_path)
+    _folder, filename = os.path.split(input_koppeltabel_path)
     basename, ext = os.path.splitext(filename)
     base_without_feedback = basename.split("_Feedback")[0]
 

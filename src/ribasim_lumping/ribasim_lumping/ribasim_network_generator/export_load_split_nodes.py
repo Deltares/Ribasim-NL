@@ -12,9 +12,9 @@ def write_structures_to_excel(
     culverts: gpd.GeoDataFrame = None,
     uniweirs: gpd.GeoDataFrame = None,
     split_nodes: gpd.GeoDataFrame = None,
-    split_node_type_conversion: dict = None,
-    split_node_id_conversion: dict = None,
-    results_dir: Path | str = None,
+    split_node_type_conversion: dict | None = None,
+    split_node_id_conversion: dict | None = None,
+    results_dir: Path | str | None = None,
 ):
     """
     Export all structures and splitnode info to excel file with seperate sheet per structure type
@@ -65,8 +65,8 @@ def write_structures_to_excel(
                 struct_name = structure["object_type"][0]
                 print(f"write {struct_name} to excel")
                 structure = structure[
-                    structures.columns
-                    + [
+                    [
+                        *structures.columns,
                         "mesh1d_node_id",
                         "projection_x",
                         "projection_y",

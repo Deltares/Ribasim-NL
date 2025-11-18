@@ -2,6 +2,7 @@ import configparser
 import os
 from collections import OrderedDict
 from pathlib import Path
+from typing import ClassVar
 
 import fiona
 import geopandas as gpd
@@ -48,7 +49,7 @@ def find_directory_in_directory(directory, dir_name) -> Path:
 
 
 class MultiOrderDict(OrderedDict):
-    _unique = {}
+    _unique: ClassVar = {}
 
     def __setitem__(self, key, val):
         if isinstance(val, dict):
@@ -106,7 +107,7 @@ def find_nearest_nodes(search_locations: gpd.GeoDataFrame, nodes: gpd.GeoDataFra
 
 
 def find_nearest_links_no(
-    gdf1: gpd.GeoDataFrame, gdf2: gpd.GeoDataFrame, new_column: str, subset: str = None
+    gdf1: gpd.GeoDataFrame, gdf2: gpd.GeoDataFrame, new_column: str, subset: str | None = None
 ) -> gpd.GeoDataFrame:
     if subset is not None and subset in gdf1.columns:
         gdf1_total = None
@@ -114,14 +115,14 @@ def find_nearest_links_no(
         for i, sub in enumerate(subsets):
             gdf1_sub = gdf1[gdf1[subset] == sub].copy()
             gdf2_sub = gdf2[gdf2[subset] == sub].copy()
-            ind_gdf1, ind_gdf2 = gdf2_sub["geometry"].sindex.nearest(gdf1_sub["geometry"], return_all=False)
+            _ind_gdf1, ind_gdf2 = gdf2_sub["geometry"].sindex.nearest(gdf1_sub["geometry"], return_all=False)
             gdf1_sub[new_column] = gdf2_sub.index[ind_gdf2]
             if gdf1_total is None:
                 gdf1_total = gdf1_sub.copy()
             else:
                 gdf1_total = pd.concat([gdf1_total, gdf1_sub])
         return gdf1_total
-    ind_gdf1, ind_gdf2 = gdf2["geometry"].sindex.nearest(gdf1["geometry"], return_all=False)
+    _ind_gdf1, ind_gdf2 = gdf2["geometry"].sindex.nearest(gdf1["geometry"], return_all=False)
     gdf1[new_column] = gdf2.index[ind_gdf2]
     return gdf1
 
@@ -130,11 +131,11 @@ def find_nearest_links(
     search_locations: gpd.GeoDataFrame,
     links: gpd.GeoDataFrame,
     id_column: str,
-    selection: str = None,
+    selection: str | None = None,
     tolerance: int = 100,
 ) -> gpd.GeoDataFrame:
     """Function to find nearest linestring including nearest location on link"""
-    bbox = search_locations.bounds + [-tolerance, -tolerance, tolerance, tolerance]
+    bbox = [*search_locations.bounds, -tolerance, -tolerance, tolerance, tolerance]
     hits = bbox.apply(lambda row: list(links.sindex.intersection(row)), axis=1)
     tmp = pd.DataFrame(
         {
@@ -182,7 +183,7 @@ def create_objects_gdf(
     xcoor: list[float],
     ycoor: list[float],
     links_gdf: gpd.GeoDataFrame,
-    selection: str = None,
+    selection: str | None = None,
     tolerance: int = 100,
 ):
     crs = links_gdf.crs
@@ -206,11 +207,11 @@ def create_objects_gdf(
 
 def read_geom_file(
     filepath: Path,
-    layer_name: str = None,
+    layer_name: str | None = None,
     crs: int = 28992,
     explode_geoms: bool = True,
     remove_z_dim: bool = False,
-    code_column: str = None,
+    code_column: str | None = None,
 ) -> gpd.GeoDataFrame:
     """
     Read file with geometries. If geopackage, supply layer_name.
@@ -263,7 +264,7 @@ def read_geom_file(
     return gdf
 
 
-def log_and_remove_duplicate_geoms(gdf: gpd.GeoDataFrame, colname: str = None) -> gpd.GeoDataFrame:
+def log_and_remove_duplicate_geoms(gdf: gpd.GeoDataFrame, colname: str | None = None) -> gpd.GeoDataFrame:
     """
     Log and remove duplicate geometries from GeoDataFrame
 
@@ -279,7 +280,7 @@ def log_and_remove_duplicate_geoms(gdf: gpd.GeoDataFrame, colname: str = None) -
     GeoDataFrame
     """
     gdf = gdf.copy()
-    colname = colname if colname is not None else list(gdf.columns)[0]
+    colname = colname if colname is not None else next(iter(gdf.columns))
     tmp = gdf.loc[gdf.duplicated("geometry", keep=False)]
     gdf = gdf.loc[~gdf.duplicated("geometry")]
     if not tmp.empty:
@@ -542,7 +543,7 @@ def get_node_no_and_link_no_for_points(
                 if len(ix) >= 1:
                     gdf_no[i] = gdf.iloc[ix[0]][typ]  # only use first one found
             points[typ] = gdf_no
-            prev_typs = prev_typs + [typ] if isinstance(prev_typs, list) else [typ]
+            prev_typs = [*prev_typs, typ] if isinstance(prev_typs, list) else [typ]
         else:
             points[typ] = [None] * len(points)  # fill with None
     return points
@@ -723,9 +724,9 @@ def split_line_in_two(line: LineString, distance_along_line: float) -> list[Line
         if pd > distance_along_line:
             cp = line.interpolate(distance_along_line)
             if len(coords[:i][0]) == 2:
-                return [LineString(coords[:i] + [(cp.x, cp.y)]), LineString([(cp.x, cp.y)] + coords[i:])]
+                return [LineString([*coords[:i], (cp.x, cp.y)]), LineString([(cp.x, cp.y), *coords[i:]])]
             else:
-                return [LineString(coords[:i] + [(cp.x, cp.y, cp.z)]), LineString([(cp.x, cp.y, cp.z)] + coords[i:])]
+                return [LineString([*coords[:i], (cp.x, cp.y, cp.z)]), LineString([(cp.x, cp.y, cp.z), *coords[i:]])]
 
 
 def split_line_in_multiple(line: LineString, distances_along_line: list[float | int] | np.ndarray) -> list[LineString]:

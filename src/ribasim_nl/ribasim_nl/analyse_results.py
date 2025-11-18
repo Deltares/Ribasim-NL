@@ -360,7 +360,7 @@ def CompareOutputMeasurements(
             for col in missing_measurements:
                 print(f"Cannot find the daily measurements for {col}")
 
-        subset_measurements = dagmetingen[["time"] + existing_measurements].copy()
+        subset_measurements = dagmetingen[["time", *existing_measurements]].copy()
 
         # If multiple measurements series refer to the same link, take the sum of the measurements
         subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1, min_count=1)

@@ -147,7 +147,6 @@ else:
     ).explode(index_parts=False)
 
     # Step 3: Handle Z-coordinates and calculate area
-    combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
     combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
 
     # Step 4: Find and assign node_id
