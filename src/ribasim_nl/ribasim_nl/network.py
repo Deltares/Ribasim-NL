@@ -2,7 +2,7 @@
 import logging
 from collections import Counter
 from dataclasses import dataclass, field
-from itertools import chain, product
+from itertools import chain, pairwise, product
 from pathlib import Path
 
 import geopandas as gpd
@@ -256,7 +256,7 @@ class Network:
     ):
         """Add a link (link) to the network"""
         if not ((point_from is None) | (point_to is None)):
-            geometry = LineString([(point_from.x, point_from.y)] + geometry.coords[1:-1] + [(point_to.x, point_to.y)])
+            geometry = LineString([(point_from.x, point_from.y), *geometry.coords[1:-1], (point_to.x, point_to.y)])
 
         # add link to graph
         self._graph.add_edge(
@@ -528,7 +528,7 @@ class Network:
     def get_links(self, node_from, node_to, directed=True, weight="length"):
         # get path and links on path
         path = self.get_path(node_from, node_to, directed=directed, weight=weight)
-        links_on_path = list(zip(path[:-1], path[1:]))
+        links_on_path = list(pairwise(path))
 
         try:
             return self.links.set_index(["node_from", "node_to"]).loc[links_on_path]
@@ -603,7 +603,7 @@ class Network:
 
     def path_to_line(self, path):
         coords = []
-        for node_from, node_to in zip(path[0:-1], path[1:]):
+        for node_from, node_to in pairwise(path):
             coords += self._get_coordinates(node_from, node_to)
         return LineString(coords)
 

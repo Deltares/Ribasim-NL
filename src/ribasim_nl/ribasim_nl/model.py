@@ -1,7 +1,7 @@
 # %%
 import warnings
 from pathlib import Path
-from typing import Literal
+from typing import ClassVar, Literal
 
 import geopandas as gpd
 import networkx as nx
@@ -33,7 +33,7 @@ level_data = level_boundary.Static(level=[0])
 
 
 class default_tables:
-    basin = [
+    basin: ClassVar = [
         basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
         basin.Static(
             drainage=[0.0],
@@ -43,13 +43,13 @@ class default_tables:
         ),
         basin.State(level=[0]),
     ]
-    outlet = [outlet.Static(flow_rate=[100])]
-    pump = [pump.Static(flow_rate=[1])]
-    manning_resistance = [
+    outlet: ClassVar = [outlet.Static(flow_rate=[100])]
+    pump: ClassVar = [pump.Static(flow_rate=[1])]
+    manning_resistance: ClassVar = [
         manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
     ]
-    level_boundary = [level_boundary.Static(level=[0])]
-    tabulated_rating_curve = [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10])]
+    level_boundary: ClassVar = [level_boundary.Static(level=[0])]
+    tabulated_rating_curve: ClassVar = [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10])]
 
 
 DEFAULT_TABLES = default_tables()
@@ -432,7 +432,7 @@ class Model(Model):
         table.add(Node(**node_dict), data)
 
         # sanitize node_dict
-        drop_keys = ["node_id", "node_type"] + list(node_properties.keys())
+        drop_keys = ["node_id", "node_type", *list(node_properties.keys())]
         node_dict = {k: v for k, v in node_dict.items() if k not in drop_keys}
 
         # complete node_properties

@@ -5,7 +5,7 @@ import logging
 import re
 import warnings
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import fiona
 import geopandas as gpd
@@ -107,7 +107,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
 
     # ignores subclassing Any: https://github.com/geopandas/geopandas/discussions/2750
 
-    _metadata = [
+    _metadata: ClassVar = [
         "validation_schema",
         "required_columns",
         "geotype",
@@ -468,7 +468,7 @@ class HyDAMO:
                 if use_schema:
                     # match fiona layer schema keys with gdf.columns
                     schema = getattr(self, layer)._get_schema()
-                    schema_cols = list(schema["properties"].keys()) + ["geometry"]
+                    schema_cols = [*list(schema["properties"].keys()), "geometry"]
                     drop_cols = [i for i in gdf.columns if i not in schema_cols]
                     gdf.drop(columns=drop_cols, inplace=True)
 

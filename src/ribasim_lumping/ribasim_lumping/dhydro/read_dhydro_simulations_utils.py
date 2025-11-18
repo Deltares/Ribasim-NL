@@ -96,7 +96,7 @@ def get_data_from_simulations_set(
         print(
             f" - Simulation set ({set_name}): {simulation_name} | Timestamps: {len(simulations_ts)} | his.nc and map.nc"
         )
-        files, map_data_x, his_data_x = get_data_from_simulation(
+        _files, map_data_x, his_data_x = get_data_from_simulation(
             simulation_path=simulation_path,
             simulations_ts=simulations_ts,
             n_start=n_start,

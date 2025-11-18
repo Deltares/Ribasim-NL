@@ -8,7 +8,7 @@ from ..utils.general_functions import generate_nodes_from_links, read_geom_file,
 
 def add_hydamo_basis_network(
     hydamo_network_file: Path = "hydamo.gpkg",
-    hydamo_split_network_dx: float = None,
+    hydamo_split_network_dx: float | None = None,
     crs: int = 28992,
 ):
     # ) -> Tuple[
