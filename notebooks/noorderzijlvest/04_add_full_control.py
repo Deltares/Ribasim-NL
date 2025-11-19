@@ -790,6 +790,164 @@ build_discrete_controls(
     flow_open_default=20.0,
     delta_h=0.05,
 )
+
+
+# %%
+def add_controller(
+    model,
+    node_ids,
+    *,
+    # --- luister-node ---
+    listen_node_id: int = 1493,
+    # --- thresholds ---
+    threshold_high: float = 7.68,
+    threshold_low: float | None = None,
+    threshold_delta: float | None = None,
+    # STATE 0 = aanvoer, STATE 1 = afvoer
+    state_labels=("aanvoer", "afvoer"),
+    # --- flow instellingen voor OUTLETS ---
+    flow_aanvoer_outlet="orig",
+    flow_afvoer_outlet="orig",
+    # --- flow instellingen voor PUMPS ---
+    flow_aanvoer_pump="orig",
+    flow_afvoer_pump="orig",
+    # --- max_downstream instellingen ---
+    max_ds_aanvoer="existing",
+    max_ds_afvoer=1000,
+    delta_max_ds_aanvoer=None,
+    delta_max_ds_afvoer=None,
+    keep_min_us=True,
+    dc_offset=10.0,
+):
+    """
+    Universele controller exact volgens jouw definitie:
+
+    ✔ Water < threshold  → STATE0 → AANVOER  → FALSE
+    ✔ Water > threshold  → STATE1 → AFVOER   → TRUE
+
+    """
+    out_df = model.outlet.static.df
+    pump_df = model.pump.static.df
+
+    outlet_ids = set(out_df["node_id"].astype(int))
+    pump_ids = set(pump_df["node_id"].astype(int))
+
+    # automatische hysterese
+    if threshold_delta is not None:
+        threshold_low_used = threshold_high - float(threshold_delta)
+    else:
+        threshold_low_used = threshold_low
+
+    # helper max_ds
+    def _resolve_max_ds(mode, base):
+        if mode is None:
+            return float("nan")
+        if isinstance(mode, (int, float)):
+            return float(mode)
+        if mode == "existing":
+            return base
+        if mode == "nan":
+            return float("nan")
+        return base
+
+    # MAIN LOOP
+    for nid in map(int, node_ids):
+        # detecteer type
+        if nid in outlet_ids:
+            node_type = "Outlet"
+            row = out_df.loc[out_df["node_id"] == nid].iloc[0]
+            geom = model.outlet[nid].geometry
+            parent = model.outlet[nid]
+
+        elif nid in pump_ids:
+            node_type = "Pump"
+            row = pump_df.loc[pump_df["node_id"] == nid].iloc[0]
+            geom = model.pump[nid].geometry
+            parent = model.pump[nid]
+
+        else:
+            print(f"[skip] Node {nid}: geen pump/outlet")
+            continue
+
+        # originele waarden
+        flow_orig = float(row["flow_rate"])
+        max_ds_orig = float(row["max_downstream_level"]) if pd.notna(row.get("max_downstream_level")) else float("nan")
+        min_us_orig = float(row["min_upstream_level"]) if pd.notna(row.get("min_upstream_level")) else None
+
+        # FLOWS
+        if node_type == "Outlet":
+            flow0 = flow_orig if flow_aanvoer_outlet == "orig" else float(flow_aanvoer_outlet)
+            flow1 = flow_orig if flow_afvoer_outlet == "orig" else float(flow_afvoer_outlet)
+        else:
+            flow0 = flow_orig if flow_aanvoer_pump == "orig" else float(flow_aanvoer_pump)
+            flow1 = flow_orig if flow_afvoer_pump == "orig" else float(flow_afvoer_pump)
+
+        # MAX DOWNSTREAM
+        ds0 = _resolve_max_ds(max_ds_aanvoer, max_ds_orig)
+        ds1 = _resolve_max_ds(max_ds_afvoer, max_ds_orig)
+
+        if delta_max_ds_aanvoer is not None:
+            ds0 = max_ds_orig + float(delta_max_ds_aanvoer)
+
+        if delta_max_ds_afvoer is not None:
+            ds1 = max_ds_orig + float(delta_max_ds_afvoer)
+
+        # MIN UPSTREAM
+        # Only use min_upstream when it's a valid numeric value (not None or NaN).
+        if keep_min_us and min_us_orig is not None and not np.isnan(min_us_orig):
+            min_us = [float(min_us_orig), float(min_us_orig)]
+        else:
+            min_us = None
+
+        # STATIC
+        static_kwargs = {
+            "control_state": list(state_labels),
+            "flow_rate": [flow0, flow1],
+            "max_downstream_level": [ds0, ds1],
+        }
+        if min_us is not None:
+            static_kwargs["min_upstream_level"] = min_us
+
+        if node_type == "Outlet":
+            model.update_node(nid, "Outlet", [outlet.Static(**static_kwargs)])
+        else:
+            model.update_node(nid, "Pump", [pump.Static(**static_kwargs)])
+
+        truth = ["F", "T"]
+
+        ctrl = [state_labels[0], state_labels[1]]  # ["aanvoer", "afvoer"]
+
+        dc_node = Node(geometry=Point(geom.x + dc_offset, geom.y))
+
+        cond_kwargs = {
+            "compound_variable_id": 1,
+            "condition_id": [1],
+            "threshold_high": [float(threshold_high)],
+        }
+        if threshold_low_used is not None:
+            cond_kwargs["threshold_low"] = [float(threshold_low_used)]
+
+        dc = model.discrete_control.add(
+            dc_node,
+            [
+                discrete_control.Variable(
+                    compound_variable_id=1,
+                    listen_node_id=int(listen_node_id),
+                    variable=["level"],
+                ),
+                discrete_control.Condition(**cond_kwargs),
+                discrete_control.Logic(
+                    truth_state=truth,
+                    control_state=ctrl,
+                ),
+            ],
+        )
+
+        model.link.add(dc, parent)
+        print(f"[OK] controller toegevoegd aan {node_type} {nid}")
+
+
+# %%
 # %%
 # aanvoer en afvoer outlets die uitkomen op Manning waterloop die geen aanvoer nodig heeft. Bij aanvoer moet flow op 0 staan zodat ze niet Manning waterlopen gaan aanvullen
 # Bij afvoer mag flow niet op 0 staan anders werkt de afvoer niet meer. Gemaal Waterwolf/Abelstok en Schaphalsterzijl staat in aanvoersituaties uit, Evt afvoer via sluis
@@ -842,366 +1000,50 @@ selected_node_ids = [
     1754,
     1747,
 ]
-LISTEN_NODE_ID = 1493
-# LISTEN_NODE_ID = 1132
 
-DELTA_LOW = 0.07
-
-basin = model.basin.area.df
-out_static = model.outlet.static.df
-pump_static = model.pump.static.df
-
-# === 1) TH_HIGH uit basin.meta_streefpeil ===
-th_high = None
-row = basin.loc[basin["node_id"] == LISTEN_NODE_ID]
-if not row.empty and "meta_streefpeil" in row.columns:
-    val = row["meta_streefpeil"].iloc[0]
-    if pd.notna(val):
-        th_high = 7.68
-        # th_high = 3.15
-if th_high is None:
-    raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
-th_low = th_high - DELTA_LOW  # nu niet gebruikt
-
-
-# === Helpers ===
-def _flow_open_from_pump_row(val, default=1.0):
-    if isinstance(val, list | tuple | np.ndarray):
-        arr = pd.to_numeric(np.asarray(val), errors="coerce")
-        if np.all(np.isnan(arr)):
-            return float(default)
-        return float(np.nanmax(arr))
-    try:
-        f = float(val)
-        return f if f > 0 else float(default)
-    except Exception:
-        return float(default)
-
-
-def _scalar_from(df, node_id, col_candidates):
-    for col in col_candidates:
-        if col and (col in df.columns):
-            s = df.loc[df["node_id"] == node_id, col]
-            if s.empty or pd.isna(s.iloc[0]):
-                continue
-            v = s.iloc[0]
-            if isinstance(v, list | tuple | np.ndarray):
-                if len(v) == 0 or pd.isna(v[0]):
-                    continue
-                try:
-                    return float(v[0])
-                except Exception:
-                    continue
-            try:
-                x = float(v)
-                if not pd.isna(x):
-                    return x
-            except Exception:
-                pass
-    return None
-
-
-def _static_obj(factory_cls, **maybe_kwargs):
-    """Maak een Static() object met alleen niet-None kwargs."""
-    kwargs = {k: v for k, v in maybe_kwargs.items() if v is not None}
-    return factory_cls(**kwargs)
-
-
-# Kolomkandidaten
-MIN_US_COLS_OUTLET = ["min_upstream_level", "min_upstream_water_level"]
-MIN_US_COLS_PUMP = ["min_upstream_level", "min_upstream_water_level"]
-MAX_DS_COLS_OUTLET = ["max_downstream_level", "max_downstream_water_level"]
-MAX_DS_COLS_PUMP = ["max_downstream_level", "max_downstream_water_level"]  # optioneel
-
-# Membership-sets
-outlet_ids = set(out_static["node_id"].astype(int)) if "node_id" in out_static else set()
-pump_ids = set(pump_static["node_id"].astype(int)) if "node_id" in pump_static else set()
-
-# === 2) Per geselecteerde node: states + DC ===
-for nid in selected_node_ids:
-    try:
-        nid_int = int(nid)
-    except Exception:
-        print(f"[skip] ongeldige node_id: {nid}")
-        continue
-
-    if nid_int in outlet_ids:
-        # OUTLET
-        h_out = _scalar_from(out_static, nid_int, MAX_DS_COLS_OUTLET)  # max_downstream
-        m_out = _scalar_from(out_static, nid_int, MIN_US_COLS_OUTLET)  # min_upstream (optioneel)
-
-        outlet_static_obj = _static_obj(
-            outlet.Static,
-            control_state=["open", "closed"],
-            flow_rate=[20.0, 0.0],
-            max_downstream_level=[1000, h_out],
-            min_upstream_level=[m_out, m_out] if m_out is not None else None,
-        )
-
-        model.update_node(
-            node_id=nid_int,
-            node_type="Outlet",
-            data=[outlet_static_obj],
-        )
-
-        geom = model.outlet[nid_int].geometry
-        x0, y0 = geom.x, geom.y
-
-        dc = model.discrete_control.add(
-            Node(geometry=Point(x0 + 10, y0)),
-            [
-                discrete_control.Variable(
-                    compound_variable_id=1,
-                    listen_node_id=LISTEN_NODE_ID,
-                    variable=["level"],
-                ),
-                discrete_control.Condition(
-                    compound_variable_id=1,
-                    condition_id=[1],
-                    threshold_high=[th_high],
-                    # threshold_low=[th_low],
-                ),
-                discrete_control.Logic(
-                    truth_state=["T", "F"],
-                    control_state=["open", "closed"],
-                ),
-            ],
-        )
-        model.link.add(dc, model.outlet[nid_int])
-
-    elif nid_int in pump_ids:
-        # PUMP
-        flow_series = pump_static.loc[pump_static["node_id"] == nid_int, "flow_rate"]
-        flow_open = _flow_open_from_pump_row(flow_series.iloc[0]) if not flow_series.empty else 1.0
-
-        m_pump = _scalar_from(pump_static, nid_int, MIN_US_COLS_PUMP)  # optioneel
-        h_pump = _scalar_from(pump_static, nid_int, MAX_DS_COLS_PUMP)  # optioneel
-
-        pump_static_obj = _static_obj(
-            pump.Static,
-            control_state=["closed", "open"],
-            flow_rate=[0.0, float(flow_open)],
-            min_upstream_level=[m_pump, m_pump] if m_pump is not None else None,
-            max_downstream_level=[h_pump, np.nan] if h_pump is not None else None,
-        )
-
-        model.update_node(
-            node_id=nid_int,
-            node_type="Pump",
-            data=[pump_static_obj],
-        )
-
-        geom = model.pump[nid_int].geometry
-        x0, y0 = geom.x, geom.y
-
-        dc = model.discrete_control.add(
-            Node(geometry=Point(x0 + 10, y0)),
-            [
-                discrete_control.Variable(
-                    compound_variable_id=1,
-                    listen_node_id=LISTEN_NODE_ID,
-                    variable=["level"],
-                ),
-                discrete_control.Condition(
-                    compound_variable_id=1,
-                    condition_id=[1],
-                    threshold_high=[th_high],
-                    # threshold_low=[th_low],
-                ),
-                discrete_control.Logic(
-                    truth_state=["T", "F"],
-                    control_state=["open", "closed"],
-                ),
-            ],
-        )
-        model.link.add(dc, model.pump[nid_int])
-
-    else:
-        print(f"[skip] node {nid_int}: geen Outlet of Pump in static.df gevonden")
-
-# aanvoer en afvoer outlets die uitkomen op Manning waterloop die geen aanvoer nodig heeft. Bij aanvoer moet flow op 0 staan zodat ze niet Manning waterlopen gaan aanvullen
-# Bij afvoer mag flow niet op 0 staan anders werkt de afvoer niet meer. Gemaal Waterwolf afvoer via sluis
-# === Aanvoergemalen/aanvoerpumps Grote pompen en outlets===
-selected_node_ids = [29, 728]
-LISTEN_NODE_ID = 1493
-# LISTEN_NODE_ID = 1132
-DELTA_LOW = 0.07
-
-basin = model.basin.area.df
-out_static = model.outlet.static.df
-pump_static = model.pump.static.df
-
-# === 1) TH_HIGH uit basin.meta_streefpeil ===
-th_high = None
-row = basin.loc[basin["node_id"] == LISTEN_NODE_ID]
-if not row.empty and "meta_streefpeil" in row.columns:
-    val = row["meta_streefpeil"].iloc[0]
-    if pd.notna(val):
-        th_high = 7.68
-        # th_high = 3.15
-if th_high is None:
-    raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
-th_low = th_high - DELTA_LOW  # nu niet gebruikt
-
-
-# === Helpers ===
-def _flow_open_from_pump_row(val, default=1.0):
-    if isinstance(val, list | tuple | np.ndarray):
-        arr = pd.to_numeric(np.asarray(val), errors="coerce")
-        if np.all(np.isnan(arr)):
-            return float(default)
-        return float(np.nanmax(arr))
-    try:
-        f = float(val)
-        return f if f > 0 else float(default)
-    except Exception:
-        return float(default)
-
-
-def _scalar_from(df, node_id, col_candidates):
-    for col in col_candidates:
-        if col and (col in df.columns):
-            s = df.loc[df["node_id"] == node_id, col]
-            if s.empty or pd.isna(s.iloc[0]):
-                continue
-            v = s.iloc[0]
-            if isinstance(v, list | tuple | np.ndarray):
-                if len(v) == 0 or pd.isna(v[0]):
-                    continue
-                try:
-                    return float(v[0])
-                except Exception:
-                    continue
-            try:
-                x = float(v)
-                if not pd.isna(x):
-                    return x
-            except Exception:
-                pass
-    return None
-
-
-def _static_obj(factory_cls, **maybe_kwargs):
-    """Maak een Static() object met alleen niet-None kwargs."""
-    kwargs = {k: v for k, v in maybe_kwargs.items() if v is not None}
-    return factory_cls(**kwargs)
-
-
-# Kolomkandidaten
-MIN_US_COLS_OUTLET = ["min_upstream_level", "min_upstream_water_level"]
-MIN_US_COLS_PUMP = ["min_upstream_level", "min_upstream_water_level"]
-MAX_DS_COLS_OUTLET = ["max_downstream_level", "max_downstream_water_level"]
-MAX_DS_COLS_PUMP = ["max_downstream_level", "max_downstream_water_level"]  # optioneel
-
-# Membership-sets
-outlet_ids = set(out_static["node_id"].astype(int)) if "node_id" in out_static else set()
-pump_ids = set(pump_static["node_id"].astype(int)) if "node_id" in pump_static else set()
-
-# === 2) Per geselecteerde node: states + DC ===
-for nid in selected_node_ids:
-    try:
-        nid_int = int(nid)
-    except Exception:
-        print(f"[skip] ongeldige node_id: {nid}")
-        continue
-
-    if nid_int in outlet_ids:
-        # OUTLET
-        h_out = _scalar_from(out_static, nid_int, MAX_DS_COLS_OUTLET) + 0.02  # max_downstream
-        m_out = _scalar_from(out_static, nid_int, MIN_US_COLS_OUTLET)  # min_upstream (optioneel)
-
-        outlet_static_obj = _static_obj(
-            outlet.Static,
-            control_state=["open", "closed"],
-            flow_rate=[9999, 0],
-            max_downstream_level=[h_out, 9999],
-            min_upstream_level=[m_out, m_out] if m_out is not None else None,
-        )
-
-        model.update_node(
-            node_id=nid_int,
-            node_type="Outlet",
-            data=[outlet_static_obj],
-        )
-
-        geom = model.outlet[nid_int].geometry
-        x0, y0 = geom.x, geom.y
-
-        dc = model.discrete_control.add(
-            Node(geometry=Point(x0 + 10, y0)),
-            [
-                discrete_control.Variable(
-                    compound_variable_id=1,
-                    listen_node_id=LISTEN_NODE_ID,
-                    variable=["level"],
-                ),
-                discrete_control.Condition(
-                    compound_variable_id=1,
-                    condition_id=[1],
-                    threshold_high=[th_high],
-                    # threshold_low=[th_low],
-                ),
-                discrete_control.Logic(
-                    truth_state=["T", "F"],
-                    control_state=["open", "closed"],
-                ),
-            ],
-        )
-        model.link.add(dc, model.outlet[nid_int])
-
-    elif nid_int in pump_ids:
-        # PUMP
-        flow_series = pump_static.loc[pump_static["node_id"] == nid_int, "flow_rate"]
-        flow_open = _flow_open_from_pump_row(flow_series.iloc[0]) if not flow_series.empty else 1.0
-
-        m_pump = _scalar_from(pump_static, nid_int, MIN_US_COLS_PUMP)  # optioneel
-        h_pump = _scalar_from(pump_static, nid_int, MAX_DS_COLS_PUMP)  # optioneel
-
-        pump_static_obj = _static_obj(
-            pump.Static,
-            control_state=["closed", "open"],
-            flow_rate=[0.0, float(flow_open)],
-            min_upstream_level=[m_pump, m_pump] if m_pump is not None else None,
-            max_downstream_level=[h_pump, 9999] if h_pump is not None else None,
-        )
-
-        model.update_node(
-            node_id=nid_int,
-            node_type="Pump",
-            data=[pump_static_obj],
-        )
-
-        geom = model.pump[nid_int].geometry
-        x0, y0 = geom.x, geom.y
-
-        dc = model.discrete_control.add(
-            Node(geometry=Point(x0 + 10, y0)),
-            [
-                discrete_control.Variable(
-                    compound_variable_id=1,
-                    listen_node_id=LISTEN_NODE_ID,
-                    variable=["level"],
-                ),
-                discrete_control.Condition(
-                    compound_variable_id=1,
-                    condition_id=[1],
-                    threshold_high=[th_high],
-                    # threshold_low=[th_low],
-                ),
-                discrete_control.Logic(
-                    truth_state=["T", "F"],
-                    control_state=["open", "closed"],
-                ),
-            ],
-        )
-        model.link.add(dc, model.pump[nid_int])
-
-    else:
-        print(f"[skip] node {nid_int}: geen Outlet of Pump in static.df gevonden")
-
-
+add_controller(
+    model=model,
+    node_ids=selected_node_ids,
+    listen_node_id=1493,
+    # thresholds
+    threshold_high=7.68,
+    threshold_delta=0.07,
+    # ---- OUTLET FLOWS (afvoer) ----
+    flow_aanvoer_outlet=0.0,  # laagwater → dicht
+    flow_afvoer_outlet=20.0,  # hoogwater → afvoer open
+    # ---- PUMP FLOWS (afvoer) ----
+    flow_aanvoer_pump=0.0,  # laagwater → uit
+    flow_afvoer_pump="orig",  # hoogwater → originele afvoer
+    # ---- MAX_DOWNSTREAM ----
+    max_ds_aanvoer="existing",  # state0 → h_pump / h_out
+    max_ds_afvoer=1000,  # outlets: 1000
+    delta_max_ds_aanvoer=0.0,  # geen extra
+    delta_max_ds_afvoer=None,
+    keep_min_us=True,
+)
 # %%
-# === Aanvoergemalen/aanvoerpumps ===
+# Gemaal Waterwolf afvoer via sluis
+# === Aanvoergemalen/aanvoerpumps Grote pompen en outlets===
+add_controller(
+    model=model,
+    node_ids=[29, 728],
+    listen_node_id=1493,
+    # thresholds
+    threshold_high=7.68,
+    threshold_delta=0.07,
+    # ---- OUTLET FLOWS ----
+    flow_aanvoer_outlet=9999,  # laagwater → moet open (aanvoer)
+    flow_afvoer_outlet=0,  # hoogwater → dicht (geen afvoer)
+    # ---- PUMP FLOWS ----
+    flow_aanvoer_pump=0,  # laagwater → pomp staat uit
+    flow_afvoer_pump="orig",  # hoogwater → pomp draait op originele flow
+    # ---- MAX DOWNSTREAM ----
+    max_ds_aanvoer="existing",
+    delta_max_ds_aanvoer=0.02,  # +0.02 zoals oude code
+    max_ds_afvoer=9999,  # open grenzen bij hoogwater
+    keep_min_us=True,
+)
+# %%# === Aanvoergemalen/aanvoerpumps ===
 selected_node_ids = [
     609,
     48,
@@ -1211,7 +1053,7 @@ selected_node_ids = [
     109,
     119,
     184,
-    118,  # Gemaal Oudendijk (#118) toegevoegd
+    118,
     125,
     114,
     124,
@@ -1242,283 +1084,28 @@ selected_node_ids = [
     837,
     142,
 ]
-LISTEN_NODE_ID = 1493
-# LISTEN_NODE_ID = 1132
-DELTA_LOW = 0.07
 
-basin = model.basin.area.df
-out_static = model.outlet.static.df
-pump_static = model.pump.static.df
+add_controller(
+    model=model,
+    node_ids=selected_node_ids,
+    listen_node_id=1493,
+    threshold_high=7.68,
+    threshold_delta=0.07,
+    # flows:
+    flow_aanvoer_outlet=1.0,  # open bij laagwater → laat water in
+    flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
+    flow_afvoer_pump=0,  # idem voor pumps die alleen aanvoer doen
+    flow_aanvoer_pump="orig",
+    # max_ds:
+    max_ds_aanvoer="existing",
+    delta_max_ds_aanvoer=0.04,
+    max_ds_afvoer=9999,
+    # naming:
+    state_labels=("closed", "open"),  # 0=closed, 1=open
+    keep_min_us=True,
+)
 
-# === 1) TH_HIGH uit basin.meta_streefpeil ===
-th_high = None
-row = basin.loc[basin["node_id"] == LISTEN_NODE_ID]
-if not row.empty and "meta_streefpeil" in row.columns:
-    val = row["meta_streefpeil"].iloc[0]
-    if pd.notna(val):
-        #  th_high = float(val) - 0.02
-        th_high = 7.68
-        # th_high = 3.15
-if th_high is None:
-    raise ValueError(f"Kon 'meta_streefpeil' voor listen_node_id {LISTEN_NODE_ID} niet vinden.")
-th_low = th_high - DELTA_LOW  # nu niet gebruikt
-
-
-# === Helpers ===
-def _flow_open_from_pump_row(val, default=1.0):
-    if isinstance(val, list | tuple | np.ndarray):
-        arr = pd.to_numeric(np.asarray(val), errors="coerce")
-        if np.all(np.isnan(arr)):
-            return float(default)
-        return float(np.nanmax(arr))
-    try:
-        f = float(val)
-        return f if f > 0 else float(default)
-    except Exception:
-        return float(default)
-
-
-def _scalar_from(df, node_id, col_candidates):
-    for col in col_candidates:
-        if col and (col in df.columns):
-            s = df.loc[df["node_id"] == node_id, col]
-            if s.empty or pd.isna(s.iloc[0]):
-                continue
-            v = s.iloc[0]
-            if isinstance(v, list | tuple | np.ndarray):
-                if len(v) == 0 or pd.isna(v[0]):
-                    continue
-                try:
-                    return float(v[0])
-                except Exception:
-                    continue
-            try:
-                x = float(v)
-                if not pd.isna(x):
-                    return x
-            except Exception:
-                pass
-    return None
-
-
-def _static_obj(factory_cls, **maybe_kwargs):
-    """Maak een Static() object met alleen niet-None kwargs."""
-    kwargs = {k: v for k, v in maybe_kwargs.items() if v is not None}
-    return factory_cls(**kwargs)
-
-
-# Kolomkandidaten
-MIN_US_COLS_OUTLET = ["min_upstream_level", "min_upstream_water_level"]
-MIN_US_COLS_PUMP = ["min_upstream_level", "min_upstream_water_level"]
-MAX_DS_COLS_OUTLET = ["max_downstream_level", "max_downstream_water_level"]
-MAX_DS_COLS_PUMP = ["max_downstream_level", "max_downstream_water_level"]  # optioneel
-
-# Membership-sets
-outlet_ids = set(out_static["node_id"].astype(int)) if "node_id" in out_static else set()
-pump_ids = set(pump_static["node_id"].astype(int)) if "node_id" in pump_static else set()
-
-# === 2) Per geselecteerde node: states + DC ===
-for nid in selected_node_ids:
-    try:
-        nid_int = int(nid)
-    except Exception:
-        print(f"[skip] ongeldige node_id: {nid}")
-        continue
-
-    if nid_int in outlet_ids:
-        # OUTLET
-        h_out = _scalar_from(out_static, nid_int, MAX_DS_COLS_OUTLET)  # max_downstream
-        m_out = _scalar_from(out_static, nid_int, MIN_US_COLS_OUTLET)  # min_upstream (optioneel)
-
-        if h_out is None:
-            print(f"[skip] outlet {nid_int}: geen geldige max_downstream_level")
-            continue
-
-        outlet_static_obj = _static_obj(
-            outlet.Static,
-            control_state=["closed", "open"],
-            flow_rate=[0.0, 1.0],
-            max_downstream_level=[h_out + 0.02, h_out + 0.04],
-            min_upstream_level=[m_out, m_out] if m_out is not None else None,
-        )
-
-        model.update_node(
-            node_id=nid_int,
-            node_type="Outlet",
-            data=[outlet_static_obj],
-        )
-
-        geom = model.outlet[nid_int].geometry
-        x0, y0 = geom.x, geom.y
-
-        dc = model.discrete_control.add(
-            Node(geometry=Point(x0 + 10, y0)),
-            [
-                discrete_control.Variable(
-                    compound_variable_id=1,
-                    listen_node_id=LISTEN_NODE_ID,
-                    variable=["level"],
-                ),
-                discrete_control.Condition(
-                    compound_variable_id=1,
-                    condition_id=[1],
-                    threshold_high=[th_high],
-                    # threshold_low=[th_low],
-                ),
-                discrete_control.Logic(
-                    truth_state=["T", "F"],
-                    control_state=["closed", "open"],
-                ),
-            ],
-        )
-        model.link.add(dc, model.outlet[nid_int])
-
-    elif nid_int in pump_ids:
-        # PUMP
-        flow_series = pump_static.loc[pump_static["node_id"] == nid_int, "flow_rate"]
-        flow_open = _flow_open_from_pump_row(flow_series.iloc[0]) if not flow_series.empty else 1.0
-
-        m_pump = _scalar_from(pump_static, nid_int, MIN_US_COLS_PUMP)  # optioneel
-        h_pump = _scalar_from(pump_static, nid_int, MAX_DS_COLS_PUMP)  # optioneel
-
-        pump_static_obj = _static_obj(
-            pump.Static,
-            control_state=["closed", "open"],
-            flow_rate=[0.0, float(flow_open)],
-            min_upstream_level=[m_pump, m_pump] if m_pump is not None else None,
-            max_downstream_level=[h_pump, h_pump + 0.04] if h_pump is not None else None,
-        )
-
-        model.update_node(
-            node_id=nid_int,
-            node_type="Pump",
-            data=[pump_static_obj],
-        )
-
-        geom = model.pump[nid_int].geometry
-        x0, y0 = geom.x, geom.y
-
-        dc = model.discrete_control.add(
-            Node(geometry=Point(x0 + 10, y0)),
-            [
-                discrete_control.Variable(
-                    compound_variable_id=1,
-                    listen_node_id=LISTEN_NODE_ID,
-                    variable=["level"],
-                ),
-                discrete_control.Condition(
-                    compound_variable_id=1,
-                    condition_id=[1],
-                    threshold_high=[th_high],
-                    # threshold_low=[th_low],
-                ),
-                discrete_control.Logic(
-                    truth_state=["T", "F"],
-                    control_state=["closed", "open"],
-                ),
-            ],
-        )
-        model.link.add(dc, model.pump[nid_int])
-
-    else:
-        print(f"[skip] node {nid_int}: geen Outlet of Pump in static.df gevonden")
-
-
-def add_max_ds_controller(
-    model,
-    target_node_ids,
-    listen_node_id: int,
-    th_high: float = 7.68,
-    # th_high: float = 3.15,
-    offset: float = 10.0,
-):
-    """
-    Voeg discrete controls toe aan geselecteerde pumps/outlets om sturing van het downstream-peil
-    te regelen afhankelijk van het peil op een referentie-node (listen_node_id).
-
-    Logica:
-      - Bij **aanvoer** (peil listen_node_id < th_high):
-          * De node werkt in 'aanvoer'-modus.
-          * max_downstream_level = bestaande waarde uit het model (stuurt op downstream-peil).
-      - Bij **afvoer** (peil listen_node_id > th_high):
-          * De node werkt in 'afvoer'-modus.
-          * max_downstream_level = NaN (geen beperking, vrij spuien).
-
-    In beide situaties blijft de outlet/pump open (zelfde flow in beide states).
-    """
-    for node_id in target_node_ids:
-        # --- node-type bepalen
-        if node_id in model.outlet.node.df.index:
-            node_type = "Outlet"
-            geom = model.outlet[node_id].geometry
-            static_df = model.outlet.static.df
-        elif node_id in model.pump.node.df.index:
-            node_type = "Pump"
-            geom = model.pump[node_id].geometry
-            static_df = model.pump.static.df
-        else:
-            print(f"[skip] node {node_id}: geen Pump of Outlet gevonden")
-            continue
-
-        # --- bestaande waarden ophalen
-        row = static_df.loc[static_df["node_id"] == node_id]
-        if row.empty:
-            print(f"[skip] {node_type} {node_id}: geen static record gevonden")
-            continue
-
-        flow = float(row["flow_rate"].iloc[0]) if "flow_rate" in row else 1.0
-        min_us = row["min_upstream_level"].iloc[0] if "min_upstream_level" in row else float("nan")
-        max_ds_existing = row["max_downstream_level"].iloc[0] if "max_downstream_level" in row else float("nan")
-
-        # --- discrete control toevoegen
-        dc_node = Node(geometry=Point(geom.x + offset, geom.y))
-        dc = model.discrete_control.add(
-            dc_node,
-            [
-                discrete_control.Variable(
-                    compound_variable_id=1,
-                    listen_node_id=int(listen_node_id),
-                    variable=["level"],
-                ),
-                discrete_control.Condition(
-                    compound_variable_id=1,
-                    condition_id=[1],
-                    threshold_high=[float(th_high)],
-                ),
-                # Logica:
-                #  - F (laag) = aanvoer
-                #  - T (hoog) = afvoer
-                discrete_control.Logic(
-                    truth_state=["F", "T"],
-                    control_state=["aanvoer", "afvoer"],
-                ),
-            ],
-        )
-
-        # --- nieuwe static node aanmaken met bestaande waarden
-        if node_type == "Outlet":
-            new_static = outlet.Static(
-                control_state=["aanvoer", "afvoer"],
-                flow_rate=[float(flow), float(flow)],  # altijd flow
-                min_upstream_level=[min_us, min_us],
-                max_downstream_level=[float(max_ds_existing), 1000],  # behoud bestaande waarde bij aanvoer
-            )
-            model.update_node(node_id=node_id, node_type=node_type, data=[new_static])
-            model.link.add(dc, model.outlet[node_id])
-
-        elif node_type == "Pump":
-            new_static = pump.Static(
-                control_state=["aanvoer", "afvoer"],
-                flow_rate=[float(flow), float(flow)],
-                min_upstream_level=[min_us, min_us],
-                max_downstream_level=[float(max_ds_existing), float("nan")],
-            )
-            model.update_node(node_id=node_id, node_type=node_type, data=[new_static])
-            model.link.add(dc, model.pump[node_id])
-
-        print(f"[OK] Controller toegevoegd aan {node_type} node {node_id}")
-
-
+# %% pomp/outlets die zowel aanvoer als afvoer moeten kunnen doen
 # === Gebruik ===
 target_nodes = [
     327,
@@ -1565,13 +1152,24 @@ target_nodes = [
     703,
     539,
 ]
-add_max_ds_controller(
+add_controller(
     model=model,
-    target_node_ids=target_nodes,
+    node_ids=target_nodes,
     listen_node_id=1493,
-    # listen_node_id=1132,
-    th_high=7.68,
-    # th_high=3.15,
+    # --- thresholds ---
+    threshold_high=7.68,
+    # threshold_low=7.50,        # optioneel: hysterese
+    # --- flows ---
+    flow_aanvoer_outlet="orig",  # of bv. 0.0
+    flow_afvoer_outlet="orig",  # of bv. 50.0
+    flow_afvoer_pump="orig",  # of bv. 80.0
+    flow_aanvoer_pump="orig",
+    # --- max downstream levels ---
+    max_ds_aanvoer="existing",
+    max_ds_afvoer=1000,  # voorkomt NaN
+    # delta_max_ds_afvoer=None,  # optioneel
+    # --- upstream constraint behouden ---
+    keep_min_us=True,
 )
 # %%
 # write model
