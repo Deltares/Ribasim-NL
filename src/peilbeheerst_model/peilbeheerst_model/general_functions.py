@@ -202,7 +202,7 @@ def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_perc
     overlap_subset = overlapping_polygons.loc[overlapping_polygons["overlap_percentage"] > minimum_percentage]
 
     # plot
-    fig, ax = plt.subplots()
+    _fig, ax = plt.subplots()
     peilgebied.plot(ax=ax, color="lightgray")  # background
     overlap_subset.plot(
         ax=ax, cmap="coolwarm", column=overlap_subset.overlap_percentage, label="Percentage of overlap", legend=True
@@ -311,7 +311,7 @@ def burn_in_peilgebieden(base_layer, overlay_layer, plot=True):
     burned_base_layer = burned_base_layer.drop_duplicates(subset="globalid", keep="last")
 
     if plot:
-        fig, ax = plt.subplots()
+        _fig, ax = plt.subplots()
         base_layer.plot(ax=ax, color="cornflowerblue")
         overlay_layer.plot(ax=ax, color="blue")
 

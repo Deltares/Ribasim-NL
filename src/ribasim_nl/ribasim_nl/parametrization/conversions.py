@@ -73,7 +73,7 @@ def round_to_significant_digits(number: float, significant_digits: int = 3) -> f
         raise ValueError("max_significant_digits must be a positive integer.")
 
     # Determine the order of magnitude of the number
-    exponent = int(math.floor(math.log10(abs(number))))
+    exponent = math.floor(math.log10(abs(number)))
     # Calculate the rounding precision
     precision = 10 ** (exponent - significant_digits + 1)
     # Round the number to the nearest significant digit

@@ -20,9 +20,9 @@ run_model = True
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
+ribasim_areas_path = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_path, model_edits_path])
 
@@ -137,7 +137,6 @@ model.remove_node(node_id=17, remove_links=True)
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
 # Create the overlay of areas
 combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 # Calculate area for each geometry
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area

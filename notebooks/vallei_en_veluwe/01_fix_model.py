@@ -21,9 +21,9 @@ name = "venv"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
+fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg])
 
@@ -202,16 +202,14 @@ actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_
 for action in actions:
     print(action)
     # get method and args
-    method = getattr(model, action if "edge" not in action else action.replace("edge", "link"))
+    method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     if "order" in df.columns:
         df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {
-            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
-        }
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
 # remove unassigned basin area

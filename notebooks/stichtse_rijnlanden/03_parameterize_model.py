@@ -11,16 +11,11 @@ cloud = CloudStorage()
 authority = "StichtseRijnlanden"
 short_name = "hdsr"
 run_model = False
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data.xlsx",
-)
+static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
-# model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
+# model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
 # cloud.synchronize(filepaths=[static_data_xlsx])
 # cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)

@@ -23,10 +23,10 @@ run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt", "fix_user_data.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg, ribasim_areas_gpkg])
 
@@ -35,9 +35,7 @@ hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=T
 split_line_gdf = gpd.read_file(fix_user_data_gpkg, layer="split_basins", fid_as_index=True)
 level_boundary_gdf = gpd.read_file(fix_user_data_gpkg, layer="level_boundary", fid_as_index=True)
 ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
-drainage_areas_df = gpd.read_file(
-    cloud.joinpath("Vechtstromen", "verwerkt", "4_ribasim", "areas.gpkg"), layer="drainage_areas"
-)
+drainage_areas_df = gpd.read_file(cloud.joinpath("Vechtstromen/verwerkt/4_ribasim/areas.gpkg"), layer="drainage_areas")
 
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
@@ -130,7 +128,7 @@ for row in link_df.itertuples():
     model.remove_link(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
 
 # add level_boundaries at twentekanaal for later coupling
-hws_model = Model.read(cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml"))
+hws_model = Model.read(cloud.joinpath("Rijkswaterstaat/modellen/hws/hws.toml"))
 basin_ids = hws_model.node_table().df[hws_model.node_table().df.name.str.contains("Twentekanaal")].index.to_list()
 twentekanaal_poly = hws_model.basin.area.df[hws_model.basin.area.df.node_id.isin(basin_ids)].union_all()
 
@@ -385,7 +383,7 @@ model.link.df = model.link.df[~model.link.df.index.isin([2690, 2691, 2692, 2693,
 line = split_line_gdf.at[3, "geometry"]
 
 total_basin_polygon = model.basin.area.df.at[544, "geometry"]
-basin_polygon = [i for i in model.basin.area.df.at[544, "geometry"].geoms if i.intersects(line)][0]
+basin_polygon = next(i for i in model.basin.area.df.at[544, "geometry"].geoms if i.intersects(line))
 basin_polygons = split_basin(basin_polygon, line)
 model.basin.area.df.loc[544, ["geometry"]] = MultiPolygon(
     [i for i in model.basin.area.df.at[544, "geometry"].geoms if not i.intersects(line)] + [basin_polygons.geoms[0]]
@@ -1011,7 +1009,6 @@ filtered_ribasim_areas_gdf = ribasim_areas_gdf[ribasim_areas_gdf["code"].isin(un
 combined_basin_areas_gdf = gpd.overlay(
     filtered_ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
 ).explode()
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
 non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
 largest_area_node_ids = non_null_basin_areas_gdf.loc[
@@ -1104,7 +1101,7 @@ actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_
 for action in actions:
     print(action)
     # get method and args
-    method = getattr(model, action if "edge" not in action else action.replace("edge", "link"))
+    method = getattr(model, action)
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     if "order" in df.columns:
         df.sort_values("order", inplace=True)
@@ -1113,9 +1110,7 @@ for action in actions:
         kwargs = row._asdict()
         if inspect.getfullargspec(method).varkw != "kwargs":
             keywords = inspect.getfullargspec(method).args
-            kwargs = {
-                k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
-            }
+            kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
 # remove unassigned basin area

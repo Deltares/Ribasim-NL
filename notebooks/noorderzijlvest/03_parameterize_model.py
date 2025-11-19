@@ -12,13 +12,7 @@ authority = "Noorderzijlvest"
 short_name = "nzv"
 
 
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data.xlsx",
-)
-
+static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")

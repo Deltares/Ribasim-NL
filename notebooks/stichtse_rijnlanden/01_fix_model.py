@@ -21,9 +21,9 @@ name = "hdsr"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
-verbeteringen_gpkg = cloud.joinpath("StichtseRijnlanden", "verwerkt", "modelfouten_met_verbeter_acties_BD_311024.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+verbeteringen_gpkg = cloud.joinpath("StichtseRijnlanden/verwerkt/modelfouten_met_verbeter_acties_BD_311024.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, verbeteringen_gpkg, hydamo_gpkg, model_edits_gpkg])
 
@@ -488,14 +488,12 @@ model = reset_static_tables(model)
 for action in gpd.list_layers(model_edits_gpkg).name:
     print(action)
     # get method and args
-    method = getattr(model, action if "edge" not in action else action.replace("edge", "link"))
+    method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {
-            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
-        }
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
 # remove unassigned basin area

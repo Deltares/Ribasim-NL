@@ -460,7 +460,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
         qhq_df = verdeling_df.loc[verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :].iloc[
             :, : len(waterlichamen) + 2
         ]
-        qhq_df.columns = ["control_flow_rate", "min_upstream_level"] + waterlichamen
+        qhq_df.columns = ["control_flow_rate", "min_upstream_level", *waterlichamen]
 
         min_upstream_level = qhq_df.min_upstream_level.to_list()
 

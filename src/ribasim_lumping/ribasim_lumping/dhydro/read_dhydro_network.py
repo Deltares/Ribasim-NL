@@ -439,7 +439,7 @@ def get_dhydro_volume_based_on_basis_simulations(
     volume_nc_file = find_file_in_directory(mdu_input_dir, "PerGridpoint_volume.nc")
     if volume_nc_file is None or volume_tool_force:
         print("  - volume_tool: new level-volume dataframe not found")
-        subproces_cli = f'"{volume_tool_bat_file}" --mdufile "{mdu_file.name}" --increment {str(volume_tool_increment)} --outputfile volume.nc --output "All"'
+        subproces_cli = f'"{volume_tool_bat_file}" --mdufile "{mdu_file.name}" --increment {volume_tool_increment!s} --outputfile volume.nc --output "All"'
         subprocess.Popen(subproces_cli, cwd=str(mdu_file.parent))
         volume_nc_file = find_file_in_directory(mdu_input_dir, "PerGridpoint_volume.nc")
         print(f"  - volume_tool: new level-volume dataframe created: {volume_nc_file.name}")

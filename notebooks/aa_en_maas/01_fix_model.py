@@ -20,21 +20,16 @@ name = "aam"
 
 
 # %% Check if model exist, otherwise download
-ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_dir = cloud.joinpath(authority, f"modellen/{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 afwateringseenheden_shp = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "1_ontvangen_data",
-    "Na_levering_202404",
-    "afwateringseenheden_WAM",
-    "Afwateringseenheden.shp",
+    authority, "verwerkt/1_ontvangen_data/Na_levering_202404/afwateringseenheden_WAM/Afwateringseenheden.shp"
 )
-af_aanvoergebied_shp = cloud.joinpath(authority, "aangeleverd", "Eerste_levering", "AfvoergebiedAanvoergebied.shp")
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+af_aanvoergebied_shp = cloud.joinpath(authority, "aangeleverd/Eerste_levering/AfvoergebiedAanvoergebied.shp")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -331,7 +326,6 @@ combined_basin_areas_gdf = gpd.overlay(
     ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
 ).explode()
 
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
 non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
 
@@ -350,7 +344,6 @@ combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="code").reset_in
 filtered_drainage_units_gdf = drainage_units_johnny_gdf[
     drainage_units_johnny_gdf["SOORTAFVOE"] != "Deelstroomgebied"
 ].copy()
-filtered_drainage_units_gdf["geometry"] = filtered_drainage_units_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 filtered_drainage_units_gdf = filtered_drainage_units_gdf.to_crs(combined_basin_areas_gdf.crs)
 
@@ -362,9 +355,7 @@ combined_basin_areas_johnny_gdf = combined_basin_areas_johnny_gdf.dissolve(by="C
 
 # Step 1: Separate unassigned from assigned units
 unassigned_units_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].isnull()].copy()
-unassigned_units_gdf["geometry"] = unassigned_units_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 assigned_units_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()].copy()
-assigned_units_gdf["geometry"] = assigned_units_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 # Step 2: Calculate intersection areas between unassigned units and Johnny basins
 overlap_gdf = gpd.overlay(combined_basin_areas_johnny_gdf, unassigned_units_gdf, how="union", keep_geom_type=True)
@@ -475,7 +466,7 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
 
 # %% remove_nodes
 for row in remove_nodes_df.itertuples():
-    model.remove_node(node_id=row.node_id, remove_links=row.remove_edges)
+    model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
 
 # %% corrigeren knoop-topologie
 outlet_data = outlet.Static(flow_rate=[100])

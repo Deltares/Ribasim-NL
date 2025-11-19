@@ -18,9 +18,9 @@ run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_gpkg, hydamo_gpkg, model_edits_gpkg])
 # %% read model
@@ -169,14 +169,12 @@ actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_
 for action in actions:
     print(action)
     # get method and args
-    method = getattr(model, action if "edge" not in action else action.replace("edge", "link"))
+    method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {
-            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
-        }
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
 # remove unassigned basin area
@@ -188,7 +186,6 @@ model.remove_unassigned_basin_area()
 # Create the overlay of areas
 ribasim_areas_gdf = ribasim_areas_gdf.to_crs(model.basin.area.df.crs)
 combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 # Calculate area for each geometry
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area

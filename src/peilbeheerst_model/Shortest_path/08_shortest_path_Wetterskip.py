@@ -121,7 +121,7 @@ def find_closest_component_pair(largest_gdf, smaller_gdfs):
     nearest_i, dist2 = sgdf.sindex.nearest(largest_gdf.geometry, return_all=False, return_distance=True)
     li, si = nearest_i[:, np.argmin(dist2)]
 
-    nearest_idx, dist = smaller_gdfs[si].sindex.nearest(
+    nearest_idx, _dist = smaller_gdfs[si].sindex.nearest(
         largest_gdf.geometry.iat[li], return_all=False, return_distance=True
     )
     node_in_smaller = smaller_gdfs[si].index[nearest_idx[1, 0]]

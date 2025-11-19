@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
-from ribasim_nl.cloud import WATER_AUTHORITIES  # noqa: F401
+from ribasim_nl.cloud import WATER_AUTHORITIES
 from ribasim_nl.settings import Settings, settings
 
 from ribasim_nl import CloudStorage
@@ -20,7 +20,7 @@ def test_initialize(cloud):
     # check if we have the correct directories
     directories = cloud.dirs()
     assert len(directories) >= 20  # RWS, water authorities + pytest directory
-    for directory in cloud.water_authorities + ["Basisgegevens"]:
+    for directory in [*cloud.water_authorities, "Basisgegevens"]:
         assert directory in directories
 
 

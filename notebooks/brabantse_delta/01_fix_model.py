@@ -22,11 +22,11 @@ run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-ribasim_areas_bewerkt_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas_bewerkt.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+ribasim_areas_bewerkt_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas_bewerkt.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_gpkg, hydamo_gpkg, model_edits_gpkg])
 
@@ -106,14 +106,12 @@ for row in network_validator.link_incorrect_type_connectivity(
 for action in gpd.list_layers(model_edits_gpkg).name:
     print(action)
     # get method and args
-    method = getattr(model, action if "edge" not in action else action.replace("edge", "link"))
+    method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {
-            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
-        }
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
 # %%
@@ -149,7 +147,6 @@ else:
     ).explode(index_parts=False)
 
     # Step 3: Handle Z-coordinates and calculate area
-    combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
     combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
 
     # Step 4: Find and assign node_id

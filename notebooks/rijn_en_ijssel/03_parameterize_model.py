@@ -13,7 +13,7 @@ short_name = "wrij"
 
 run_model = False
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 

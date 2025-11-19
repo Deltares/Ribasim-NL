@@ -4,7 +4,7 @@ from ribasim_nl.parametrization.manning_resistance_table import manning_flow_rat
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
-ribasim_toml = cloud.joinpath("AaenMaas", "modellen", "AaenMaas_parameterized_model", "aam.toml")
+ribasim_toml = cloud.joinpath("AaenMaas/modellen/AaenMaas_parameterized_model/aam.toml")
 
 model = Model.read(ribasim_toml)
 

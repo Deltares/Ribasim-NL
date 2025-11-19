@@ -58,7 +58,7 @@ def lineplot_N_P(file, N, P, kg=True, set_log=False, title=None):
     filtered_df_p = file[file["VariableId"] == P]
 
     # Set up the subplots
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
+    _fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
 
     # Define manual colormap
     category_colors = {
@@ -141,7 +141,7 @@ def barplot_N_P(file, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, 
     filtered_df_p = file[file["VariableId"] == P]
 
     # Set up the subplots
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
+    _fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
 
     # Plot for 'N - totaal'
     sns.barplot(x="Year", y="Value", data=filtered_df_n, errorbar=None, ax=axes[0])

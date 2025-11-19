@@ -121,7 +121,7 @@ for hydamo_object in hydamo_objects:
 hydamo = HyDAMO(version="2.2.1_sweco")
 
 
-for hydamo_object in ["hydroobject"] + hydamo_objects:
+for hydamo_object in ["hydroobject", *hydamo_objects]:
     data_hydamo = data_hydamo_dict[hydamo_object]
     if hydamo_object == "stuw":
         data_hydamo = data_hydamo.drop(columns=["code_hydroobject", "data_issue"])  # ,'index_right'

@@ -12,17 +12,15 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_parameterized", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_parameterized/model.toml")
 model = Model.read(ribasim_toml)
 
-basin_area_df = gpd.read_file(
-    cloud.joinpath("DeDommel", "verwerkt", "basin_area.gpkg"), engine="pyogrio", fid_as_index=True
-)
+basin_area_df = gpd.read_file(cloud.joinpath("DeDommel/verwerkt/basin_area.gpkg"), engine="pyogrio", fid_as_index=True)
 basin_area_df.set_index("node_id", inplace=True)
 
 
-lhm_raster_file = cloud.joinpath("Basisgegevens", "LHM", "4.3", "input", "LHM_data.tif")
-ma_raster_file = cloud.joinpath("Basisgegevens", "VanDerGaast_QH", "spafvoer1.tif")
+lhm_raster_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
+ma_raster_file = cloud.joinpath("Basisgegevens/VanDerGaast_QH/spafvoer1.tif")
 
 
 basin_area_df = add_basin_statistics(df=basin_area_df, lhm_raster_file=lhm_raster_file, ma_raster_file=ma_raster_file)
@@ -109,6 +107,6 @@ df.loc[:, "infiltration"] = 0
 model.basin.static.df = df
 
 # %%
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_bergend", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_bergend/model.toml")
 
 model.write(ribasim_toml)

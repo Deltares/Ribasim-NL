@@ -24,11 +24,11 @@ ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_tom
 # %%
 # check files
 peilgebieden_path = cloud.joinpath(cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20250428/Peilvakken.shp"))
-top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "2_voorbewerking", "hydamo.gpkg")
-network_gpkg = cloud.joinpath(authority, "verwerkt", "network.gpkg")
+top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/hydamo.gpkg")
+network_gpkg = cloud.joinpath(authority, "verwerkt/network.gpkg")
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
@@ -362,8 +362,8 @@ model.basin.area.df.index += 1
 model.basin.area.df.index.name = "fid"
 
 # # koppelen
-ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
-RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+ws_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg")
 assign = AssignAuthorities(
     ribasim_model=model,
     waterschap=authority,

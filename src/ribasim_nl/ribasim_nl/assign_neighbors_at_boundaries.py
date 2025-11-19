@@ -6,7 +6,7 @@ from ribasim_nl.model import Model
 
 cloud = CloudStorage()
 
-noordzee_gpkg = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "noordzee.gpkg")
+noordzee_gpkg = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/noordzee.gpkg")
 
 
 def assign_noordzee(model: Model):

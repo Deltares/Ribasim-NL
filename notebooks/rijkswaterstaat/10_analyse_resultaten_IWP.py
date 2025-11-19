@@ -39,7 +39,7 @@ CONFIG = {
 
 
 # Read Ribasim model and data
-ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_transient")
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient")
 plots_dir = ribasim_model_dir / "plots"
 ribasim_toml = ribasim_model_dir / "hws.toml"
 model = ribasim.Model.read(ribasim_toml)
@@ -53,7 +53,7 @@ basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_
 basin_df = basin_df[basin_df.index > start_time]
 
 # Read Excel file and sheet names
-excel_file_path = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "RWsOS-IWP_debieten_2023_2024.xlsx")
+excel_file_path = cloud.joinpath("Rijkswaterstaat/aangeleverd/RWsOS-IWP_debieten_2023_2024.xlsx")
 sheet_names = pd.ExcelFile(excel_file_path).sheet_names
 found_names = set()
 
@@ -84,7 +84,7 @@ for sheet_name in sheet_names:
         continue
     # Select correct columns based on CONFIG keys
     column_indices = {name: meting_headers.index(name) for name in available_names}
-    usecols = [0] + list(column_indices.values())
+    usecols = [0, *list(column_indices.values())]
 
     # Read data
     meting_df = pd.read_excel(
@@ -136,7 +136,7 @@ CONFIG = {
 }
 
 # Inlezen ribasim model
-ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_transient")
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient")
 plots_dir = ribasim_model_dir / "plots"
 ribasim_toml = ribasim_model_dir / "hws.toml"
 model = ribasim.Model.read(ribasim_toml)
@@ -154,7 +154,7 @@ basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_
 basin_df = basin_df[basin_df.index > start_time]
 
 meting_df = pd.read_excel(
-    cloud.joinpath("Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx"),
+    cloud.joinpath("Rijkswaterstaat/aangeleverd/debieten_Rijn_Maas_2023_2024.xlsx"),
     header=[0, 1, 2, 3, 4, 5, 6, 7, 8],
     index_col=[0],
 )
@@ -189,7 +189,7 @@ for k, v in CONFIG.items():
 
 cloud = CloudStorage()
 # Read the CSV file
-ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "LWM_RWS_Waterinfo", "debiet_2023-2024")
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/aangeleverd/LWM_RWS_Waterinfo/debiet_2023-2024")
 df = pd.read_csv(ribasim_model_dir / "LWM_Q_4.csv", delimiter=";", encoding="latin-1")
 # Debug: Print the column names
 

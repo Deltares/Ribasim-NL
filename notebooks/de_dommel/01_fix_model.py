@@ -19,10 +19,10 @@ short_name = "dommel"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 
-areas_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-hydamo_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "hydamo.gpkg")
-q_data_gpkg = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "Geodata", "data_Q42018.gpkg")
-model_edits_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+q_data_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/Geodata/data_Q42018.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, areas_gpkg, hydamo_gpkg, q_data_gpkg, model_edits_gpkg])
 
@@ -64,7 +64,7 @@ model.link.df.loc[link_id, ["from_node_id"]] = node_id
 node = Node(node_id, model.link.df.at[link_id, "geometry"].boundary.geoms[0])
 model.basin.area.df.loc[model.basin.area.df.node_id == 1009, ["node_id"]] = node_id
 area = basin.Area(geometry=model.basin.area[node_id].geometry.to_list())
-model.basin.add(node, basin_data + [area])
+model.basin.add(node, [*basin_data, area])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291111647
 for row in network_validator.link_incorrect_connectivity().itertuples():
@@ -74,7 +74,7 @@ for row in network_validator.link_incorrect_connectivity().itertuples():
     # add basin_node
     area = basin.Area(geometry=model.basin.area[row.from_node_id].geometry.to_list())
     basin_node = Node(row.from_node_id, row.geometry.boundary.geoms[0])
-    model.basin.add(basin_node, basin_data + [area])
+    model.basin.add(basin_node, [*basin_data, area])
 
     # eindhovensch kanaal we need to add manning a 99% of the length
     if row.to_node_id == 2:

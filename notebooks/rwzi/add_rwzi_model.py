@@ -146,12 +146,12 @@ def create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance):
 
 def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=False):
     """
-    Verwijder RWZI‑terminals.
+    Verwijder RWZI-terminals.
 
-    Verwijder RWZI‑terminals die buiten het model vallen én de daarbij horende
-    flow‑boundary‑knopen uit het LHM‑model en geef het model terug.
+    Verwijder RWZI-terminals die buiten het model vallen én de daarbij horende
+    flow-boundary-knopen uit het LHM-model en geef het model terug.
     """
-    #  1. RWZI‑terminals verwijderen
+    #  1. RWZI-terminals verwijderen
     terminals_removed = 0
     for node_id in unmatched_rwzi_df.index:
         rwzi_coupled_model.remove_node(node_id, remove_links=True)
@@ -173,7 +173,7 @@ def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=Fals
     }
 
     if verbose:
-        print(f"Verwijderd: {terminals_removed} RWZI‑terminals en {flow_boundaries_removed} flow‑boundary‑knopen.")
+        print(f"Verwijderd: {terminals_removed} RWZI-terminals en {flow_boundaries_removed} flow-boundary-knopen.")
 
     return rwzi_coupled_model, stats
 

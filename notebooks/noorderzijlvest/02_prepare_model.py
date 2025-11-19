@@ -22,19 +22,14 @@ ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_tom
 
 # %%
 # defaults
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data_template.xlsx",
-)
+static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data_template.xlsx")
 
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 static_data.write()
 
 # # koppelen
-ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
-RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+ws_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg")
 assign = AssignAuthorities(
     ribasim_model=model,
     waterschap=authority,

@@ -22,16 +22,14 @@ cloud = CloudStorage()
 authority = "Noorderzijlvest"
 short_name = "nzv"
 
-he_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20241113", "HydrologischeEenheden_v45.shp")
-he_snap_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20241113", "HE_v45_snappingpoints.shp")
-lines_shp = cloud.joinpath(
-    authority, "verwerkt", "5_D_HYDRO_export", "hydroobjecten", "Noorderzijlvest_hydroobjecten.shp"
-)
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+he_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20241113/HydrologischeEenheden_v45.shp")
+he_snap_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20241113/HE_v45_snappingpoints.shp")
+lines_shp = cloud.joinpath(authority, "verwerkt/5_D_HYDRO_export/hydroobjecten/Noorderzijlvest_hydroobjecten.shp")
+model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 
-cloud.synchronize(filepaths=(he_shp, he_snap_shp, lines_shp, model_edits_path, ribasim_dir))
+cloud.synchronize(filepaths=[he_shp, he_snap_shp, lines_shp, model_edits_path, ribasim_dir])
 ribasim_toml = ribasim_dir / "model.toml"
 
 # %% read model
@@ -68,7 +66,7 @@ for row in lines_gdf.itertuples():
 lines_gdf = lines_gdf.explode(index_parts=False, ignore_index=True)
 lines_gdf.crs = 28992
 network = Network(lines_gdf.copy())
-network.to_file(cloud.joinpath(authority, "verwerkt", "network.gpkg"))
+network.to_file(cloud.joinpath(authority, "verwerkt/network.gpkg"))
 
 
 # %% some stuff we'll need again
@@ -134,7 +132,7 @@ he_df.set_index("HEIDENT", inplace=True)
 # niet altijd ligt de coordinaat goed
 he_outlet_df.loc["GPGKST0470", ["geometry"]] = model.manning_resistance[892].geometry
 
-he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt", "HydrologischeEenheden_v45_outlets.gpkg"))
+he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt/HydrologischeEenheden_v45_outlets.gpkg"))
 
 # %% Edit network
 
@@ -156,13 +154,10 @@ for action in [
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
-    layer = action if "link" not in action else action.replace("link", "edge")
-    df = gpd.read_file(model_edits_path, layer=layer, fid_as_index=True)
+    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {
-            k.replace("edge", "link"): v for k, v in row._asdict().items() if k.replace("edge", "link") in keywords
-        }
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
 
 
@@ -369,7 +364,7 @@ for row in model.flow_boundary.node.df.itertuples():
 # Moved t Noord-Willemskanaal so it connects properly with Hunze and Aa's model
 model.move_node(geometry=Point(233237, 559975), node_id=14)
 
-# %% reverse edges before junctionfy
+# %% reverse links before junctionfy
 for link_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
     model.reverse_link(link_id=link_id)
 

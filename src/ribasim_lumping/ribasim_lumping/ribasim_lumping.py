@@ -152,7 +152,7 @@ class RibasimLumpingNetwork(BaseModel):
         dhydro_volume_tool_force: bool = False,
         dhydro_volume_tool_increment: float = 0.1,
         hydamo_network_file: Path = "hydamo.gpkg",
-        hydamo_split_network_dx: float = None,
+        hydamo_split_network_dx: float | None = None,
     ) -> tuple[gpd.GeoDataFrame]:
         """
         Add (detailed) base network which will used to derive Ribasim network.
@@ -283,7 +283,11 @@ class RibasimLumpingNetwork(BaseModel):
         return self.his_data, self.map_data
 
     def read_areas(
-        self, areas_file_path: Path, areas_code_column: str = None, layer_name: str = None, crs: int = 28992
+        self,
+        areas_file_path: Path,
+        areas_code_column: str | None = None,
+        layer_name: str | None = None,
+        crs: int = 28992,
     ):
         """
         Add discharge unit areas (e.g. "afwateringseenheden" or "peilgebiedenpraktijk") from file.
@@ -300,8 +304,8 @@ class RibasimLumpingNetwork(BaseModel):
     def read_drainage_areas(
         self,
         drainage_areas_file_path: Path,
-        drainage_areas_code_column: str = None,
-        layer_name: str = None,
+        drainage_areas_code_column: str | None = None,
+        layer_name: str | None = None,
         crs: int = 28992,
     ):
         """
@@ -324,8 +328,8 @@ class RibasimLumpingNetwork(BaseModel):
     def read_supply_areas(
         self,
         supply_areas_file_path: Path,
-        supply_areas_code_column: str = None,
-        layer_name: str = None,
+        supply_areas_code_column: str | None = None,
+        layer_name: str | None = None,
         crs: int = 28992,
     ):
         """
@@ -352,7 +356,7 @@ class RibasimLumpingNetwork(BaseModel):
     def read_boundaries(
         self,
         boundary_file_path: Path,
-        layer_name: str = None,
+        layer_name: str | None = None,
         crs: int = 28992,
         buffer_distance: float = 10.0,
         min_length_link: float = 2.0,
@@ -438,9 +442,9 @@ class RibasimLumpingNetwork(BaseModel):
                 "startleveldeliveryside",
                 "stopleveldeliveryside",
             ],
-            "weir": ["crestlevel"] + control_headers,
-            "orifice": ["crestlevel"] + control_headers,
-            "culvert": ["crestlevel"] + control_headers,
+            "weir": ["crestlevel", *control_headers],
+            "orifice": ["crestlevel", *control_headers],
+            "culvert": ["crestlevel", *control_headers],
         }
         gdf = gdfs[structure_type]
         general_columns = ["structure_id"]
@@ -513,7 +517,7 @@ class RibasimLumpingNetwork(BaseModel):
     def read_split_nodes(
         self,
         split_nodes_file_path: Path,
-        layer_name: str = None,
+        layer_name: str | None = None,
         crs: int = 28992,
         buffer_distance: float = 2.0,
         min_length_link: float = 2.0,
@@ -664,8 +668,8 @@ class RibasimLumpingNetwork(BaseModel):
         set_name: str,
         split_node_type_conversion: dict,
         split_node_id_conversion: dict,
-        starttime: str = None,
-        endtime: str = None,
+        starttime: str | None = None,
+        endtime: str | None = None,
     ) -> ribasim.Model:
         """Generate Ribasim model using Ribasim-lumping"""
         self.generate_ribasim_lumping_network(
@@ -768,14 +772,14 @@ class RibasimLumpingNetwork(BaseModel):
         dummy_model: bool = False,
         interpolation_lines: int = 5,
         saveat: int = 24 * 3600,
-        maxiters: int = None,
-        starttime: datetime.datetime = None,
-        endtime: datetime.datetime = None,
+        maxiters: int | None = None,
+        starttime: datetime.datetime | None = None,
+        endtime: datetime.datetime | None = None,
         results_subgrid: bool = False,
         results_dir: str = "results",
         database_gpkg: str = "database.gpkg",
-        split_node_type_conversion: dict = None,
-        split_node_id_conversion: dict = None,
+        split_node_type_conversion: dict | None = None,
+        split_node_id_conversion: dict | None = None,
     ) -> ribasim.Model:
         """Generate Ribasim model. From Ribasim lumping to ribasim.Model"""
         if not dummy_model and set_name not in self.basis_set_names:
@@ -933,10 +937,10 @@ class RibasimLumpingNetwork(BaseModel):
 
         # write bat-file
         with open(Path(self.simulation_path, "run_ribasim_model.bat"), "w") as f:
-            f.write(f"{str(self.path_ribasim_executable)} ribasim.toml\n")
+            f.write(f"{self.path_ribasim_executable!s} ribasim.toml\n")
             f.write("pause")
 
-    def export_to_geopackage(self, simulation_code: str, results_dir: Path | str = None):
+    def export_to_geopackage(self, simulation_code: str, results_dir: Path | str | None = None):
         """Export Ribasim lumping results to ribasim_network.gpkg"""
         if results_dir is None:
             results_dir = self.results_dir

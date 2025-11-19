@@ -541,7 +541,10 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     kw_value: AnyType = kwargs.get("value", True)
 
     def _load_multiple_geometries(
-        file: str, extra_files: typing.Sequence[str] = None, layers: typing.Sequence[str] = None, max_files: int = None
+        file: str,
+        extra_files: typing.Sequence[str] | None = None,
+        layers: typing.Sequence[str] | None = None,
+        max_files: int | None = None,
     ) -> list[gpd.GeoDataFrame]:
         """Load multiple geometries.
 
@@ -633,7 +636,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
         out = gpd.GeoDataFrame(pd.concat(geometry, ignore_index=True))
         return out
 
-    def _extract_geometry(file: str, key: str, value: AnyType = True, layer: str = None) -> gpd.GeoDataFrame:
+    def _extract_geometry(file: str, key: str, value: AnyType = True, layer: str | None = None) -> gpd.GeoDataFrame:
         """Extract 'aanvoergebieden' as labelled within the geopandas.GeoDataFrame.
 
         :param file: geometry-file

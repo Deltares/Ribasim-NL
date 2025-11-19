@@ -26,7 +26,7 @@ loc_koppeltabel = cloud.joinpath(
 )
 
 loc_specifieke_bewerking = cloud.joinpath(
-    "Basisgegevens", "resultaatvergelijking", "koppeltabel", "Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
+    "Basisgegevens/resultaatvergelijking/koppeltabel/Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
 )
 
 meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen")

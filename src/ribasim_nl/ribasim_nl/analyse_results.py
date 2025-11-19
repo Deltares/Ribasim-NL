@@ -360,7 +360,7 @@ def CompareOutputMeasurements(
             for col in missing_measurements:
                 print(f"Cannot find the daily measurements for {col}")
 
-        subset_measurements = dagmetingen[["time"] + existing_measurements].copy()
+        subset_measurements = dagmetingen[["time", *existing_measurements]].copy()
 
         # If multiple measurements series refer to the same link, take the sum of the measurements
         subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1, min_count=1)
@@ -707,22 +707,19 @@ if __name__ == "__main__":
 
     # # specify koppeltabel and meas_folder
     loc_koppeltabel = cloud.joinpath(
-        "Basisgegevens",
-        "resultaatvergelijking",
-        "koppeltabel",
-        "Transformed_koppeltabel_versie_lhm_coupled_2025_9_0_Feedback_Verwerkt_HydroLogic.xlsx",
+        "Basisgegevens/resultaatvergelijking/koppeltabel/Transformed_koppeltabel_versie_lhm_coupled_2025_9_0_Feedback_Verwerkt_HydroLogic.xlsx"
     )
     loc_specifieke_bewerking = cloud.joinpath(
-        "Basisgegevens", "resultaatvergelijking", "koppeltabel", "Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
+        "Basisgegevens/resultaatvergelijking/koppeltabel/Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
     )
-    meas_folder = cloud.joinpath("Basisgegevens", "resultaatvergelijking", "meetreeksen")
+    meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen")
 
     # get latest coupled LHM model
     rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
     latest_lhm_version = sorted(
         [i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", "")
     )[-1]
-    model_folder = cloud.joinpath("Rijkswaterstaat", "modellen", latest_lhm_version.path_string)
+    model_folder = cloud.joinpath("Rijkswaterstaat/modellen", latest_lhm_version.path_string)
 
     # # synchronize paths
     cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, meas_folder, model_folder])

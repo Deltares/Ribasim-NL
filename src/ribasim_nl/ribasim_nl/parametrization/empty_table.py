@@ -38,7 +38,7 @@ def empty_table_df(
     ).df.dtypes
 
     # populate dataframe
-    df = node.node.df.reset_index()[["node_id"] + meta_columns]
+    df = node.node.df.reset_index()[["node_id", *meta_columns]]
 
     for column, dtype in dtypes.to_dict().items():
         if column in df.columns:
