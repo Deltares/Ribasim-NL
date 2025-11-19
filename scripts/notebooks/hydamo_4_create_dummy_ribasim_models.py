@@ -14,7 +14,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 # #### Read Ribasim model
 
 
-base_dir = Path("..\\Ribasim modeldata\\")
+base_dir = Path("../Ribasim modeldata/")
 
 
 waterschappen = {
@@ -32,7 +32,7 @@ waterschappen = {
 }
 
 
-new_model_dir_string = "..\\modellen\\WATERBOARD\\modellen\\WATERBOARD_2024_6_3"
+new_model_dir_string = "../modellen/WATERBOARD/modellen/WATERBOARD_2024_6_3"
 
 for waterschap, waterschap_code in waterschappen.items():
     print(waterschap)

@@ -9,7 +9,7 @@ from ribasim_lumping.utils.general_functions import remove_holes_from_polygons
 from shapely.geometry import Polygon
 
 # locatie van de waterschapsmappen
-base_dir = "..\\Ribasim modeldata\\"
+base_dir = "../Ribasim modeldata/"
 
 # creeer een lijst met alle namen van de waterschappen
 waterschappen = {
