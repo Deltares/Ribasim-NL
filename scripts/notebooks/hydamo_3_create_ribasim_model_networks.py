@@ -119,7 +119,7 @@ def generate_ribasim_network(waterschap_path, split_nodes_type_conversion, split
     return nodes, links, split_nodes
 
 
-base_dir = Path("..\\Ribasim modeldata")
+base_dir = Path("../Ribasim modeldata")
 
 waterschappen = [
     "Noorderzijlvest",

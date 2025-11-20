@@ -23,7 +23,7 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
 cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg], check_on_remote=False)
 cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
-qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 # %%
 

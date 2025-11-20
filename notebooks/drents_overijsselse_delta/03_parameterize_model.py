@@ -17,8 +17,8 @@ run_model = False
 parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
-qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
-inlaten = cloud.joinpath(authority, "verwerkt\\1_ontvangen_data\extra data\\Duiker_inlaat_lijn\\Duiker_inlaat_lijn.shp")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
+inlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/extra data/Duiker_inlaat_lijn/Duiker_inlaat_lijn.shp")
 inlaten_gdf = gpd.read_file(inlaten)
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")

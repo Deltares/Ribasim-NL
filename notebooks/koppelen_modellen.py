@@ -519,7 +519,7 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 
 # %% Individual execution blocks for notebook use
 
-sub_models_dir = cloud.joinpath(r"Rijkswaterstaat\modellen\lhm_sub_models")
+sub_models_dir = cloud.joinpath("Rijkswaterstaat/modellen/lhm_sub_models")
 model_dirs = [i for i in sub_models_dir.glob("*") if i.is_dir() and ("coupled" not in i.name)]
 if RUN_SELECTION:
     model_dirs = [i for i in model_dirs if i.name in RUN_SELECTION]
