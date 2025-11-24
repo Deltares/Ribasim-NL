@@ -102,7 +102,7 @@ outlets_us_basins_controlled = model.outlet.node.df.apply(
 )
 
 original_model = model.model_copy(deep=True)
-update_basin_static(model=model, evaporation_mm_per_day=0.5)
+update_basin_static(model=model, precipitation_mm_per_day=0.5)
 
 
 # %%
@@ -244,7 +244,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 380, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 573, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 443, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 516, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 564, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 578, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 579, "max_downstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 585, "max_downstream_level"] = pd.NA
@@ -289,6 +288,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 462, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 423, "max_downstream_level"] = -0.69
 
 # Kleine aanpassingen handmatig
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 379, "max_downstream_level"] = -0.56
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 568, "max_downstream_level"] = 4
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 571, "max_downstream_level"] = 4
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 483, "max_downstream_level"] = 8.5
@@ -311,7 +311,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 645, "max_downstrea
 
 
 # Diepswal
-model.pump.static.df.loc[model.pump.static.df.node_id == 37, "max_downstream_level"] = 2.74
+model.pump.static.df.loc[model.pump.static.df.node_id == 37, "max_downstream_level"] = 2.72
 
 # Driewegsluis max_downstream verhogen, Manning knopen
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1750, "max_downstream_level"] = -1.24
@@ -327,7 +327,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 507, "max_downstrea
 model.pump.static.df.loc[model.pump.static.df.node_id == 129, "max_downstream_level"] = -0.75
 
 # HD Louwes
-model.pump.static.df.loc[model.pump.static.df.node_id == 30, "min_upstream_level"] = -0.93
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 479, "max_downstream_level"] = 8.75
 model.pump.static.df.loc[model.pump.static.df.node_id == 39, "max_downstream_level"] = -0.37
 model.pump.static.df.loc[model.pump.static.df.node_id == 186, "max_downstream_level"] = pd.NA
@@ -430,7 +429,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 721, "min_upstream_
 # Leek 2 inlaten naast pomp: rondpompen voorkomen
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 565, "max_downstream_level"] = 0.7
 model.pump.static.df.loc[model.pump.static.df.node_id == 36, "min_upstream_level"] = -0.95
-model.pump.static.df.loc[model.pump.static.df.node_id == 36, "max_downstream_level"] = 0.74
+model.pump.static.df.loc[model.pump.static.df.node_id == 36, "max_downstream_level"] = 0.7
 
 # Pomp en inlaat naast elkaar: rondpompen voorkomen
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 680, "max_downstream_level"] = -1.22
@@ -768,6 +767,9 @@ exclude_ids = {
     683,
     1752,
     1753,
+    687,
+    698,
+    699,
 }  # scheepvaartsluizen moeten op flow_rate=0
 df = model.outlet.static.df
 mask = df["node_id"].isin(exclude_ids)
@@ -944,56 +946,37 @@ def add_controller(
 
 # %%
 # %%
-# aanvoer en afvoer outlets die uitkomen op Manning waterloop die geen aanvoer nodig heeft. Bij aanvoer moet flow op 0 staan zodat ze niet Manning waterlopen gaan aanvullen
-# Bij afvoer mag flow niet op 0 staan anders werkt de afvoer niet meer. Gemaal Waterwolf/Abelstok en Schaphalsterzijl staat in aanvoersituaties uit, Evt afvoer via sluis
+# Gemaal Waterwolf/Abelstok en Schaphalsterzijl staat in aanvoersituaties uit, Evt afvoer via sluis
 # === afvoerpumps/oulets ===
 selected_node_ids = [
     44,
     47,
     121,
-    350,
     431,
-    681,
-    357,
-    537,
-    401,
-    501,
     521,
     524,
-    455,
     560,
     740,
     741,
-    565,
-    652,
-    551,
-    618,
-    383,
     385,
-    368,
     538,
-    564,
-    389,
     723,
     145,
     147,
     31,
     34,
     168,
-    41,
     42,
     43,
-    731,
     181,
     182,
-    67,
     40,
-    732,
-    519,
     1748,
     1755,
     1754,
     1747,
+    30,
+    727,
 ]
 
 add_controller(
@@ -1005,7 +988,7 @@ add_controller(
     threshold_delta=0.07,
     # ---- OUTLET FLOWS (afvoer) ----
     flow_aanvoer_outlet=0.0,  # laagwater → dicht
-    flow_afvoer_outlet=20.0,  # hoogwater → afvoer open
+    flow_afvoer_outlet=50.0,  # hoogwater → afvoer open
     # ---- PUMP FLOWS (afvoer) ----
     flow_aanvoer_pump=0.0,  # laagwater → uit
     flow_afvoer_pump="orig",  # hoogwater → originele afvoer
@@ -1016,28 +999,8 @@ add_controller(
     delta_max_ds_afvoer=None,
     keep_min_us=True,
 )
+
 # %%
-# Gemaal Waterwolf afvoer via sluis
-# === Aanvoergemalen/aanvoerpumps Grote pompen en outlets===
-add_controller(
-    model=model,
-    node_ids=[29, 728],
-    listen_node_id=1493,
-    # thresholds
-    threshold_high=7.68,
-    threshold_delta=0.07,
-    # ---- OUTLET FLOWS ----
-    flow_aanvoer_outlet=9999,  # laagwater → moet open (aanvoer)
-    flow_afvoer_outlet=0,  # hoogwater → dicht (geen afvoer)
-    # ---- PUMP FLOWS ----
-    flow_aanvoer_pump=0,  # laagwater → pomp staat uit
-    flow_afvoer_pump="orig",  # hoogwater → pomp draait op originele flow
-    # ---- MAX DOWNSTREAM ----
-    max_ds_aanvoer="existing",
-    delta_max_ds_aanvoer=0.02,  # +0.02 zoals oude code
-    max_ds_afvoer=9999,  # open grenzen bij hoogwater
-    keep_min_us=True,
-)
 # %%# === Aanvoergemalen/aanvoerpumps ===
 selected_node_ids = [
     609,
@@ -1050,34 +1013,24 @@ selected_node_ids = [
     184,
     118,
     125,
-    114,
-    124,
     110,
-    38,
     120,
     111,
     115,
     116,
-    136,
-    139,
     112,
     122,
     32,
-    35,
-    36,
-    37,
     45,
     107,
     123,
     146,
     106,
-    143,
     711,
     721,
     1753,
     505,
-    837,
-    142,
+    169,
 ]
 
 add_controller(
@@ -1131,21 +1084,9 @@ target_nodes = [
     570,
     571,
     568,
-    427,
-    396,
     428,
-    462,
-    387,
     423,
     485,
-    390,
-    517,
-    508,
-    509,
-    646,
-    702,
-    703,
-    539,
 ]
 add_controller(
     model=model,
@@ -1166,6 +1107,258 @@ add_controller(
     # --- upstream constraint behouden ---
     keep_min_us=True,
 )
+
+# %%
+# Gemaal Waterwolf afvoer via sluis
+# === Aanvoergemalen/aanvoerpumps Grote pompen en outlets===
+add_controller(
+    model=model,
+    node_ids=[29, 728],
+    listen_node_id=1493,
+    # thresholds
+    threshold_high=7.68,
+    threshold_delta=0.07,
+    # ---- OUTLET FLOWS ----
+    flow_aanvoer_outlet=9999,  # laagwater → moet open (aanvoer)
+    flow_afvoer_outlet=0,  # hoogwater → dicht (geen afvoer)
+    # ---- PUMP FLOWS ----
+    flow_aanvoer_pump=0,  # laagwater → pomp staat uit
+    flow_afvoer_pump="orig",  # hoogwater → pomp draait op originele flow
+    # ---- MAX DOWNSTREAM ----
+    max_ds_aanvoer="existing",
+    delta_max_ds_aanvoer=0.04,
+    max_ds_afvoer=1000,  # open grenzen bij hoogwater
+    keep_min_us=True,
+)
+# %%
+# === Dwarsdiep,
+# afvoerpumps/oulets aanvoer dicht, afvoer open, ===
+add_controller(
+    model=model,
+    node_ids=[350, 537, 383, 618, 681, 357, 401, 501, 519, 455, 565, 652, 389, 564, 551],
+    listen_node_id=1132,
+    # --- thresholds ---
+    threshold_high=3.12,
+    threshold_delta=0.02,
+    # ---- OUTLET FLOWS (afvoer) ----
+    flow_aanvoer_outlet=0.0,  # laagwater → dicht
+    flow_afvoer_outlet=20.0,  # hoogwater → afvoer open
+    # ---- PUMP FLOWS (afvoer) ----
+    flow_aanvoer_pump=0.0,  # laagwater → uit
+    flow_afvoer_pump="orig",  # hoogwater → originele afvoer
+    # ---- MAX_DOWNSTREAM ----
+    max_ds_aanvoer="existing",  # state0 → h_pump / h_out
+    max_ds_afvoer=1000,  # controllers werkt niet goed met NAN waarden daarom 1000
+    delta_max_ds_aanvoer=0.0,  # geen extra
+    delta_max_ds_afvoer=None,
+    keep_min_us=True,
+)
+
+# Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
+add_controller(
+    model=model,
+    node_ids=[687, 698, 699, 36, 37, 38],
+    listen_node_id=1132,
+    # --- thresholds ---
+    threshold_high=3.12,
+    threshold_delta=0.02,
+    # flows:
+    flow_aanvoer_outlet=1.0,  # open bij laagwater → laat water in
+    flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
+    flow_afvoer_pump=0,  # idem voor pumps die alleen aanvoer doen
+    flow_aanvoer_pump="orig",
+    # max_ds:
+    max_ds_aanvoer="existing",
+    delta_max_ds_aanvoer=0.02,
+    max_ds_afvoer=9999,
+    # naming:
+    state_labels=("closed", "open"),  # 0=closed, 1=open
+    keep_min_us=True,
+)
+
+# interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
+add_controller(
+    model=model,
+    node_ids=[368],
+    listen_node_id=1132,
+    # --- thresholds ---
+    threshold_high=3.12,
+    threshold_delta=0.02,
+    # threshold_low=7.50,        # optioneel: hysterese
+    # --- flows ---
+    flow_aanvoer_outlet="orig",  # of bv. 0.0
+    flow_afvoer_outlet="orig",  # of bv. 50.0
+    flow_afvoer_pump="orig",  # of bv. 80.0
+    flow_aanvoer_pump="orig",
+    # --- max downstream levels ---
+    max_ds_aanvoer="existing",
+    max_ds_afvoer=1000,  # voorkomt NaN
+    # delta_max_ds_afvoer=None,  # optioneel
+    # --- upstream constraint behouden ---
+    keep_min_us=True,
+)
+
+# %% === Spijksterpompen
+
+# afvoerpumps/oulets aanvoer dicht, afvoer open, ===
+add_controller(
+    model=model,
+    node_ids=[41, 731],
+    listen_node_id=1182,
+    # --- thresholds ---
+    threshold_high=-0.68,
+    threshold_delta=0.02,
+    # ---- OUTLET FLOWS (afvoer) ----
+    flow_aanvoer_outlet=0.0,  # laagwater → dicht
+    flow_afvoer_outlet=50.0,  # hoogwater → afvoer open
+    # ---- PUMP FLOWS (afvoer) ----
+    flow_aanvoer_pump=0.0,  # laagwater → uit
+    flow_afvoer_pump="orig",  # hoogwater → originele afvoer
+    # ---- MAX_DOWNSTREAM ----
+    max_ds_aanvoer="existing",  # state0 → h_pump / h_out
+    max_ds_afvoer=1000,  # controllers werkt niet goed met NAN waarden daarom 1000
+    delta_max_ds_afvoer=None,
+    keep_min_us=True,
+)
+
+# Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
+add_controller(
+    model=model,
+    node_ids=[136, 139, 371, 124, 114, 837],
+    listen_node_id=1182,
+    # --- thresholds ---
+    threshold_high=-0.68,
+    threshold_delta=0.02,
+    # flows:
+    flow_aanvoer_outlet=1.0,  # open bij laagwater → laat water in
+    flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
+    flow_afvoer_pump=0,  # idem voor pumps die alleen aanvoer doen
+    flow_aanvoer_pump="orig",
+    # max_ds:
+    max_ds_aanvoer="existing",
+    #  delta_max_ds_aanvoer=0.02,
+    max_ds_afvoer=9999,
+    # naming:
+    state_labels=("closed", "open"),  # 0=closed, 1=open
+    keep_min_us=True,
+)
+
+# interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
+add_controller(
+    model=model,
+    node_ids=[390, 396, 427, 462, 387],
+    listen_node_id=1182,
+    # --- thresholds ---
+    threshold_high=-0.68,
+    threshold_delta=0.02,
+    # threshold_low=7.50,        # optioneel: hysterese
+    # --- flows ---
+    flow_aanvoer_outlet="orig",  # of bv. 0.0
+    flow_afvoer_outlet="orig",  # of bv. 50.0
+    flow_afvoer_pump="orig",  # of bv. 80.0
+    flow_aanvoer_pump="orig",
+    # --- max downstream levels ---
+    max_ds_aanvoer="existing",
+    max_ds_afvoer=1000,  # voorkomt NaN
+    delta_max_ds_aanvoer=0.0,
+    # delta_max_ds_afvoer=None,  # optioneel
+    # --- upstream constraint behouden ---
+    keep_min_us=True,
+)
+
+# %%
+# === Fivelingo,afvoerpumps/oulets aanvoer dicht, afvoer open, ===
+add_controller(
+    model=model,
+    node_ids=[732, 67],
+    listen_node_id=1172,
+    # --- thresholds ---
+    threshold_high=-1.25,
+    threshold_delta=0.02,
+    # ---- OUTLET FLOWS (afvoer) ----
+    flow_aanvoer_outlet=0.0,  # laagwater → dicht
+    flow_afvoer_outlet=50.0,  # hoogwater → afvoer open
+    # ---- PUMP FLOWS (afvoer) ----
+    flow_aanvoer_pump=0.0,  # laagwater → uit
+    flow_afvoer_pump="orig",  # hoogwater → originele afvoer
+    # ---- MAX_DOWNSTREAM ----
+    max_ds_aanvoer="existing",  # state0 → h_pump / h_out
+    max_ds_afvoer=1000,  # controllers werkt niet goed met NAN waarden daarom 1000
+    delta_max_ds_aanvoer=0.0,  # geen extra
+    delta_max_ds_afvoer=None,
+    keep_min_us=True,
+)
+
+# Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
+add_controller(
+    model=model,
+    node_ids=[142, 143, 702, 703, 517],
+    listen_node_id=1172,
+    # --- thresholds ---
+    threshold_high=-1.25,
+    threshold_delta=0.02,
+    # flows:
+    flow_aanvoer_outlet=1.0,  # open bij laagwater → laat water in
+    flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
+    flow_afvoer_pump=0,  # idem voor pumps die alleen aanvoer doen
+    flow_aanvoer_pump="orig",
+    # max_ds:
+    max_ds_aanvoer="existing",
+    delta_max_ds_aanvoer=0.02,
+    max_ds_afvoer=9999,
+    # naming:
+    state_labels=("closed", "open"),  # 0=closed, 1=open
+    keep_min_us=True,
+)
+
+# Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
+add_controller(
+    model=model,
+    node_ids=[693],
+    listen_node_id=1265,
+    # --- thresholds ---
+    threshold_high=-1.16,
+    threshold_delta=0.02,
+    # flows:
+    flow_aanvoer_outlet=1.0,  # open bij laagwater → laat water in
+    flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
+    flow_afvoer_pump=0,  # idem voor pumps die alleen aanvoer doen
+    flow_aanvoer_pump="orig",
+    # max_ds:
+    max_ds_aanvoer="existing",
+    delta_max_ds_aanvoer=0.02,
+    max_ds_afvoer=9999,
+    # naming:
+    state_labels=("closed", "open"),  # 0=closed, 1=open
+    keep_min_us=True,
+)
+
+# interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
+add_controller(
+    model=model,
+    node_ids=[508, 509, 646, 539],
+    listen_node_id=1172,
+    # --- thresholds ---
+    threshold_high=-1.25,
+    threshold_delta=0.02,
+    # threshold_low=7.50,        # optioneel: hysterese
+    # --- flows ---
+    flow_aanvoer_outlet="orig",  # of bv. 0.0
+    flow_afvoer_outlet="orig",  # of bv. 50.0
+    flow_afvoer_pump="orig",  # of bv. 80.0
+    flow_aanvoer_pump="orig",
+    # --- max downstream levels ---
+    max_ds_aanvoer="existing",
+    max_ds_afvoer=1000,  # voorkomt NaN
+    delta_max_ds_aanvoer=0.0,
+    # delta_max_ds_afvoer=None,  # optioneel
+    # --- upstream constraint behouden ---
+    keep_min_us=True,
+)
+
+
+# %%
+
 # %%
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
