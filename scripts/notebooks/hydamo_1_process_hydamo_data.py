@@ -59,7 +59,7 @@ def process_hydamo_changes(
             gdf.to_file(str(path_hydamo_gpkg_processed), layer=layer, driver="GPKG")
 
 
-main_dir = "..\\Ribasim modeldata"
+main_dir = "../Ribasim modeldata"
 
 
 waterschappen = [

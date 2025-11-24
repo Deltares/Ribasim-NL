@@ -16,7 +16,7 @@ static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xl
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
-qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py

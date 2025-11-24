@@ -119,7 +119,7 @@ def run_ribasim_lumping_for_waterboard(
 
 
 if __name__ == "__main__":
-    base_dir = Path("..\\..\\Ribasim modeldata")
+    base_dir = Path("../../Ribasim modeldata")
     waterschap = "AaenMaas"
     dx = 250.0
 
