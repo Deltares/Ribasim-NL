@@ -14,16 +14,16 @@ for authority in cloud.water_authorities:
     if ribasim_toml.exists():
         model = Model.read(ribasim_toml)
 
-        # duplicated edges
-        duplicated_edges = len(model.edge.df[model.edge.df.duplicated()])
-        model.edge.df.drop_duplicates(inplace=True)
+        # duplicated links
+        duplicated_links = len(model.link.df[model.link.df.duplicated()])
+        model.link.df.drop_duplicates(inplace=True)
 
         # non existing nodes
-        mask = model.edge.df.to_node_id.isin(model.node_table().df.index) & model.edge.df.from_node_id.isin(
+        mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
             model.node_table().df.index
         )
-        nodes_not_existing = len(model.edge.df[~mask])
-        model.edge.df = model.edge.df[mask]
+        nodes_not_existing = len(model.link.df[~mask])
+        model.link.df = model.link.df[mask]
 
         data += [
             {
@@ -33,8 +33,8 @@ for authority in cloud.water_authorities:
                 "basin_verschil": abs(len(model.basin.node.df) - len(model.basin.area.df)),
                 "basin_area_lt_5000m2": len(model.basin.area.df[model.basin.area.df.area < 5000]),
                 "verkeerde_in_uitstroom": len(model.invalid_topology_at_node()),
-                "dubbele_edges": duplicated_edges,
-                "niet-bestaande_knopen_bij_edge": nodes_not_existing,
+                "dubbele_links": duplicated_links,
+                "niet-bestaande_knopen_bij_link": nodes_not_existing,
             }
         ]
 

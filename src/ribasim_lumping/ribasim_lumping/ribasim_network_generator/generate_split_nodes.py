@@ -10,7 +10,7 @@ def get_split_nodes_based_on_type(
     bridges: bool = False,
     culverts: bool = False,
     uniweirs: bool = False,
-    list_gdfs: list[gpd.GeoDataFrame] = None,
+    list_gdfs: list[gpd.GeoDataFrame] | None = None,
     crs: int = 28992,
 ):
     """
@@ -20,7 +20,7 @@ def get_split_nodes_based_on_type(
     stations, pumps, weirs, orifices, bridges, culverts, uniweirs
     """
     list_objects = [stations, pumps, weirs, orifices, bridges, culverts, uniweirs, False]
-    split_nodes_columns = ["split_node_id", "geometry", "object_type", "split_type", "edge_no", "node_no"]
+    split_nodes_columns = ["split_node_id", "geometry", "object_type", "split_type", "link_no", "node_no"]
     split_nodes = gpd.GeoDataFrame(
         columns=split_nodes_columns,
         geometry="geometry",
@@ -43,12 +43,12 @@ def add_split_nodes_based_on_selection(
     bridges: bool = False,
     culverts: bool = False,
     uniweirs: bool = False,
-    edges: bool = False,
+    links: bool = False,
     list_gdfs: list[gpd.GeoDataFrame] = [],
     structures_ids_to_include: list[str] = [],
     structures_ids_to_exclude: list[str] = [],
-    edge_ids_to_include: list[int] = [],
-    edge_ids_to_exclude: list[int] = [],
+    link_ids_to_include: list[int] = [],
+    link_ids_to_exclude: list[int] = [],
 ) -> gpd.GeoDataFrame:
     """
     Receive node ID's of splitnodes.
@@ -58,7 +58,7 @@ def add_split_nodes_based_on_selection(
 
     returns splitnodes
     """
-    network_edges = list_gdfs[-1]
+    network_links = list_gdfs[-1]
     # get split_nodes based on type
     split_nodes_structures = get_split_nodes_based_on_type(
         stations=stations,
@@ -86,29 +86,29 @@ def add_split_nodes_based_on_selection(
     # exclude split_nodes with id
     split_nodes = split_nodes[~split_nodes.split_node_id.isin(structures_ids_to_exclude)]
 
-    # include/exclude edge centers
-    if edges or len(edge_ids_to_include) >= 1:
+    # include/exclude link centers
+    if links or len(link_ids_to_include) >= 1:
         additional_split_nodes = None
-        if edges:
-            additional_split_nodes = network_edges.copy()
-            if len(edge_ids_to_exclude):
+        if links:
+            additional_split_nodes = network_links.copy()
+            if len(link_ids_to_exclude):
                 additional_split_nodes = additional_split_nodes[
-                    ~additional_split_nodes.edge_no.isin(edge_ids_to_exclude)
+                    ~additional_split_nodes.link_no.isin(link_ids_to_exclude)
                 ]
-        elif len(edge_ids_to_include):
-            additional_split_nodes = network_edges[network_edges.edge_no.isin(edge_ids_to_include)][
-                ["edge_no", "branch_id", "geometry"]
+        elif len(link_ids_to_include):
+            additional_split_nodes = network_links[network_links.link_no.isin(link_ids_to_include)][
+                ["link_no", "branch_id", "geometry"]
             ]
         if additional_split_nodes is not None:
             additional_split_nodes.geometry = additional_split_nodes.geometry.apply(
                 lambda g: g.interpolate(0.5, normalized=True)
             )
-            # additional_split_nodes["split_node_id"] = additional_split_nodes["branch_id"] + "__" + additional_split_nodes["edge_no"].astype(str)
-            additional_split_nodes["split_node_id"] = additional_split_nodes["edge_no"]
+            # additional_split_nodes["split_node_id"] = additional_split_nodes["branch_id"] + "__" + additional_split_nodes["link_no"].astype(str)
+            additional_split_nodes["split_node_id"] = additional_split_nodes["link_no"]
             additional_split_nodes["object_type"] = "openwater"
             additional_split_nodes["node_no"] = -1
             split_nodes = pd.concat([split_nodes, additional_split_nodes])
-            split_nodes = split_nodes.drop_duplicates(subset="edge_no", keep="first")
+            split_nodes = split_nodes.drop_duplicates(subset="link_no", keep="first")
 
     split_nodes["node_no"] = -1
     split_nodes = split_nodes.reset_index(drop=True)

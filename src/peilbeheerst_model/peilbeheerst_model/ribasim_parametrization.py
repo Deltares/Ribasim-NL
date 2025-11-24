@@ -1435,7 +1435,7 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: ribasim.Model, w
         pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
 
     # raise warning if there are np.nan in the columns
-    def check_for_nans_in_columns(df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list = None) -> None:
+    def check_for_nans_in_columns(df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list | None = None) -> None:
         columns_to_check = columns_to_check or ["min_upstream_level", "max_downstream_level", "flow_rate"]
         assert outlet_or_pump in ("outlet", "pump")
 

@@ -10,15 +10,10 @@ cloud = CloudStorage()
 authority = "HunzeenAas"
 short_name = "hea"
 run_model = False
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data.xlsx",
-)
+static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
-qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
 # cloud.synchronize(filepaths=[static_data_xlsx])
@@ -35,10 +30,6 @@ start_time = time.time()
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
-
-# %%fixes
-model.remove_node(node_id=1126, remove_edges=True)
-model.remove_node(node_id=1023, remove_edges=True)
 
 
 # %% Flow rates are replaced to max_flow_rate, otherwise it affects the flow ratio

@@ -7,24 +7,22 @@ cloud = CloudStorage()
 
 
 # %% load model
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_model_network", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_fix_model_network/model.toml")
 model = Model.read(ribasim_toml)
 
 # %% network from HydroObjects
-network_gpkg = cloud.joinpath("DeDommel", "verwerkt", "network.gpkg")
+network_gpkg = cloud.joinpath("DeDommel/verwerkt/network.gpkg")
 if network_gpkg.exists():
     network = Network.from_network_gpkg(network_gpkg)
 else:
-    network = Network.from_lines_gpkg(
-        cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg"), layer="hydroobject"
-    )
+    network = Network.from_lines_gpkg(cloud.joinpath("DeDommel/verwerkt/4_ribasim/hydamo.gpkg"), layer="hydroobject")
 
     network.to_file(network_gpkg)
-# %% edges follow HydroObjects
-model.reset_edge_geometry()
+# %% links follow HydroObjects
+model.reset_link_geometry()
 node_df = model.node_table().df
 data = []
-for row in model.edge.df.itertuples():
+for row in model.link.df.itertuples():
     try:
         # get or add node_from
         from_point = node_df.at[row.from_node_id, "geometry"]
@@ -46,18 +44,18 @@ for row in model.edge.df.itertuples():
             # get line geometry
             geometry = network.get_line(node_from, node_to)
 
-            # replace edge geometry
-            model.edge.df.loc[row.Index, ["geometry"]] = geometry
+            # replace link geometry
+            model.link.df.loc[row.Index, ["geometry"]] = geometry
         else:
-            print(f"edge not updated for {row.Index} as node_from and node_to cannot be found")
+            print(f"link not updated for {row.Index} as node_from and node_to cannot be found")
             data += [row]
     except:  # noqa: E722
-        print("edge not updated due to Exception")
+        print("link not updated due to Exception")
         data += [row]
         continue
 
-out_dir = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_edges")
-gpd.GeoDataFrame(data, crs=28992).to_file(out_dir / "rare_edges.gpkg")
+out_dir = cloud.joinpath("DeDommel/modellen/DeDommel_fix_links")
+gpd.GeoDataFrame(data, crs=28992).to_file(out_dir / "rare_links.gpkg")
 
 # %% write model
 model.write(out_dir / "model.toml")

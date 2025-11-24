@@ -138,7 +138,7 @@ def update_koppeltabel_with_feedback(
                     ast.literal_eval(link_ids) if isinstance(link_ids, str) and link_ids.startswith("[") else [link_ids]
                 )
 
-            from_node_ids, to_node_ids, edge_ids = [], [], []
+            from_node_ids, to_node_ids, link_ids = [], [], []
 
             for link_id in link_ids:
                 link_data = links_model[links_model["link_id"] == link_id]
@@ -151,8 +151,8 @@ def update_koppeltabel_with_feedback(
                     if "to_node_id" in link_data.columns:
                         to_node_ids.extend(link_data["to_node_id"].tolist())
 
-                    if "meta_edge_id_waterbeheerder" in link_data.columns:
-                        edge_ids.extend(link_data["meta_edge_id_waterbeheerder"].tolist())
+                    if "meta_link_id_waterbeheerder" in link_data.columns:
+                        link_ids.extend(link_data["meta_link_id_waterbeheerder"].tolist())
 
             from_node_geometries = [search_geometry_nodes(lhm_model, node_id) for node_id in from_node_ids]
             to_node_geometries = [search_geometry_nodes(lhm_model, node_id) for node_id in to_node_ids]
@@ -183,7 +183,7 @@ def update_koppeltabel_with_feedback(
         input_koppeltabel = input_koppeltabel[~input_koppeltabel["MeetreeksC"].isin(remove_meetreeksc)]
 
     # Generate output file name
-    folder, filename = os.path.split(input_koppeltabel_path)
+    _folder, filename = os.path.split(input_koppeltabel_path)
     basename, ext = os.path.splitext(filename)
     base_without_feedback = basename.split("_Feedback")[0]
 

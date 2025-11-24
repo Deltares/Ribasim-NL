@@ -4,8 +4,8 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["dynamic_model"]
-SELECTION = []
-INCLUDE_RESULTS = False
+SELECTION = ["Noorderzijlvest"]
+INCLUDE_RESULTS = True
 
 
 def get_model_dir(authority, post_fix):

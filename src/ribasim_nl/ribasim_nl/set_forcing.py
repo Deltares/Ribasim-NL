@@ -33,8 +33,8 @@ class SetDynamicForcing:
         ######################################################################
 
         # Load the precipitation, evaporation and basins
-        precip = xr.open_dataset(self.cloud.joinpath("Basisgegevens", "WIWB", "Meteobase.Precipitation.nc"))
-        evp = xr.open_dataset(self.cloud.joinpath("Basisgegevens", "WIWB", "Meteobase.Evaporation.Makkink.nc"))
+        precip = xr.open_dataset(self.cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc"))
+        evp = xr.open_dataset(self.cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc"))
 
         # Load the basins from the model
         basins = self.model.basin.area.df
@@ -62,7 +62,7 @@ class SetDynamicForcing:
         Function that syncs the LHM Precipitation and Makkink Evaporation (Meteobase) from the Deltares GoodCloud
         storage to a local directory (if not available yet)
         """
-        WIWB_dir = self.cloud.joinpath("Basisgegevens", "WIWB")
+        WIWB_dir = self.cloud.joinpath("Basisgegevens/WIWB")
         WIWB_Precip_path = WIWB_dir / "Meteobase.Precipitation.nc"
         WIWB_Evap_path = WIWB_dir / "Meteobase.Evaporation.Makkink.nc"
         self.cloud.synchronize(filepaths=[WIWB_Precip_path, WIWB_Evap_path])

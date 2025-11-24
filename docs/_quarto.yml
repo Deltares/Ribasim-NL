@@ -21,6 +21,7 @@ website:
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd
+        - workflow/watersystem.qmd
         - workflow/level-controlled.qmd
         - workflow/gravity-controlled.qmd
         - workflow/couple.qmd

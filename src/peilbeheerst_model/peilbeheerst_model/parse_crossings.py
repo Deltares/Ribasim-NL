@@ -1858,7 +1858,7 @@ class ParseCrossings:
         # Optionally include endpoints from the line object
         if with_ends and len(df_close) > 0:
             line_ends = self._find_line_ends(MultiLineString(df_line_geom.geometry.tolist()))
-            df_close["geometry"] = df_close.apply(lambda r: MultiPoint([r.geometry] + line_ends), axis=1)
+            df_close["geometry"] = df_close.apply(lambda r: MultiPoint([r.geometry, *line_ends]), axis=1)
 
         # Find the closest point
         idx = df_close.sindex.nearest(structure_geom, max_distance=self.search_radius_structure)[1, :]

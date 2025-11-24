@@ -14,9 +14,9 @@ MAP_SCHALE = {
 }
 
 # Bestanden op de cloud-storage
-waterlijnen_rws = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "BRT_waterlijnen_RWS", "WaterenNL.shp")
-recategorize_xlsx = cloud.joinpath("Rijkswaterstaat", "verwerkt", "recategorize.xlsx")
-result_gpkg = cloud.joinpath("Rijkswaterstaat", "Verwerkt", "categorie_oppervlaktewater.gpkg")
+waterlijnen_rws = cloud.joinpath("Rijkswaterstaat/aangeleverd/BRT_waterlijnen_RWS/WaterenNL.shp")
+recategorize_xlsx = cloud.joinpath("Rijkswaterstaat/verwerkt/recategorize.xlsx")
+result_gpkg = cloud.joinpath("Rijkswaterstaat/Verwerkt/categorie_oppervlaktewater.gpkg")
 
 # %% Fix RWS-lijnen
 rws_waterlijn_gdf = gpd.read_file(waterlijnen_rws, engine="pyogrio", fid_as_index=True)

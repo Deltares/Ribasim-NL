@@ -40,15 +40,15 @@ cloud = CloudStorage()
 
 
 # %% Voorbereiden profielen uit HyDAMO
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_fix_areas", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_fix_areas/model.toml")
 model = Model.read(ribasim_toml)
 model.tabulated_rating_curve.static.df = None
 model.manning_resistance.static.df = None
 model.outlet.static.df = None
 
 
-profile_gpkg = cloud.joinpath("DeDommel", "verwerkt", "profile.gpkg")
-hydamo_gpkg = cloud.joinpath("DeDommel", "verwerkt", "4_ribasim", "hydamo.gpkg")
+profile_gpkg = cloud.joinpath("DeDommel/verwerkt/profile.gpkg")
+hydamo_gpkg = cloud.joinpath("DeDommel/verwerkt/4_ribasim/hydamo.gpkg")
 stuw_df = gpd.read_file(hydamo_gpkg, layer="stuw", engine="pyogrio")
 stuw_df.loc[stuw_df.CODE.isna(), ["CODE"]] = stuw_df[stuw_df.CODE.isna()].NAAM
 stuw_df.loc[stuw_df.CODE.isna(), ["CODE"]] = stuw_df[stuw_df.CODE.isna()].WS_DOMMELID
@@ -58,7 +58,7 @@ kdu_df = gpd.read_file(hydamo_gpkg, layer="duikersifonhevel", engine="pyogrio").
 
 kgm_df = gpd.read_file(hydamo_gpkg, layer="gemaal", engine="pyogrio").set_index("CODE")
 
-basin_area_df = gpd.read_file(cloud.joinpath("DeDommel", "verwerkt", "basin_area.gpkg"), engine="pyogrio").set_index(
+basin_area_df = gpd.read_file(cloud.joinpath("DeDommel/verwerkt/basin_area.gpkg"), engine="pyogrio").set_index(
     "node_id"
 )
 
@@ -85,7 +85,7 @@ if not profile_gpkg.exists():
     )
 
     area_df = gpd.read_file(
-        cloud.joinpath("DeDommel", "verwerkt", "watervlakken", "LWW_2023_A_water_vlak_V.shp"),
+        cloud.joinpath("DeDommel/verwerkt/watervlakken/LWW_2023_A_water_vlak_V.shp"),
         engine="pyogrio",
         fid_as_index=True,
     )
@@ -145,15 +145,15 @@ def get_area_and_profile(node_id):
         else:
             area_geometry = None
 
-    # if we didn't get an area (of sufficient size) we get it from profiles and edges
+    # if we didn't get an area (of sufficient size) we get it from profiles and links
     if area_geometry is None:
-        edges_select_df = model.edge.df[(model.edge.df.from_node_id == node_id) | (model.edge.df.to_node_id == node_id)]
-        selected_profiles_df = profile_df[profile_df.intersects(edges_select_df.union_all())]
+        links_select_df = model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)]
+        selected_profiles_df = profile_df[profile_df.intersects(links_select_df.union_all())]
         if selected_profiles_df.empty:
             width = 2
         else:
             width = selected_profiles_df.length.mean()
-        area_geometry = edges_select_df.buffer(width / 2).union_all()
+        area_geometry = links_select_df.buffer(width / 2).union_all()
 
     # select profile
     if not selected_profiles_df.empty:  # we select the profile with the lowest level
@@ -390,7 +390,7 @@ for row in model.node_table().df[model.node_table().df.node_type == "ManningResi
 
     # get length
     length = round(
-        model.edge.df[(model.edge.df.from_node_id == node_id) | (model.edge.df.to_node_id == node_id)].length.sum()
+        model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)].length.sum()
     )
 
     # # update node
@@ -434,7 +434,7 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
 ]
 model.flow_boundary.static.df.loc[:, "flow_rate"] = 0
 # %% write model
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_parameterized", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_parameterized/model.toml")
 model.write(ribasim_toml)
 
 # %%

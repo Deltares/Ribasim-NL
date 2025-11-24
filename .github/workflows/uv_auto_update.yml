@@ -1,0 +1,44 @@
+name: Update uv lockfile
+permissions:
+  contents: write
+  pull-requests: write
+on:
+  schedule:
+    # At 03:00 on day 3 of the month
+    - cron: "0 3 3 * *"
+  # on demand
+  workflow_dispatch:
+jobs:
+  uv-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.3"
+      - name: Update lockfiles
+        run: |
+          uv lock --upgrade > lock_output.txt 2>&1
+          echo "## UV Lock Update" > diff.md
+          echo "" >> diff.md
+          echo "Updated dependencies in uv.lock:" >> diff.md
+          echo "" >> diff.md
+          echo '```' >> diff.md
+          cat lock_output.txt >> diff.md
+          echo '```' >> diff.md
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.CI_PR_PAT }}
+          commit-message: Update uv lockfile
+          title: Update uv lockfile
+          body-path: diff.md
+          branch: update/uv-lock
+          base: main
+          delete-branch: true
+          add-paths: uv.lock

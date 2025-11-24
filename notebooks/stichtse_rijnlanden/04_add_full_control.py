@@ -26,11 +26,11 @@ cloud = CloudStorage()
 # collect relevant data from the GoodCloud
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt", "4_ribasim", "peilgebieden_bewerkt.gpkg")
-model_edits_extra_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "model_edits_aanvoer.gpkg")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg")
+model_edits_extra_gpkg = cloud.joinpath(AUTHORITY, "verwerkt/model_edits_aanvoer.gpkg")
 
-pump_hoofdwater_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "pomp_bij_hoofdwater.gpkg")
+pump_hoofdwater_gpkg = cloud.joinpath(AUTHORITY, "verwerkt/pomp_bij_hoofdwater.gpkg")
 
 
 cloud.synchronize(
@@ -429,7 +429,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_flow_rate"] = 0.1
 # Keulevaart
 model.pump.static.df.loc[model.pump.static.df.node_id == 623, "min_upstream_level"] = -2.20
-model.remove_node(node_id=623, remove_edges=True)
+model.remove_node(node_id=623, remove_links=True)
 # %%
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 835, "max_downstream_level"] = 0.57
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1052, "max_downstream_level"] = 0.57

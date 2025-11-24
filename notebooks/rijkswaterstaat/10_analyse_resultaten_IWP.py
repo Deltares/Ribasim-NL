@@ -13,33 +13,33 @@ from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 CONFIG = {
-    "Venlo": {"edge_id": 171},
-    "BorgharenDorp": {"edge_id": 20},
-    "Smeermaas": {"edge_id": 24},
-    "Bunde": {"edge_id": 317},
-    "Maaseik": {"edge_id": 205},
-    "Eijsden": {"edge_id": 159},
-    "Megen": {"edge_id": 177},
-    "Lobith": {"edge_id": 57},
-    "Pannerdens_kanaal": {"edge_id": 10},
-    "Millingen_ad_Rijn": {"edge_id": 8},
-    "Driel_boven": {"edge_id": 227},
-    "Westervoort": {"edge_id": 271},
-    "Hagestein_boven": {"edge_id": 213},
-    "Maarssen": {"edge_id": 217},
-    "Weesp": {"edge_id": 219},
-    "Olst": {"edge_id": 294},
-    "Sluis13_debiet": {"edge_id": 165},
-    "Noordervaart": {"edge_id": 380},
-    "Loozen": {"edge_id": 377},
-    "Monsin": {"edge_id": 319},
-    "Kanne": {"edge_id": 326},
-    "Haccourt": {"edge_id": 326},
+    "Venlo": {"link_id": 171},
+    "BorgharenDorp": {"link_id": 20},
+    "Smeermaas": {"link_id": 24},
+    "Bunde": {"link_id": 317},
+    "Maaseik": {"link_id": 205},
+    "Eijsden": {"link_id": 159},
+    "Megen": {"link_id": 177},
+    "Lobith": {"link_id": 57},
+    "Pannerdens_kanaal": {"link_id": 10},
+    "Millingen_ad_Rijn": {"link_id": 8},
+    "Driel_boven": {"link_id": 227},
+    "Westervoort": {"link_id": 271},
+    "Hagestein_boven": {"link_id": 213},
+    "Maarssen": {"link_id": 217},
+    "Weesp": {"link_id": 219},
+    "Olst": {"link_id": 294},
+    "Sluis13_debiet": {"link_id": 165},
+    "Noordervaart": {"link_id": 380},
+    "Loozen": {"link_id": 377},
+    "Monsin": {"link_id": 319},
+    "Kanne": {"link_id": 326},
+    "Haccourt": {"link_id": 326},
 }
 
 
 # Read Ribasim model and data
-ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_transient")
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient")
 plots_dir = ribasim_model_dir / "plots"
 ribasim_toml = ribasim_model_dir / "hws.toml"
 model = ribasim.Model.read(ribasim_toml)
@@ -53,7 +53,7 @@ basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_
 basin_df = basin_df[basin_df.index > start_time]
 
 # Read Excel file and sheet names
-excel_file_path = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "RWsOS-IWP_debieten_2023_2024.xlsx")
+excel_file_path = cloud.joinpath("Rijkswaterstaat/aangeleverd/RWsOS-IWP_debieten_2023_2024.xlsx")
 sheet_names = pd.ExcelFile(excel_file_path).sheet_names
 found_names = set()
 
@@ -84,7 +84,7 @@ for sheet_name in sheet_names:
         continue
     # Select correct columns based on CONFIG keys
     column_indices = {name: meting_headers.index(name) for name in available_names}
-    usecols = [0] + list(column_indices.values())
+    usecols = [0, *list(column_indices.values())]
 
     # Read data
     meting_df = pd.read_excel(
@@ -108,14 +108,14 @@ for sheet_name in sheet_names:
 
         found_names.add(name)
         try:
-            if "edge_id" in v:
+            if "link_id" in v:
                 Q_meting = meting_df[name].rename("meting")
-                Q_berekening = flow_df[flow_df["edge_id"] == v["edge_id"]][["flow_rate"]].rename(
+                Q_berekening = flow_df[flow_df["link_id"] == v["link_id"]][["flow_rate"]].rename(
                     columns={"flow_rate": "berekend"}
                 )
                 plot = pd.concat([Q_meting, Q_berekening], axis=1).plot(title=name, ylabel="m3/s")
                 plot.get_figure().savefig(plots_dir / f"{name}_m3_s.png")
-                print(f"Plot saved for {name} (edge_id) in sheet {sheet_name}.")
+                print(f"Plot saved for {name} (link_id) in sheet {sheet_name}.")
         except KeyError:
             print(f"{name} not found in data for sheet {sheet_name}.")
 
@@ -126,17 +126,17 @@ print("Processing completed.")
 
 cloud = CloudStorage()
 CONFIG = {
-    "Venlo": {"edge_id": 171},
+    "Venlo": {"link_id": 171},
     "Heel boven": {"node_id": 8865},
     "Roermond boven": {"node_id": 9126},
     "Belfeld boven": {"node_id": 9422},
     "Bunde (Julianakanaal)": {"node_id": 7928},
     "Echt (Julianakanaal)": {"node_id": 8504},
-    "Eijsden-grens": {"edge_id": 159},
+    "Eijsden-grens": {"link_id": 159},
 }
 
 # Inlezen ribasim model
-ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_transient")
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient")
 plots_dir = ribasim_model_dir / "plots"
 ribasim_toml = ribasim_model_dir / "hws.toml"
 model = ribasim.Model.read(ribasim_toml)
@@ -154,7 +154,7 @@ basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_
 basin_df = basin_df[basin_df.index > start_time]
 
 meting_df = pd.read_excel(
-    cloud.joinpath("Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx"),
+    cloud.joinpath("Rijkswaterstaat/aangeleverd/debieten_Rijn_Maas_2023_2024.xlsx"),
     header=[0, 1, 2, 3, 4, 5, 6, 7, 8],
     index_col=[0],
 )
@@ -165,10 +165,10 @@ meting_df = meting_df.resample("D").mean()
 
 for k, v in CONFIG.items():
     name = k
-    if "edge_id" in v.keys():
+    if "link_id" in v.keys():
         Q_meting = meting_df["Debiet"]["(m3/s)"][name]
         Q_meting.columns = ["meting"]
-        Q_berekening = flow_df[flow_df["edge_id"] == v["edge_id"]][["flow_rate"]].rename(
+        Q_berekening = flow_df[flow_df["link_id"] == v["link_id"]][["flow_rate"]].rename(
             columns={"flow_rate": "berekend"}
         )
 
@@ -189,7 +189,7 @@ for k, v in CONFIG.items():
 
 cloud = CloudStorage()
 # Read the CSV file
-ribasim_model_dir = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "LWM_RWS_Waterinfo", "debiet_2023-2024")
+ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/aangeleverd/LWM_RWS_Waterinfo/debiet_2023-2024")
 df = pd.read_csv(ribasim_model_dir / "LWM_Q_4.csv", delimiter=";", encoding="latin-1")
 # Debug: Print the column names
 

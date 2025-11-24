@@ -175,7 +175,7 @@ def get_basins_outflows_including_settings(
             continue
         gdf_total = pd.concat([gdf_total, gdf[gdf_columns]])
 
-    gdf_total = gdf_total[["general", "structure"] + set_names]
+    gdf_total = gdf_total[["general", "structure", *set_names]]
 
     basins_split_nodes = split_nodes[["split_node", "split_node_id", "split_node_node_id", "ribasim_type"]]
     basins_outflows1 = basin_connections[basin_connections["connection"] == "basin_to_split_node"]
@@ -217,16 +217,16 @@ def get_basins_outflows_including_settings(
 
     gdf_total.columns = gdf_total.columns.str.split("__", expand=True)
     basins_outflows.columns = basins_outflows.columns.str.split("__", expand=True)
-    basins_outflows = basins_outflows[["general", "structure"] + set_names]
+    basins_outflows = basins_outflows[["general", "structure", *set_names]]
 
     return basins_outflows.reset_index(drop=True)
 
 
 def get_targetlevels_nodes_using_weirs_pumps(nodes, basins_outflows, set_names, name_column="targetlevel"):
-    basins_outflows = basins_outflows[["general"] + set_names]
+    basins_outflows = basins_outflows[["general", *set_names]]
     basins_outflows_columns = [("general", "basin")] + [(set_name, name_column) for set_name in set_names]
     basins_outflows_sel = basins_outflows[basins_outflows_columns]
-    basins_outflows_sel.columns = ["basin"] + set_names
+    basins_outflows_sel.columns = ["basin", *set_names]
 
     def convert_list_str_to_float(x):
         if isinstance(x, float):
@@ -487,7 +487,7 @@ def preprocessing_ribasim_model_tables(
     )
     basin_h = generate_waterlevels_for_basins(basins, node_h_node)
     basin_a, basin_v = generate_surface_storage_for_basins(node_a, node_v, nodes)
-    edge_q_df = get_discharges_table_from_simulations(map_data)
+    link_q_df = get_discharges_table_from_simulations(map_data)
     weir_q_df, uniweir_q_df, orifice_q_df, culvert_q_df, bridge_q_df, pump_q_df = (
         get_discharges_table_structures_from_simulations(his_data)
     )
@@ -507,7 +507,7 @@ def preprocessing_ribasim_model_tables(
         node_targetlevel,
         orig_bedlevel,
         basins_nodes_h_relation,
-        edge_q_df,
+        link_q_df,
         weir_q_df,
         uniweir_q_df,
         orifice_q_df,

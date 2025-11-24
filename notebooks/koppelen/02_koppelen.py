@@ -11,7 +11,7 @@ cloud = CloudStorage()
 # %% update RWS-HWS
 
 # RWS-HWS
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_bergend")
+model_path = cloud.joinpath("Rijkswaterstaat/modellen/hws_bergend")
 toml_file = model_path / "hws.toml"
 rws_model = Model.read(toml_file)
 
@@ -35,7 +35,7 @@ rws_model.write(model_path.with_name("hws_temp") / "hws.toml")
 # %% update AGV
 
 # AGV
-model_path = cloud.joinpath("AmstelGooienVecht", "modellen", "AmstelGooienVecht_parametrized_2024_8_47")
+model_path = cloud.joinpath("AmstelGooienVecht/modellen/AmstelGooienVecht_parametrized_2024_8_47")
 if not model_path.exists():
     model_url = cloud.joinurl("AmstelGooienVecht", "modellen", "AmstelGooienVecht_parametrized_2024_8_47")
     cloud.download_content(model_url)
@@ -49,7 +49,7 @@ agv_model.manning_resistance.static.df = agv_model.manning_resistance.static.df[
 ]
 
 # fix boundary-node issue
-agv_model.remove_node(957, remove_edges=False)
+agv_model.remove_node(957, remove_links=False)
 
 # reset index
 agv_model = reset_index(agv_model, node_start=rws_model.next_node_id)
@@ -61,7 +61,7 @@ agv_model.write(model_path.with_name("AmstelGooienVecht_temp") / "agv.toml")
 # %% update De Dommel
 
 # update De Dommel
-model_path = cloud.joinpath("DeDommel", "modellen", "DeDommel")
+model_path = cloud.joinpath("DeDommel/modellen/DeDommel")
 toml_file = model_path / "model.toml"
 # update_database(toml_file)
 dommel_model = Model.read(toml_file)
@@ -92,7 +92,7 @@ netwerk_mask_poly = agv_model.basin.area.df.union_all()
 models = [rws_model, dommel_model]
 coupled_model = concat(models)
 
-network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat", "verwerkt", "netwerk.gpkg"))
+network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg"))
 
 # %% coupling
 
@@ -129,8 +129,8 @@ for boundary_node_id in boundary_node_ids:
 
         # get from network node
         link_idx = iter(network.links.distance(from_node.geometry).sort_values().index)
-        edge_geometry = None
-        while edge_geometry is None:
+        link_geometry = None
+        while link_geometry is None:
             idx = next(link_idx)
             try:
                 link_geom = network.links.at[idx, "geometry"]
@@ -141,7 +141,7 @@ for boundary_node_id in boundary_node_ids:
                     from_network_node = network.add_node(projected_point, max_distance=9)
                 else:
                     from_network_node = network.nodes.distance(projected_point).idxmin()
-                edge_geometry = network.get_line(from_network_node, to_network_node)
+                link_geometry = network.get_line(from_network_node, to_network_node)
             except NetworkXNoPath:
                 continue
 
@@ -159,10 +159,10 @@ for boundary_node_id in boundary_node_ids:
         to_node_type = coupled_model.node_table().df.at[to_node_id, "node_type"]
         to_node = getattr(coupled_model, pascal_to_snake_case(to_node_type))[to_node_id]
 
-        # get edge geometry
+        # get link geometry
         link_idx = iter(network.links.distance(to_node.geometry).sort_values().index)
-        edge_geometry = None
-        while edge_geometry is None:
+        link_geometry = None
+        while link_geometry is None:
             idx = next(link_idx)
             try:
                 link_geom = network.links.at[idx, "geometry"]
@@ -173,30 +173,30 @@ for boundary_node_id in boundary_node_ids:
                     to_network_node = network.add_node(projected_point, max_distance=9)
                 else:
                     to_network_node = network.nodes.distance(projected_point).idxmin()
-                edge_geometry = network.get_line(from_network_node, to_network_node)
+                link_geometry = network.get_line(from_network_node, to_network_node)
             except NetworkXNoPath:
                 continue
 
     # remove boundary node
-    coupled_model.remove_node(boundary_node_id, remove_edges=True)
+    coupled_model.remove_node(boundary_node_id, remove_links=True)
 
     # update discrete control
     mask = coupled_model.discrete_control.variable.df.listen_node_id == boundary_node_id
     coupled_model.discrete_control.variable.df.loc[mask, ["listen_node_id"]] = listen_node_id
 
-    # construct edge-geometry
-    if edge_geometry.boundary.geoms[0].distance(from_node.geometry) > 0.001:
-        edge_geometry = LineString(tuple(from_node.geometry.coords) + tuple(edge_geometry.coords))
-    if edge_geometry.boundary.geoms[1].distance(to_node.geometry) > 0.001:
-        edge_geometry = LineString(tuple(edge_geometry.coords) + tuple(to_node.geometry.coords))
+    # construct link-geometry
+    if link_geometry.boundary.geoms[0].distance(from_node.geometry) > 0.001:
+        link_geometry = LineString(tuple(from_node.geometry.coords) + tuple(link_geometry.coords))
+    if link_geometry.boundary.geoms[1].distance(to_node.geometry) > 0.001:
+        link_geometry = LineString(tuple(link_geometry.coords) + tuple(to_node.geometry.coords))
 
-    # add edge
-    edge_id = coupled_model.edge.df.index.max() + 1
-    coupled_model.edge.add(
-        edge_id=edge_id,
+    # add link
+    link_id = coupled_model.link.df.index.max() + 1
+    coupled_model.link.add(
+        link_id=link_id,
         from_node=from_node,
         to_node=to_node,
-        geometry=edge_geometry,
+        geometry=link_geometry,
         meta_from_authority="AmstelGooiEnVecht",
         meta_to_authority="Rijkswaterstaat",
     )
@@ -204,7 +204,7 @@ for boundary_node_id in boundary_node_ids:
 
 # %%
 
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", "lhm")
+model_path = cloud.joinpath("Rijkswaterstaat/modellen/lhm")
 toml_file = model_path / "lhm.toml"
 
 coupled_model.write(toml_file)

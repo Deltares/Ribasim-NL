@@ -8,10 +8,11 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import MultiLineString
+from shapely.geometry import MultiLineString, Point
 from shapely.ops import snap, split
 
 from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
@@ -21,16 +22,14 @@ cloud = CloudStorage()
 authority = "Noorderzijlvest"
 short_name = "nzv"
 
-he_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20241113", "HydrologischeEenheden_v45.shp")
-he_snap_shp = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "20241113", "HE_v45_snappingpoints.shp")
-lines_shp = cloud.joinpath(
-    authority, "verwerkt", "5_D_HYDRO_export", "hydroobjecten", "Noorderzijlvest_hydroobjecten.shp"
-)
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
+he_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20241113/HydrologischeEenheden_v45.shp")
+he_snap_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20241113/HE_v45_snappingpoints.shp")
+lines_shp = cloud.joinpath(authority, "verwerkt/5_D_HYDRO_export/hydroobjecten/Noorderzijlvest_hydroobjecten.shp")
+model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 
-cloud.synchronize(filepaths=(he_shp, he_snap_shp, lines_shp, model_edits_path, ribasim_dir))
+cloud.synchronize(filepaths=[he_shp, he_snap_shp, lines_shp, model_edits_path, ribasim_dir])
 ribasim_toml = ribasim_dir / "model.toml"
 
 # %% read model
@@ -46,7 +45,7 @@ he_snap_df = gpd.read_file(he_snap_shp)
 
 lines_gdf = gpd.read_file(
     lines_shp,
-    use_fid_as_indes=True,
+    fid_as_index=True,
 )
 
 points = (
@@ -67,7 +66,7 @@ for row in lines_gdf.itertuples():
 lines_gdf = lines_gdf.explode(index_parts=False, ignore_index=True)
 lines_gdf.crs = 28992
 network = Network(lines_gdf.copy())
-network.to_file(cloud.joinpath(authority, "verwerkt", "network.gpkg"))
+network.to_file(cloud.joinpath(authority, "verwerkt/network.gpkg"))
 
 
 # %% some stuff we'll need again
@@ -90,13 +89,13 @@ pump_data = pump.Static(flow_rate=[10])
 # %%
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
-# 76 edges bij opgeheven nodes verwijderen
-mask = model.edge.df.to_node_id.isin(model.node_table().df.index) & model.edge.df.from_node_id.isin(
+# 76 links bij opgeheven nodes verwijderen
+mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
     model.node_table().df.index
 )
-missing_edges_df = model.edge.df[~mask]
+missing_links_df = model.link.df[~mask]
 
-model.edge.df = model.edge.df[~model.edge.df.index.isin(missing_edges_df.index)]
+model.link.df = model.link.df[~model.link.df.index.isin(missing_links_df.index)]
 
 # %% Reset static tables
 
@@ -133,7 +132,7 @@ he_df.set_index("HEIDENT", inplace=True)
 # niet altijd ligt de coordinaat goed
 he_outlet_df.loc["GPGKST0470", ["geometry"]] = model.manning_resistance[892].geometry
 
-he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt", "HydrologischeEenheden_v45_outlets.gpkg"))
+he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt/HydrologischeEenheden_v45_outlets.gpkg"))
 
 # %% Edit network
 
@@ -144,11 +143,11 @@ for action in [
     "merge_basins",
     "remove_node",
     "update_node",
-    "reverse_edge",
+    "reverse_link",
     "connect_basins",
     "move_node",
     "add_basin",
-    "remove_edge",
+    "remove_link",
 ]:
     print(action)
     # get method and args
@@ -217,7 +216,7 @@ for node_id in model.basin.node.df.index:
     # empty list of LineStrings
     data = []
 
-    # draw edges from upstream nodes
+    # draw links from upstream nodes
     for idx, network_node in enumerate(upstream_nodes):
         all_paths = list(all_shortest_paths(network.graph_undirected, source=network_node, target=network_basin_node))
         if len(all_paths) > 1:
@@ -226,16 +225,16 @@ for node_id in model.basin.node.df.index:
         if len(all_paths) != 1:
             all_paths = [shortest_path(network.graph_undirected, source=network_node, target=network_basin_node)]
         else:
-            edge = network.path_to_line(all_paths[0])
-            if edge.length > 0:
-                data += [edge]
+            link = network.path_to_line(all_paths[0])
+            if link.length > 0:
+                data += [link]
 
-                mask = (model.edge.df["from_node_id"] == upstream_node_ids[idx]) & (
-                    model.edge.df["to_node_id"] == node_id
+                mask = (model.link.df["from_node_id"] == upstream_node_ids[idx]) & (
+                    model.link.df["to_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = edge
+                model.link.df.loc[mask, ["geometry"]] = link
 
-    # draw edges to downstream nodes
+    # draw links to downstream nodes
     for idx, network_node in enumerate(downstream_nodes):
         all_paths = list(all_shortest_paths(network.graph_undirected, target=network_node, source=network_basin_node))
         if len(all_paths) > 1:
@@ -244,14 +243,14 @@ for node_id in model.basin.node.df.index:
         if len(all_paths) != 1:
             all_paths = [shortest_path(network.graph_undirected, target=network_node, source=network_basin_node)]
         else:
-            edge = network.path_to_line(all_paths[0])
-            if edge.length > 0:
-                data += [edge]
+            link = network.path_to_line(all_paths[0])
+            if link.length > 0:
+                data += [link]
 
-                mask = (model.edge.df["to_node_id"] == downstream_node_ids[idx]) & (
-                    model.edge.df["from_node_id"] == node_id
+                mask = (model.link.df["to_node_id"] == downstream_node_ids[idx]) & (
+                    model.link.df["from_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = edge
+                model.link.df.loc[mask, ["geometry"]] = link
 
     mask = he_df.node_id.isna() & (he_outlet_df.distance(MultiLineString(data)) < 0.75)
     he_df.loc[mask, ["node_id"]] = node_id
@@ -359,6 +358,16 @@ for row in model.flow_boundary.node.df.itertuples():
     left_link_geometry, right_link_geometry = list(split_line(link_geometry, outlet_node_geometry).geoms)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+
+# Moved t Noord-Willemskanaal so it connects properly with Hunze and Aa's model
+model.move_node(geometry=Point(233237, 559975), node_id=14)
+
+# %% reverse links before junctionfy
+for link_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
+    model.reverse_link(link_id=link_id)
+
+# %% Create junctions
+model = junctionify(model)
 
 
 #  %% write model

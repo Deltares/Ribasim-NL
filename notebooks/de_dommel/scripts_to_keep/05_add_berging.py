@@ -12,24 +12,22 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_parameterized", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_parameterized/model.toml")
 model = Model.read(ribasim_toml)
 
-basin_area_df = gpd.read_file(
-    cloud.joinpath("DeDommel", "verwerkt", "basin_area.gpkg"), engine="pyogrio", fid_as_index=True
-)
+basin_area_df = gpd.read_file(cloud.joinpath("DeDommel/verwerkt/basin_area.gpkg"), engine="pyogrio", fid_as_index=True)
 basin_area_df.set_index("node_id", inplace=True)
 
 
-lhm_raster_file = cloud.joinpath("Basisgegevens", "LHM", "4.3", "input", "LHM_data.tif")
-ma_raster_file = cloud.joinpath("Basisgegevens", "VanDerGaast_QH", "spafvoer1.tif")
+lhm_raster_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
+ma_raster_file = cloud.joinpath("Basisgegevens/VanDerGaast_QH/spafvoer1.tif")
 
 
 basin_area_df = add_basin_statistics(df=basin_area_df, lhm_raster_file=lhm_raster_file, ma_raster_file=ma_raster_file)
 
 
 # %%update model
-edge_id = model.edge.df.index.max() + 1
+link_id = model.link.df.index.max() + 1
 for row in model.basin.node.df.itertuples():
     # row = next(row for row in model.basin.node.df.itertuples() if row.Index == 1013)
     node_id = row.Index
@@ -90,11 +88,11 @@ for row in model.basin.node.df.itertuples():
             data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
         tbr_node = model.tabulated_rating_curve.add(node=node, tables=data)
 
-        # add edges
-        edge_id += 1  # FIXME: can be removed if issue is closed https://github.com/Deltares/Ribasim/issues/1804
-        model.edge.add(basin_node, tbr_node, edge_id=edge_id, meta_categorie="bergend")
-        edge_id += 1
-        model.edge.add(tbr_node, model.basin[node_id], edge_id=edge_id, meta_categorie="bergend")
+        # add links
+        link_id += 1  # FIXME: can be removed if issue is closed https://github.com/Deltares/Ribasim/issues/1804
+        model.link.add(basin_node, tbr_node, link_id=link_id, meta_categorie="bergend")
+        link_id += 1
+        model.link.add(tbr_node, model.basin[node_id], link_id=link_id, meta_categorie="bergend")
 
     else:
         print(f"Geen basin-vlak voor {node_id}")
@@ -109,6 +107,6 @@ df.loc[:, "infiltration"] = 0
 model.basin.static.df = df
 
 # %%
-ribasim_toml = cloud.joinpath("DeDommel", "modellen", "DeDommel_bergend", "model.toml")
+ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_bergend/model.toml")
 
 model.write(ribasim_toml)

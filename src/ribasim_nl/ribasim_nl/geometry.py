@@ -178,7 +178,7 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Pol
     return geometry
 
 
-def edge(point_from: Point, point_to: Point) -> LineString:
+def link(point_from: Point, point_to: Point) -> LineString:
     """Create a LineString geometry between two Point geometries, dropping z-coordinate if any
 
     Args:
@@ -251,7 +251,7 @@ def split_line(line: LineString, point: Point, tolerance: float = 0.1) -> MultiL
 
 
 def snap_boundaries_to_other_line(line: LineString, other_line: LineString, tolerance: float = 0.1) -> LineString:
-    """Snap the boundaries of line to the boundary or edge/vertice of other_line if boundaries are within tolerance"""
+    """Snap the boundaries of line to the boundary or link/vertice of other_line if boundaries are within tolerance"""
     coords = list(line.coords)
     start_pt, end_pt = line.boundary.geoms
 

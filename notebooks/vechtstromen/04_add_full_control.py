@@ -21,10 +21,8 @@ cloud = CloudStorage()
 # collect relevant data from the GoodCloud
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(
-    AUTHORITY, "verwerkt", "1_ontvangen_data", "aanvulling feb 24", "Wateraanvoergebieden.shp"
-)
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/1_ontvangen_data/aanvulling feb 24/Wateraanvoergebieden.shp")
 
 cloud.synchronize(
     filepaths=[
@@ -145,7 +143,7 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.1
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 508, "max_downstream_level"] = 3.98
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 971, "max_flow_rate"] = 100
 # remove vistrap Hancate
-model.remove_node(305, remove_edges=True)
+model.remove_node(305, remove_links=True)
 # Sluis Koning Willem Allexander
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 40, "max_flow_rate"] = 0
 # Geen flow anders veel te veel door Manning knoop

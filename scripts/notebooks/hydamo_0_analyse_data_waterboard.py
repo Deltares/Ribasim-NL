@@ -13,7 +13,7 @@ from ribasim_lumping_tools.LHM_data_bewerking_analyse_utils import (
 # Vertaal originele data naar Hydamo data zoals gedefinieerd in de tabel hydamo_data_format.xlsx
 
 
-base_dir = "..\\"
+base_dir = "../"
 
 waterboard = "AAenMaas"
 waterboard_code = 1
@@ -121,7 +121,7 @@ for hydamo_object in hydamo_objects:
 hydamo = HyDAMO(version="2.2.1_sweco")
 
 
-for hydamo_object in ["hydroobject"] + hydamo_objects:
+for hydamo_object in ["hydroobject", *hydamo_objects]:
     data_hydamo = data_hydamo_dict[hydamo_object]
     if hydamo_object == "stuw":
         data_hydamo = data_hydamo.drop(columns=["code_hydroobject", "data_issue"])  # ,'index_right'
@@ -129,4 +129,4 @@ for hydamo_object in ["hydroobject"] + hydamo_objects:
     setattr(hydamo, hydamo_object, data_hydamo)
 
 
-hydamo.to_geopackage("..\\hydamo.gpkg")
+hydamo.to_geopackage("../hydamo.gpkg")

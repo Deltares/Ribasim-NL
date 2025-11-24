@@ -14,11 +14,11 @@ def osm_lines_gpkg():
 
 
 @pytest.fixture
-def edge_columns():
+def link_columns():
     return ["node_from", "node_to", "name", "id", "length", "geometry"]
 
 
-def test_network(tmp_path, edge_columns):
+def test_network(tmp_path, link_columns):
     lines_gdf = gpd.GeoDataFrame(
         geometry=gpd.GeoSeries(
             [
@@ -32,13 +32,13 @@ def test_network(tmp_path, edge_columns):
     network = Network(lines_gdf)
     assert len(network.graph.nodes) == 4
     assert len(network.graph.edges) == 3
-    assert all(i in edge_columns for i in network.links.columns)
+    assert all(i in link_columns for i in network.links.columns)
     output_file = tmp_path / "network.gpkg"
     network.to_file(output_file)
     assert output_file.exists()
 
 
-def test_gap_in_network(edge_columns):
+def test_gap_in_network(link_columns):
     lines_gdf = gpd.GeoDataFrame(
         geometry=gpd.GeoSeries(
             [
@@ -61,7 +61,7 @@ def test_gap_in_network(edge_columns):
     assert len(network.graph.nodes) == 4
     assert len(network.graph.edges) == 3
 
-    assert all(i in edge_columns for i in network.links.columns)
+    assert all(i in link_columns for i in network.links.columns)
 
 
 def test_link_within_tolerance():

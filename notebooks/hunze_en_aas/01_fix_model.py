@@ -15,14 +15,13 @@ cloud = CloudStorage()
 
 authority = "HunzeenAas"
 name = "hea"
-run_model = False
+run_model = True
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
-ribasim_areas_path = cloud.joinpath(authority, "verwerkt", "4_ribasim", "areas.gpkg")
-model_edits_path = cloud.joinpath(authority, "verwerkt", "model_edits.gpkg")
-model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
+ribasim_areas_path = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_path, model_edits_path])
 
@@ -57,24 +56,24 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 # HIER KOMEN ISSUES
 
 # %%
-# Verwijderen duplicate edges
-model.edge.df.drop_duplicates(inplace=True)
+# Verwijderen duplicate links
+model.link.df.drop_duplicates(inplace=True)
 
 # %%
 # toevoegen ontbrekende basins
 
-basin_edges_df = network_validator.edge_incorrect_connectivity()
+basin_links_df = network_validator.link_incorrect_connectivity()
 basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
     basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
 
-    # update edge_table
-    mask = (basin_edges_df.from_node_id == row.node_id) & (basin_edges_df.distance(row.geometry) < 0.1)
-    model.edge.df.loc[basin_edges_df[mask].index, ["from_node_id"]] = basin_node.node_id
-    mask = (basin_edges_df.to_node_id == row.node_id) & (basin_edges_df.distance(row.geometry) < 0.1)
-    model.edge.df.loc[basin_edges_df[mask].index, ["to_node_id"]] = basin_node.node_id
+    # update link_table
+    mask = (basin_links_df.from_node_id == row.node_id) & (basin_links_df.distance(row.geometry) < 0.1)
+    model.link.df.loc[basin_links_df[mask].index, ["from_node_id"]] = basin_node.node_id
+    mask = (basin_links_df.to_node_id == row.node_id) & (basin_links_df.distance(row.geometry) < 0.1)
+    model.link.df.loc[basin_links_df[mask].index, ["to_node_id"]] = basin_node.node_id
 
 
 # EINDE ISSUES
@@ -84,11 +83,11 @@ for row in basin_nodes_df.itertuples():
 # corrigeren knoop-topologie
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity().itertuples():
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
 
 # Inlaten van ManningResistance naar Outlet
-for row in network_validator.edge_incorrect_type_connectivity(
+for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
@@ -102,7 +101,7 @@ model = reset_static_tables(model)
 model.fix_unassigned_basin_area()
 model.explode_basin_area()
 
-# %%
+# %% edits on Sweco model
 
 actions = [
     "remove_basin_area",
@@ -111,8 +110,8 @@ actions = [
     "update_node",
     "add_basin_area",
     "update_basin_area",
-    "reverse_edge",
-    "redirect_edge",
+    "reverse_link",
+    "redirect_link",
     "merge_basins",
     "move_node",
     "connect_basins",
@@ -129,29 +128,14 @@ for action in actions:
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
-
-
-# Area basin 1516 niet OK, te klein, model instabiel
-actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+model.remove_node(node_id=2019, remove_links=True)
+model.remove_node(node_id=17, remove_links=True)
 
 
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
 # Create the overlay of areas
 combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
-combined_basin_areas_gdf["geometry"] = combined_basin_areas_gdf["geometry"].apply(lambda x: x if x.has_z else x)
 
 # Calculate area for each geometry
 combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
@@ -246,7 +230,6 @@ ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
-
 # %%
 # %% Test run model
 if run_model:

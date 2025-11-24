@@ -20,12 +20,12 @@ from ribasim_nl import CloudStorage
 
 # %% get input data
 cloud = CloudStorage()
-ribasim_toml = cloud.joinpath("Basisgegevens", "RWZI", "modellen", "rwzi", "rwzi.toml")
+ribasim_toml = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/rwzi.toml")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # datafiles
-model_dir = cloud.joinpath("Basisgegevens", "RWZI", "modellen")
-root_path_local = cloud.joinpath("Basisgegevens", "RWZI")
+model_dir = cloud.joinpath("Basisgegevens/RWZI/modellen")
+root_path_local = cloud.joinpath("Basisgegevens/RWZI")
 
 zinfo_influentdebieten_path = (
     root_path_local / "aangeleverd/Z-info/metingen/zinfo_20160101_20231231_influentdebieten.csv"
@@ -172,7 +172,7 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     )
 
     # Filter columns: only "time" + RWZI names with data
-    rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time"] + list(rwzi_names_zinfo_incl)]
+    rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time", *list(rwzi_names_zinfo_incl)]]
 
     logging.info(
         "Zinfo DataFrame with renamed columns: %s",
@@ -439,7 +439,7 @@ def connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_node
             terminal_node = terminal_nodes[terminal_node_name]
 
             # Connect the flow boundary to the terminal node
-            model.edge.add(flow_boundary_node, terminal_node, name=f"{rwzi_name}_edge")
+            model.link.add(flow_boundary_node, terminal_node, name=f"{rwzi_name}_link")
             logging.info(f"Connected flow boundary '{rwzi_name}' to terminal '{terminal_node_name}'")
         else:
             logging.warning(f"Terminal node '{terminal_node_name}' not found for RWZI '{rwzi_name}'.")
@@ -488,7 +488,7 @@ print("Zinfo DataFrame with renamed columns:")
 print(df_Zinfo_influentdebieten_renamed.head())
 
 # Filter only the time column and RWZIs with Zinfo data
-rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time"] + list(rwzi_names_zinfo_incl)]
+rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time", *list(rwzi_names_zinfo_incl)]]
 
 print("Filtered RWZI flow data with common RWZIs:")
 print(rwzi_flow_data.head())
@@ -550,7 +550,7 @@ Getest (u kunt simuleren): Nee
 
 print("write rwzi model")
 model.write(ribasim_toml)
-cloud.joinpath("Basisgegevens", "RWZI", "modellen", "rwzi", "readme.md").write_text(readme)
+cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/readme.md").write_text(readme)
 
 upload_model = False
 if upload_model:

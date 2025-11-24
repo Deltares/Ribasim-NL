@@ -23,7 +23,7 @@ def accept_length(geometry, point1, point2, max_straight_line_ratio: float = 5):
     return geometry.length / point1.distance(point2) < 5
 
 
-def get_edge_geometry(network, source, target, forbidden_nodes):
+def get_link_geometry(network, source, target, forbidden_nodes):
     try:
         all_paths = node_disjoint_paths(network.graph_undirected, s=source, t=target)
         all_paths = [i for i in all_paths if not any(_node_id in forbidden_nodes for _node_id in i)]
@@ -65,7 +65,7 @@ def fix_link_geometries(
     if node_ids is None:
         node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index
     for node_id in tqdm(node_ids, desc="fix line geometries"):
-        logger.info(f"fixing edges for {node_df.at[node_id, 'node_type']} {node_id}")
+        logger.info(f"fixing links for {node_df.at[node_id, 'node_type']} {node_id}")
         # get basin_node_id
         network_basin_node = get_network_node(network, node_df.at[node_id, "geometry"])
         if network_basin_node is None:
@@ -93,12 +93,12 @@ def fix_link_geometries(
             get_network_node(network, node_df.at[i, "geometry"]) for i in downstream_node_ids if i is not None
         ]
 
-        # draw edges from upstream nodes
+        # draw links from upstream nodes
         for idx, network_node in enumerate(upstream_nodes):
             if network_node is None:
                 continue
             forbidden_nodes = [i for i in upstream_nodes + downstream_nodes if i != network_node]
-            geometry = get_edge_geometry(
+            geometry = get_link_geometry(
                 network=network, source=network_node, target=network_basin_node, forbidden_nodes=forbidden_nodes
             )
             if accept_length(
@@ -107,17 +107,17 @@ def fix_link_geometries(
                 point2=node_df.at[upstream_node_ids[idx], "geometry"],
                 max_straight_line_ratio=max_straight_line_ratio,
             ):
-                mask = (model.edge.df["from_node_id"] == upstream_node_ids[idx]) & (
-                    model.edge.df["to_node_id"] == node_id
+                mask = (model.link.df["from_node_id"] == upstream_node_ids[idx]) & (
+                    model.link.df["to_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = geometry
+                model.link.df.loc[mask, ["geometry"]] = geometry
 
-        # draw edges to downstream nodes
+        # draw links to downstream nodes
         for idx, network_node in enumerate(downstream_nodes):
             if network_node is None:
                 continue
             forbidden_nodes = [i for i in upstream_nodes + downstream_nodes if i != network_node]
-            geometry = get_edge_geometry(
+            geometry = get_link_geometry(
                 network=network,
                 target=network_node,
                 source=network_basin_node,
@@ -129,7 +129,7 @@ def fix_link_geometries(
                 point2=node_df.at[downstream_node_ids[idx], "geometry"],
                 max_straight_line_ratio=max_straight_line_ratio,
             ):
-                mask = (model.edge.df["to_node_id"] == downstream_node_ids[idx]) & (
-                    model.edge.df["from_node_id"] == node_id
+                mask = (model.link.df["to_node_id"] == downstream_node_ids[idx]) & (
+                    model.link.df["from_node_id"] == node_id
                 )
-                model.edge.df.loc[mask, ["geometry"]] = geometry
+                model.link.df.loc[mask, ["geometry"]] = geometry

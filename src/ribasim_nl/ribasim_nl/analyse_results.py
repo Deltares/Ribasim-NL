@@ -1,3 +1,4 @@
+# %%
 """Script met verschillende functies om de uitvoer van de Ribasim modellen te vergelijken met meetreeksen"""
 
 import ast
@@ -11,18 +12,30 @@ import tqdm
 from shapely import wkt
 
 from ribasim_nl import CloudStorage
+from ribasim_nl.aquo import waterbeheercode
 
 
-def ParseList(val):
+def _parse_to_local(int_val: int, prefix_code: int):
+    """The function `parse_to_local` removes a specified prefix code from an integer value."""
+    str_val = str(int_val)
+    if not str_val.startswith(f"{prefix_code}"):
+        raise ValueError(f"Value {int_val} does not start with the specified prefix code {prefix_code}.")
+
+    return int(str_val[len(str(prefix_code)) :])
+
+
+def ParseList(val: int, prefix_code: int | None) -> list[int] | int:
     """The function `ParseList` checks if a given string represents a list and returns the list or the original value accordingly.
 
     Parameters
     ----------
-    val
+    val: int
         The `ParseList` function takes a single parameter `val`, which is expected to be a string. The
     function checks if the string starts and ends with square brackets `[ ]`, indicating a list-like
     structure. If the string meets these conditions, it attempts to parse the string using
     `ast.literal_eval
+    prefix_code : int | None
+        The `prefix_code`, AQUO prefix. If specified it is to be removed from the integer values in the list.
 
     Returns
     -------
@@ -32,15 +45,16 @@ def ParseList(val):
     is a list, it returns the first element of the list if the list has only one element in it.
 
     """
-    if isinstance(val, str) and val.strip().startswith("[") and val.strip().endswith("]"):
-        try:
-            parsed = ast.literal_eval(val)
-            if isinstance(parsed, list):
-                return parsed[0] if len(parsed) == 1 else parsed
-        except Exception:
-            return val
+    parsed = ast.literal_eval(val)
 
-    return val
+    if prefix_code is not None:
+        parsed = [_parse_to_local(v, prefix_code) for v in parsed]
+
+    # val = first item in list
+    if len(parsed) == 1:
+        return parsed[0]
+    else:
+        return parsed
 
 
 def ReadOutputFile(model_folder, filetype) -> pd.DataFrame:
@@ -95,15 +109,15 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
     """
     koppeltabel = pd.read_excel(loc_koppeltabel)
 
+    # filter for water authority if specified
     if apply_for_water_authority is not None:
         koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
-        koppel_link_id_column = "meta_edge_id_waterbeheerder"
-
+        prefix_code = waterbeheercode[apply_for_water_authority]
     else:
-        koppel_link_id_column = "new_link_id"
+        prefix_code = None
 
     # Convert the lists in link_id to lists if possible
-    koppeltabel["link_id_parsed"] = koppeltabel[koppel_link_id_column].apply(ParseList)
+    koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList, args=(prefix_code,))
 
     # Parse the geometry
     koppeltabel["geometry_parsed"] = koppeltabel["geometry"].apply(lambda x: wkt.loads(x))
@@ -346,7 +360,7 @@ def CompareOutputMeasurements(
             for col in missing_measurements:
                 print(f"Cannot find the daily measurements for {col}")
 
-        subset_measurements = dagmetingen[["time"] + existing_measurements].copy()
+        subset_measurements = dagmetingen[["time", *existing_measurements]].copy()
 
         # If multiple measurements series refer to the same link, take the sum of the measurements
         subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1, min_count=1)
@@ -399,12 +413,13 @@ def CompareOutputMeasurements(
         # Deal with the daily values
         full_title = " - ".join(existing_measurements)
         fig_name = full_title.split(" - ")[0]
+        bron_meting = None if apply_for_water_authority is not None else meetlocaties_link.iloc[0]["Waterschap"]
         PlotAndSave(
             combined_df=combined_df_cum,
             stats=stats,
             koppelinfo=full_title,
             fig_name=fig_name,
-            bron_meting=meetlocaties_link.iloc[0]["Waterschap"],
+            bron_meting=bron_meting,
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
@@ -432,7 +447,7 @@ def CompareOutputMeasurements(
             stats=stats_dec,
             koppelinfo=full_title,
             fig_name=fig_name,
-            bron_meting=meetlocaties_link.iloc[0]["Waterschap"],
+            bron_meting=bron_meting,
             output_folder=os.path.join(model_folder, "results", "figures"),
         )
         fig_name_clean = fig_name.replace(" ", "_")
@@ -454,6 +469,7 @@ def CompareOutputMeasurements(
 
     results_combined = []
     results_dec_combined = []
+
     # Save the results in a geopackage per waterboard
     for waterschap, results in results_measurements.items():
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
@@ -580,7 +596,10 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
 
     """
     # Create the folder where the plot can be saved
-    os.makedirs(os.path.join(output_folder, bron_meting), exist_ok=True)
+    if bron_meting is None:
+        os.makedirs(output_folder, exist_ok=True)
+    else:
+        os.makedirs(os.path.join(output_folder, bron_meting), exist_ok=True)
 
     font = "Arial"
 
@@ -635,7 +654,10 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
     )
     # Save the figure in the right location
     fig_name_clean = fig_name.replace(" ", "_").replace("/", "_")  # remove / as it will raise FileNotFoundError
-    fig_path = os.path.join(output_folder, bron_meting, fig_name_clean + ".png")
+    if bron_meting is None:
+        fig_path = os.path.join(output_folder, fig_name_clean + ".png")
+    else:
+        fig_path = os.path.join(output_folder, bron_meting, fig_name_clean + ".png")
     fig.savefig(fig_path, bbox_inches="tight", dpi=200)
     plt.close()
 
@@ -685,22 +707,19 @@ if __name__ == "__main__":
 
     # # specify koppeltabel and meas_folder
     loc_koppeltabel = cloud.joinpath(
-        "Basisgegevens",
-        "resultaatvergelijking",
-        "koppeltabel",
-        "Transformed_koppeltabel_versie_lhm_coupled_2025_9_0_Feedback_Verwerkt_HydroLogic.xlsx",
+        "Basisgegevens/resultaatvergelijking/koppeltabel/Transformed_koppeltabel_versie_lhm_coupled_2025_9_0_Feedback_Verwerkt_HydroLogic.xlsx"
     )
     loc_specifieke_bewerking = cloud.joinpath(
-        "Basisgegevens", "resultaatvergelijking", "koppeltabel", "Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
+        "Basisgegevens/resultaatvergelijking/koppeltabel/Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
     )
-    meas_folder = cloud.joinpath("Basisgegevens", "resultaatvergelijking", "meetreeksen")
+    meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen")
 
     # get latest coupled LHM model
     rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
     latest_lhm_version = sorted(
         [i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", "")
     )[-1]
-    model_folder = cloud.joinpath("Rijkswaterstaat", "modellen", latest_lhm_version.path_string)
+    model_folder = cloud.joinpath("Rijkswaterstaat/modellen", latest_lhm_version.path_string)
 
     # # synchronize paths
     cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, meas_folder, model_folder])

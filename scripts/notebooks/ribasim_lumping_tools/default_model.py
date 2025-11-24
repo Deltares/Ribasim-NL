@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 def default_model(
     node_df: gpd.GeoDataFrame,
-    edge_df: gpd.GeoDataFrame,
+    link_df: gpd.GeoDataFrame,
     basin_areas_df: gpd.GeoDataFrame,
     profile: dict,
     precipitation: float,
@@ -63,8 +63,8 @@ def default_model(
     ----------
     node_in_df : gpd.GeoDataFrame
         GeoDataFrame with nodes. Should contain a `node_id` and `geometry` column
-    edge_in_df : gpd.GeoDataFrame
-        GeoDataFrame with edges. Should contain LineStrings connecting nodes
+    link_in_df : gpd.GeoDataFrame
+        GeoDataFrame with links. Should contain LineStrings connecting nodes
     profile : dict
         default profile to use for all basins, e.g.:
             {
@@ -136,8 +136,8 @@ def default_model(
     model.level_boundary.node.df = node_df[node_df.node_type == "LevelBoundary"]
     model.flow_boundary.node.df = node_df[node_df.node_type == "FlowBoundary"]
 
-    # check and drop duplicated edges
-    if "split_type" in edge_df.columns:
+    # check and drop duplicated links
+    if "split_type" in link_df.columns:
         rename_columns = {
             "object_type": "meta_object_type",
             "split_node_id": "meta_split_node_id",
@@ -147,9 +147,9 @@ def default_model(
             "basin": "meta_basin",
             "connection": "meta_connection",
         }
-        edge_df = edge_df.rename(columns=rename_columns)
-        edge_df["meta_boundary"] = edge_df["meta_boundary"].fillna(-1).astype(int)
-    if "from_node_id" not in edge_df.columns:
+        link_df = link_df.rename(columns=rename_columns)
+        link_df["meta_boundary"] = link_df["meta_boundary"].fillna(-1).astype(int)
+    if "from_node_id" not in link_df.columns:
         nodes = node_df[["node_id", "node_type", "meta_basin", "meta_boundary", "meta_split_node", "meta_categorie"]]
         node_basin = nodes[nodes.meta_basin != -1]
         node_boundary = nodes[nodes.meta_boundary != -1]
@@ -179,53 +179,53 @@ def default_model(
             ["to_node_id", "to_node_type", "meta_to_categorie", "meta_split_node"]
         ]
 
-        edge_split_node_to_basin = edge_df[edge_df.meta_connection == "split_node_to_basin"]
-        edge_basin_to_split_node = edge_df[edge_df.meta_connection == "basin_to_split_node"]
-        edge_split_node_to_boundary = edge_df[edge_df.meta_connection == "split_node_to_boundary"]
-        edge_boundary_to_split_node = edge_df[edge_df.meta_connection == "boundary_to_split_node"]
+        link_split_node_to_basin = link_df[link_df.meta_connection == "split_node_to_basin"]
+        link_basin_to_split_node = link_df[link_df.meta_connection == "basin_to_split_node"]
+        link_split_node_to_boundary = link_df[link_df.meta_connection == "split_node_to_boundary"]
+        link_boundary_to_split_node = link_df[link_df.meta_connection == "boundary_to_split_node"]
 
-        edge_split_node_to_basin = to_node_basin.merge(edge_split_node_to_basin, how="inner", on="meta_basin")
-        edge_split_node_to_basin = from_node_split_node.merge(
-            edge_split_node_to_basin, how="inner", on="meta_split_node"
+        link_split_node_to_basin = to_node_basin.merge(link_split_node_to_basin, how="inner", on="meta_basin")
+        link_split_node_to_basin = from_node_split_node.merge(
+            link_split_node_to_basin, how="inner", on="meta_split_node"
         )
-        edge_basin_to_split_node = to_node_split_node.merge(edge_basin_to_split_node, how="inner", on="meta_split_node")
-        edge_basin_to_split_node = from_node_basin.merge(edge_basin_to_split_node, how="inner", on="meta_basin")
-        edge_split_node_to_boundary = to_node_boundary.merge(
-            edge_split_node_to_boundary, how="inner", on="meta_boundary"
+        link_basin_to_split_node = to_node_split_node.merge(link_basin_to_split_node, how="inner", on="meta_split_node")
+        link_basin_to_split_node = from_node_basin.merge(link_basin_to_split_node, how="inner", on="meta_basin")
+        link_split_node_to_boundary = to_node_boundary.merge(
+            link_split_node_to_boundary, how="inner", on="meta_boundary"
         )
-        edge_split_node_to_boundary = from_node_split_node.merge(
-            edge_split_node_to_boundary, how="inner", on="meta_split_node"
+        link_split_node_to_boundary = from_node_split_node.merge(
+            link_split_node_to_boundary, how="inner", on="meta_split_node"
         )
-        edge_boundary_to_split_node = to_node_split_node.merge(
-            edge_boundary_to_split_node, how="inner", on="meta_split_node"
+        link_boundary_to_split_node = to_node_split_node.merge(
+            link_boundary_to_split_node, how="inner", on="meta_split_node"
         )
-        edge_boundary_to_split_node = from_node_boundary.merge(
-            edge_boundary_to_split_node, how="inner", on="meta_boundary"
+        link_boundary_to_split_node = from_node_boundary.merge(
+            link_boundary_to_split_node, how="inner", on="meta_boundary"
         )
 
-        edge_df = pd.concat(
+        link_df = pd.concat(
             [
-                edge_split_node_to_basin,
-                edge_basin_to_split_node,
-                edge_split_node_to_boundary,
-                edge_boundary_to_split_node,
+                link_split_node_to_basin,
+                link_basin_to_split_node,
+                link_split_node_to_boundary,
+                link_boundary_to_split_node,
             ]
         )
-        edge_df = edge_df.reset_index(drop=True)
-        edge_df.index.name = "fid"
-        edge_df = gpd.GeoDataFrame(edge_df, geometry="geometry", crs=crs)
-        edge_df["meta_categorie"] = "doorgaand"
-        edge_df.loc[
-            (edge_df["meta_from_categorie"] == "hoofdwater") & (edge_df["meta_to_categorie"] == "hoofdwater"),
+        link_df = link_df.reset_index(drop=True)
+        link_df.index.name = "fid"
+        link_df = gpd.GeoDataFrame(link_df, geometry="geometry", crs=crs)
+        link_df["meta_categorie"] = "doorgaand"
+        link_df.loc[
+            (link_df["meta_from_categorie"] == "hoofdwater") & (link_df["meta_to_categorie"] == "hoofdwater"),
             "meta_categorie",
         ] = "hoofdwater"
 
-    if edge_df.duplicated(subset=["from_node_id", "from_node_type", "to_node_id", "to_node_type"]).any():
-        logger.warning("edge_df contains duplicated node_ids that get dropped")
-        edge_df.drop_duplicates(["from_node_id", "from_node_type", "to_node_id", "to_node_type"], inplace=True)
+    if link_df.duplicated(subset=["from_node_id", "from_node_type", "to_node_id", "to_node_type"]).any():
+        logger.warning("link_df contains duplicated node_ids that get dropped")
+        link_df.drop_duplicates(["from_node_id", "from_node_type", "to_node_id", "to_node_type"], inplace=True)
 
-    # convert to edge-table
-    model.edge.df = edge_df
+    # convert to link-table
+    model.link.df = link_df
 
     # define ribasim basin-table
     profile_df = pd.concat(

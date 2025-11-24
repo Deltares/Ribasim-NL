@@ -24,7 +24,7 @@ class RibasimModelResults(BaseModel):
     node_v: pd.DataFrame
     basin_h: pd.DataFrame
     basin_v: pd.DataFrame
-    flow_edge: pd.DataFrame | None = None
+    flow_link: pd.DataFrame | None = None
     basin: pd.DataFrame | None = None
     control: pd.DataFrame | None = None
     flow: pd.DataFrame | None = None
@@ -42,8 +42,8 @@ class RibasimBasinResults(BaseModel):
     control: pd.DataFrame | None = None
     control_variable: pd.DataFrame | None = None
     control_condition: pd.DataFrame | None = None
-    inflow_edge: pd.DataFrame | None = None
-    outflow_edge: pd.DataFrame | None = None
+    inflow_link: pd.DataFrame | None = None
+    outflow_link: pd.DataFrame | None = None
     inflow: pd.DataFrame | None = None
     outflow: pd.DataFrame | None = None
     subgrid: pd.DataFrame | None = None
@@ -57,14 +57,14 @@ def read_arrow_file(simulation_dir: Path, file_name: str, results_dir: str = "re
     return None
 
 
-def get_inflow_outflow_edge_data(ribasim_model: ribasim.Model):
+def get_inflow_outflow_link_data(ribasim_model: ribasim.Model):
     node_df = ribasim_model.network.node.df
-    edge_df = ribasim_model.network.edge.df
+    link_df = ribasim_model.network.link.df
 
     basin_nos = node_df[node_df.node_type == "Basin"].node_id
-    flow_edge = edge_df[edge_df.edge_type == "flow"]
-    flow_edge = flow_edge[(flow_edge.to_node_id.isin(basin_nos)) | (flow_edge.from_node_id.isin(basin_nos))]
-    flow_edge = flow_edge.merge(
+    flow_link = link_df[link_df.link_type == "flow"]
+    flow_link = flow_link[(flow_link.to_node_id.isin(basin_nos)) | (flow_link.from_node_id.isin(basin_nos))]
+    flow_link = flow_link.merge(
         node_df[["node_id", "node_type", "name"]].rename(
             columns={"node_id": "from_node_id", "node_type": "from_node_type", "name": "from_node_name"}
         ),
@@ -72,7 +72,7 @@ def get_inflow_outflow_edge_data(ribasim_model: ribasim.Model):
         left_on=["from_node_id", "from_node_type"],
         right_on=["from_node_id", "from_node_type"],
     )
-    flow_edge = flow_edge.merge(
+    flow_link = flow_link.merge(
         node_df[["node_id", "node_type", "name"]].rename(
             columns={"node_id": "to_node_id", "node_type": "to_node_type", "name": "to_node_name"}
         ),
@@ -81,26 +81,26 @@ def get_inflow_outflow_edge_data(ribasim_model: ribasim.Model):
         right_on=["to_node_id", "to_node_type"],
     )
 
-    flow_edge_source = flow_edge.set_index("to_node_id")[["from_node_id", "from_node_name"]].rename(
+    flow_link_source = flow_link.set_index("to_node_id")[["from_node_id", "from_node_name"]].rename(
         columns={"from_node_id": "source_node_id", "from_node_name": "source_name"}
     )
-    flow_edge = flow_edge.merge(flow_edge_source, how="left", left_on="from_node_id", right_index=True)
-    flow_edge_target = flow_edge.set_index("from_node_id")[["to_node_id", "to_node_name"]].rename(
+    flow_link = flow_link.merge(flow_link_source, how="left", left_on="from_node_id", right_index=True)
+    flow_link_target = flow_link.set_index("from_node_id")[["to_node_id", "to_node_name"]].rename(
         columns={"to_node_id": "target_node_id", "to_node_name": "target_name"}
     )
-    flow_edge = flow_edge.merge(flow_edge_target, how="left", left_on="to_node_id", right_index=True).drop_duplicates()
-    flow_edge.source_node_id = flow_edge.source_node_id.fillna(-1).astype(int)
-    flow_edge.target_node_id = flow_edge.target_node_id.fillna(-1).astype(int)
-    flow_edge.from_node_name = flow_edge.from_node_name.fillna("")
-    flow_edge.to_node_name = flow_edge.to_node_name.fillna("")
-    flow_edge.source_name = flow_edge.source_name.fillna("")
-    flow_edge.target_name = flow_edge.target_name.fillna("")
-    return flow_edge
+    flow_link = flow_link.merge(flow_link_target, how="left", left_on="to_node_id", right_index=True).drop_duplicates()
+    flow_link.source_node_id = flow_link.source_node_id.fillna(-1).astype(int)
+    flow_link.target_node_id = flow_link.target_node_id.fillna(-1).astype(int)
+    flow_link.from_node_name = flow_link.from_node_name.fillna("")
+    flow_link.to_node_name = flow_link.to_node_name.fillna("")
+    flow_link.source_name = flow_link.source_name.fillna("")
+    flow_link.target_name = flow_link.target_name.fillna("")
+    return flow_link
 
 
 def read_ribasim_model_results(simulation_path: Path):
     if not simulation_path.exists():
-        raise ValueError(f" x simulation_path {str(simulation_path)} does not exist")
+        raise ValueError(f" x simulation_path {simulation_path!s} does not exist")
     ribasim_model = ribasim.Model.read(Path(simulation_path, "ribasim.toml"))
 
     basin = read_arrow_file(simulation_path, "basin")
@@ -115,12 +115,12 @@ def read_ribasim_model_results(simulation_path: Path):
 
     flow = read_arrow_file(simulation_path, "flow")
     if flow is not None:
-        flow = flow[~flow["edge_id"].isna()]
-        flow["edge_id"] = flow["edge_id"].astype(int)
+        flow = flow[~flow["link_id"].isna()]
+        flow["link_id"] = flow["link_id"].astype(int)
 
     subgrid = read_arrow_file(simulation_path, "subgrid_levels")
 
-    flow_edge = get_inflow_outflow_edge_data(ribasim_model=ribasim_model)
+    flow_link = get_inflow_outflow_link_data(ribasim_model=ribasim_model)
     if Path(simulation_path, "ribasim_network.gpkg").exists():
         basin_areas = gpd.read_file(Path(simulation_path, "ribasim_network.gpkg"), layer="basin_areas")
         node_h = gpd.read_file(Path(simulation_path, "ribasim_network.gpkg"), layer="node_h")
@@ -140,7 +140,7 @@ def read_ribasim_model_results(simulation_path: Path):
         node_v=node_v,
         basin_h=basin_h,
         basin_v=basin_v,
-        flow_edge=flow_edge,
+        flow_link=flow_link,
         basin=basin,
         control=control,
         flow=flow,
@@ -164,13 +164,13 @@ def get_ribasim_basin_data_from_model(
     )
     outflow = (
         model_flow[(model_flow["from_node_id"] == basin_no) & (model_flow["from_node_type"] == "Basin")]
-        .drop(columns=["from_node_id", "edge_id"])
+        .drop(columns=["from_node_id", "link_id"])
         .set_index(["to_node_id", "time"])
         .sort_index()
     )
     inflow = (
         model_flow[(model_flow["to_node_id"] == basin_no) & (model_flow["to_node_type"] == "Basin")]
-        .drop(columns=["to_node_id", "edge_id"])
+        .drop(columns=["to_node_id", "link_id"])
         .set_index(["from_node_id", "time"])
         .sort_index()
     )
@@ -193,17 +193,17 @@ def get_ribasim_basin_data_from_model(
         control = model_control.reset_index().copy()
         control = control[control["control_node_id"].isin(control_node_id)]
 
-    inflow_edge = (
-        ribasim_results.flow_edge[
-            (ribasim_results.flow_edge.to_node_id == basin_no) & (ribasim_results.flow_edge.to_node_type == "Basin")
+    inflow_link = (
+        ribasim_results.flow_link[
+            (ribasim_results.flow_link.to_node_id == basin_no) & (ribasim_results.flow_link.to_node_type == "Basin")
         ]
         .drop(columns=["target_node_id", "target_name"])
         .reset_index(drop=True)
         .drop_duplicates()
     )
-    outflow_edge = (
-        ribasim_results.flow_edge[
-            (ribasim_results.flow_edge.from_node_id == basin_no) & (ribasim_results.flow_edge.from_node_type == "Basin")
+    outflow_link = (
+        ribasim_results.flow_link[
+            (ribasim_results.flow_link.from_node_id == basin_no) & (ribasim_results.flow_link.from_node_type == "Basin")
         ]
         .drop(columns=["source_node_id", "source_name"])
         .reset_index(drop=True)
@@ -220,8 +220,8 @@ def get_ribasim_basin_data_from_model(
         control=control,
         control_variable=control_variable,
         control_condition=control_condition,
-        inflow_edge=inflow_edge,
-        outflow_edge=outflow_edge,
+        inflow_link=inflow_link,
+        outflow_link=outflow_link,
     )
 
 
@@ -244,8 +244,8 @@ def plot_results_basins_ribasim_model(
 
 
 def plot_results_basin_ribasim_model(
-    basin_no: int = None,
-    simulation_path: Path = None,
+    basin_no: int | None = None,
+    simulation_path: Path | None = None,
     ribasim_model: ribasim.Model = None,
     ribasim_results: RibasimModelResults = None,
     basin_results: RibasimBasinResults = None,
@@ -336,11 +336,11 @@ def plot_results_basin_ribasim_model(
     basin["basin_flow"] = basin["drainage"] - basin["infiltration"]
     basin.basin_flow.rename("Local inflow").plot(ax=ax3, style="-o", markersize=2)
 
-    for i, inflow_edge in basin_results.inflow_edge.iterrows():
-        from_node_id = inflow_edge["from_node_id"]
-        from_node_name = inflow_edge["from_node_name"]
-        source_node_id = inflow_edge["source_node_id"]
-        source_name = inflow_edge["source_name"]
+    for i, inflow_link in basin_results.inflow_link.iterrows():
+        from_node_id = inflow_link["from_node_id"]
+        from_node_name = inflow_link["from_node_name"]
+        source_node_id = inflow_link["source_node_id"]
+        source_name = inflow_link["source_name"]
         (
             total_inflow.loc[from_node_id]
             .flow_rate.rename(f"Inflow from {source_name} ({source_node_id}) via {from_node_name} ({from_node_id})")
@@ -351,11 +351,11 @@ def plot_results_basin_ribasim_model(
                 markersize=1.5,
             )
         )
-    for i, outflow_edge in basin_results.outflow_edge.iterrows():
-        to_node_id = outflow_edge["to_node_id"]
-        to_node_name = outflow_edge["to_node_name"]
-        target_node_id = outflow_edge["target_node_id"]
-        target_name = outflow_edge["target_name"]
+    for i, outflow_link in basin_results.outflow_link.iterrows():
+        to_node_id = outflow_link["to_node_id"]
+        to_node_name = outflow_link["to_node_name"]
+        target_node_id = outflow_link["target_node_id"]
+        target_name = outflow_link["target_name"]
         (
             total_outflow.loc[to_node_id]
             .flow_rate.rename(f"Outflow to {target_name} ({target_node_id}) via {to_node_name} ({to_node_id})")
@@ -369,8 +369,8 @@ def plot_results_basin_ribasim_model(
 
     if complete:
         ax4 = fig.add_subplot(343, sharey=ax1)
-        for i, outflow_edge in basin_results.outflow_edge.iterrows():
-            to_node_id = outflow_edge["to_node_id"]
+        for i, outflow_link in basin_results.outflow_link.iterrows():
+            to_node_id = outflow_link["to_node_id"]
             q_h_relation = basin_results.outflow.loc[to_node_id][["flow_rate"]].merge(
                 basin_results.basin[["level"]], how="inner", left_index=True, right_index=True
             )
@@ -427,11 +427,11 @@ def plot_results_basin_ribasim_model(
         ax5.set_ylim([0.0, basin_storage.storage.max() * 1.1])
 
         ax6 = plt.subplot2grid((4, 3), (2, 2), colspan=1, rowspan=2)
-        for i, outflow_edge in basin_results.outflow_edge.iterrows():
-            to_node_id = outflow_edge["to_node_id"]
-            to_node_name = outflow_edge["to_node_name"]
-            target_node_id = outflow_edge["target_node_id"]
-            target_name = outflow_edge["target_name"]
+        for i, outflow_link in basin_results.outflow_link.iterrows():
+            to_node_id = outflow_link["to_node_id"]
+            to_node_name = outflow_link["to_node_name"]
+            target_node_id = outflow_link["target_node_id"]
+            target_name = outflow_link["target_name"]
             q_h_relation = basin_results.outflow.loc[to_node_id][["flow_rate"]].merge(
                 basin_results.basin[["level"]], how="inner", left_index=True, right_index=True
             )
@@ -459,9 +459,9 @@ def plot_results_basin_ribasim_model(
     #         if clevel["threshold_high"] > 5000.0:
     #             continue
     #         control_node_id = clevel["node_id"]
-    #         controlled_node_id = (ribasim_model.edge.df[
-    #             (ribasim_model.edge.df["edge_type"]=="control") &
-    #             (ribasim_model.edge.df["from_node_id"]==control_node_id)
+    #         controlled_node_id = (ribasim_model.link.df[
+    #             (ribasim_model.link.df["link_type"]=="control") &
+    #             (ribasim_model.link.df["from_node_id"]==control_node_id)
     #         ]["to_node_id"].iloc[0])
     #         node_name = ribasim_model.network.node.df.loc[controlled_node_id, "name"]
     #         ax1.hlines(
