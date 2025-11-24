@@ -27,7 +27,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from ER_GAF_fractions_func import compute_overlap_df
+from ER_GAF_fractions_func import compute_overlap_df  # should be in the same dir as this script
 
 conv_yr2sec = 60 * 60 * 24 * 365.25
 conv_kg2g = 1000
@@ -181,8 +181,8 @@ schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur kome
 inputdir = (
     "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
 )
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
-basin_node_path = model_path / "database.gpkg"
+model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "modellen/lhm_coupled_2025_9_0"
+basin_node_path = model_path / "input/database.gpkg"
 
 # -------------------------------Import data------------------------------------
 
@@ -192,13 +192,18 @@ koppeling = compute_overlap_df(
 )
 
 koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
+koppeling["fractie"] = koppeling["fractie"] / 2
 
 # $ check voor nieuwe koppeling
-sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index()
+sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index().sort_values(by="fractie")
 sum_per_node = koppeling.groupby("GAF-eenheid")["fractie"].sum().reset_index().sort_values(by="fractie")
 
-with pd.option_context("display.max_rows", None):
-    print(sum_per_node)
+_fig, ax = plt.subplots()
+ax.scatter(range(len(sum_per_node)), sum_per_node["fractie"], s=1)
+ax.set_title("Sum of fractions per NodeId")
+ax.set_xlabel("Index")
+ax.set_ylabel("Sum of fractions per NodeId")
+plt.show()
 
 # $ eventueel kunnen de fracties per GAF met de emissies per GAF worden vermenigvuldigd om te checken of het matched met wat er uit dit script komt rollen als totale emissies
 
@@ -661,9 +666,10 @@ elif d["run"] == "prognose":
     pass
 
 
-# ---------------------------------Export B6_loads---------------------------------------
+# ---------------------------------Export B6_loads.inc ---------------------------------------
 
-# vanaf hier bevat DifusseEmissions_OE de juiste data voor export naar B6_loads.inc bestand
+# $ vanaf hier bevat DifusseEmissions_OE de juiste data voor export naar B6_loads.inc bestand
+# $ eigenlijk moet je nu een pivot table maken met de bestanddelen van N en P
 
 output_path = model_path / "delwaq"
 
@@ -671,7 +677,7 @@ grouped = DifusseEmissions_OE.groupby(["NodeId", "VariableId"])
 
 with open(output_path / "B6_loads.inc", "w") as f:
     for (node_id, variable_id), group in grouped:
-        f.write(f"ITEM 'Basin_{node_id}' CONCENTRATIONS '{variable_id}' LINEAR TIME LINEAR DATA '{variable_id}'\n")
+        f.write(f"ITEM '{node_id}' CONCENTRATIONS '{variable_id}' LINEAR TIME LINEAR DATA '{variable_id}'\n")
 
         for _, row in group.iterrows():
             year = row["Year"]
