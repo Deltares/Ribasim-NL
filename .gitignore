@@ -57,4 +57,3 @@ venv/
 *.log
 *.qlr
 results/
-uv.lock

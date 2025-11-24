@@ -50,7 +50,7 @@ dependencies = [
     "types-requests>=2.32.4.20250913",
     "xlwings>=0.33.15",
     "xugrid>=0.14.2",
-	"zarr>=2.17.0"
+    "zarr>=2.17.0"
 ]
 
 [tool.uv.sources]
