@@ -153,7 +153,7 @@ for group_id, group in tqdm.tqdm(pot_reduce.groupby("merge_group", dropna=True, 
     add_rows.append(single_row)
 
 # Overwrite dataframes
-df_center_single = pd.concat([df_center_single_red] + add_rows)
+df_center_single = pd.concat([df_center_single_red, *add_rows])
 
 df_center_single_boundary = df_center_single.copy()
 df_center_single_boundary["geometry"] = df_center_single.boundary
@@ -224,7 +224,7 @@ for poly_id, row in tqdm.tqdm(df_merged.iterrows(), total=len(df_merged)):
     graph.add_nodes_from(node_ids.unique().tolist())
     for link_id, group in df_graph.groupby("link_id", sort=False):
         node1, node2 = group.index.get_level_values("node_id").tolist()
-        graph.add_link(node1, node2, weight=link_lengths[link_id])
+        graph.add_edge(node1, node2, weight=link_lengths[link_id])
 
     # Determine shortest path for each start node
     for start_node in tqdm.tqdm(start_nodes, leave=False, desc=f"{poly_id=}"):

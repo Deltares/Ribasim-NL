@@ -1,3 +1,4 @@
+# %%
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,7 @@ Getest (u kunt simuleren): Nee
 ** Samengevoegde modellen (beheerder: modelnaam (versie)**
 """
 
-download_latest_model: bool = True
+download_latest_model: bool = False
 # Write intermediate models for debugging or scaling tests
 write_intermediate_models: bool = False
 upload_model: bool = False
@@ -49,6 +50,12 @@ INCLUDE_MODELS: list[str] = [
     "ValleienVeluwe",
     "Vechtstromen",
 ]
+
+sub_models: dict[str, list[str]] = {
+    # "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta"],
+    # "RDO-Noord": ["Noorderzijlvest", "HunzeenAas", "WetterskipFryslan", "DrentsOverijsselseDelta"],
+}
+
 
 # A spec consists of the following keys:
 # - authority: str; The authority responsible for the model
@@ -243,8 +250,10 @@ def process_model_spec(
         lhm_model = concat([lhm_model, model], keep_original_index=True)
         assert lhm_model is not None
         lhm_model._validate_model()
-        version_str = getattr(model_version, "version", "unknown")
-        readme += f"""
+
+    # add version
+    version_str = getattr(model_version, "version", "unknown")
+    readme += f"""
 **{model_spec["authority"]}**: {model_spec["model"]} ({version_str})"""
     if write_intermediate_models and write_toml is not None:
         assert lhm_model is not None
@@ -254,15 +263,33 @@ def process_model_spec(
 
 lhm_model = None
 readme = f"# Model voor het Landelijk Hydrologisch Model\nGegenereerd: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\nRibasim versie: {ribasim.__version__}\nGetest (u kunt simuleren): Nee\n\n** Samengevoegde modellen (beheerder: modelnaam (versie)**\n"
-lhm_model, readme = process_model_spec(1, hws_spec, lhm_model, readme)
-for idx, model_spec in enumerate(model_specs):
-    write_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml")
-    lhm_model, readme = process_model_spec(idx + 2, model_spec, lhm_model, readme, write_toml=write_toml)
-# Write lhm model only if it exists
-print("write lhm model")
-ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/lhm.toml")
-if lhm_model is not None:
+
+for model_name, authorities in sub_models.items():
+    print(model_name)
+    lhm_model = None
+    readme = f"\n\n## Submodel: {model_name}\n** Samengevoegde modellen (beheerder: modelnaam (versie)**\n"
+    for authority in authorities:
+        if authority == "Rijkswaterstaat":
+            model_spec = hws_spec
+        else:
+            model_spec = next((i for i in model_specs if i["authority"] == authority), None)
+        if model_spec is not None:
+            lhm_model, readme = process_model_spec(0, model_spec, lhm_model, readme)
+    # Write lhm model only if it exists
+    assert lhm_model is not None
+    ribasim_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm_sub_models/{model_name}/{model_name}.toml")
     lhm_model.write(ribasim_toml)
-cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/readme.md").write_text(readme)
-if upload_model:
-    cloud.upload_model("Rijkswaterstaat", model="lhm_parts")
+    ribasim_toml.with_name("readme.md").write_text(readme)
+
+# lhm_model, readme = process_model_spec(1, hws_spec, lhm_model, readme)
+# for idx, model_spec in enumerate(model_specs):
+#     write_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml")
+#     lhm_model, readme = process_model_spec(idx + 2, model_spec, lhm_model, readme, write_toml=write_toml)
+# # Write lhm model only if it exists
+# print("write lhm model")
+# ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/lhm.toml")
+# if lhm_model is not None:
+#     lhm_model.write(ribasim_toml)
+# cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/readme.md").write_text(readme)
+# if upload_model:
+#     cloud.upload_model("Rijkswaterstaat", model="lhm_parts")

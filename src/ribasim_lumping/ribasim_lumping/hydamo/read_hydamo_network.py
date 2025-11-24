@@ -3,12 +3,12 @@ from pathlib import Path
 import fiona
 import geopandas as gpd
 
-from ..utils.general_functions import generate_nodes_from_edges, read_geom_file, split_edges_by_dx
+from ..utils.general_functions import generate_nodes_from_links, read_geom_file, split_links_by_dx
 
 
 def add_hydamo_basis_network(
     hydamo_network_file: Path = "hydamo.gpkg",
-    hydamo_split_network_dx: float = None,
+    hydamo_split_network_dx: float | None = None,
     crs: int = 28992,
 ):
     # ) -> Tuple[
@@ -26,24 +26,24 @@ def add_hydamo_basis_network(
 
     Returns
     -------
-        Tuple containing GeoDataFrames with branches, edges nodes
+        Tuple containing GeoDataFrames with branches, links nodes
     """
     branches_gdf = read_geom_file(filepath=hydamo_network_file, layer_name="hydroobject", crs=crs, remove_z_dim=True)
     branches_gdf = branches_gdf.rename(columns={"code": "branch_id"})[["branch_id", "geometry"]]
-    branches_gdf, network_nodes_gdf = generate_nodes_from_edges(branches_gdf)
+    branches_gdf, network_nodes_gdf = generate_nodes_from_links(branches_gdf)
     print(f" - branches ({len(branches_gdf)}x)", end=", ")
 
-    # Split up hydamo edges with given distance as approximate length of new edges
+    # Split up hydamo links with given distance as approximate length of new links
     if hydamo_split_network_dx is None:
-        edges_gdf = branches_gdf.copy().rename(columns={"branch_id": "edge_id"})
+        links_gdf = branches_gdf.copy().rename(columns={"branch_id": "link_id"})
     else:
-        edges_gdf = split_edges_by_dx(
-            edges=branches_gdf,
+        links_gdf = split_links_by_dx(
+            links=branches_gdf,
             dx=hydamo_split_network_dx,
         )
-    edges_gdf, nodes_gdf = generate_nodes_from_edges(edges_gdf)
-    edges_gdf.index.name = "index"
-    print(f" edges ({len(edges_gdf) if edges_gdf is not None else 0}x)", end=", ")
+    links_gdf, nodes_gdf = generate_nodes_from_links(links_gdf)
+    links_gdf.index.name = "index"
+    print(f" links ({len(links_gdf) if links_gdf is not None else 0}x)", end=", ")
 
     # Read structures and data according to hydamo-format
     weirs_gdf, culverts_gdf, pumps_gdf, sluices_gdf, closers_gdf = None, None, None, None, None
@@ -72,7 +72,7 @@ def add_hydamo_basis_network(
     results = [
         branches_gdf,
         network_nodes_gdf,
-        edges_gdf,
+        links_gdf,
         nodes_gdf,
         weirs_gdf,
         culverts_gdf,

@@ -11,12 +11,10 @@ cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
-run_model = False
-
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
-qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
@@ -54,13 +52,10 @@ model.write(ribasim_toml)
 # %%
 
 # run model
+result = model.run()
+assert result.exit_code == 0
 
-if run_model:
-    result = model.run()
-    assert result.exit_code == 0
-
-    # # %%
-
+# # %%
 controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
 indicators = controle_output.run_afvoer()
 # %%

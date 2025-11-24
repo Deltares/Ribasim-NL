@@ -14,7 +14,7 @@ from ribasim_nl import CloudStorage
 
 cloud = CloudStorage()
 
-locatie_koppeltabellen = cloud.joinpath("Basisgegevens", "resultaatvergelijking", "koppeltabel")
+locatie_koppeltabellen = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel")
 
 # paths:
 
@@ -23,7 +23,7 @@ locatie_koppeltabellen = cloud.joinpath("Basisgegevens", "resultaatvergelijking"
 # met huidige ribasim dev versie
 # rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
 # latest_lhm_version = sorted([i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", ""))[-1]
-# model_folder = cloud.joinpath("Rijkswaterstaat", "modellen", latest_lhm_version.path_string)
+# model_folder = cloud.joinpath("Rijkswaterstaat/modellen", latest_lhm_version.path_string)
 
 
 model_folder_temporary = os.path.join(

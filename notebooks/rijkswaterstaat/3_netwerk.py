@@ -9,7 +9,6 @@ from ribasim_nl import CloudStorage, Network
 cloud = CloudStorage()
 
 # input on cloud
-# TODO fairway not on cloud, stream is, but not used
 fairway_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_fairway.gpkg")
 river_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_river.gpkg")
 canal_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_canal.gpkg")

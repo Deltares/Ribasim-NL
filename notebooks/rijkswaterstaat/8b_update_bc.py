@@ -9,10 +9,10 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_demand", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")
 model = Model.read(ribasim_toml)
 
-debieten_xlsx = cloud.joinpath("Rijkswaterstaat", "aangeleverd", "debieten_Rijn_Maas_2023_2024.xlsx")
+debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/debieten_Rijn_Maas_2023_2024.xlsx")
 cloud.synchronize([debieten_xlsx])
 df = pd.read_excel(
     debieten_xlsx,
@@ -46,7 +46,7 @@ eijsden_series.name = "flow_rate"
 
 # %% Monsin series
 df = pd.read_excel(
-    cloud.joinpath("Basisgegevens", "metingen", "RWsOS-IWP_debieten_2023_2024.xlsx"),
+    cloud.joinpath("Basisgegevens/metingen/RWsOS-IWP_debieten_2023_2024.xlsx"),
     sheet_name="Maas",
     skiprows=5,
     index_col=0,
@@ -168,5 +168,5 @@ model.level_boundary.time.df = level_df
 
 
 # %%
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_transient", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")
 model.write(ribasim_toml)

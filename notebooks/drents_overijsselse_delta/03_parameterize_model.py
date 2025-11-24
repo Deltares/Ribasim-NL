@@ -14,11 +14,11 @@ short_name = "dod"
 
 run_model = False
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
-qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
-inlaten = cloud.joinpath(authority, "verwerkt\\1_ontvangen_data\extra data\\Duiker_inlaat_lijn\\Duiker_inlaat_lijn.shp")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
+inlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/extra data/Duiker_inlaat_lijn/Duiker_inlaat_lijn.shp")
 inlaten_gdf = gpd.read_file(inlaten)
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
@@ -69,8 +69,8 @@ model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "ma
 
 # %%
 model.update_node(node_id=1401, node_type="Outlet")
-model.reverse_edge(edge_id=894)
-model.reverse_edge(edge_id=1983)
+model.reverse_link(link_id=894)
+model.reverse_link(link_id=1983)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "min_upstream_level"] = -2.6
 model.pump.static.df.loc[model.pump.static.df.node_id == 600, "min_upstream_level"] = 4
 model.pump.static.df.loc[model.pump.static.df.node_id == 601, "min_upstream_level"] = 4

@@ -55,26 +55,13 @@ def update_level_boundary_static(
     if mask.any():
         for row in static_df[mask].itertuples():
             node_id = row.node_id
-            us_node_id = model.upstream_node_id(node_id)
-            if us_node_id is not None:  # its an outlet
-                if isinstance(us_node_id, pd.Series):
-                    us_basins = {model.upstream_node_id(i) for i in us_node_id}
-                else:
-                    us_basins = [model.upstream_node_id(us_node_id)]
-                us_basins = [i for i in us_basins if i is not None]
-                us_basins = [i for i in us_basins if model.get_node_type(i) == "Basin"]
-                if len(us_basins) == 0:
-                    raise ValueError(f"node_id {node_id} does not have an upstream basin")
+            us_basins = model.get_upstream_basins(node_id, stop_at_node_type="Basin").node_id.to_list()
+            if len(us_basins) > 0:
                 level = model.basin.area.df.set_index("node_id").loc[us_basins]["meta_streefpeil"].min()
             else:  # its an inlet
-                ds_node_id = model.downstream_node_id(node_id)
-                if isinstance(ds_node_id, pd.Series):
-                    ds_basins = list({model.downstream_node_id(i) for i in ds_node_id})
-                else:
-                    ds_basins = [model.downstream_node_id(ds_node_id)]
-                ds_basins = [i for i in ds_basins if model.get_node_type(i) == "Basin"]
+                ds_basins = model.get_downstream_basins(node_id, stop_at_node_type="Basin").node_id.to_list()
                 if len(ds_basins) == 0:
-                    raise ValueError(f"node_id {node_id} does not have a downstream basin")
+                    raise ValueError(f"node_id {node_id} does not have an upstream or downstream basin")
                 level = model.basin.area.df.set_index("node_id").loc[ds_basins]["meta_streefpeil"].min()
             static_df.loc[row.Index, "level"] = level
 

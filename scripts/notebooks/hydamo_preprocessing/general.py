@@ -85,14 +85,18 @@ def add_point_to_linestring(point: Point, linestring: LineString) -> LineString:
     distances = [point.distance(Point(line_point)) for line_point in linestring.coords]
     index_nearest_neighbour = distances.index(min(distances))
     modified_linestring1 = LineString(
-        list(linestring.coords)[: index_nearest_neighbour + 1]
-        + [point.coords[0]]
-        + list(linestring.coords)[index_nearest_neighbour + 1 :]
+        [
+            *list(linestring.coords)[: index_nearest_neighbour + 1],
+            point.coords[0],
+            *list(linestring.coords)[index_nearest_neighbour + 1 :],
+        ]
     )
     modified_linestring2 = LineString(
-        list(linestring.coords)[:index_nearest_neighbour]
-        + [point.coords[0]]
-        + list(linestring.coords)[index_nearest_neighbour:]
+        [
+            *list(linestring.coords)[:index_nearest_neighbour],
+            point.coords[0],
+            *list(linestring.coords)[index_nearest_neighbour:],
+        ]
     )
     modified_linestring = (
         modified_linestring1 if modified_linestring1.length < modified_linestring2.length else modified_linestring2
@@ -113,7 +117,7 @@ def split_linestring_by_indices(linestring: LineString, split_indices: list) -> 
         list: list of resulting linestrings
     """
     split_linestrings = []
-    split_indices = sorted(set([0] + split_indices + [len(linestring.coords) - 1]))
+    split_indices = sorted({0, *split_indices, len(linestring.coords) - 1})
     for i in range(len(split_indices) - 1):
         split_linestrings.append(LineString(linestring.coords[split_indices[i] : split_indices[i + 1] + 1]))
 
@@ -179,8 +183,8 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
     split_lines["preprocessing_split"] = None
 
     for split_action in splits:
-        split_edge = split_action["split_line"]
-        line = lines[lines["code"] == split_edge]
+        split_link = split_action["split_line"]
+        line = lines[lines["code"] == split_link]
         linestring = line["geometry"].values[0]
         nodes_to_add = []
         for node in split_action["split_points"]:

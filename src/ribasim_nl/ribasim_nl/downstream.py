@@ -1,17 +1,21 @@
+# %%
 from collections import deque
 
 import networkx as nx
 
 
-def downstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_outlet: bool = False):
+def downstream_nodes(
+    graph: nx.DiGraph, node_id: int, stop_at_outlet: bool = False, stop_at_node_type: str | None = None
+):
     """Efficiently find all downstream nodes in a directed graph starting from a given node,
     stopping traversal at nodes stopping at the next outlet.
 
     Parameters
     ----------
     - graph (nx.DiGraph): The directed graph.
-    - start_node: The node to start the search from.
+    - node_id: The node to start the search from.
     - stop_at_outlet (bool): To stop at the next inlet(s)
+    - stop_at_node_type (str | None): To stop at a specific node type (e.g., 'Basin', 'LevelBoundary')
 
     Returns
     -------
@@ -37,7 +41,10 @@ def downstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_outlet: bool = Fal
                 node_ids.add(successor)
 
                 # Stop traversal if 'function' is 'outlet'
-                if (not stop_at_outlet) | (not graph.nodes[successor].get("function") == "outlet"):
-                    queue.append(successor)
+                if not (stop_at_outlet & (graph.nodes[successor].get("function") == "outlet")):
+                    if stop_at_node_type is None:
+                        queue.append(successor)
+                    elif graph.nodes[successor].get("node_type") != stop_at_node_type:
+                        queue.append(successor)
 
     return node_ids

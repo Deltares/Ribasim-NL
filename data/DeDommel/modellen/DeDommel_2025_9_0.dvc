@@ -1,0 +1,14 @@
+md5: 3d0c7e37041e2015df9418bbe378c8ca
+frozen: true
+deps:
+- md5: 9794e6e45c763025ad01399689fa5d45.dir
+  size: 123304292
+  nfiles: 8
+  hash: md5
+  path: remote://modeldata/DeDommel/modellen/DeDommel_2025_9_0
+outs:
+- md5: 96bfe073b75b985d42aa8d01a8c46404.dir
+  size: 123304292
+  nfiles: 8
+  hash: md5
+  path: DeDommel_2025_9_0

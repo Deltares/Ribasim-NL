@@ -15,7 +15,7 @@ cloud = CloudStorage()
 
 PDOK_URL = r"https://service.pdok.nl/hwh/kunstwerkenimwa/atom/waterschappen_kunstwerken_imwa.xml"
 NAMESPACES = {"atom": "http://www.w3.org/2005/Atom", "georss": "http://www.georss.org/georss"}
-GKW_ROOT_PATH = cloud.joinpath("Basisgegevens", "GKW")
+GKW_ROOT_PATH = cloud.joinpath("Basisgegevens/GKW")
 
 
 def download_geopackage(url: str, save_dir: Path):

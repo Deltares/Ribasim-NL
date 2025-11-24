@@ -28,8 +28,8 @@ SyncWiwbMeteoFromCloud(cloud)
 SyncModelFromCloud(cloud, authority, model)
 
 # Load the precipitation, evaporation and basins
-precip = xr.open_dataset(cloud.joinpath("Basisgegevens", "WIWB", "Meteobase.Precipitation.nc"))
-evp = xr.open_dataset(cloud.joinpath("Basisgegevens", "WIWB", "Meteobase.Evaporation.Makkink.nc"))
+precip = xr.open_dataset(cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc"))
+evp = xr.open_dataset(cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc"))
 
 # Load the model and the basins
 model_dir = cloud.joinpath(authority, "modellen", model)

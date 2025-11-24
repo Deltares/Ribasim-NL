@@ -21,9 +21,8 @@ cloud = CloudStorage()
 # collect relevant data from the GoodCloud
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens", "QGIS_lyr", "output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(AUTHORITY, "aangeleverd", "Na_levering", "HyDAMO_WM_20230720.gpkg")
-model_edits_aanvoer_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "model_edits_aanvoer.gpkg")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoer_path = cloud.joinpath(AUTHORITY, "aangeleverd/Na_levering/HyDAMO_WM_20230720.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -160,8 +159,8 @@ node_ids_duikers = model.outlet.static.df[model.outlet.static.df["meta_code"].st
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids_duikers), "max_flow_rate"] = 0.1
 
 # fixes vistrap eruit
-model.remove_node(1414, remove_edges=True)
-model.remove_node(1441, remove_edges=True)
+model.remove_node(1414, remove_links=True)
+model.remove_node(1441, remove_links=True)
 
 # fixes flow_rate sluis max 0.1m3/s
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 523, "max_flow_rate"] = 0

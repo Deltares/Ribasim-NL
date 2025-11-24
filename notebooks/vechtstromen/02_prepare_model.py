@@ -18,7 +18,7 @@ short_name = "vechtstromen"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt", "parameters")
+parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
@@ -34,14 +34,14 @@ peilgebieden_path = cloud.joinpath(
 peilgebieden_RD = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/downloads/peilgebieden_voormalig_velt_en_vecht.gpkg"
 )
-top10NL_gpkg = cloud.joinpath("Basisgegevens", "Top10NL", "top10nl_Compleet.gpkg")
+top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 peilregister_xlsx = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalevering_20240920/Peilregister.xlsx")
 feedback_xlsx = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/Feedbackform_20250428/20250428_Feedback Formulier.xlsx"
 )
 cloud.synchronize(filepaths=[top10NL_gpkg])
 
-waterinlaten = cloud.joinpath(authority, "verwerkt\1_ontvangen_data\aanvulling feb 24\Waterinlaten.shp")
+waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -84,15 +84,15 @@ else:
 # fix link geometries
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    model.edge.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
-    model.edge.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
+    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
+    model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
     ]
 
 else:
     fix_link_geometries(model, network, max_straight_line_ratio=3)
     add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
-    model.edge.df.reset_index().to_file(link_geometries_gpkg)
+    model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 # %%
 
@@ -296,7 +296,7 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # Update stuwen met nodata op basis van basin streefpeil
 missing_min_level_outlets = static_data.outlet[static_data.outlet.min_upstream_level.isna()]
-downstream_basin_ids = model.edge.df.set_index("to_node_id").loc[missing_min_level_outlets.node_id].from_node_id
+downstream_basin_ids = model.link.df.set_index("to_node_id").loc[missing_min_level_outlets.node_id].from_node_id
 downstream_basin_levels = static_data.basin.set_index("node_id").reindex(downstream_basin_ids)["streefpeil"]
 downstream_basin_levels.index = missing_min_level_outlets.node_id
 downstream_basin_levels.name = "min_upstream_level"
@@ -304,7 +304,7 @@ static_data.add_series(node_type="Outlet", series=downstream_basin_levels.dropna
 
 # Update pumps met nodata op basis van basin streefpeil
 missing_min_level_pumps = static_data.pump[static_data.pump.min_upstream_level.isna()]
-downstream_basin_ids = model.edge.df.set_index("to_node_id").loc[missing_min_level_pumps.node_id].from_node_id
+downstream_basin_ids = model.link.df.set_index("to_node_id").loc[missing_min_level_pumps.node_id].from_node_id
 downstream_basin_levels = static_data.basin.set_index("node_id").reindex(downstream_basin_ids)["streefpeil"]
 downstream_basin_levels.index = missing_min_level_pumps.node_id
 downstream_basin_levels.name = "min_upstream_level"
@@ -315,7 +315,7 @@ static_data.add_series(node_type="Pump", series=downstream_basin_levels.dropna()
 # DAMO-profielen bepalen voor outlets wanneer min_upstream_level nodata
 # Fallback DAMO profielen voor outlets
 node_ids_outlets = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
-profile_ids_outlets = model.edge.df.set_index("to_node_id").loc[node_ids_outlets]["meta_profielid_waterbeheerder"]
+profile_ids_outlets = model.link.df.set_index("to_node_id").loc[node_ids_outlets]["meta_profielid_waterbeheerder"]
 levels_outlets = (profiles_df.loc[profile_ids_outlets]["invert_level"] - 1).to_numpy()
 min_upstream_level_outlets = pd.Series(levels_outlets, index=node_ids_outlets, name="min_upstream_level")
 min_upstream_level_outlets.index.name = "node_id"
@@ -323,7 +323,7 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level_outlets, fi
 
 # DAMO-profielen bepalen voor pumps wanneer min_upstream_level nodata
 node_ids_pumps = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
-profile_ids_pumps = model.edge.df.set_index("to_node_id").loc[node_ids_pumps]["meta_profielid_waterbeheerder"]
+profile_ids_pumps = model.link.df.set_index("to_node_id").loc[node_ids_pumps]["meta_profielid_waterbeheerder"]
 # Veel bottom_levels kloppen niet, dus we nemen de invert_level -1
 levels_pumps = (profiles_df.loc[profile_ids_pumps]["invert_level"] - 1).to_numpy()
 min_upstream_level_pumps = pd.Series(levels_pumps, index=node_ids_pumps, name="min_upstream_level")
@@ -384,7 +384,7 @@ model.basin.area.df.index.name = "fid"
 
 # %% Set waterinlaten
 # --- Load Shapefile ---
-waterinlaten = cloud.joinpath(authority, "verwerkt\\1_ontvangen_data\\aanvulling feb 24\\Waterinlaten.shp")
+waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 waterinlaten_gdf = gpd.read_file(waterinlaten)
 
 # --- Load Waterinlaten data ---
@@ -416,8 +416,8 @@ static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
 model.remove_node(2297)
 
 # # koppelen
-ws_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "waterschap.gpkg")
-RWS_grenzen_path = cloud.joinpath("Basisgegevens", "RWS_waterschaps_grenzen", "Rijkswaterstaat.gpkg")
+ws_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
+RWS_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg")
 assign = AssignAuthorities(
     ribasim_model=model,
     waterschap=authority,

@@ -11,16 +11,11 @@ cloud = CloudStorage()
 authority = "StichtseRijnlanden"
 short_name = "hdsr"
 run_model = False
-static_data_xlsx = cloud.joinpath(
-    authority,
-    "verwerkt",
-    "parameters",
-    "static_data.xlsx",
-)
+static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
-qlr_path = cloud.joinpath("Basisgegevens\\QGIS_lyr\\output_controle_vaw_afvoer.qlr")
-# model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt", "model_edits_aanvoer.gpkg")
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
+# model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
 # cloud.synchronize(filepaths=[static_data_xlsx])
 # cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
@@ -58,8 +53,8 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1572, "meta_streefpeil"] 
 # %%
 # fixes
 
-for edge_id in [2563, 1238, 91, 1436]:
-    model.reverse_edge(edge_id=edge_id)
+for link_id in [2563, 1238, 91, 1436]:
+    model.reverse_link(link_id=link_id)
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2103, "max_flow_rate"] = 5
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 809, "max_flow_rate"] = 0.52

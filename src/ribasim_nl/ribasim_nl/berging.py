@@ -116,9 +116,9 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
         raster_file=lhm_raster_file, df=df, band=BANDEN["maaiveld"], stats="mean min max", all_touched=True
     )
     df.loc[:, ["maaiveld"]] = pd.Series(dtype=float)
-    df.loc[:, ["maaiveld"]] = [i["mean"] if pd.isna(i["mean"]) else i["mean"] for i in maaiveld]
-    df.loc[:, ["maaiveld_max"]] = [i["max"] if pd.isna(i["max"]) else i["max"] for i in maaiveld]
-    df.loc[:, ["maaiveld_min"]] = [i["min"] if pd.isna(i["min"]) else i["min"] for i in maaiveld]
+    df.loc[:, ["maaiveld"]] = [i["mean"] for i in maaiveld]
+    df.loc[:, ["maaiveld_max"]] = [i["max"] for i in maaiveld]
+    df.loc[:, ["maaiveld_min"]] = [i["min"] for i in maaiveld]
 
     return df
 
@@ -254,8 +254,8 @@ class VdGaastBerging:
         self.use_add_api = use_add_api
 
         # check and add rasters paths
-        lhm_raster_file = self.cloud.joinpath("Basisgegevens", "LHM", "4.3", "input", "LHM_data.tif")
-        ma_raster_file = self.cloud.joinpath("Basisgegevens", "VanDerGaast_QH", "spafvoer1.tif")
+        lhm_raster_file = self.cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
+        ma_raster_file = self.cloud.joinpath("Basisgegevens/VanDerGaast_QH/spafvoer1.tif")
         self.cloud.synchronize([lhm_raster_file, ma_raster_file])
         self.lhm_raster_file = lhm_raster_file
         self.ma_raster_file = ma_raster_file

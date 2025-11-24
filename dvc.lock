@@ -1,0 +1,123 @@
+schema: '2.0'
+stages:
+  samenvoegen:
+    cmd: uv run python notebooks/samenvoegen_modellen.py
+    deps:
+    - path: data/AaenMaas/modellen/AaenMaas_2025_9_0
+      hash: md5
+      md5: f95762ba1c46bca62755daa02f44d94b.dir
+      size: 93678776
+      nfiles: 8
+    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
+      hash: md5
+      md5: bd24473f58cfdc69d568f324b918e56c.dir
+      size: 49798056
+      nfiles: 15
+    - path: data/BrabantseDelta/modellen/BrabantseDelta_2025_9_0
+      hash: md5
+      md5: 51f7f48612ebb8d42eb70d1419187a11.dir
+      size: 115607977
+      nfiles: 8
+    - path: data/DeDommel/modellen/DeDommel_2025_9_0
+      hash: md5
+      md5: 96bfe073b75b985d42aa8d01a8c46404.dir
+      size: 123304292
+      nfiles: 8
+    - path: data/Delfland/modellen/Delfland_parameterized_2025_9_1
+      hash: md5
+      md5: 62687d86223334eed590f9f7e8a693b0.dir
+      size: 26010388
+      nfiles: 16
+    - path: data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
+      hash: md5
+      md5: e3bf4485365de487476c45c1acc212ff.dir
+      size: 89711489
+      nfiles: 11
+    - path:
+        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized_2025_9_11
+      hash: md5
+      md5: 91527d0144a3c5abc85323be4d57e3ab.dir
+      size: 47988006
+      nfiles: 15
+    - path: data/HollandseDelta/modellen/HollandseDelta_parameterized_2025_9_0
+      hash: md5
+      md5: c56a9269ee4eec763887a8614190bfa3.dir
+      size: 77766084
+      nfiles: 15
+    - path: data/HunzeenAas/modellen/HunzeenAas_2025_10_1
+      hash: md5
+      md5: 46d0b0ed010775587c0fa8ad8f911304.dir
+      size: 379389205
+      nfiles: 14
+    - path: data/Limburg/modellen/Limburg_2025_9_0
+      hash: md5
+      md5: 0a810b75c357ff1c794d8b39bdf38687.dir
+      size: 128561953
+      nfiles: 8
+    - path: data/Noorderzijlvest/modellen/Noorderzijlvest_2025_10_3
+      hash: md5
+      md5: ddf4dc0155be37bfeabf420b6da19a07.dir
+      size: 92226807
+      nfiles: 13
+    - path: data/Rijkswaterstaat/modellen/hws_2025_10_0
+      hash: md5
+      md5: 700914d929b4633fbf6c1bba4a8c8f55.dir
+      size: 47001133
+      nfiles: 12
+    - path: data/RijnenIJssel/modellen/RijnenIJssel_2025_9_0
+      hash: md5
+      md5: 2c6fca3f653b4a2b5fc84bd3eeb4510a.dir
+      size: 50865576
+      nfiles: 8
+    - path: data/Rijnland/modellen/Rijnland_parameterized_2025_9_0
+      hash: md5
+      md5: 929d5547a8a8c5156a0c2ec8bf13d49a.dir
+      size: 64097032
+      nfiles: 15
+    - path: data/Rivierenland/modellen/Rivierenland_parameterized_2025_9_1
+      hash: md5
+      md5: 4dcf1b59d5cfa80028be99fc7d4ca15a.dir
+      size: 51551022
+      nfiles: 16
+    - path: data/Scheldestromen/modellen/Scheldestromen_parameterized_2025_9_0
+      hash: md5
+      md5: 008df9f7c617cab700d631df1fa98978.dir
+      size: 27087594
+      nfiles: 15
+    - path:
+        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized_2025_9_0
+      hash: md5
+      md5: 700a12cac7bcb5f1cb6b68c8f646d879.dir
+      size: 24385557
+      nfiles: 15
+    - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_2025_9_0
+      hash: md5
+      md5: 76c363afc3eba1ace093dcce982f3c1c.dir
+      size: 78677543
+      nfiles: 9
+    - path: data/ValleienVeluwe/modellen/ValleienVeluwe_2025_9_0
+      hash: md5
+      md5: e719c2b1e64acfefe00492ea4e7304aa.dir
+      size: 90497072
+      nfiles: 17
+    - path: data/Vechtstromen/modellen/Vechtstromen_2025_9_0
+      hash: md5
+      md5: da33f0417baa9ed37580e1273ed2940f.dir
+      size: 114249516
+      nfiles: 8
+    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
+      hash: md5
+      md5: b378c2db29dcbc784ebe4417aeb614a4.dir
+      size: 170981727
+      nfiles: 16
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0
+      hash: md5
+      md5: 11117af02574228c502e06c4711f52db.dir
+      size: 33614025
+      nfiles: 15
+    outs:
+    - path: data/Rijkswaterstaat/modellen/lhm_parts
+      hash: md5
+      md5: 91ec20507efe16085dd4073d6e42da51.dir
+      size: 6173631922
+      nfiles: 3

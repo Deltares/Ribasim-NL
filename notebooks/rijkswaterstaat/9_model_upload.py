@@ -3,9 +3,9 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
-ribasim_toml = cloud.joinpath("Rijkswaterstaat", "modellen", "hws_transient", "hws.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")
 model = Model.read(ribasim_toml)
-model.write(cloud.joinpath("Rijkswaterstaat", "modellen", "hws", "hws.toml"))
+model.write(cloud.joinpath("Rijkswaterstaat/modellen/hws/hws.toml"))
 model.run()
 
 # %%

@@ -67,10 +67,10 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
     split_lines["preprocessing_split"] = None
 
     for split_action in splits:
-        split_edge = split_action["split_line"]
-        line = lines[lines["code"] == split_edge]
+        split_link = split_action["split_line"]
+        line = lines[lines["code"] == split_link]
 
-        # if split_edge == 'OAF-H-02041':
+        # if split_link == 'OAF-H-02041':
         #     break
 
         linestring = line["geometry"].values[0]
@@ -99,13 +99,15 @@ def snap_connect_lines_by_endpoints(split_endpoints, lines):
             # else:
 
             linestring1 = LineString(
-                list(linestring.coords)[: dist1pos + 1]
-                + [Point(node).coords[0]]
-                + list(linestring.coords)[dist1pos + 1 :]
+                [
+                    *list(linestring.coords)[: dist1pos + 1],
+                    Point(node).coords[0],
+                    *list(linestring.coords)[dist1pos + 1 :],
+                ]
             )
 
             linestring2 = LineString(
-                list(linestring.coords)[:dist1pos] + [Point(node).coords[0]] + list(linestring.coords)[dist1pos:]
+                [*list(linestring.coords)[:dist1pos], Point(node).coords[0], *list(linestring.coords)[dist1pos:]]
             )
 
             linestring = linestring1 if linestring1.length < linestring2.length else linestring2
@@ -271,43 +273,43 @@ def connect_endpoints_by_buffer(lines, buffer_distance=0.5):
 # %% Generate input data for network
 
 
-def create_nodes_and_edges_from_hydroobjects(edges, buffer_distance=0.05):
+def create_nodes_and_links_from_hydroobjects(links, buffer_distance=0.05):
     warnings.filterwarnings("ignore")
 
-    edges[["from_node", "to_node"]] = edges["geometry"].apply(lambda x: pd.Series([x.coords[0], x.coords[-1]]))
-    nodes = pd.unique(edges[["from_node", "to_node"]].values.ravel("K"))
+    links[["from_node", "to_node"]] = links["geometry"].apply(lambda x: pd.Series([x.coords[0], x.coords[-1]]))
+    nodes = pd.unique(links[["from_node", "to_node"]].values.ravel("K"))
     indexer = dict(zip(nodes, range(len(nodes))))
-    edges[["from_node", "to_node"]] = edges[["from_node", "to_node"]].applymap(indexer.get)
+    links[["from_node", "to_node"]] = links[["from_node", "to_node"]].applymap(indexer.get)
     nodes = gpd.GeoDataFrame((Point(x) for x in nodes), columns=["geometry"]).set_geometry("geometry")
     nodes["node_no"] = nodes.index
-    edges.index = range(len(edges))
-    edges["edge_no"] = edges.index
-    return nodes, edges
+    links.index = range(len(links))
+    links["link_no"] = links.index
+    return nodes, links
 
 
 # %% Replace Nodes
 
 
-def replace_nodes_perpendicular_on_edges(nodes, edges, distance=5, crs="EPSG:28992"):
+def replace_nodes_perpendicular_on_links(nodes, links, distance=5, crs="EPSG:28992"):
     warnings.filterwarnings("ignore")
 
-    edges["line_geometry"] = edges["geometry"]
+    links["line_geometry"] = links["geometry"]
     nodes["point_geometry"] = nodes["geometry"]
 
-    edges_buffer = gpd.GeoDataFrame(
+    links_buffer = gpd.GeoDataFrame(
         {
-            "code": edges["code"],
-            "geometry": edges.geometry.buffer(distance, join_style="round"),
+            "code": links["code"],
+            "geometry": links.geometry.buffer(distance, join_style="round"),
         }
     )
 
-    edges_buffer["line_geometry"] = edges_buffer["code"].apply(
-        lambda x: edges[edges["code"] == x]["geometry"].values[0]
+    links_buffer["line_geometry"] = links_buffer["code"].apply(
+        lambda x: links[links["code"] == x]["geometry"].values[0]
     )
 
     merged_dataset = gpd.sjoin(
         nodes,
-        edges_buffer,
+        links_buffer,
         op="intersects",
         how="left",
         lsuffix="points",
@@ -325,8 +327,8 @@ def replace_nodes_perpendicular_on_edges(nodes, edges, distance=5, crs="EPSG:289
     for idx, row in merged_dataset.iterrows():
         try:
             node = row["point_geometry"]
-            edge = row["line_geometry"]
-            left = edge.parallel_offset(distance, "left")
+            link = row["line_geometry"]
+            left = link.parallel_offset(distance, "left")
             replaced_node = snap(node, left, distance * 2)
             replaced_nodes.append(replaced_node)
         except AttributeError:
@@ -339,17 +341,17 @@ def replace_nodes_perpendicular_on_edges(nodes, edges, distance=5, crs="EPSG:289
 # %% Get outlet nodes
 
 
-def get_outlet_nodes(nodes, edges, crs="EPSG:28992"):
+def get_outlet_nodes(nodes, links, crs="EPSG:28992"):
     warnings.filterwarnings("ignore")
 
-    endpoints = get_endpoints_from_lines(edges)
+    endpoints = get_endpoints_from_lines(links)
 
     # Select boundary endpoints from line network
     boundary_endpoints = gpd.GeoDataFrame(
         endpoints[(endpoints["count_starting_lines"] == 0) & (endpoints["count_ending_lines"] >= 1)]
     )
 
-    edges = edges.drop(["line_geometry", "startpoint", "endpoint"], axis=1)
+    links = links.drop(["line_geometry", "startpoint", "endpoint"], axis=1)
 
     outlet_nodes = nodes[nodes["geometry"].isin(boundary_endpoints["geometry"])]
 
@@ -363,47 +365,47 @@ def get_outlet_nodes(nodes, edges, crs="EPSG:28992"):
 # %% Ribasim Lumping
 
 
-def create_graph_based_on_nodes_edges(
+def create_graph_based_on_nodes_links(
     node: gpd.GeoDataFrame,
-    edge: gpd.GeoDataFrame,
-    add_edge_length_as_weight: bool = False,
+    link: gpd.GeoDataFrame,
+    add_link_length_as_weight: bool = False,
 ) -> nx.DiGraph:
     """
     Create networkx graph from ribasim model.
 
-    input: nodes and edges
+    input: nodes and links
     """
     graph = nx.DiGraph()
     if node is not None:
         for i, n in node.iterrows():
             graph.add_node(n.node_id, node_type=n.node_type, pos=(n.geometry.x, n.geometry.y))
-    if edge is not None:
-        for i, e in edge.iterrows():
-            if add_edge_length_as_weight:
+    if link is not None:
+        for i, e in link.iterrows():
+            if add_link_length_as_weight:
                 graph.add_edge(e.from_node_id, e.to_node_id, weight=e.geometry.length)
             else:
                 graph.add_edge(e.from_node_id, e.to_node_id)
-    print(f" - create network graph from nodes ({len(node)}x) and edges ({len(edge)}x)")
+    print(f" - create network graph from nodes ({len(node)}x) and links ({len(link)}x)")
     return graph
 
 
-def add_basin_code_from_network_to_nodes_and_edges(
+def add_basin_code_from_network_to_nodes_and_links(
     graph: nx.DiGraph,
     nodes: gpd.GeoDataFrame,
-    edges: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
 ):
-    """Add basin (subgraph) code to nodes and edges"""
+    """Add basin (subgraph) code to nodes and links"""
     subgraphs = list(nx.weakly_connected_components(graph))
-    if nodes is None or edges is None:
+    if nodes is None or links is None:
         return None, None
     nodes["basin"] = -1
-    edges["basin"] = -1
+    links["basin"] = -1
     for i, subgraph in enumerate(subgraphs):
         node_ids = list(subgraph)
-        edges.loc[
-            edges["from_node"].isin(node_ids) & edges["to_node"].isin(node_ids),
+        links.loc[
+            links["from_node"].isin(node_ids) & links["to_node"].isin(node_ids),
             "basin",
         ] = i + 1
         nodes.loc[nodes["node_no"].isin(list(subgraph)), "basin"] = i + 1
-    print(f" - define numbers Ribasim-Basins ({len(subgraphs)}x) and join edges/nodes")
-    return nodes, edges
+    print(f" - define numbers Ribasim-Basins ({len(subgraphs)}x) and join links/nodes")
+    return nodes, links

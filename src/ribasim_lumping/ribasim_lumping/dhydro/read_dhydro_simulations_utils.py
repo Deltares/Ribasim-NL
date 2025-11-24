@@ -31,7 +31,7 @@ def get_data_from_simulation(
     - at certain timestamps.
     - Replaces time coordinate with counter 'condition' (int). Starts counting at n_start
 
-    Returns: map_data (edges/nodes) and his_data (structures) from one simulation
+    Returns: map_data (links/nodes) and his_data (structures) from one simulation
     """
     files = get_dhydro_files(simulation_path)
     his_file = files["output_his_file"]
@@ -47,12 +47,12 @@ def get_data_from_simulation(
         his_data = xr.open_mfdataset([his_file], preprocess=dfmt.preprocess_hisnc)
         map_data_xr = xr.open_dataset(map_file)
         map_data = xu.open_dataset(map_file)
-        map_data["mesh1d_edge_nodes"] = map_data_xr["mesh1d_edge_nodes"]
+        map_data["mesh1d_link_nodes"] = map_data_xr["mesh1d_link_nodes"]
     except Exception:
         his_data = xr.open_mfdataset([his_file], preprocess=dfmt.preprocess_hisnc, decode_times=False)
         map_data_xr = xr.open_dataset(map_file, decode_times=False)
         map_data = xu.open_dataset(map_file, decode_times=False)
-        map_data["mesh1d_edge_nodes"] = map_data_xr["mesh1d_edge_nodes"]
+        map_data["mesh1d_link_nodes"] = map_data_xr["mesh1d_link_nodes"]
 
     if isinstance(simulations_ts[0], datetime.datetime | pd.Timestamp):
         his_data = his_data.sel(time=simulations_ts)
@@ -83,7 +83,7 @@ def get_data_from_simulations_set(
     - at predefined timestamps (ts)
     - replaces simulation timestamp with condition (int)
 
-    Returns: map_data (edges/nodes), his_data (structures) and boundary data, all simulations combined
+    Returns: map_data (links/nodes), his_data (structures) and boundary data, all simulations combined
     """
     print("Read D-HYDRO simulations sets")
     his_data = None
@@ -96,7 +96,7 @@ def get_data_from_simulations_set(
         print(
             f" - Simulation set ({set_name}): {simulation_name} | Timestamps: {len(simulations_ts)} | his.nc and map.nc"
         )
-        files, map_data_x, his_data_x = get_data_from_simulation(
+        _files, map_data_x, his_data_x = get_data_from_simulation(
             simulation_path=simulation_path,
             simulations_ts=simulations_ts,
             n_start=n_start,

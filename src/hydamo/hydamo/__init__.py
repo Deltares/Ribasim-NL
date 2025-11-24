@@ -5,10 +5,10 @@ from hydamo.geometry import find_nearest_branch, possibly_intersecting
 from hydamo.styles import add_styles_to_geopackage, read_style
 
 __all__ = [
-    "HyDAMO",
     "ExtendedGeoDataFrame",
+    "HyDAMO",
+    "add_styles_to_geopackage",
     "find_nearest_branch",
     "possibly_intersecting",
-    "add_styles_to_geopackage",
     "read_style",
 ]

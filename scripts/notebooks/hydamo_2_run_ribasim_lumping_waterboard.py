@@ -10,7 +10,7 @@ warnings.simplefilter(action="ignore", category=UserWarning)
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-base_dir = Path("..\\..\\Ribasim modeldata")
+base_dir = Path("../../Ribasim modeldata")
 dx = 250.0
 
 waterschappen = [

@@ -15,7 +15,7 @@ authorities = cloud.water_authorities
 
 dfs = []
 for authority in authorities:
-    foreign_input_gpkg = cloud.joinpath(authority, "verwerkt", "4_ribasim", "foreign_input.gpkg")
+    foreign_input_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/foreign_input.gpkg")
     if foreign_input_gpkg.exists():
         print(authority)
         layer = next(
@@ -34,7 +34,7 @@ for authority in authorities:
 # concat buitenlandse aanvoer
 df = pd.concat(dfs)
 
-buitenlandse_aanvoer_dir = cloud.joinpath("Basisgegevens", "BuitenlanseAanvoer")
+buitenlandse_aanvoer_dir = cloud.joinpath("Basisgegevens/BuitenlanseAanvoer")
 buitenlandse_aanvoer_dir.mkdir(exist_ok=True)
 buitenlandse_aanvoer_gpkg = buitenlandse_aanvoer_dir / "buitenlandse_aanvoer.gpkg"
 df.to_file(buitenlandse_aanvoer_dir / "buitenlandse_aanvoer.gpkg")

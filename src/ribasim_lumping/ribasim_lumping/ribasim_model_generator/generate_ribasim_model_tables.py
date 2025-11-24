@@ -125,7 +125,7 @@ def generate_basin_time_table_laterals_areas_data(basins, areas, laterals_areas_
     timeseries = timeseries.sort_values(["time", "node_id"]).reset_index(drop=True)
 
     timeseries_variables = ["precipitation", "potential_evaporation", "drainage", "infiltration", "urban_runoff"]
-    timeseries = timeseries[["time", "node_id"] + timeseries_variables]
+    timeseries = timeseries[["time", "node_id", *timeseries_variables]]
     timeseries[timeseries_variables] = timeseries[timeseries_variables].round(6)
 
     return timeseries
@@ -233,7 +233,7 @@ def generate_tabulated_rating_curve(
     basins_outflows,
     tabulated_rating_curves,
     basin_h,
-    edge_q_df,
+    link_q_df,
     weir_q_df,
     uniweir_q_df,
     orifice_q_df,
@@ -283,7 +283,7 @@ def generate_tabulated_rating_curve(
             "culvert": culvert_q_df,
             "bridge": bridge_q_df,
             "pump": pump_q_df,
-            "openwater": edge_q_df,
+            "openwater": link_q_df,
         }
         discharges = discharges_list[split_type]
         if discharges is None:
@@ -518,7 +518,7 @@ def generate_ribasim_model_tables(
     laterals_drainage_per_ha,
     basin_h_initial,
     saveat,
-    edge_q_df,
+    link_q_df,
     weir_q_df,
     uniweir_q_df,
     orifice_q_df,
@@ -688,7 +688,7 @@ def generate_ribasim_model_tables(
         basins_outflows,
         tabulated_rating_curves,
         basin_h,
-        edge_q_df,
+        link_q_df,
         weir_q_df,
         uniweir_q_df,
         orifice_q_df,
