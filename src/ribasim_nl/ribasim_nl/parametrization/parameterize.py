@@ -38,7 +38,7 @@ class Parameterize(BaseModel):
         if "meta_function" not in self.model.node_table().df.columns:
             print("🧩 meta_function kolom ontbreekt → wordt toegevoegd via populate_function_column()")
             for node_type in ["Pump", "Outlet"]:
-                print(f"  ➕ Populeer meta_function voor {node_type}...")
+                print(f"  ➕ Populeer meta_function voor {node_type}...")  # noqa: RUF001
                 populate_function_column(model=self.model, static_data_xlsx=self.static_data_xlsx, node_type=node_type)
             print("  ✅ meta_function kolom toegevoegd.")
         else:
