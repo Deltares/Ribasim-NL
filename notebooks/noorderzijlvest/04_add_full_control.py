@@ -164,7 +164,6 @@ set_values_where(
 
 updates_plan = [
     # Upstream boundary: Outlets en Pumps
-    # (out_static, upstream_outlet_nodes, {"flow_rate": 100, "max_flow_rate": 100}),
     (pump_static, upstream_pump_nodes, {"min_upstream_level": pd.NA}),  # "flow_rate": 100, "max_flow_rate": 100,
     # Downstream boundary: Outlets en Pumps
     (out_static, downstream_outlet_nodes, {"max_downstream_level": pd.NA}),
@@ -206,7 +205,7 @@ model.pump.static.df.loc[model.pump.static.df["node_id"].isin(node_ids), "max_do
 
 model.pump.static.df.loc[
     model.pump.static.df.node_id == 40, "min_upstream_level"
-] = -0.36  # Check! Bij min_upstream_level =-0.35m NP geen afvoer mogelijk.
+] = -0.36  # Bij min_upstream_level =-0.35m NP geen afvoer mogelijk.
 
 # Oostersluis kan aanvoeren boosterpomp driewegsluis
 model.pump.static.df.loc[model.pump.static.df.node_id == 142, "flow_rate"] = 1
@@ -490,7 +489,7 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 139, "max_downstream_le
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1752, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1753, "flow_rate"] = 5.0
 
-# Afvoer outlets die naast aanvoergemaal liggen moet min_upstrem gelijk aan max_downstrem
+# Afvoer outlets die naast aanvoergemaal liggen moet min_upstrem gelijk aan max_downstream
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 545, "min_upstream_level"] += 0.02
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 521, "min_upstream_level"] += 0.02
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 564, "min_upstream_level"] += 0.02
@@ -661,7 +660,7 @@ def build_discrete_controls(
     listen_node_id: int = 1132,
     # band=(2, 3.15),
     band=(7.622, 7.68),
-    flow_open_default: float = 20.0,  # <- default fallback
+    flow_open_default: float = 20.0,
     delta_h: float = 0.05,
     dc_offset: float = 10.0,  # x-offset voor DC-node
 ):
@@ -734,7 +733,6 @@ def build_discrete_controls(
                 discrete_control.Condition(
                     compound_variable_id=1,
                     condition_id=[1],
-                    # threshold_low=[float(th_low)],   # False als < th_low (hysterese optioneel)
                     threshold_high=[float(th_high)],  # True  als > th_high
                 ),
                 discrete_control.Logic(
@@ -796,7 +794,6 @@ def add_controller(
     threshold_high: float = 7.68,
     threshold_low: float | None = None,
     threshold_delta: float | None = None,
-    # STATE 0 = aanvoer, STATE 1 = afvoer
     state_labels=("aanvoer", "afvoer"),
     # --- flow instellingen voor OUTLETS ---
     flow_aanvoer_outlet="orig",
@@ -812,13 +809,6 @@ def add_controller(
     keep_min_us=True,
     dc_offset=10.0,
 ):
-    """
-    Universele controller exact volgens jouw definitie:
-
-    ✔ Water < threshold  → STATE0 → AANVOER  → FALSE
-    ✔ Water > threshold  → STATE1 → AFVOER   → TRUE
-
-    """
     out_df = model.outlet.static.df
     pump_df = model.pump.static.df
 
@@ -1090,7 +1080,6 @@ add_controller(
     listen_node_id=1493,
     # --- thresholds ---
     threshold_high=7.68,
-    # threshold_low=7.50,        # optioneel: hysterese
     # --- flows ---
     flow_aanvoer_outlet="orig",  # of bv. 0.0
     flow_afvoer_outlet="orig",  # of bv. 50.0
@@ -1099,7 +1088,6 @@ add_controller(
     # --- max downstream levels ---
     max_ds_aanvoer="existing",
     max_ds_afvoer=1000,  # voorkomt NaN
-    # delta_max_ds_afvoer=None,  # optioneel
     # --- upstream constraint behouden ---
     keep_min_us=True,
 )
@@ -1189,8 +1177,6 @@ add_controller(
     # --- max downstream levels ---
     max_ds_aanvoer="existing",
     max_ds_afvoer=1000,  # voorkomt NaN
-    # delta_max_ds_afvoer=None,  # optioneel
-    # --- upstream constraint behouden ---
     keep_min_us=True,
 )
 
@@ -1232,7 +1218,6 @@ add_controller(
     flow_aanvoer_pump="orig",
     # max_ds:
     max_ds_aanvoer="existing",
-    #  delta_max_ds_aanvoer=0.02,
     max_ds_afvoer=9999,
     # naming:
     state_labels=("closed", "open"),  # 0=closed, 1=open
@@ -1337,7 +1322,6 @@ add_controller(
     # --- thresholds ---
     threshold_high=-1.25,
     threshold_delta=0.02,
-    # threshold_low=7.50,        # optioneel: hysterese
     # --- flows ---
     flow_aanvoer_outlet="orig",  # of bv. 0.0
     flow_afvoer_outlet="orig",  # of bv. 50.0
@@ -1347,13 +1331,8 @@ add_controller(
     max_ds_aanvoer="existing",
     max_ds_afvoer=1000,  # voorkomt NaN
     delta_max_ds_aanvoer=0.0,
-    # delta_max_ds_afvoer=None,  # optioneel
-    # --- upstream constraint behouden ---
     keep_min_us=True,
 )
-
-
-# %%
 
 # %%
 # write model
