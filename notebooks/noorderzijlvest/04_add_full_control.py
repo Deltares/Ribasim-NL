@@ -515,15 +515,12 @@ print("=== Corrigeren iKGM/KGM_i & iKST/KST_i-pompen (rondpompen voorkomen) ==="
 # --- Helper om waarden iets te verschuiven ---
 def bump(v, delta):
     """Verhoog/verlaag scalar of array met delta; NaN blijft NaN."""
-    try:
-        if isinstance(v, (list, tuple, np.ndarray)):
-            arr = pd.to_numeric(np.asarray(v), errors="coerce")
-            arr = np.where(np.isnan(arr), arr, arr + float(delta))
-            return arr.tolist()
-        x = float(v)
-        return x + float(delta) if not np.isnan(x) else v
-    except Exception:
-        return v
+    if isinstance(v, (list, tuple, np.ndarray)):
+        arr = pd.to_numeric(np.asarray(v), errors="coerce")
+        arr = np.where(np.isnan(arr), arr, arr + float(delta))
+        return arr.tolist()
+    x = float(v)
+    return x + float(delta) if not np.isnan(x) else v
 
 
 # --- Dataframes ---
@@ -531,8 +528,8 @@ pump_static_df = model.pump.static.df
 outlet_static_df = model.outlet.static.df
 
 # --- Kolommen bepalen ---
-code_col_pump = "meta_code_waterbeheerder" if "meta_code_waterbeheerder" in pump_static_df.columns else "meta_code"
-code_col_outlet = "meta_code_waterbeheerder" if "meta_code_waterbeheerder" in outlet_static_df.columns else "meta_code"
+code_col_pump = "meta_code"
+code_col_outlet = "meta_code"
 
 min_us_col_pump = "min_upstream_level" if "min_upstream_level" in pump_static_df.columns else "min_upstream_water_level"
 max_ds_col_pump = (

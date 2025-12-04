@@ -390,21 +390,11 @@ reverse_link_ids = [
     1196,  # behorende bij knoop 185 (inlaat Stadspark)
     32,
     1018,  # behorende bij knoop 45 (inlaat gemaal De Slokkert)
-    204754,
-    5904434,  # behorende bij knoop 203508 (aanvoer naar Noorderzijlvest)
-    5904438,
-    3300018,  # behorende bij knoop 3300152 (scheepvaartsluisje Dorkwerd)
-    3402023,
-    5904458,  # behorende bij knoop 3401748 (scheepvaartsluisje Dongerdielen)
 ]
 
 # Draai de richting van alle genoemde links om
 for link_id in reverse_link_ids:
-    try:
-        model.reverse_link(link_id=link_id)
-        print(f"[OK] Link {link_id} omgedraaid.")
-    except Exception as e:
-        print(f"[FOUT] Kon link {link_id} niet omdraaien: {e}")
+    model.reverse_link(link_id=link_id)
 
 model.update_node(node_id=837, node_type="Outlet")  # duiker wordt outlet, was manning
 model.remove_node(node_id=1749, remove_links=True)

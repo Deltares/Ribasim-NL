@@ -30,7 +30,7 @@ class Parameterize(BaseModel):
 
         print(f"📂 static_data_xlsx: {self.static_data_xlsx}")
         if self.static_data_xlsx and not Path(self.static_data_xlsx).exists():
-            print(f"  ❌ Bestand bestaat niet: {self.static_data_xlsx}")
+            raise FileNotFoundError(f"  ❌ Bestand bestaat niet: {self.static_data_xlsx}")
         else:
             print("  ✅ static_data_xlsx bestaat lokaal.")
 
@@ -56,8 +56,7 @@ class Parameterize(BaseModel):
                 )
                 print(f"  ✅ {node_type} succesvol geparametriseerd.")
             except Exception as e:
-                print(f"  ❌ Fout bij {node_type}: {type(e).__name__}: {e}")
-                raise
+                raise Exception(f"  ❌ Fout bij {node_type}: {type(e).__name__}: {e}")
 
         if self.max_pump_flow_rate is not None:
             print(f"⚙️  max_pump_flow_rate: {self.max_pump_flow_rate}")
