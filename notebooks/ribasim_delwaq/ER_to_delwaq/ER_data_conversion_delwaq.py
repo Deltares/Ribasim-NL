@@ -3,7 +3,7 @@
 created: 01-2019 by: Wilfred Altena
 modified: 03-2019 by: Annelotte van der Linden
 modified: 02-2024 by: Steven Kelderman
-last modified: 08-2025 by: Jesse van Leeuwen
+last modified: 11-2025 by: Jesse van Leeuwen
 
 Aanpassing van conversie van ER data naar KRW-V input
 In 'Functions' en tussen code onder 'Overige emissies ER' en boven 'Export B6_loads'
@@ -21,19 +21,52 @@ geinterpoleerd. 3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steek
 bekend en wordt er tussen deze jaren geinterpoleerd.
 """
 
+# -------------------------------Packages---------------------------------------
+
 import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from ER_GAF_fractions_func import compute_overlap_df  # should be in the same dir as this script
+
+# ------------------------ Import local module ----------------------------------
+from ER_GAF_fractions_func import compute_overlap_df
+
+current_dir = Path(__file__).resolve().parent
+print(f"Current directory: {current_dir}")
+print("Check if working directory is the script directory.")
+
+
+# -------------------------------Conversions------------------------------------
 
 conv_yr2sec = 60 * 60 * 24 * 365.25
 conv_kg2g = 1000
 conv_ton2g = 10**6
 
-# -------------------------------Packages---------------------------------------
+
+# -------------------------------Directories------------------------------------
+model_name = "modellen/lhm_coupled_2025_9_0"
+model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "modellen/lhm_coupled_2025_9_0"
+basin_path = model_path / "input/database.gpkg"
+inputdir = (
+    "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
+)
+
+emissies_buiten_ER_path = "Emissies_per_jaar_buiten_ER.csv"
+ER_export_path = "ER_DataExport-2024-01-29-142759.xlsx"
+OE_bedrijven_path = "OverigeEmissies_bedrijven__2024_01_24.csv"
+
+gaf_path = "P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp"
+
+# -------------------------------Settings---------------------------------------
+d = {}
+d["run"] = "validatie"  # validatie, prognose
+
+schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur komen (doet verder niks)
+
+frac_doorgaand = 0.5  # deel ER op doorvoerende basin node
+frac_bergend = 1 - frac_doorgaand  # deel ER op bergende basin node
 
 # -------------------------------Functions--------------------------------------
 
@@ -170,58 +203,58 @@ def barplot_N_P(file, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, 
     plt.show()
 
 
-# -------------------------------Settings---------------------------------------
-d = {}
-d["run"] = "validatie"  # validatie, prognose
-
-schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur komen
-
-# # -------------------------------Directories------------------------------------
-
-inputdir = (
-    "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
-)
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "modellen/lhm_coupled_2025_9_0"
-basin_node_path = model_path / "input/database.gpkg"
-
 # -------------------------------Import data------------------------------------
 
-koppeling = compute_overlap_df(
-    gaf_path="P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp",
-    basin_path=basin_node_path,
+
+koppeling = compute_overlap_df(gaf_path, basin_path)
+koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
+
+print("coupling GAF-emissions to LHM basin nodes completed")
+
+# process fractions based on basin type, only splitting up doorgaand and bergend
+koppeling["fractie"] = koppeling.apply(
+    lambda row: row["fractie"] * frac_doorgaand
+    if row["meta_categorie"] == "doorgaand"
+    else row["fractie"] * frac_bergend
+    if row["meta_categorie"] == "bergend"
+    else row["fractie"],
+    axis=1,
 )
 
-koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
-koppeling["fractie"] = koppeling["fractie"] / 2
 
 # $ check voor nieuwe koppeling
-sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index().sort_values(by="fractie")
+# sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index().sort_values(by="fractie")
 sum_per_node = koppeling.groupby("GAF-eenheid")["fractie"].sum().reset_index().sort_values(by="fractie")
 
 _fig, ax = plt.subplots()
 ax.scatter(range(len(sum_per_node)), sum_per_node["fractie"], s=1)
-ax.set_title("Sum of fractions per NodeId")
+ax.set_title("Sum of fractions per GAF (should not exceed 1.0)")
 ax.set_xlabel("Index")
-ax.set_ylabel("Sum of fractions per NodeId")
+ax.set_ylabel("Sum of fractions per GAF-unit")
+ax.grid(True)
 plt.show()
+
+# compute percentage of sum_per_node["fractie"] exceeding 1.05 (because many are close to 1.0)
+sum_exceeding_1 = len(sum_per_node[sum_per_node["fractie"] > 1.05]) / len(sum_per_node) * 100
+print(f"Percentage of GAF-units with sum of fractions exceeding 1 by more than 5%: {sum_exceeding_1:.2f}%")
 
 # $ eventueel kunnen de fracties per GAF met de emissies per GAF worden vermenigvuldigd om te checken of het matched met wat er uit dit script komt rollen als totale emissies
 
 # Manual file to fill in Deltares ER yearly loads #$ not using this rn
 Emissies_per_jaar_buiten_ER = pd.read_csv(
-    os.path.join(inputdir, "Emissies_per_jaar_buiten_ER.csv"), delimiter=";", encoding="latin1"
+    os.path.join(inputdir, emissies_buiten_ER_path), delimiter=";", encoding="latin1"
 )
 
 # Direct download from the ER website at GAF90 level #$ MAKE SEARCH FOR MOST RECENT DATE INSTEAD OF MANUALLY WRITING
 ER_data_EMK_GAF90 = pd.read_excel(
-    os.path.join(inputdir, "ER_DataExport-2024-01-29-142759.xlsx"),  # $ I have a recent import but need a match
+    os.path.join(inputdir, ER_export_path),
     sheet_name="Emissies",
     usecols=["Stofcode", "Stof", "Code_gebied", "Sector", "Subsector", "Emissieoorzaak", "Jaar", "Emissie"],
 )
 
 # Manual file to import bedrijven without coastal waters #$ also not rn
 OverigeEmissies_bedrijven__2024_01_24 = pd.read_csv(
-    os.path.join(inputdir, "OverigeEmissies_bedrijven__2024_01_24.csv"), delimiter=";", encoding="latin1"
+    os.path.join(inputdir, OE_bedrijven_path), delimiter=";", encoding="latin1"
 )
 
 # -------------------------------Overige emissies ER----------------------------
@@ -264,6 +297,8 @@ ER_data_EMK_GAF90_fltr_sum_piv = pd.pivot_table(
     ER_data_EMK_GAF90_fltr_sum, index=["Code_gebied", "Emissieoorzaak", "Stof"], values="Emissie", columns="Jaar"
 ).reset_index()
 
+print("pivot table of ER data created")
+
 #####################################################################################
 
 # Transpose columns to long format
@@ -287,6 +322,8 @@ sum_per_EMK_base_short = pd.pivot(
 sum_per_Year_base_long = sum_per_GAF_base_long.groupby(["Stof", "Jaar"])["Emissie"].sum().reset_index()
 
 sum_per_Year_base_short = pd.pivot(sum_per_Year_base_long, index=["Stof"], columns="Jaar").reset_index()  # Check
+
+print("yearly totals per EMK and per year computed")
 
 ###
 
@@ -411,6 +448,7 @@ ER_data_EMK_GAF90_inter_long = pd.melt(
     value_name="Value",
 )
 
+print("interpolation of unknown years completed")
 
 # %%%######
 
@@ -448,6 +486,8 @@ barplot_N_P(
     title="GAF",
 )
 
+print("processing of other emissions without industry completed")
+
 ###
 
 # ---------------------------Overige emissies bedrijven-------------------------
@@ -462,6 +502,7 @@ OverigeEmissies_bedrijven_long = pd.melt(
 
 OverigeEmissies_bedrijven_long["Year"] = OverigeEmissies_bedrijven_long["Year"].astype(int)
 
+print("processing of other emissions from industry completed")
 
 # ---------------------------------Output---------------------------------------
 
@@ -546,6 +587,8 @@ barplot_N_P(
     kg=True,
     title="GAF",
 )
+
+print("created figures")
 
 # ---------------------------------Output--------------------------------------- #$ actual output
 
@@ -665,23 +708,69 @@ if d["run"] == "validatie":
 elif d["run"] == "prognose":
     pass
 
+# %% try to match the input format of BOUNDWQ.DAT
+
+ER_df = DifusseEmissions_OE.copy()
+
+ER_df_wide = (
+    ER_df.pivot_table(index=["NodeId", "Year"], columns="VariableId", values="Value")
+    .rename_axis(
+        columns=None  # removes 'VariableId' as the column name
+    )
+    .reset_index()
+)
+
+ER_df_wide["NO3"] = ER_df_wide["N"] * 0.8
+ER_df_wide["NH4"] = ER_df_wide["N"] * 0.1
+ER_df_wide["OON"] = ER_df_wide["N"] * 0.1
+ER_df_wide["PO4"] = ER_df_wide["P"] * 0.5
+ER_df_wide["AAP"] = ER_df_wide["P"] * 0.4
+ER_df_wide["OOP"] = ER_df_wide["P"] * 0.1
+
+
+# %%
+
 
 # ---------------------------------Export B6_loads.inc ---------------------------------------
 
-# $ vanaf hier bevat DifusseEmissions_OE de juiste data voor export naar B6_loads.inc bestand
-# $ eigenlijk moet je nu een pivot table maken met de bestanddelen van N en P
-
 output_path = model_path / "delwaq"
 
-grouped = DifusseEmissions_OE.groupby(["NodeId", "VariableId"])
 
-with open(output_path / "B6_loads.inc", "w") as f:
-    for (node_id, variable_id), group in grouped:
-        f.write(f"ITEM '{node_id}' CONCENTRATIONS '{variable_id}' LINEAR TIME LINEAR DATA '{variable_id}'\n")
+def write_inc_file(df, output_path):
+    # Order of variables to print
+    vars_order = ["NO3", "NH4", "OON", "PO4", "AAP", "OOP"]
 
-        for _, row in group.iterrows():
-            year = row["Year"]
-            value = row["Value"]
-            f.write(f"'{year}/01/01-00:00:00' {value:.6f}\n")
+    with open(output_path / "B6_loads.inc", "w") as f:
+        # Group by NodeId
+        for node_id, group in df.groupby("NodeId"):
+            f.write(f"ITEM '{node_id}'\n")
+            f.write("ABSOLUTE TIME\n")
+            f.write("CONCENTRATIONS\n")
 
-        f.write("\n")
+            # Variable declarations
+            for v in vars_order:
+                f.write(f" '{v}'\n")
+
+            # Header line with all variables
+            f.write("BLOCK DATA\t\t\t")
+            f.write(" ".join([f"'{v}'".ljust(12) for v in vars_order]))
+            f.write("\n")
+
+            # Write each year
+            for _, row in group.iterrows():
+                year = int(row["Year"])
+                timestamp = f"'{year}/01/01-00:00:00'"
+                values = " ".join([f"{row[v]:.6f}" for v in vars_order])
+                f.write(f"{timestamp}    {values}\n")
+
+            f.write("\n")
+
+        print(f"B6_loads.inc written to {output_path / 'B6_loads.inc'}")
+
+
+write_inc_file(ER_df_wide, output_path)
+
+ER_df_wide["Year"]
+
+
+# %%
