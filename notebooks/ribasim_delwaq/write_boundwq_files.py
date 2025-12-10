@@ -650,7 +650,7 @@ if make_plots:
         "PO4": (["PO4_0", "PO4_1"], ["PO4", f"{PO4_Ptot_fractie}*Ptot", "-999"]),
         "AAP": (
             ["AAP_0", "AAP_1"],
-            [f"{AAP_notPO4_fractie}*(Ptot-PO4)", f"{AAP_Ptot_fractie}*PO4", "-999"],
+            [f"{AAP_notPO4_fractie}*(Ptot-PO4)", f"{AAP_Ptot_fractie}*Ptot", "-999"],
         ),
         "OOP": (
             ["OOP_0", "OOP_1"],
