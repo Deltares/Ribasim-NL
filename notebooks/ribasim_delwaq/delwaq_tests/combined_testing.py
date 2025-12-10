@@ -118,5 +118,13 @@ nmodel = parse(toml_path, graph, substances, output_folder=output_path)
 
 # %% check added loads in specified Ribasim nodes
 plot_fraction(nmodel, 700970, ["NO3"])  # node downstream of BA 700008; see lhm.toml in QGIS
-
 # fraction exceeds 1, units unclear
+
+# %% save results for QGIS visualization
+nmodel.basin.concentration_external._write_arrow("concentration.arrow", nmodel.filepath.parent, nmodel.results_dir)
+
+# display(nmodel.basin.concentration_external)
+
+# does not show anything
+
+# %%
