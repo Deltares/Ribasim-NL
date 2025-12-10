@@ -142,12 +142,13 @@ he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt/HydrologischeEenheden_v
 for action in [
     "merge_basins",
     "remove_node",
-    "update_node",
     "reverse_link",
-    "connect_basins",
     "move_node",
     "add_basin",
+    "connect_basins",
+    "update_node",
     "remove_link",
+    "update_node",
 ]:
     print(action)
     # get method and args
@@ -158,6 +159,7 @@ for action in [
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
+
 
 # %% assign Basin / Area using KWKuit
 
@@ -365,6 +367,46 @@ model.move_node(geometry=Point(233237, 559975), node_id=14)
 # %% reverse links before junctionfy
 for link_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
     model.reverse_link(link_id=link_id)
+
+# Lijst met link_ids die omgedraaid moeten worden nav review Vincent
+reverse_link_ids = [
+    111,
+    1057,  # behorende bij knoop 81 (Inlaat Oldenoord)
+    42,
+    1141,  # behorende bij knoop 1141 (inlaat Oude Badweg)
+    283,
+    1198,  # behorende bij knoop 186 (inlaat Lettelberterbergboezem)
+    37,
+    1022,  # behorende bij knoop 48 (inlaat gemaal De Verbetering)
+    1192,
+    282,  # behorende bij knoop 182 (inlaat gemaal Lettelbert)
+    131,
+    1067,  # behorende bij knoop 1067 (inlaat gemaal Tilburg)
+    73,
+    1064,  # behorende bij knoop 88 (inlaat gemaal De Dijken)
+    30,
+    1015,  # behorende bij knoop 43 (inlaat gemaal Nieuwe Robbengat)
+    290,
+    1196,  # behorende bij knoop 185 (inlaat Stadspark)
+    32,
+    1018,  # behorende bij knoop 45 (inlaat gemaal De Slokkert)
+]
+
+# Draai de richting van alle genoemde links om
+for link_id in reverse_link_ids:
+    model.reverse_link(link_id=link_id)
+
+model.update_node(node_id=837, node_type="Outlet")  # duiker wordt outlet, was manning
+model.remove_node(node_id=1749, remove_links=True)
+model.remove_node(node_id=12, remove_links=True)
+model.remove_node(node_id=1750, remove_links=True)
+model.remove_node(node_id=13, remove_links=True)
+
+# voeg inlaat Meerweg toe (n.a.v communicatie met Vincent)
+boundary_node = model.level_boundary.add(Node(geometry=Point(234937, 575821)))
+outlet_node = model.outlet.add(Node(name="Meerweg", geometry=Point(234893, 575872)))
+model.link.add(boundary_node, outlet_node)
+model.link.add(outlet_node, model.basin[1192])
 
 # %% Create junctions
 model = junctionify(model)
