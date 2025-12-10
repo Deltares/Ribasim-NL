@@ -23,10 +23,11 @@ setup_logging()
 
 # %% Define folder locations and synchronize with the Good Cloud
 cloud = CloudStorage()
+upload_results = False
 logging.info("Synchronizing with file on the Good Cloud")
 delwaq_folder = cloud.joinpath("Basisgegevens/Delwaq")
 IM_metingen_excel_path = cloud.joinpath(delwaq_folder, "verwerkt/data/combined_IM_Metingen_2016_2022.xlsx")
-meetlocaties_IM_path = cloud.joinpath(delwaq_folder, "verwerkt/data/IM_ribasim_mapping.geojson")
+meetlocaties_IM_path = cloud.joinpath(delwaq_folder, "verwerkt/data/IM_ribasim_mapping_v1.geojson")
 zinfo_file_path = cloud.joinpath(delwaq_folder, "aangeleverd/Zinfo/zinfo_20160101_20231231_waterkwaliteit.csv")
 boundwq_path = cloud.joinpath(delwaq_folder, "verwerkt/delwaq_input")
 figures_path = cloud.joinpath(delwaq_folder, "verwerkt/figures")
@@ -44,16 +45,34 @@ cloud.synchronize(
 # %% Hard coded parameter settings
 make_plots = False
 
-NO3_fractie = 0.8
-NH4_Nkj_fractie = 0.8
+# NO3_Ntot_fractie = 0.8
+# NH4_Ntot_fractie = 0.1
+# OON_Ntot_fractie = 0.1
+
+# NH4_Nkj_fractie = 0.8
+# OON_Nkj_fractie = 0.2
+
+# PO4_Ptot_fractie = 0.5
+# AAP_Ptot_fractie = 0.4
+# OOP_Ptot_fractie = 0.1
+
+# AAP_notPO4_fractie = 0.75
+# OOP_notPO4_fractie = 0.25
+
+
+NO3_Ntot_fractie = 0.8
 NH4_Ntot_fractie = 0.1
-OON_Nkj_fractie = 0.2
 OON_Ntot_fractie = 0.1
-AAP_fractie = 0.75
-AAP_PO4_fractie = 0.4
-OOP_fractie = 0.25
-OOP_PO4_fractie = 0.1
+
+NH4_Nkj_fractie = 0.8
+OON_Nkj_fractie = 0.2
+
 PO4_Ptot_fractie = 0.5
+AAP_Ptot_fractie = 0.4
+OOP_Ptot_fractie = 0.1
+
+AAP_notPO4_fractie = 0.75
+OOP_notPO4_fractie = 0.25
 
 parameters_IM = ["NKj", "NO3", "NOx", "sNO3NO2", "Ntot", "PO4", "Ptot"]
 parameters_Zinfo = ["NKj", "NO3", "NOx", "sNO3NO2", "Ntot", "PO4", "Ptot"]
@@ -372,7 +391,7 @@ def process_measurement_data(
         df_pivot["NO3_0"] = df_pivot["NO3"] if "NO3" in df_pivot else -999
         df_pivot["NO3_1"] = df_pivot["sNO3NO2"] if "sNO3NO2" in df_pivot else -999
         df_pivot["NO3_2"] = df_pivot["NOx"] if "NOx" in df_pivot else -999
-        df_pivot["NO3_3"] = (NO3_fractie * df_pivot["Ntot"]) if "Ntot" in df_pivot else -999
+        df_pivot["NO3_3"] = (NO3_Ntot_fractie * df_pivot["Ntot"]) if "Ntot" in df_pivot else -999
 
         df_pivot["NH4_0"] = df_pivot["NH4"] if "NH4" in df_pivot else -999
         df_pivot["NH4_1"] = (NH4_Nkj_fractie * df_pivot["NKj"]) if "NKj" in df_pivot else -999
@@ -393,20 +412,20 @@ def process_measurement_data(
         df_pivot["PO4_1"] = (PO4_Ptot_fractie * df_pivot["Ptot"]) if all(col in df_pivot for col in ["Ptot"]) else -999
 
         df_pivot["AAP_0"] = (
-            AAP_fractie * (df_pivot["Ptot"] - df_pivot["PO4"])
+            AAP_notPO4_fractie * (df_pivot["Ptot"] - df_pivot["PO4"])
             if all(col in df_pivot for col in ["Ptot", "PO4"])
             else -999
         )
 
-        df_pivot["AAP_1"] = (AAP_PO4_fractie * df_pivot["PO4"]) if all(col in df_pivot for col in ["PO4"]) else -999
+        df_pivot["AAP_1"] = (AAP_Ptot_fractie * df_pivot["Ptot"]) if all(col in df_pivot for col in ["Ptot"]) else -999
 
         df_pivot["OOP_0"] = (
-            OOP_fractie * (df_pivot["Ptot"] - df_pivot["PO4"])
+            OOP_notPO4_fractie * (df_pivot["Ptot"] - df_pivot["PO4"])
             if all(col in df_pivot for col in ["Ptot", "PO4"])
             else -999
         )
 
-        df_pivot["OOP_1"] = (OOP_PO4_fractie * df_pivot["Ptot"]) if all(col in df_pivot for col in ["Ptot"]) else -999
+        df_pivot["OOP_1"] = (OOP_Ptot_fractie * df_pivot["Ptot"]) if all(col in df_pivot for col in ["Ptot"]) else -999
 
         # Include only if we decide to include Ptpt after all
         # TO DO: ONLY DO THIS IF AAP AND OOP ARE NOT -999
@@ -491,8 +510,8 @@ dict_choosen_method_Zinfo, dict_delwaq_input_Zinfo = process_measurement_data(
 )
 
 # Log the parameters
-parameter_delwaq_input_IM = list(dict_delwaq_input_IM.values())[0].columns[2:]
-parameter_delwaq_input_Zinfo = list(dict_delwaq_input_Zinfo.values())[0].columns[2:]
+parameter_delwaq_input_IM = next(iter(dict_delwaq_input_IM.values())).columns[2:]
+parameter_delwaq_input_Zinfo = next(iter(dict_delwaq_input_Zinfo.values())).columns[2:]
 
 logging.info(
     f"Delwaq input parameters uit IM-metingen (buitenlandse aanvoeren): \n {list(parameter_delwaq_input_IM[:])} \n voor {len(dict_delwaq_input_IM.keys())} locaties"
@@ -602,8 +621,9 @@ logging.info(f"BOUNDWQ_rwzi.DAT file saved in {boundwq_file_zinfo}")
 write_boundwq_file(boundwq_file_im, dict_delwaq_input_IM, parameter_delwaq_input_IM)
 logging.info(f"BOUNDWQ_ba.DAT file saved in {boundwq_file_im}")
 
-cloud.upload_file(boundwq_file_im)
-cloud.upload_file(boundwq_file_zinfo)
+if upload_results:
+    cloud.upload_file(boundwq_file_im)
+    cloud.upload_file(boundwq_file_zinfo)
 
 
 # %% Keuze voor parameter methode IM metingen
@@ -617,7 +637,7 @@ if make_plots:
     parameters = {
         "NO3": (
             ["NO3_0", "NO3_1", "NO3_2", "NO3_3"],
-            ["NO3", "sNO3NO2", "NOx", f"{NO3_fractie}*Ntot", "-999"],
+            ["NO3", "sNO3NO2", "NOx", f"{NO3_Ntot_fractie}*Ntot", "-999"],
         ),
         "NH4": (
             ["NH4_0", "NH4_1", "NH4_2"],
@@ -630,11 +650,11 @@ if make_plots:
         "PO4": (["PO4_0", "PO4_1"], ["PO4", f"{PO4_Ptot_fractie}*Ptot", "-999"]),
         "AAP": (
             ["AAP_0", "AAP_1"],
-            [f"{AAP_fractie}*(Ptot-PO4)", f"{AAP_PO4_fractie}*PO4", "-999"],
+            [f"{AAP_notPO4_fractie}*(Ptot-PO4)", f"{AAP_Ptot_fractie}*PO4", "-999"],
         ),
         "OOP": (
             ["OOP_0", "OOP_1"],
-            [f"{OOP_fractie}*(Ptot-PO4)", f"{OOP_PO4_fractie}*Ptot", "-999"],
+            [f"{OOP_notPO4_fractie}*(Ptot-PO4)", f"{OOP_Ptot_fractie}*Ptot", "-999"],
         ),
     }
 
@@ -644,7 +664,7 @@ if make_plots:
         for parameter_key, ax in zip(parameter_keys, axes):
             parsset, parslab = parameters[parameter_key]
             locations = dict_choosen_method_IM.keys()
-            location_percentages = {loc: dict.fromkeys(parsset + ["-999"], 0) for loc in locations}
+            location_percentages = {loc: dict.fromkeys([*parsset, "-999"], 0) for loc in locations}
 
             # Calculate percentages for each parameter and location
             for loc in locations:
@@ -659,11 +679,11 @@ if make_plots:
                             break
                     location_percentages[loc][chosen] += 1
 
-                for par in parsset + ["-999"]:
+                for par in [*parsset, "-999"]:
                     location_percentages[loc][par] = (location_percentages[loc][par] / total_timesteps) * 100
 
             # Bar chart
-            parameters_with_fallback = parsset + ["-999"]
+            parameters_with_fallback = [*parsset, "-999"]
             bar_width = 0.5
             locations_list = list(locations)
             bottom = np.zeros(len(locations_list))
@@ -707,7 +727,8 @@ if make_plots:
         file_path = cloud.joinpath(figures_path, file_name)
 
         plt.savefig(file_path, dpi=500, bbox_inches="tight")
-        cloud.upload_file(file_path)
+        if upload_results:
+            cloud.upload_file(file_path)
         plt.show()
 
 
@@ -739,7 +760,7 @@ if make_plots:
                 axes = [axes]  # Ensure axes is always a list for consistent iteration
 
             for idx, (loc_chunk, ax) in enumerate(zip(location_chunks, axes)):
-                location_percentages = {loc: dict.fromkeys(parsset + ["-999"], 0) for loc in loc_chunk}
+                location_percentages = {loc: dict.fromkeys([*parsset, "-999"], 0) for loc in loc_chunk}
 
                 # Calculate percentages for each parameter and location
                 for loc in loc_chunk:
@@ -754,11 +775,11 @@ if make_plots:
                                 break
                         location_percentages[loc][chosen] += 1
 
-                    for par in parsset + ["-999"]:
+                    for par in [*parsset, "-999"]:
                         location_percentages[loc][par] = (location_percentages[loc][par] / total_timesteps) * 100
 
                 # Bar chart
-                parameters_with_fallback = parsset + ["-999"]
+                parameters_with_fallback = [*parsset, "-999"]
                 bar_width = 0.5
                 locations_list = loc_chunk
                 bottom = np.zeros(len(locations_list))
@@ -789,18 +810,19 @@ if make_plots:
             axes[0].legend(title="Parameters", bbox_to_anchor=(1.05, 1), loc="upper left")
 
             plt.tight_layout()
-            file_name = f"{parameter_key}_percentage_plot.png"  # Specify a file name
+            # file_name = f"{parameter_key}_percentage_plot.png"  # Specify a file name
 
             plt.suptitle(
                 f"Procentuele verdeling van gebruikte methodes per locatie voor de bepaling van {parameter_key} binnen de Zinfo-metingen",
                 fontsize=16,
                 y=1.02,
             )  # Add parameter key as a group title
-            file_name = "procentuele_verdeling_gebruikte_methode.png"
+            file_name = f"procentuele_verdeling_gebruikte_methode_{parameter_key}.png"
             file_path = cloud.joinpath(figures_path, file_name)
 
             plt.savefig(file_path, dpi=500, bbox_inches="tight")
-            cloud.upload_file(file_path)
+            if upload_results:
+                cloud.upload_file(file_path)
             plt.show()
 
 
@@ -927,7 +949,6 @@ if make_plots:
     file_path = cloud.joinpath(figures_path, file_name)
 
     plt.savefig(file_path, dpi=500, bbox_inches="tight")
-    cloud.upload_file(file_path)
+    if upload_results:
+        cloud.upload_file(file_path)
     plt.show()
-
-# %%
