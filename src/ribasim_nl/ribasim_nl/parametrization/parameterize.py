@@ -30,7 +30,7 @@ class Parameterize(BaseModel):
 
         print(f"📂 static_data_xlsx: {self.static_data_xlsx}")
         if self.static_data_xlsx and not Path(self.static_data_xlsx).exists():
-            print(f"  ❌ Bestand bestaat niet: {self.static_data_xlsx}")
+            raise FileNotFoundError(f"  ❌ Bestand bestaat niet: {self.static_data_xlsx}")
         else:
             print("  ✅ static_data_xlsx bestaat lokaal.")
 
@@ -38,7 +38,7 @@ class Parameterize(BaseModel):
         if "meta_function" not in self.model.node_table().df.columns:
             print("🧩 meta_function kolom ontbreekt → wordt toegevoegd via populate_function_column()")
             for node_type in ["Pump", "Outlet"]:
-                print(f"  ➕ Populeer meta_function voor {node_type}...")
+                print(f"  ➕ Populeer meta_function voor {node_type}...")  # noqa: RUF001
                 populate_function_column(model=self.model, static_data_xlsx=self.static_data_xlsx, node_type=node_type)
             print("  ✅ meta_function kolom toegevoegd.")
         else:
@@ -56,8 +56,7 @@ class Parameterize(BaseModel):
                 )
                 print(f"  ✅ {node_type} succesvol geparametriseerd.")
             except Exception as e:
-                print(f"  ❌ Fout bij {node_type}: {type(e).__name__}: {e}")
-                raise
+                raise Exception(f"  ❌ Fout bij {node_type}: {type(e).__name__}: {e}")
 
         if self.max_pump_flow_rate is not None:
             print(f"⚙️  max_pump_flow_rate: {self.max_pump_flow_rate}")

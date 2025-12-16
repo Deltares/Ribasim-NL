@@ -495,8 +495,10 @@ df.loc[mask, "flow_rate"] = 0.0
 # Rondpompen voorkomen bij 2 aanvoer en afvoer gemaal direct naast elkaar, min_upstream en max_downstream gelijk maken
 # === INLINE: max_downstream_level(iKGM/iKST-pumps) = min_upstream_level(KGM/KST peer: pump óf outlet) ===
 print("=== Corrigeren iKGM/KGM_i & iKST/KST_i-pompen (rondpompen voorkomen) ===")
+print("=== Corrigeren iKGM/KGM_i & iKST/KST_i-pompen (rondpompen voorkomen) ===")
 
 
+# --- Helper om waarden iets te verschuiven ---
 # --- Helper om waarden iets te verschuiven ---
 def bump(v, delta):
     """Verhoog/verlaag scalar of array met delta; NaN blijft NaN."""
@@ -514,6 +516,7 @@ return x + float(delta) if not np.isnan(x) else v
 
 
 # --- Dataframes ---
+# --- Dataframes ---
 pump_static_df = model.pump.static.df
 outlet_static_df = model.outlet.static.df
 
@@ -529,6 +532,12 @@ min_us_col_outlet = (
     "min_upstream_level" if "min_upstream_level" in outlet_static_df.columns else "min_upstream_water_level"
 )
 
+print(f"Gebruik kolommen: Pump={min_us_col_pump}/{max_ds_col_pump}, Outlet={min_us_col_outlet}")
+print(f"Codekolommen: pump={code_col_pump}, outlet={code_col_outlet}")
+
+# -----------------------------------------------------------
+# 1️⃣ Peers verzamelen (KGM/KST met geldige min_upstream)
+# -----------------------------------------------------------
 print(f"Gebruik kolommen: Pump={min_us_col_pump}/{max_ds_col_pump}, Outlet={min_us_col_outlet}")
 print(f"Codekolommen: pump={code_col_pump}, outlet={code_col_outlet}")
 
@@ -619,7 +628,74 @@ else:
         pump_static_df.loc[mask_nodes, max_ds_col_pump] = pump_static_df.loc[mask_nodes, "node_id"].map(
             node_to_new_maxds
         )
+print(f"Peers gevonden: {len(peer_sources_df)}")
+if not peer_sources_df.empty:
+    print("Voorbeelden peers:")
+    print(peer_sources_df.head(10))
+else:
+    print("⚠️ Geen peers gevonden (controleer min_upstream-levels).")
 
+# -----------------------------------------------------------
+# 2️⃣ i-pompen vinden (i vooraan of _i achteraan)
+# -----------------------------------------------------------
+i_pumps_df = pump_static_df[[code_col_pump, "node_id", min_us_col_pump, max_ds_col_pump]].copy()
+i_pumps_df["icode"] = i_pumps_df[code_col_pump].astype(str).str.strip()
+
+# Herken zowel iKGM/iKST als KGM_i/KST_i
+mask_i = (
+    i_pumps_df["icode"].str.match(r"(?i)^iKGM")  # iKGM... (case-insensitive)
+    | i_pumps_df["icode"].str.match(r"(?i)^iKST")
+    | i_pumps_df["icode"].str.match(r"(?i)^KGM.*_i$")
+    | i_pumps_df["icode"].str.match(r"(?i)^KST.*_i$")
+)
+i_pumps_df = i_pumps_df[mask_i].copy()
+
+if i_pumps_df.empty:
+    print("⚠️ Geen iKGM/iKST of KGM_i/KST_i-pompen gevonden.")
+else:
+    # Basiscode bepalen: verwijder leading 'i' of trailing '_i'
+    i_pumps_df["base_code"] = (
+        i_pumps_df["icode"]
+        .str.replace("^i", "", case=False, regex=True)
+        .str.replace("_i$", "", case=False, regex=True)
+        .str.strip()
+    )
+
+    # Koppel met peers
+    i_pumps_df["peer_min_upstream"] = i_pumps_df["base_code"].str.upper().map(code_to_min_upstream_peer)
+
+    # Samenvatting
+    missing = i_pumps_df[i_pumps_df["peer_min_upstream"].isna()]
+    matched = i_pumps_df[i_pumps_df["peer_min_upstream"].notna()]
+
+    print(f"Gevonden i-pompen: {len(i_pumps_df)} (waarvan {len(matched)} met geldige peer)")
+    if not matched.empty:
+        print(matched[[code_col_pump, "base_code", "peer_min_upstream"]].head(10))
+    if not missing.empty:
+        print(f"⚠️ Geen match voor {len(missing)} pompen:")
+        print(missing[[code_col_pump, "base_code"]].head(10))
+
+    # -------------------------------------------------------
+    # 3️⃣ Aanpassen van matched i-pompen
+    # -------------------------------------------------------
+    if not matched.empty:
+        node_to_new_maxds = dict(zip(matched["node_id"], matched["peer_min_upstream"]))
+        mask_nodes = pump_static_df["node_id"].isin(node_to_new_maxds.keys())
+
+        print(f"➡️ Ga {mask_nodes.sum()} pompen aanpassen (up/down-levels).")
+
+        # Oude waarden
+        before = pump_static_df.loc[mask_nodes, [code_col_pump, min_us_col_pump, max_ds_col_pump]].copy()
+
+        # max_downstream = peer.min_upstream
+        pump_static_df.loc[mask_nodes, max_ds_col_pump] = pump_static_df.loc[mask_nodes, "node_id"].map(
+            node_to_new_maxds
+        )
+
+        # min_upstream = min_upstream - 0.02
+        pump_static_df.loc[mask_nodes, min_us_col_pump] = pump_static_df.loc[mask_nodes, min_us_col_pump].apply(
+            lambda v: bump(v, -0.02)
+        )
         # min_upstream = min_upstream - 0.02
         pump_static_df.loc[mask_nodes, min_us_col_pump] = pump_static_df.loc[mask_nodes, min_us_col_pump].apply(
             lambda v: bump(v, -0.02)

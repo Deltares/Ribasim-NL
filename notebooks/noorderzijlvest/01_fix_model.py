@@ -8,7 +8,6 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
-from ribasim_nl.junctions import junctionify
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -159,6 +158,7 @@ for action in [
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
+
 
 model.merge_basins(basin_id=1231, to_basin_id=1280)
 model.merge_basins(basin_id=1179, to_basin_id=1184)
@@ -407,12 +407,6 @@ reverse_link_ids = [
     1196,  # behorende bij knoop 185 (inlaat Stadspark)
     32,
     1018,  # behorende bij knoop 45 (inlaat gemaal De Slokkert)
-    204754,
-    5904434,  # behorende bij knoop 203508 (aanvoer naar Noorderzijlvest)
-    5904438,
-    3300018,  # behorende bij knoop 3300152 (scheepvaartsluisje Dorkwerd)
-    3402023,
-    5904458,  # behorende bij knoop 3401748 (scheepvaartsluisje Dongerdielen)
 ]
 
 # Draai de richting van alle genoemde links om
