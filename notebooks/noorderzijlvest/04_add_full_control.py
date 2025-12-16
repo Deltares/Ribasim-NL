@@ -14,9 +14,7 @@ from shapely.geometry import Point
 from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
-# keuzes:
-USE_PREPROCESSED_MODEL = True  # wil je überhaupt met preprocessed werken?
-FORCE_REBUILD_PREPROCESSED = False  # True = altijd opnieuw preprocessen en overschrijven
+FORCE_REBUILD_PREPROCESSED = True  # True = altijd opnieuw preprocessen en overschrijven
 
 # execute model run
 MODEL_EXEC: bool = True
@@ -49,17 +47,16 @@ def cloud_path_exists(p) -> bool:
 
 def build_preprocessed_model(model: Model) -> Model:
     """Get first upstream basins of a node"""
+
     def get_first_upstream_basins(model: Model, node_id: int) -> np.ndarray:
         us_basins = model.get_upstream_basins(node_id=node_id, stop_at_node_type="Basin")
         return us_basins[us_basins.node_id != node_id].node_id.to_numpy()
 
     def get_first_downstream_basins(model: Model, node_id: int) -> np.ndarray:
-    """Get the first downstream basins of a node"""
         ds_basins = model.get_downstream_basins(node_id=node_id, stop_at_node_type="Basin")
         return ds_basins[ds_basins.node_id != node_id].node_id.to_numpy()
 
     def is_controlled_basin(model: Model, node_id: int) -> bool:
-    """node_id is Basin (!). Check if is controlled (no ManningResistance or LinearResistance)"""
         ds_node_ids = model._downstream_nodes(node_id=node_id, stop_at_node_type="Basin")
         return (
             not model.node_table()
@@ -69,33 +66,17 @@ def build_preprocessed_model(model: Model) -> Model:
         )
 
     def has_all_upstream_controlled_basins(node_id: int, model: Model) -> bool:
-    """Find upstream basin of pump or outlet. So node_id should refer to connector-nodes only (!)"""
-        us_basins = get_first_upstream_basins(model=model, node_id=node_id)
         if len(us_basins) == 0:
             return False
-    # get all upstream basins
+        # get all upstream basins
         us2_basins = get_first_upstream_basins(model=model, node_id=us_basins[0])
         return all(is_controlled_basin(model=model, node_id=i) for i in us2_basins)
 
     def downstream_basin_is_controlled(node_id: int, model: Model) -> bool:
-    """Find if downstream basins are controlled by Pump or Outlet. So node_id should refer to connector-nodes only (!)"""
         ds_basins = get_first_downstream_basins(model=model, node_id=node_id)
         if len(ds_basins) == 0:
             return False
         return is_controlled_basin(model=model, node_id=int(ds_basins[0]))
-
-    pumps_ds_basins_controlled = model.pump.node.df.apply(
-        (lambda x: downstream_basin_is_controlled(node_id=x.name, model=model)), axis=1
-    )
-    outlets_ds_basins_controlled = model.outlet.node.df.apply(
-        (lambda x: downstream_basin_is_controlled(node_id=x.name, model=model)), axis=1
-    )
-    pumps_us_basins_controlled = model.pump.node.df.apply(
-        (lambda x: has_all_upstream_controlled_basins(node_id=x.name, model=model)), axis=1
-    )
-    outlets_us_basins_controlled = model.outlet.node.df.apply(
-        (lambda x: has_all_upstream_controlled_basins(node_id=x.name, model=model)), axis=1
-    )
 
     original_model = model.model_copy(deep=True)
     update_basin_static(model=model, evaporation_mm_per_day=0.1)
@@ -104,7 +85,7 @@ def build_preprocessed_model(model: Model) -> Model:
     aanvoergebieden_df = gpd.read_file(aanvoer_path)
     aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
 
-# re-parameterize
+    # re-parameterize
     ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=True)
     ribasim_parametrization.determine_min_upstream_max_downstream_levels(
         model,
@@ -129,24 +110,20 @@ def build_preprocessed_model(model: Model) -> Model:
 # =========================
 # LOAD / BUILD SWITCH
 # =========================
-if USE_PREPROCESSED_MODEL:
-    pre_exists = cloud_path_exists(ribasim_toml_pre)
+pre_exists = cloud_path_exists(ribasim_toml_pre)
 
-    if pre_exists and not FORCE_REBUILD_PREPROCESSED:
-        print(f"Preprocessed model bestaat al → preprocess overslaan: {ribasim_toml_pre}")
-        model = Model.read(ribasim_toml_pre)
-    else:
-        print("Preprocessed model wordt (opnieuw) gebouwd...")
-        model = Model.read(ribasim_toml)  # altijd opnieuw vanaf base
-        model = build_preprocessed_model(model)  # ✅ hier al je preprocess
-        model.write(ribasim_toml_pre)
-        print(f"Preprocessed model saved: {ribasim_toml_pre}")
-        model = Model.read(ribasim_toml_pre)
-
-    print("Loaded preprocessed model.")
+if pre_exists and not FORCE_REBUILD_PREPROCESSED:
+    print(f"Preprocessed model bestaat al → preprocess overslaan: {ribasim_toml_pre}")
+    model = Model.read(ribasim_toml_pre)
 else:
-    print("USE_PREPROCESSED_MODEL=False → basis model laden")
-    model = Model.read(ribasim_toml)
+    print("Preprocessed model wordt (opnieuw) gebouwd...")
+    model = Model.read(ribasim_toml)  # altijd opnieuw vanaf base
+    build_preprocessed_model(model)  # ✅ hier al je preprocess
+    model.write(ribasim_toml_pre)
+    print(f"Preprocessed model saved: {ribasim_toml_pre}")
+    model = Model.read(ribasim_toml_pre)
+
+print("Loaded preprocessed model.")
 
 # ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
@@ -507,12 +484,7 @@ def bump(v, delta):
         arr = np.where(np.isnan(arr), arr, arr + float(delta))
         return arr.tolist()
     x = float(v)
-    
-
-
-
-
-return x + float(delta) if not np.isnan(x) else v
+    return x + float(delta) if not np.isnan(x) else v
 
 
 # --- Dataframes ---
@@ -715,7 +687,8 @@ print("=== Klaar ===")
 
 # %%
 
-# Discrete control 
+
+# Discrete control
 def add_controller(
     model,
     node_ids,
