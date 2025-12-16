@@ -8,7 +8,6 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
-from ribasim_nl.junctions import junctionify
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -159,6 +158,23 @@ for action in [
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
+
+model.merge_basins(basin_id=1231, to_basin_id=1280)
+model.merge_basins(basin_id=1179, to_basin_id=1184)
+model.merge_basins(basin_id=1184, to_basin_id=1280)
+model.merge_basins(basin_id=1034, to_basin_id=1280)
+model.merge_basins(basin_id=1279, to_basin_id=1182)
+model.merge_basins(basin_id=1181, to_basin_id=1182)
+model.merge_basins(basin_id=1408, to_basin_id=1182)
+model.merge_basins(basin_id=1028, to_basin_id=1378)
+model.merge_basins(basin_id=1373, to_basin_id=1378)
+model.merge_basins(basin_id=1032, to_basin_id=1182)
+
+# # Van Starkenborghkanaal mergen Manning knopen weg!
+model.merge_basins(basin_id=1223, to_basin_id=1307)
+model.merge_basins(basin_id=1307, to_basin_id=1244)
+model.merge_basins(basin_id=1244, to_basin_id=1186)
+model.merge_basins(basin_id=1292, to_basin_id=1186)
 
 
 # %% assign Basin / Area using KWKuit
@@ -419,7 +435,7 @@ model.link.add(boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1192])
 
 # %% Create junctions
-model = junctionify(model)
+# model = junctionify(model)
 
 
 #  %% write model
