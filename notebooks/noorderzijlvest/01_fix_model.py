@@ -8,6 +8,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -416,11 +417,7 @@ reverse_link_ids = [
 
 # Draai de richting van alle genoemde links om
 for link_id in reverse_link_ids:
-    try:
-        model.reverse_link(link_id=link_id)
-        print(f"[OK] Link {link_id} omgedraaid.")
-    except Exception as e:
-        print(f"[FOUT] Kon link {link_id} niet omdraaien: {e}")
+    model.reverse_link(link_id=link_id)
 
 model.update_node(node_id=837, node_type="Outlet")  # duiker wordt outlet, was manning
 model.remove_node(node_id=1749, remove_links=True)

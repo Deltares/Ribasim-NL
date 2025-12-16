@@ -48,16 +48,18 @@ def cloud_path_exists(p) -> bool:
 
 
 def build_preprocessed_model(model: Model) -> Model:
-    # --- JOUW BLOK: basins/pumps/outlets maskers etc. ---
+    """Get first upstream basins of a node"""
     def get_first_upstream_basins(model: Model, node_id: int) -> np.ndarray:
         us_basins = model.get_upstream_basins(node_id=node_id, stop_at_node_type="Basin")
         return us_basins[us_basins.node_id != node_id].node_id.to_numpy()
 
     def get_first_downstream_basins(model: Model, node_id: int) -> np.ndarray:
+    """Get the first downstream basins of a node"""
         ds_basins = model.get_downstream_basins(node_id=node_id, stop_at_node_type="Basin")
         return ds_basins[ds_basins.node_id != node_id].node_id.to_numpy()
 
     def is_controlled_basin(model: Model, node_id: int) -> bool:
+    """node_id is Basin (!). Check if is controlled (no ManningResistance or LinearResistance)"""
         ds_node_ids = model._downstream_nodes(node_id=node_id, stop_at_node_type="Basin")
         return (
             not model.node_table()
@@ -67,13 +69,16 @@ def build_preprocessed_model(model: Model) -> Model:
         )
 
     def has_all_upstream_controlled_basins(node_id: int, model: Model) -> bool:
+    """Find upstream basin of pump or outlet. So node_id should refer to connector-nodes only (!)"""
         us_basins = get_first_upstream_basins(model=model, node_id=node_id)
         if len(us_basins) == 0:
             return False
+    # get all upstream basins
         us2_basins = get_first_upstream_basins(model=model, node_id=us_basins[0])
         return all(is_controlled_basin(model=model, node_id=i) for i in us2_basins)
 
     def downstream_basin_is_controlled(node_id: int, model: Model) -> bool:
+    """Find if downstream basins are controlled by Pump or Outlet. So node_id should refer to connector-nodes only (!)"""
         ds_basins = get_first_downstream_basins(model=model, node_id=node_id)
         if len(ds_basins) == 0:
             return False
@@ -94,13 +99,12 @@ def build_preprocessed_model(model: Model) -> Model:
 
     original_model = model.model_copy(deep=True)
     update_basin_static(model=model, evaporation_mm_per_day=0.1)
-
-    # ✅ DIT MOET DUS ALLEEN HIER STAAN (in build), niet erbuiten:
     add_from_to_nodes_and_levels(model)
 
     aanvoergebieden_df = gpd.read_file(aanvoer_path)
     aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
 
+# re-parameterize
     ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=True)
     ribasim_parametrization.determine_min_upstream_max_downstream_levels(
         model,
@@ -120,9 +124,6 @@ def build_preprocessed_model(model: Model) -> Model:
     model.pump.static.df.flow_rate = 20
     model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.flow_rate
     model.outlet.static.df.flow_rate = 20
-
-    # als je die series later nodig hebt: return ze niet, maar reken ze later opnieuw uit óf sla ze op in meta.
-    return model
 
 
 # =========================
@@ -499,15 +500,17 @@ print("=== Corrigeren iKGM/KGM_i & iKST/KST_i-pompen (rondpompen voorkomen) ==="
 # --- Helper om waarden iets te verschuiven ---
 def bump(v, delta):
     """Verhoog/verlaag scalar of array met delta; NaN blijft NaN."""
-    try:
-        if isinstance(v, (list, tuple, np.ndarray)):
-            arr = pd.to_numeric(np.asarray(v), errors="coerce")
-            arr = np.where(np.isnan(arr), arr, arr + float(delta))
-            return arr.tolist()
-        x = float(v)
-        return x + float(delta) if not np.isnan(x) else v
-    except Exception:
-        return v
+    if isinstance(v, (list, tuple, np.ndarray)):
+        arr = pd.to_numeric(np.asarray(v), errors="coerce")
+        arr = np.where(np.isnan(arr), arr, arr + float(delta))
+        return arr.tolist()
+    x = float(v)
+    
+
+
+
+
+return x + float(delta) if not np.isnan(x) else v
 
 
 # --- Dataframes ---
@@ -515,8 +518,8 @@ pump_static_df = model.pump.static.df
 outlet_static_df = model.outlet.static.df
 
 # --- Kolommen bepalen ---
-code_col_pump = "meta_code_waterbeheerder" if "meta_code_waterbeheerder" in pump_static_df.columns else "meta_code"
-code_col_outlet = "meta_code_waterbeheerder" if "meta_code_waterbeheerder" in outlet_static_df.columns else "meta_code"
+code_col_pump = "meta_code"
+code_col_outlet = "meta_code"
 
 min_us_col_pump = "min_upstream_level" if "min_upstream_level" in pump_static_df.columns else "min_upstream_water_level"
 max_ds_col_pump = (
@@ -636,7 +639,7 @@ print("=== Klaar ===")
 
 # %%
 
-
+# Discrete control 
 def add_controller(
     model,
     node_ids,
