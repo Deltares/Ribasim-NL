@@ -44,7 +44,8 @@ Block 5:
 Block 6:
     - add:  INCLUDE 'loadswq.id'           (links ribasim basins to delwaq segments)
     - add:  INCLUDE 'B6_loads.inc'         (timeseries loads for new substances on Basin nodes)
-
+    - add:  INCLUDE 'include_ANIMO.inc'    (load Agriculture and Nature, from conversion ANIMO model results)
+    
 Block 8:
     - Change contents to (without indentation):
             INITIALS Continuity Drainage FlowBoundary Initial LevelBoundary Precipitation SurfaceRunoff UserDemand NO3 NH4 OON PO4 AAP OOP
