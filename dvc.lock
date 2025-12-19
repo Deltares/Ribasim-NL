@@ -121,7 +121,7 @@ stages:
       md5: 91ec20507efe16085dd4073d6e42da51.dir
       size: 6173631922
       nfiles: 3
-  aaenmaas:
+  aa_en_maas:
     cmd: uv run python notebooks/aa_en_maas/main.py
     deps:
     - path: notebooks/aa_en_maas
