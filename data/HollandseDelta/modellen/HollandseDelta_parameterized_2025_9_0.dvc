@@ -5,7 +5,8 @@ deps:
   size: 77766084
   nfiles: 15
   hash: md5
-  path: remote://modeldata/HollandseDelta/modellen/HollandseDelta_parameterized_2025_9_0
+  path:
+    remote://modeldata/HollandseDelta/modellen/HollandseDelta_parameterized_2025_9_0
 outs:
 - md5: c56a9269ee4eec763887a8614190bfa3.dir
   size: 77766084

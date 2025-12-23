@@ -5,7 +5,8 @@ deps:
   size: 27087594
   nfiles: 15
   hash: md5
-  path: remote://modeldata/Scheldestromen/modellen/Scheldestromen_parameterized_2025_9_0
+  path:
+    remote://modeldata/Scheldestromen/modellen/Scheldestromen_parameterized_2025_9_0
 outs:
 - md5: 008df9f7c617cab700d631df1fa98978.dir
   size: 27087594

@@ -5,7 +5,8 @@ deps:
   size: 78677543
   nfiles: 9
   hash: md5
-  path: remote://modeldata/StichtseRijnlanden/modellen/StichtseRijnlanden_2025_9_0
+  path:
+    remote://modeldata/StichtseRijnlanden/modellen/StichtseRijnlanden_2025_9_0
 outs:
 - md5: 76c363afc3eba1ace093dcce982f3c1c.dir
   size: 78677543
