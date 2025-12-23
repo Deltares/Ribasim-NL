@@ -3894,7 +3894,7 @@ wheels = [
 
 [[package]]
 name = "ribasim"
-version = "2025.6.0"
+version = "2026.1.0rc1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datacompy" },
@@ -3913,9 +3913,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "xarray" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/be/2a/a4cce7a141c057fe6b9b1c561be9f9f5007836ed2fd9b542746ee4d97581/ribasim-2025.6.0.tar.gz", hash = "sha256:c1893f195a9f948bf5a1d0116e42f0b46f7c0139de5947b69f286bd97d50fd20", size = 102927, upload-time = "2025-10-27T22:08:40.123Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/a3/6f48f37c196e7b03c647b33cd6605848fc5d6993caab93152c0567c519a6/ribasim-2026.1.0rc1.tar.gz", hash = "sha256:c017d346ce9e20a49fe0923bd009914218a0640cd734bf4f925339d9d105fe8d", size = 1811984, upload-time = "2025-12-23T11:48:56.242Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/7c/a033ce69ea6464814e46d8435fa45886d804ed7201d2dc89d7b19f8480bf/ribasim-2025.6.0-py3-none-any.whl", hash = "sha256:73bf2d1212f5f6c3b4a40d524d4b6bbaab8e6fa33b6e5d98330e92a302faa1f7", size = 112334, upload-time = "2025-10-27T22:08:38.641Z" },
+    { url = "https://files.pythonhosted.org/packages/02/b5/249601c6fc455c53b6b9ca2d4404e3ec0dbf29c721664ebfc5fecd97cbdf/ribasim-2026.1.0rc1-py3-none-any.whl", hash = "sha256:38ff30a818f91583969bc59981925297314a72a86758839f73556841e2b25485", size = 114718, upload-time = "2025-12-23T11:48:54.597Z" },
 ]
 
 [[package]]
@@ -4058,7 +4058,7 @@ requires-dist = [
     { name = "quartodoc", specifier = ">=0.11.1" },
     { name = "rasterstats", specifier = ">=0.20.0" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "ribasim", specifier = "==2025.6.0" },
+    { name = "ribasim", specifier = "==2026.1.0rc1" },
     { name = "ribasim-nl", editable = "src/ribasim_nl" },
     { name = "ruff", specifier = ">=0.14.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
