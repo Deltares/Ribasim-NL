@@ -43,11 +43,11 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_f
 node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KDU")].index.to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 1
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 183, "active"] = False
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1220, "active"] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 134, "active"] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 728, "active"] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 62, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 183, "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1220, "flow_rate"] = 0.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 134, "flow_rate"] = 0.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 728, "flow_rate"] = 0.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 62, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 570, "min_upstream_level"] = -1.27
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 815, "min_upstream_level"] = -1.27
 

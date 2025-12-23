@@ -39,8 +39,8 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # %% fixes
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 471, "active"] = False
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 472, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 471, "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 472, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 119, "min_upstream_level"] = 11
 
 # %%

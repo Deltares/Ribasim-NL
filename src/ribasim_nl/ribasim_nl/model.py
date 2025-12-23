@@ -928,9 +928,16 @@ class Model(Model):
         self.reset_link_geometry(link_ids=[link_id])
 
     def deactivate_node(self, node_id: int):
+        """Deactivate a node by setting its flow_rate to 0.0 or manning_n to 100.0, if possible."""
         node_type = self.get_node_type(node_id)
         df = getattr(self, pascal_to_snake_case(node_type)).static.df
-        df.loc[df.node_id == node_id, ["active"]] = False
+
+        if "flow_rate" in df.columns:
+            df.loc[df.node_id == node_id, ["flow_rate"]] = 0.0
+        elif "manning_n" in df.columns:
+            df.loc[df.node_id == node_id, ["manning_n"]] = 100.0
+        else:
+            raise ValueError(f"Cannot deactivate node of type {node_type}: no 'flow_rate' or 'manning_n' column found")
 
     def remove_unassigned_basin_area(self):
         df = self.basin.area.df[~self.basin.area.df.index.isin(self.unassigned_basin_area.index)]
