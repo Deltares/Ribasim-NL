@@ -26,3 +26,10 @@ stages:
       - data/HollandseDelta/modellen/HollandseDelta_parameterized_2025_9_0
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
+  aa_en_maas:
+    cmd: "uv run python notebooks/aa_en_maas/main.py"
+    deps:
+      - src/ribasim_nl
+      - notebooks/aa_en_maas
+    outs:
+      - data/AaenMaas/modellen/AaenMaas_full_control_model

@@ -121,3 +121,22 @@ stages:
       md5: 91ec20507efe16085dd4073d6e42da51.dir
       size: 6173631922
       nfiles: 3
+  aa_en_maas:
+    cmd: uv run python notebooks/aa_en_maas/main.py
+    deps:
+    - path: notebooks/aa_en_maas
+      hash: md5
+      md5: a1488ca4fc86ef108f689d46bf7a05db.dir
+      size: 93839
+      nfiles: 10
+    - path: src/ribasim_nl
+      hash: md5
+      md5: 819b3766859758f2a4aff26b2787f68b.dir
+      size: 1391639
+      nfiles: 153
+    outs:
+    - path: data/AaenMaas/modellen/AaenMaas_full_control_model
+      hash: md5
+      md5: 5a867e9c9a7f4d07295a6fb95447e555.dir
+      size: 23015281
+      nfiles: 14
