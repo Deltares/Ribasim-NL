@@ -53,7 +53,7 @@ model.write(ribasim_toml)
 # %%
 
 # run model
-run_ribasim(ribasim_toml, cli_path="ribasim/bin/ribasim")
+run_ribasim(ribasim_toml)
 
 # # %%
 controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
