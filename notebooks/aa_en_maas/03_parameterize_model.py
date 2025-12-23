@@ -36,7 +36,7 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 # Fix afvoer
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "flow_rate"] = 0.0
 
 # %%
 
@@ -53,7 +53,7 @@ model.write(ribasim_toml)
 # %%
 
 # run model
-run_ribasim(ribasim_toml, cli_path="ribasim/bin/ribasim")
+run_ribasim(ribasim_toml)
 
 # # %%
 controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)

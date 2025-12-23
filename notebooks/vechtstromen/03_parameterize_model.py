@@ -35,21 +35,6 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 
-# %% deactivate inlets
-# node_ids = model.pump.node.df[model.pump.node.df.meta_function.str.startswith("in")].index.to_numpy()
-# model.pump.static.df.loc[model.pump.static.df.node_id.isin(node_ids), "active"] = False
-
-# Get node IDs where the name contains "inlaat"
-# node_ids = model.outlet.node.df[
-#    model.outlet.node.df["name"].fillna("").str.lower().str.contains("inlaat")
-# ].index.to_numpy()
-
-# Set active = False for these node IDs in the static data
-# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
-
-# node_ids = model.outlet.node.df[model.outlet.node.df.meta_function.str.startswith("inlaat")].index.to_numpy()
-# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
-
 # %%
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, ["meta_categorie"]] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 704, "min_upstream_level"] = 10.5
