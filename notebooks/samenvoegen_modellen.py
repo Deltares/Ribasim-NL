@@ -281,15 +281,15 @@ for model_name, authorities in sub_models.items():
     lhm_model.write(ribasim_toml)
     ribasim_toml.with_name("readme.md").write_text(readme)
 
-# lhm_model, readme = process_model_spec(1, hws_spec, lhm_model, readme)
-# for idx, model_spec in enumerate(model_specs):
-#     write_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml")
-#     lhm_model, readme = process_model_spec(idx + 2, model_spec, lhm_model, readme, write_toml=write_toml)
-# # Write lhm model only if it exists
-# print("write lhm model")
-# ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/lhm.toml")
-# if lhm_model is not None:
-#     lhm_model.write(ribasim_toml)
-# cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/readme.md").write_text(readme)
-# if upload_model:
-#     cloud.upload_model("Rijkswaterstaat", model="lhm_parts")
+lhm_model, readme = process_model_spec(1, hws_spec, lhm_model, readme)
+for idx, model_spec in enumerate(model_specs):
+    write_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml")
+    lhm_model, readme = process_model_spec(idx + 2, model_spec, lhm_model, readme, write_toml=write_toml)
+# Write lhm model only if it exists
+print("write lhm model")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/lhm.toml")
+if lhm_model is not None:
+    lhm_model.write(ribasim_toml)
+cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/readme.md").write_text(readme)
+if upload_model:
+    cloud.upload_model("Rijkswaterstaat", model="lhm_parts")

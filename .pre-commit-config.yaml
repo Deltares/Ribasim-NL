@@ -25,6 +25,10 @@ repos:
     rev: 0.8.2
     hooks:
       - id: nbstripout
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.20.0
+    hooks:
+      - id: yamlfmt
   - repo: https://github.com/iterative/dvc
     rev: 3.64.1
     hooks:

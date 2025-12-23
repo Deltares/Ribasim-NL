@@ -2,7 +2,6 @@ project:
   type: website
   resources:
     - CNAME
-
 website:
   title: "Ribasim-NL"
   navbar:
@@ -25,13 +24,11 @@ website:
         - workflow/level-controlled.qmd
         - workflow/gravity-controlled.qmd
         - workflow/couple.qmd
-
 format:
   html:
     theme: cosmo
     css: styles.css
     toc: true
-
 quartodoc:
   style: pkgdown
   dir: reference
