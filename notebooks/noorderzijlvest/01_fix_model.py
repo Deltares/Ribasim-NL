@@ -178,6 +178,9 @@ model.merge_basins(basin_id=1244, to_basin_id=1186)
 model.merge_basins(basin_id=1292, to_basin_id=1186)
 model.merge_basins(basin_id=1088, to_basin_id=1186)
 
+model.merge_basins(basin_id=1144, to_basin_id=1124)
+model.merge_basins(basin_id=1077, to_basin_id=1124)
+
 
 # %% assign Basin / Area using KWKuit
 
