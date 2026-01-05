@@ -523,7 +523,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     TRC_naar_OL = TRC_naar_OL[["node_id"]]
 
     # fill the tables for the outlet
-    outlet = pd.DataFrame(columns=["node_id", "control_state", "active", "flow_rate", "min_flow_rate", "max_flow_rate"])
+    outlet = pd.DataFrame(columns=["node_id", "control_state", "flow_rate", "min_flow_rate", "max_flow_rate"])
     outlet["node_id"] = TRC_naar_OL
     outlet["max_flow_rate"] = 25
 
@@ -2391,7 +2391,6 @@ def find_upstream_downstream_target_levels(ribasim_model: ribasim.Model, node: s
         structure_static = structure_static[
             [
                 "node_id",
-                "active",
                 "flow_rate",
                 "min_flow_rate",
                 "max_flow_rate",
@@ -2405,7 +2404,6 @@ def find_upstream_downstream_target_levels(ribasim_model: ribasim.Model, node: s
         structure_static = structure_static[
             [
                 "node_id",
-                "active",
                 "flow_rate",
                 "min_flow_rate",
                 "max_flow_rate",
