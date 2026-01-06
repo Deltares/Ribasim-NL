@@ -7,9 +7,10 @@ import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import discrete_control, flow_demand, level_demand, outlet, pid_control, pump
+from ribasim_nl.control import add_controllers_to_drain_nodes, control_nodes_from_supply_area, get_drain_nodes
 from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point
 
 from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
@@ -1318,50 +1319,6 @@ def _existing_dc_target_node_ids(model) -> set[int]:
     return set(dc_links[dst_col].astype(int).to_list())
 
 
-def _nan(x) -> bool:
-    return x is None or x is pd.NA or (isinstance(x, float) and np.isnan(x))
-
-
-def _node_xy(df: pd.DataFrame, node_id: int):
-    if node_id not in df.index:
-        return None
-    g = df.loc[node_id].get("geometry", None)
-    if g is None or g is pd.NA:
-        return None
-    if hasattr(g, "x") and hasattr(g, "y"):
-        return float(g.x), float(g.y)
-    if isinstance(g, (tuple, list)) and len(g) >= 2:
-        return float(g[0]), float(g[1])
-    return None
-
-
-def _nearest_listen_node_id(model, target_node_id: int, listen_candidates: list[int]) -> int | None:
-    if target_node_id in model.pump.node.df.index:
-        txy = _node_xy(model.pump.node.df, target_node_id)
-    elif target_node_id in model.outlet.node.df.index:
-        txy = _node_xy(model.outlet.node.df, target_node_id)
-    else:
-        txy = None
-    if txy is None:
-        return None
-
-    tx, ty = txy
-    best_id, best_d2 = None, np.inf
-    for cid in listen_candidates:
-        cxy = None
-        if hasattr(model, "basin") and cid in model.basin.node.df.index:
-            cxy = _node_xy(model.basin.node.df, cid)
-        if cxy is None and hasattr(model, "level_boundary") and cid in model.level_boundary.node.df.index:
-            cxy = _node_xy(model.level_boundary.node.df, cid)
-        if cxy is None:
-            continue
-        dx, dy = tx - cxy[0], ty - cxy[1]
-        d2 = dx * dx + dy * dy
-        if d2 < best_d2:
-            best_id, best_d2 = cid, d2
-    return best_id
-
-
 # %%
 # interne polder
 # aanvoer
@@ -2177,118 +2134,32 @@ def add_supply_controllers_auto_ds_streef(
 # %%
 
 
-def control_nodes_from_supply_area(
-    model: Model,
-    polygon: Polygon,
-    control_node_types: list[str] = ["Outlet", "Pump"],
-    ignore_intersecting_links: list[int] = [],
-) -> tuple[list[int], list[int], list[int]]:
-    # fix polygon, get exterior and polygonize so we won't miss anythin within area
-    exterior = polygon.exterior
-    polygon = Polygon(exterior)
-
-    # read node_table for further use
-    node_df = model.node_table().df
-
-    # intersecting links and direction (if not outflow, then inward)
-    link_intersect_df = model.link.df[model.link.df.intersects(exterior)]
-    link_intersect_df.loc[:, ["outflow"]] = node_df.loc[link_intersect_df["from_node_id"]].within(polygon).to_numpy()
-    link_intersect_df.loc[:, ["from_node_type"]] = node_df.loc[
-        link_intersect_df["from_node_id"], "node_type"
-    ].to_numpy()
-    link_intersect_df.loc[:, ["to_node_type"]] = node_df.loc[link_intersect_df["to_node_id"], "node_type"].to_numpy()
-    link_intersect_df = link_intersect_df[~link_intersect_df.index.isin(ignore_intersecting_links)]
-
-    # check if all intersections have control nodes
-    link_with_control_node = link_intersect_df.from_node_type.isin(
-        control_node_types
-    ) | link_intersect_df.to_node_type.isin(control_node_types)
-    links_without_control = link_intersect_df[~link_with_control_node].index.to_list()
-
-    if links_without_control:
-        raise ValueError(
-            f"Found intersecting links without control node (!): {links_without_control}. Fix supply area or specify these links in `ignore_intersecting_links` list"
-        )
-
-    # finding outflow nodes (outbound the supply area)
-    outflow_links = link_intersect_df[link_intersect_df.outflow]
-    outflow_nodes = sorted(
-        outflow_links.loc[outflow_links.from_node_type.isin(control_node_types), "from_node_id"].to_list()
-        + outflow_links.loc[outflow_links.to_node_type.isin(control_node_types), "to_node_id"].to_list()
-    )
-
-    # finding inflow nodes (inbound the supply area)
-    inflow_links = link_intersect_df[~link_intersect_df.outflow]
-    inflow_nodes = sorted(
-        inflow_links.loc[inflow_links.from_node_type.isin(control_node_types), "from_node_id"].to_list()
-        + inflow_links.loc[inflow_links.to_node_type.isin(control_node_types), "to_node_id"].to_list()
-    )
-
-    internal_nodes = node_df[node_df.node_type.isin(control_node_types) & node_df.within(polygon)]
-    internal_nodes = [i for i in internal_nodes.index if i not in inflow_nodes + outflow_nodes]
-
-    return outflow_nodes, inflow_nodes, internal_nodes
-
-
-def get_drain_nodes(model: Model, connector_nodes_df: pd.DataFrame, supply_bool_col: str = "supply_node") -> list[int]:
-    # from_node_id and to_nodes to table
-    from_node_id = model.link.df.set_index("to_node_id")["from_node_id"]
-    to_node_id = model.link.df.set_index("from_node_id")["to_node_id"]
-
-    # alle connector-nodes
-    connector_nodes_df["from_node_id"] = [from_node_id[i] for i in connector_nodes_df.index]
-    connector_nodes_df["to_node_id"] = [to_node_id[i] for i in connector_nodes_df.index]
-
-    # filter all supply_nodes
-    supply_nodes_df = connector_nodes_df[connector_nodes_df[supply_bool_col]]
-
-    # extract drain_nodes
-    drain_nodes = [
-        i.Index
-        for i in connector_nodes_df[~connector_nodes_df[supply_bool_col]].itertuples()
-        if ((supply_nodes_df.from_node_id == i.to_node_id) & (supply_nodes_df.to_node_id == i.from_node_id)).any()
-    ]
-
-    # check if control nodes exist for which one or more should have been labelled as supply-node
-    check_nodes_df = connector_nodes_df[
-        ~connector_nodes_df[supply_bool_col] & ~connector_nodes_df.index.isin(drain_nodes)
-    ]
-
-    drain_supply_nodes = [
-        i.Index
-        for i in check_nodes_df.itertuples()
-        if ((check_nodes_df.from_node_id == i.to_node_id) & (check_nodes_df.to_node_id == i.from_node_id)).any()
-    ]
-
-    if drain_supply_nodes:
-        raise ValueError(
-            f"Connector-nodes in opposite direction: {drain_supply_nodes}. One or more has to be labelled with `{supply_bool_col}` == True"
-        )
-
-    return drain_nodes
-
-
 # %%
 aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/aanvoergebieden.gpkg")
-aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True)
-_, df = next(iter(aanvoergebieden_df.groupby("aanvoergebied")))
+aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
-# ophalen alle outflow (het gebied uit), inflow (het gebied in) en internal (bínnen het gebied)
-polygon = df.union_all()
-control_node_types = ["Outlet", "Pump"]
-ignore_intersecting_links: list[int] = [1810]
-
-outflow_nodes, inflow_nodes, internal_nodes = control_nodes_from_supply_area(
-    model=model,
-    polygon=polygon,
-    control_node_types=["Outlet", "Pump"],
-    ignore_intersecting_links=ignore_intersecting_links,
-)
 
 # supply nodes definieren. Bij Noorderzijlvest alles wat begint met INL (e.g. KGM143_i, iKGM018 en INL077)
 # 37: Diepswal
 # 38: Jonkersvaart
 supply_nodes = [37, 38]
+
+# drain nodes definieren
+# 551: KST0556
+# 652: KST1072
+drain_nodes = [551, 652]
+
+# doorspoeling definieren
+# 357: KST0159 Trambaanstuw
+# 357: KST0159 Trambaanstuw
+# 393: KST0135 Ackerenstuw
+# 350: KST0053 Lage Hamrikstuw
+# 401: KST0148 Mastuw
+# 501: KST0379 Ooster Lietsstuw
+# 383: KST0113 Lage Rietstuw
+flushing_nodes = {357: 0.02, 393: 0.012, 350: 0.015, 401: 0.017, 501: 0.034, 383: 0.013}
+
+# aanmaken node_df met supply_nodes
 node_df = model.node_table().df
 node_df["supply_node"] = (
     node_df["meta_code_waterbeheerder"].str.startswith("INL")
@@ -2297,50 +2168,68 @@ node_df["supply_node"] = (
     | node_df.index.isin(supply_nodes)
 )
 
-connector_nodes_df = node_df.loc[internal_nodes]
+# input-variabelen bij latere functie
+polygon = aanvoergebieden_df.at["jonkersvaart", "geometry"]
+control_node_types = ["Outlet", "Pump"]
+ignore_intersecting_links: list[int] = [1810]
 
-drain_nodes = sorted(
-    get_drain_nodes(model=model, connector_nodes_df=connector_nodes_df, supply_bool_col="supply_node") + outflow_nodes
+# determine outflow_nodes, inflow_nodes and internal nodes
+outflow_nodes, inflow_nodes, internal_nodes = control_nodes_from_supply_area(
+    model=model,
+    polygon=polygon,
+    control_node_types=["Outlet", "Pump"],
+    ignore_intersecting_links=ignore_intersecting_links,
 )
 
-supply_nodes = sorted(set(connector_nodes_df[connector_nodes_df.supply_node].index.to_list() + inflow_nodes))
+# get internal drainage nodes. internal drain nodes + outflow_nodes = drain_nodes
+control_nodes_df = node_df.loc[internal_nodes]
+drain_nodes += sorted(
+    get_drain_nodes(model=model, control_nodes_df=control_nodes_df, supply_bool_col="supply_node") + outflow_nodes
+)
+drain_nodes = [i for i in drain_nodes if i not in flushing_nodes.keys()]
 
+# supply nodes = set of nodes defined as supply-nodes + inflow_nodes (even if not defined as inflow-nodes)
+supply_nodes = sorted(set(control_nodes_df[control_nodes_df.supply_node].index.to_list() + inflow_nodes))
+
+# supply nodes cannot be drain nodes at the same time
 supply_in_drain_nodes = [i for i in supply_nodes if i in drain_nodes]
 if supply_in_drain_nodes:
     raise ValueError(f"Nodes labeled as supply also in drain_nodes {supply_in_drain_nodes}")
 
-
-flow_control_nodes = sorted([i for i in connector_nodes_df.index if i not in drain_nodes + supply_nodes])
+# the rest are flow_control_nodes (doorlaten)
+flow_control_nodes = sorted(
+    [i for i in control_nodes_df.index if i not in drain_nodes + supply_nodes + list(flushing_nodes.keys())]
+)
 
 # %% 292 mist hier
-SUPPLY_NODES = [
-    36,
-    37,
-    38,
-    287,
-    288,
-    293,
-    295,
-    296,
-    687,
-    688,
-    689,
-    690,
-    694,
-    695,
-    696,
-    697,
-    698,
-    699,
-    704,
-    705,
-    706,
-    707,
-]
+# SUPPLY_NODES = [
+#     36,
+#     37,
+#     38,
+#     287,
+#     288,
+#     293,
+#     295,
+#     296,
+#     687,
+#     688,
+#     689,
+#     690,
+#     694,
+#     695,
+#     696,
+#     697,
+#     698,
+#     699,
+#     704,
+#     705,
+#     706,
+#     707,
+# ]
 # %%
 add_supply_controllers_auto_ds_streef(
     model,
-    SUPPLY_NODES,
+    supply_nodes,
     base_kwargs=SUPPLY_KWARGS,
     max_ds_offset=0.0,
     min_us_aanvoer_offset=-0.04,
@@ -2375,61 +2264,54 @@ DRAIN_KWARGS = {
     "delta_us_afvoer": None,
 }
 
+add_controllers_to_drain_nodes(model=model, drain_nodes=drain_nodes)
+exclude(drain_nodes)
+# def add_controllers_to_drain_nodes(
+#     model,
+#     target_nodes,
+#     *,
+#     base_kwargs,
+#     target_level_offset: float = 0.0,
+#     skip_if_no_upstream: bool = False,
+#     target_level_column: str = "meta_streefpeil",
+# ):
+#     target_nodes = dedup(target_nodes)
+#     exclude(target_nodes)
 
-def add_drain_controllers_auto_us_streef(
-    model,
-    target_nodes,
-    *,
-    base_kwargs,
-    streef_offset: float = 0.0,
-    skip_if_no_upstream: bool = False,
-):
-    target_nodes = dedup(target_nodes)
-    exclude(target_nodes)
+#     for node_id in target_nodes:
+#         us_basin = model.upstream_node_id(node_id=node_id)
+#         target_level = model.basin.area.df.set_index("node_id").at[us_basin, target_level_column]
 
-    for nid in target_nodes:
-        us_basin = find_upstream_basin_id(model, nid)
-        S = _streef(model, us_basin)
+#         if us_basin is None or target_level is None:
+#             msg = f"[warn] drain node {node_id}: target_level missing in upstream basin {us_basin}"
+#             if skip_if_no_upstream:
+#                 print(msg + " -> skip")
+#                 continue
+#             raise ValueError(msg)
 
-        if us_basin is None or S is None:
-            msg = f"[warn] drain {nid}: us_basin/streef ontbreekt"
-            if skip_if_no_upstream:
-                print(msg + " -> skip")
-                continue
-            raise ValueError(msg)
+#         target_level += float(target_level_offset)
 
-        S = float(S) + float(streef_offset)
+#         kwargs = dict(base_kwargs)
+#         kwargs["delta_us_aanvoer"] = None
+#         kwargs["delta_us_afvoer"] = None
+#         kwargs["min_upstream_aanvoer"] = target_level
+#         kwargs["min_upstream_afvoer"] = target_level
 
-        kw = dict(base_kwargs)
-        kw["delta_us_aanvoer"] = None
-        kw["delta_us_afvoer"] = None
-        kw["min_upstream_aanvoer"] = S
-        kw["min_upstream_afvoer"] = S
+#         add_controller(
+#             model=model,
+#             node_ids=[node_id],
+#             listen_node_id=int(us_basin),
+#             threshold_high=target_level,
+#             **kwargs,
+#         )
 
-        add_controller(
-            model=model,
-            node_ids=[nid],
-            listen_node_id=int(us_basin),
-            threshold_high=S,
-            **kw,
-        )
-
-        print(f"[OK] drain {nid}: us={us_basin} S={S:.3f} min_us=[{S:.3f},{S:.3f}]")
+#         print(f"[OK] drain {node_id}: upstream basin={us_basin} min_upstream_level={target_level:.3f} ")
 
 
 # waarom zijn 551 en 652 drain nodes en geen flow_control_nodes (doorlaten?)
 # [424, 492] waarschijnlijk vergeten met interne drain_nodes (naast inlaat)
 # nog filteren op flushing_demand_nodes
-DRAIN_NODES = [389, 433, 455, 502, 519, 549, 550, 551, 564, 565, 618, 652, 681]
-
-add_drain_controllers_auto_us_streef(
-    model,
-    DRAIN_NODES,
-    base_kwargs=DRAIN_KWARGS,
-    streef_offset=0.0,
-    skip_if_no_upstream=False,
-)
-
+# DRAIN_NODES = [389, 433, 455, 502, 519, 549, 550, 551, 564, 565, 618, 652, 681]
 
 # =========================
 # 3) Doorstroomknopen - supply_if_ds_low_else_drain
@@ -2491,95 +2373,95 @@ def add_controls_supply_if_ds_low_else_drain(
 # [356, 400, 457, 537, 544, 553, 553, 742, 743] liggen buiten gebied
 # [128, 551, 608, 652] missen
 # nog filteren op fushing_demand_nodes
-FLOWCONTROL_NODES = [
-    338,
-    339,
-    343,
-    345,
-    346,
-    355,
-    356,
-    362,
-    364,
-    367,
-    368,
-    368,
-    369,
-    374,
-    378,
-    382,
-    382,
-    395,
-    399,
-    399,
-    400,
-    405,
-    410,
-    414,
-    426,
-    430,
-    432,
-    438,
-    440,
-    448,
-    449,
-    453,
-    457,
-    463,
-    474,
-    478,
-    491,
-    495,
-    497,
-    497,
-    498,
-    498,
-    500,
-    504,
-    510,
-    511,
-    512,
-    514,
-    515,
-    515,
-    526,
-    527,
-    528,
-    529,
-    530,
-    537,
-    538,
-    540,
-    541,
-    541,
-    542,
-    542,
-    543,
-    544,
-    547,
-    548,
-    552,
-    553,
-    553,
-    554,
-    555,
-    556,
-    581,
-    600,
-    600,
-    610,
-    613,
-    620,
-    649,
-    655,
-    667,
-    742,
-    743,
-]
+# FLOWCONTROL_NODES = [
+#     338,
+#     339,
+#     343,
+#     345,
+#     346,
+#     355,
+#     356,
+#     362,
+#     364,
+#     367,
+#     368,
+#     368,
+#     369,
+#     374,
+#     378,
+#     382,
+#     382,
+#     395,
+#     399,
+#     399,
+#     400,
+#     405,
+#     410,
+#     414,
+#     426,
+#     430,
+#     432,
+#     438,
+#     440,
+#     448,
+#     449,
+#     453,
+#     457,
+#     463,
+#     474,
+#     478,
+#     491,
+#     495,
+#     497,
+#     497,
+#     498,
+#     498,
+#     500,
+#     504,
+#     510,
+#     511,
+#     512,
+#     514,
+#     515,
+#     515,
+#     526,
+#     527,
+#     528,
+#     529,
+#     530,
+#     537,
+#     538,
+#     540,
+#     541,
+#     541,
+#     542,
+#     542,
+#     543,
+#     544,
+#     547,
+#     548,
+#     552,
+#     553,
+#     553,
+#     554,
+#     555,
+#     556,
+#     581,
+#     600,
+#     600,
+#     610,
+#     613,
+#     620,
+#     649,
+#     655,
+#     667,
+#     742,
+#     743,
+# ]
 
 add_controls_supply_if_ds_low_else_drain(
     model,
-    FLOWCONTROL_NODES,
+    flow_control_nodes,
     band_hi=0.02,
     gate_drop=0.04,
     ds_offset=0.0,
@@ -4068,6 +3950,8 @@ ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_cont
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 model.solver.level_difference_threshold = 0.02
+
+model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
