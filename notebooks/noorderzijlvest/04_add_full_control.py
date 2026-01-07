@@ -7,7 +7,14 @@ import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import discrete_control, flow_demand, level_demand, outlet, pid_control, pump
-from ribasim_nl.control import add_controllers_to_drain_nodes, control_nodes_from_supply_area, get_drain_nodes
+from ribasim_nl.control import (
+    add_controllers_and_demand_to_flushing_nodes,
+    add_controllers_to_drain_nodes,
+    add_controllers_to_flow_control_nodes,
+    add_controllers_to_supply_nodes,
+    control_nodes_from_supply_area,
+    get_drain_nodes,
+)
 from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import Point
@@ -16,6 +23,7 @@ from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
 FORCE_REBUILD_PREPROCESSED = False  # True = altijd opnieuw preprocessen en overschrijven
+LEVEL_DIFFERENCE_THRESHOLD = 0.02
 
 # execute model run
 MODEL_EXEC: bool = True
@@ -2052,83 +2060,83 @@ def _streef(model, basin_id: int | None) -> float | None:
 # min_upstream: aanvoer = streef upstream - 0.04 ; afvoer = streef upstream
 # =========================
 
-SUPPLY_KWARGS = {
-    # flows
-    "flow_aanvoer_outlet": 20,
-    "flow_afvoer_outlet": 0,
-    "max_flow_afvoer_outlet": 0,
-    "flow_afvoer_pump": 0,
-    "max_flow_afvoer_pump": 0,
-    "flow_aanvoer_pump": "orig",
-    "delta_max_ds_afvoer": None,
-    # upstream (we zetten min_upstream expliciet, dus delta's altijd None)
-    "keep_min_us": True,
-    "delta_us_aanvoer": None,
-    "delta_us_afvoer": None,
-}
+# SUPPLY_KWARGS = {
+#     # flows
+#     "flow_aanvoer_outlet": 20,
+#     "flow_afvoer_outlet": 0,
+#     "max_flow_afvoer_outlet": 0,
+#     "flow_afvoer_pump": 0,
+#     "max_flow_afvoer_pump": 0,
+#     "flow_aanvoer_pump": "orig",
+#     "delta_max_ds_afvoer": None,
+#     # upstream (we zetten min_upstream expliciet, dus delta's altijd None)
+#     "keep_min_us": True,
+#     "delta_us_aanvoer": None,
+#     "delta_us_afvoer": None,
+# }
 
 
-def add_supply_controllers_auto_ds_streef(
-    model,
-    target_nodes,
-    *,
-    base_kwargs,
-    max_ds_offset: float = 0.0,
-    min_us_aanvoer_offset: float = -0.04,
-    min_us_afvoer_offset: float = 0.0,
-    skip_if_no_upstream: bool = True,
-):
-    target_nodes = dedup(target_nodes)
-    exclude(target_nodes)
+# def add_supply_controllers_auto_ds_streef(
+#     model,
+#     target_nodes,
+#     *,
+#     base_kwargs,
+#     max_ds_offset: float = 0.0,
+#     min_us_aanvoer_offset: float = -0.04,
+#     min_us_afvoer_offset: float = 0.0,
+#     skip_if_no_upstream: bool = True,
+# ):
+#     target_nodes = dedup(target_nodes)
+#     exclude(target_nodes)
 
-    for nid in target_nodes:
-        ds_basin = find_downstream_basin_id(model, nid)
-        S_ds = _streef(model, ds_basin)
-        if ds_basin is None or S_ds is None:
-            print(f"[skip] supply {nid}: ds_basin/streef ontbreekt")
-            continue
-        S_ds = float(S_ds)
+#     for nid in target_nodes:
+#         ds_basin = find_downstream_basin_id(model, nid)
+#         S_ds = _streef(model, ds_basin)
+#         if ds_basin is None or S_ds is None:
+#             print(f"[skip] supply {nid}: ds_basin/streef ontbreekt")
+#             continue
+#         S_ds = float(S_ds)
 
-        kw = dict(base_kwargs)
-        # nooit delta_us doorschuiven
-        kw["delta_us_aanvoer"] = None
-        kw["delta_us_afvoer"] = None
+#         kw = dict(base_kwargs)
+#         # nooit delta_us doorschuiven
+#         kw["delta_us_aanvoer"] = None
+#         kw["delta_us_afvoer"] = None
 
-        # max_ds_aanvoer = streef(ds)
-        kw["max_ds_aanvoer"] = S_ds + float(max_ds_offset)
-        kw["delta_max_ds_aanvoer"] = 0.0
+#         # max_ds_aanvoer = streef(ds)
+#         kw["max_ds_aanvoer"] = S_ds + float(max_ds_offset)
+#         kw["delta_max_ds_aanvoer"] = 0.0
 
-        # min_us = streef(us) (optioneel)
-        us_basin = find_upstream_basin_id(model, nid)
-        S_us = _streef(model, us_basin)
+#         # min_us = streef(us) (optioneel)
+#         us_basin = find_upstream_basin_id(model, nid)
+#         S_us = _streef(model, us_basin)
 
-        if S_us is None:
-            msg = f"[warn] supply {nid}: us_basin/streef ontbreekt -> min_upstream niet gezet"
-            if skip_if_no_upstream:
-                print(msg)
-            else:
-                raise ValueError(msg)
-        else:
-            S_us = float(S_us)
-            kw["min_upstream_aanvoer"] = S_us + float(min_us_aanvoer_offset)
-            kw["min_upstream_afvoer"] = S_us + float(min_us_afvoer_offset)
+#         if S_us is None:
+#             msg = f"[warn] supply {nid}: us_basin/streef ontbreekt -> min_upstream niet gezet"
+#             if skip_if_no_upstream:
+#                 print(msg)
+#             else:
+#                 raise ValueError(msg)
+#         else:
+#             S_us = float(S_us)
+#             kw["min_upstream_aanvoer"] = S_us + float(min_us_aanvoer_offset)
+#             kw["min_upstream_afvoer"] = S_us + float(min_us_afvoer_offset)
 
-        add_controller(
-            model=model,
-            node_ids=[nid],
-            listen_node_id=int(ds_basin),
-            threshold_high=S_ds,
-            **kw,
-        )
+#         add_controller(
+#             model=model,
+#             node_ids=[nid],
+#             listen_node_id=int(ds_basin),
+#             threshold_high=S_ds,
+#             **kw,
+#         )
 
-        if "min_upstream_aanvoer" in kw:
-            print(
-                f"[OK] supply {nid}: ds={ds_basin} S_ds={S_ds:.3f} | "
-                f"us={us_basin} S_us={float(S_us):.3f} "
-                f"min_us=[{kw['min_upstream_aanvoer']:.3f},{kw['min_upstream_afvoer']:.3f}]"
-            )
-        else:
-            print(f"[OK] supply {nid}: ds={ds_basin} S_ds={S_ds:.3f} | min_upstream: (niet gezet)")
+#         if "min_upstream_aanvoer" in kw:
+#             print(
+#                 f"[OK] supply {nid}: ds={ds_basin} S_ds={S_ds:.3f} | "
+#                 f"us={us_basin} S_us={float(S_us):.3f} "
+#                 f"min_us=[{kw['min_upstream_aanvoer']:.3f},{kw['min_upstream_afvoer']:.3f}]"
+#             )
+#         else:
+#             print(f"[OK] supply {nid}: ds={ds_basin} S_ds={S_ds:.3f} | min_upstream: (niet gezet)")
 
 
 # %%
@@ -2139,17 +2147,17 @@ aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/aanvoergebieden
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 
-# supply nodes definieren. Bij Noorderzijlvest alles wat begint met INL (e.g. KGM143_i, iKGM018 en INL077)
+# supply nodes (inlaten) definieren. Bij Noorderzijlvest alles wat begint met INL (e.g. KGM143_i, iKGM018 en INL077)
 # 37: Diepswal
 # 38: Jonkersvaart
 supply_nodes = [37, 38]
 
-# drain nodes definieren
+# drain nodes (uitlaten) definieren (intern, maar alléén drainerend)
 # 551: KST0556
 # 652: KST1072
 drain_nodes = [551, 652]
 
-# doorspoeling definieren
+# doorspoeling (uitlaten) definieren
 # 357: KST0159 Trambaanstuw
 # 357: KST0159 Trambaanstuw
 # 393: KST0135 Ackerenstuw
@@ -2227,16 +2235,18 @@ flow_control_nodes = sorted(
 #     707,
 # ]
 # %%
-add_supply_controllers_auto_ds_streef(
-    model,
-    supply_nodes,
-    base_kwargs=SUPPLY_KWARGS,
-    max_ds_offset=0.0,
-    min_us_aanvoer_offset=-0.04,
-    min_us_afvoer_offset=0.0,
-    skip_if_no_upstream=True,
-)
+# add_supply_controllers_auto_ds_streef(
+#     model,
+#     supply_nodes,
+#     base_kwargs=SUPPLY_KWARGS,
+#     max_ds_offset=0.0,
+#     min_us_aanvoer_offset=-0.04,
+#     min_us_afvoer_offset=0.0,
+#     skip_if_no_upstream=True,
+# )
 
+add_controllers_to_supply_nodes(model=model, us_target_level_offset_supply=-0.04, supply_nodes=supply_nodes)
+exclude(supply_nodes)
 
 # =========================
 # 2) DRAIN controllers (afvoerknopen)
@@ -2245,24 +2255,24 @@ add_supply_controllers_auto_ds_streef(
 # min_upstream (beide states) = streef upstream
 # =========================
 
-DRAIN_KWARGS = {
-    # outlets
-    "flow_aanvoer_outlet": 0.0,
-    "max_flow_aanvoer_outlet": 0,
-    "flow_afvoer_outlet": 100.0,
-    # pumps
-    "flow_aanvoer_pump": 0.0,
-    "flow_afvoer_pump": "orig",
-    # downstream hydrauliek
-    "max_ds_aanvoer": 1000,
-    "max_ds_afvoer": 1000,
-    "delta_max_ds_aanvoer": 0.0,
-    "delta_max_ds_afvoer": None,
-    # upstream
-    "keep_min_us": True,
-    "delta_us_aanvoer": None,
-    "delta_us_afvoer": None,
-}
+# DRAIN_KWARGS = {
+#     # outlets
+#     "flow_aanvoer_outlet": 0.0,
+#     "max_flow_aanvoer_outlet": 0,
+#     "flow_afvoer_outlet": 100.0,
+#     # pumps
+#     "flow_aanvoer_pump": 0.0,
+#     "flow_afvoer_pump": "orig",
+#     # downstream hydrauliek
+#     "max_ds_aanvoer": 1000,
+#     "max_ds_afvoer": 1000,
+#     "delta_max_ds_aanvoer": 0.0,
+#     "delta_max_ds_afvoer": None,
+#     # upstream
+#     "keep_min_us": True,
+#     "delta_us_aanvoer": None,
+#     "delta_us_afvoer": None,
+# }
 
 add_controllers_to_drain_nodes(model=model, drain_nodes=drain_nodes)
 exclude(drain_nodes)
@@ -2319,55 +2329,55 @@ exclude(drain_nodes)
 # =========================
 
 
-def add_controls_supply_if_ds_low_else_drain(
-    model,
-    target_node_ids,
-    *,
-    band_hi: float = 0.02,  # S_hi = S + 0.02
-    gate_drop: float = 0.04,  # aanvoer: min_upstream zakt 0.04
-    ds_offset: float = 0.0,  # M_logic = streef_ds + ds_offset
-    max_ds_afvoer_hyd: float = 1000.0,
-    max_hops_ds: int = 6,
-):
-    target_node_ids = dedup(target_node_ids)
-    exclude(target_node_ids)
+# def add_controls_supply_if_ds_low_else_drain(
+#     model,
+#     target_node_ids,
+#     *,
+#     band_hi: float = 0.02,  # S_hi = S + 0.02
+#     gate_drop: float = 0.04,  # aanvoer: min_upstream zakt 0.04
+#     ds_offset: float = 0.0,  # M_logic = streef_ds + ds_offset
+#     max_ds_afvoer_hyd: float = 1000.0,
+#     max_hops_ds: int = 6,
+# ):
+#     target_node_ids = dedup(target_node_ids)
+#     exclude(target_node_ids)
 
-    for tid in target_node_ids:
-        us_basin_id = find_upstream_basin_id(model, tid)
-        ds_basin_id = find_downstream_basin_id(model, tid, max_hops=max_hops_ds)
-        if us_basin_id is None or ds_basin_id is None:
-            print(f"[skip] flowcontrol {tid}: upstream/downstream basin niet gevonden")
-            continue
+#     for tid in target_node_ids:
+#         us_basin_id = find_upstream_basin_id(model, tid)
+#         ds_basin_id = find_downstream_basin_id(model, tid, max_hops=max_hops_ds)
+#         if us_basin_id is None or ds_basin_id is None:
+#             print(f"[skip] flowcontrol {tid}: upstream/downstream basin niet gevonden")
+#             continue
 
-        S_us = _streef(model, us_basin_id)
-        S_ds = _streef(model, ds_basin_id)
-        if S_us is None or S_ds is None:
-            print(f"[skip] flowcontrol {tid}: streefpeil ontbreekt (us={us_basin_id}, ds={ds_basin_id})")
-            continue
+#         S_us = _streef(model, us_basin_id)
+#         S_ds = _streef(model, ds_basin_id)
+#         if S_us is None or S_ds is None:
+#             print(f"[skip] flowcontrol {tid}: streefpeil ontbreekt (us={us_basin_id}, ds={ds_basin_id})")
+#             continue
 
-        S_us = float(S_us)
-        M_logic = float(S_ds) + float(ds_offset)
+#         S_us = float(S_us)
+#         M_logic = float(S_ds) + float(ds_offset)
 
-        add_controller(
-            model=model,
-            node_ids=[tid],
-            listen_node_ids=[int(us_basin_id), int(ds_basin_id)],
-            dc_mode="supply_if_ds_low_else_drain",
-            threshold_low=S_us,
-            threshold_high=S_us + float(band_hi),
-            # LOGICA-drempel via max_ds_aanvoer (moet numeriek zijn)
-            max_ds_aanvoer=M_logic,
-            # HYD: afvoer niet blokkeren
-            max_ds_afvoer=float(max_ds_afvoer_hyd),
-            keep_min_us=False,
-            min_upstream_aanvoer=S_us - float(gate_drop),
-            min_upstream_afvoer=S_us,
-        )
+#         add_controller(
+#             model=model,
+#             node_ids=[tid],
+#             listen_node_ids=[int(us_basin_id), int(ds_basin_id)],
+#             dc_mode="supply_if_ds_low_else_drain",
+#             threshold_low=S_us,
+#             threshold_high=S_us + float(band_hi),
+#             # LOGICA-drempel via max_ds_aanvoer (moet numeriek zijn)
+#             max_ds_aanvoer=M_logic,
+#             # HYD: afvoer niet blokkeren
+#             max_ds_afvoer=float(max_ds_afvoer_hyd),
+#             keep_min_us=False,
+#             min_upstream_aanvoer=S_us - float(gate_drop),
+#             min_upstream_afvoer=S_us,
+#         )
 
-        print(
-            f"[OK] flowcontrol {tid}: us={us_basin_id}(S={S_us:.3f}) "
-            f"ds={ds_basin_id}(M_logic={M_logic:.3f}) S_hi={S_us + band_hi:.3f}"
-        )
+#         print(
+#             f"[OK] flowcontrol {tid}: us={us_basin_id}(S={S_us:.3f}) "
+#             f"ds={ds_basin_id}(M_logic={M_logic:.3f}) S_hi={S_us + band_hi:.3f}"
+#         )
 
 
 # [356, 400, 457, 537, 544, 553, 553, 742, 743] liggen buiten gebied
@@ -2459,14 +2469,17 @@ def add_controls_supply_if_ds_low_else_drain(
 #     743,
 # ]
 
-add_controls_supply_if_ds_low_else_drain(
-    model,
-    flow_control_nodes,
-    band_hi=0.02,
-    gate_drop=0.04,
-    ds_offset=0.0,
-    max_ds_afvoer_hyd=1000.0,
+add_controllers_to_flow_control_nodes(
+    model=model, flow_control_nodes=flow_control_nodes, us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD
 )
+# add_controls_supply_if_ds_low_else_drain(
+#     model,
+#     flow_control_nodes,
+#     band_hi=0.02,
+#     gate_drop=0.04,
+#     ds_offset=0.0,
+#     max_ds_afvoer_hyd=1000.0,
+# )
 
 
 # =========================
@@ -2554,25 +2567,29 @@ def add_doorspoeling_level_or_qmin(
         )
 
 
-DOORSPOELING_TARGETS = [
-    ("KST0159 Trambaanstuw", 0.020, 357),
-    ("KST0135 Ackerenstuw", 0.012, 393),
-    ("KST0053 Lage Hamrikstuw", 0.015, 350),
-    ("KST0148 Mastuw", 0.017, 401),
-    ("KST0379 Ooster Lietsstuw", 0.034, 501),
-    ("KST0113 Lage Rietstuw", 0.013, 383),
-]
-
-add_doorspoeling_level_or_qmin(
-    model,
-    DOORSPOELING_TARGETS,
-    years=range(2015, 2026),
-    band=0.003,
-    hysteresis=0.0001,
-    qmin_on_offset=0.001,
-    qmin_off_offset=0.002,
-    aanvoer_drop=0.04,
+add_controllers_and_demand_to_flushing_nodes(
+    model=model, flushing_nodes=flushing_nodes, us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD
 )
+
+# DOORSPOELING_TARGETS = [
+#     ("KST0159 Trambaanstuw", 0.020, 357),
+#     ("KST0135 Ackerenstuw", 0.012, 393),
+#     ("KST0053 Lage Hamrikstuw", 0.015, 350),
+#     ("KST0148 Mastuw", 0.017, 401),
+#     ("KST0379 Ooster Lietsstuw", 0.034, 501),
+#     ("KST0113 Lage Rietstuw", 0.013, 383),
+# ]
+
+# add_doorspoeling_level_or_qmin(
+#     model,
+#     DOORSPOELING_TARGETS,
+#     years=range(2015, 2026),
+#     band=0.003,
+#     hysteresis=0.0001,
+#     qmin_on_offset=0.001,
+#     qmin_off_offset=0.002,
+#     aanvoer_drop=0.04,
+# )
 
 
 # %%
@@ -3375,19 +3392,19 @@ def add_flow_demand_years(
     return fd
 
 
-targets = [
-    ("KST0159 Trambaanstuw", 0.020, 357),
-    ("KST0135 Ackerenstuw", 0.012, 393),
-    ("KST0053 Lage Hamrikstuw", 0.015, 350),
-    ("KST0148 Mastuw", 0.017, 401),
-    ("KST0379 Ooster Lietsstuw", 0.034, 501),
-    ("KST0113 Lage Rietstuw", 0.013, 383),
-    ("KGM015 Spijksterpompen", 0.40, 41),
-    ("KST0169 Grote Herculesstuw", 0.20, 412),
-]
+# targets = [
+#     ("KST0159 Trambaanstuw", 0.020, 357),
+#     ("KST0135 Ackerenstuw", 0.012, 393),
+#     ("KST0053 Lage Hamrikstuw", 0.015, 350),
+#     ("KST0148 Mastuw", 0.017, 401),
+#     ("KST0379 Ooster Lietsstuw", 0.034, 501),
+#     ("KST0113 Lage Rietstuw", 0.013, 383),
+#     ("KGM015 Spijksterpompen", 0.40, 41),
+#     ("KST0169 Grote Herculesstuw", 0.20, 412),
+# ]
 
-for name, flow, nid in targets:
-    add_flow_demand_years(model, nid, flow, years=range(2015, 2026))
+# for name, flow, nid in targets:
+#     add_flow_demand_years(model, nid, flow, years=range(2015, 2026))
 
 
 # %%
@@ -3949,7 +3966,7 @@ print("Auto OUTLET controllers added:", added)
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.solver.level_difference_threshold = 0.02
+model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
