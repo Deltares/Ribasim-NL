@@ -8,6 +8,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -345,6 +346,16 @@ sanitize_node_table(
     names=names,
 )
 
+# Gemalen, inlaten, stuwen, etc krijgen meta_code_waterbeheerder, wanneer de naam nog steeds niet gevonden is
+model.pump.node.df.loc[model.pump.node.df.name == "", "name"] = model.pump.node.df[model.pump.node.df.name == ""][
+    "meta_code_waterbeheerder"
+]
+
+model.outlet.node.df.loc[model.outlet.node.df.name == "", "name"] = model.outlet.node.df[
+    model.outlet.node.df.name == ""
+]["meta_code_waterbeheerder"]
+
+
 # %% set meta_gestuwd. Omdat er geen duikers in dit model zitten mogen alle outlets en pumps op True
 model.basin.node.df["meta_gestuwd"] = False
 model.outlet.node.df["meta_gestuwd"] = True
@@ -430,7 +441,13 @@ model.link.add(boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1192])
 
 # %% Create junctions
-# model = junctionify(model)
+model = junctionify(model)
+
+# inlaten gelijk gezet aan WAM portaal: https://wamportaal.noorderzijlvest.nl/wam
+model.outlet.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]
+model.outlet.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
+model.outlet.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
+model.outlet.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
 
 
 #  %% write model

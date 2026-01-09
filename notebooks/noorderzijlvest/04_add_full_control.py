@@ -1,5 +1,4 @@
 # %%
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -7,6 +6,7 @@ import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import discrete_control, flow_demand, level_demand, outlet, pid_control, pump
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control import (
     add_controllers_and_demand_to_flushing_nodes,
     add_controllers_to_drain_nodes,
@@ -15,6 +15,7 @@ from ribasim_nl.control import (
     control_nodes_from_supply_area,
     get_drain_nodes,
 )
+from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import Point
@@ -22,36 +23,33 @@ from shapely.geometry import Point
 from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
-FORCE_REBUILD_PREPROCESSED = False  # True = altijd opnieuw preprocessen en overschrijven
-LEVEL_DIFFERENCE_THRESHOLD = 0.02
+# =========================
+# GLOBAL SETTINGS
+# =========================
 
-# execute model run
-MODEL_EXEC: bool = True
+LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
+MODEL_EXEC: bool = True  # execute model run
+AUTHORITY: str = "Noorderzijlvest"  # authority
+SHORT_NAME: str = "nzv"  # short_name used in toml-file
+CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 
-# model settings
-AUTHORITY: str = "Noorderzijlvest"
-SHORT_NAME: str = "nzv"
-MODEL_ID: str = "2025_7_0"
-
-# connect with the GoodCloud
+# =========================
+# PATHS AND CLOUD SYNC
+# =========================
 cloud = CloudStorage()
-
-# collect relevant data from the GoodCloud
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-ribasim_toml_pre = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_preprocessed_model", f"{SHORT_NAME}_pre.toml")
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(
     AUTHORITY, "verwerkt/1_ontvangen_data//20250527/gebieden_met_wateraanvoermogelijkheid_noorderzijlvest.gpkg"
 )
+aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/aanvoergebieden.gpkg")
 cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
 
 
-def cloud_path_exists(p) -> bool:
-    try:
-        return Path(p).exists()
-    except TypeError:
-        return getattr(p, "exists")()
+# =========================
+# FUNCTIONS
+# =========================
 
 
 def build_preprocessed_model(model: Model) -> Model:
@@ -85,30 +83,24 @@ def build_preprocessed_model(model: Model) -> Model:
 
 
 # =========================
-# LOAD / BUILD SWITCH
+# READ DATA
 # =========================
-pre_exists = cloud_path_exists(ribasim_toml_pre)
+model = Model.read(ribasim_toml)
+build_preprocessed_model(model)
 
-if pre_exists and not FORCE_REBUILD_PREPROCESSED:
-    print(f"Preprocessed model bestaat al → preprocess overslaan: {ribasim_toml_pre}")
-    model = Model.read(ribasim_toml_pre)
-else:
-    print("Preprocessed model wordt (opnieuw) gebouwd...")
-    model = Model.read(ribasim_toml)  # altijd opnieuw vanaf base
-    build_preprocessed_model(model)  # ✅ hier al je preprocess
-    model.write(ribasim_toml_pre)
-    print(f"Preprocessed model saved: {ribasim_toml_pre}")
-    model = Model.read(ribasim_toml_pre)
+aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
-print("Loaded preprocessed model.")
+# aanmaken node_df en specificeren supply_nodes
+# knopen die beginnen met INL, i of eindigen op i, maar niet op fictief
 
-# ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(
-    AUTHORITY, "verwerkt/1_ontvangen_data//20250527/gebieden_met_wateraanvoermogelijkheid_noorderzijlvest.gpkg"
-)
-
-cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
+for node_type in CONTROL_NODE_TYPES:
+    node_df = getattr(model, pascal_to_snake_case(node_type)).node.df
+    node_df["meta_supply_node"] = (
+        node_df["meta_code_waterbeheerder"].str.startswith("INL")
+        | node_df["meta_code_waterbeheerder"].str.startswith("i")
+        | node_df["meta_code_waterbeheerder"].str.endswith("i")
+    ) & ~(node_df.node_type.isin(CONTROL_NODE_TYPES) & node_df["meta_code_waterbeheerder"].str.endswith("fictief"))
+    getattr(model, pascal_to_snake_case(node_type)).node.df = node_df
 
 
 # %% bovenstroomse outlets op 10m3/s zetten en boundary afvoer pumps/outlets
@@ -769,7 +761,6 @@ exclude_ids = {
     457,
     730,
     726,
-    537,
 }
 exclude_rondpompen = build_exclude_rondpompen_node_ids(model)
 exclude(exclude_ids)
@@ -1684,30 +1675,30 @@ add_controller(
 # %%
 # De verbetering
 # === afvoerpumps/oulets ===
-selected_node_ids = [47]
-exclude(selected_node_ids)
-add_controller(
-    model=model,
-    node_ids=selected_node_ids,
-    listen_node_id=1332,
-    # thresholds
-    threshold_high=-1.72,
-    threshold_delta=0.001,
-    # ---- OUTLET FLOWS (afvoer) ----
-    flow_aanvoer_outlet=0.0,  # laagwater → dicht
-    max_flow_aanvoer_outlet=0.0,
-    flow_afvoer_outlet=100.0,  # hoogwater → afvoer open
-    # ---- PUMP FLOWS (afvoer) ----
-    flow_aanvoer_pump=0.0,  # laagwater → uit
-    max_flow_aanvoer_pump=0.0,
-    flow_afvoer_pump="orig",  # hoogwater → originele afvoer
-    # ---- MAX_DOWNSTREAM ----
-    max_ds_aanvoer="existing",  # state0 → h_pump / h_out
-    max_ds_afvoer=1000,  # outlets: 1000
-    delta_max_ds_aanvoer=0.0,
-    delta_max_ds_afvoer=None,
-    keep_min_us=True,
-)
+# selected_node_ids = [47]
+# exclude(selected_node_ids)
+# add_controller(
+#     model=model,
+#     node_ids=selected_node_ids,
+#     listen_node_id=1332,
+#     # thresholds
+#     threshold_high=-1.72,
+#     threshold_delta=0.001,
+#     # ---- OUTLET FLOWS (afvoer) ----
+#     flow_aanvoer_outlet=0.0,  # laagwater → dicht
+#     max_flow_aanvoer_outlet=0.0,
+#     flow_afvoer_outlet=100.0,  # hoogwater → afvoer open
+#     # ---- PUMP FLOWS (afvoer) ----
+#     flow_aanvoer_pump=0.0,  # laagwater → uit
+#     max_flow_aanvoer_pump=0.0,
+#     flow_afvoer_pump="orig",  # hoogwater → originele afvoer
+#     # ---- MAX_DOWNSTREAM ----
+#     max_ds_aanvoer="existing",  # state0 → h_pump / h_out
+#     max_ds_afvoer=1000,  # outlets: 1000
+#     delta_max_ds_aanvoer=0.0,
+#     delta_max_ds_afvoer=None,
+#     keep_min_us=True,
+# )
 
 # %% Dokwerd
 
@@ -2143,9 +2134,9 @@ def _streef(model, basin_id: int | None) -> float | None:
 
 
 # %%
-aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/aanvoergebieden.gpkg")
-aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
-
+####################################
+# Sturing aanvoergebied Jonkersvaart
+####################################
 
 # supply nodes (inlaten) definieren. Bij Noorderzijlvest alles wat begint met INL (e.g. KGM143_i, iKGM018 en INL077)
 # 37: Diepswal
@@ -2167,37 +2158,32 @@ drain_nodes = [551, 652]
 # 383: KST0113 Lage Rietstuw
 flushing_nodes = {357: 0.02, 393: 0.012, 350: 0.015, 401: 0.017, 501: 0.034, 383: 0.013}
 
-# aanmaken node_df met supply_nodes
-node_df = model.node_table().df
-node_df["supply_node"] = (
-    node_df["meta_code_waterbeheerder"].str.startswith("INL")
-    | node_df["meta_code_waterbeheerder"].str.startswith("i")
-    | node_df["meta_code_waterbeheerder"].str.endswith("i")
-    | node_df.index.isin(supply_nodes)
-)
 
 # input-variabelen bij latere functie
-polygon = aanvoergebieden_df.at["jonkersvaart", "geometry"]
-control_node_types = ["Outlet", "Pump"]
+polygon = aanvoergebieden_df.at["Jonkersvaart", "geometry"]
 ignore_intersecting_links: list[int] = [1810]
 
 # determine outflow_nodes, inflow_nodes and internal nodes
 outflow_nodes, inflow_nodes, internal_nodes = control_nodes_from_supply_area(
     model=model,
     polygon=polygon,
-    control_node_types=["Outlet", "Pump"],
+    control_node_types=CONTROL_NODE_TYPES,
     ignore_intersecting_links=ignore_intersecting_links,
 )
 
+
 # get internal drainage nodes. internal drain nodes + outflow_nodes = drain_nodes
+node_df = model.node_table().df
 control_nodes_df = node_df.loc[internal_nodes]
 drain_nodes += sorted(
-    get_drain_nodes(model=model, control_nodes_df=control_nodes_df, supply_bool_col="supply_node") + outflow_nodes
+    get_drain_nodes(model=model, control_nodes_df=control_nodes_df, supply_bool_col="meta_supply_node") + outflow_nodes
 )
 drain_nodes = [i for i in drain_nodes if i not in flushing_nodes.keys()]
 
 # supply nodes = set of nodes defined as supply-nodes + inflow_nodes (even if not defined as inflow-nodes)
-supply_nodes = sorted(set(control_nodes_df[control_nodes_df.supply_node].index.to_list() + inflow_nodes))
+supply_nodes = sorted(
+    set(control_nodes_df[control_nodes_df.meta_supply_node.astype(bool)].index.to_list() + inflow_nodes)
+)
 
 # supply nodes cannot be drain nodes at the same time
 supply_in_drain_nodes = [i for i in supply_nodes if i in drain_nodes]
@@ -2208,6 +2194,187 @@ if supply_in_drain_nodes:
 flow_control_nodes = sorted(
     [i for i in control_nodes_df.index if i not in drain_nodes + supply_nodes + list(flushing_nodes.keys())]
 )
+
+# toevoegen van alle controllers en demand-nodes
+add_controllers_to_supply_nodes(model=model, us_target_level_offset_supply=-0.04, supply_nodes=supply_nodes)
+add_controllers_to_drain_nodes(model=model, drain_nodes=drain_nodes)
+add_controllers_to_flow_control_nodes(
+    model=model, flow_control_nodes=flow_control_nodes, us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD
+)
+add_controllers_and_demand_to_flushing_nodes(
+    model=model, flushing_nodes=flushing_nodes, us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD
+)
+
+# toevoegen aan exclude
+exclude(supply_nodes + drain_nodes + flow_control_nodes + list(flushing_nodes.keys()))
+
+# %%
+####################################
+# Sturing aanvoergebied Peizerdiep
+####################################
+
+index_supply_area = "Peizerdiep"
+
+# supply nodes (inlaten) definieren. Bij Noorderzijlvest alles wat begint met INL (e.g. KGM143_i, iKGM018 en INL077)
+# 1743: Heidenheem inlaat
+# 1739: Jonkersbruginlaat
+supply_nodes = [1743, 1739, 1742]
+
+# drain nodes (uitlaten) definieren (intern, maar alléén drainerend)
+# node_id: Naam
+drain_nodes = []
+
+# doorspoeling (uitlaten) definieren
+# node_id: Naam
+flushing_nodes = {}
+
+
+# mark manually defined supply-nodes
+node_df.loc[node_df.index.isin(supply_nodes), "supply_node"] = True
+# input-variabelen bij latere functie
+polygon = aanvoergebieden_df.at[index_supply_area, "geometry"]
+ignore_intersecting_links: list[int] = [1810]
+
+# determine outflow_nodes, inflow_nodes and internal nodes
+outflow_nodes, inflow_nodes, internal_nodes = control_nodes_from_supply_area(
+    model=model,
+    polygon=polygon,
+    control_node_types=CONTROL_NODE_TYPES,
+    ignore_intersecting_links=ignore_intersecting_links,
+)
+
+exclude(outflow_nodes + inflow_nodes + internal_nodes)
+# # get internal drainage nodes. internal drain nodes + outflow_nodes = drain_nodes
+# control_nodes_df = node_df.loc[internal_nodes]
+# drain_nodes += sorted(
+#     get_drain_nodes(model=model, control_nodes_df=control_nodes_df, supply_bool_col="supply_node") + outflow_nodes
+# )
+# drain_nodes = [i for i in drain_nodes if i not in flushing_nodes.keys()]
+
+# # supply nodes = set of nodes defined as supply-nodes + inflow_nodes (even if not defined as inflow-nodes)
+# supply_nodes = sorted(set(control_nodes_df[control_nodes_df.supply_node].index.to_list() + inflow_nodes))
+
+# # supply nodes cannot be drain nodes at the same time
+# supply_in_drain_nodes = [i for i in supply_nodes if i in drain_nodes]
+# if supply_in_drain_nodes:
+#     raise ValueError(f"Nodes labeled as supply also in drain_nodes {supply_in_drain_nodes}")
+
+# # the rest are flow_control_nodes (doorlaten)
+# flow_control_nodes = sorted(
+#     [i for i in control_nodes_df.index if i not in drain_nodes + supply_nodes + list(flushing_nodes.keys())]
+# )
+
+## new function to convert outflow, inflow and internal nodes to supply, drain and flow_control nodes
+
+
+def node_table_with_from_to_nodes(model: Model, node_ids: list[int], max_iter=20):
+    # add from_node_id and to_node_id to node_select_df
+    _df = model.link.df[model.link.df.link_type == "flow"]
+    _from_node_id = _df.set_index("to_node_id")["from_node_id"]
+    _to_node_id = _df.set_index("from_node_id")["to_node_id"]
+
+    # select nodes from model node_table
+    node_df = model.node_table().df
+    _node_type = node_df.loc[:, "node_type"]
+    selected_node_df = node_df.loc[node_ids]
+
+    # find from node_id over junctions
+    selected_node_df["from_node_id"] = [_from_node_id[i] for i in selected_node_df.index]
+    unresolved_node_idx = selected_node_df[
+        [_node_type[i] == "Junction" for i in selected_node_df["from_node_id"]]
+    ].index
+
+    for _ in range(max_iter):
+        selected_node_df.loc[unresolved_node_idx, "from_node_id"] = [
+            _from_node_id[i] for i in selected_node_df.loc[unresolved_node_idx].from_node_id
+        ]
+        unresolved_node_idx = selected_node_df.loc[unresolved_node_idx][
+            [_node_type[i] == "Junction" for i in selected_node_df.loc[unresolved_node_idx, "from_node_id"]]
+        ].index
+        if not unresolved_node_idx.empty:
+            break
+
+    # find to_node_id over junctions
+    selected_node_df["to_node_id"] = [_to_node_id[i] for i in selected_node_df.index]
+    unresolved_node_idx = selected_node_df[[_node_type[i] == "Junction" for i in selected_node_df["to_node_id"]]].index
+
+    for _ in range(max_iter):
+        selected_node_df.loc[unresolved_node_idx, "to_node_id"] = [
+            _to_node_id[i] for i in selected_node_df.loc[unresolved_node_idx].to_node_id
+        ]
+        unresolved_node_idx = selected_node_df.loc[unresolved_node_idx][
+            [_node_type[i] == "Junction" for i in selected_node_df.loc[unresolved_node_idx, "to_node_id"]]
+        ].index
+        if not unresolved_node_idx.empty:
+            break
+
+    return selected_node_df
+
+
+# combine all nodes for further use
+all_nodes = internal_nodes + outflow_nodes + inflow_nodes
+selected_nodes_df = node_table_with_from_to_nodes(model, node_ids=all_nodes, max_iter=20)
+
+# check on missing supply nodes
+missing_supply_nodes = [i for i in supply_nodes if i not in all_nodes]
+if missing_supply_nodes:
+    raise ValueError(f"Supply nodes not found in connector nodes in supply area: {missing_supply_nodes}")
+
+# check on missing drain nodes
+missing_drain_nodes = [i for i in drain_nodes if i not in all_nodes]
+if missing_drain_nodes:
+    raise ValueError(f"Drain nodes not found in connector nodes in supply area: {missing_drain_nodes}")
+
+# expand user_defined supply_nodes with specified in node_table, and inflow_nodes
+selected_nodes_df.loc[supply_nodes, "meta_supply_node"] = True
+
+supply_nodes = sorted(set(selected_nodes_df[selected_nodes_df["meta_supply_node"]].index.to_list() + inflow_nodes))
+
+# expand user_defined drain_nodes with outflow_nodes
+drain_nodes = sorted(set(drain_nodes + outflow_nodes))
+
+# expand drain_nodes based on reverse connections to supply nodes
+candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes]
+supply_nodes_df = selected_nodes_df.loc[supply_nodes]
+drain_nodes = sorted(
+    [
+        i.Index
+        for i in selected_nodes_df.loc[candidates].itertuples()
+        if ((supply_nodes_df.from_node_id == i.to_node_id) & (supply_nodes_df.to_node_id == i.from_node_id)).any()
+    ]
+    + drain_nodes
+)
+
+
+graph = model.graph
+
+# get flow_control_nodes
+flow_control_nodes = []
+skip_nodes = drain_nodes + supply_nodes
+for node_id in supply_nodes:
+    flow_control_nodes += [
+        i
+        for i in downstream_nodes(graph=graph, node_id=node_id, stop_at_node_ids=drain_nodes)
+        if (i in all_nodes) and (i not in skip_nodes)
+    ]
+
+flow_control_nodes = sorted(set(flow_control_nodes))
+drain_nodes = sorted([i for i in all_nodes if i not in flow_control_nodes + supply_nodes])
+
+
+# toevoegen van alle controllers en demand-nodes
+add_controllers_to_supply_nodes(model=model, us_target_level_offset_supply=-0.04, supply_nodes=supply_nodes)
+add_controllers_to_drain_nodes(model=model, drain_nodes=drain_nodes)
+add_controllers_to_flow_control_nodes(
+    model=model, flow_control_nodes=flow_control_nodes, us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD
+)
+add_controllers_and_demand_to_flushing_nodes(
+    model=model, flushing_nodes=flushing_nodes, us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD
+)
+
+# toevoegen aan exclude
+exclude(supply_nodes + drain_nodes + flow_control_nodes + list(flushing_nodes.keys()))
+
 
 # %% 292 mist hier
 # SUPPLY_NODES = [
@@ -2245,8 +2412,6 @@ flow_control_nodes = sorted(
 #     skip_if_no_upstream=True,
 # )
 
-add_controllers_to_supply_nodes(model=model, us_target_level_offset_supply=-0.04, supply_nodes=supply_nodes)
-exclude(supply_nodes)
 
 # =========================
 # 2) DRAIN controllers (afvoerknopen)
@@ -2274,8 +2439,7 @@ exclude(supply_nodes)
 #     "delta_us_afvoer": None,
 # }
 
-add_controllers_to_drain_nodes(model=model, drain_nodes=drain_nodes)
-exclude(drain_nodes)
+
 # def add_controllers_to_drain_nodes(
 #     model,
 #     target_nodes,
@@ -2469,9 +2633,7 @@ exclude(drain_nodes)
 #     743,
 # ]
 
-add_controllers_to_flow_control_nodes(
-    model=model, flow_control_nodes=flow_control_nodes, us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD
-)
+
 # add_controls_supply_if_ds_low_else_drain(
 #     model,
 #     flow_control_nodes,
@@ -2487,89 +2649,85 @@ add_controllers_to_flow_control_nodes(
 # =========================
 
 
-def add_doorspoeling_level_or_qmin(
-    model,
-    targets,  # [(name, demand_m3s, node_id)]
-    *,
-    years=range(2015, 2026),
-    band: float = 0.003,
-    hysteresis: float = 0.0001,
-    qmin_on_offset: float = 0.001,
-    qmin_off_offset: float = 0.002,
-    aanvoer_drop: float = 0.06,  # jouw huidige gedrag; zet op 0.04 als je 4cm wil
-    skip_if_no_upstream: bool = False,
-):
-    node_ids = [int(nid) for _, _, nid in targets]
-    exclude(node_ids)
+# def add_doorspoeling_level_or_qmin(
+#     model,
+#     targets,  # [(name, demand_m3s, node_id)]
+#     *,
+#     years=range(2015, 2026),
+#     band: float = 0.003,
+#     hysteresis: float = 0.0001,
+#     qmin_on_offset: float = 0.001,
+#     qmin_off_offset: float = 0.002,
+#     aanvoer_drop: float = 0.06,  # jouw huidige gedrag; zet op 0.04 als je 4cm wil
+#     skip_if_no_upstream: bool = False,
+# ):
+#     node_ids = [int(nid) for _, _, nid in targets]
+#     exclude(node_ids)
 
-    basin_ids = _basin_ids(model)
+#     basin_ids = _basin_ids(model)
 
-    for name, demand_m3s, nid in targets:
-        nid = int(nid)
+#     for name, demand_m3s, nid in targets:
+#         nid = int(nid)
 
-        # upstream basin via inkomende link (Basin -> target)
-        us_basin = next(
-            (
-                r.from_node_id
-                for r in model.link.df.itertuples(index=False)
-                if int(r.to_node_id) == nid and int(r.from_node_id) in basin_ids
-            ),
-            None,
-        )
-        S = _streef(model, us_basin)
+#         # upstream basin via inkomende link (Basin -> target)
+#         us_basin = next(
+#             (
+#                 r.from_node_id
+#                 for r in model.link.df.itertuples(index=False)
+#                 if int(r.to_node_id) == nid and int(r.from_node_id) in basin_ids
+#             ),
+#             None,
+#         )
+#         S = _streef(model, us_basin)
 
-        if us_basin is None or S is None:
-            msg = f"[warn] doorspoeling {nid} ({name}): us_basin/streef ontbreekt"
-            if skip_if_no_upstream:
-                print(msg + " -> skip")
-                continue
-            raise ValueError(msg)
+#         if us_basin is None or S is None:
+#             msg = f"[warn] doorspoeling {nid} ({name}): us_basin/streef ontbreekt"
+#             if skip_if_no_upstream:
+#                 print(msg + " -> skip")
+#                 continue
+#             raise ValueError(msg)
 
-        S = float(S)
+#         S = float(S)
 
-        t_lvl, lvl_hi = seasonal_steps_apr_oct(
-            years=years,
-            on_value=S + band,
-            off_value=-1e6,
-        )
-        lvl_lo = np.where(lvl_hi > -1e5, lvl_hi - hysteresis, lvl_hi)
+#         t_lvl, lvl_hi = seasonal_steps_apr_oct(
+#             years=years,
+#             on_value=S + band,
+#             off_value=-1e6,
+#         )
+#         lvl_lo = np.where(lvl_hi > -1e5, lvl_hi - hysteresis, lvl_hi)
 
-        qmin_on = float(demand_m3s + qmin_on_offset)
-        qmin_off = float(demand_m3s + qmin_off_offset)
+#         qmin_on = float(demand_m3s + qmin_on_offset)
+#         qmin_off = float(demand_m3s + qmin_off_offset)
 
-        add_controller(
-            model=model,
-            node_ids=[nid],
-            dc_mode="level_or_qmin",
-            listen_node_id=int(us_basin),
-            threshold_high=S + band,
-            threshold_delta=hysteresis,
-            qmin_on=qmin_on,
-            qmin_off=qmin_off,
-            q_listen_node_id=nid,
-            level_threshold_time=t_lvl,
-            level_threshold_high=lvl_hi,
-            level_threshold_low=lvl_lo,
-            keep_min_us=False,
-            min_upstream_afvoer=S,
-            min_upstream_aanvoer=S - float(aanvoer_drop),
-            max_ds_afvoer=1000,
-            max_ds_aanvoer=1000,
-            flow_aanvoer_outlet=0.0,
-            max_flow_aanvoer_outlet=pd.NA,
-            flow_afvoer_outlet="orig",
-            flow_aanvoer_pump=0.0,
-            flow_afvoer_pump="orig",
-        )
+#         add_controller(
+#             model=model,
+#             node_ids=[nid],
+#             dc_mode="level_or_qmin",
+#             listen_node_id=int(us_basin),
+#             threshold_high=S + band,
+#             threshold_delta=hysteresis,
+#             qmin_on=qmin_on,
+#             qmin_off=qmin_off,
+#             q_listen_node_id=nid,
+#             level_threshold_time=t_lvl,
+#             level_threshold_high=lvl_hi,
+#             level_threshold_low=lvl_lo,
+#             keep_min_us=False,
+#             min_upstream_afvoer=S,
+#             min_upstream_aanvoer=S - float(aanvoer_drop),
+#             max_ds_afvoer=1000,
+#             max_ds_aanvoer=1000,
+#             flow_aanvoer_outlet=0.0,
+#             max_flow_aanvoer_outlet=pd.NA,
+#             flow_afvoer_outlet="orig",
+#             flow_aanvoer_pump=0.0,
+#             flow_afvoer_pump="orig",
+#         )
 
-        print(
-            f"[OK] doorspoeling {nid} ({name}): us={us_basin} S={S:.3f} qmin_on={qmin_on:.3f} qmin_off={qmin_off:.3f}"
-        )
+#         print(
+#             f"[OK] doorspoeling {nid} ({name}): us={us_basin} S={S:.3f} qmin_on={qmin_on:.3f} qmin_off={qmin_off:.3f}"
+#         )
 
-
-add_controllers_and_demand_to_flushing_nodes(
-    model=model, flushing_nodes=flushing_nodes, us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD
-)
 
 # DOORSPOELING_TARGETS = [
 #     ("KST0159 Trambaanstuw", 0.020, 357),
@@ -2596,195 +2754,196 @@ add_controllers_and_demand_to_flushing_nodes(
 # === Peizerdiep,
 # listen_node_id: max ds_aanvoer niet verhogen!
 
-target_nodes = [446, 736, 719, 644, 589, 363, 493, 636, 634, 624, 340, 332, 403]
-exclude(target_nodes)
-# interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
-add_controller(
-    model=model,
-    node_ids=target_nodes,
-    listen_node_id=1215,
-    # thresholds
-    threshold_high=-0.81,
-    threshold_delta=0.02,
-    # --- flows ---
-    flow_aanvoer_outlet=20,  # of bv. 0.0
-    flow_afvoer_outlet=100,  # of bv. 50.0
-    flow_afvoer_pump="orig",  # of bv. 80.0
-    flow_aanvoer_pump="orig",
-    # --- max downstream levels ---
-    delta_max_ds_aanvoer=0.02,
-    max_ds_afvoer=1000,  # voorkomt NaN
-    keep_min_us=True,
-)
 
-target_nodes = [
-    322,
-    567,
-    494,
-]
-exclude(target_nodes)
-add_controller(
-    model=model,
-    node_ids=target_nodes,
-    listen_node_id=1215,
-    # thresholds
-    threshold_high=-0.81,
-    threshold_delta=0.02,
-    # --- flows ---
-    flow_aanvoer_outlet=20,
-    flow_afvoer_outlet=100,  # of bv. 50.0
-    flow_afvoer_pump="orig",  # of bv. 80.0
-    flow_aanvoer_pump="orig",
-    # --- max downstream levels ---
-    max_ds_aanvoer="existing",
-    max_ds_afvoer=1000,  # voorkomt NaN
-    # --- upstream constraint behouden ---
-    keep_min_us=True,
-)
+# target_nodes = [446, 736, 719, 644, 589, 363, 493, 636, 634, 624, 340, 332, 403]
+# exclude(target_nodes)
+# # interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
+# add_controller(
+#     model=model,
+#     node_ids=target_nodes,
+#     listen_node_id=1215,
+#     # thresholds
+#     threshold_high=-0.81,
+#     threshold_delta=0.02,
+#     # --- flows ---
+#     flow_aanvoer_outlet=20,  # of bv. 0.0
+#     flow_afvoer_outlet=100,  # of bv. 50.0
+#     flow_afvoer_pump="orig",  # of bv. 80.0
+#     flow_aanvoer_pump="orig",
+#     # --- max downstream levels ---
+#     delta_max_ds_aanvoer=0.02,
+#     max_ds_afvoer=1000,  # voorkomt NaN
+#     keep_min_us=True,
+# )
 
-target_nodes = [740, 741, 560, 44, 638, 633, 606, 575, 327]
-exclude(target_nodes)
-# afvoerpumps/oulets aanvoer dicht, afvoer open, ===
-add_controller(
-    model=model,
-    node_ids=target_nodes,
-    listen_node_id=1215,
-    # thresholds
-    threshold_high=-0.81,
-    threshold_delta=0.02,
-    # ---- OUTLET FLOWS (afvoer) ----
-    flow_aanvoer_outlet=0.0,  # laagwater → dicht
-    max_flow_aanvoer_outlet=0.0,
-    flow_afvoer_outlet=100.0,  # hoogwater → afvoer open
-    # ---- PUMP FLOWS (afvoer) ----
-    flow_aanvoer_pump=0.0,  # laagwater → uit
-    max_flow_aanvoer_pump=0.0,
-    flow_afvoer_pump="orig",  # hoogwater → originele afvoer
-    # ---- MAX_DOWNSTREAM ----
-    max_ds_aanvoer="existing",  # state0 → h_pump / h_out
-    max_ds_afvoer=1000,  # controllers werkt niet goed met NAN waarden daarom 1000
-    delta_us_afvoer=0.04,  # Stuw hoger in winter dan zomer
-    keep_min_us=True,
-)
+# target_nodes = [
+#     322,
+#     567,
+#     494,
+# ]
+# exclude(target_nodes)
+# add_controller(
+#     model=model,
+#     node_ids=target_nodes,
+#     listen_node_id=1215,
+#     # thresholds
+#     threshold_high=-0.81,
+#     threshold_delta=0.02,
+#     # --- flows ---
+#     flow_aanvoer_outlet=20,
+#     flow_afvoer_outlet=100,  # of bv. 50.0
+#     flow_afvoer_pump="orig",  # of bv. 80.0
+#     flow_aanvoer_pump="orig",
+#     # --- max downstream levels ---
+#     max_ds_aanvoer="existing",
+#     max_ds_afvoer=1000,  # voorkomt NaN
+#     # --- upstream constraint behouden ---
+#     keep_min_us=True,
+# )
 
-# Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
-target_nodes = [45, 1739, 1742, 1751]
-exclude(target_nodes)
-add_controller(
-    model=model,
-    node_ids=target_nodes,
-    listen_node_id=1215,
-    # thresholds
-    threshold_high=-0.81,
-    threshold_delta=0.02,
-    # flows:
-    flow_aanvoer_outlet=20,  # open bij laagwater → laat water in
-    flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
-    max_flow_afvoer_outlet=0,
-    flow_afvoer_pump=0,
-    max_flow_afvoer_pump=0,
-    flow_aanvoer_pump="orig",
-    # max_ds:
-    max_ds_aanvoer="existing",
-    delta_max_ds_aanvoer=0.04,  # extra aanvoer ivm Manning 1743
-    max_ds_afvoer=9999,
-    keep_min_us=True,
-)
-# Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
-target_nodes = [1758, 48]
-exclude(target_nodes)
-add_controller(
-    model=model,
-    node_ids=target_nodes,
-    listen_node_id=1332,
-    # thresholds
-    threshold_high=-1.7,
-    threshold_delta=0.001,
-    # flows:
-    flow_aanvoer_outlet=20,  # open bij laagwater → laat water in
-    flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
-    max_flow_afvoer_outlet=0,
-    flow_afvoer_pump=0,
-    max_flow_afvoer_pump=0,
-    flow_aanvoer_pump="orig",
-    # max_ds:
-    max_ds_aanvoer="existing",
-    delta_max_ds_aanvoer=0.04,  # extra aanvoer ivm Manning 1743
-    max_ds_afvoer=9999,
-    keep_min_us=True,
-)
+# target_nodes = [740, 741, 560, 44, 638, 633, 606, 575, 327]
+# exclude(target_nodes)
+# # afvoerpumps/oulets aanvoer dicht, afvoer open, ===
+# add_controller(
+#     model=model,
+#     node_ids=target_nodes,
+#     listen_node_id=1215,
+#     # thresholds
+#     threshold_high=-0.81,
+#     threshold_delta=0.02,
+#     # ---- OUTLET FLOWS (afvoer) ----
+#     flow_aanvoer_outlet=0.0,  # laagwater → dicht
+#     max_flow_aanvoer_outlet=0.0,
+#     flow_afvoer_outlet=100.0,  # hoogwater → afvoer open
+#     # ---- PUMP FLOWS (afvoer) ----
+#     flow_aanvoer_pump=0.0,  # laagwater → uit
+#     max_flow_aanvoer_pump=0.0,
+#     flow_afvoer_pump="orig",  # hoogwater → originele afvoer
+#     # ---- MAX_DOWNSTREAM ----
+#     max_ds_aanvoer="existing",  # state0 → h_pump / h_out
+#     max_ds_afvoer=1000,  # controllers werkt niet goed met NAN waarden daarom 1000
+#     delta_us_afvoer=0.04,  # Stuw hoger in winter dan zomer
+#     keep_min_us=True,
+# )
+
+# # Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
+# target_nodes = [45, 1739, 1742, 1751]
+# exclude(target_nodes)
+# add_controller(
+#     model=model,
+#     node_ids=target_nodes,
+#     listen_node_id=1215,
+#     # thresholds
+#     threshold_high=-0.81,
+#     threshold_delta=0.02,
+#     # flows:
+#     flow_aanvoer_outlet=20,  # open bij laagwater → laat water in
+#     flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
+#     max_flow_afvoer_outlet=0,
+#     flow_afvoer_pump=0,
+#     max_flow_afvoer_pump=0,
+#     flow_aanvoer_pump="orig",
+#     # max_ds:
+#     max_ds_aanvoer="existing",
+#     delta_max_ds_aanvoer=0.04,  # extra aanvoer ivm Manning 1743
+#     max_ds_afvoer=9999,
+#     keep_min_us=True,
+# )
+# # Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
+# target_nodes = [1758, 48]
+# exclude(target_nodes)
+# add_controller(
+#     model=model,
+#     node_ids=target_nodes,
+#     listen_node_id=1332,
+#     # thresholds
+#     threshold_high=-1.7,
+#     threshold_delta=0.001,
+#     # flows:
+#     flow_aanvoer_outlet=20,  # open bij laagwater → laat water in
+#     flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
+#     max_flow_afvoer_outlet=0,
+#     flow_afvoer_pump=0,
+#     max_flow_afvoer_pump=0,
+#     flow_aanvoer_pump="orig",
+#     # max_ds:
+#     max_ds_aanvoer="existing",
+#     delta_max_ds_aanvoer=0.04,  # extra aanvoer ivm Manning 1743
+#     max_ds_afvoer=9999,
+#     keep_min_us=True,
+# )
 
 
-# Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
-# extra aanvoer voor 1743 door max_downstream +0.04 ivm Manning 1743
-target_nodes = [1743]
-exclude(target_nodes)
-add_controller(
-    model=model,
-    node_ids=target_nodes,
-    listen_node_id=1215,
-    # thresholds
-    threshold_high=-0.81,
-    threshold_delta=0.02,
-    # flows:
-    flow_aanvoer_outlet=20,  # open bij laagwater → laat water in
-    flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
-    max_flow_afvoer_outlet=0,
-    max_flow_aanvoer_outlet=0.5,
-    flow_afvoer_pump=0,
-    max_flow_afvoer_pump=0,
-    flow_aanvoer_pump="orig",
-    # max_ds:
-    max_ds_aanvoer="existing",
-    delta_max_ds_aanvoer=0.04,
-    max_ds_afvoer=9999,
-    keep_min_us=True,
-)
+# # Aanvoer inlaten/pumps (uit bij afvoer en aan bij aanvoer)
+# # extra aanvoer voor 1743 door max_downstream +0.04 ivm Manning 1743
+# target_nodes = [1743]
+# exclude(target_nodes)
+# add_controller(
+#     model=model,
+#     node_ids=target_nodes,
+#     listen_node_id=1215,
+#     # thresholds
+#     threshold_high=-0.81,
+#     threshold_delta=0.02,
+#     # flows:
+#     flow_aanvoer_outlet=20,  # open bij laagwater → laat water in
+#     flow_afvoer_outlet=0,  # dicht bij hoogwater → geen afvoer
+#     max_flow_afvoer_outlet=0,
+#     max_flow_aanvoer_outlet=0.5,
+#     flow_afvoer_pump=0,
+#     max_flow_afvoer_pump=0,
+#     flow_aanvoer_pump="orig",
+#     # max_ds:
+#     max_ds_aanvoer="existing",
+#     delta_max_ds_aanvoer=0.04,
+#     max_ds_afvoer=9999,
+#     keep_min_us=True,
+# )
 
-# interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
+# # interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
 
-target_nodes = [435, 499, 748, 326, 568, 569, 563, 570, 571, 572, 737, 738, 739]
-exclude(target_nodes)
-add_controller(
-    model=model,
-    node_ids=target_nodes,
-    listen_node_id=1215,
-    # thresholds
-    threshold_high=-0.81,
-    threshold_delta=0.02,
-    # threshold_low=7.50,        # optioneel: hysterese
-    # --- flows ---
-    flow_aanvoer_outlet=20,  # of bv. 0.0
-    flow_afvoer_outlet=100,  # of bv. 50.0
-    flow_afvoer_pump="orig",  # of bv. 80.0
-    flow_aanvoer_pump="orig",
-    # --- max downstream levels ---
-    delta_max_ds_aanvoer=0.02,
-    max_ds_afvoer=1000,  # voorkomt NaN
-    keep_min_us=True,
-)
+# target_nodes = [435, 499, 748, 326, 568, 569, 563, 570, 571, 572, 737, 738, 739]
+# exclude(target_nodes)
+# add_controller(
+#     model=model,
+#     node_ids=target_nodes,
+#     listen_node_id=1215,
+#     # thresholds
+#     threshold_high=-0.81,
+#     threshold_delta=0.02,
+#     # threshold_low=7.50,        # optioneel: hysterese
+#     # --- flows ---
+#     flow_aanvoer_outlet=20,  # of bv. 0.0
+#     flow_afvoer_outlet=100,  # of bv. 50.0
+#     flow_afvoer_pump="orig",  # of bv. 80.0
+#     flow_aanvoer_pump="orig",
+#     # --- max downstream levels ---
+#     delta_max_ds_aanvoer=0.02,
+#     max_ds_afvoer=1000,  # voorkomt NaN
+#     keep_min_us=True,
+# )
 
-# interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
+# # interne gemalen/outlets in peilgebied die zowel aanvoer als afvoer moeten kunnen doen
 
-target_nodes = [452, 651]
-exclude(target_nodes)
-add_controller(
-    model=model,
-    node_ids=target_nodes,
-    listen_node_id=1332,
-    # thresholds
-    threshold_high=-1.7,
-    threshold_delta=0.001,
-    # --- flows ---
-    flow_aanvoer_outlet=20,  # of bv. 0.0
-    flow_afvoer_outlet=100,  # of bv. 50.0
-    flow_afvoer_pump="orig",  # of bv. 80.0
-    flow_aanvoer_pump="orig",
-    # --- max downstream levels ---
-    delta_max_ds_aanvoer=0.02,
-    max_ds_afvoer=1000,  # voorkomt NaN
-    keep_min_us=True,
-)
+# target_nodes = [452, 651]
+# exclude(target_nodes)
+# add_controller(
+#     model=model,
+#     node_ids=target_nodes,
+#     listen_node_id=1332,
+#     # thresholds
+#     threshold_high=-1.7,
+#     threshold_delta=0.001,
+#     # --- flows ---
+#     flow_aanvoer_outlet=20,  # of bv. 0.0
+#     flow_afvoer_outlet=100,  # of bv. 50.0
+#     flow_afvoer_pump="orig",  # of bv. 80.0
+#     flow_aanvoer_pump="orig",
+#     # --- max downstream levels ---
+#     delta_max_ds_aanvoer=0.02,
+#     max_ds_afvoer=1000,  # voorkomt NaN
+#     keep_min_us=True,
+# )
 
 
 # %%
@@ -3555,8 +3714,8 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 121, "max_downstream_le
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 609, "min_upstream_level"] = -0.28
 
 # Vlakbij Eelderdiep
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 739, "min_upstream_level"] = -0.72
-model.pump.static.df.loc[model.pump.static.df.node_id == 299, "max_downstream_level"] = -0.72
+# model.outlet.static.df.loc[model.outlet.static.df.node_id == 739, "min_upstream_level"] = -0.72
+# model.pump.static.df.loc[model.pump.static.df.node_id == 299, "max_downstream_level"] = -0.72
 
 # Nieuwstad Aanvoergemaal en Spijk
 model.pump.static.df.loc[model.pump.static.df.node_id == 136, "max_downstream_level"] = -0.69
@@ -3958,6 +4117,22 @@ added = add_auto_controllers_for_missing_outlets(
     delta_us_aanvoer=-0.04,
 )
 print("Auto OUTLET controllers added:", added)
+
+
+# make sure all uncontrolled pumps/outlets do not stop at downstream level
+# controller_node_ids = pd.concat(
+#     [
+#         model.link.df[model.link.df.link_type == "control"].from_node_id,
+#         model.link.df[model.link.df.link_type == "control"].to_node_id,
+#     ]
+# ).unique()
+remove_max_donwstream_level_node_ids = [537]
+model.pump.static.df.loc[
+    model.pump.static.df.node_id.isin(remove_max_donwstream_level_node_ids), "max_downstream_level"
+] = float("nan")
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin(remove_max_donwstream_level_node_ids), "max_downstream_level"
+] = float("nan")
 
 
 # %%

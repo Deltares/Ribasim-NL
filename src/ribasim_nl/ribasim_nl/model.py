@@ -331,9 +331,10 @@ class Model(Model):
         """Get basin node without area"""
         return self.basin.node.df[~self.basin.node.df.index.isin(self.basin.area.df.node_id)]
 
-    def upstream_node_id(self, node_id: int):
+    def upstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get upstream node_id(s)"""
         _df = self.link.df.set_index("to_node_id")
+        _df = _df[_df.link_type == link_type]
         if node_id in _df.index:
             return _df.loc[node_id].from_node_id
 
@@ -347,9 +348,10 @@ class Model(Model):
         else:
             return self.basin.profile[upstream_node_id]
 
-    def downstream_node_id(self, node_id: int):
+    def downstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get downstream node_id(s)"""
         _df = self.link.df.set_index("from_node_id")
+        _df = _df[_df.link_type == link_type]
         if node_id in _df.index:
             return _df.loc[node_id].to_node_id
 

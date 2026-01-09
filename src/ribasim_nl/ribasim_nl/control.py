@@ -1,5 +1,8 @@
 # %%
 
+import math
+from typing import Literal
+
 import pandas as pd
 from ribasim import Node, nodes
 from ribasim.nodes import discrete_control, flow_demand
@@ -9,22 +12,47 @@ from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 
 
-def _offset_new_node(node: Node, x_offset: float = 10, y_offset: float = 0, **kwargs) -> Node:
-    """Create a new Ribasim.Node with x_offset and y_offset of existing node."""
+def _offset_new_node(node: Node, offset: float = 10, angle: int = 90, **kwargs) -> Node:
+    """Create a new Ribasim.Node with from offset (distance) and angle (degrees, North = 0)"""
+    theta = math.radians(angle)
+
+    x_offset = offset * math.sin(theta)
+    y_offset = offset * math.cos(theta)
+
     return Node(geometry=Point(node.geometry.x + x_offset, node.geometry.y + y_offset), **kwargs)
+
+
+def _recursive_search_over_junctions(
+    model: Model,
+    node_id: int,
+    direction: Literal["upstream", "downstream"],
+    connector_node_id: int | None = None,
+):
+    """Recursive downstream basin search over Junctions"""
+    # define connector_node_id so we can raise Exception on connector-Node
+    if connector_node_id is None:
+        connector_node_id = node_id
+    dir_node_id = getattr(model, f"{direction}_node_id")(node_id=node_id)
+
+    # raise missing downstream basin
+    if dir_node_id is None:
+        raise ValueError(f"Connector-Node {connector_node_id} does not have a {direction} Node")
+
+    dir_node_type = model.get_node_type(node_id=dir_node_id)
+    if dir_node_type != "Junction":
+        return dir_node_id, dir_node_type
+
+    # recursieve stap
+    return _recursive_search_over_junctions(
+        model=model, node_id=dir_node_id, direction=direction, connector_node_id=connector_node_id
+    )
 
 
 def _upstream_target_level(
     model: Model, node_id: int, target_level_column: str, allow_missing: bool = True
 ) -> tuple[int, float | None]:
     """Get upstream node_id and target-level of a control-node"""
-    us_node_id = model.upstream_node_id(node_id=node_id)
-
-    # without an upstream node, there is no upstream target-level
-    if us_node_id is None:
-        raise ValueError(f"Control Node {node_id} does not have an upstream node")
-
-    us_node_type = model.get_node_type(node_id=us_node_id)
+    us_node_id, us_node_type = _recursive_search_over_junctions(model=model, direction="upstream", node_id=node_id)
 
     # if Basin, we read the target_level from the basin.Area
     if us_node_type == "Basin":
@@ -51,13 +79,8 @@ def _upstream_target_level(
 
 def _downstream_target_level(model: Model, node_id: int, target_level_column: str) -> tuple[int, float]:
     """Get downstream node_id and target-level of a control-node"""
-    ds_node_id = model.downstream_node_id(node_id=node_id)
-
-    # without an downstream node, there is no upstream target-level
-    if ds_node_id is None:
-        raise ValueError(f"Control Node {node_id} does not have a downstream node")
-
-    ds_node_type = model.get_node_type(node_id=ds_node_id)
+    # recursive search downstream basin (over junctions)
+    ds_node_id, ds_node_type = _recursive_search_over_junctions(model=model, direction="downstream", node_id=node_id)
 
     # downstream_target_levels are always managed for basins
     if ds_node_type != "Basin":
@@ -91,13 +114,11 @@ def discrete_control_tables_single_basin(listen_node_id: int, control_state: lis
     ]
 
 
-def add_and_connect_discrete_control_node(
-    model: Model, node_id: int, x_offset: float, y_offset: float, tables=list, **kwargs
-):
+def add_and_connect_discrete_control_node(model: Model, node_id: int, offset: float, angle: int, tables=list, **kwargs):
     """Add and connect a DiscreteControl Node to an existing node."""
     connector_node = model.get_node(node_id)
     control_node = model.discrete_control.add(
-        _offset_new_node(connector_node, x_offset=x_offset, y_offset=y_offset, **kwargs), tables
+        _offset_new_node(connector_node, offset=offset, angle=angle, **kwargs), tables
     )
     model.link.add(control_node, connector_node)
 
@@ -140,7 +161,8 @@ def control_nodes_from_supply_area(
     node_df = model.node_table().df
 
     # intersecting links and direction (if not outflow, then inward)
-    link_intersect_df = model.link.df[model.link.df.intersects(exterior)]
+    link_df = model.link.df[model.link.df.link_type == "flow"]
+    link_intersect_df = link_df[link_df.intersects(exterior)]
     link_intersect_df.loc[:, ["outflow"]] = node_df.loc[link_intersect_df["from_node_id"]].within(polygon).to_numpy()
     link_intersect_df.loc[:, ["from_node_type"]] = node_df.loc[
         link_intersect_df["from_node_id"], "node_type"
@@ -156,30 +178,34 @@ def control_nodes_from_supply_area(
 
     if links_without_control:
         raise ValueError(
-            f"Found intersecting links without control node (!): {links_without_control}. Fix supply area or specify these links in `ignore_intersecting_links` list"
+            f"Found intersecting links without node of type {control_node_types} (!): {links_without_control}. Fix supply area or specify these links in `ignore_intersecting_links` list"
         )
 
     # finding outflow nodes (outbound the supply area)
     outflow_links = link_intersect_df[link_intersect_df.outflow]
     outflow_nodes = sorted(
-        outflow_links.loc[outflow_links.from_node_type.isin(control_node_types), "from_node_id"].to_list()
-        + outflow_links.loc[outflow_links.to_node_type.isin(control_node_types), "to_node_id"].to_list()
+        set(
+            outflow_links.loc[outflow_links.from_node_type.isin(control_node_types), "from_node_id"].to_list()
+            + outflow_links.loc[outflow_links.to_node_type.isin(control_node_types), "to_node_id"].to_list()
+        )
     )
 
     # finding inflow nodes (inbound the supply area)
     inflow_links = link_intersect_df[~link_intersect_df.outflow]
     inflow_nodes = sorted(
-        inflow_links.loc[inflow_links.from_node_type.isin(control_node_types), "from_node_id"].to_list()
-        + inflow_links.loc[inflow_links.to_node_type.isin(control_node_types), "to_node_id"].to_list()
+        set(
+            inflow_links.loc[inflow_links.from_node_type.isin(control_node_types), "from_node_id"].to_list()
+            + inflow_links.loc[inflow_links.to_node_type.isin(control_node_types), "to_node_id"].to_list()
+        )
     )
 
     internal_nodes = node_df[node_df.node_type.isin(control_node_types) & node_df.within(polygon)]
-    internal_nodes = [i for i in internal_nodes.index if i not in inflow_nodes + outflow_nodes]
+    internal_nodes = sorted(i for i in internal_nodes.index if i not in inflow_nodes + outflow_nodes)
 
     return outflow_nodes, inflow_nodes, internal_nodes
 
 
-def get_drain_nodes(model: Model, control_nodes_df: pd.DataFrame, supply_bool_col: str = "supply_node") -> list:
+def get_drain_nodes(model: Model, control_nodes_df: pd.DataFrame, supply_bool_col: str = "meta_supply_node") -> list:
     """Extract drain nodes (only discharging a supply area) from a dataframe of control_nodes.
 
     Parameters
@@ -189,7 +215,7 @@ def get_drain_nodes(model: Model, control_nodes_df: pd.DataFrame, supply_bool_co
     control_nodes_df : pd.DataFrame
         Nodes with control and an indiction of supply-type
     supply_bool_col : str, optional
-        Column in control_nodes_df with indiction of supply, by default "supply_node"
+        Column in control_nodes_df with indiction of supply, by default "meta_supply_node"
 
     Returns
     -------
@@ -202,8 +228,9 @@ def get_drain_nodes(model: Model, control_nodes_df: pd.DataFrame, supply_bool_co
         Connector nodes not marked as supply nor drain that are defined in opposite direction between two basins (one must be drain, the other supply)
     """
     # from_node_id and to_nodes to table
-    from_node_id = model.link.df.set_index("to_node_id")["from_node_id"]
-    to_node_id = model.link.df.set_index("from_node_id")["to_node_id"]
+    _df = model.link.df[model.link.df.link_type == "flow"]
+    from_node_id = _df.set_index("to_node_id")["from_node_id"]
+    to_node_id = _df.set_index("from_node_id")["to_node_id"]
 
     # alle connector-nodes
     control_nodes_df["from_node_id"] = [from_node_id[i] for i in control_nodes_df.index]
@@ -215,7 +242,7 @@ def get_drain_nodes(model: Model, control_nodes_df: pd.DataFrame, supply_bool_co
     # extract drain_nodes
     drain_nodes = [
         i.Index
-        for i in control_nodes_df[~control_nodes_df[supply_bool_col]].itertuples()
+        for i in control_nodes_df[~control_nodes_df[supply_bool_col].astype(bool)].itertuples()
         if ((supply_nodes_df.from_node_id == i.to_node_id) & (supply_nodes_df.to_node_id == i.from_node_id)).any()
     ]
 
@@ -240,8 +267,8 @@ def add_controllers_to_drain_nodes(
     model: Model,
     drain_nodes: list[int],
     target_level_column: str = "meta_streefpeil",
-    x_offset: float = 10,
-    y_offset: float = 0,
+    control_node_offset: float = 10,
+    control_node_angle: int = 90,
     name: str = "uitlaat",
 ):
     """Add control nodes to connector nodes draining a system/supply-area
@@ -256,10 +283,12 @@ def add_controllers_to_drain_nodes(
         List of connector node_ids having a draining function
     target_level_column : str, optional
         Column in Basin.Area table that contains target level, by default "meta_streefpeil"
-    x_offset : float, optional
-        x_offset control-node with respect to drain node, by default 10
-    y_offset : float, optional
-        y_offset control-node with respect to drain node, by default 0
+    control_node_offset : float, optional
+        Offset control-node with respect to connector-node, by default 10
+    control_node_angle : int, optional
+        Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
+    name : str, optional
+        Name assigned to control-nodes, by default "uitlaat"
 
     Raises
     ------
@@ -307,7 +336,12 @@ def add_controllers_to_drain_nodes(
         )
 
         add_and_connect_discrete_control_node(
-            model=model, node_id=node_id, x_offset=x_offset, y_offset=y_offset, tables=tables, name=name
+            model=model,
+            node_id=node_id,
+            offset=control_node_offset,
+            angle=control_node_angle,
+            tables=tables,
+            name=f"{name}: {us_target_level:.2f} [m+NAP]",
         )
 
 
@@ -316,8 +350,8 @@ def add_controllers_to_supply_nodes(
     supply_nodes: list[int],
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
-    x_offset: float = 10,
-    y_offset: float = 0,
+    control_node_offset: float = 10,
+    control_node_angle: int = 90,
     name: str = "inlaat",
 ):
     """Add control nodes to connector nodes supplying a system/supply-area
@@ -332,10 +366,12 @@ def add_controllers_to_supply_nodes(
         Lowering upstream target levels in supply situation, by default -0.04
     target_level_column : str, optional
         Column in Basin.Area table that contains target level, by default "meta_streefpeil"
-    x_offset : float, optional
-        x_offset control-node with respect to drain node, by default 10
-    y_offset : float, optional
-        y_offset control-node with respect to drain node, by default 0
+    control_node_offset : float, optional
+        Offset control-node with respect to connector-node, by default 10
+    control_node_angle : int, optional
+        Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
+    name : str, optional
+        Name assigned to control-nodes, by default "inlaat"
     """
     for node_id in supply_nodes:
         # get downstream target level, cannot be None (!)
@@ -386,8 +422,17 @@ def add_controllers_to_supply_nodes(
         tables = discrete_control_tables_single_basin(
             listen_node_id=ds_node_id, control_state=control_state, theshold=ds_target_level
         )
+        if us_target_level is None:
+            label = f"{name}: {ds_target_level:.2f} [m+NAP]"
+        else:
+            label = f"{name}: {us_target_level:.2f}/{ds_target_level:.2f} [m+NAP]"
         add_and_connect_discrete_control_node(
-            model=model, node_id=node_id, x_offset=x_offset, y_offset=y_offset, tables=tables, name=name
+            model=model,
+            node_id=node_id,
+            offset=control_node_offset,
+            angle=control_node_angle,
+            tables=tables,
+            name=label,
         )
 
 
@@ -397,10 +442,31 @@ def add_controllers_to_flow_control_nodes(
     us_threshold_offset: float,
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
-    x_offset: float = 10,
-    y_offset: float = 0,
+    control_node_offset: float = 10,
+    control_node_angle: int = 90,
     name: str = "doorlaat",
 ):
+    """Add control nodes to connector nodes controlling flows and water-levels in a system/supply-area
+
+    Parameters
+    ----------
+    model : Model
+        Ribasim Model
+    flow_control_nodes : list[int]
+        List of connector-nodes with flow-control
+    us_threshold_offset : float
+        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
+    us_target_level_offset_supply : float, optional
+        Lowering upstream target levels in supply situation, by default -0.04
+    target_level_column : str, optional
+        Column in Basin.Area table that contains target level, by default "meta_streefpeil"
+    control_node_offset : float, optional
+        Offset control-node with respect to connector-node, by default 10
+    control_node_angle : int, optional
+        Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
+    name : str, optional
+        Name assigned to control-nodes, by default "doorlaat"
+    """
     for node_id in flow_control_nodes:
         # get downstream target level, cannot be None (!)
         ds_node_id, ds_target_level = _downstream_target_level(
@@ -465,7 +531,12 @@ def add_controllers_to_flow_control_nodes(
         ]
 
         add_and_connect_discrete_control_node(
-            model=model, node_id=node_id, x_offset=x_offset, y_offset=y_offset, tables=tables, name=name
+            model=model,
+            node_id=node_id,
+            offset=control_node_offset,
+            angle=control_node_angle,
+            tables=tables,
+            name=f"{name}: {us_target_level:.2f}/{ds_target_level:.2f} [m+NAP]",
         )
 
 
@@ -478,11 +549,43 @@ def add_controllers_and_demand_to_flushing_nodes(
     target_level_column: str = "meta_streefpeil",
     supply_season_start: pd.Timestamp | str = "2020-04-01",
     drain_season_start: pd.Timestamp | str = "2019-10-01",
-    x_offset_control_node: float = 10,
-    y_offset_control_node: float = 0,
-    x_offset_demand_node: float = 10,
-    y_offset_demand_node: float = 10,
+    new_nodes_offset: float = 10,
+    control_node_angle: int = 90,
+    demand_node_angle: int = 45,
+    name: str = "uitlaat",
+    demand_name_prefix: str = "doorspoeling",
 ):
+    """Add control nodes to connector nodes draining a system/supply-area having a certain flow-demand (flushing_nodes)
+
+    Parameters
+    ----------
+    model : Model
+        Ribasim Model
+    flushing_nodes : dict[int, float]
+        Dict of connector-nodes with drain function and their flow-demands. Should be {node_id:flow_demand,....}
+    us_threshold_offset : float
+        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
+    demand_threshold_offset : float, optional
+        Flow offset of discrete-control to trigger flow., by default 0.001
+    us_target_level_offset_supply : float, optional
+        Lowering upstream target levels in supply situation, by default -0.04
+    target_level_column : str, optional
+        Column in Basin.Area table that contains target level, by default "meta_streefpeil"
+    supply_season_start : pd.Timestamp | str, optional
+        Start of supply-season to populate time-table, by default "2020-04-01"
+    drain_season_start : pd.Timestamp | str, optional
+        Start of drain-season to populate time-table. Should be < supply_season, by default "2019-10-01"
+    new_nodes_offset : float, optional
+        Offset control-node and demand-node with respect to connector-node, by default 10
+    control_node_angle : int, optional
+        Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
+    demand_node_angle : int, optional
+        Clock-wise (0 degrees is North) angle demand-node with respect to connector-node, by default 45
+    name : str, optional
+        Name assigned to control-node, by default "uitlaat"
+    demand_name_prefix: str, optional
+        Prefix assigned to name in demand-node, by default "doorspoeling
+    """
     for node_id, demand_flow_rate in flushing_nodes.items():
         # get upstream target_level and define min_upstream_level;
         # None if LevelBoundary, else [us_target_level + target_level_offset_supply, us_target_level]
@@ -565,10 +668,11 @@ def add_controllers_and_demand_to_flushing_nodes(
         add_and_connect_discrete_control_node(
             model=model,
             node_id=node_id,
-            x_offset=x_offset_control_node,
-            y_offset=y_offset_control_node,
+            offset=new_nodes_offset,
+            angle=control_node_angle,
             tables=tables,
             # cyclic_time=True,
+            name=f"{name}: {us_target_level:.2f} [m+NAP]",
         )
 
         # add demand
@@ -580,9 +684,9 @@ def add_controllers_and_demand_to_flushing_nodes(
         demand_node = model.flow_demand.add(
             _offset_new_node(
                 node=connector_node,
-                x_offset=x_offset_demand_node,
-                y_offset=y_offset_demand_node,
-                name=f"demand {demand_flow_rate} m3/s",
+                offset=new_nodes_offset,
+                angle=demand_node_angle,
+                name=f"{demand_name_prefix} {demand_flow_rate} [m3/s]",
             ),
             tables=tables,
         )
