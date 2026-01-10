@@ -3,6 +3,7 @@
 import math
 from typing import Literal
 
+import geopandas as gpd
 import pandas as pd
 from ribasim import Node, nodes
 from ribasim.nodes import discrete_control, flow_demand
@@ -10,6 +11,37 @@ from shapely.geometry import Point, Polygon
 
 from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.downstream import downstream_nodes
+
+
+class InvalidTable(Exception):
+    """Basin.Area table is invalid."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class MissingTable(Exception):
+    """Basin.Area table is missing."""
+
+    def __init__(self, table: str):
+        super().__init__(f"{table} table is missing!")
+
+
+def _read_node_table(model: Model) -> gpd.GeoDataFrame:
+    """Read node_table model from model."""
+    df = model.node_table().df
+    if df is None:
+        raise MissingTable(table="Node table")
+    return df
+
+
+def _read_link_table(model: Model, link_type: Literal["flow", "control"] = "flow") -> gpd.GeoDataFrame:
+    """Read link_table model from model."""
+    df = model.link.df
+    if df is None:
+        raise MissingTable(table="Link table")
+    return df[df.link_type == link_type]
 
 
 def _offset_new_node(node: Node, offset: float = 10, angle: int = 90, **kwargs) -> Node:
@@ -77,6 +109,39 @@ def _upstream_target_level(
     return us_node_id, us_target_level
 
 
+def _target_level(
+    model: Model, node_types: pd.Series, node_id: int, target_level_column: str, allow_missing: bool = False
+) -> float | None:
+    """Get target-level of a Basin Node"""
+    node_type = node_types[node_id]
+
+    # Find a target level if node is a Basin. Raise Exception if not found and not allowed
+    if node_type != "Basin":
+        if allow_missing:
+            return None
+        else:
+            msg = f"Listen node: {node_id} ({node_type}) not of type Basin"
+            raise ValueError(msg)
+    elif node_id not in model.basin.area.df["node_id"].values:  # node_id missing in Basin.Area table
+        if allow_missing:
+            return None
+        else:
+            msg = f"Listen node: {node_id} not found in Basin.Area table"
+            raise ValueError(msg)
+    else:
+        target_level = model.basin.area.df.set_index("node_id").at[node_id, target_level_column]
+
+    # Return target_level or raise Exception if missing and not allowed
+    if target_level is None:
+        if allow_missing:
+            return None
+        else:
+            msg = f"Target level missing in Basin.Area table for node_id={node_id} in column '{target_level_column}'"
+            raise ValueError(msg)
+    else:
+        return target_level
+
+
 def _downstream_target_level(model: Model, node_id: int, target_level_column: str) -> tuple[int, float]:
     """Get downstream node_id and target-level of a control-node"""
     # recursive search downstream basin (over junctions)
@@ -97,6 +162,7 @@ def _downstream_target_level(model: Model, node_id: int, target_level_column: st
 
 
 def discrete_control_tables_single_basin(listen_node_id: int, control_state: list[str, str], theshold: float) -> list:
+    """Create discrete_control tables for a single-basin (upstream or downstream) control-node: drain and supply"""
     return [
         discrete_control.Variable(
             compound_variable_id=1,
@@ -123,13 +189,220 @@ def add_and_connect_discrete_control_node(model: Model, node_id: int, offset: fl
     model.link.add(control_node, connector_node)
 
 
-def control_nodes_from_supply_area(
+def get_node_table_with_from_to_node_ids(
+    model: Model,
+    node_ids: list[int] | None = None,
+    node_types: list[Literal["Pump", "Outlet", "ManningResistance", "TabulatedRatingCurve", "LinearResistance"]] = [
+        "Outlet",
+        "Pump",
+    ],
+    max_iter=20,
+) -> gpd.GeoDataFrame:
+    """Get a node_df from selected nodes, including upstream and downstream non-Junction type node_ids.
+
+    Upstream/downstream search works recursively
+
+    Parameters
+    ----------
+    model : Model
+        Ribasim Model
+    node_ids : list[int] | None, optional
+        List with connector-nodes ids to select. If None, all nodes of type in `node_types` are selected, by default None
+    node_types : list[Literal["Pump", "Outlet", "ManningResistance", "TabulatedRatingCurve", "LinearResistance"]], optional
+        Node_types considered to be control nodes, by default ["Outlet", "Pump"]
+    max_iter : int, optional
+        Max iters to search upstream/downstream over junctions, by default 20
+
+    Returns
+    -------
+    pd.GeoDataFrame
+        GeoDataFrame with node info including from_node_id and to_node_id
+    """
+    # add from_node_id and to_node_id to node_select_df
+    _df = _read_link_table(model=model, link_type="flow")
+    _from_node_id = _df.set_index("to_node_id")["from_node_id"]
+    _to_node_id = _df.set_index("from_node_id")["to_node_id"]
+
+    # select nodes from model node_table
+    node_df = _read_node_table(model=model)
+    _node_type = node_df["node_type"]
+    selected_node_df = node_df.loc[node_df.node_type.isin(node_types)]
+
+    # filter on node_ids if provided
+    if node_ids is not None:
+        missing_node_ids = [i for i in node_ids if i not in selected_node_df.index]
+        if missing_node_ids:
+            raise ValueError(f"Node_ids not in model or of type {node_types}: {missing_node_ids}")
+        selected_node_df = selected_node_df.loc[node_ids]
+
+    # find from node_id over junctions
+    selected_node_df.loc[:, ["from_node_id"]] = [_from_node_id[i] for i in selected_node_df.index]
+    unresolved_node_idx = selected_node_df[
+        [_node_type[i] == "Junction" for i in selected_node_df["from_node_id"]]
+    ].index
+
+    for _ in range(max_iter):
+        selected_node_df.loc[unresolved_node_idx, ["from_node_id"]] = [
+            _from_node_id[i] for i in selected_node_df.loc[unresolved_node_idx].from_node_id
+        ]
+        unresolved_node_idx = selected_node_df.loc[unresolved_node_idx][
+            [_node_type[i] == "Junction" for i in selected_node_df.loc[unresolved_node_idx, "from_node_id"]]
+        ].index
+        if unresolved_node_idx.empty:
+            break
+
+    if not unresolved_node_idx.empty:
+        raise ValueError(
+            f"Max iterations reached ({max_iter}) when searching upstream nodes over junctions for nodes: {unresolved_node_idx.to_list()}"
+        )
+
+    # find to_node_id over junctions
+    selected_node_df.loc[:, ["to_node_id"]] = [_to_node_id[i] for i in selected_node_df.index]
+    unresolved_node_idx = selected_node_df[[_node_type[i] == "Junction" for i in selected_node_df["to_node_id"]]].index
+
+    for _ in range(max_iter):
+        selected_node_df.loc[unresolved_node_idx, ["to_node_id"]] = [
+            _to_node_id[i] for i in selected_node_df.loc[unresolved_node_idx].to_node_id
+        ]
+        unresolved_node_idx = selected_node_df.loc[unresolved_node_idx][
+            [_node_type[i] == "Junction" for i in selected_node_df.loc[unresolved_node_idx, "to_node_id"]]
+        ].index
+        if unresolved_node_idx.empty:
+            break
+
+    if not unresolved_node_idx.empty:
+        raise ValueError(
+            f"Max iterations reached ({max_iter}) when searching downstream nodes over junctions for nodes: {unresolved_node_idx.to_list()}"
+        )
+
+    return selected_node_df
+
+
+def add_control_functions_to_connector_nodes(
+    model: Model,
+    node_positions: pd.Series,
+    drain_nodes: list[int],
+    supply_nodes: list[int],
+    flushing_nodes: dict[int, float],
+    is_supply_node_column: str = "meta_supply_node",
+) -> gpd.GeoDataFrame:
+    # get a node_table with node_type, from_node_id, to_node_id, function (drain, supply, flow_control or flushing) and demand_flow_rate (if flushing)
+
+    ###################################################################
+    # CHECK if we miss any user-defined supply, drain or flushing nodes
+    ###################################################################
+
+    # aggregate all nodes and see if we miss any supply-drain or flushing nodes
+    all_nodes = node_positions.index.to_list()
+    inflow_nodes = node_positions[node_positions == "inflow"].index.to_list()
+    outflow_nodes = node_positions[node_positions == "outflow"].index.to_list()
+
+    # check on missing supply nodes
+    missing_supply_nodes = [i for i in supply_nodes if i not in all_nodes]
+    if missing_supply_nodes:
+        raise ValueError(
+            f"user-defined `supply_nodes` not found in outflow+inflow+internal nodes: {missing_supply_nodes}"
+        )
+
+    # check on missing drain nodes
+    missing_drain_nodes = [i for i in drain_nodes if i not in all_nodes]
+    if missing_drain_nodes:
+        raise ValueError(
+            f"user-defined `drain_nodes` not found in outflow+inflow+internal nodes: {missing_drain_nodes}"
+        )
+
+    # check on flushing nodes
+    missing_flushing_nodes = [i for i in flushing_nodes.keys() if i not in all_nodes]
+    if missing_flushing_nodes:
+        raise ValueError(
+            f"user-defined `flushing_nodes.keys()` not found in outflow+inflow+internal nodes: {missing_flushing_nodes}"
+        )
+
+    #####################################################################
+    # INIT selected_nodes_df with `from_node_id` and `to_node_id` columns
+    #####################################################################
+
+    selected_nodes_df = get_node_table_with_from_to_node_ids(model, node_ids=all_nodes, max_iter=20)
+
+    ##########################################################################
+    # DETERMINE function of each node: supply, drain, flow_control or flushing
+    ##########################################################################
+
+    # expand user_defined supply_nodes with specified in node_table, and inflow_nodes
+    if is_supply_node_column not in selected_nodes_df.columns:
+        selected_nodes_df[is_supply_node_column] = False
+    selected_nodes_df.loc[supply_nodes, is_supply_node_column] = True
+    inflow_nodes = [i for i in inflow_nodes if i not in drain_nodes + list(flushing_nodes.keys())]
+    supply_nodes = sorted(
+        set(selected_nodes_df[selected_nodes_df[is_supply_node_column]].index.to_list() + inflow_nodes)
+    )
+
+    # expand user_defined drain_nodes with outflow_nodes
+    drain_nodes = sorted(set(drain_nodes + outflow_nodes))
+
+    # expand drain_nodes based on reverse connections to supply nodes
+    candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes]
+    supply_nodes_df = selected_nodes_df.loc[supply_nodes]
+    drain_nodes = sorted(
+        [
+            i.Index
+            for i in selected_nodes_df.loc[candidates].itertuples()
+            if ((supply_nodes_df.from_node_id == i.to_node_id) & (supply_nodes_df.to_node_id == i.from_node_id)).any()
+        ]
+        + drain_nodes
+    )
+
+    # list all flow_control_nodes
+    graph = model.graph
+    flow_control_nodes = []
+    skip_nodes = drain_nodes + supply_nodes + list(flushing_nodes.keys())
+    for node_id in supply_nodes:
+        flow_control_nodes += [
+            i
+            for i in downstream_nodes(graph=graph, node_id=node_id, stop_at_node_ids=drain_nodes)
+            if (i in all_nodes) and (i not in skip_nodes)
+        ]
+
+    flow_control_nodes = sorted(set(flow_control_nodes))
+
+    # list all drain_nodes again
+    skip_nodes = flow_control_nodes + supply_nodes + list(flushing_nodes.keys())
+    drain_nodes = sorted([i for i in all_nodes if i not in skip_nodes])
+
+    # populate function column
+    selected_nodes_df["function"] = pd.Series(dtype="string")
+    for node_ids, function in [
+        (supply_nodes, "supply"),
+        (drain_nodes, "drain"),
+        (flow_control_nodes, "flow_control"),
+        (list(flushing_nodes.keys()), "flushing"),
+    ]:
+        selected_nodes_df.loc[node_ids, "function"] = function
+
+    #########################################
+    # ADD demand_flow_rate for flushing nodes
+    #########################################
+
+    selected_nodes_df["demand_flow_rate"] = pd.Series(dtype="float")
+    selected_nodes_df.loc[list(flushing_nodes.keys()), "demand_flow_rate"] = list(flushing_nodes.values())
+    return selected_nodes_df
+
+
+def get_control_nodes_position_from_supply_area(
     model: Model,
     polygon: Polygon,
-    control_node_types: list[str] = ["Outlet", "Pump"],
+    exclude_nodes: list[int] = [],
+    control_node_types: list[Literal["Outlet", "Pump"]] = ["Outlet", "Pump"],
     ignore_intersecting_links: list[int] = [],
-) -> tuple[list[int], list[int], list[int]]:
-    """_summary_
+) -> gpd.GeoDataFrame:
+    """Get control nodes with nodes position relative to a supply area defined by a polygon.
+
+    Column `position` indicates 'inflow', 'outflow' or `internal` relative to the supply area:
+    - outflow: control node with a link directed out of the supply area
+    - inflow: control node with a link directed into the supply area
+    - internal: control node within the supply area
+
+    Position is determined by GIS topology of links intersecting, or within, the supply area polygon.
 
     Parameters
     ----------
@@ -137,6 +410,8 @@ def control_nodes_from_supply_area(
         Ribasim Model
     polygon : Polygon
         Polygon containing supply area
+    exclude_nodes: list[int], optional
+        Nodes to exclude from final result
     control_node_types : list[str], optional
         Node_types considered to be control nodes , by default ["Outlet", "Pump"]
     ignore_intersecting_links : list[int], optional
@@ -145,8 +420,8 @@ def control_nodes_from_supply_area(
 
     Returns
     -------
-    tuple[list[int], list[int], list[int]]
-        outflow_nodes, inflow_nodes, internal_nodes -> (from area to elsewhere, from elsewhere to area, within area)
+    gpd.GeoDataFrame
+        node_table with control nodes with a column `position` indicating 'inflow', 'outflow' or `internal` relative to the supply area
 
     Raises
     ------
@@ -158,10 +433,10 @@ def control_nodes_from_supply_area(
     polygon = Polygon(exterior)
 
     # read node_table for further use
-    node_df = model.node_table().df
+    node_df = _read_node_table(model=model)
 
     # intersecting links and direction (if not outflow, then inward)
-    link_df = model.link.df[model.link.df.link_type == "flow"]
+    link_df = _read_link_table(model=model, link_type="flow")
     link_intersect_df = link_df[link_df.intersects(exterior)]
     link_intersect_df.loc[:, ["outflow"]] = node_df.loc[link_intersect_df["from_node_id"]].within(polygon).to_numpy()
     link_intersect_df.loc[:, ["from_node_type"]] = node_df.loc[
@@ -202,7 +477,25 @@ def control_nodes_from_supply_area(
     internal_nodes = node_df[node_df.node_type.isin(control_node_types) & node_df.within(polygon)]
     internal_nodes = sorted(i for i in internal_nodes.index if i not in inflow_nodes + outflow_nodes)
 
-    return outflow_nodes, inflow_nodes, internal_nodes
+    # making a node_table with position relative to supply area
+    all_nodes = outflow_nodes + inflow_nodes + internal_nodes
+    node_df = node_df.loc[all_nodes]
+    node_df["position"] = pd.Series(dtype="string")
+    node_df.loc[outflow_nodes, "position"] = "outflow"
+    node_df.loc[inflow_nodes, "position"] = "inflow"
+
+    # exclude manually excluded nodes
+    node_df = node_df[~node_df.index.isin(exclude_nodes)]
+
+    # warn for duplicated node ids (having multiple positions)
+    if node_df.index.duplicated().any():
+        duplicated_node_ids = node_df[node_df.index.duplicated()].index.to_list()
+        print(
+            f"WARNING: ambiguous position of nodes {duplicated_node_ids}. Define function manually in `supply_nodes` or `drain_nodes`"
+        )
+    node_df = node_df[~node_df.index.duplicated()]
+
+    return node_df
 
 
 def get_drain_nodes(model: Model, control_nodes_df: pd.DataFrame, supply_bool_col: str = "meta_supply_node") -> list:
@@ -265,7 +558,7 @@ def get_drain_nodes(model: Model, control_nodes_df: pd.DataFrame, supply_bool_co
 
 def add_controllers_to_drain_nodes(
     model: Model,
-    drain_nodes: list[int],
+    drain_nodes_df: gpd.GeoDataFrame,
     target_level_column: str = "meta_streefpeil",
     control_node_offset: float = 10,
     control_node_angle: int = 90,
@@ -279,8 +572,8 @@ def add_controllers_to_drain_nodes(
     ----------
     model : Model
         Ribasim Model
-    drain_nodes : list[int]
-        List of connector node_ids having a draining function
+    drain_nodes_df : gpd.GeoDataFrame
+        GeoDataFrame of connector nodes having a drain function, including from_node_id and to_node_id
     target_level_column : str, optional
         Column in Basin.Area table that contains target level, by default "meta_streefpeil"
     control_node_offset : float, optional
@@ -295,25 +588,33 @@ def add_controllers_to_drain_nodes(
     ValueError
         Target level in upstream basin cannot be found
     """
-    for node_id in drain_nodes:
+    node_types = _read_node_table(model=model)["node_type"]
+
+    for connector_node in drain_nodes_df.itertuples():
+        node_id = connector_node.Index
+        node_type = connector_node.node_type
         # get targed_level and define min_upstream_level; [target_level, target_level]
-        us_node_id, us_target_level = _upstream_target_level(
-            model=model, node_id=node_id, target_level_column=target_level_column
+        us_node_id = connector_node.from_node_id
+        us_target_level = _target_level(
+            model=model,
+            node_types=node_types,
+            node_id=us_node_id,
+            target_level_column=target_level_column,
+            allow_missing=True,
         )
         if us_target_level is None:
-            raise ValueError(f"Drain node {node_id}: target_level missing in upstream basin {us_node_id}")
+            raise ValueError(f"Drain node {node_id}: target_level missing in upstream node: {us_node_id}")
         min_upstream_level = [us_target_level] * 2
 
         # Print so we can see what happens
         print(f"Adding drain node {node_id}: us_basin={us_node_id} | us_target_level={us_target_level:.3f}")
 
         # update static table
-        node_type = model.get_node_type(node_id=node_id)
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
             getattr(model, pascal_to_snake_case(node_type))
             .static.df.set_index("node_id")
-            .loc[[node_id], "max_flow_rate"]
+            .loc[[node_id], "flow_rate"]
             .max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
@@ -347,7 +648,7 @@ def add_controllers_to_drain_nodes(
 
 def add_controllers_to_supply_nodes(
     model: Model,
-    supply_nodes: list[int],
+    supply_nodes_df: gpd.GeoDataFrame,
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
     control_node_offset: float = 10,
@@ -360,8 +661,8 @@ def add_controllers_to_supply_nodes(
     ----------
     model : Model
         Ribasim Model
-    supply_nodes : list[int]
-        List of connector node_ids having a supply function
+    supply_nodes_df : gpd.GeoDataFrame
+        GeoDataFrame of connector nodes having a supply function, including from_node_id and to_node_id
     us_target_level_offset_supply : float, optional
         Lowering upstream target levels in supply situation, by default -0.04
     target_level_column : str, optional
@@ -373,17 +674,30 @@ def add_controllers_to_supply_nodes(
     name : str, optional
         Name assigned to control-nodes, by default "inlaat"
     """
-    for node_id in supply_nodes:
+    node_types = _read_node_table(model=model)["node_type"]
+    for connector_node in supply_nodes_df.itertuples():
+        node_id = connector_node.Index
+        node_type = connector_node.node_type
         # get downstream target level, cannot be None (!)
-        ds_node_id, ds_target_level = _downstream_target_level(
-            model=model, node_id=node_id, target_level_column=target_level_column
+        ds_node_id = connector_node.to_node_id
+        ds_target_level = _target_level(
+            model=model,
+            node_types=node_types,
+            node_id=ds_node_id,
+            target_level_column=target_level_column,
+            allow_missing=False,
         )
+
         max_downstream_level = [ds_target_level, float("nan")]
 
         # get upstream target_level and define min_upstream_level;
-        # None if LevelBoundary, else [us_target_level + target_level_offset_supply, us_target_level]
-        us_node_id, us_target_level = _upstream_target_level(
-            model=model, node_id=node_id, target_level_column=target_level_column
+        us_node_id = connector_node.from_node_id
+        us_target_level = _target_level(
+            model=model,
+            node_types=node_types,
+            node_id=us_node_id,
+            target_level_column=target_level_column,
+            allow_missing=True,
         )
         min_upstream_level = (
             None if us_target_level is None else [us_target_level + us_target_level_offset_supply, us_target_level]
@@ -395,12 +709,13 @@ def add_controllers_to_supply_nodes(
         )
 
         # update static table
-        node_type = model.get_node_type(node_id=node_id)
+        node_id = connector_node.Index
+        node_type = connector_node.node_type
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
             getattr(model, pascal_to_snake_case(node_type))
             .static.df.set_index("node_id")
-            .loc[[node_id], "max_flow_rate"]
+            .loc[[node_id], "flow_rate"]
             .max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
@@ -438,7 +753,7 @@ def add_controllers_to_supply_nodes(
 
 def add_controllers_to_flow_control_nodes(
     model: Model,
-    flow_control_nodes: list[int],
+    flow_control_nodes_df: gpd.GeoDataFrame,
     us_threshold_offset: float,
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
@@ -452,8 +767,8 @@ def add_controllers_to_flow_control_nodes(
     ----------
     model : Model
         Ribasim Model
-    flow_control_nodes : list[int]
-        List of connector-nodes with flow-control
+    flow_control_nodes_df : gpd.GeoDataFrame
+        GeoDataFrame of connector nodes having a flow_control function, including from_node_id and to_node_id
     us_threshold_offset : float
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
     us_target_level_offset_supply : float, optional
@@ -467,17 +782,30 @@ def add_controllers_to_flow_control_nodes(
     name : str, optional
         Name assigned to control-nodes, by default "doorlaat"
     """
-    for node_id in flow_control_nodes:
+    node_types = _read_node_table(model=model)["node_type"]
+    for connector_node in flow_control_nodes_df.itertuples():
+        node_id = connector_node.Index
+        node_type = connector_node.node_type
         # get downstream target level, cannot be None (!)
-        ds_node_id, ds_target_level = _downstream_target_level(
-            model=model, node_id=node_id, target_level_column=target_level_column
+        ds_node_id = connector_node.to_node_id
+        ds_target_level = _target_level(
+            model=model,
+            node_types=node_types,
+            node_id=ds_node_id,
+            target_level_column=target_level_column,
+            allow_missing=False,
         )
         max_downstream_level = [ds_target_level, 9999]
 
         # get upstream target_level and define min_upstream_level;
         # None if LevelBoundary, else [us_target_level + target_level_offset_supply, us_target_level]
-        us_node_id, us_target_level = _upstream_target_level(
-            model=model, node_id=node_id, target_level_column=target_level_column, allow_missing=False
+        us_node_id = connector_node.from_node_id
+        us_target_level = _target_level(
+            model=model,
+            node_types=node_types,
+            node_id=us_node_id,
+            target_level_column=target_level_column,
+            allow_missing=False,
         )
         min_upstream_level = [us_target_level + us_target_level_offset_supply, us_target_level]
 
@@ -486,12 +814,11 @@ def add_controllers_to_flow_control_nodes(
         )
 
         # update static table
-        node_type = model.get_node_type(node_id=node_id)
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
             getattr(model, pascal_to_snake_case(node_type))
             .static.df.set_index("node_id")
-            .loc[[node_id], "max_flow_rate"]
+            .loc[[node_id], "flow_rate"]
             .max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
@@ -542,7 +869,7 @@ def add_controllers_to_flow_control_nodes(
 
 def add_controllers_and_demand_to_flushing_nodes(
     model: Model,
-    flushing_nodes: dict[int, float],
+    flushing_nodes_df: gpd.GeoDataFrame,
     us_threshold_offset: float,
     demand_threshold_offset: float = 0.001,
     us_target_level_offset_supply: float = -0.04,
@@ -561,9 +888,9 @@ def add_controllers_and_demand_to_flushing_nodes(
     ----------
     model : Model
         Ribasim Model
-    flushing_nodes : dict[int, float]
-        Dict of connector-nodes with drain function and their flow-demands. Should be {node_id:flow_demand,....}
-    us_threshold_offset : float
+    flushing_control_nodes_df : gpd.GeoDataFrame
+        GeoDataFrame of connector nodes having a flusing function, including from_node_id and to_node_id, and demand_flow_rate column
+     us_threshold_offset : float
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
     demand_threshold_offset : float, optional
         Flow offset of discrete-control to trigger flow., by default 0.001
@@ -586,11 +913,19 @@ def add_controllers_and_demand_to_flushing_nodes(
     demand_name_prefix: str, optional
         Prefix assigned to name in demand-node, by default "doorspoeling
     """
-    for node_id, demand_flow_rate in flushing_nodes.items():
+    node_types = _read_node_table(model=model)["node_type"]
+    for connector_node in flushing_nodes_df.itertuples():
+        node_id = connector_node.Index
+        node_type = connector_node.node_type
+        demand_flow_rate = connector_node.demand_flow_rate
         # get upstream target_level and define min_upstream_level;
-        # None if LevelBoundary, else [us_target_level + target_level_offset_supply, us_target_level]
-        us_node_id, us_target_level = _upstream_target_level(
-            model=model, node_id=node_id, target_level_column=target_level_column, allow_missing=False
+        us_node_id = connector_node.from_node_id
+        us_target_level = _target_level(
+            model=model,
+            node_id=us_node_id,
+            target_level_column=target_level_column,
+            node_types=node_types,
+            allow_missing=False,
         )
         min_upstream_level = [us_target_level + us_target_level_offset_supply, us_target_level]
 
@@ -600,12 +935,11 @@ def add_controllers_and_demand_to_flushing_nodes(
         )
 
         # update static table
-        node_type = model.get_node_type(node_id=node_id)
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
             getattr(model, pascal_to_snake_case(node_type))
             .static.df.set_index("node_id")
-            .loc[[node_id], "max_flow_rate"]
+            .loc[[node_id], "flow_rate"]
             .max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
@@ -623,13 +957,6 @@ def add_controllers_and_demand_to_flushing_nodes(
         )
 
         # add discrete control
-        # thresholds = [
-        #     -9999,
-        #     us_target_level + us_threshold_offset,
-        #     -9999,
-        #     -(demand_flow_rate + demand_threshold_offset),
-        #     -(demand_flow_rate + demand_threshold_offset),
-        # ]
         thresholds = [
             us_target_level + us_threshold_offset,
             -(demand_flow_rate + demand_threshold_offset),
@@ -637,13 +964,6 @@ def add_controllers_and_demand_to_flushing_nodes(
 
         supply_season_start = pd.to_datetime(supply_season_start)
         drain_season_start = pd.to_datetime(drain_season_start)
-        # time = [
-        #     drain_season_start,
-        #     supply_season_start,
-        #     drain_season_start + pd.DateOffset(years=1),
-        #     drain_season_start,
-        #     drain_season_start + pd.DateOffset(years=1),
-        # ]
         tables = [
             discrete_control.Variable(
                 compound_variable_id=[1, 2],
@@ -652,8 +972,6 @@ def add_controllers_and_demand_to_flushing_nodes(
                 weight=[1, -1],
             ),
             discrete_control.Condition(
-                # compound_variable_id=[1, 1, 1, 2, 2],
-                # condition_id=[1, 1, 1, 2, 2],
                 compound_variable_id=[1, 2],
                 condition_id=[1, 2],
                 threshold_high=thresholds,
@@ -671,23 +989,92 @@ def add_controllers_and_demand_to_flushing_nodes(
             offset=new_nodes_offset,
             angle=control_node_angle,
             tables=tables,
-            # cyclic_time=True,
             name=f"{name}: {us_target_level:.2f} [m+NAP]",
         )
 
         # add demand
-        tables = [
-            # flow_demand.Time(time=time[:3], demand=[0, demand_flow_rate, 0], demand_priority=[1] * 3),
-            flow_demand.Static(demand=[demand_flow_rate], demand_priority=[1])
-        ]
-        connector_node = model.get_node(node_id=node_id)
+        tables = [flow_demand.Static(demand=[demand_flow_rate], demand_priority=[1])]
+        node = model.get_node(node_id=node_id)
         demand_node = model.flow_demand.add(
             _offset_new_node(
-                node=connector_node,
+                node=node,
                 offset=new_nodes_offset,
                 angle=demand_node_angle,
                 name=f"{demand_name_prefix} {demand_flow_rate} [m3/s]",
             ),
             tables=tables,
         )
-        model.link.add(demand_node, connector_node)
+        model.link.add(demand_node, node)
+
+
+def add_controllers_to_connector_nodes(
+    model: Model,
+    node_functions_df: gpd.GeoDataFrame,
+    level_difference_threshold: float,
+    target_level_column: str = "target_level_column",
+):
+    supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
+    drain_nodes_df = node_functions_df[node_functions_df["function"] == "drain"]
+    flow_control_nodes_df = node_functions_df[node_functions_df["function"] == "flow_control"]
+    flushing_nodes_df = node_functions_df[node_functions_df["function"] == "flushing"]
+
+    add_controllers_to_supply_nodes(
+        model=model,
+        us_target_level_offset_supply=-0.04,
+        supply_nodes_df=supply_nodes_df,
+    )
+    add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
+    add_controllers_to_flow_control_nodes(
+        model=model,
+        flow_control_nodes_df=flow_control_nodes_df,
+        us_threshold_offset=level_difference_threshold,
+    )
+
+    add_controllers_and_demand_to_flushing_nodes(
+        model=model,
+        flushing_nodes_df=flushing_nodes_df,
+        us_threshold_offset=level_difference_threshold,
+        target_level_column=target_level_column,
+    )
+
+
+def add_controllers_to_supply_area(
+    model: Model,
+    polygon: Polygon,
+    ignore_intersecting_links: list[int],
+    drain_nodes: list[int],
+    flushing_nodes: dict[int, float],
+    supply_nodes: list[int],
+    level_difference_threshold: float,
+    exclude_nodes: list[int] = [],
+    control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
+    is_supply_node_column: str = "meta_supply_node",
+    target_level_column: str = "meta_streefpeil",
+) -> gpd.GeoDataFrame:
+    node_positions_df = get_control_nodes_position_from_supply_area(
+        model=model,
+        polygon=polygon,
+        exclude_nodes=exclude_nodes,
+        control_node_types=control_node_types,
+        ignore_intersecting_links=ignore_intersecting_links,
+    )
+
+    # 2. determine node functions (drain, supply, flow_control and flushing)
+    node_functions_df = add_control_functions_to_connector_nodes(
+        model=model,
+        node_positions=node_positions_df["position"],
+        supply_nodes=supply_nodes,
+        drain_nodes=drain_nodes,
+        flushing_nodes=flushing_nodes,
+        is_supply_node_column=is_supply_node_column,
+    )
+
+    # 3. add controllers to all nodes
+    add_controllers_to_connector_nodes(
+        model=model,
+        node_functions_df=node_functions_df,
+        level_difference_threshold=level_difference_threshold,
+        target_level_column=target_level_column,
+    )
+
+    return node_functions_df

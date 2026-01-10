@@ -336,6 +336,7 @@ df.set_index("code", inplace=True)
 names = df["naam"]
 names.loc["KSL011"] = "R.J. Cleveringensluizen"
 
+
 sanitize_node_table(
     model,
     meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
@@ -442,6 +443,10 @@ model.link.add(outlet_node, model.basin[1192])
 
 # %% Create junctions
 model = junctionify(model)
+
+# manning_resistances die inlaten of uitlaten horen te zijn
+model.update_node(node_id=943, node_type="Outlet")
+model.update_node(node_id=1017, node_type="Outlet")
 
 # inlaten gelijk gezet aan WAM portaal: https://wamportaal.noorderzijlvest.nl/wam
 model.outlet.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]
