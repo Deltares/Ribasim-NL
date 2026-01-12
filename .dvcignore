@@ -1,3 +1,25 @@
 # Add patterns of files dvc should ignore, which could improve
 # the performance. Learn more at
 # https://dvc.org/doc/user-guide/dvcignore
+
+# python environments
+.pixi/
+.venv/
+
+# VSCode/PyCharm-environments
+.vscode/
+.idea/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+htmlcov/
+coverage.xml
+.coverage
+.coverage.*
+.pytest_cache/
+*.egg-info/
+
+.ipynb_checkpoints
+tests/
