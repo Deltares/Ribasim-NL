@@ -30,14 +30,14 @@ stages:
   aa_en_maas:
     cmd: "uv run python notebooks/aa_en_maas/main.py"
     deps:
-      - src/ribasim_nl
+      - src/ribasim_nl/ribasim_nl
       - notebooks/aa_en_maas
     outs:
       - data/AaenMaas/modellen/AaenMaas_full_control_model
   noorderzijlvest:
     cmd: "uv run python notebooks/noorderzijlvest/main.py"
     deps:
-      - src/ribasim_nl
+      - src/ribasim_nl/ribasim_nl
       - notebooks/noorderzijlvest
     outs:
       - data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
