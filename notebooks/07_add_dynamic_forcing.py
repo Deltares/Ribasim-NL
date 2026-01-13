@@ -122,7 +122,6 @@ for authority in authorities:
 
         if check_build(dst_toml_file):
             model = Model.read(toml_file)
-            model.solver.level_difference_threshold = 0.02
             # update state so we start smooth/empty
             model.update_state()
 
