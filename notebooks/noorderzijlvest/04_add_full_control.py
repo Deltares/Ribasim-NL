@@ -346,7 +346,7 @@ flow_control_nodes = [29, 640, 641]
 # 165: Harssensbosch
 # 680: KST9970
 # 1753: Gemaal Dorkwerd
-supply_nodes = [39, 680, 165]
+supply_nodes = [39, 680, 165, 1753]
 
 add_controllers_to_uncontrolled_connector_nodes(
     model=model,
