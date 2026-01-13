@@ -358,14 +358,14 @@ model.outlet.node.df.loc[model.outlet.node.df.name == "", "name"] = model.outlet
 
 
 # %% set meta_gestuwd. Omdat er geen duikers in dit model zitten mogen alle outlets en pumps op True
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = True
-model.pump.node.df["meta_gestuwd"] = True
+# model.basin.node.df["meta_gestuwd"] = False
+# model.outlet.node.df["meta_gestuwd"] = True
+# model.pump.node.df["meta_gestuwd"] = True
 
 # en dan de basis bovenstrooms van deze objecten
-upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+# upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
+# basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
+# model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
 for row in model.flow_boundary.node.df.itertuples():
@@ -447,6 +447,7 @@ model = junctionify(model)
 # manning_resistances die inlaten of uitlaten horen te zijn
 model.update_node(node_id=943, node_type="Outlet")
 model.update_node(node_id=1017, node_type="Outlet")
+model.update_node(node_id=1753, node_type="Pump", node_properties={"name": "Gemaal Dorkwerd"})
 
 # inlaten gelijk gezet aan WAM portaal: https://wamportaal.noorderzijlvest.nl/wam
 model.outlet.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]

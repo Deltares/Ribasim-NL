@@ -22,7 +22,7 @@ class InvalidTable(Exception):
 
 
 class MissingTable(Exception):
-    """Basin.Area table is missing."""
+    """Table is missing."""
 
     def __init__(self, table: str):
         super().__init__(f"{table} table is missing!")
@@ -80,35 +80,6 @@ def _recursive_search_over_junctions(
     )
 
 
-def _upstream_target_level(
-    model: Model, node_id: int, target_level_column: str, allow_missing: bool = True
-) -> tuple[int, float | None]:
-    """Get upstream node_id and target-level of a control-node"""
-    us_node_id, us_node_type = _recursive_search_over_junctions(model=model, direction="upstream", node_id=node_id)
-
-    # if Basin, we read the target_level from the basin.Area
-    if us_node_type == "Basin":
-        us_target_level = model.basin.area.df.set_index("node_id").at[us_node_id, target_level_column]
-        if us_node_id is None or us_target_level is None:
-            msg = f"Control Node {node_id}: target_level missing in upstream basin {us_node_id}"
-            raise ValueError(msg)
-    # if LevelBoundary, we don't read target_level yet
-    elif us_node_type == "LevelBoundary":
-        us_target_level = None
-
-    # Cannot imagine another node_type, but just in case
-    else:
-        msg = f"Control Node {node_id}: upstream node {us_node_id} ({us_node_type}) not of type Basin or LevelBoundary"
-        raise ValueError(msg)
-
-    if not allow_missing and us_target_level is None:
-        raise ValueError(
-            f"Control Node {node_id}: no target_level found in upstream node {us_node_id} ({us_node_type}). Set `allow_missing=True` if this is intended"
-        )
-
-    return us_node_id, us_target_level
-
-
 def _target_level(
     model: Model, node_types: pd.Series, node_id: int, target_level_column: str, allow_missing: bool = False
 ) -> float | None:
@@ -116,20 +87,31 @@ def _target_level(
     node_type = node_types[node_id]
 
     # Find a target level if node is a Basin. Raise Exception if not found and not allowed
-    if node_type != "Basin":
+    if node_type not in ["Basin", "LevelBoundary"]:
         if allow_missing:
             return None
         else:
-            msg = f"Listen node: {node_id} ({node_type}) not of type Basin"
-            raise ValueError(msg)
-    elif node_id not in model.basin.area.df["node_id"].values:  # node_id missing in Basin.Area table
-        if allow_missing:
-            return None
-        else:
-            msg = f"Listen node: {node_id} not found in Basin.Area table"
+            msg = f"Listen node: {node_id} ({node_type}) not of type Basin or LevelBoundary"
             raise ValueError(msg)
     else:
-        target_level = model.basin.area.df.set_index("node_id").at[node_id, target_level_column]
+        if node_type == "Basin":
+            if node_id not in model.basin.area.df["node_id"].values:  # node_id missing in Basin.Area table
+                if allow_missing:
+                    return None
+                else:
+                    msg = f"Listen node: {node_id} not found in Basin.Area table"
+                    raise ValueError(msg)
+            else:
+                target_level = model.basin.area.df.set_index("node_id").at[node_id, target_level_column]
+        else:  # node type is LevelBoundary
+            if node_id not in model.level_boundary.static.df["node_id"].values:  # node_id missing in Basin.Area table
+                if allow_missing:
+                    return None
+                else:
+                    msg = f"Listen node: {node_id} not found in LevelBoundary.Static table"
+                    raise ValueError(msg)
+            else:
+                target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].max()
 
     # Return target_level or raise Exception if missing and not allowed
     if target_level is None:
@@ -142,23 +124,33 @@ def _target_level(
         return target_level
 
 
-def _downstream_target_level(model: Model, node_id: int, target_level_column: str) -> tuple[int, float]:
-    """Get downstream node_id and target-level of a control-node"""
-    # recursive search downstream basin (over junctions)
-    ds_node_id, ds_node_type = _recursive_search_over_junctions(model=model, direction="downstream", node_id=node_id)
+def validate_nodes_on_reversed_direction(
+    nodes_df: gpd.GeoDataFrame, node_category: Literal["flushing", "drain", "supply", "flow_control"] = "drain"
+):
+    """Check if nodes_df has connector-nodes has nodes in reversed-direction"""
 
-    # downstream_target_levels are always managed for basins
-    if ds_node_type != "Basin":
-        msg = f"Control Node {node_id}: upstream node {ds_node_id} ({ds_node_type}) not of type Basin"
-        raise ValueError(msg)
+    def reversed_node(nodes_df, row):
+        mask = (nodes_df[nodes_df.index != row.Index].from_node_id == row.to_node_id) & (
+            nodes_df[nodes_df.index != row.Index].to_node_id == row.from_node_id
+        )
+        if mask.any():
+            return {row.Index: int(nodes_df[nodes_df.index != row.Index][mask].index[0])}
 
-    ds_target_level = model.basin.area.df.set_index("node_id").at[ds_node_id, target_level_column]
+    reversed_nodes = [i for i in [reversed_node(nodes_df, row) for row in nodes_df.itertuples()] if i is not None]
 
-    if ds_target_level is None:
-        msg = f"Drain node {node_id}: target_level missing in downstream basin {ds_node_id}"
-        raise ValueError(msg)
-
-    return ds_node_id, ds_target_level
+    if len(reversed_nodes) > 0:
+        """remove reverses and order on key"""
+        seen = set()
+        result = []
+        for d in reversed_nodes:
+            ((k, v),) = d.items()
+            pair = tuple(sorted((k, v)))
+            if pair not in seen:
+                seen.add(pair)
+                result.append({k: v})
+        raise ValueError(
+            f"Found {len(result)} connector-node pairs with reversed flow-directions: {reversed_nodes} in set marked as category {node_category}"
+        )
 
 
 def discrete_control_tables_single_basin(listen_node_id: int, control_state: list[str, str], theshold: float) -> list:
@@ -288,10 +280,7 @@ def add_control_functions_to_connector_nodes(
 ) -> gpd.GeoDataFrame:
     # get a node_table with node_type, from_node_id, to_node_id, function (drain, supply, flow_control or flushing) and demand_flow_rate (if flushing)
 
-    ###################################################################
-    # CHECK if we miss any user-defined supply, drain or flushing nodes
-    ###################################################################
-
+    # Step: check if we miss any user-defined supply, drain or flushing nodes
     # aggregate all nodes and see if we miss any supply-drain or flushing nodes
     all_nodes = node_positions.index.to_list()
     inflow_nodes = node_positions[node_positions == "inflow"].index.to_list()
@@ -318,15 +307,10 @@ def add_control_functions_to_connector_nodes(
             f"user-defined `flushing_nodes.keys()` not found in outflow+inflow+internal nodes: {missing_flushing_nodes}"
         )
 
-    #####################################################################
-    # INIT selected_nodes_df with `from_node_id` and `to_node_id` columns
-    #####################################################################
-
+    # step: selected_nodes_df with `from_node_id` and `to_node_id` columns
     selected_nodes_df = get_node_table_with_from_to_node_ids(model, node_ids=all_nodes, max_iter=20)
 
-    ##########################################################################
-    # DETERMINE function of each node: supply, drain, flow_control or flushing
-    ##########################################################################
+    # Step: determine function of each node: supply, drain, flow_control or flushing
 
     # expand user_defined supply_nodes with specified in node_table, and inflow_nodes
     if is_supply_node_column not in selected_nodes_df.columns:
@@ -356,12 +340,11 @@ def add_control_functions_to_connector_nodes(
     graph = model.graph
     flow_control_nodes = []
     skip_nodes = drain_nodes + supply_nodes + list(flushing_nodes.keys())
+    _all_downstream_nodes: list[int] = []
     for node_id in supply_nodes:
-        flow_control_nodes += [
-            i
-            for i in downstream_nodes(graph=graph, node_id=node_id, stop_at_node_ids=drain_nodes)
-            if (i in all_nodes) and (i not in skip_nodes)
-        ]
+        _downstream_nodes = downstream_nodes(graph=graph, node_id=node_id, stop_at_node_ids=drain_nodes)
+        _all_downstream_nodes += _downstream_nodes
+        flow_control_nodes += [i for i in _downstream_nodes if (i in all_nodes) and (i not in skip_nodes)]
 
     flow_control_nodes = sorted(set(flow_control_nodes))
 
@@ -369,7 +352,7 @@ def add_control_functions_to_connector_nodes(
     skip_nodes = flow_control_nodes + supply_nodes + list(flushing_nodes.keys())
     drain_nodes = sorted([i for i in all_nodes if i not in skip_nodes])
 
-    # populate function column
+    # Step: populate function column
     selected_nodes_df["function"] = pd.Series(dtype="string")
     for node_ids, function in [
         (supply_nodes, "supply"),
@@ -379,12 +362,10 @@ def add_control_functions_to_connector_nodes(
     ]:
         selected_nodes_df.loc[node_ids, "function"] = function
 
-    #########################################
-    # ADD demand_flow_rate for flushing nodes
-    #########################################
-
+    # Step: add demand_flow_rate for flushing nodes
     selected_nodes_df["demand_flow_rate"] = pd.Series(dtype="float")
     selected_nodes_df.loc[list(flushing_nodes.keys()), "demand_flow_rate"] = list(flushing_nodes.values())
+
     return selected_nodes_df
 
 
@@ -498,64 +479,6 @@ def get_control_nodes_position_from_supply_area(
     return node_df
 
 
-def get_drain_nodes(model: Model, control_nodes_df: pd.DataFrame, supply_bool_col: str = "meta_supply_node") -> list:
-    """Extract drain nodes (only discharging a supply area) from a dataframe of control_nodes.
-
-    Parameters
-    ----------
-    model : Model
-        Ribasim Model
-    control_nodes_df : pd.DataFrame
-        Nodes with control and an indiction of supply-type
-    supply_bool_col : str, optional
-        Column in control_nodes_df with indiction of supply, by default "meta_supply_node"
-
-    Returns
-    -------
-    list
-        list of nodes draining the area
-
-    Raises
-    ------
-    ValueError
-        Connector nodes not marked as supply nor drain that are defined in opposite direction between two basins (one must be drain, the other supply)
-    """
-    # from_node_id and to_nodes to table
-    _df = model.link.df[model.link.df.link_type == "flow"]
-    from_node_id = _df.set_index("to_node_id")["from_node_id"]
-    to_node_id = _df.set_index("from_node_id")["to_node_id"]
-
-    # alle connector-nodes
-    control_nodes_df["from_node_id"] = [from_node_id[i] for i in control_nodes_df.index]
-    control_nodes_df["to_node_id"] = [to_node_id[i] for i in control_nodes_df.index]
-
-    # filter all supply_nodes
-    supply_nodes_df = control_nodes_df[control_nodes_df[supply_bool_col]]
-
-    # extract drain_nodes
-    drain_nodes = [
-        i.Index
-        for i in control_nodes_df[~control_nodes_df[supply_bool_col].astype(bool)].itertuples()
-        if ((supply_nodes_df.from_node_id == i.to_node_id) & (supply_nodes_df.to_node_id == i.from_node_id)).any()
-    ]
-
-    # check if control nodes exist for which one or more should have been labelled as supply-node
-    check_nodes_df = control_nodes_df[~control_nodes_df[supply_bool_col] & ~control_nodes_df.index.isin(drain_nodes)]
-
-    drain_supply_nodes = [
-        i.Index
-        for i in check_nodes_df.itertuples()
-        if ((check_nodes_df.from_node_id == i.to_node_id) & (check_nodes_df.to_node_id == i.from_node_id)).any()
-    ]
-
-    if drain_supply_nodes:
-        raise ValueError(
-            f"Connector-nodes in opposite direction: {drain_supply_nodes}. One or more has to be labelled with `{supply_bool_col}` == True"
-        )
-
-    return drain_nodes
-
-
 def add_controllers_to_drain_nodes(
     model: Model,
     drain_nodes_df: gpd.GeoDataFrame,
@@ -588,6 +511,9 @@ def add_controllers_to_drain_nodes(
     ValueError
         Target level in upstream basin cannot be found
     """
+    # validate if drain_nodes_df does not contain reversed flow directions
+    validate_nodes_on_reversed_direction(drain_nodes_df, node_category="drain")
+
     node_types = _read_node_table(model=model)["node_type"]
 
     for connector_node in drain_nodes_df.itertuples():
@@ -607,7 +533,7 @@ def add_controllers_to_drain_nodes(
         min_upstream_level = [us_target_level] * 2
 
         # Print so we can see what happens
-        print(f"Adding drain node {node_id}: us_basin={us_node_id} | us_target_level={us_target_level:.3f}")
+        print(f"Adding drain node {node_id}: us_basin={us_node_id} | us_target_level={us_target_level}")
 
         # update static table
         control_state = ["aanvoer", "afvoer"]
@@ -782,6 +708,9 @@ def add_controllers_to_flow_control_nodes(
     name : str, optional
         Name assigned to control-nodes, by default "doorlaat"
     """
+    # validate if drain_nodes_df does not contain reversed flow directions
+    validate_nodes_on_reversed_direction(flow_control_nodes_df, node_category="flow_control")
+
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in flow_control_nodes_df.itertuples():
         node_id = connector_node.Index
@@ -1078,3 +1007,51 @@ def add_controllers_to_supply_area(
     )
 
     return node_functions_df
+
+
+def add_controllers_to_uncontrolled_connector_nodes(
+    model: Model,
+    us_threshold_offset: float,
+    exclude_nodes: list[int] = [],
+    supply_nodes: list[int] = [],
+    flow_control_nodes: list[int] = [],
+    control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
+):
+    """Add connector-nodes to uncontrolled connector nodes."""
+    # get all controlled nodes
+    link_df = _read_link_table(model=model, link_type="control")
+    controlled_nodes = link_df.to_node_id.to_list()
+
+    # node_table including upstream/downstream node ids
+    node_df = get_node_table_with_from_to_node_ids(model=model)
+    connector_nodes_df = node_df[node_df.node_type.isin(control_node_types)]
+
+    # get all uncontrolled nodes
+    uncontrolled_nodes = connector_nodes_df[
+        ~connector_nodes_df.index.isin(controlled_nodes + exclude_nodes)
+    ].index.values
+
+    # define supply_nodes and add
+    supply_mask = connector_nodes_df.index.isin(uncontrolled_nodes) & connector_nodes_df.meta_supply_node.astype(bool)
+    supply_mask = supply_mask | connector_nodes_df.index.isin(supply_nodes)
+    supply_nodes_df = connector_nodes_df[supply_mask]
+
+    add_controllers_to_supply_nodes(
+        model=model,
+        us_target_level_offset_supply=-0.04,
+        supply_nodes_df=supply_nodes_df,
+    )
+
+    # define flow_control_nodes and add
+    flow_control_nodes_df = connector_nodes_df.loc[flow_control_nodes]
+    add_controllers_to_flow_control_nodes(
+        model=model,
+        flow_control_nodes_df=flow_control_nodes_df,
+        us_threshold_offset=us_threshold_offset,
+    )
+
+    # we add controls to all other nodes as drains
+    drain_nodes = [i for i in uncontrolled_nodes if i not in flow_control_nodes + supply_nodes_df.index.to_list()]
+    drain_nodes_df = connector_nodes_df.loc[drain_nodes]
+
+    add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
