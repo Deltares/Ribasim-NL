@@ -124,6 +124,28 @@ def _target_level(
         return target_level
 
 
+def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = True, drain: bool = True):
+    """Update meta-info for masking Basins and Connnector nodes."""
+    for col in ["meta_func_aanvoer", "meta_func_afvoer"]:
+        if col not in model.pump.static.df.columns:
+            model.pump.static.df[col] = 0
+    if "meta_aanvoer" not in model.outlet.static.df.columns:
+        model.outlet.static.df["meta_aanvoer"] = 0
+    if supply and ("meta_aanvoer" not in model.basin.area.df.columns):
+        model.basin.area.df["meta_aanvoer"] = False
+
+    # update values
+    if supply:
+        model.pump.static.df.loc[model.pump.static.df.node_id.isin(nodes_df.index.values), "meta_func_aanvoer"] = 1
+        model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(nodes_df.index.values), "meta_aanvoer"] = 1
+
+        ds_node_ids = nodes_df.to_node_id.values
+        model.basin.area.df.loc[model.basin.area.df.node_id.isin(ds_node_ids), "meta_aanvoer"] = True
+
+    if drain:
+        model.pump.static.df.loc[model.pump.static.df.node_id.isin(nodes_df.index.values), "meta_func_afvoer"] = 1
+
+
 def validate_nodes_on_reversed_direction(
     nodes_df: gpd.GeoDataFrame, node_category: Literal["flushing", "drain", "supply", "flow_control"] = "drain"
 ):
@@ -486,6 +508,7 @@ def add_controllers_to_drain_nodes(
     control_node_offset: float = 10,
     control_node_angle: int = 90,
     name: str = "uitlaat",
+    update_meta_info: bool = True,
 ):
     """Add control nodes to connector nodes draining a system/supply-area
 
@@ -505,6 +528,8 @@ def add_controllers_to_drain_nodes(
         Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
     name : str, optional
         Name assigned to control-nodes, by default "uitlaat"
+    update_meta_info: bool, optional
+        Update `meta_func_aanvoer` column in Pump.Static table. Default is True
 
     Raises
     ------
@@ -513,6 +538,10 @@ def add_controllers_to_drain_nodes(
     """
     # validate if drain_nodes_df does not contain reversed flow directions
     validate_nodes_on_reversed_direction(drain_nodes_df, node_category="drain")
+
+    # update_meta_info we can use in masking control_nodes
+    if update_meta_info:
+        _update_meta_info(model=model, nodes_df=drain_nodes_df, supply=False, drain=True)
 
     node_types = _read_node_table(model=model)["node_type"]
 
@@ -580,6 +609,7 @@ def add_controllers_to_supply_nodes(
     control_node_offset: float = 10,
     control_node_angle: int = 90,
     name: str = "inlaat",
+    update_meta_info: bool = True,
 ):
     """Add control nodes to connector nodes supplying a system/supply-area
 
@@ -599,7 +629,14 @@ def add_controllers_to_supply_nodes(
         Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
     name : str, optional
         Name assigned to control-nodes, by default "inlaat"
+    update_meta_info: bool, optional
+        Update `meta_func_afvoer` column in Pump.Static table, `meta_afvoer` in Outlet.Static and Basin.Area tables.
+        Default is True
     """
+    # update_meta_info we can use in masking control_nodes
+    if update_meta_info:
+        _update_meta_info(model=model, nodes_df=supply_nodes_df, supply=True, drain=False)
+
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in supply_nodes_df.itertuples():
         node_id = connector_node.Index
@@ -686,6 +723,7 @@ def add_controllers_to_flow_control_nodes(
     control_node_offset: float = 10,
     control_node_angle: int = 90,
     name: str = "doorlaat",
+    update_meta_info: bool = True,
 ):
     """Add control nodes to connector nodes controlling flows and water-levels in a system/supply-area
 
@@ -707,7 +745,14 @@ def add_controllers_to_flow_control_nodes(
         Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
     name : str, optional
         Name assigned to control-nodes, by default "doorlaat"
+    update_meta_info: bool, optional
+        Update `meta_func_afvoer` column in Pump.Static table, `meta_afvoer` in Outlet.Static and Basin.Area tables.
+        Default is True
     """
+    # update_meta_info we can use in masking control_nodes
+    if update_meta_info:
+        _update_meta_info(model=model, nodes_df=flow_control_nodes_df, supply=True, drain=True)
+
     # validate if drain_nodes_df does not contain reversed flow directions
     validate_nodes_on_reversed_direction(flow_control_nodes_df, node_category="flow_control")
 
