@@ -345,6 +345,7 @@ flow_control_nodes = [29, 640, 641]
 # 39 Zuidhornder Zuidertocht
 # 165: Harssensbosch
 # 680: KST9970
+# 1753: Gemaal Dorkwerd
 supply_nodes = [39, 680, 165]
 
 add_controllers_to_uncontrolled_connector_nodes(
@@ -368,7 +369,7 @@ model.basin.area.df["meta_aanvoer"] = True
 model.outlet.static.df["meta_aanvoer"] = 1
 model.pump.static.df["meta_func_aanvoer"] = 1
 model.pump.static.df["meta_func_afvoer"] = 1
-model.level_boundary.static.df[model.level_boundary.static.node_id == 16, "level"] = -1
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
