@@ -23,9 +23,9 @@ DATA = {
 LOG = logging.getLogger(__name__)
 
 
-def download_pdok_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None, **kwargs) -> gpd.GeoDataFrame:
+def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None, **kwargs) -> gpd.GeoDataFrame:
     # optional arguments
-    fn: str = kwargs.get("fn", "pdok_waterdeel.gpkg")
+    fn: str = kwargs.get("fn", "bgt_water.gpkg")
     sleep_time: float = kwargs.get("sleep_time", 1)
     wd: pathlib.Path = kwargs.get("wd")
 
@@ -82,7 +82,7 @@ def download_pdok_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = Non
     else:
         raise HTTPError(download_response.status_code, "Download failed")
 
-    # return PDOK-data
+    # return BGT-data
     return gdf
 
 
@@ -90,18 +90,18 @@ def get_water_surfaces(
     wd: pathlib.Path, geo_filter: shapely.Polygon | shapely.MultiPolygon, **kwargs
 ) -> gpd.GeoDataFrame:
     # optional arguments
-    fn: str = kwargs.get("fn", "pdok_waterdeel.gpkg")
+    fn: str = kwargs.get("fn", "bgt_water.gpkg")
     force: bool = kwargs.get("force", False)
     write: bool = kwargs.get("write", True)
 
-    # read pre-downloaded PDOK-data
+    # read pre-downloaded BGT-data
     if (wd / fn).exists() and not force:
         gdf = gpd.read_file(wd / fn)
-        LOG.info(f"Used downloaded PDOK-data: {wd / fn}")
-    # download PDOK-data
+        LOG.info(f"Used downloaded BGT-data: {wd / fn}")
+    # download BGT-data
     else:
-        gdf = download_pdok_water(geo_filter=geo_filter, wd=(wd if write else None), fn=fn)
-        LOG.info(f"Downloaded PDOK-data ({write=})" + (f": {wd / fn}" if write else ""))
+        gdf = download_bgt_water(geo_filter=geo_filter, wd=(wd if write else None), fn=fn)
+        LOG.info(f"Downloaded BGT-data ({write=})" + (f": {wd / fn}" if write else ""))
 
     # return water surfaces
     return gdf
@@ -131,14 +131,6 @@ def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwa
     if geo_filter.has_z:
         assert isinstance(geo_filter, shapely.Polygon)
         geo_filter = shapely.Polygon([(x, y) for x, y, _ in geo_filter.exterior.coords])
-
-    if LOG.getEffectiveLevel() <= logging.DEBUG:
-        _wd = pathlib.Path(r"C:\Users\Hendrickx\Documents\TEMP\pdok_testing\geo_filters")
-        _wd.mkdir(exist_ok=True)
-        _fn = str(_wd / f"{authority}.gpkg")
-        gpd.GeoDataFrame(geometry=[geo_filter], crs="epsg:28992").to_file(_fn)
-        LOG.debug(f"{geo_filter=}")
-        LOG.debug(f"Geo-filter exported: {_fn=}")
 
     # download BGT-data
     fn_bgt = cloud.joinpath(authority, "verwerkt", "BGT", f"bgt_{authority}_water.gpkg")
