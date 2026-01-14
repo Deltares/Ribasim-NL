@@ -60,7 +60,10 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None
             case 201:
                 break
             case _:
-                raise ValueError(f"{post_response.status_code=}: Download denied")
+                raise ValueError(
+                    f"{post_response.status_code=}: Download denied "
+                    f"(See: https://api.pdok.nl/lv/bgt/download/v1_0/ui/#/Full%20Custom/FullCustomDownloadStatus)"
+                )
 
     # download URL
     relative_download_url = get_response.json()["_links"]["download"]["href"]
