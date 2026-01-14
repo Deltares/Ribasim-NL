@@ -12,6 +12,8 @@ import requests
 import shapely
 from tornado.httpclient import HTTPError
 
+from ribasim_nl import CloudStorage
+
 BASE_URL = "https://api.pdok.nl"
 DATA = {
     "featuretypes": ["waterdeel"],
@@ -103,3 +105,47 @@ def get_water_surfaces(
 
     # return water surfaces
     return gdf
+
+
+def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwargs) -> None:
+    # optional arguments
+    basins_fn: str = kwargs.get("basins_fn", f"{authority}.gpkg")
+    basins_layer: str = kwargs.get("basins_layer", "peilgebied")
+    mkdir: bool = kwargs.get("mkdir", True)
+    overwrite: bool = kwargs.get("overwrite", True)
+    sync: bool = kwargs.get("sync", True)
+
+    # validate optional arguments
+    if not basins_fn.endswith(".gpkg"):
+        basins_fn += ".gpkg"
+
+    # sync 'verwerkt'-directory
+    if sync:
+        cloud.download_verwerkt(authority, overwrite=overwrite)
+        paths = [cloud.joinpath(authority, "verwerkt", "Parametrisatie_data")]
+        cloud.synchronize(paths)
+
+    # create geo-filter from basins
+    basins = gpd.read_file(cloud.joinpath(authority, "verwerkt", "Parametrisatie_data", basins_fn), layer=basins_layer)
+    geo_filter = shapely.MultiPolygon(basins.explode().geometry.values).convex_hull
+    if geo_filter.has_z:
+        assert isinstance(geo_filter, shapely.Polygon)
+        geo_filter = shapely.Polygon([(x, y) for x, y, _ in geo_filter.exterior.coords])
+
+    if LOG.getEffectiveLevel() <= logging.DEBUG:
+        _wd = pathlib.Path(r"C:\Users\Hendrickx\Documents\TEMP\pdok_testing\geo_filters")
+        _wd.mkdir(exist_ok=True)
+        _fn = str(_wd / f"{authority}.gpkg")
+        gpd.GeoDataFrame(geometry=[geo_filter], crs="epsg:28992").to_file(_fn)
+        LOG.debug(f"{geo_filter=}")
+        LOG.debug(f"Geo-filter exported: {_fn=}")
+
+    # download BGT-data
+    fn_bgt = cloud.joinpath(authority, "verwerkt", "BGT", f"bgt_{authority}_water.gpkg")
+    if mkdir:
+        fn_bgt.parent.mkdir(parents=True, exist_ok=True)
+    _ = get_water_surfaces(fn_bgt.parent, geo_filter, fn=fn_bgt.name, force=overwrite, write=True)
+
+    # upload BGT-data
+    cloud.create_dir(authority, "verwerkt", "BGT")
+    cloud.upload_file(fn_bgt)
