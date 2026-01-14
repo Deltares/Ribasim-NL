@@ -10,7 +10,6 @@ import zipfile
 import geopandas as gpd
 import requests
 import shapely
-from tornado.httpclient import HTTPError
 
 from ribasim_nl import CloudStorage
 
@@ -48,7 +47,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None
         download_request_id = post_response.json()["downloadRequestId"]
         LOG.debug(f"{download_request_id=}")
     else:
-        raise HTTPError(post_response.status_code, "Download request failed")
+        raise ValueError(f"{post_response.status_code=}: Download request failed")
 
     # request download
     get_url = f"{BASE_URL}/{__full_custom_url}/{download_request_id}/status"
@@ -61,7 +60,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None
             case 201:
                 break
             case _:
-                raise HTTPError(get_response.status_code, "Download denied")
+                raise ValueError(f"{post_response.status_code=}: Download denied")
 
     # download URL
     relative_download_url = get_response.json()["_links"]["download"]["href"]
@@ -80,7 +79,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None
                 if wd is not None:
                     gdf.to_file(wd / fn)
     else:
-        raise HTTPError(download_response.status_code, "Download failed")
+        raise ValueError(f"{post_response.status_code=}: Download failed")
 
     # return BGT-data
     return gdf
