@@ -23,6 +23,27 @@ LOG = logging.getLogger(__name__)
 def fully_connected_network(
     hydro_objects: gpd.GeoDataFrame, *, buffer: float = 1e-2, reset_multi_index: bool = True
 ) -> gpd.GeoDataFrame:
+    """Ensure the hydro-objects are properly connected.
+
+    In using a buffer, hydro-objects are fully connected by searching for other hydro-objects at the endpoints within a
+    buffer and align the endpoints of these hydro-objects.
+
+    If any hydro-object is defined as a `MultiLineString`, it is "exploded" to `LineString`-objects. Generally, this
+    results in a single `LineString`, which is assigned to the hydro-object. In case this results in multiple
+    `LineString`-objects, the resulting multi-indexing (from the "exploding") can be reset to a (new) single indexing
+    (`reset_multi_index=True`, default).
+
+    :param hydro_objects: geospatial data of hydro-objects
+    :param buffer: buffer-radius near endpoints within which other hydro-objects are connected, defaults to 1e-2
+    :param reset_multi_index: reset multi-indexing to single-indexing, defaults to True
+
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type buffer: float, optional
+    :type reset_multi_index: bool, optional
+
+    :return: fully connected network of hydro-objects
+    :rtype: geopandas.GeoDataFrame
+    """
     # check for "real" MultiLineString-entries
     ml = hydro_objects[hydro_objects.geometry.type == "MultiLineString"]
     ml["n_linestring"] = ml.geometry.apply(lambda mls: len(mls.geoms))
@@ -39,30 +60,48 @@ def fully_connected_network(
     return hydro_objects
 
 
-def generate_graph(hydro_objects: gpd.GeoDataFrame, **kwargs) -> nx.Graph:
-    # optional arguments
-    columns: (str, ...) = kwargs.get("columns", ())
+def generate_graph(hydro_objects: gpd.GeoDataFrame) -> nx.Graph:
+    """Generate graph from network of hydro-objects.
 
-    # define data included in the network
-    if "geometry" not in columns:
-        columns = *columns, "geometry"
-    network = hydro_objects[list(columns)]
+    :param hydro_objects: geospatial data of hydro-objects
+    :type hydro_objects: geopandas.GeoDataFrame
 
+    :return: graph
+    :rtype: networkx.Graph
+    """
     # generate graph
-    graph = momepy.gdf_to_nx(network, length="weight")
+    graph = momepy.gdf_to_nx(hydro_objects[["geometry"]], length="weight")
     return graph
 
 
 def select_crossings(
     basin: shapely.Polygon | shapely.MultiPolygon, crossings: gpd.GeoDataFrame, *, buffer: float = 1e-2
 ) -> list[shapely.Point]:
+    """Select basin/network crossings at basin-borders.
+
+    :param basin: Ribasim-basin
+    :param crossings: crossings-data
+    :param buffer: buffer-distance at basin-border in selecting crossings, defaults to 1e-2
+
+    :type basin: shapely.Polygon | shapely.MultiPolygon
+    :type crossings: geopandas.GeoDataFrame
+    :type buffer: float, optional
+
+    :return: list of border crossings
+    :rtype: list[shapely.Point]
+
+    :raises TypeError: if `basin` is not a (Multi)Polygon
+    """
     # define buffered basin border(s)
     if isinstance(basin, shapely.Polygon):
-        borders = (basin.exterior.buffer(buffer),)
+        borders = [
+            basin.exterior.buffer(buffer),
+        ]
     elif isinstance(basin, shapely.MultiPolygon):
         borders = [p.exterior.buffer(buffer) for p in basin.geoms]
     else:
-        raise TypeError
+        msg = f"Basin must be a (Multi)Polygon: {type(basin)=}"
+        raise TypeError(msg)
     borders = shapely.MultiPolygon(borders)
 
     # select crossings at border(s)
@@ -71,6 +110,17 @@ def select_crossings(
 
 
 def crossing_to_node(graph: nx.Graph | shapely.MultiPoint, crossing: shapely.Point) -> tuple[float, float]:
+    """Snap a crossing (shapely.Point) to its nearest graph-node.
+
+    :param graph: graph (or graph-nodes)
+    :param crossing: crossing location
+
+    :type graph: networkx.Graph | shapely.MultiPoint
+    :type crossing: shapely.Point
+
+    :return: graph-node's coordinates
+    :rtype: tuple[float, float]
+    """
     if isinstance(graph, nx.Graph):
         graph = shapely.MultiPoint(graph.nodes)
 
@@ -79,10 +129,22 @@ def crossing_to_node(graph: nx.Graph | shapely.MultiPoint, crossing: shapely.Poi
 
 
 def find_flow_routes(graph: nx.Graph, crossings: (shapely.Point, ...)) -> set[tuple[tuple, tuple]]:
-    flow_routes = set()
+    """Find all shortest routes between combinations of crossings.
 
+    :param graph: graph
+    :param crossings: border crossings
+
+    :type graph: networkx.Graph
+    :type crossings: (shapely.Point, ...)
+
+    :return: set of graph-edges that are part of at least one shortest route between crossings
+    :rtype: set[tuple[tuple, tuple]]
+    """
+    # initiate working variables
+    flow_routes = set()
     mp_graph = shapely.MultiPoint(graph.nodes)
 
+    # loop over all combinations of (border) crossings (without order)
     for c1, c2 in itertools.combinations(set(crossings), 2):
         try:
             path = nx.shortest_path(
@@ -94,40 +156,72 @@ def find_flow_routes(graph: nx.Graph, crossings: (shapely.Point, ...)) -> set[tu
         edges = list(itertools.pairwise(path))
         flow_routes.update(edges)
 
+    # return set of graph-edges
     return flow_routes
 
 
 def label_flow_hydro_objects(
-    hydro_objects: gpd.GeoDataFrame,
-    graph: nx.Graph,
-    flow_routes: set[tuple[tuple, tuple]],
-    search_column: str = "geometry",
+    hydro_objects: gpd.GeoDataFrame, graph: nx.Graph, flow_routes: set[tuple[tuple, tuple]]
 ) -> gpd.GeoDataFrame:
-    routing_edges = [data[search_column] for nodes in flow_routes for data in graph.get_edge_data(*nodes).values()]
-    hydro_objects["main-route"] = hydro_objects[search_column].isin(routing_edges)
+    """Label hydro-objects as being part of the main flow route (or not).
+
+    :param hydro_objects: geospatial data of hydro-objects
+    :param graph: graph
+    :param flow_routes: set of graph-edges constituting the main routes
+
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type graph: networkx.Graph
+    :type flow_routes: set[tuple[tuple, tuple]]
+
+    :return: hydro-objects with main routes labelled
+    :rtype: geopandas.GeoDataFrame
+    """
+    routing_edges = [data["geometry"] for nodes in flow_routes for data in graph.get_edge_data(*nodes).values()]
+    hydro_objects["main-route"] = hydro_objects.geometry.isin(routing_edges)
     return hydro_objects
 
 
 def label_main_routes(
     basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, crossings: gpd.GeoDataFrame, **kwargs
 ) -> gpd.GeoDataFrame:
+    """Full pipeline function labelling the hydro-objects as main route (or not).
+
+    This pipeline consists of:
+     1. Ensure the hydro-objects form a fully connected network (if possible): `fully_connected_network()`
+     2. Generate the graph of the hydro-objects: `generate_graph()`
+     3. Select crossings near basin borders: `select_crossings()`
+     4. Find the main flow routes in the graph, being the shortest paths between border crossings: `find_flow_routes()`
+     5. Label hydro-objects as being part of the main flow route (or not): `label_flow_hydro_objects()`
+
+    :param basins: Ribasim-basins
+    :param hydro_objects: geospatial data of hydro-objects
+    :param crossings: crossings-data
+    :param kwargs: optional arguments
+
+    :key buffer: buffer-radius near endpoints within which other hydro-objects are connected, and buffer-distance at basin-border in selecting crossings, defaults to 1e-2
+    :key reset_multi_index: reset_multi_index: reset multi-indexing to single-indexing, defaults to True
+
+    :return: hydro-objects with main routes labelled
+    :rtype: geopandas.GeoDataFrame
+    """
     # optional arguments
     buffer: float = kwargs.get("buffer", 1e-2)
     reset_multi_index: bool = kwargs.get("reset_multi_index", True)
-    column_id: str = kwargs.get("column_id", "geometry")
 
     # prepare hydro-objects: ensure hydro-objects are connected
     hydro_objects = fully_connected_network(hydro_objects, buffer=buffer, reset_multi_index=reset_multi_index)
 
     # generate network graph
-    graph = generate_graph(hydro_objects, columns=(column_id,))
+    graph = generate_graph(hydro_objects)
 
     # get crossings at basin-borders
-    border_crossings = select_crossings(shapely.MultiPolygon(basins.explode().geometry.values), crossings)
+    border_crossings = select_crossings(
+        shapely.MultiPolygon(basins.explode().geometry.values), crossings, buffer=buffer
+    )
 
     # find the shortest routes between border crossings
     edge_nodes = find_flow_routes(graph, border_crossings)
-    main_routes = label_flow_hydro_objects(hydro_objects, graph, edge_nodes, search_column=column_id)
+    hydro_objects = label_flow_hydro_objects(hydro_objects, graph, edge_nodes)
 
     # return labelled hydro-objects
-    return main_routes
+    return hydro_objects
