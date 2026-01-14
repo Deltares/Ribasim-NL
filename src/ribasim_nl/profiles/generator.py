@@ -19,6 +19,30 @@ LOG = logging.getLogger(__name__)
 def couple_bgt_to_hydro_objects(
     hydro_objects: gpd.GeoDataFrame, bgt_data: gpd.GeoDataFrame, **kwargs
 ) -> gpd.GeoDataFrame:
+    """Couple BGT-data to hydro-objects.
+
+    Coupling of BGT-data to hydro-objects is based on the intersection between the polygons of the BGT-data and the
+    lines of the hydro-objects data. Per hydro-object, all intersecting polygons are listed (optionally with a minimum
+    overlap).
+
+    # TODO: Add documentation on how to deal with non-overlapping hydro-objects
+
+    :param hydro_objects: geospatial data of hydro-objects
+    :param bgt_data: geospatial data with BGT-polygons
+    :param kwargs: optional arguments
+
+    :key bgt_id: column-name with ID-information of the BGT-data, defaults to 'gml_id'
+    :key min_overlap: minimum required overlap (fraction of line-length) to couple BGT-polygon to hydro-object,
+        defaults to None
+
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type bgt_data: geopandas.GeoDataFrame
+
+    :return: BGT-coupled hydro-objects
+    :rtype: geopandas.GeoDataFrame
+
+    :raises ValueError: if the main routing of the hydro-objects is not yet determined
+    """
     # optional arguments
     bgt_id: str = kwargs.get("bgt_id", "gml_id")
     min_overlap: float = kwargs.get("min_overlap")
@@ -65,6 +89,18 @@ def couple_bgt_to_hydro_objects(
 
 
 def estimate_width(hydro_objects: gpd.GeoDataFrame, bgt_data: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Estimate representative width of hydro-objects based on BGT-data.
+
+    :param hydro_objects: geospatial data of hydro-objects
+    :param bgt_data: geospatial data with BGT-polygons
+
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type bgt_data: geopandas.GeoDataFrame
+
+    :return: hydro-objects with width-estimates
+    :rtype: geopandas.GeoDataFrame
+    """
+
     def width_calculator(polygon: shapely.Polygon) -> float:
         """Estimation of a polygon's width based on its circumference (polygon.length) and surface area (polygon.area).
 
