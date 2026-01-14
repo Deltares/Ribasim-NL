@@ -1,4 +1,4 @@
-"""Download PDOK data."""
+"""Download PDOK-BGT data."""
 
 import io
 import json
@@ -74,15 +74,15 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None
         with zipfile.ZipFile(io.BytesIO(download_response.content)) as zip_file:
             (gml_fn,) = zip_file.namelist()
             with zip_file.open(gml_fn) as gml_file:
-                gdf = gpd.read_file(gml_file)
+                bgt_data = gpd.read_file(gml_file)
                 # > write PDOK-data
                 if wd is not None:
-                    gdf.to_file(wd / fn)
+                    bgt_data.to_file(wd / fn)
     else:
         raise ValueError(f"{post_response.status_code=}: Download failed")
 
     # return BGT-data
-    return gdf
+    return bgt_data
 
 
 def get_water_surfaces(
@@ -95,15 +95,15 @@ def get_water_surfaces(
 
     # read pre-downloaded BGT-data
     if (wd / fn).exists() and not force:
-        gdf = gpd.read_file(wd / fn)
+        bgt_data = gpd.read_file(wd / fn)
         LOG.info(f"Used downloaded BGT-data: {wd / fn}")
     # download BGT-data
     else:
-        gdf = download_bgt_water(geo_filter=geo_filter, wd=(wd if write else None), fn=fn)
+        bgt_data = download_bgt_water(geo_filter=geo_filter, wd=(wd if write else None), fn=fn)
         LOG.info(f"Downloaded BGT-data ({write=})" + (f": {wd / fn}" if write else ""))
 
     # return water surfaces
-    return gdf
+    return bgt_data
 
 
 def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwargs) -> None:
