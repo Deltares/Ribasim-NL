@@ -99,7 +99,12 @@ def estimate_width(hydro_objects: gpd.GeoDataFrame, bgt_data: gpd.GeoDataFrame) 
 
     :return: hydro-objects with width-estimates
     :rtype: geopandas.GeoDataFrame
+
+    :raises ValueError: if hydro-objects are not coupled to BGT-data
     """
+    if "index_right" not in hydro_objects.columns:
+        msg = "Hydro-objects not yet coupled to BGT-data"
+        raise ValueError(msg)
 
     def width_calculator(polygon: shapely.Polygon) -> float:
         """Estimation of a polygon's width based on its circumference (polygon.length) and surface area (polygon.area).
