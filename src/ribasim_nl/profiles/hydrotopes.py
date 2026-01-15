@@ -13,13 +13,19 @@ class HydrotopeTable:
     def __init__(self, *hydrotope: "Hydrotope"):
         self.collector: dict[int, Hydrotope] = {h.fid: h for h in hydrotope}
 
-    def __getitem__(self, fid: int) -> "Hydrotope":
-        if fid not in self.collector:
-            raise KeyError
-        return self.collector[fid]
-
     def __str__(self) -> str:
         return "\n".join(map(str, self.collector.values()))
+
+    def __getitem__(self, fid: int) -> "Hydrotope":
+        # if fid not in self.collector:
+        #     return None
+        return self.collector.get(fid)
+
+    def __len__(self) -> int:
+        return len(self.collector)
+
+    def __iter__(self) -> typing.Iterable[int]:
+        return iter(self.collector)
 
     def add_hydrotope(self, hydrotope: "Hydrotope") -> None:
         if hydrotope.fid in self.collector:
@@ -27,6 +33,11 @@ class HydrotopeTable:
             raise ValueError(msg)
 
         self.collector.update({hydrotope.fid: hydrotope})
+
+    def add_from_specs(self, fid: int, name: str, depths: tuple[float, float, float, float]) -> "Hydrotope":
+        hydrotope = Hydrotope(fid, name, depths)
+        self.add_hydrotope(hydrotope)
+        return hydrotope
 
     def __add__(self, other: "HydrotopeTable") -> "HydrotopeTable":
         collection = {**self.collector, **other.collector}
@@ -60,6 +71,10 @@ class HydrotopeTable:
         # return table
         return table
 
+    @property
+    def hydrotopes(self) -> list["Hydrotope"]:
+        return [*self.collector.values()]
+
     def get_by_fid(self, fid: int) -> "Hydrotope":
         return self.collector[fid]
 
@@ -90,12 +105,15 @@ class Hydrotope:
         return self.depths[3]
 
 
-def get_hydrotopes_map(cloud: CloudStorage = CloudStorage(), *, sync: bool = True) -> gpd.GeoDataFrame:
+def get_hydrotopes_map(
+    cloud: CloudStorage = CloudStorage(), *, sync: bool = True, crs: str = "epsg:28992"
+) -> gpd.GeoDataFrame:
     if sync:
         cloud.download_basisgegevens(["Hydrotypen"])
 
-    fn = cloud.joinpath("Basisgegevens", "Hydrotypen", "hydrotope.shp")
+    fn = cloud.joinpath("Basisgegevens", "Hydrotypen", "hydrotype.shp")
 
     gdf = gpd.read_file(fn)
+    gdf.crs = crs
 
     return gdf
