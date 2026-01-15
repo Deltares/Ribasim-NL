@@ -3,7 +3,10 @@
 import dataclasses
 import typing
 
+import geopandas as gpd
 import pandas as pd
+
+from ribasim_nl import CloudStorage
 
 
 class HydrotopeTable:
@@ -17,6 +20,17 @@ class HydrotopeTable:
 
     def __str__(self) -> str:
         return "\n".join(map(str, self.collector.values()))
+
+    def add_hydrotope(self, hydrotope: "Hydrotope") -> None:
+        if hydrotope.fid in self.collector:
+            msg = f"{hydrotope.fid=} already used: {self.collector[hydrotope.fid]}"
+            raise ValueError(msg)
+
+        self.collector.update({hydrotope.fid: hydrotope})
+
+    def __add__(self, other: "HydrotopeTable") -> "HydrotopeTable":
+        collection = {**self.collector, **other.collector}
+        return self.__init__(*collection.values())
 
     @classmethod
     def from_csv(cls, fn: str, **kwargs) -> "HydrotopeTable":
@@ -74,3 +88,14 @@ class Hydrotope:
         elif width < 6:
             return self.depths[2]
         return self.depths[3]
+
+
+def get_hydrotopes_map(cloud: CloudStorage = CloudStorage(), *, sync: bool = True) -> gpd.GeoDataFrame:
+    if sync:
+        cloud.download_basisgegevens(["Hydrotypen"])
+
+    fn = cloud.joinpath("Basisgegevens", "Hydrotypen", "hydrotope.shp")
+
+    gdf = gpd.read_file(fn)
+
+    return gdf
