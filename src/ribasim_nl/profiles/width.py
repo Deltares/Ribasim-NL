@@ -88,7 +88,10 @@ def couple_bgt_to_hydro_objects(
     return hydro_objects
 
 
-def estimate_width(hydro_objects: gpd.GeoDataFrame, bgt_data: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+# TODO: Decide on how to deal with NaNs. Current implementation: Drop NaNs
+def estimate_width(
+    hydro_objects: gpd.GeoDataFrame, bgt_data: gpd.GeoDataFrame, *, dropna: bool = True
+) -> gpd.GeoDataFrame:
     """Estimate representative width of hydro-objects based on BGT-data.
 
     :param hydro_objects: geospatial data of hydro-objects
@@ -138,4 +141,6 @@ def estimate_width(hydro_objects: gpd.GeoDataFrame, bgt_data: gpd.GeoDataFrame) 
 
     # assign representative width estimates to the hydro-objects
     hydro_objects["width"] = hydro_objects["index_right"].apply(representative_width)
+    if dropna:
+        hydro_objects.dropna(subset="width", inplace=True, ignore_index=True)
     return hydro_objects
