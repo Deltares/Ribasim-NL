@@ -17,9 +17,7 @@ class HydrotopeTable:
         return "\n".join(map(str, self.collector.values()))
 
     def __getitem__(self, fid: int) -> "Hydrotope":
-        # if fid not in self.collector:
-        #     return None
-        return self.collector.get(fid)
+        return self.collector[fid]
 
     def __len__(self) -> int:
         return len(self.collector)
@@ -75,12 +73,11 @@ class HydrotopeTable:
     def hydrotopes(self) -> list["Hydrotope"]:
         return [*self.collector.values()]
 
-    def get_by_fid(self, fid: int) -> "Hydrotope":
-        return self.collector[fid]
+    def get_by_fid(self, fid: int, *, default: typing.Any = None) -> "Hydrotope":
+        return self.collector.get(fid, default)
 
-    def get_by_name(self, name: str) -> "Hydrotope":
-        hydrotope = next(h for h in self.collector.values() if h.name == name)
-        return hydrotope
+    def get_by_name(self, name: str, *, default: typing.Any = None) -> "Hydrotope":
+        return next((h for h in self.collector.values() if h.name == name), default)
 
 
 @dataclasses.dataclass
