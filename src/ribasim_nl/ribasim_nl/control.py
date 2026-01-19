@@ -392,7 +392,7 @@ def add_control_functions_to_connector_nodes(
     missing_flow_control_nodes = [i for i in flow_control_nodes if i not in all_nodes]
     if missing_flow_control_nodes:
         raise ValueError(
-            f"user-defined `missing_flow_control_nodes` not found in outflow+inflow+internal nodes: {missing_flow_control_nodes}"
+            f"user-defined `flow_control_nodes` not found in outflow+inflow+internal nodes: {missing_flow_control_nodes}"
         )
 
     # check on flushing nodes
