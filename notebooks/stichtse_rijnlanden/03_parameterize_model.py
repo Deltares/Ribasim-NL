@@ -30,6 +30,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # Fixes
+model.basin.area.df.loc[model.basin.area.df.node_id == 1452, "meta_streefpeil"] = 1.32
 model.basin.area.df.loc[model.basin.area.df.node_id == 1426, "meta_streefpeil"] = 1.32
 model.basin.area.df.loc[model.basin.area.df.node_id == 1975, "meta_streefpeil"] = 0.52
 model.basin.area.df.loc[model.basin.area.df.node_id == 1836, "meta_streefpeil"] = -2.08  # Wulverhorst
@@ -50,6 +51,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 906, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 164, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_level"] = 0.52
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 481, "flow_rate"] = 20
 
 
 # %% Alle inlaten op max 0.5m3/s gezet.

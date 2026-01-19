@@ -1,7 +1,6 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon
@@ -22,6 +21,7 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 750: Oude Leidseweg Sluis
 EXCLUDE_NODES = {486, 545, 750, 772}
+EXCLUDE_SUPPLY_NODES = []
 
 # %%
 # Definieren paden en syncen met cloud
@@ -54,7 +54,10 @@ for node_type in CONTROL_NODE_TYPES:
         | node_df["meta_code_waterbeheerder"].str.startswith("i")
         | node_df["meta_code_waterbeheerder"].str.startswith("I")
         | node_df["meta_code_waterbeheerder"].str.endswith("i")
-    ) & ~(node_df.node_type.isin(CONTROL_NODE_TYPES) & node_df["meta_code_waterbeheerder"].str.endswith("fictief"))
+    ) & ~(
+        node_df.node_type.isin(CONTROL_NODE_TYPES) & node_df["meta_code_waterbeheerder"].str.endswith("fictief")
+        | node_df.index.isin(EXCLUDE_SUPPLY_NODES)
+    )
 
     getattr(model, pascal_to_snake_case(node_type)).node.df = node_df
 
@@ -73,6 +76,12 @@ model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45,
 # doorslag staat normaal open
 model.reverse_link(link_id=1470)
 model.reverse_link(link_id=1063)
+model.remove_node(node_id=1344, remove_links=True)
+model.remove_node(node_id=1345, remove_links=True)
+
+# node 2806 is een inlaat, dus flow_direction draaien
+model.reverse_link(link_id=300)
+model.reverse_link(link_id=1686)
 
 
 # %% [markdown]
@@ -200,7 +209,7 @@ flushing_nodes = {}  # {357: 0.02, 393: 0.012, 350: 0.015, 401: 0.017, 501: 0.03
 # 978: ST4007 Overeind Stuw
 # 980: ST7229
 # 591: Vuylcop-Oost
-drain_nodes = [978, 980, 591]
+drain_nodes = [978, 980, 591, 979]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 627: G4015 Overeind
@@ -446,10 +455,15 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
 # %% add all remaining inlets/outlets
 # add all remaing outlets
 # handmatig opgegeven flow control nodes definieren
+# 747: Goejanverwelle stuw
+# 777: Cothen stuw
 # 778: ST3912
 # 814: ST6055
+# 809: Hoek de stuw
+# 919: Werkhoven
+# 1063: Prinses Irenebrug
 # 1154: ST0479
-flow_control_nodes = [778, 545, 814, 1154]
+flow_control_nodes = [747, 777, 778, 545, 809, 814, 919, 1063, 1154]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 103:I6000
@@ -467,10 +481,11 @@ flow_control_nodes = [778, 545, 814, 1154]
 # 638: Oosteinde Waarder Oost
 # 639:Oosteinde Waarder West
 # 640:Schoonhoven
+# 906: ST0779
 # 1014: ST0439
 # 1056: Ruige Weide Stuw
 
-supply_nodes = [103, 358, 481, 486, 506, 542, 543, 637, 638, 639, 640, 772, 1014, 1056]
+supply_nodes = [103, 358, 481, 486, 506, 542, 543, 637, 638, 639, 640, 772, 906, 1014, 1056]
 
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
@@ -492,16 +507,15 @@ ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_
 model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
-model.basin.area.df["meta_aanvoer"] = True
-model.outlet.static.df["meta_aanvoer"] = 1
-model.pump.static.df["meta_func_aanvoer"] = 1
-model.pump.static.df["meta_func_afvoer"] = 1
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1
+# model.basin.area.df["meta_aanvoer"] = True
+# model.outlet.static.df["meta_aanvoer"] = 1
+# model.pump.static.df["meta_func_aanvoer"] = 1
+# model.pump.static.df["meta_func_afvoer"] = 1
 
 # %%
 
 # hoofd run met verdamping
-update_basin_static(model=model, evaporation_mm_per_day=0.1)
+update_basin_static(model=model, evaporation_mm_per_day=1)
 model.write(ribasim_toml_dry)
 
 # run hoofdmodel

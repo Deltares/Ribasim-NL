@@ -61,7 +61,7 @@ def add_forcing(model, cloud, starttime, endtime, cache_forcing: bool = False):
 
 
 FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = ["Noorderzijlvest"]
+SELECTION: list[str] = ["StichtseRijnlanden"]
 INCLUDE_RESULTS = False
 REBUILD = True
 
