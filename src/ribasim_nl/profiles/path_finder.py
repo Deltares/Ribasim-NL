@@ -151,7 +151,7 @@ def find_flow_routes(graph: nx.Graph, crossings: (shapely.Point, ...)) -> set[tu
                 graph, source=crossing_to_node(mp_graph, c1), target=crossing_to_node(mp_graph, c2), weight="weight"
             )
         except nx.NetworkXNoPath as e:
-            LOG.info(e)
+            LOG.debug(e)
             continue
         edges = list(itertools.pairwise(path))
         flow_routes.update(edges)
