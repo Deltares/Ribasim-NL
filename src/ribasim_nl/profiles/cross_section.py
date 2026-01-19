@@ -1,3 +1,17 @@
+"""
+Definition of the 'Basin / profile'-table of Ribasim.
+
+The definition of the basin profiles consists of a tabulated A(h)-relation. Every basin is split in 'doorgaand' and
+'bergend' for which two different approaches apply regarding the definition of the A(h)-relation:
+ 'doorgaand':   The A(h)-relation is based on measured cross-sectional profiles of the hydro-objects representing this
+                type (i.e., `main-route = True`).
+ 'bergend':     The A(h)-relation is based on 'Van der Gaast'-profiling in which cross-sectional profiles are assumed to
+                be trapezoidal. The width (at the surface) of every hydro-object is based on a coupling to the BGT-data
+                (see `./width.py`), and the depth is based on the so-called hydrotopes in the Netherlands (see
+                `./hydrotopes.py`) in combination with a conversion table by Van der Gaast (see `./depth.py`), hence the
+                name.
+"""
+
 import logging
 
 import geopandas as gpd
@@ -8,6 +22,17 @@ LOG = logging.getLogger(__name__)
 
 
 def weighted_average(values: np.ndarray[float], weights: np.ndarray[float]) -> float:
+    """Calculation of the weighted average.
+
+    :param values: values to take the weighted average of
+    :param weights: weights of the values
+
+    :type values: numpy.array[float]
+    :type weights: numpy.array[float]
+
+    :return: weighted average
+    :rtype: float
+    """
     return sum(weights * values) / sum(weights)
 
 
@@ -96,3 +121,12 @@ def assign_basin_profiles_trapezoidal(
     table = pd.concat([temp, basins[["node_id"]]], axis=1)
     table = table[["node_id", "level", "area"]]
     return table
+
+
+def assign_basin_profiles_measurements(
+    basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, **kwargs
+) -> pd.DataFrame:
+    LOG.critical(
+        "`assign_basin_profiles_measurements()` not yet implemented, `assign_basin_profiles_trapezoidal()` used instead"
+    )
+    return assign_basin_profiles_trapezoidal(basins, hydro_objects, **kwargs)
