@@ -161,7 +161,7 @@ ignore_intersecting_links: list[int] = [2175]
 flushing_nodes = {}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
-# 554: G0007 Koppeldijk gemaal
+
 # 624: G4481 Pelikaan
 # 864: Achterrijn Stuw
 # 969: ST0842 Trechtweg
@@ -171,11 +171,12 @@ flushing_nodes = {}
 drain_nodes = [554, 624, 864, 969, 923, 1145, 2110]
 
 # handmatig opgegeven supply nodes (inlaten)
+# 554: G0007 Koppeldijk gemaal
 # 851: ST0014 Koppeldijk stuw
 # 1126: ST8009 Pelikaan
 # 648: G3007 Trechtweg
 # 893: ST6050 2E Veld
-supply_nodes = [851, 1126, 648, 893]
+supply_nodes = [554, 851, 1126, 648, 893]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
