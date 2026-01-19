@@ -338,6 +338,7 @@ def add_control_functions_to_connector_nodes(
     node_positions: pd.Series,
     drain_nodes: list[int],
     supply_nodes: list[int],
+    flow_control_nodes: list[int],
     flushing_nodes: dict[int, float],
     is_supply_node_column: str = "meta_supply_node",
 ) -> gpd.GeoDataFrame:
@@ -353,6 +354,8 @@ def add_control_functions_to_connector_nodes(
         List of node_ids that is forced to the function `drain`
     supply_nodes : list[int]
         List of node_ids that is forced to the function `supply`
+    flow_control_nodes: list[int]
+        List of node_ids that will be forced to the function `flow_control`
     flushing_nodes : dict[int, float]
         Flushing nodes with their demands in the form of {node_id:demand}
     is_supply_node_column : str, optional
@@ -385,6 +388,13 @@ def add_control_functions_to_connector_nodes(
             f"user-defined `drain_nodes` not found in outflow+inflow+internal nodes: {missing_drain_nodes}"
         )
 
+    # check on missing flow_control nodes
+    missing_flow_control_nodes = [i for i in flow_control_nodes if i not in all_nodes]
+    if missing_flow_control_nodes:
+        raise ValueError(
+            f"user-defined `missing_flow_control_nodes` not found in outflow+inflow+internal nodes: {missing_flow_control_nodes}"
+        )
+
     # check on flushing nodes
     missing_flushing_nodes = [i for i in flushing_nodes.keys() if i not in all_nodes]
     if missing_flushing_nodes:
@@ -401,7 +411,7 @@ def add_control_functions_to_connector_nodes(
     if is_supply_node_column not in selected_nodes_df.columns:
         selected_nodes_df[is_supply_node_column] = False
     selected_nodes_df.loc[supply_nodes, is_supply_node_column] = True
-    inflow_nodes = [i for i in inflow_nodes if i not in drain_nodes + list(flushing_nodes.keys())]
+    inflow_nodes = [i for i in inflow_nodes if i not in drain_nodes + list(flushing_nodes.keys()) + flow_control_nodes]
     supply_nodes = sorted(
         set(selected_nodes_df[selected_nodes_df[is_supply_node_column]].index.to_list() + inflow_nodes)
     )
@@ -410,7 +420,7 @@ def add_control_functions_to_connector_nodes(
     drain_nodes = sorted(set(drain_nodes + outflow_nodes))
 
     # expand drain_nodes based on reverse connections to supply nodes
-    candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes]
+    candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes + flow_control_nodes]
     supply_nodes_df = selected_nodes_df.loc[supply_nodes]
     drain_nodes = sorted(
         [
@@ -423,7 +433,6 @@ def add_control_functions_to_connector_nodes(
 
     # list all flow_control_nodes
     graph = model.graph
-    flow_control_nodes = []
     skip_nodes = drain_nodes + supply_nodes + list(flushing_nodes.keys())
     _all_downstream_nodes: list[int] = []
     for node_id in supply_nodes:
@@ -450,6 +459,10 @@ def add_control_functions_to_connector_nodes(
     # Step: add demand_flow_rate for flushing nodes
     selected_nodes_df["demand_flow_rate"] = pd.Series(dtype="float")
     selected_nodes_df.loc[list(flushing_nodes.keys()), "demand_flow_rate"] = list(flushing_nodes.values())
+
+    # Last check
+    if len(all_nodes) != len(selected_nodes_df):
+        raise ValueError(f"len(node_position) != len(node_functions): {len(all_nodes)} != {len(selected_nodes_df)}")
 
     return selected_nodes_df
 
@@ -1095,6 +1108,7 @@ def add_controllers_to_supply_area(
     drain_nodes: list[int],
     flushing_nodes: dict[int, float],
     supply_nodes: list[int],
+    flow_control_nodes: list[int],
     level_difference_threshold: float,
     exclude_nodes: list[int] = [],
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
@@ -1114,10 +1128,12 @@ def add_controllers_to_supply_area(
         Be cautious (!), only add id's to this list if you are sure it won't affect supply, by default []
     drain_nodes : list[int]
         List of node_ids that will be forced to drain
-    flushing_nodes_df : gpd.GeoDataFrame
-        GeoDataFrame of connector nodes having a flusing function, including from_node_id and to_node_id, and demand_flow_rate column
+    flushing_nodes : dict[int, float]
+        Flushing nodes with their demands in the form of {node_id:demand}
     supply_nodes : list[int]
         List of node_ids that will be forced to supply
+    flow_control_nodes: list[int]
+        List of node_ids that will be forced to flow_control
     level_difference_threshold : float
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
     exclude_nodes : list[int], optional
@@ -1149,6 +1165,7 @@ def add_controllers_to_supply_area(
         supply_nodes=supply_nodes,
         drain_nodes=drain_nodes,
         flushing_nodes=flushing_nodes,
+        flow_control_nodes=flow_control_nodes,
         is_supply_node_column=is_supply_node_column,
     )
 
@@ -1183,8 +1200,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         List of node_ids that are within the supply area, but will be ignored, by default []
     supply_nodes : list[int]
         List of node_ids that will be forced to supply
-    flushing_nodes_df : gpd.GeoDataFrame
-        GeoDataFrame of connector nodes having a flusing function, including from_node_id and to_node_id, and demand_flow_rate column
+    flow_control_nodes : list[int]
+        List of node_ids that will be forced to flow_control
     control_node_types : list[str], optional
         Node_types considered to be control nodes , by default ["Outlet", "Pump"]
     """
