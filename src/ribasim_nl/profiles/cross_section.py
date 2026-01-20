@@ -45,7 +45,7 @@ def trapezoidal_profile(
     :param width: width (at the surface)
     :param z_ref: reference (water) level, defaults to 0
     :param slope: slope (v/h) of the banks of the profile, defaults to 1/3
-    :param margin: spatial step for defining an horizontal bottom, defaults to 1e-4
+    :param margin: spatial step for defining a horizontal bottom, defaults to 1e-4
         When two values are given, the first is considered as the horizontal margin, and the second as vertical margin.
 
     :type depth: float
@@ -68,15 +68,36 @@ def trapezoidal_profile(
 
 
 def measured_profile(*args, **kwargs) -> list[tuple]:
+    """Cross-sectional profile based on measurements.
+
+    TODO: Finalise this function.
+    """
     LOG.warning("`measured_profile()` not yet implemented, `trapezoidal_profile()` used instead")
     return trapezoidal_profile(*args, **kwargs)
 
 
 def assign_basin_profiles_trapezoidal(
     basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, **kwargs
-) -> pd.DataFrame:
+) -> pd.DataFrame | gpd.GeoDataFrame:
+    """Assign trapezoidal cross-sectional profiles to basins: 'bergend'.
+
+    :param basins: geospatial data of basins
+    :param hydro_objects: geospatial data of hydro-objects
+    :param kwargs: optional arguments
+
+    :key as_geo_dataframe: return profile table as a `geopandas.GeoDataFrame` (without geometry), defaults to False
+    :key margin: spatial step for defining a horizontal bottom, defaults to 1e-4
+    :key slope: slope (v/h) of the banks of the profile, defaults to 1/3
+
+    :type basins: geopandas.GeoDataFrame
+    :type hydro_objects: geopandas.GeoDataFrame
+
+    :return: profile table
+    :rtype: pandas.DataFrame | geopandas.GeoDataFrame (optional)
+    """
     # optional arguments
-    margin: float | tuple[float, float] = kwargs.get("margin", 1e-4)
+    as_geo_dataframe: bool = kwargs.get("as_geo_dataframe", False)
+    margin: float = kwargs.get("margin", 1e-4)
     slope: float = kwargs.get("slope", 1 / 3)
 
     # validate required data
@@ -120,12 +141,18 @@ def assign_basin_profiles_trapezoidal(
     # define 'Basin / profile'-table
     table = pd.concat([temp, basins[["node_id"]]], axis=1)
     table = table[["node_id", "level", "area"]]
+    if as_geo_dataframe:
+        return gpd.GeoDataFrame(table)
     return table
 
 
 def assign_basin_profiles_measurements(
     basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, **kwargs
 ) -> pd.DataFrame:
+    """Assign measured cross-sectional profiles to basins: 'doorgaand'.
+
+    TODO: Finalise this function.
+    """
     LOG.critical(
         "`assign_basin_profiles_measurements()` not yet implemented, `assign_basin_profiles_trapezoidal()` used instead"
     )
