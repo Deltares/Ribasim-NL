@@ -5,7 +5,11 @@ import networkx as nx
 
 
 def downstream_nodes(
-    graph: nx.DiGraph, node_id: int, stop_at_outlet: bool = False, stop_at_node_type: str | None = None
+    graph: nx.DiGraph,
+    node_id: int,
+    stop_at_outlet: bool = False,
+    stop_at_node_type: str | None = None,
+    stop_at_node_ids: list[int] = [],
 ):
     """Efficiently find all downstream nodes in a directed graph starting from a given node,
     stopping traversal at nodes stopping at the next outlet.
@@ -16,6 +20,7 @@ def downstream_nodes(
     - node_id: The node to start the search from.
     - stop_at_outlet (bool): To stop at the next inlet(s)
     - stop_at_node_type (str | None): To stop at a specific node type (e.g., 'Basin', 'LevelBoundary')
+    - stop_at_node_ids (list[int]): List of node IDs at which to stop traversal.
 
     Returns
     -------
@@ -40,11 +45,25 @@ def downstream_nodes(
             if successor not in visited:
                 node_ids.add(successor)
 
-                # Stop traversal if 'function' is 'outlet'
-                if not (stop_at_outlet & (graph.nodes[successor].get("function") == "outlet")):
-                    if stop_at_node_type is None:
-                        queue.append(successor)
-                    elif graph.nodes[successor].get("node_type") != stop_at_node_type:
-                        queue.append(successor)
+                # Determine if we should queue the successor for further exploration
+                queue_successor = True
+
+                # if we want to stop at outlet and the successor is an outlet
+                if stop_at_outlet and graph.nodes[successor].get("function") == "outlet":
+                    queue_successor = False
+
+                # if we stop at a specific node type and the successor matches that type
+                if stop_at_node_type is not None and graph.nodes[successor].get("node_type") == stop_at_node_type:
+                    queue_successor = False
+
+                # if the successor is in the list of node IDs to stop at
+                if successor in stop_at_node_ids:
+                    queue_successor = False
+
+                if queue_successor:
+                    queue.append(successor)
 
     return node_ids
+
+
+# %%
