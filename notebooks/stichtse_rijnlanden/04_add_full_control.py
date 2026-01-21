@@ -72,7 +72,7 @@ for node_type in CONTROL_NODE_TYPES:
     static_df.loc[mask, "flow_rate"] = 20
 
 # %% model fixes
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
+# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
 
 # doorslag staat normaal open
 model.reverse_link(link_id=1470)
@@ -83,6 +83,8 @@ model.remove_node(node_id=1345, remove_links=True)
 # node 2806 is een inlaat, dus flow_direction draaien
 model.reverse_link(link_id=300)
 model.reverse_link(link_id=1686)
+
+model.update_node(node_id=1291, node_type="ManningResistance")
 
 
 # %% [markdown]
@@ -163,21 +165,22 @@ flushing_nodes = {}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 
-# 624: G4481 Pelikaan
+
 # 864: Achterrijn Stuw
 # 969: ST0842 Trechtweg
 # 923: ST1264 Hevelstuw Ravensewetering
+# 1126: Pelikaan
 # 1145: ST003 Eindstuw Raaphofwetering
 # 2110:
-drain_nodes = [554, 624, 864, 969, 923, 1145, 2110]
+drain_nodes = [554, 864, 969, 923, 1126, 1145, 2110]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 554: G0007 Koppeldijk gemaal
+# 624: G4481 Pelikaan
 # 851: ST0014 Koppeldijk stuw
-# 1126: ST8009 Pelikaan
 # 648: G3007 Trechtweg
 # 893: ST6050 2E Veld
-supply_nodes = [554, 851, 1126, 648, 893]
+supply_nodes = [554, 624, 851, 648, 893]
 
 flow_control_nodes = []
 # toevoegen sturing

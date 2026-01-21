@@ -40,8 +40,11 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1492, "meta_streefpeil"] 
 model.basin.area.df.loc[model.basin.area.df.node_id == 1396, "meta_streefpeil"] = 0.52
 model.basin.area.df.loc[model.basin.area.df.node_id == 1562, "meta_streefpeil"] = 0.52
 model.basin.area.df.loc[model.basin.area.df.node_id == 1387, "meta_streefpeil"] = -2.22
+model.basin.area.df.loc[model.basin.area.df.node_id == 1462, "meta_streefpeil"] = -1.55
+model.basin.area.df.loc[model.basin.area.df.node_id == 1501, "meta_streefpeil"] = -1.55
 model.basin.area.df.loc[model.basin.area.df.node_id == 1986, "meta_streefpeil"] = -1.55
 model.basin.area.df.loc[model.basin.area.df.node_id == 1987, "meta_streefpeil"] = -1.55
+model.basin.area.df.loc[model.basin.area.df.node_id == 1988, "meta_streefpeil"] = -1.55
 model.basin.area.df.loc[model.basin.area.df.node_id == 1516, "meta_streefpeil"] = -2.22
 model.basin.area.df.loc[model.basin.area.df.node_id == 1376, "meta_streefpeil"] = -2.22
 model.basin.area.df.loc[model.basin.area.df.node_id == 1380, "meta_streefpeil"] = -2.22
