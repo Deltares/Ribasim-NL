@@ -1,6 +1,7 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon
@@ -178,6 +179,7 @@ drain_nodes = [554, 624, 864, 969, 923, 1145, 2110]
 # 893: ST6050 2E Veld
 supply_nodes = [554, 851, 1126, 648, 893]
 
+flow_control_nodes = []
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -187,6 +189,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -217,6 +220,8 @@ drain_nodes = [978, 980, 591, 979]
 # 651: G4023 Pothoek
 supply_nodes = [627, 651]
 
+flow_control_nodes = []
+
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -226,6 +231,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -259,6 +265,8 @@ drain_nodes = [634]
 # 630: Blokland
 supply_nodes = [424, 630]
 
+flow_control_nodes = []
+
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -268,6 +276,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -300,6 +309,8 @@ drain_nodes = []
 # 1014: ST0439
 supply_nodes = [598]
 
+flow_control_nodes = []
+
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -309,6 +320,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -342,6 +354,8 @@ drain_nodes = [347]
 # 754: Doorslag
 supply_nodes = [564, 754]
 
+flow_control_nodes = []
+
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -351,6 +365,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -386,6 +401,8 @@ drain_nodes = [477]
 # 924: ST1194
 supply_nodes = [581, 633, 650, 799, 924]
 
+flow_control_nodes = []
+
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -395,6 +412,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -431,6 +449,8 @@ drain_nodes = [894, 956]
 # 655: Slot Zeist
 supply_nodes = [626, 654, 655]
 
+flow_control_nodes = []
+
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -440,6 +460,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -471,6 +492,7 @@ flow_control_nodes = [747, 777, 778, 545, 809, 814, 919, 1063, 1154]
 # 358: AF0082
 # 481: inlaat Wijk bij Duurstede
 # 506: Papekopperdijk
+# 536: Noordergemaal
 # 542: Aanvoerder, De
 # 543: Rondweg
 # 560: Amerongerwetering
@@ -486,7 +508,7 @@ flow_control_nodes = [747, 777, 778, 545, 809, 814, 919, 1063, 1154]
 # 1014: ST0439
 # 1056: Ruige Weide Stuw
 
-supply_nodes = [103, 358, 481, 486, 506, 542, 543, 637, 638, 639, 640, 772, 906, 1014, 1056]
+supply_nodes = [103, 358, 481, 486, 506, 536, 542, 543, 637, 638, 639, 640, 772, 906, 1014, 1056]
 
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
@@ -497,6 +519,15 @@ add_controllers_to_uncontrolled_connector_nodes(
     exclude_nodes=list(EXCLUDE_NODES),
     us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
+
+# %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
+model.pump.static.df.loc[model.pump.static.df.node_id == 536, "max_downstream_level"] -= 0.01
+
+# 3 sifons, 468,469,470 onder Ark wordt later ingeschakeld dan inlaat Vreeswijk
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 468, "max_downstream_level"] -= 0.01
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 469, "max_downstream_level"] -= 0.01
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstream_level"] -= 0.01
+
 
 # %%
 
