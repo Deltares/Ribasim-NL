@@ -1,4 +1,7 @@
-"""Compare basin fluxes and plot time series for the selected basins."""
+"""Plot basin fluxes for selected basins.
+
+Show time series for meteo, groundwater, and discharge components.
+"""
 
 from pathlib import Path
 

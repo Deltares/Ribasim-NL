@@ -1,4 +1,8 @@
-"""Create annual vertical basin flux statistics for the entire model and write them to a local GeoPackage."""
+"""Create annual vertical basin flux statistics for the full model.
+
+Compute min/mean/max values and write them to a local GeoPackage to avoid
+cluttering the GoodCloud.
+"""
 
 from pathlib import Path
 
@@ -113,5 +117,7 @@ lhm_stats = gpd.GeoDataFrame(lhm_stats, geometry="geometry", crs="EPSG:28992")
 # only focus on the bergende bakjes. Remove all duplicated geometries, first entry is removed as this is doorgaand
 lhm_stats = lhm_stats.sort_values(by="node_id").drop_duplicates(subset="geometry", keep="last")
 
+gpkg_path = local_output_path / "fluxes_LHM_stats.gpkg"
+
 local_output_path.mkdir(parents=True, exist_ok=True)
-lhm_stats.to_file(local_output_path, driver="GPKG")
+lhm_stats.to_file(gpkg_path, driver="GPKG")
