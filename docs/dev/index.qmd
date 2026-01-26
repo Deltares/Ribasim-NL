@@ -107,3 +107,5 @@ RIBASIM_EXE=c:\bin\ribasim\ribasim.exe
 
 These values will be applied using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
 If you prefer to set these environment variables in your OS or terminal that will also work.
+
+## Reproducible builds with DVC
