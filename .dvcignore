@@ -23,3 +23,6 @@ coverage.xml
 
 .ipynb_checkpoints
 tests/
+
+# Ribasim
+results/
