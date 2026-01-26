@@ -20,8 +20,11 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
+# 746: Oudewater sluis
 # 750: Oude Leidseweg Sluis
-EXCLUDE_NODES = {486, 545, 750, 772}
+# 753: Woerdenseverlaat SLuis
+# 751: Montfoort Sluis
+EXCLUDE_NODES = {486, 746, 750, 753}
 EXCLUDE_SUPPLY_NODES = []
 
 # %%
@@ -41,6 +44,11 @@ cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
 model = Model.read(ribasim_toml)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
+
+# alle uitlaten en inlaten op 50m3/s, geen cap verdeling. Dit wordt de max flow in model.
+# En als flow_rate niet bekend is de flow
+model.outlet.static.df.flow_rate = 30
+model.pump.static.df.flow_rate = 30
 
 # %%
 # Identificeren aanvoerknopen en voorzien van afvoercapaciteit
@@ -72,19 +80,45 @@ for node_type in CONTROL_NODE_TYPES:
     static_df.loc[mask, "flow_rate"] = 20
 
 # %% model fixes
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
 
 # doorslag staat normaal open
 model.reverse_link(link_id=1470)
 model.reverse_link(link_id=1063)
-model.remove_node(node_id=1344, remove_links=True)
-model.remove_node(node_id=1345, remove_links=True)
+# model.remove_node(node_id=1344, remove_links=True)
+# model.remove_node(node_id=1345, remove_links=True)
+
+# De Pelikaan links omdraaien
+model.reverse_link(link_id=578)
+model.reverse_link(link_id=1447)
+model.reverse_link(link_id=1223)
+model.reverse_link(link_id=2200)
+
+# 416: I2075
+model.reverse_link(link_id=1399)
+model.reverse_link(link_id=715)
+
+# 138: I6125
+model.reverse_link(link_id=2649)
+model.reverse_link(link_id=1551)
+
+# 545: Rijnvliet is afvoergemaal
+model.reverse_link(link_id=847)
+model.reverse_link(link_id=1775)
 
 # node 2806 is een inlaat, dus flow_direction draaien
-model.reverse_link(link_id=300)
-model.reverse_link(link_id=1686)
+model.reverse_link(link_id=2711)
+model.reverse_link(link_id=2005)
 
-model.update_node(node_id=1291, node_type="ManningResistance")
+# Gemaal Terwijde
+model.reverse_link(link_id=2073)
+model.reverse_link(link_id=24)
+
+
+model.update_node(node_id=730, node_type="ManningResistance")
+# model.update_node(node_id=1291, node_type="ManningResistance")
+# model.update_node(node_id=1349, node_type="Outlet")
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "max_flow_rate"] = 20
 
 
 # %% [markdown]
@@ -142,6 +176,7 @@ model.update_node(node_id=1291, node_type="ManningResistance")
 #     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
 # )
 # ```
+
 # %%
 # Toevoegen Kromme Rijn/Amsterdam-Rijnkanaal
 
@@ -164,25 +199,32 @@ ignore_intersecting_links: list[int] = [2175]
 flushing_nodes = {}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
-
-
 # 864: Achterrijn Stuw
+# 893: ST6050 2E Veld
 # 969: ST0842 Trechtweg
-# 923: ST1264 Hevelstuw Ravensewetering
+# 971: ST0010
 # 1126: Pelikaan
 # 1145: ST003 Eindstuw Raaphofwetering
+# 1168: ST0733
+# 1223: ST0815
 # 2110:
-drain_nodes = [554, 864, 969, 923, 1126, 1145, 2110]
+# 851: ST0014 Koppeldijk stuw
+# 923: ST1264 Hevelstuw Ravensewetering
+drain_nodes = [554, 851, 864, 893, 969, 971, 1126, 1145, 1168, 1223, 2110]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 554: G0007 Koppeldijk gemaal
+# 589: Mastwetering
 # 624: G4481 Pelikaan
 # 851: ST0014 Koppeldijk stuw
 # 648: G3007 Trechtweg
-# 893: ST6050 2E Veld
-supply_nodes = [554, 624, 851, 648, 893]
+# 649: Voorhavendijk
 
-flow_control_nodes = []
+supply_nodes = [554, 589, 624, 648, 649]
+
+# 1107:ST0826
+flow_control_nodes = [1107]
+
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -215,15 +257,24 @@ flushing_nodes = {}  # {357: 0.02, 393: 0.012, 350: 0.015, 401: 0.017, 501: 0.03
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # 978: ST4007 Overeind Stuw
 # 980: ST7229
+# 588: Blokhoven
+# 551: Biester
 # 591: Vuylcop-Oost
-drain_nodes = [978, 980, 591, 979]
+# 612: Polder Tull En T Waal
+# 844: ST1541
+# 993:T Klooster
+drain_nodes = [978, 980, 551, 588, 612, 591, 844, 979, 993]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 627: G4015 Overeind
 # 651: G4023 Pothoek
-supply_nodes = [627, 651]
+# 840: Polder Tull En T Waal
+# 855: ST4036
+# 976: ST0850
+supply_nodes = [627, 651, 840, 855, 976]
 
-flow_control_nodes = []
+# 977: Blokhoven
+flow_control_nodes = [977]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -238,6 +289,7 @@ node_functions_df = add_controllers_to_supply_area(
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
+
 
 # %%
 # Toevoegen Gek. Hollandse IJssel
@@ -251,7 +303,7 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [1305, 1618]
+ignore_intersecting_links: list[int] = [1305, 1618, 2271]
 
 # doorspoeling (op uitlaten)
 # node_id: Naam
@@ -259,14 +311,21 @@ flushing_nodes = {}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # node_id: Naam
+# 298: AF0032
+# 467: SY3441
 # 634: Hazepad 'T
-drain_nodes = [634]
+# 920: ST1449
+# 818: Zevenhoven stuw
+drain_nodes = [298, 634, 818, 920]
 
 # handmatig opgegeven supply nodes (inlaten)
 # node_id: Naam
 # 424: I6189
 # 630: Blokland
-supply_nodes = [424, 630]
+# 1007: Hazepad 'T stuw
+# 1156: ST1064
+
+supply_nodes = [424, 630, 1007, 1156]
 
 flow_control_nodes = []
 
@@ -283,6 +342,7 @@ node_functions_df = add_controllers_to_supply_area(
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
+
 
 # %%
 # Toevoegen Leidse Rijn-Noord
@@ -305,14 +365,24 @@ flushing_nodes = {}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # node_id: Naam
-drain_nodes = []
+# 513: Gemaal: Terwijde
+# 1077: ST0725
+# 598: Vleuterweide
+drain_nodes = [513, 598, 1077]
 
 # handmatig opgegeven supply nodes (inlaten)
-# 598: Vleuterweide
-# 1014: ST0439
-supply_nodes = [598]
+# 553:G0096
+# 593: G8014
+# 797: ST0945
+# 890:ST0946
+# 911: Vleuterwijde Oost
+# 1081: ST1356
+# 1082: ST0243
+supply_nodes = [553, 593, 797, 890, 911, 1082]
 
-flow_control_nodes = []
+# 207: I6023
+# 527: I1655
+flow_control_nodes = [207, 527]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -327,6 +397,7 @@ node_functions_df = add_controllers_to_supply_area(
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
+
 
 # %%
 # Toevoegen Leidse Rijn-Zuid
@@ -355,7 +426,9 @@ drain_nodes = [347]
 # handmatig opgegeven supply nodes (inlaten)
 # 564: Reyerscop
 # 754: Doorslag
-supply_nodes = [564, 754]
+# 830: ST3928
+# 1022: ST1319
+supply_nodes = [564, 754, 830, 1022]
 
 flow_control_nodes = []
 
@@ -394,15 +467,16 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # node_id: Naam
 # 477: SY1901
-drain_nodes = [477]
+# 633: Voordorp
+# 799 Maartendsdijk stuw
+# 944: ST0895
+drain_nodes = [477, 633, 799, 944]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 581: Maartensdijk Pomp
-# 633: Voordorp
-# 799: Maartendsdijk Pomp
 # 650: Groenkan
-# 924: ST1194
-supply_nodes = [581, 633, 650, 799, 924]
+supply_nodes = [581, 650, 924]
+
 
 flow_control_nodes = []
 
@@ -480,38 +554,116 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
 # %% add all remaining inlets/outlets
 # add all remaing outlets
 # handmatig opgegeven flow control nodes definieren
-# 747: Goejanverwelle stuw
+# 405: AF0095
+# 636: Trappersheul
 # 777: Cothen stuw
 # 778: ST3912
 # 814: ST6055
 # 809: Hoek de stuw
 # 919: Werkhoven
+# 1036: ST5011
 # 1063: Prinses Irenebrug
 # 1154: ST0479
-flow_control_nodes = [747, 777, 778, 545, 809, 814, 919, 1063, 1154]
+# 1010: ST1257
+# 1011: ST1353
+# 1033: ST4112
+# 1038: ST1758
+# 1039: ST5009
+# 1050: ST0477
+# 1153: ST6092
+# 1059:ST5022
+# 1155: ST7263
+# 1279: ST1888
+
+flow_control_nodes = [
+    134,
+    405,
+    636,
+    777,
+    778,
+    809,
+    814,
+    919,
+    1010,
+    1011,
+    1033,
+    1036,
+    1038,
+    1039,
+    1050,
+    1059,
+    1155,
+    1063,
+    1153,
+    1154,
+    1279,
+]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 103:I6000
+# 230: I2003
 # 358: AF0082
+# 476, D13544  Vraag aan Daniel: waarom zit deze node niet in Leidsche Rijn Noord?
 # 481: inlaat Wijk bij Duurstede
 # 506: Papekopperdijk
 # 536: Noordergemaal
 # 542: Aanvoerder, De
 # 543: Rondweg
+
 # 560: Amerongerwetering
 # 561: Gemaal Rijnwijck  eruit!!
 # 570:Weerdesteinsesloot  #dubbel
 # 579:Sandwijck  #dubbel
 # 626: Strijp, De  #dubbel
-# 637: Hwvz Diemerbroek 56
+
 # 638: Oosteinde Waarder Oost
 # 639:Oosteinde Waarder West
 # 640:Schoonhoven
+# 747: Goejanverwelle Sluis: Wordt deze open gezet in droge tijden?
 # 906: ST0779
+# 962: ST2903
+# 987: ST0409
+# 742, Haanwijkersluis
 # 1014: ST0439
+# 1042: Hwvz Diemerbroek
 # 1056: Ruige Weide Stuw
+# 1194: H078195
+# 2111: Inlaat bij Nieuwkoop (Checken)
+# 425: AF0038
+# 637: Hwvz Diemerbroek 56
 
-supply_nodes = [103, 358, 481, 486, 506, 536, 542, 543, 637, 638, 639, 640, 772, 906, 1014, 1056]
+supply_nodes = [
+    103,
+    358,
+    425,
+    481,
+    476,
+    486,
+    506,
+    536,
+    542,
+    543,
+    637,
+    638,
+    639,
+    640,
+    747,
+    772,
+    742,
+    906,
+    962,
+    987,
+    1014,
+    1042,
+    1056,
+    2111,
+]
+# 185: Westraven
+# 411: I6207 Check!
+# 545: Rijnvliet
+# 173, 168, 139, 198, Oog in Al
+
+drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 887]
 
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
@@ -519,6 +671,7 @@ add_controllers_to_uncontrolled_connector_nodes(
     model=model,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
+    drain_nodes=drain_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
     us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )

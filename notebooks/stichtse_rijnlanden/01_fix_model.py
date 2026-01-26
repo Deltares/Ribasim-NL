@@ -482,6 +482,7 @@ model.merge_basins(basin_id=1765, to_basin_id=1778)
 model.merge_basins(basin_id=1735, to_basin_id=1778)
 model.redirect_link(link_id=2272, from_node_id=1572)
 model.update_node(node_id=1194, node_type="Outlet")
+model.update_node(node_id=1197, node_type="Outlet")
 model.update_node(node_id=678, node_type="Outlet")
 model.update_node(node_id=730, node_type="Outlet")
 # EINDE ISSUES
@@ -595,6 +596,9 @@ model.pump.node.df["meta_gestuwd"] = True
 
 model.basin.area.df[model.basin.area.df.node_id != 1423]
 # set stuwen als gestuwd
+
+# 1349 was Manning maar is duiker dus outlet
+model.update_node(node_id=1349, node_type="Outlet")
 
 model.outlet.node.df.loc[
     model.outlet.node.df["meta_object_type"].isin(["stuw", "afsluitmiddel", "sluis"]), "meta_gestuwd"

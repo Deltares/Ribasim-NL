@@ -30,6 +30,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # Fixes
+model.basin.area.df.loc[model.basin.area.df.node_id == 1737, "meta_streefpeil"] = -0.4
 model.basin.area.df.loc[model.basin.area.df.node_id == 1452, "meta_streefpeil"] = 1.32
 model.basin.area.df.loc[model.basin.area.df.node_id == 1426, "meta_streefpeil"] = 1.32
 model.basin.area.df.loc[model.basin.area.df.node_id == 1975, "meta_streefpeil"] = 0.52
@@ -49,12 +50,40 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1516, "meta_streefpeil"] 
 model.basin.area.df.loc[model.basin.area.df.node_id == 1376, "meta_streefpeil"] = -2.22
 model.basin.area.df.loc[model.basin.area.df.node_id == 1380, "meta_streefpeil"] = -2.22
 model.basin.area.df.loc[model.basin.area.df.node_id == 1572, "meta_streefpeil"] = -2.22
+model.basin.area.df.loc[model.basin.area.df.node_id == 1886, "meta_streefpeil"] = -2.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1436, "meta_streefpeil"] = -0.1  # check streefpeil!
+model.basin.area.df.loc[model.basin.area.df.node_id == 1847, "meta_streefpeil"] = -2.35  # check streefpeil!
+model.basin.area.df.loc[model.basin.area.df.node_id == 1583, "meta_streefpeil"] = -0.25  # check streefpeil!
+model.basin.area.df.loc[model.basin.area.df.node_id == 1586, "meta_streefpeil"] = 1.85  # check streefpeil!
+# model.basin.area.df.loc[model.basin.area.df.node_id == 1871, "meta_streefpeil"] = -2.13  # check streefpeil!
+# model.basin.area.df.loc[model.basin.area.df.node_id == 1916, "meta_streefpeil"] = -2.13  # check streefpeil!
+# model.basin.area.df.loc[model.basin.area.df.node_id == 1376, "meta_streefpeil"] = -2.13  # check streefpeil!
+
+
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "min_upstream_level"] = -1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 906, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 164, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 481, "flow_rate"] = 20
+
+# stadswater Utrecht beneden peil
+model.basin.area.df.loc[model.basin.area.df.node_id == 1401, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1406, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1414, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1422, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1426, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1452, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1576, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1588, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1654, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1660, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1668, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1673, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1757, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1760, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1766, "meta_streefpeil"] = 0.58
+model.basin.area.df.loc[model.basin.area.df.node_id == 1778, "meta_streefpeil"] = 0.58
 
 
 # %% Alle inlaten op max 0.5m3/s gezet.

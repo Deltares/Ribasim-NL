@@ -1189,64 +1189,111 @@ def add_controllers_to_supply_area(
 
 
 def add_controllers_to_uncontrolled_connector_nodes(
-    model: Model,
+    model: "Model",
     us_threshold_offset: float,
-    exclude_nodes: list[int] = [],
-    supply_nodes: list[int] = [],
-    flow_control_nodes: list[int] = [],
-    control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
+    exclude_nodes: list[int] | None = None,
+    supply_nodes: list[int] | None = None,
+    drain_nodes: list[int] | None = None,
+    flow_control_nodes: list[int] | None = None,
+    control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
+    us_target_level_offset_supply: float = -0.04,
 ):
-    """Add connector-nodes to uncontrolled connector nodes.
+    """
+    Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
+
+    Regels (simpel en voorspelbaar):
+    1) Alleen nodes zonder bestaande control-link én niet in exclude_nodes worden meegenomen.
+    2) Functie-toewijzing met prioriteit:
+       - flow_control_nodes  (hoogste prioriteit)
+       - drain_nodes
+       - supply_nodes + meta_supply_node (laagste prioriteit)
+       - alles wat overblijft -> drain
+    3) Nodes die al controlled zijn worden genegeerd (dus geen dubbele control-innneighbors).
 
     Parameters
     ----------
     model : Model
-        Ribasim model
     us_threshold_offset : float
-        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
-    exclude_nodes : list[int], optional
-        List of node_ids that are within the supply area, but will be ignored, by default []
+        Offset voor flow-control discrete control (moet matchen met solver threshold).
+    exclude_nodes : list[int]
+        Connector-nodes die je niet wilt aansturen.
     supply_nodes : list[int]
-        List of node_ids that will be forced to supply
+        Nodes die je expliciet als supply wilt (alleen als nog uncontrolled).
+    drain_nodes : list[int]
+        Nodes die je expliciet als drain wilt (alleen als nog uncontrolled).
     flow_control_nodes : list[int]
-        List of node_ids that will be forced to flow_control
-    control_node_types : list[str], optional
-        Node_types considered to be control nodes , by default ["Outlet", "Pump"]
+        Nodes die je expliciet als flow_control wilt (alleen als nog uncontrolled).
+    control_node_types : list[Literal["Pump","Outlet"]]
+        Welke connector node types meegenomen worden.
+    us_target_level_offset_supply : float
+        Offset voor supply controls.
     """
-    # get all controlled nodes
-    link_df = _read_link_table(model=model, link_type="control")
-    controlled_nodes = link_df.to_node_id.to_list()
+    # --- defaults veilig maken (nooit [] als default-arg) ---
+    exclude_nodes = exclude_nodes or []
+    supply_nodes = supply_nodes or []
+    drain_nodes = drain_nodes or []
+    flow_control_nodes = flow_control_nodes or []
+    control_node_types = control_node_types or ["Pump", "Outlet"]
 
-    # node_table including upstream/downstream node ids
+    # --- 1) bepaal welke connector nodes al controlled zijn ---
+    control_links = _read_link_table(model=model, link_type="control")
+    controlled = set(control_links.to_node_id.to_list())
+
+    # --- 2) haal connector nodes + from/to ---
     node_df = get_node_table_with_from_to_node_ids(model=model)
-    connector_nodes_df = node_df[node_df.node_type.isin(control_node_types)]
+    connector_df = node_df[node_df.node_type.isin(control_node_types)].copy()
 
-    # get all uncontrolled nodes
-    uncontrolled_nodes = connector_nodes_df[
-        ~connector_nodes_df.index.isin(controlled_nodes + exclude_nodes)
-    ].index.values
+    # zorg dat meta_supply_node bestaat
+    if "meta_supply_node" not in connector_df.columns:
+        connector_df["meta_supply_node"] = False
+    connector_df["meta_supply_node"] = connector_df["meta_supply_node"].fillna(False).astype(bool)
 
-    # define supply_nodes and add
-    supply_mask = connector_nodes_df.index.isin(uncontrolled_nodes) & connector_nodes_df.meta_supply_node.astype(bool)
-    supply_mask = supply_mask | connector_nodes_df.index.isin(supply_nodes)
-    supply_nodes_df = connector_nodes_df[supply_mask]
+    # --- 3) bepaal welke nodes we überhaupt mogen aanpassen ---
+    eligible = set(connector_df.index) - controlled - set(exclude_nodes)
+    if not eligible:
+        return  # niets te doen
 
-    add_controllers_to_supply_nodes(
-        model=model,
-        us_target_level_offset_supply=-0.04,
-        supply_nodes_df=supply_nodes_df,
-    )
+    # --- 4) clip handmatige lijsten naar eligible (zo voorkom je dubbele control) ---
+    flow_set = set(flow_control_nodes) & eligible
+    drain_set = set(drain_nodes) & eligible
+    supply_set_manual = set(supply_nodes) & eligible
 
-    # define flow_control_nodes and add
-    flow_control_nodes_df = connector_nodes_df.loc[flow_control_nodes]
-    add_controllers_to_flow_control_nodes(
-        model=model,
-        flow_control_nodes_df=flow_control_nodes_df,
-        us_threshold_offset=us_threshold_offset,
-    )
+    # automatische supply op basis van meta_supply_node (maar alleen eligible)
+    supply_set_auto = set(connector_df.index[connector_df.meta_supply_node]) & eligible
 
-    # we add controls to all other nodes as drains
-    drain_nodes = [i for i in uncontrolled_nodes if i not in flow_control_nodes + supply_nodes_df.index.to_list()]
-    drain_nodes_df = connector_nodes_df.loc[drain_nodes]
+    # --- 5) prioriteiten afdwingen: flow > drain > supply ---
+    # (dus: als iets in flow zit, haal het uit drain/supply; als iets in drain zit, haal uit supply)
+    drain_set -= flow_set
+    supply_set_manual -= flow_set | drain_set
+    supply_set_auto -= flow_set | drain_set
 
-    add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
+    supply_set = supply_set_manual | supply_set_auto
+
+    # --- 6) alles wat overblijft -> drain ---
+    used = flow_set | drain_set | supply_set
+    remaining = eligible - used
+    drain_set = drain_set | remaining
+
+    # --- 7) uitvoer: controllers toevoegen ---
+    # Supply
+    if supply_set:
+        supply_df = connector_df.loc[sorted(supply_set)]
+        add_controllers_to_supply_nodes(
+            model=model,
+            us_target_level_offset_supply=us_target_level_offset_supply,
+            supply_nodes_df=supply_df,
+        )
+
+    # Flow control
+    if flow_set:
+        flow_df = connector_df.loc[sorted(flow_set)]
+        add_controllers_to_flow_control_nodes(
+            model=model,
+            flow_control_nodes_df=flow_df,
+            us_threshold_offset=us_threshold_offset,
+        )
+
+    # Drain
+    if drain_set:
+        drain_df = connector_df.loc[sorted(drain_set)]
+        add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_df)
