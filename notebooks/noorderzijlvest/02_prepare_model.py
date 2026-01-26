@@ -31,6 +31,7 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 static_data.write()
 
 # # koppelen
+
 assign = AssignAuthorities(
     ribasim_model=model,
     waterschap=authority,

@@ -40,11 +40,8 @@ cloud = CloudStorage()
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(
-    AUTHORITY, "verwerkt/1_ontvangen_data//20250527/gebieden_met_wateraanvoermogelijkheid_noorderzijlvest.gpkg"
-)
 aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/aanvoergebieden.gpkg")
-cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
+cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 
 
 # %%

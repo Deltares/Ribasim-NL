@@ -33,20 +33,6 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # %%
-
-# node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-# mask = model.outlet.static.df["node_id"].isin(node_ids)
-# model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-# basin_id = 123  # jouw basin node_id
-# model.basin.state.df.loc[
-#     model.basin.state.df["node_id"] == 1191,
-#     "level",
-# ] = -2.65
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 1758, "min_upstream_level"] = -0.8
-# model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1757, "level"] = -0.8
-# model.outlet.static.df.loc[model.outlet.static.df.node_id == 714, "max_downstream_level"] = -2
-# %%
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 add_check_basin_level(model=model)
@@ -61,4 +47,3 @@ assert result.exit_code == 0
 # %%
 controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
 indicators = controle_output.run_afvoer()
-# %%
