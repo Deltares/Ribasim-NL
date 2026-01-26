@@ -3,6 +3,7 @@ import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon
 
@@ -685,7 +686,8 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 469, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstream_level"] -= 0.01
 
 
-# %%
+# %% Junctionfy(!)
+model = junctionify(model)
 
 # Model run
 
@@ -695,10 +697,7 @@ ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_
 model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
-# model.basin.area.df["meta_aanvoer"] = True
-# model.outlet.static.df["meta_aanvoer"] = 1
-# model.pump.static.df["meta_func_aanvoer"] = 1
-# model.pump.static.df["meta_func_afvoer"] = 1
+
 
 # %%
 

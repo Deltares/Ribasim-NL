@@ -55,10 +55,6 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1436, "meta_streefpeil"] 
 model.basin.area.df.loc[model.basin.area.df.node_id == 1847, "meta_streefpeil"] = -2.35  # check streefpeil!
 model.basin.area.df.loc[model.basin.area.df.node_id == 1583, "meta_streefpeil"] = -0.25  # check streefpeil!
 model.basin.area.df.loc[model.basin.area.df.node_id == 1586, "meta_streefpeil"] = 1.85  # check streefpeil!
-# model.basin.area.df.loc[model.basin.area.df.node_id == 1871, "meta_streefpeil"] = -2.13  # check streefpeil!
-# model.basin.area.df.loc[model.basin.area.df.node_id == 1916, "meta_streefpeil"] = -2.13  # check streefpeil!
-# model.basin.area.df.loc[model.basin.area.df.node_id == 1376, "meta_streefpeil"] = -2.13  # check streefpeil!
-
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "min_upstream_level"] = -1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 906, "min_upstream_level"] = 0.52
@@ -68,31 +64,13 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 481, "flow_rate"] = 20
 
 # stadswater Utrecht beneden peil
-model.basin.area.df.loc[model.basin.area.df.node_id == 1401, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1406, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1414, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1422, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1426, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1452, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1576, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1588, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1654, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1660, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1668, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1673, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1757, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1760, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1766, "meta_streefpeil"] = 0.58
-model.basin.area.df.loc[model.basin.area.df.node_id == 1778, "meta_streefpeil"] = 0.58
+node_ids = [1401, 1406, 1414, 1422, 1426, 1452, 1576, 1588, 1654, 1660, 1668, 1673, 1757, 1760, 1766, 1778]
+model.basin.area.df.loc[model.basin.area.df.node_id.isin(node_ids), "meta_streefpeil"] = 0.58
 
-
-# %% Alle inlaten op max 0.5m3/s gezet.
-# node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
-# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 0.5
-
+# set basin-state op meta-streefpeil
+model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
 
 # %%
-# model.solver.maxiters = 100000
 # Write model
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
