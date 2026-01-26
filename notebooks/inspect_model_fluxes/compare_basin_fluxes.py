@@ -21,13 +21,13 @@ year_of_interest = 2017
 
 cloud.synchronize(filepaths=[lhm_path])
 
-# outdated model causes problems with the Manning Resistance nodes? Read gpkg in manually if error occurs
+# The 2025 LHM models have inactive nodes that cannot be automatically migrated.
+# Read files directly if an error occurs.
 try:
     lhm = ribasim.Model.read(lhm_model_path)
     lhm_basin_area_df = lhm.basin.area.df.copy()
     lhm_basin_time_df = lhm.basin.time.df.copy()
     lhm_links_df = lhm.links.df.copy()
-
 except Exception:
     lhm_basin_area_path = Path(lhm_path) / "input" / "database.gpkg"
     lhm_basin_time_path = Path(lhm_path) / "input" / "basin_time.arrow"
