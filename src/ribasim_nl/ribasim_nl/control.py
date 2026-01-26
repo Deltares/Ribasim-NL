@@ -1116,9 +1116,9 @@ def add_controllers_to_supply_area(
     drain_nodes: list[int],
     flushing_nodes: dict[int, float],
     supply_nodes: list[int],
-    flow_control_nodes: list[int],
     level_difference_threshold: float,
-    exclude_nodes: list[int] = [],
+    flow_control_nodes: list[int] | None = None,
+    exclude_nodes: list[int] | None = None,
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
@@ -1140,12 +1140,12 @@ def add_controllers_to_supply_area(
         Flushing nodes with their demands in the form of {node_id:demand}
     supply_nodes : list[int]
         List of node_ids that will be forced to supply
-    flow_control_nodes: list[int]
-        List of node_ids that will be forced to flow_control
+    flow_control_nodes: list[int], optional
+        List of node_ids that will be forced to flow_control. By default None
     level_difference_threshold : float
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
     exclude_nodes : list[int], optional
-        List of node_ids that are within the supply area, but will be ignored, by default []
+        List of node_ids that are within the supply area, but will be ignored, by default None
     control_node_types : list[str], optional
         Node_types considered to be control nodes , by default ["Outlet", "Pump"]
     is_supply_node_column : str, optional
@@ -1158,6 +1158,9 @@ def add_controllers_to_supply_area(
     gpd.GeoDataFrame
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand` for verification
     """
+    flow_control_nodes = flow_control_nodes or []
+    exclude_nodes = exclude_nodes or []
+
     node_positions_df = get_control_nodes_position_from_supply_area(
         model=model,
         polygon=polygon,
