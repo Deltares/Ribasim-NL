@@ -203,12 +203,20 @@ ul.task-list li input[type="checkbox"] {
 
 
 <p>Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl"><code>src/ribasim_nl</code></a>.</p>
-<p>Under <code>notebooks</code> you’ll find 3 scrips per water authority, e.g.&nbsp;<code>notebooks\aa_en_maas</code>, you can run in sequence.</p>
+<p>Under <code>notebooks</code> you’ll find 4 scripts per water authority, e.g.&nbsp;<code>notebooks\aa_en_maas</code>, you can run in sequence. These are also run in sequence in <code>main.py</code>.</p>
 <ol type="1">
 <li><code>01_fix_model.py</code> will “fix” the GIS-models supplied by Sweco in the directories <code>{authority}_2024_6_3</code> to valid Ribasim-models in the directory <code>{authority}_fix_model</code></li>
 <li><code>02_prepare_model.py</code>will read <code>{authority}_fix_model</code> and add <code>levels</code> and <code>flow_rate</code> to the model and a <code>static_data.xlsx</code> that can be reviewed. The model will be written as <code>{authority}_prepare_model</code></li>
 <li><code>03_parameterized_model.py</code> will read <code>{authority}_prepare_model</code> and <code>static_data.xlsx</code> to a model <code>{authority}_parameterized_model</code></li>
+<li><code>04_add_full_control.py</code> adds control.</li>
 </ol>
+<p>Steps 5, 6 and 7 are shared between water authorities, and live directly beneath the <code>notebooks</code> directory.</p>
+<ol start="5" type="1">
+<li><code>05_add_bergend.py</code> adds VdGaast-based storage basins (input = models are from script 4)</li>
+<li><code>06_add_synthetic_forcing.py</code> adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5</li>
+<li><code>07_add_dynamic_forcing.py</code> adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5</li>
+</ol>
+<p>Finally <code>uploaden_modellen.py</code> uploads all models produced by script 7.</p>
 
 
 
