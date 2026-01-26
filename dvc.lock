@@ -134,15 +134,15 @@ stages:
       nfiles: 27
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: faa0e368fb584edb86ab5853be13f7d1.dir
-      size: 1091553676
-      nfiles: 478
+      md5: 173cdca4cc833d12b00929c5bf4f65a1.dir
+      size: 535150804
+      nfiles: 63
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_full_control_model
       hash: md5
-      md5: ada8ac69f9265742b5045b23fb4c5c77.dir
-      size: 21741255
-      nfiles: 14
+      md5: 36beea79f91e174f0fc9017feaf0463b.dir
+      size: 8581269
+      nfiles: 2
   noorderzijlvest:
     cmd: uv run python notebooks/noorderzijlvest/main.py
     deps:
@@ -153,12 +153,12 @@ stages:
       nfiles: 5
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: faa0e368fb584edb86ab5853be13f7d1.dir
-      size: 1091553676
-      nfiles: 478
+      md5: 173cdca4cc833d12b00929c5bf4f65a1.dir
+      size: 535150804
+      nfiles: 63
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
       hash: md5
-      md5: 41c89aa4ed928d5514a04184afbcbdac.dir
-      size: 21123673
-      nfiles: 14
+      md5: 3429bccbd97a38cd0c30724754f2ffb9.dir
+      size: 9924801
+      nfiles: 2
