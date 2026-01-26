@@ -365,10 +365,6 @@ ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_
 model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
-# model.basin.area.df["meta_aanvoer"] = True
-# model.outlet.static.df["meta_aanvoer"] = 1
-# model.pump.static.df["meta_func_aanvoer"] = 1
-# model.pump.static.df["meta_func_afvoer"] = 1
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1
 
 # hoofd run met verdamping
