@@ -1,4 +1,4 @@
-md5: e18822c6c8a05fb76fe33e29d6e04ff8
+md5: 1c2d23aea4b6302c59a73e19fc154854
 frozen: true
 deps:
 - md5: 9c9b654122fa878bf14e2db3c668e03c.dir
@@ -8,8 +8,8 @@ deps:
   path:
     remote://modeldata/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized_2025_9_0
 outs:
-- md5: 700a12cac7bcb5f1cb6b68c8f646d879.dir
-  size: 24385557
-  nfiles: 15
+- md5: 3d59e8121decde30c171b9a92f633969.dir
+  size: 11452403
+  nfiles: 3
   hash: md5
   path: SchielandendeKrimpenerwaard_parameterized_2025_9_0
