@@ -117,8 +117,6 @@ model.reverse_link(link_id=24)
 
 
 model.update_node(node_id=730, node_type="ManningResistance")
-# model.update_node(node_id=1291, node_type="ManningResistance")
-# model.update_node(node_id=1349, node_type="Outlet")
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "max_flow_rate"] = 20
 
 
