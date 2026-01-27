@@ -8,8 +8,7 @@ stages:
       md5: f95762ba1c46bca62755daa02f44d94b.dir
       size: 93678776
       nfiles: 8
-    - path:
-        data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
+    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
       hash: md5
       md5: bd24473f58cfdc69d568f324b918e56c.dir
       size: 49798056
@@ -29,8 +28,7 @@ stages:
       md5: 62687d86223334eed590f9f7e8a693b0.dir
       size: 26010388
       nfiles: 16
-    - path:
-        data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
+    - path: data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
       hash: md5
       md5: e3bf4485365de487476c45c1acc212ff.dir
       size: 89711489
@@ -107,8 +105,7 @@ stages:
       md5: da33f0417baa9ed37580e1273ed2940f.dir
       size: 114249516
       nfiles: 8
-    - path:
-        data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
+    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
       hash: md5
       md5: b378c2db29dcbc784ebe4417aeb614a4.dir
       size: 170981727
@@ -129,18 +126,18 @@ stages:
     deps:
     - path: notebooks/aa_en_maas
       hash: md5
-      md5: d3bc44e48a65e8936d9edbbc0f78f176.dir
-      size: 217961487
-      nfiles: 27
+      md5: 4d2e9a7c0b3bdce2bc445fe7fba321bd.dir
+      size: 42476
+      nfiles: 6
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 173cdca4cc833d12b00929c5bf4f65a1.dir
-      size: 535150804
-      nfiles: 63
+      md5: 48637e2c09e1b058c2e2c82699b5296b.dir
+      size: 467805
+      nfiles: 60
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_full_control_model
       hash: md5
-      md5: 36beea79f91e174f0fc9017feaf0463b.dir
+      md5: 5e26577e4c8129f1c0ad637146a4f833.dir
       size: 8581269
       nfiles: 2
   noorderzijlvest:
@@ -153,12 +150,12 @@ stages:
       nfiles: 5
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 173cdca4cc833d12b00929c5bf4f65a1.dir
-      size: 535150804
-      nfiles: 63
+      md5: 48637e2c09e1b058c2e2c82699b5296b.dir
+      size: 467805
+      nfiles: 60
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
       hash: md5
-      md5: 3429bccbd97a38cd0c30724754f2ffb9.dir
+      md5: b4bc491bf8df5ea5fc131d887d1dff6a.dir
       size: 9924801
       nfiles: 2
