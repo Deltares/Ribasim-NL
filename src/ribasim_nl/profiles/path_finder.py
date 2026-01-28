@@ -144,7 +144,7 @@ def select_crossings(
     # crossings-selection polygon
 
     def selection(polygon: shapely.Polygon) -> shapely.Polygon:
-        return polygon.buffer(buffer) if internal else polygon.exterior.buffer(buffer)
+        return (polygon if internal else polygon.exterior).buffer(buffer)
 
     # define buffered basin border(s)
     if isinstance(basin, shapely.Polygon):
