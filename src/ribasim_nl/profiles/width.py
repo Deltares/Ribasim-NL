@@ -73,7 +73,7 @@ def couple_bgt_to_hydro_objects(
         return out
 
     # couple BGT-data to hydro-objects
-    main_route = hydro_objects["main-route"]
+    main_route = hydro_objects["main-route"].to_numpy(dtype=bool)
     ct1 = couple_bgt(hydro_objects[main_route], bgt_data)
     ct2 = couple_bgt(hydro_objects[~main_route], bgt_data[~bgt_data.index.isin(itertools.chain(*ct1.values))])
 
