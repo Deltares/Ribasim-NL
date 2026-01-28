@@ -13,6 +13,7 @@ import geopandas as gpd
 import momepy
 import networkx as nx
 import shapely
+import tqdm
 from shapely.ops import nearest_points
 
 from peilbeheerst_model.shortest_path import connect_linestrings_within_distance
@@ -145,7 +146,7 @@ def find_flow_routes(graph: nx.Graph, crossings: (shapely.Point, ...)) -> set[tu
     mp_graph = shapely.MultiPoint(graph.nodes)
 
     # loop over all combinations of (border) crossings (without order)
-    for c1, c2 in itertools.combinations(set(crossings), 2):
+    for c1, c2 in tqdm.tqdm(itertools.combinations(set(crossings), 2), "Finding main routes"):
         try:
             path = nx.shortest_path(
                 graph, source=crossing_to_node(mp_graph, c1), target=crossing_to_node(mp_graph, c2), weight="weight"
