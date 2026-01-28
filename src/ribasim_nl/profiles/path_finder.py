@@ -14,11 +14,50 @@ import momepy
 import networkx as nx
 import shapely
 import tqdm
-from shapely.ops import nearest_points
+from shapely.ops import nearest_points, split
 
 from peilbeheerst_model.shortest_path import connect_linestrings_within_distance
 
 LOG = logging.getLogger(__name__)
+
+
+def split_hydro_objects(
+    hydro_objects: gpd.GeoDataFrame, split_locations: gpd.GeoDataFrame, *, buffer: float = 1e-2, redraw: bool = False
+) -> gpd.GeoDataFrame:
+    """Split the hydro-objects at point-locations, enforcing node-locations on the graph.
+
+    :param hydro_objects: geospatial data of hydro-objects
+    :param split_locations: geospatial data of locations where to enforce a split in the hydro-objects
+
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type split_locations: geopandas.GeoDataFrame
+
+    :return: split hydro-objects
+    :rtype: geopandas.GeoDataFrame
+    """
+    if redraw:
+        hydro_objects = (
+            gpd.GeoDataFrame(geometry=[hydro_objects.union_all()], crs=hydro_objects.crs)
+            .explode()
+            .reset_index(drop=True)
+        )
+
+    # select non-split locations
+    temp = split_locations.buffer(buffer).intersection(hydro_objects.union_all())
+    temp = temp[~temp.is_empty]
+    subset = split_locations[split_locations.index.isin(temp[temp.type == "LineString"].index)]
+
+    # split hydro-objects
+    for p in tqdm.tqdm(subset.geometry.values, "Splitting hydro-objects at crossings"):
+        dist = p.distance(hydro_objects.geometry.values)
+        if sum(dist < buffer) == 1:
+            (line,) = hydro_objects.loc[dist < buffer, "geometry"].values
+            hydro_objects.loc[dist < buffer, "geometry"] = shapely.MultiLineString(split(line, p))
+
+    if redraw:
+        hydro_objects = hydro_objects.explode().reset_index(drop=True)
+
+    return hydro_objects
 
 
 def fully_connected_network(
