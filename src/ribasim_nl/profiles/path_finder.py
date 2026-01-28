@@ -214,7 +214,7 @@ def find_flow_routes(graph: nx.Graph, crossings: (shapely.Point, ...)) -> set[tu
 
 def label_flow_hydro_objects(
     hydro_objects: gpd.GeoDataFrame, graph: nx.Graph, flow_routes: set[tuple[tuple, tuple]]
-) -> gpd.GeoDataFrame:
+) -> (int, ...):
     """Label hydro-objects as being part of the main flow route (or not).
 
     :param hydro_objects: geospatial data of hydro-objects
@@ -225,12 +225,12 @@ def label_flow_hydro_objects(
     :type graph: networkx.Graph
     :type flow_routes: set[tuple[tuple, tuple]]
 
-    :return: hydro-objects with main routes labelled
-    :rtype: geopandas.GeoDataFrame
+    :return: indices of hydro-objects on the main-route
+    :rtype: (int, ...)
     """
     routing_edges = [data["geometry"] for nodes in flow_routes for data in graph.get_edge_data(*nodes).values()]
-    hydro_objects["main-route"] = hydro_objects.geometry.isin(routing_edges)
-    return hydro_objects
+    indices = hydro_objects[hydro_objects.geometry.isin(routing_edges)].index.values
+    return indices
 
 
 def label_main_routes(
