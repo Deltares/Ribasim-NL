@@ -204,9 +204,8 @@ def find_flow_routes(graph: nx.Graph, crossings: (shapely.Point, ...)) -> set[tu
             )
         except nx.NetworkXNoPath as e:
             LOG.debug(e)
-            continue
-        edges = list(itertools.pairwise(path))
-        flow_routes.update(edges)
+        else:
+            flow_routes.update(itertools.pairwise(path))
 
     # return set of graph-edges
     return flow_routes
