@@ -1,7 +1,7 @@
 # Noorderzijlvest
 
 - Laatst bijgewerkt: 28-01-2026
-- Laatste modelversie: [2026.6.1](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
+- Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
 
 ## Systeembeschrijving
 ![Systeembeschrijving Noorderzijlvest](png/noorderzijlvest.png)

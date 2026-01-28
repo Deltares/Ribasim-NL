@@ -1,7 +1,7 @@
 # Stichtse Rijnlanden
 
 - Laatst bijgewerkt: 28-01-2026
-- Laatste modelversie: [2026.6.1](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+- Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
 
 ## Systeembeschrijving
 ![Systeembeschrijving Stichtse Rijnlanden](png/stichtserijnlanden.png)
