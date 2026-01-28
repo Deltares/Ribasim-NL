@@ -1,4 +1,4 @@
-md5: 214944a61c4931d5948a6954aa9456d7
+md5: e6a80bee848aa578e9d5531c473bb46a
 frozen: true
 deps:
 - md5: c2ace4e741ac05592b7fdf6fe7ee0500.dir
@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://modeldata/HunzeenAas/modellen/HunzeenAas_2025_10_1
 outs:
-- md5: 46d0b0ed010775587c0fa8ad8f911304.dir
-  size: 379389205
-  nfiles: 14
+- md5: c792a0bdb1770ab77b101386a13b03bb.dir
+  size: 345066482
+  nfiles: 4
   hash: md5
   path: HunzeenAas_2025_10_1
