@@ -21,6 +21,31 @@ from peilbeheerst_model.shortest_path import connect_linestrings_within_distance
 LOG = logging.getLogger(__name__)
 
 
+def simplify_geodata(gdf: gpd.GeoDataFrame, tolerance: float | None = None) -> gpd.GeoDataFrame:
+    """Simplify geospatial data.
+
+    Simplification entails removing duplicates, and optionally 'almost duplicates': Removing geospatial data that is
+    within a tolerance of any other entry.
+
+    :param gdf: geospatial data
+    :param tolerance: tolerance of uniqueness, defaults to None
+
+    :type gdf: geopandas.GeoDataFrame
+    :type tolerance: float, optional
+
+    :return: simplified geospatial data
+    :rtype: geopandas.GeoDataFrame
+    """
+    _size = len(gdf)
+    if tolerance:
+        temp = gdf.sjoin(gdf, how="inner", predicate="dwithin", distance=tolerance)
+        gdf = gdf.iloc[temp.groupby(level=0)["index_right"].first()]
+
+    gdf: gpd.GeoDataFrame = gdf.drop_duplicates(subset="geometry", ignore_index=True)
+    LOG.info(f"Geo-data compressed: {_size} -> {len(gdf)}")
+    return gdf
+
+
 def split_hydro_objects(
     hydro_objects: gpd.GeoDataFrame, split_locations: gpd.GeoDataFrame, *, buffer: float = 1e-2, redraw: bool = False
 ) -> gpd.GeoDataFrame:
