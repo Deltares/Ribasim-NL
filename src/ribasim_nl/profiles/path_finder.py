@@ -86,13 +86,16 @@ def fully_connected_network(
     """
     # check for "real" MultiLineString-entries
     ml = hydro_objects[hydro_objects.geometry.type == "MultiLineString"]
-    ml["n_linestring"] = ml.geometry.apply(lambda mls: len(mls.geoms))
-    n_ml = sum(ml["n_linestring"] > 1)
-    if n_ml > 0:
-        LOG.warning("MultiLineString-entries found when generating a graph")
+    if len(ml) > 0:
+        ml["n_linestring"] = ml.geometry.apply(lambda mls: len(mls.geoms))
+        n_ml = sum(ml["n_linestring"] > 1)
+        if n_ml > 0:
+            LOG.warning("MultiLineString-entries found when generating a graph")
+    else:
+        n_ml = 0
 
     # preprocess (Multi)LineString-entries
-    hydro_objects = connect_linestrings_within_distance(hydro_objects.explode(), buffer)
+    hydro_objects = connect_linestrings_within_distance(hydro_objects, buffer)
     if n_ml == 0:
         hydro_objects.index = hydro_objects.index.droplevel(-1)
     elif reset_multi_index:
