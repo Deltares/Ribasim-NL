@@ -36,7 +36,7 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_path = aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg")
 
-aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/aanvoergebieden.gpkg")
+aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/sturing/aanvoergebieden.gpkg")
 cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
 
 
@@ -346,9 +346,9 @@ node_functions_df = add_controllers_to_supply_area(
 
 
 # %%
-# Toevoegen Leidse Rijn-Noord
+# Toevoegen Leidsche Rijn-Noord
 
-polygon = aanvoergebieden_df.at["Leidse Rijn-Noord", "geometry"]
+polygon = aanvoergebieden_df.at["Leidsche Rijn-Noord", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -401,9 +401,9 @@ node_functions_df = add_controllers_to_supply_area(
 
 
 # %%
-# Toevoegen Leidse Rijn-Zuid
+# Toevoegen Leidsche Rijn-Zuid
 
-polygon = aanvoergebieden_df.at["Leidse Rijn-Zuid", "geometry"]
+polygon = aanvoergebieden_df.at["Leidsche Rijn-Zuid", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 

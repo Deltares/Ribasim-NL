@@ -1,0 +1,16 @@
+# Stichtse Rijnlanden
+
+- Laatst bijgewerkt: 28-01-2026
+- Laatste modelversie: [2026.6.1](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+
+## Systeembeschrijving
+![Systeembeschrijving Stichtse Rijnlanden](png/stichtserijnlanden.png)
+
+
+## Capaciteiten
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasimmodel) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+
+## Bronnen
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+
+- [Documentatie Distributiemodel (Deel B, hoofdstuk 8)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)

@@ -90,7 +90,7 @@ def crop_and_add_legend(
     img.save(out_path)
 
 
-png_dir = Path(__file__).parents[2].joinpath(r"docs/png")
+png_dir = Path(__file__).parents[2].joinpath(r"docs/watersystems/png")
 images = [i for i in png_dir.joinpath("qgis_export").glob("*.png") if i.stem != "legend"]
 legend_path = png_dir.joinpath(r"qgis_export/legend.png")
 
@@ -103,6 +103,6 @@ for image_path in images:
         legend_path=legend_path,
         legend_pos=legend_pos,
         white_padding=100,
-        legend_margin=(50, 50),
+        legend_margin=(10, 10),
         white_threshold=50,
     )

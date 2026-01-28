@@ -1,10 +1,5 @@
----
-title: "Watersystemen (NL)"
----
-
-Op deze pagina staat een beknopte beschrijving Regionale Ribasim-modellen
-
 # Noorderzijlvest
+
 - Laatst bijgewerkt: 28-01-2026
 - Laatste modelversie: [2026.6.1](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
 
