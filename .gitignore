@@ -56,4 +56,6 @@ venv/
 *.cpg
 *.log
 *.qlr
+*.png
+*.bat
 results/

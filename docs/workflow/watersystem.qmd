@@ -20,7 +20,7 @@ execute:
   echo: false
 ---
 
-# Electraboezem
+### Electraboezem
 
 Het witte gebied op de kaart wordt gevormd door de **Electraboezem**. De belangrijkste waterlopen zijn het **Reitdiep** en het **Van Starkenborghkanaal**, die onderling met elkaar in open verbinding staan.
 Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de **gemalen H.D. Louwes** en **De Waterwolf** — naar het **Lauwersmeergebied**. Het Lauwersmeergebied loost vervolgens via de sluizen van **Lauwersoog** op de **Waddenzee**.
@@ -50,7 +50,7 @@ Het stroomgebied van het **Leeksterhoofddiep** en **Dwarsdiep** voert water af n
 - Via de waterlopen in het gebied wordt het water naar het **zuidwesten** geleid, richting **landbouwgronden**.
 - Een deel wordt gebruikt voor **beregening** en **infiltratie**, een deel voor **doorspoeling**; het resterende deel stroomt via het **Dwarsdiep** terug naar de **Electraboezem**.
 
-# Fivelingoboezem *(geel gebied)*
+### Fivelingoboezem *(geel gebied)*
 
 De **Fivelingoboezem** (lichtgeel in het oosten) loost op **Delfzijl**:
 - onder **vrij verval** via het **spuicomplex** (max. **15 m³/s**), of
@@ -59,13 +59,13 @@ De **Fivelingoboezem** (lichtgeel in het oosten) loost op **Delfzijl**:
 Aanvoer is mogelijk vanuit het **Damsterdiep**, waarin water uit het **Van Starkenborghkanaal** kan worden **opgemalen** met een **booster** (max. **1.5 m³/s**).
 
 
-# Noordelijke kustpolders *(rode en blauwe gebieden)*
+### Noordelijke kustpolders *(rode en blauwe gebieden)*
 
 De **noordelijke kustpolders** lozen **direct** op de **Waddenzee**. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (**Noordpolderzijl** en **Spijksterpompen**).
 
 - In **droge periodes** wordt water uit de **Electraboezem** (via **boezemgemalen Stad en Lande, Schaphalsterzijl, Abelstok, Den Deel en Usquert en nog **) met **kleine poldergemalen** naar de kustpolders **opgemalen**.
 
-# Dongeradeel
+### Dongeradeel
 
 **Dongeradeel** is het gebied ten **westen van het Lauwersmeer** en hoort bij **Wetterskip Fryslân**.
 De afvoer vindt plaats met **gemaal Dongeradielen** op het **Lauwersmeer** en via de sluis Dokkumer Nieuwezijlen onder vrij verval.
