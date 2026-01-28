@@ -77,7 +77,8 @@ def split_hydro_objects(
         dist = p.distance(hydro_objects.geometry.values)
         if sum(dist < buffer) == 1:
             (line,) = hydro_objects.loc[dist < buffer, "geometry"].values
-            hydro_objects.loc[dist < buffer, "geometry"] = shapely.MultiLineString(split(line, p))
+            _p = line.interpolate(line.project(p))
+            hydro_objects.loc[dist < buffer, "geometry"] = shapely.MultiLineString(split(line, _p))
 
     if redraw:
         hydro_objects = hydro_objects.explode().reset_index(drop=True)
