@@ -111,6 +111,7 @@ def assign_basin_profiles_trapezoidal(
 
     # couple hydro-objects to basins
     temp = gpd.sjoin(basins, hydro_objects, how="left", predicate="intersects", lsuffix="basin", rsuffix="ho")
+    temp.dropna(subset=["index_ho"], inplace=True)
 
     # weighted average of profile dimensions
     temp["length"] = hydro_objects.loc[temp["index_ho"], "geometry"].length.values
