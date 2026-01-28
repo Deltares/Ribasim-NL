@@ -118,30 +118,39 @@ def generate_graph(hydro_objects: gpd.GeoDataFrame) -> nx.Graph:
 
 
 def select_crossings(
-    basin: shapely.Polygon | shapely.MultiPolygon, crossings: gpd.GeoDataFrame, *, buffer: float = 1e-2
+    basin: shapely.Polygon | shapely.MultiPolygon,
+    crossings: gpd.GeoDataFrame,
+    *,
+    buffer: float = 1e-2,
+    internal: bool = True,
 ) -> list[shapely.Point]:
     """Select basin/network crossings at basin-borders.
 
     :param basin: Ribasim-basin
     :param crossings: crossings-data
     :param buffer: buffer-distance at basin-border in selecting crossings, defaults to 1e-2
+    :param internal: include internal crossings, defaults to True
 
     :type basin: shapely.Polygon | shapely.MultiPolygon
     :type crossings: geopandas.GeoDataFrame
     :type buffer: float, optional
+    :type internal: bool, optional
 
     :return: list of border crossings
     :rtype: list[shapely.Point]
 
     :raises TypeError: if `basin` is not a (Multi)Polygon
     """
+    # crossings-selection polygon
+
+    def selection(polygon: shapely.Polygon) -> shapely.Polygon:
+        return polygon.buffer(buffer) if internal else polygon.exterior.buffer(buffer)
+
     # define buffered basin border(s)
     if isinstance(basin, shapely.Polygon):
-        borders = [
-            basin.exterior.buffer(buffer),
-        ]
+        borders = selection(basin)
     elif isinstance(basin, shapely.MultiPolygon):
-        borders = [p.exterior.buffer(buffer) for p in basin.geoms]
+        borders = [selection(p) for p in basin.geoms]
     else:
         msg = f"Basin must be a (Multi)Polygon: {type(basin)=}"
         raise TypeError(msg)
