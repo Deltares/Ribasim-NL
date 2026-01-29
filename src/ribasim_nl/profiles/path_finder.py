@@ -12,6 +12,7 @@ import logging
 import geopandas as gpd
 import momepy
 import networkx as nx
+import numpy as np
 import shapely
 import tqdm
 from shapely.ops import nearest_points, split
@@ -206,32 +207,141 @@ def crossing_to_node(graph: nx.Graph | shapely.MultiPoint, crossing: shapely.Poi
     return nearest_node.x, nearest_node.y
 
 
-def find_flow_routes(graph: nx.Graph, crossings: (shapely.Point, ...)) -> set[tuple[tuple, tuple]]:
+def full_graph_search(basin: shapely.Polygon, graph: nx.Graph, crossings: (shapely.Point, ...), **kwargs) -> bool:
+    """Estimation whether a full graph search would be computationally more efficient than a source-target search.
+
+    In case the graph is 'dense' and/or the number of crossings constitute for a percentage of the graph's nodes, a full
+    pairwise comparison of the shortest paths between all the nodes of the graph is performed after which the nodes
+    representing the crossings are selected. This is considered more efficient than searching every route between pairs
+    of crossings.
+
+    The graph is considered dense if there are 'a lot of' edges compared to the number of nodes. What 'a lot of' means,
+    is calculated by the following comparison:
+
+        |E| > a * |N|**2
+
+    where `|E|` is the number of edges; `|N|` the number of nodes; and `a` a user-defined threshold (`dense_threshold`).
+
+    Specifically for the case of searching the shortest paths in basins, the 'flatness' of the basin hints to the extent
+    of overlapping routes: 'Flat' (or stretched-out) basins will generally have a single main route from which the edges
+    sprawl to other connections. In such a basin, a full graph search would be computationally more efficient than a
+    source-target search, as many shortest paths share the same edge(s).
+
+    Thus, if any of the following three criteria are met, a full graph search is considered beneficial (i.e.,
+    computationally more efficient than a source-target search):
+     1. The graph is 'dense';
+     2. The crossings cover 'a lot of' the graph's nodes;
+     3. The basin is 'flat'.
+
+    What constitutes for 'dense', 'a lot of', and 'flat' can be controlled by setting thresholds.
+
+    :param basin: basin corresponding to the `graph`
+    :param graph: graph corresponding to the `basin`
+    :param crossings: crossings to pairwise connect
+    :param kwargs: optional arguments (thresholds)
+
+    :key dense_threshold: threshold above which the graph is considered 'dense' (`a` in the above formula),
+        defaults to 0.5
+    :key flatness_threshold: width-length ratio below which the basin is considered 'flat', defaults to 0.1
+    :key min_coverage_threshold: minimum coverage of the graph's nodes by the crossings, defaults to 0.9
+    :key max_coverage_threshold: maximum coverage of the graph's nodes by the crossings by which the 'flatness'
+        criterion is disabled, defaults to 0.1
+
+    :type basin: shapely.Polygon
+    :type graph: networkx.Graph
+    :type crossings: (shapely.Point, ...)
+
+    :return: whether to perform a full graph search
+    :rtype: bool
+    """
+    # optional arguments
+    dense_threshold: float = kwargs.get("dense_threshold", 0.5)
+    flatness_threshold: float = kwargs.get("flatness_threshold", 0.1)
+    min_coverage_threshold: float = kwargs.get("min_coverage_threshold", 0.9)
+    max_coverage_threshold: float = kwargs.get("max_coverage_threshold", 0.1)
+
+    # validate optional arguments
+    assert dense_threshold >= 0
+    assert 0 <= flatness_threshold <= 1
+    assert 0 <= min_coverage_threshold <= 1
+    assert 0 <= max_coverage_threshold <= 1
+
+    # density graph
+    density = graph.number_of_edges() > dense_threshold * (graph.number_of_nodes() ** 2)
+
+    # graph coverage
+    graph_coverage = len(crossings) / graph.number_of_nodes()
+    coverage = graph_coverage >= min_coverage_threshold
+
+    # basin flatness
+    _v = basin.length**2 - 16 * basin.area
+    if _v < 0:
+        flatness = False
+    else:
+        width = 0.25 * (basin.length - np.sqrt(basin.length**2 - 16 * basin.area))
+        length = basin.area / width
+        flatness = bool(width / length < flatness_threshold)
+        if graph_coverage <= max_coverage_threshold:
+            flatness = False
+
+    # apply full graph search
+    return any([density, coverage, flatness])
+
+
+def find_flow_routes(
+    graph: nx.Graph, crossings: (shapely.Point, ...), *, use_full_graph: bool = False
+) -> set[tuple[tuple, tuple]]:
     """Find all shortest routes between combinations of crossings.
 
     :param graph: graph
-    :param crossings: border crossings
+    :param crossings: (border) crossings
+    :param use_full_graph: search for the shortest paths between all pairs of nodes and selecting the crossings instead
+        of searching for the shortest paths between the pairs of crossings, defaults to False
 
     :type graph: networkx.Graph
     :type crossings: (shapely.Point, ...)
+    :type use_full_graph: bool, optional
 
     :return: set of graph-edges that are part of at least one shortest route between crossings
     :rtype: set[tuple[tuple, tuple]]
     """
+    if len(crossings) >= graph.number_of_nodes():
+        LOG.warning(f"More crossings ({len(crossings)}) than graph-nodes ({graph.number_of_nodes()})")
+    desc = "Finding main routes"
+
     # initiate working variables
     flow_routes = set()
     mp_graph = shapely.MultiPoint(graph.nodes)
 
-    # loop over all combinations of (border) crossings (without order)
-    for c1, c2 in tqdm.tqdm(itertools.combinations(set(crossings), 2), "Finding main routes"):
-        try:
-            path = nx.shortest_path(
-                graph, source=crossing_to_node(mp_graph, c1), target=crossing_to_node(mp_graph, c2), weight="weight"
-            )
-        except nx.NetworkXNoPath as e:
-            LOG.debug(e)
-        else:
-            flow_routes.update(itertools.pairwise(path))
+    # find the shortest paths
+    if use_full_graph:
+        # shortest path between all nodes
+        paths = dict(nx.shortest_path(graph, weight="weight"))
+
+        # select shortest paths between crossings
+        for c1, c2 in tqdm.tqdm(itertools.combinations(set(crossings), 2), f"{desc} (F)"):
+            try:
+                # noinspection PyTypeChecker
+                path = paths[crossing_to_node(mp_graph, c1)][crossing_to_node(mp_graph, c2)]
+            except KeyError:
+                LOG.debug(f"No path between {c1} and {c2}")
+            else:
+                flow_routes.update(itertools.pairwise(path))
+    else:
+        # loop over all combinations of (border) crossings (without order)
+        for c1, c2 in tqdm.tqdm(itertools.combinations(set(crossings), 2), f"{desc} (S)"):
+            try:
+                path = nx.shortest_path(
+                    graph,
+                    source=crossing_to_node(mp_graph, c1),
+                    target=crossing_to_node(mp_graph, c2),
+                    weight="weight",
+                    method="dijkstra",
+                )
+            except nx.NetworkXNoPath as e:
+                LOG.debug(e)
+            else:
+                flow_routes.update(itertools.pairwise(path))
 
     # return set of graph-edges
     return flow_routes
