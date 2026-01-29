@@ -67,16 +67,7 @@ def trapezoidal_profile(
     return [(z_ref, width), (z_ref - depth + v_margin, max(bottom_width, h_margin)), (z_ref - depth, h_margin)]
 
 
-def measured_profile(*args, **kwargs) -> list[tuple]:
-    """Cross-sectional profile based on measurements.
-
-    TODO: Finalise this function.
-    """
-    LOG.warning("`measured_profile()` not yet implemented, `trapezoidal_profile()` used instead")
-    return trapezoidal_profile(*args, **kwargs)
-
-
-def assign_basin_profiles_trapezoidal(
+def assign_basin_profiles(
     basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, **kwargs
 ) -> pd.DataFrame | gpd.GeoDataFrame:
     """Assign trapezoidal cross-sectional profiles to basins: 'bergend'.
@@ -148,16 +139,3 @@ def assign_basin_profiles_trapezoidal(
     if as_geo_dataframe:
         return gpd.GeoDataFrame(table)
     return table
-
-
-def assign_basin_profiles_measurements(
-    basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, **kwargs
-) -> pd.DataFrame:
-    """Assign measured cross-sectional profiles to basins: 'doorgaand'.
-
-    TODO: Finalise this function.
-    """
-    LOG.critical(
-        "`assign_basin_profiles_measurements()` not yet implemented, `assign_basin_profiles_trapezoidal()` used instead"
-    )
-    return assign_basin_profiles_trapezoidal(basins, hydro_objects, **kwargs)
