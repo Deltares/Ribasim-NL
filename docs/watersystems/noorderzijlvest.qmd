@@ -45,53 +45,36 @@ Dongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasimmodel) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
-| naam                  | code     |   node_id | functie                |   aanvoer [m3/s] |   afvoer [m3/s] |
-|:----------------------|:---------|----------:|:-----------------------|-----------------:|----------------:|
-|                       | KST0379  |       501 | uitlaat (doorspoeling) |            0.034 |           23.6  |
-|                       | INL099   |       693 | inlaat                 |            7.47  |            0    |
-|                       | INL234   |       702 | inlaat                 |           47.3   |            0    |
-|                       | KST0148  |       401 | uitlaat (doorspoeling) |            0.017 |            5.88 |
-|                       | KST0113  |       383 | uitlaat (doorspoeling) |            0.013 |           20.2  |
-|                       | KST0069  |       357 | uitlaat (doorspoeling) |            0.02  |           18    |
-|                       | KST0053  |       350 | uitlaat (doorspoeling) |            0.015 |            5    |
-|                       | INL235   |       703 | inlaat                 |           47.3   |            0    |
-| Allartsooginlaat      | INL201   |       698 | inlaat                 |           20     |            0    |
-| Blijcke               | KGM106   |       106 | inlaat                 |            0.5   |            0    |
-| De Waterwolf          | KGM001   |        29 | doorlaat               |           75     |           75    |
-| Den Deel              | KGM007_i |        35 | inlaat                 |            2     |            0    |
-| Drie-Provinciëninlaat | INL202   |       699 | inlaat                 |           20     |            0    |
-| Egelnest              | KGM108   |       108 | inlaat                 |            0.1   |            0    |
-| Frieschepaleninlaat   | INL077   |       687 | inlaat                 |           20     |            0    |
-| Gaarkeukeninlaat      |          |      1741 | inlaat                 |           24     |            0    |
-| Gemaal Dokwerd        |          |      1753 | inlaat                 |           20     |            0    |
-| Heidenheeminlaat      | INL055   |      1743 | inlaat                 |            0.072 |            0    |
-| Herculesstuw          | KST0169  |       412 | uitlaat (doorspoeling) |            0.2   |           10.2  |
-| Hornhuizerklief       | KGM110   |       110 | inlaat                 |            0.2   |            0    |
-| Huis ter Heide-inlaat | INL114   |      1742 | inlaat                 |            0.105 |            0    |
-| Inlaat strandweg      | INL325   |       708 | inlaat                 |          668     |            0    |
-| Jonkersbruginlaat     | INL095   |      1739 | inlaat                 |            0.032 |            0    |
-| KGM016_i              | KGM016_i |        43 | inlaat                 |            0.02  |            0    |
-| Katershorn            | KGM111   |       111 | doorlaat               |            0.1   |            0.1  |
-| Klei                  | KGM130   |       129 | inlaat                 |            0.2   |            0    |
-| Leek                  | KGM009   |        36 | inlaat                 |            1.17  |            0    |
-| Meerweg               |          |      1758 | inlaat                 |            0.021 |            0    |
-| Oosternieland         | KGM152   |       143 | inlaat                 |            0.2   |            0    |
-| Oostersluis           | KGM148   |       142 | inlaat                 |            2.5   |            0    |
-| Pieterburen           | KGM119   |       119 | inlaat                 |            0.2   |            0    |
-| Quatre Bras           | KGM120   |       120 | doorlaat               |            0.1   |            0.1  |
-| Schaphalsterzijl      | KGM155_i |       146 | inlaat                 |            2.5   |            0    |
-| Slikken               | KGM121   |       121 | inlaat                 |            0.1   |            0    |
-| Spijk                 | KGM144   |       139 | inlaat                 |            0.18  |            0    |
-| Spijksterpompen       | KGM015   |        41 | uitlaat (doorspoeling) |            0.4   |           12.9  |
-| Stad en Lande         | KGM003_i |        32 | inlaat                 |            1.5   |            0    |
-| Ter Aardinlaat        | INL001   |      1751 | inlaat                 |            0.043 |            0    |
-| Tilburg               | KGM076_i |        91 | inlaat                 |            0.35  |            0    |
-| Usquert               | KGM234_i |       169 | inlaat                 |            1     |            0    |
-| Wierhuizerklief       | KGM124   |       123 | inlaat                 |            0.2   |            0    |
-| Zielkolk              | KGM125   |       124 | doorlaat               |            0.5   |            0.5  |
+| naam                    | code     |   node_id | functie                |   aanvoer [m3/s] |   afvoer [m3/s] |
+|:------------------------|:---------|----------:|:-----------------------|-----------------:|----------------:|
+| Abelstok                | KGM156   |       147 | uitlaat                |            0     |           10    |
+| Allartsooginlaat        | INL201   |       698 | inlaat                 |           20     |            0    |
+| De Drie Delfzijlen      | KGM046   |        67 | uitlaat                |            0     |           25    |
+| De Waterwolf            | KGM001   |        29 | doorlaat               |           75     |           75    |
+| Dokkumer Nieuwezijlen   |          |      1755 | uitlaat                |            0     |            0    |
+| Drie-Provinciëninlaat   | INL202   |       699 | inlaat                 |           20     |            0    |
+| Frieschepaleninlaat     | INL077   |       687 | inlaat                 |           20     |            0    |
+| Gaarkeukeninlaat        |          |      1741 | inlaat                 |           24     |            0    |
+| Gemaal Dokwerd          |          |      1753 | inlaat                 |           20     |            0    |
+| Gemaal de Dongeradielen |          |      1748 | uitlaat                |            0     |            0    |
+| H.D. Louwes             | KGM002   |        30 | uitlaat                |            0     |           16.7  |
+| Heidenheeminlaat        | INL055   |      1743 | inlaat                 |            0.072 |            0    |
+| Herculesstuw            | KST0169  |       412 | uitlaat (doorspoeling) |            0.2   |           10.2  |
+| Huis ter Heide-inlaat   | INL114   |      1742 | inlaat                 |            0.105 |            0    |
+| Jonkersbruginlaat       | INL095   |      1739 | inlaat                 |            0.032 |            0    |
+| Leek                    | KGM009   |        36 | inlaat                 |            1.17  |            0    |
+| Meerweg                 |          |      1758 | inlaat                 |            0.021 |            0    |
+| Nieuwe Robbengat        | KGM016   |        42 | uitlaat                |            0     |            4.33 |
+| Noordpolderzijl         | KGM014   |        40 | uitlaat                |            0     |            4    |
+| Oostersluis             | KGM148   |       142 | inlaat                 |            2.5   |            0    |
+| R.J. Cleveringsluizen   | KSL011   |       724 | uitlaat                |            0     |          668    |
+| Schaphalsterzijl        | KGM155_i |       146 | inlaat                 |            2.5   |            0    |
+| Spijksterpompen         | KGM015   |        41 | uitlaat (doorspoeling) |            0.4   |           12.9  |
+| Stad en Lande           | KGM003_i |        32 | inlaat                 |            1.5   |            0    |
+| Ter Aardinlaat          | INL001   |      1751 | inlaat                 |            0.043 |            0    |
 
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
 - [Documentatie Distributiemodel (Deel C, hoofdstuk 26)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
 - [Sweco - systeemschets](bronnen/noorderzijlvest/sweco_systeemschets.png)
