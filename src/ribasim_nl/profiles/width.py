@@ -117,6 +117,7 @@ def estimate_width(
         such a rectangle by using the following two definitions:
          1. circumference: C = 2a + 2b;
          2. area: A = ab.
+
         Solving for a and b gives:
 
             a, b = 0.25 * (C +/- sqrt(C^2 - 16A))
@@ -130,6 +131,11 @@ def estimate_width(
 
             W = sqrt(A)
 
+        Thus, the width of the basin polygon is calculated as follows:
+
+            | W = sqrt(A)                           if C^2 - 16A < 0
+            | W = 0.25 * (C - sqrt(C^2 - 16A))      else
+
         :param polygon: BGT-water polygon
         :type polygon: shapely.Polygon
 
@@ -138,7 +144,6 @@ def estimate_width(
         """
         _v = polygon.length**2 - 16 * polygon.area
         if _v < 0:
-            LOG.debug(f"Negative discriminant ({_v}): Polygon considered a square")
             return np.sqrt(polygon.area)
         return 0.25 * (polygon.length - np.sqrt(_v))
 
