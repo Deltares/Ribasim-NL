@@ -125,13 +125,22 @@ def estimate_width(
 
             W = 0.25 * (C - sqrt(C^2 - 16A))
 
+        In the case that this results in a negative value to take the square-root of (i.e., C^2 - 16A < 0), the polygon
+        is considered a square:
+
+            W = sqrt(A)
+
         :param polygon: BGT-water polygon
         :type polygon: shapely.Polygon
 
         :return: width estimation
         :rtype: float
         """
-        return 0.25 * (polygon.length - np.sqrt(polygon.length**2 - 16 * polygon.area))
+        _v = polygon.length**2 - 16 * polygon.area
+        if _v < 0:
+            LOG.debug(f"Negative discriminant ({_v}): Polygon considered a square")
+            return np.sqrt(polygon.area)
+        return 0.25 * (polygon.length - np.sqrt(_v))
 
     def representative_width(indices: list[int]) -> float | None:
         """Take the mean of estimated widths of all connected polygons."""
