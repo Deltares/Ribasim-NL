@@ -82,7 +82,7 @@ def couple_bgt_to_hydro_objects(
     results = pd.concat([hydro_objects, couple_table], axis=1, ignore_index=False)
 
     # dealing with uncoupled hydro-objects
-    hydro_objects["index_right"] = results["index_right"].apply(lambda i: i if isinstance(i, list) else [])
+    hydro_objects["index_bgt"] = results["index_right"].apply(lambda i: i if isinstance(i, list) else [])
 
     # return BGT-coupled hydro-objects
     return hydro_objects
@@ -105,7 +105,7 @@ def estimate_width(
 
     :raises ValueError: if hydro-objects are not coupled to BGT-data
     """
-    if "index_right" not in hydro_objects.columns:
+    if "index_bgt" not in hydro_objects.columns:
         msg = "Hydro-objects not yet coupled to BGT-data"
         raise ValueError(msg)
 
@@ -149,7 +149,7 @@ def estimate_width(
         return None
 
     # assign representative width estimates to the hydro-objects
-    hydro_objects["width"] = hydro_objects["index_right"].apply(representative_width)
+    hydro_objects["width"] = hydro_objects["index_bgt"].apply(representative_width)
     if dropna:
         hydro_objects.dropna(subset="width", inplace=True, ignore_index=True)
     return hydro_objects
