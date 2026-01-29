@@ -128,6 +128,9 @@ def assign_basin_profiles_trapezoidal(
         drop=False
     )
 
+    # clean up dataframe
+    dimensions["meta_streefpeil"] = pd.to_numeric(dimensions["meta_streefpeil"], errors="coerce").fillna(0)
+
     # define basin-profiles
     temp = dimensions.apply(
         lambda row: trapezoidal_profile(
