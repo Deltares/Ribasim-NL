@@ -12,9 +12,9 @@ water_authorities = [
     # "DrentsOverijsselseDelta",
     # "HunzeenAas",
     # "Limburg",
-    "Noorderzijlvest",
+    # "Noorderzijlvest",
     # "RijnenIJssel",
-    # "StichtseRijnlanden",
+    "StichtseRijnlanden",
     # "ValleienVeluwe",
     # "Vechtstromen",
 ]
