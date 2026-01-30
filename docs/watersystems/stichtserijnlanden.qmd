@@ -4,7 +4,98 @@
 - Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
 
 ## Systeembeschrijving
-![Systeembeschrijving Stichtse Rijnlanden](png/stichtserijnlanden.png)
+![Systeembeschrijving Stichtse Rijnlanden](svg/stichtserijnlanden.svg)
+
+## Stichtse Rijnlanden (HDSR)
+
+### Kromme Rijn / Amsterdam-Rijnkanaal (ARK)
+##### Afvoer
+- Midden- en westelijk deel: directe afvoer op het ARK, deels door bemaling en deels onder vrij verval.
+- Noordoostelijk deel: afvoer via de Kromme Rijn naar de stadswateren van Utrecht, het ARK en de Utrechtse Vecht.
+
+##### Wateraanvoer
+- Hoofdzakelijk vanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede.
+- Aanvullend vanuit het ARK via gemaal de Caspargouwse Wetering (gebied rond Wijk bij Duurstede).
+
+##### Bijzondere sturing
+In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m³/s.
+- Bij overschrijding gaat stuw Werkhoven omhoog en wordt stuw Cothen gestreken.
+- Afvoer vindt dan bovenstrooms van Werkhoven plaats via de Caspargauw en benedenstrooms via Utrecht.
+
+### Stadsgebied Utrecht en Utrecht-Noord
+##### Afvoer
+- Via spuisluis Oog in Al naar het ARK (hoofdroute).
+- Via het Weerdsluiscomplex en het Westriool naar de Utrechtse Vecht.
+- Via een sifon onder het ARK naar het Merwedekanaal, met afvoer onder vrij verval.
+
+##### Wateraanvoer
+- Vanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede en gemaal de Caspargouwse Wetering.
+- Vanuit het Merwedekanaal via een sifon onder het ARK, met aanvoer via inlaatsluis Vreeswijk.
+- Rechtstreeks vanuit het ARK via het Noordergemaal.
+
+##### Bijzondere sturing
+- Wateraanvoer onder vrij verval vanuit de Doorslag is onder normale omstandigheden niet mogelijk vanwege lagere waterstanden.
+
+### Utrechtse Heuvelrug / Kromme Rijn
+##### Afvoer
+- Via grondwaterstroming in de Utrechtse Heuvelrug.
+- Via weteringen aan de voet van de Heuvelrug, die afwateren op de Kromme Rijn.
+
+##### Wateraanvoer
+- Beperkt mogelijk vanuit de Kromme Rijn door het hellende karakter van het gebied.
+
+### Leidsche – Oude Rijn
+##### Afvoer
+- Onder normale omstandigheden loost de Leidsche Rijn op het ARK en de Oude Rijn via de schutsluis bij Bodegraven.
+- Overtollig water uit de polders wordt met poldergemalen uitgeslagen op de Leidsche Rijn, de Oude Rijn en het ARK.
+- In het noordwesten lozen polders via gemalen op de boezem van Amstel, Gooi en Vecht.
+
+##### Wateraanvoer
+- Via de Leidsche Rijn en de Oude Rijn.
+- Via het boezemsysteem van Amstel, Gooi en Vecht.
+
+##### Bijzondere sturing (KWA) – Leidsche Rijn en Oude Rijn
+In extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in werking:
+
+- De Groenwoudsedijksluis bij gemaal De Aanvoerder wordt gesloten.
+- Gemaal De Aanvoerder pompt water vanuit het ARK in de Leidsche Rijn en zet het peil aan de oostzijde op (0,20 m NAP).
+- De Haanwijkersluis tussen de Leidsche Rijn en de Oude Rijn wordt geopend; water stroomt richting de schutsluis bij  Bodegraven. 
+- Het systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de Gekanaliseerde Hollandsche IJssel (Doorslag) eveneens richting Hekendorp.
+
+### Hollandsche IJssel
+##### Afvoer
+- Via het Waaiergesluis bij Gouda.
+- Via inlaat Hekendorp naar de Oude Rijn.
+- Via de Zuider sluis (verbinding tussen Merwede en ARK) vrijwel geen afvoer.
+- Oostelijke polders lozen via gemalen op de Leidsche Rijn, het ARK, de Doorslag en het Merwedekanaal.
+- Westelijke polders lozen op de Oude Rijn.
+
+##### Wateraanvoer
+
+Hollandsche IJssel (boezem):
+
+- Via inlaat Vreeswijk, via het Merwedekanaal en de Doorslag.
+- Via de stadswateren van Utrecht, via een sifon onder het ARK.
+- Via het Noordergemaal (alleen in KWA-situaties), waarbij water uit het ARK via een sifon onder het ARK en de Doorslag wordt aangevoerd.
+
+Poldergebieden:
+
+- Grotendeels vanuit de Hollandsche IJssel en de Leidsche–Oude Rijn.
+
+### Amsterdam-Rijnkanaal (ARK) / Lek
+##### Afvoer
+- Naar het ARK, deels door bemaling en deels onder vrij verval.
+
+##### Wateraanvoer
+- Vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.
+
+### Lopikerwaard
+##### Afvoer
+- Overtollig water uit de polder wordt uitgeslagen op de Hollandsche IJssel en de Lek via vier gemalen: De Keulevaart, De Koekoek, De Pleyt en De Hoekse Molen.
+
+##### Wateraanvoer
+- Grotendeels vanuit de Lek via inlaat De Koekoek.
+- Aanvullend vanuit de Hollandsche IJssel via de Gekanaliseerde Hollandsche IJssel (Doorslag).
 
 
 ## Capaciteiten
