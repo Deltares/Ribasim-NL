@@ -48,6 +48,7 @@ venv/
 *.gpkg
 *.toml
 *.dbf
+*.xlsx
 *.shp*
 *.prj
 *.sbn

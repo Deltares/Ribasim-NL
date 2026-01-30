@@ -134,13 +134,13 @@ stages:
       nfiles: 6
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 48637e2c09e1b058c2e2c82699b5296b.dir
-      size: 467805
+      md5: 831b42047d6044bf9f75be7ceeac3c54.dir
+      size: 471039
       nfiles: 60
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_full_control_model
       hash: md5
-      md5: 5e26577e4c8129f1c0ad637146a4f833.dir
+      md5: 36beea79f91e174f0fc9017feaf0463b.dir
       size: 8581269
       nfiles: 2
   noorderzijlvest:
@@ -153,12 +153,32 @@ stages:
       nfiles: 5
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 48637e2c09e1b058c2e2c82699b5296b.dir
-      size: 467805
+      md5: 831b42047d6044bf9f75be7ceeac3c54.dir
+      size: 471039
       nfiles: 60
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
       hash: md5
-      md5: b4bc491bf8df5ea5fc131d887d1dff6a.dir
+      md5: 3429bccbd97a38cd0c30724754f2ffb9.dir
       size: 9924801
+      nfiles: 2
+  stichtse_rijnlanden:
+    cmd: uv run python notebooks/stichtse_rijnlanden/main.py
+    deps:
+    - path: notebooks/stichtse_rijnlanden
+      hash: md5
+      md5: f3030a7533ff36fc8d6e08100d555467.dir
+      size: 60951
+      nfiles: 5
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 831b42047d6044bf9f75be7ceeac3c54.dir
+      size: 471039
+      nfiles: 60
+    outs:
+    - path:
+        data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
+      hash: md5
+      md5: f64bbbc6c24494be4c7be932b702360e.dir
+      size: 16580801
       nfiles: 2

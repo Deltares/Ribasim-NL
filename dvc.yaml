@@ -41,3 +41,10 @@ stages:
       - notebooks/noorderzijlvest
     outs:
       - data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
+  stichtse_rijnlanden:
+    cmd: "uv run python notebooks/stichtse_rijnlanden/main.py"
+    deps:
+      - src/ribasim_nl/ribasim_nl
+      - notebooks/stichtse_rijnlanden
+    outs:
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
