@@ -105,7 +105,9 @@ def name_from_intake_tag(string):
 # input
 krw_lichaam = cloud.joinpath("Basisgegevens/KRW/krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg")
 
-baseline = cloud.joinpath("baseline-nl_land-j23_6-v1/baseline.gdb")
+baseline = cloud.joinpath(
+    "Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb"
+)  # dit bestand is read-only voor D2HYDRO ivm verwerkersovereenkomst
 
 nis_hws = cloud.joinpath("Rijkswaterstaat/aangeleverd/NIS/nis_all_kunstwerken_hws_2019.gpkg")
 nis_hwvn = cloud.joinpath("Rijkswaterstaat/aangeleverd/NIS/nis_alle_kunstwerken_hwvn_2019.gpkg")
