@@ -22,9 +22,9 @@ cloud = CloudStorage()
 
 
 out_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/bathymetrie")
-out_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True, parents=True)
 baseline_file = cloud.joinpath(
-    "baseline-nl_land-j23_6-v1/baseline.gdb"
+    "Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb"
 )  # dit bestand is read-only voor D2HYDRO ivm verwerkersovereenkomst
 layer = "bedlevel_points"
 

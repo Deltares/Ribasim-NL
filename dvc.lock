@@ -182,3 +182,48 @@ stages:
       md5: f64bbbc6c24494be4c7be932b702360e.dir
       size: 16580801
       nfiles: 2
+  bathymetry:
+    cmd: uv run python notebooks/rijkswaterstaat/1_bathymetrie.py
+    deps:
+    - path: notebooks/rijkswaterstaat/1_bathymetrie.py
+      hash: md5
+      md5: 8a482695542f809f27691f9c7a2119d5
+      size: 7165
+    outs:
+    - path: data/Rijkswaterstaat/verwerkt/bathymetrie
+      hash: md5
+      md5: f7fb6f3b7acbc6aef28561bdfbd73620.dir
+      size: 770731640
+      nfiles: 4
+  rijkswaterstaat:
+    cmd:
+    - uv run python notebooks/rijkswaterstaat/2_basins.py
+    - uv run python notebooks/rijkswaterstaat/3_netwerk.py
+    - uv run python notebooks/rijkswaterstaat/4_kunstwerken.py
+    - uv run python notebooks/rijkswaterstaat/5_model_netwerk.py
+    - uv run python notebooks/rijkswaterstaat/6_model_sturing.py
+    - uv run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+    - uv run python notebooks/rijkswaterstaat/8a_update_state.py
+    - uv run python notebooks/rijkswaterstaat/8b_update_bc.py
+    deps:
+    - path: data/Rijkswaterstaat/verwerkt/bathymetrie
+      hash: md5
+      md5: f7fb6f3b7acbc6aef28561bdfbd73620.dir
+      size: 770731640
+      nfiles: 4
+    - path: notebooks/rijkswaterstaat
+      hash: md5
+      md5: 43310f018dc47409e9913f5aee4fa755.dir
+      size: 94730
+      nfiles: 13
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 831b42047d6044bf9f75be7ceeac3c54.dir
+      size: 471039
+      nfiles: 60
+    outs:
+    - path: data/Rijkswaterstaat/modellen/hws_transient
+      hash: md5
+      md5: 69bf72f0ffa224545f9f03bbc61607a5.dir
+      size: 42668190
+      nfiles: 2
