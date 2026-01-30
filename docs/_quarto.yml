@@ -10,6 +10,8 @@ website:
       - cloudstorage.qmd
       - text: "Workflows"
         file: workflow/main-watersystem.qmd
+      - text: "Watersystems"
+        file: watersystems/main.qmd
     right:
       - text: "Contributing"
         file: dev/index.qmd
@@ -20,10 +22,15 @@ website:
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd
-        - workflow/watersystem.qmd
         - workflow/level-controlled.qmd
         - workflow/gravity-controlled.qmd
         - workflow/couple.qmd
+    - title: "Watersystems"
+      contents:
+        - watersystems/main.qmd
+        - watersystems/aaenmaas.qmd
+        - watersystems/noorderzijlvest.qmd
+        - watersystems/stichtserijnlanden.qmd
 format:
   html:
     theme: cosmo
