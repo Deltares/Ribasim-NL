@@ -58,5 +58,6 @@ venv/
 *.log
 *.qlr
 *.tif
+*.csv
 *.gdb/
 results/
