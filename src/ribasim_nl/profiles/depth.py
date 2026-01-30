@@ -1,6 +1,36 @@
 import geopandas as gpd
+import shapely
 
 from profiles import hydrotopes as ht
+
+
+def make_depth_profiles(
+    profile_points: gpd.GeoDataFrame, col_profile_id: str = "profiellijnid", col_z: str = "hoogte"
+) -> gpd.GeoDataFrame:
+    """Translate profile point data to profile line data.
+
+    :param profile_points: geospatial dataset with profile points
+    :param col_profile_id: column profile ID, defaults 'profiellijnid'
+    :param col_z: column z-coordinate, defaults to 'hoogte'
+
+    :type profile_points: geopandas.GeoDataFrame
+    :type col_profile_id: str, optional
+    :type col_z: str, optional
+
+    :return: geospatial dataset with profile lines
+    :rtype: geopandas.GeoDataFrame
+    """
+    if not all(profile_points.has_z):
+        profile_points["geometry"] = profile_points.apply(
+            lambda row: shapely.Point(row.geometry.x, row.geometry.y, row[col_z]), axis=1
+        )
+    profile_lines = profile_points.groupby(col_profile_id)["geometry"].apply(
+        lambda g: shapely.LineString(g) if len(g) > 1 else None
+    )
+    profile_lines.dropna(inplace=True)
+    return gpd.GeoDataFrame(
+        {"profiellijnid": profile_lines.index}, geometry=profile_lines.values, crs=profile_points.crs
+    )
 
 
 def depth_from_hydrotopes(
