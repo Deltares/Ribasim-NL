@@ -47,4 +47,4 @@ stages:
       - src/ribasim_nl/ribasim_nl
       - notebooks/stichtse_rijnlanden
     outs:
-      - data/StichtseRijnlanden/modellen/stichtse_rijnlanden_full_control_model
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
