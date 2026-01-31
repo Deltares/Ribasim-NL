@@ -21,6 +21,18 @@ stages:
       - notebooks/rijkswaterstaat
     outs:
       - data/Rijkswaterstaat/modellen/hws_transient
+  brabantse_delta:
+    cmd:
+      - uv run python notebooks/brabantse_delta/_preprocess_profielen.py
+      - uv run python notebooks/brabantse_delta/01_fix_model.py
+      - uv run python notebooks/brabantse_delta/02_prepare_model.py
+      - uv run python notebooks/brabantse_delta/03_parameterize_model.py
+      - uv run python notebooks/brabantse_delta/04_add_full_control.py
+    deps:
+      - src/ribasim_nl/ribasim_nl
+      - notebooks/brabantse_delta
+    outs:
+      - data/BrabantseDelta/modellen/BrabantseDelta_full_control_model
   samenvoegen:
     cmd: "uv run python notebooks/samenvoegen_modellen.py"
     frozen: true
