@@ -16,7 +16,6 @@ stages:
       - uv run python notebooks/rijkswaterstaat/8a_update_state.py
       - uv run python notebooks/rijkswaterstaat/8b_update_bc.py
     deps:
-      - src/ribasim_nl/ribasim_nl
       - data/Rijkswaterstaat/verwerkt/bathymetrie
       - notebooks/rijkswaterstaat
     outs:
@@ -29,7 +28,6 @@ stages:
       - uv run python notebooks/brabantse_delta/03_parameterize_model.py
       - uv run python notebooks/brabantse_delta/04_add_full_control.py
     deps:
-      - src/ribasim_nl/ribasim_nl
       - notebooks/brabantse_delta
     outs:
       - data/BrabantseDelta/modellen/BrabantseDelta_full_control_model
@@ -62,23 +60,32 @@ stages:
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
   aa_en_maas:
-    cmd: "uv run python notebooks/aa_en_maas/main.py"
+    cmd:
+      - uv run python notebooks/aa_en_maas/01_fix_model.py
+      - uv run python notebooks/aa_en_maas/02_prepare_model.py
+      - uv run python notebooks/aa_en_maas/03_parameterize_model.py
+      - uv run python notebooks/aa_en_maas/04_add_full_control.py
     deps:
-      - src/ribasim_nl/ribasim_nl
       - notebooks/aa_en_maas
     outs:
       - data/AaenMaas/modellen/AaenMaas_full_control_model
   noorderzijlvest:
-    cmd: "uv run python notebooks/noorderzijlvest/main.py"
+    cmd:
+      - uv run python notebooks/noorderzijlvest/01_fix_model.py
+      - uv run python notebooks/noorderzijlvest/02_prepare_model.py
+      - uv run python notebooks/noorderzijlvest/03_parameterize_model.py
+      - uv run python notebooks/noorderzijlvest/04_add_full_control.py
     deps:
-      - src/ribasim_nl/ribasim_nl
       - notebooks/noorderzijlvest
     outs:
       - data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
   stichtse_rijnlanden:
-    cmd: "uv run python notebooks/stichtse_rijnlanden/main.py"
+    cmd:
+      - uv run python notebooks/stichtse_rijnlanden/01_fix_model.py
+      - uv run python notebooks/stichtse_rijnlanden/02_prepare_model.py
+      - uv run python notebooks/stichtse_rijnlanden/03_parameterize_model.py
+      - uv run python notebooks/stichtse_rijnlanden/04_add_full_control.py
     deps:
-      - src/ribasim_nl/ribasim_nl
       - notebooks/stichtse_rijnlanden
     outs:
       - data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
@@ -90,7 +97,66 @@ stages:
       - uv run python notebooks/limburg/03_parameterize_model.py
       - uv run python notebooks/limburg/04_add_full_control.py
     deps:
-      - src/ribasim_nl/ribasim_nl
       - notebooks/limburg
     outs:
       - data/Limburg/modellen/Limburg_full_control_model
+  drents_overijsselse_delta:
+    cmd:
+      - uv run python notebooks/drents_overijsselse_delta/01_fix_model.py
+      - uv run python notebooks/drents_overijsselse_delta/02_prepare_model.py
+      - uv run python notebooks/drents_overijsselse_delta/03_parameterize_model.py
+      - uv run python notebooks/drents_overijsselse_delta/04_add_full_control.py
+    deps:
+      - notebooks/drents_overijsselse_delta
+    outs:
+      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_full_control_model
+  hunze_en_aas:
+    cmd:
+      - uv run python notebooks/hunze_en_aas/01_fix_model.py
+      - uv run python notebooks/hunze_en_aas/02_prepare_model.py
+      - uv run python notebooks/hunze_en_aas/03_parameterize_model.py
+      - uv run python notebooks/hunze_en_aas/04_add_full_control.py
+    deps:
+      - notebooks/hunze_en_aas
+    outs:
+      - data/HunzeenAas/modellen/HunzeenAas_full_control_model
+  rijn_en_ijssel:
+    cmd:
+      - uv run python notebooks/rijn_en_ijssel/01_fix_model.py
+      - uv run python notebooks/rijn_en_ijssel/02_prepare_model.py
+      - uv run python notebooks/rijn_en_ijssel/03_parameterize_model.py
+      - uv run python notebooks/rijn_en_ijssel/04_add_full_control.py
+    deps:
+      - notebooks/rijn_en_ijssel
+    outs:
+      - data/RijnenIJssel/modellen/RijnenIJssel_full_control_model
+  vechtstromen:
+    cmd:
+      - uv run python notebooks/vechtstromen/01_fix_model.py
+      - uv run python notebooks/vechtstromen/02_prepare_model.py
+      - uv run python notebooks/vechtstromen/03_parameterize_model.py
+      - uv run python notebooks/vechtstromen/04_add_full_control.py
+    deps:
+      - notebooks/vechtstromen
+      - data/Rijkswaterstaat/modellen/hws_transient
+    outs:
+      - data/Vechtstromen/modellen/Vechtstromen_full_control_model
+  de_dommel:
+    cmd:
+      - uv run python notebooks/de_dommel/01_fix_model.py
+      - uv run python notebooks/de_dommel/02_prepare_model.py
+      - uv run python notebooks/de_dommel/03_parameterize_model.py
+    deps:
+      - notebooks/de_dommel
+    outs:
+      - data/DeDommel/modellen/DeDommel_parameterized_model
+  vallei_en_veluwe:
+    cmd:
+      - uv run python notebooks/vallei_en_veluwe/01_fix_model.py
+      - uv run python notebooks/vallei_en_veluwe/02_prepare_model.py
+      - uv run python notebooks/vallei_en_veluwe/03_parameterize_model.py
+      - uv run python notebooks/vallei_en_veluwe/04_add_full_control.py
+    deps:
+      - notebooks/vallei_en_veluwe
+    outs:
+      - data/ValleienVeluwe/modellen/ValleienVeluwe_full_control_model

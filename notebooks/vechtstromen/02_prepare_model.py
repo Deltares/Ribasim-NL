@@ -40,9 +40,19 @@ peilregister_xlsx = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalever
 feedback_xlsx = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/Feedbackform_20250428/20250428_Feedback Formulier.xlsx"
 )
-cloud.synchronize(filepaths=[top10NL_gpkg])
-
 waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
+
+cloud.synchronize(
+    filepaths=[
+        top10NL_gpkg,
+        profielpunt_shp,
+        profiellijn_shp,
+        peilgebieden_path,
+        peilregister_xlsx,
+        feedback_xlsx,
+        waterinlaten,
+    ]
+)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -385,7 +395,6 @@ model.basin.area.df.index.name = "fid"
 
 # %% Set waterinlaten
 # --- Load Shapefile ---
-waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 waterinlaten_gdf = gpd.read_file(waterinlaten)
 
 # --- Load Waterinlaten data ---

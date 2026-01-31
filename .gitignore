@@ -62,5 +62,10 @@ venv/
 *.gml
 *.gfs
 *.xml
+*.pdf
+*.xlsm
+*.log
+*.lyr
+*.txt
 *.gdb/
 results/

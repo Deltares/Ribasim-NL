@@ -27,6 +27,7 @@ model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+hws_model_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")
 
 cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg, ribasim_areas_gpkg])
 
@@ -128,7 +129,7 @@ for row in link_df.itertuples():
     model.remove_link(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
 
 # add level_boundaries at twentekanaal for later coupling
-hws_model = Model.read(cloud.joinpath("Rijkswaterstaat/modellen/hws/hws.toml"))
+hws_model = Model.read(hws_model_toml)
 basin_ids = hws_model.node_table().df[hws_model.node_table().df.name.str.contains("Twentekanaal")].index.to_list()
 twentekanaal_poly = hws_model.basin.area.df[hws_model.basin.area.df.node_id.isin(basin_ids)].union_all()
 

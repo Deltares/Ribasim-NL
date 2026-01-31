@@ -30,7 +30,7 @@ profielen_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20230606_H
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/peilgebieden.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg, hydamo_gpkg, profielen_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -53,7 +53,10 @@ damo_profiles = DAMOProfiles(
     profile_line_id_col="globalid",
 )
 if not profiles_gpkg.exists():
-    profiles_df = damo_profiles.process_profiles().to_file(profiles_gpkg)
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
+else:
+    profiles_df = gpd.read_file(profiles_gpkg)
 
 # fix link geometries
 if link_geometries_gpkg.exists():
@@ -63,7 +66,6 @@ if link_geometries_gpkg.exists():
         model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
             "meta_profielid_waterbeheerder"
         ]
-    profiles_df = gpd.read_file(profiles_gpkg)
 else:
     fix_link_geometries(model, network)
     add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
