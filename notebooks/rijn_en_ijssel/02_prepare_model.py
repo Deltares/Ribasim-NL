@@ -17,7 +17,8 @@ short_name = "wrij"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
@@ -27,7 +28,7 @@ hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 profielen_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/wrij_profielen.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[top10NL_gpkg, profielen_gpkg])
+cloud.synchronize(filepaths=[top10NL_gpkg, profielen_gpkg, regelpeil_csv])
 
 # %% init things
 model = Model.read(ribasim_toml)

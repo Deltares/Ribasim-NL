@@ -42,8 +42,6 @@ model = Model.read(ribasim_toml)
 
 network_validator = NetworkValidator(model)
 
-# TODO file not in the cloud
-
 
 # %% verwijder duplicated links
 
