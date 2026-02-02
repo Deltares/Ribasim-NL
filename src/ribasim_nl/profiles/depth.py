@@ -1,4 +1,5 @@
 import geopandas as gpd
+import numpy as np
 import shapely
 
 from profiles import hydrotopes as ht
@@ -107,4 +108,28 @@ def depth_from_hydrotopes(
         hydro_objects.dropna(subset="depth", inplace=True, ignore_index=True)
 
     # return updated hydro-objects
+    return hydro_objects
+
+
+def depth_from_measurements(hydro_objects: gpd.GeoDataFrame, cross_sections: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    def depth_calculator(line: shapely.LineString) -> float:
+        """Depth equals maximum depth, i.e., minimum z-coordinate."""
+        return -np.min(line.coords, axis=0)[2]
+
+    def representative_depth(indices: (int, ...)) -> float | None:
+        """Take the mean of estimated depths of all connected cross-sections."""
+        if indices and -1 not in indices:
+            return float(np.nanmean([depth_calculator(cross_sections.loc[i, "geometry"]) for i in indices]))
+        return None
+
+    assert all(cross_sections.has_z)
+    temp = hydro_objects.sjoin(cross_sections, how="left", predicate="intersects", rsuffix="xs")
+    temp["index_xs"] = temp["index_xs"].fillna(-1).astype(int)
+    temp = temp.groupby(level=0)["index_xs"].apply(list).to_frame()
+    hydro_objects["depth_measured"] = temp.astype(bool)
+
+    temp["depth"] = temp["index_xs"].apply(representative_depth)
+    temp.dropna(subset="depth", inplace=True)
+    hydro_objects.update(temp)
+
     return hydro_objects
