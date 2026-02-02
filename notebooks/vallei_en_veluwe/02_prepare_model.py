@@ -23,7 +23,7 @@ ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_tom
 
 # %%
 # check files
-peilgebieden_path = cloud.joinpath(cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20250428/Peilvakken.shp"))
+peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20250428/Peilvakken.shp")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/hydamo.gpkg")
 network_gpkg = cloud.joinpath(authority, "verwerkt/network.gpkg")
