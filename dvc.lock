@@ -233,8 +233,8 @@ stages:
     deps:
     - path: notebooks/rijn_en_ijssel
       hash: md5
-      md5: 30e7a7a4936e6ee3340f2c225278b061.dir
-      size: 27388
+      md5: b4473ba54795ccef5363b3b3fccfe2f5.dir
+      size: 27386
       nfiles: 4
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_full_control_model
@@ -268,8 +268,8 @@ stages:
     deps:
     - path: notebooks/de_dommel
       hash: md5
-      md5: b992f0620e3bbdf1d93edd166e0c8287.dir
-      size: 48568
+      md5: 90c34ba7f2d28d4b9b792ad15597dd09.dir
+      size: 48567
       nfiles: 7
     outs:
     - path: data/DeDommel/modellen/DeDommel_parameterized_model
