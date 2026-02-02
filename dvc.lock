@@ -133,8 +133,8 @@ stages:
     deps:
     - path: notebooks/aa_en_maas
       hash: md5
-      md5: c08d16d7d91aca8b45e0a43eef673eb0.dir
-      size: 42379
+      md5: 414b6b2e020022392a1109a374f08aa9.dir
+      size: 42360
       nfiles: 5
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_full_control_model
@@ -241,4 +241,22 @@ stages:
       hash: md5
       md5: 05379a988db253672d79bc7fc2afdaa3.dir
       size: 4735125
+      nfiles: 2
+  vechtstromen:
+    cmd:
+    - uv run python notebooks/vechtstromen/01_fix_model.py
+    - uv run python notebooks/vechtstromen/02_prepare_model.py
+    - uv run python notebooks/vechtstromen/03_parameterize_model.py
+    - uv run python notebooks/vechtstromen/04_add_full_control.py
+    deps:
+    - path: notebooks/vechtstromen
+      hash: md5
+      md5: 20285c33405f000ab56225445a4a6fd6.dir
+      size: 81663
+      nfiles: 4
+    outs:
+    - path: data/Vechtstromen/modellen/Vechtstromen_full_control_model
+      hash: md5
+      md5: b750b915fede861ce2fb067af7c017b4.dir
+      size: 18948245
       nfiles: 2
