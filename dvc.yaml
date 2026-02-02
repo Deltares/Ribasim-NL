@@ -127,7 +127,6 @@ stages:
       - uv run python notebooks/vechtstromen/04_add_full_control.py
     deps:
       - notebooks/vechtstromen
-      - data/Rijkswaterstaat/modellen/hws_transient
     outs:
       - data/Vechtstromen/modellen/Vechtstromen_full_control_model
   de_dommel:
