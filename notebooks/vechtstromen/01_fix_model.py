@@ -19,7 +19,7 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 cloud = CloudStorage()
 authority = "Vechtstromen"
 name = "vechtstromen"
-run_model = False
+run_model = True
 
 
 def get_latest_hws_model_version() -> ModelVersion:

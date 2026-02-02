@@ -10,7 +10,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 authority = "Vechtstromen"
 short_name = "vechtstromen"
-run_model = False
+run_model = True
 run_period = None
 static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 

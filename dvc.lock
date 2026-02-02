@@ -260,3 +260,20 @@ stages:
       md5: b750b915fede861ce2fb067af7c017b4.dir
       size: 18948245
       nfiles: 2
+  de_dommel:
+    cmd:
+    - uv run python notebooks/de_dommel/01_fix_model.py
+    - uv run python notebooks/de_dommel/02_prepare_model.py
+    - uv run python notebooks/de_dommel/03_parameterize_model.py
+    deps:
+    - path: notebooks/de_dommel
+      hash: md5
+      md5: b992f0620e3bbdf1d93edd166e0c8287.dir
+      size: 48568
+      nfiles: 7
+    outs:
+    - path: data/DeDommel/modellen/DeDommel_parameterized_model
+      hash: md5
+      md5: 44d6bf12fa0a40c70ac0f7fa54dd1d67.dir
+      size: 19062933
+      nfiles: 2

@@ -34,7 +34,17 @@ static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
-cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
+cloud.synchronize(
+    filepaths=[
+        peilgebieden_path,
+        top10NL_gpkg,
+        hydamo_gpkg,
+        network_gpkg,
+        static_data_xlsx,
+        profiles_gpkg,
+        link_geometries_gpkg,
+    ]
+)
 
 bbox = None
 # init classes

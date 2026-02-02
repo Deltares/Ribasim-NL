@@ -10,7 +10,7 @@ cloud = CloudStorage()
 authority = "DeDommel"
 short_name = "dommel"
 
-run_model = False
+run_model = True
 
 parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"

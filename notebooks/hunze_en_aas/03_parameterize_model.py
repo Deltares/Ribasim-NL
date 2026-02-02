@@ -9,7 +9,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 authority = "HunzeenAas"
 short_name = "hea"
-run_model = False
+run_model = True
 static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
