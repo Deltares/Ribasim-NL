@@ -60,4 +60,5 @@ venv/
 *.tif
 *.csv
 *.gdb/
+*.pdf
 results/
