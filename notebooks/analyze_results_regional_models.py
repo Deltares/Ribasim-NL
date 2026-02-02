@@ -12,9 +12,9 @@ water_authorities = [
     # "DrentsOverijsselseDelta",
     # "HunzeenAas",
     # "Limburg",
-    "Noorderzijlvest",
+    # "Noorderzijlvest",
     # "RijnenIJssel",
-    # "StichtseRijnlanden",
+    "StichtseRijnlanden",
     # "ValleienVeluwe",
     # "Vechtstromen",
 ]
@@ -22,7 +22,7 @@ water_authorities = [
 # specify koppeltabel and meas_folder
 
 loc_koppeltabel = cloud.joinpath(
-    "Basisgegevens/resultaatvergelijking/koppeltabel/Transformed_koppeltabel_20251002.xlsx"
+    "Basisgegevens/resultaatvergelijking/koppeltabel/Transformed_koppeltabel_20251211.xlsx"
 )
 
 loc_specifieke_bewerking = cloud.joinpath(

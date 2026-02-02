@@ -1,4 +1,4 @@
-md5: e52973f29b0423b2da2b5c1d24137716
+md5: cbc99cf68c6b2a39d747d1c7755950d5
 frozen: true
 deps:
 - md5: 17fe329d33daacf0bb14a90ce008b29a.dir
@@ -8,8 +8,8 @@ deps:
   path:
     remote://modeldata/HollandseDelta/modellen/HollandseDelta_parameterized_2025_9_0
 outs:
-- md5: c56a9269ee4eec763887a8614190bfa3.dir
-  size: 77766084
-  nfiles: 15
+- md5: cb1c75474f12a7f19c2d98ef5c65d07f.dir
+  size: 36260779
+  nfiles: 3
   hash: md5
   path: HollandseDelta_parameterized_2025_9_0

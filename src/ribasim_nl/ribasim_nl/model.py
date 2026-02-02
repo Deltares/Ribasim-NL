@@ -91,7 +91,7 @@ class Model(Model):
     def __init__(self, **data):
         super().__init__(**data)
         self._parameterize = Parameterize(model=self)
-        self._set_arrow_input()
+        self._set_netcdf_input()
 
     def parameterize(self, **kwargs):
         self._parameterize.run(**kwargs)
@@ -331,9 +331,10 @@ class Model(Model):
         """Get basin node without area"""
         return self.basin.node.df[~self.basin.node.df.index.isin(self.basin.area.df.node_id)]
 
-    def upstream_node_id(self, node_id: int):
+    def upstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get upstream node_id(s)"""
         _df = self.link.df.set_index("to_node_id")
+        _df = _df[_df.link_type == link_type]
         if node_id in _df.index:
             return _df.loc[node_id].from_node_id
 
@@ -347,9 +348,10 @@ class Model(Model):
         else:
             return self.basin.profile[upstream_node_id]
 
-    def downstream_node_id(self, node_id: int):
+    def downstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get downstream node_id(s)"""
         _df = self.link.df.set_index("from_node_id")
+        _df = _df[_df.link_type == link_type]
         if node_id in _df.index:
             return _df.loc[node_id].to_node_id
 
@@ -1178,11 +1180,10 @@ class Model(Model):
                 f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[['link_id', 'from_node_id', 'to_node_id']].to_dict(orient='index').values())}"
             )
 
-    def _set_arrow_input(self):
+    def _set_netcdf_input(self):
         """Use "input" dir and avoid large databases by writing some tables to Arrow"""
-        self.input_dir = Path("input")
         if self.basin.time.df is not None:
-            self.basin.time.set_filepath(Path("basin_time.arrow"))
+            self.basin.time.set_filepath(Path("basin_time.nc"))
             # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
             self.basin.model_fields_set.add("time")
             self.model_fields_set.add("basin")

@@ -1,4 +1,4 @@
-md5: e995cbe029d59c8f0b12ac59d1e93512
+md5: 470013fd27a9c01c5579103e28fb3d75
 frozen: true
 deps:
 - md5: 997fe8f0f439ae08d06b545e6970656e.dir
@@ -8,8 +8,8 @@ deps:
   path:
     remote://modeldata/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
 outs:
-- md5: bd24473f58cfdc69d568f324b918e56c.dir
-  size: 49798056
-  nfiles: 15
+- md5: 99d614dbc936010e2b53d72927ceac7b.dir
+  size: 23998323
+  nfiles: 3
   hash: md5
   path: AmstelGooienVecht_parameterized_2025_9_0

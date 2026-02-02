@@ -1,4 +1,26 @@
 stages:
+  bathymetry:
+    cmd: "uv run python notebooks/rijkswaterstaat/1_bathymetrie.py"
+    deps:
+      - notebooks/rijkswaterstaat/1_bathymetrie.py
+    outs:
+      - data/Rijkswaterstaat/verwerkt/bathymetrie
+  rijkswaterstaat:
+    cmd:
+      - uv run python notebooks/rijkswaterstaat/2_basins.py
+      - uv run python notebooks/rijkswaterstaat/3_netwerk.py
+      - uv run python notebooks/rijkswaterstaat/4_kunstwerken.py
+      - uv run python notebooks/rijkswaterstaat/5_model_netwerk.py
+      - uv run python notebooks/rijkswaterstaat/6_model_sturing.py
+      - uv run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+      - uv run python notebooks/rijkswaterstaat/8a_update_state.py
+      - uv run python notebooks/rijkswaterstaat/8b_update_bc.py
+    deps:
+      - src/ribasim_nl/ribasim_nl
+      - data/Rijkswaterstaat/verwerkt/bathymetrie
+      - notebooks/rijkswaterstaat
+    outs:
+      - data/Rijkswaterstaat/modellen/hws_transient
   samenvoegen:
     cmd: "uv run python notebooks/samenvoegen_modellen.py"
     frozen: true
@@ -41,3 +63,10 @@ stages:
       - notebooks/noorderzijlvest
     outs:
       - data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
+  stichtse_rijnlanden:
+    cmd: "uv run python notebooks/stichtse_rijnlanden/main.py"
+    deps:
+      - src/ribasim_nl/ribasim_nl
+      - notebooks/stichtse_rijnlanden
+    outs:
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model

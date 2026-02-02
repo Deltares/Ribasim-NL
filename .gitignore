@@ -48,6 +48,7 @@ venv/
 *.gpkg
 *.toml
 *.dbf
+*.xlsx
 *.shp*
 *.prj
 *.sbn
@@ -56,4 +57,7 @@ venv/
 *.cpg
 *.log
 *.qlr
+*.tif
+*.csv
+*.gdb/
 results/

@@ -1,478 +1,677 @@
 # %%
-
 import geopandas as gpd
-import pandas as pd
 from peilbeheerst_model.controle_output import Control
-from ribasim import Node
-from ribasim.nodes import discrete_control, pump
-from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
+from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from shapely.geometry import Point
+from shapely.geometry import MultiPolygon
 
-from peilbeheerst_model import ribasim_parametrization
-from ribasim_nl import CloudStorage, Model, check_basin_level
+from ribasim_nl import CloudStorage, Model
 
-# execute model run
-MODEL_EXEC: bool = True
+# %%
+# Globale settings
 
-# model settings
-AUTHORITY: str = "StichtseRijnlanden"
-SHORT_NAME: str = "hdsr"
-MODEL_ID: str = "2025_7_0"
+LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
+MODEL_EXEC: bool = True  # execute model run
+AUTHORITY: str = "StichtseRijnlanden"  # authority
+SHORT_NAME: str = "hdsr"  # short_name used in toml-file
+CONTROL_NODE_TYPES = ["Outlet", "Pump"]
+IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
-# connect with the GoodCloud
+
+# Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
+# 746: Oudewater sluis
+# 750: Oude Leidseweg Sluis
+# 753: Woerdenseverlaat SLuis
+# 751: Montfoort Sluis
+EXCLUDE_NODES = {486, 746, 750, 753}
+EXCLUDE_SUPPLY_NODES = []
+
+# %%
+# Definieren paden en syncen met cloud
 cloud = CloudStorage()
-
-# collect relevant data from the GoodCloud
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg")
-model_edits_extra_gpkg = cloud.joinpath(AUTHORITY, "verwerkt/model_edits_aanvoer.gpkg")
+aanvoer_path = aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg")
 
-pump_hoofdwater_gpkg = cloud.joinpath(AUTHORITY, "verwerkt/pomp_bij_hoofdwater.gpkg")
+aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/aanvoergebieden.gpkg")
+cloud.synchronize(filepaths=[aanvoer_path, qlr_path, aanvoergebieden_gpkg])
 
-
-cloud.synchronize(
-    filepaths=[
-        aanvoer_path,
-    ]
-)
 
 # %%
-# read model
+# Read data
 model = Model.read(ribasim_toml)
-aanvoergebieden_df = gpd.read_file(aanvoer_path)
-aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
-original_model = model.model_copy(deep=True)
+
+aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
+
+# alle uitlaten en inlaten op 50m3/s, geen cap verdeling. Dit wordt de max flow in model.
+# En als flow_rate niet bekend is de flow
+model.outlet.static.df.flow_rate = 30
+model.pump.static.df.flow_rate = 30
 
 # %%
-update_basin_static(model=model, precipitation_mm_per_day=1)
+# Identificeren aanvoerknopen en voorzien van afvoercapaciteit
 
-# %%
-# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
-update_levels = model.basin_outstate.df.set_index("node_id")["level"]
-basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
-mask = model.basin.area.df["node_id"].isin(basin_ids)
-model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
-    lambda x: update_levels[x]
-)
-# model basin area
-model.basin.area.df["meta_streefpeil"] = model.basin.area.df["meta_streefpeil"] + 0.02
-model.outlet.static.df["min_upstream_level"] = model.outlet.static.df["min_upstream_level"] + 0.02
-model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"] + 0.02
+# aanmaken node_df en specificeren supply_nodes
+# knopen die beginnen met INL, i of eindigen op i, maar niet op fictief
+for node_type in CONTROL_NODE_TYPES:
+    node_df = getattr(model, pascal_to_snake_case(node_type)).node.df
+
+    node_df[IS_SUPPLY_NODE_COLUMN] = (
+        node_df["meta_code_waterbeheerder"].str.startswith("INL")
+        | node_df["meta_code_waterbeheerder"].str.startswith("i")
+        | node_df["meta_code_waterbeheerder"].str.startswith("I")
+        | node_df["meta_code_waterbeheerder"].str.endswith("i")
+    ) & ~(
+        node_df.node_type.isin(CONTROL_NODE_TYPES) & node_df["meta_code_waterbeheerder"].str.endswith("fictief")
+        | node_df.index.isin(EXCLUDE_SUPPLY_NODES)
+    )
+
+    getattr(model, pascal_to_snake_case(node_type)).node.df = node_df
+
+    # force nan or 0 to 20 m3/s
+    node_ids = node_df[node_df[IS_SUPPLY_NODE_COLUMN]].index.values
+    print(node_ids)
+    static_df = getattr(model, pascal_to_snake_case(node_type)).static.df
+
+    mask = static_df.node_id.isin(node_ids) & ((static_df.flow_rate == 0) | (static_df.flow_rate.isna()))
+
+    static_df.loc[mask, "flow_rate"] = 20
+
+# %% model fixes
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
+
+# doorslag staat normaal open
+model.reverse_link(link_id=1470)
+model.reverse_link(link_id=1063)
+# model.remove_node(node_id=1344, remove_links=True)
+# model.remove_node(node_id=1345, remove_links=True)
+
+# De Pelikaan links omdraaien
+model.reverse_link(link_id=578)
+model.reverse_link(link_id=1447)
+model.reverse_link(link_id=1223)
+model.reverse_link(link_id=2200)
+
+# 416: I2075
+model.reverse_link(link_id=1399)
+model.reverse_link(link_id=715)
+
+# 138: I6125
+model.reverse_link(link_id=2649)
+model.reverse_link(link_id=1551)
+
+# 545: Rijnvliet is afvoergemaal
+model.reverse_link(link_id=847)
+model.reverse_link(link_id=1775)
+
+# node 2806 is een inlaat, dus flow_direction draaien
+model.reverse_link(link_id=2711)
+model.reverse_link(link_id=2005)
+
+# Gemaal Terwijde
+model.reverse_link(link_id=2073)
+model.reverse_link(link_id=24)
 
 
-# %%
-add_from_to_nodes_and_levels(model)
-
-# re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=True)
-ribasim_parametrization.determine_min_upstream_max_downstream_levels(
-    model,
-    AUTHORITY,
-    aanvoer_upstream_offset=0.02,
-    aanvoer_downstream_offset=0.0,
-    afvoer_upstream_offset=0.02,
-    afvoer_downstream_offset=0.0,
-)
-check_basin_level.add_check_basin_level(model=model)
-
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
-mask = model.outlet.static.df["meta_aanvoer"] == 0
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = 50
-model.pump.static.df.flow_rate = 50
-# model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.max_flow_rate
-model.outlet.static.df.max_flow_rate = 50
-model.pump.static.df.max_flow_rate = 50
-# model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
-model.basin.area.df["meta_streefpeil"] = model.basin.area.df["meta_streefpeil"] - 0.02
-
-# %% Alle inlaten op max debiet gezet.
-node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("I")].index.to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 0.1
-# %%
-
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1
-model.pump.static.df.loc[model.pump.static.df.node_id == 541, "max_downstream_level"] = -1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1162, "max_flow_rate"] = 0.2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 514, "max_flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1082, "max_flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1081, "max_flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 368, "max_flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 947, "max_flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 911, "max_flow_rate"] = 0.1
-
-
-def set_values(df, node_ids, values: dict):
-    """Hulpfunctie om meerdere kolommen tegelijk te updaten voor bepaalde node_ids."""
-    mask = df["node_id"].isin(node_ids)
-    for col, val in values.items():
-        df.loc[mask, col] = val
-
-
-# === 1. Bepaal upstream/downstream connection nodes ===
-upstream_outlet_nodes = model.upstream_connection_node_ids(node_type="Outlet")
-downstream_outlet_nodes = model.downstream_connection_node_ids(node_type="Outlet")
-upstream_pump_nodes = model.upstream_connection_node_ids(node_type="Pump")
-downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
-
-# === 2. Zet waardes voor upstream nodes ===
-set_values(
-    model.outlet.static.df,
-    upstream_outlet_nodes,
-    {
-        "flow_rate": 10,
-        "max_flow_rate": 10,
-        "min_upstream_level": pd.NA,
-    },
-)
-set_values(
-    model.pump.static.df,
-    upstream_pump_nodes,
-    {
-        "flow_rate": 10,
-        "max_flow_rate": 10,
-        "min_upstream_level": pd.NA,
-    },
-)
-
-# === 3. Zet waardes voor downstream nodes ===
-set_values(
-    model.outlet.static.df,
-    downstream_outlet_nodes,
-    {
-        "max_downstream_level": pd.NA,
-    },
-)
-set_values(
-    model.pump.static.df,
-    downstream_pump_nodes,
-    {
-        "max_downstream_level": pd.NA,
-    },
-)
-
-# === 2b. Verhoog min_upstream_level met offset voor downstream Outlets
-mask = model.outlet.static.df["node_id"].isin(downstream_outlet_nodes)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.02
-mask = model.pump.static.df["node_id"].isin(downstream_pump_nodes)
-model.pump.static.df.loc[mask, "min_upstream_level"] = model.pump.static.df.loc[mask, "min_upstream_level"] + 0.02
-
-# model.pump.static.df["min_upstream_level"] = model.pump.static.df["min_upstream_level"] + 0.02
-model.level_boundary.static.df["level"] = model.level_boundary.static.df["level"] + 0.02
-# model.pump.static.df["max_downstream_level"]+ = 0.02
-
-# pompen aan hoofdwater geen downstream level
-pump_hfw_gpkg = gpd.read_file(pump_hoofdwater_gpkg)
-pump_nodes = pump_hfw_gpkg.node_id
-mask = model.pump.static.df["node_id"].isin(pump_nodes)
-model.pump.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.pump.static.df.loc[mask, "min_upstream_level"] -= 0.0
-
-# === 4. Zet max/min levels op NA voor niet-gestuwde, niet-verbonden outlets ===
-non_control_nodes = model.outlet.node.df.query("meta_gestuwd == 'False'").index
-excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
-
-# %%
-model.discrete_control.add(
-    Node(2113, Point(114000, 446400)),
-    [
-        discrete_control.Variable(
-            compound_variable_id=1,
-            listen_node_id=2090,
-            variable=["level"],
-        ),
-        discrete_control.Condition(
-            compound_variable_id=1,
-            condition_id=[1, 2],
-            # min, max
-            threshold_high=[-2.21, -1.9],
-        ),
-        discrete_control.Logic(
-            truth_state=["FF", "TF", "TT"],
-            control_state=["in", "none", "out"],
-        ),
-    ],
-)
-
-model.pump.add(
-    Node(2114, Point(113950, 446370)),
-    [pump.Static(control_state=["none", "in", "out"], flow_rate=[0.0, 1e-3, 20])],
-)
-model.link.add(model.basin[2090], model.pump[2114])
-model.link.add(model.pump[2114], model.basin[1920])
-model.link.add(model.discrete_control[2113], model.pump[2114])
+model.update_node(node_id=730, node_type="ManningResistance")
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "max_flow_rate"] = 20
 
 
 # %%
-model.pump.static.df.flow_rate = 20
+# Toevoegen Kromme Rijn/Amsterdam-Rijnkanaal
+
+polygon = aanvoergebieden_df.loc[["Kromme Rijn/Amsterdam-Rijnkanaal"], "geometry"].union_all()
+
+# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
+polygon = polygon.buffer(0).buffer(0)
+
+if isinstance(polygon, MultiPolygon):
+    polygon = max(polygon.geoms, key=lambda g: g.area)
 
 
-# %% Pompen halen downstream_level niet in Ribasim.
-# Daarom moet outlets min_upstream_level hier iets omlaag. Behalve outlets die in zelfde basins liggen als pumps anders krijg je rondpompen
-# 1. Haal alle pomp-node IDs op
-pump_ids = model.pump.node.df.index
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [2175]
 
-# 2. Downstream basin nodes van pompen (één stap)
-downstream_basin_nodes_pump = pd.Series([model.downstream_node_id(i) for i in pump_ids]).explode().dropna().unique()
+# doorspoeling (op uitlaten)
+# 41: Spijksterpompen
 
-# 3. Upstream basin nodes van pompen (voor de filter later)
-upstream_basin_nodes_pump = pd.Series([model.upstream_node_id(i) for i in pump_ids]).explode().dropna().unique()
+flushing_nodes = {}
 
-# 4. Eén extra stap downstream vanaf de basin nodes van de pomp
-step2_nodes = pd.Series([model.downstream_node_id(i) for i in downstream_basin_nodes_pump]).explode().dropna().unique()
+# handmatig opgegeven drain nodes (uitlaten) definieren
+# 864: Achterrijn Stuw
+# 893: ST6050 2E Veld
+# 969: ST0842 Trechtweg
+# 971: ST0010
+# 1126: Pelikaan
+# 1145: ST003 Eindstuw Raaphofwetering
+# 1168: ST0733
+# 1223: ST0815
+# 2110:
+# 851: ST0014 Koppeldijk stuw
+# 923: ST1264 Hevelstuw Ravensewetering
+drain_nodes = [554, 851, 864, 893, 969, 971, 1126, 1145, 1168, 1223, 2110]
 
-# 5. Alleen de nodes die daadwerkelijk outlets zijn
-outlet_ids = model.outlet.node.df.index
-outlet_nodes_downstream = [nid for nid in step2_nodes if nid in outlet_ids]
+# handmatig opgegeven supply nodes (inlaten)
+# 554: G0007 Koppeldijk gemaal
+# 589: Mastwetering
+# 624: G4481 Pelikaan
+# 851: ST0014 Koppeldijk stuw
+# 648: G3007 Trechtweg
+# 649: Voorhavendijk
 
-# 6. Bepaal downstream basin node per outlet
-outlet_to_downstream_basin = {outlet: model.downstream_node_id(outlet) for outlet in outlet_nodes_downstream}
+supply_nodes = [554, 589, 624, 648, 649]
 
-# 7. Filter: verwijder outlets waarvan downstream basin node in upstream_basin_nodes_pump zit
-upstream_basin_set = set(upstream_basin_nodes_pump)
+# 1107:ST0826
+flow_control_nodes = [1107]
 
-filtered_outlet_nodes = [
-    outlet for outlet, basin in outlet_to_downstream_basin.items() if basin not in upstream_basin_set
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+# %%
+# Toevoegen Amsterdam-Rijnkanaal/Lek
+polygon = aanvoergebieden_df.at["Amsterdam-Rijnkanaal/Lek", "geometry"]
+# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
+polygon = polygon.buffer(0).buffer(0)
+
+if isinstance(polygon, MultiPolygon):
+    polygon = max(polygon.geoms, key=lambda g: g.area)
+
+# links die intersecten die we kunnen negeren
+ignore_intersecting_links: list[int] = [1448]
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}  # {357: 0.02, 393: 0.012, 350: 0.015, 401: 0.017, 501: 0.034, 383: 0.013}
+
+# handmatig opgegeven drain nodes (uitlaten) definieren
+# 978: ST4007 Overeind Stuw
+# 980: ST7229
+# 588: Blokhoven
+# 551: Biester
+# 591: Vuylcop-Oost
+# 612: Polder Tull En T Waal
+# 844: ST1541
+# 993:T Klooster
+drain_nodes = [978, 980, 551, 588, 612, 591, 844, 979, 993]
+
+# handmatig opgegeven supply nodes (inlaten)
+# 627: G4015 Overeind
+# 651: G4023 Pothoek
+# 840: Polder Tull En T Waal
+# 855: ST4036
+# 976: ST0850
+supply_nodes = [627, 651, 840, 855, 976]
+
+# 977: Blokhoven
+flow_control_nodes = [977]
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+
+# %%
+# Toevoegen Gek. Hollandse IJssel
+
+polygon = aanvoergebieden_df.at["Gek. Hollandse IJssel", "geometry"]
+# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
+polygon = polygon.buffer(0).buffer(0)
+
+if isinstance(polygon, MultiPolygon):
+    polygon = max(polygon.geoms, key=lambda g: g.area)
+
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [1305, 1618, 2271]
+
+# doorspoeling (op uitlaten)
+# node_id: Naam
+flushing_nodes = {}
+
+# handmatig opgegeven drain nodes (uitlaten) definieren
+# node_id: Naam
+# 298: AF0032
+# 467: SY3441
+# 634: Hazepad 'T
+# 920: ST1449
+# 818: Zevenhoven stuw
+drain_nodes = [298, 634, 818, 920]
+
+# handmatig opgegeven supply nodes (inlaten)
+# node_id: Naam
+# 424: I6189
+# 630: Blokland
+# 1007: Hazepad 'T stuw
+# 1156: ST1064
+
+supply_nodes = [424, 630, 1007, 1156]
+
+flow_control_nodes = []
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+
+# %%
+# Toevoegen Leidse Rijn-Noord
+
+polygon = aanvoergebieden_df.at["Leidse Rijn-Noord", "geometry"]
+# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
+polygon = polygon.buffer(0).buffer(0)
+
+if isinstance(polygon, MultiPolygon):
+    polygon = max(polygon.geoms, key=lambda g: g.area)
+
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+# 384: basin area niet ok
+ignore_intersecting_links: list[int] = [292, 384, 762, 847, 1385, 1775, 2169]
+
+# doorspoeling (op uitlaten)
+# node_id: Naam
+flushing_nodes = {}
+
+# handmatig opgegeven drain nodes (uitlaten) definieren
+# node_id: Naam
+# 513: Gemaal: Terwijde
+# 1077: ST0725
+# 598: Vleuterweide
+drain_nodes = [513, 598, 1077]
+
+# handmatig opgegeven supply nodes (inlaten)
+# 553:G0096
+# 593: G8014
+# 797: ST0945
+# 890:ST0946
+# 911: Vleuterwijde Oost
+# 1081: ST1356
+# 1082: ST0243
+supply_nodes = [553, 593, 797, 890, 911, 1082]
+
+# 207: I6023
+# 527: I1655
+flow_control_nodes = [207, 527]
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+
+# %%
+# Toevoegen Leidse Rijn-Zuid
+
+polygon = aanvoergebieden_df.at["Leidse Rijn-Zuid", "geometry"]
+# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
+polygon = polygon.buffer(0).buffer(0)
+
+if isinstance(polygon, MultiPolygon):
+    polygon = max(polygon.geoms, key=lambda g: g.area)
+
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+# areas verkeerd gedefinieerd of doorsnijdijng 2 areas
+ignore_intersecting_links: list[int] = [227, 292, 638, 762, 847, 1385, 1775]
+
+# doorspoeling (op uitlaten)
+# node_id: Naam
+flushing_nodes = {}
+
+# handmatig opgegeven drain nodes (uitlaten) definieren
+# node_id: Naam
+# 347: I1317 Nog checken!
+drain_nodes = [347]
+
+# handmatig opgegeven supply nodes (inlaten)
+# 564: Reyerscop
+# 754: Doorslag
+# 830: ST3928
+# 1022: ST1319
+supply_nodes = [564, 754, 830, 1022]
+
+flow_control_nodes = []
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+# %%
+# Toevoegen Stadsgebied Utrecht
+
+polygon = aanvoergebieden_df.at["Stadsgebied Utrecht", "geometry"]
+# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
+polygon = polygon.buffer(0).buffer(0)
+
+if isinstance(polygon, MultiPolygon):
+    polygon = max(polygon.geoms, key=lambda g: g.area)
+
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = []
+
+# doorspoeling (op uitlaten)
+# node_id: Naam
+flushing_nodes = {}
+
+# handmatig opgegeven drain nodes (uitlaten) definieren
+# node_id: Naam
+# 477: SY1901
+# 633: Voordorp
+# 799 Maartendsdijk stuw
+# 944: ST0895
+drain_nodes = [477, 633, 799, 944]
+
+# handmatig opgegeven supply nodes (inlaten)
+# 581: Maartensdijk Pomp
+# 650: Groenkan
+supply_nodes = [581, 650, 924]
+
+
+flow_control_nodes = []
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+
+# %%
+# Toevoegen Utrechtse Heuvelrug/Kromme Rijn
+
+polygon = aanvoergebieden_df.at["Utrechtse Heuvelrug/Kromme Rijn", "geometry"]
+# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
+polygon = polygon.buffer(0).buffer(0)
+
+if isinstance(polygon, MultiPolygon):
+    polygon = max(polygon.geoms, key=lambda g: g.area)
+
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+# 2103: basin area niet ok
+ignore_intersecting_links: list[int] = [2103]
+
+# doorspoeling (op uitlaten)
+# node_id: Naam
+flushing_nodes = {}
+
+# handmatig opgegeven drain nodes (uitlaten) definieren
+# node_id: Naam
+# 894: ST2901
+# 956: ST1014
+drain_nodes = [894, 956]
+
+# handmatig opgegeven supply nodes (inlaten)
+# 626: De Strijp
+# 654: De Wijngaard
+# 655: Slot Zeist
+supply_nodes = [626, 654, 655]
+
+flow_control_nodes = []
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+
+# %%
+# EXCLUDE NODES op 0 m3/s zetten
+mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES)
+model.outlet.static.df.loc[mask, "flow_rate"] = 0
+model.outlet.static.df.loc[mask, "min_flow_rate"] = 0
+model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
+
+
+# %% add all remaining inlets/outlets
+# add all remaing outlets
+# handmatig opgegeven flow control nodes definieren
+# 405: AF0095
+# 636: Trappersheul
+# 777: Cothen stuw
+# 778: ST3912
+# 814: ST6055
+# 809: Hoek de stuw
+# 919: Werkhoven
+# 1036: ST5011
+# 1063: Prinses Irenebrug
+# 1154: ST0479
+# 1010: ST1257
+# 1011: ST1353
+# 1033: ST4112
+# 1038: ST1758
+# 1039: ST5009
+# 1050: ST0477
+# 1153: ST6092
+# 1059:ST5022
+# 1155: ST7263
+# 1279: ST1888
+
+flow_control_nodes = [
+    134,
+    405,
+    636,
+    777,
+    778,
+    809,
+    814,
+    919,
+    1010,
+    1011,
+    1033,
+    1036,
+    1038,
+    1039,
+    1050,
+    1059,
+    1155,
+    1063,
+    1153,
+    1154,
+    1279,
 ]
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(filtered_outlet_nodes), "min_upstream_level"] -= 0.002
+
+# handmatig opgegeven supply nodes (inlaten)
+# 103:I6000
+# 230: I2003
+# 358: AF0082
+# 476, D13544  Vraag aan Daniel: waarom zit deze node niet in Leidsche Rijn Noord?
+# 481: inlaat Wijk bij Duurstede
+# 506: Papekopperdijk
+# 536: Noordergemaal
+# 542: Aanvoerder, De
+# 543: Rondweg
+
+# 560: Amerongerwetering
+# 561: Gemaal Rijnwijck  eruit!!
+# 570:Weerdesteinsesloot  #dubbel
+# 579:Sandwijck  #dubbel
+# 626: Strijp, De  #dubbel
+
+# 638: Oosteinde Waarder Oost
+# 639:Oosteinde Waarder West
+# 640:Schoonhoven
+# 747: Goejanverwelle Sluis: Wordt deze open gezet in droge tijden?
+# 906: ST0779
+# 962: ST2903
+# 987: ST0409
+# 742, Haanwijkersluis
+# 1014: ST0439
+# 1042: Hwvz Diemerbroek
+# 1056: Ruige Weide Stuw
+# 1194: H078195
+# 2111: Inlaat bij Nieuwkoop (Checken)
+# 425: AF0038
+# 637: Hwvz Diemerbroek 56
+
+supply_nodes = [
+    103,
+    358,
+    425,
+    481,
+    476,
+    486,
+    506,
+    536,
+    542,
+    543,
+    637,
+    638,
+    639,
+    640,
+    747,
+    772,
+    742,
+    906,
+    962,
+    987,
+    1014,
+    1042,
+    1056,
+    2111,
+]
+# 185: Westraven
+# 411: I6207 Check!
+# 545: Rijnvliet
+# 173, 168, 139, 198, Oog in Al
+
+drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 887]
+
+# %% Toevoegen waar nog geen sturing is toegevoegd
+
+add_controllers_to_uncontrolled_connector_nodes(
+    model=model,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    drain_nodes=drain_nodes,
+    exclude_nodes=list(EXCLUDE_NODES),
+    us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
+)
+
+# %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
+model.pump.static.df.loc[model.pump.static.df.node_id == 536, "max_downstream_level"] -= 0.01
+
+# 3 sifons, 468,469,470 onder Ark wordt later ingeschakeld dan inlaat Vreeswijk
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 468, "max_downstream_level"] -= 0.01
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 469, "max_downstream_level"] -= 0.01
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstream_level"] -= 0.01
 
 
-# Outlets aan hoofdwaterlopen mogen niet omlaag! Nog script maken
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 448, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 509, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 288, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 178, "min_upstream_level"] = -0.48
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 356, "min_upstream_level"] = -0.48
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 224, "min_upstream_level"] = -0.48
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 214, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 154, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 410, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 479, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 489, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 488, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 492, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 493, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 194, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 370, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 372, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 751, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 753, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 742, "min_upstream_level"] += 0.001
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 79, "min_upstream_level"] += 0.001
+# %% Junctionfy(!)
+model = junctionify(model)
 
-# %% Add inlaat
-model.pump.static.df.loc[model.pump.static.df.node_id == 1138, "min_upstream_level"] = 0.55
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2106, "min_upstream_level"] = 0.55
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1172, "min_upstream_level"] = 0.55
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1171, "min_upstream_level"] = 0.55
-# Pompen min_upstream
-model.pump.static.df.loc[model.pump.static.df.node_id == 534, "min_upstream_level"] = -1.75
-model.pump.static.df.loc[model.pump.static.df.node_id == 640, "min_upstream_level"] = -1.56
+# Model run
 
-model.pump.static.df.loc[model.pump.static.df.node_id == 561, "min_upstream_level"] = 1.32
-model.pump.static.df.loc[model.pump.static.df.node_id == 653, "min_upstream_level"] = 0.55
-model.pump.static.df.loc[model.pump.static.df.node_id == 532, "min_upstream_level"] = 0.55
-model.pump.static.df.loc[model.pump.static.df.node_id == 633, "min_upstream_level"] = 0.55
-model.pump.static.df.loc[model.pump.static.df.node_id == 603, "min_upstream_level"] = 0.55
-model.pump.static.df.loc[model.pump.static.df.node_id == 605, "min_upstream_level"] = 0.55
-model.pump.static.df.loc[model.pump.static.df.node_id == 532, "max_downstream_level"] = 1.55
-model.pump.static.df.loc[model.pump.static.df.node_id == 557, "max_downstream_level"] = 0.54
-model.pump.static.df.loc[model.pump.static.df.node_id == 531, "min_upstream_level"] = 0
-model.pump.static.df.loc[model.pump.static.df.node_id == 545, "min_upstream_level"] = 0
-model.pump.static.df.loc[model.pump.static.df.node_id == 563, "min_upstream_level"] = -0.85
-model.pump.static.df.loc[model.pump.static.df.node_id == 563, "max_downstream_level"] = 0.52
-model.pump.static.df.loc[model.pump.static.df.node_id == 608, "max_downstream_level"] = 2.71
-
-
-# Afvoerpompen naar hoofsysteem hebben geen downstream level
-model.pump.static.df.loc[model.pump.static.df.node_id == 562, "min_upstream_level"] = 1.32
-
-# Afvoer pomp
-model.pump.static.df.loc[model.pump.static.df.node_id == 572, "max_downstream_level"] = pd.NA
-model.pump.static.df.loc[model.pump.static.df.node_id == 578, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 529, "min_upstream_level"] = 0.46
-model.pump.static.df.loc[model.pump.static.df.node_id == 1373, "min_upstream_level"] = 0.46
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 105, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 155, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 196, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 181, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 196, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 291, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 213, "max_downstream_level"] = -0.68
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 326, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 325, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 324, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 323, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 322, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 321, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 320, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 316, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 317, "min_upstream_level"] = -2.2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 318, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 319, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 440, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 441, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 197, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 346, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 384, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 385, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 386, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 411, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 806, "max_downstream_level"] = -2.2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 889, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 762, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 921, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 922, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 962, "max_downstream_level"] = -2.2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1052, "max_downstream_level"] = -2.20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 340, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 339, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 341, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 343, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 344, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 405, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 405, "max_downstream_level"] = 0.50
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 746, "min_upstream_level"] = 0.5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 409, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 422, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 423, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 424, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 809, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 249, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 265, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 266, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 333, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 557, "max_downstream_level"] = 1.55
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 959, "max_downstream_level"] = -1.08
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 408, "max_downstream_level"] = -1.08
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 315, "max_downstream_level"] = -1.08
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 983, "max_downstream_level"] = -1.08
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 164, "max_downstream_level"] = -1.08
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "max_downstream_level"] = -1.08
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 930, "min_upstream_level"] = -1.08
-
-# De Aanvoerder
-model.pump.static.df.loc[model.pump.static.df.node_id == 542, "max_downstream_level"] = 0.01
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 836, "min_upstream_level"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 107, "min_upstream_level"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 258, "min_upstream_level"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 743, "min_upstream_level"] = 0.01
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2111, "max_downstream_level"] = -2.18
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 2108, "level"] = -2
-model.basin.area.df.loc[model.basin.area.df.node_id == 1698, "meta_streefpeil"] = 0
-model.basin.area.df.loc[model.basin.area.df.node_id == 1474, "meta_streefpeil"] = -0.48
-model.basin.area.df.loc[model.basin.area.df.node_id == 1492, "meta_streefpeil"] = 0.52
-model.basin.area.df.loc[model.basin.area.df.node_id == 1396, "meta_streefpeil"] = 0.52
-model.basin.area.df.loc[model.basin.area.df.node_id == 1562, "meta_streefpeil"] = 0.52
-model.basin.area.df.loc[model.basin.area.df.node_id == 1387, "meta_streefpeil"] = -2.22
-model.basin.area.df.loc[model.basin.area.df.node_id == 1516, "meta_streefpeil"] = -2.22
-model.basin.area.df.loc[model.basin.area.df.node_id == 1376, "meta_streefpeil"] = -2.22
-model.basin.area.df.loc[model.basin.area.df.node_id == 1380, "meta_streefpeil"] = -2.22
-model.basin.area.df.loc[model.basin.area.df.node_id == 1572, "meta_streefpeil"] = -2.22
-
-# Veel waterlopen krijgen geen downstream_level. Gevaar op rondpompen!
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 509, "max_downstream_level"] = -1.83
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 837, "max_downstream_level"] = -2.56
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 808, "max_downstream_level"] = -2.56
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 900, "max_downstream_level"] = -2.56
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1013, "max_downstream_level"] = -2.56
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 103, "max_downstream_level"] = -2.56
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1178, "min_upstream_level"] = -2.4
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1178, "max_downstream_level"] = -2.56
-model.pump.static.df.loc[model.pump.static.df.node_id == 543, "min_upstream_level"] = -2.58
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 982, "max_downstream_level"] = -2.56
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 444, "max_downstream_level"] = -2.56
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1025, "max_downstream_level"] = -1.88
-
-# Lekken daardoor rondpompen
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 281, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 282, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 283, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 429, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 430, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 431, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 432, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 435, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 451, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 286, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 287, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 453, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 452, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 436, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 437, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 438, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 439, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1088, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 261, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 920, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 779, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 818, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1067, "max_downstream_level"] = -1.53
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "max_downstream_level"] = -1.53
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 246, "max_downstream_level"] = -1.53
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1156, "max_downstream_level"] = -1.53
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 420, "min_upstream_level"] = -1.55
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1005, "min_upstream_level"] = -1.55
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 487, "max_downstream_level"] = -1.53
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 678, "min_upstream_level"] = -1.55
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 678, "max_downstream_level"] = -1.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 887, "max_downstream_level"] = -2.2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_downstream_level"] = -2.2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 821, "max_flow_rate"] = 0.1
-# Keulevaart
-model.pump.static.df.loc[model.pump.static.df.node_id == 623, "min_upstream_level"] = -2.20
-model.remove_node(node_id=623, remove_links=True)
-# %%
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 835, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1052, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1052, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 838, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 949, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 749, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 919, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 193, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 864, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 151, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1145, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 929, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 866, "max_downstream_level"] = 0.57
-model.pump.static.df.loc[model.pump.static.df.node_id == 561, "max_downstream_level"] = 1.27
-model.pump.static.df.loc[model.pump.static.df.node_id == 792, "max_downstream_level"] = 0.57
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1194, "min_upstream_level"] = -1.22
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1279, "min_upstream_level"] = pd.NA
-
-
-model.update_node(node_id=730, node_type="Outlet")
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 730, "min_upstream_level"] = -1
-
-# %%
-# write model
+ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
+ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.pump.static.df["meta_func_afvoer"] = 1
-model.pump.static.df["meta_func_aanvoer"] = 0
-model.write(ribasim_toml)
+model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
-# run model
+model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
+
+
+# %%
+
+# hoofd run met verdamping
+update_basin_static(model=model, evaporation_mm_per_day=1)
+model.write(ribasim_toml_dry)
+
+# run hoofdmodel
 if MODEL_EXEC:
-    # TODO: Different ways of executing the model; choose the one that suits you best:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
-    # exit_code = model.run()
+    result = model.run()
+    controle_output = Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path)
+    indicators = controle_output.run_all()
+    model = Model.read(ribasim_toml_dry)
 
-    # assert exit_code == 0
+# prerun om het model te initialiseren met neerslag
+update_basin_static(model=model, precipitation_mm_per_day=2)
+model.write(ribasim_toml_wet)
 
-    """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
-    successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the
-    outlets on 'aanvoer' instead of the more suitable 'afvoer'. This should no longer be a problem once the next step of
-    adding `ContinuousControl`-nodes is implemented.
-    """
+# run prerun model
+if MODEL_EXEC:
+    prerun_result = model.run()
+    controle_output = Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path)
+    indicators = controle_output.run_all()
+    model = Model.read(ribasim_toml_wet)
 
+# hoofd run
+update_basin_static(model=model, precipitation_mm_per_day=1.5)
+model.write(ribasim_toml)
+# run hoofdmodel
+if MODEL_EXEC:
+    result = model.run()
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()
+
+# %%

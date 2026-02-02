@@ -364,9 +364,12 @@ for link_id in [
     2669,
     2678,
     2684,
+    2563,
+    1238,
+    91,
+    1436,
 ]:
     model.reverse_link(link_id=link_id)
-
 
 # fix 2 incorrecte links
 model.link.df.loc[916, "from_node_id"] = 1363
@@ -431,7 +434,6 @@ model.merge_basins(basin_id=1664, to_node_id=2047)
 model.merge_basins(basin_id=1705, to_node_id=2047)
 model.merge_basins(basin_id=1559, to_node_id=2047)
 model.merge_basins(basin_id=1690, to_node_id=1698)
-
 model.merge_basins(basin_id=1780, to_basin_id=1642, are_connected=False)
 model.merge_basins(basin_id=2023, to_basin_id=1427, are_connected=False)
 model.merge_basins(basin_id=1400, to_basin_id=1455)
@@ -449,7 +451,6 @@ model.merge_basins(basin_id=1789, to_basin_id=1792, are_connected=False)
 model.merge_basins(basin_id=1435, to_basin_id=1436, are_connected=False)
 model.merge_basins(basin_id=1590, to_basin_id=1786, are_connected=False)
 model.merge_basins(basin_id=1957, to_basin_id=1591)
-# model.merge_basins(basin_id=1528, to_basin_id=1428, are_connected=False)
 model.merge_basins(basin_id=1529, to_basin_id=1428, are_connected=False)
 model.merge_basins(basin_id=1587, to_basin_id=1503)
 model.merge_basins(basin_id=1389, to_basin_id=1390)
@@ -462,6 +463,28 @@ model.remove_node(node_id=1343, remove_links=True)
 model.redirect_link(link_id=1547, from_node_id=1914)
 model.redirect_link(link_id=838, to_node_id=1524)
 model.merge_basins(basin_id=1944, to_basin_id=1523, are_connected=False)
+model.remove_node(node_id=663, remove_links=True)
+model.remove_node(node_id=86, remove_links=True)
+model.remove_node(node_id=669, remove_links=True)
+model.remove_node(node_id=737, remove_links=True)
+model.merge_basins(basin_id=1408, to_basin_id=1672)
+model.merge_basins(basin_id=1425, to_basin_id=1558)
+model.merge_basins(basin_id=1995, to_basin_id=1646)
+model.merge_basins(basin_id=1692, to_basin_id=1646)
+model.merge_basins(basin_id=1514, to_basin_id=1577)
+model.merge_basins(basin_id=1522, to_basin_id=1507)
+model.merge_basins(basin_id=1681, to_basin_id=1763)
+model.merge_basins(basin_id=1638, to_basin_id=1762)
+model.merge_basins(basin_id=1761, to_basin_id=1724)
+model.merge_basins(basin_id=1724, to_basin_id=1754)
+model.merge_basins(basin_id=1754, to_basin_id=1765)
+model.merge_basins(basin_id=1765, to_basin_id=1778)
+model.merge_basins(basin_id=1735, to_basin_id=1778)
+model.redirect_link(link_id=2272, from_node_id=1572)
+model.update_node(node_id=1194, node_type="Outlet")
+model.update_node(node_id=1197, node_type="Outlet")
+model.update_node(node_id=678, node_type="Outlet")
+model.update_node(node_id=730, node_type="Outlet")
 # EINDE ISSUES
 
 
@@ -485,12 +508,32 @@ for row in network_validator.link_incorrect_type_connectivity(
 model = reset_static_tables(model)
 
 # %%
-for action in gpd.list_layers(model_edits_gpkg).name:
+# buffer out small slivers
+
+model.explode_basin_area()  # all multipolygons to singles
+actions = [
+    #  "remove_basin_area",
+    "remove_node",
+    "remove_link",
+    "add_basin",
+    "add_basin_area",
+    "update_basin_area",
+    "merge_basins",
+    "reverse_link",
+    "move_node",
+    "update_node",
+    "connect_basins",
+    "redirect_link",
+]
+actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
+for action in actions:
     print(action)
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
@@ -530,6 +573,10 @@ model.outlet.node.df.loc[model.outlet.node.df["meta_categorie"].isna(), "meta_ca
 # somehow Sluis Engelen (beheerregister AAM) has been named Henriettesluis
 model.outlet.node.df.loc[model.outlet.node.df.name == "Henriëttesluis", "name"] = "AKW855"
 
+# manning resistance must be outlet
+model.update_node(node_id=1212, node_type="Outlet")  # duiker wordt outlet, was manning
+model.update_node(node_id=717, node_type="Outlet")  # duiker wordt outlet, was manning
+
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = pd.concat(
     [
@@ -547,7 +594,11 @@ model.basin.node.df["meta_gestuwd"] = False
 model.outlet.node.df["meta_gestuwd"] = False
 model.pump.node.df["meta_gestuwd"] = True
 
+model.basin.area.df[model.basin.area.df.node_id != 1423]
 # set stuwen als gestuwd
+
+# 1349 was Manning maar is duiker dus outlet
+model.update_node(node_id=1349, node_type="Outlet")
 
 model.outlet.node.df.loc[
     model.outlet.node.df["meta_object_type"].isin(["stuw", "afsluitmiddel", "sluis"]), "meta_gestuwd"
@@ -577,14 +628,9 @@ sanitize_node_table(
     names=names,
 )
 
-
 #  %% write model
 model.use_validation = True
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
 model.report_basin_area()
 model.report_internal_basins()
-
-# %%
-# result = model.run()
-# assert result == 0

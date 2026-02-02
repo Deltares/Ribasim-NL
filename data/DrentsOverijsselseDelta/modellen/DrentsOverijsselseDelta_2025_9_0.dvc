@@ -1,4 +1,4 @@
-md5: 8d98e237d2324fb53220959c2c0d4e4b
+md5: 12cb18ca8022d9c98b1bd24cf1562efd
 frozen: true
 deps:
 - md5: 7af98da8b3c1892766d302bfe62842c0.dir
@@ -8,8 +8,8 @@ deps:
   path:
     remote://modeldata/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
 outs:
-- md5: e3bf4485365de487476c45c1acc212ff.dir
-  size: 89711489
-  nfiles: 11
+- md5: cdceb31a29edea006fb7369d7e5cb41a.dir
+  size: 49107122
+  nfiles: 4
   hash: md5
   path: DrentsOverijsselseDelta_2025_9_0

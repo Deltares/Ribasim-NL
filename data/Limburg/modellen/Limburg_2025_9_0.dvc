@@ -1,4 +1,4 @@
-md5: 8e605264c8576cbd6e4a3c3b5fc37cdf
+md5: 8c2183d221fbf5d0ee824a50683c62e8
 frozen: true
 deps:
 - md5: c46a3ec5f1dddfd26af5576edb198c3b.dir
@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://modeldata/Limburg/modellen/Limburg_2025_9_0
 outs:
-- md5: 0a810b75c357ff1c794d8b39bdf38687.dir
-  size: 128561953
-  nfiles: 8
+- md5: ca20b0f28d97cf3eed1481f539c77071.dir
+  size: 83284450
+  nfiles: 3
   hash: md5
   path: Limburg_2025_9_0
