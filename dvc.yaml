@@ -89,17 +89,6 @@ stages:
       - notebooks/stichtse_rijnlanden
     outs:
       - data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
-  limburg:
-    cmd:
-      - uv run python notebooks/limburg/_preprocess_profielen.py
-      - uv run python notebooks/limburg/01_fix_model.py
-      - uv run python notebooks/limburg/02_prepare_model.py
-      - uv run python notebooks/limburg/03_parameterize_model.py
-      - uv run python notebooks/limburg/04_add_full_control.py
-    deps:
-      - notebooks/limburg
-    outs:
-      - data/Limburg/modellen/Limburg_full_control_model
   drents_overijsselse_delta:
     cmd:
       - uv run python notebooks/drents_overijsselse_delta/01_fix_model.py
