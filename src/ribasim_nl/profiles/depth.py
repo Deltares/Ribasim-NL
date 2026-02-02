@@ -60,10 +60,10 @@ def depth_from_hydrotopes(
 
     def depth_calculator(fid: int, width: float) -> float | None:
         """Calculation of depth based on overlapping hydrotope."""
-        ht = hydrotopes.get_by_fid(fid)
-        if ht is None:
+        hydrotope = hydrotopes.get_by_fid(fid)
+        if hydrotope is None:
             return None
-        return ht.depth(width)
+        return hydrotope.depth(width)
 
     # verify required width estimations of hydro-objects
     if "width" not in hydro_objects.columns:
