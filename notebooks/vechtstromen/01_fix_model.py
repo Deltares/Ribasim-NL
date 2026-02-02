@@ -6,6 +6,7 @@ import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.cloud import ModelVersion
 from ribasim_nl.geometry import drop_z, link, split_basin, split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -20,6 +21,16 @@ authority = "Vechtstromen"
 name = "vechtstromen"
 run_model = False
 
+
+def get_latest_hws_model_version() -> ModelVersion:
+    model_versions = [
+        i for i in cloud.uploaded_models("Rijkswaterstaat") if i is not None and getattr(i, "model", None) == "hws"
+    ]
+    if model_versions:
+        return sorted(model_versions, key=lambda x: getattr(x, "sorter", ""))[-1]
+    raise ValueError("No Rijkswatersdtaat/modellen/hws models found")
+
+
 # paths that should be synced
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -28,9 +39,13 @@ model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
-hws_model_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")
+hws_model = get_latest_hws_model_version().path_string
+hws_model_dir = cloud.joinpath(f"Rijkswaterstaat/modellen/{hws_model}")
+hws_model_toml = hws_model_dir / "hws.toml"
 
-cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg, ribasim_areas_gpkg])
+cloud.synchronize(
+    filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg, ribasim_areas_gpkg, hws_model_dir]
+)
 
 # %%
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
