@@ -112,6 +112,20 @@ def depth_from_hydrotopes(
 
 
 def depth_from_measurements(hydro_objects: gpd.GeoDataFrame, cross_sections: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Determine representative depths of hydro-objects based on measured profiles (if present).
+
+    :param hydro_objects: geospatial data of hydro-objects
+    :param cross_sections: geospatial data of measured cross-sections
+
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type cross_sections: geopandas.GeoDataFrame
+
+    :return: hydro-objects with depth-estimates
+    :rtype: geopandas.GeoDataFrame
+
+    :raises AssertionError: if `cross_sections` does not have z-coordinates
+    """
+
     def depth_calculator(line: shapely.LineString) -> float:
         """Depth equals maximum depth, i.e., minimum z-coordinate."""
         return -np.min(line.coords, axis=0)[2]
@@ -122,14 +136,27 @@ def depth_from_measurements(hydro_objects: gpd.GeoDataFrame, cross_sections: gpd
             return float(np.nanmean([depth_calculator(cross_sections.loc[i, "geometry"]) for i in indices]))
         return None
 
+    # assure cross-sections contain z-coordinates
     assert all(cross_sections.has_z)
+
+    # couple hydro-objects to cross-sections
     temp = hydro_objects.sjoin(cross_sections, how="left", predicate="intersects", rsuffix="xs")
     temp["index_xs"] = temp["index_xs"].fillna(-1).astype(int)
     temp = temp.groupby(level=0)["index_xs"].apply(list).to_frame()
-    hydro_objects["depth_measured"] = temp.astype(bool)
 
+    # flag hydro-objects: use of measurements
+    hydro_objects["depth_measured"] = ~temp["index_xs"].isin([[-1]])
+
+    # update depth estimate
     temp["depth"] = temp["index_xs"].apply(representative_depth)
     temp.dropna(subset="depth", inplace=True)
     hydro_objects.update(temp)
 
+    # add cross-section coupling
+    hydro_objects["index_xs"] = temp["index_xs"]
+    hydro_objects.loc[~hydro_objects["depth_measured"], "index_xs"] = np.empty(
+        sum(~hydro_objects["depth_measured"]), dtype=list
+    )
+
+    # return updated hydro-objects
     return hydro_objects
