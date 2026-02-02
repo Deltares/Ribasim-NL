@@ -4,7 +4,7 @@
 - Laatste modelversie: [in aanbouw](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
 
 ## Systeembeschrijving
-![Systeembeschrijving Aa en Maas](png/aaenmaas.png)
+![Systeembeschrijving Aa en Maas](svg/aaenmaas.svg)
 
 
 ## Capaciteiten

@@ -4,7 +4,7 @@
 - Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
 
 ## Systeembeschrijving
-![Systeembeschrijving Noorderzijlvest](png/noorderzijlvest.png)
+![Systeembeschrijving Noorderzijlvest](svg/noorderzijlvest.svg)
 
 ### Inlaat Gaarkeuken
 - Bij `Gaarkeuken` kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.
