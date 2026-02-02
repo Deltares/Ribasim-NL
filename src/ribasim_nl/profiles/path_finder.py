@@ -22,7 +22,9 @@ from peilbeheerst_model.shortest_path import connect_linestrings_within_distance
 LOG = logging.getLogger(__name__)
 
 
-def simplify_geodata(gdf: gpd.GeoDataFrame, tolerance: float | None = None) -> gpd.GeoDataFrame:
+def simplify_geodata(
+    gdf: gpd.GeoDataFrame, tolerance: float | None = None, col_in_use: str | None = None
+) -> gpd.GeoDataFrame:
     """Simplify geospatial data.
 
     Simplification entails removing duplicates, and optionally 'almost duplicates': Removing geospatial data that is
@@ -30,20 +32,35 @@ def simplify_geodata(gdf: gpd.GeoDataFrame, tolerance: float | None = None) -> g
 
     :param gdf: geospatial data
     :param tolerance: tolerance of uniqueness, defaults to None
+    :param col_in_use: column-name with flagging of geospatial data that is to be used, defaults to None
 
     :type gdf: geopandas.GeoDataFrame
     :type tolerance: float, optional
+    :type col_in_use: str, optional
 
     :return: simplified geospatial data
     :rtype: geopandas.GeoDataFrame
     """
+    # logging: initial size of geospatial dataset
     _size = len(gdf)
+
+    # simplify based on data flagging
+    if col_in_use:
+        assert col_in_use in gdf.columns
+        gdf = gdf[gdf[col_in_use]].reset_index(drop=True)
+
+    # simplify based on data proximity
     if tolerance:
         temp = gdf.sjoin(gdf, how="inner", predicate="dwithin", distance=tolerance)
         gdf = gdf.iloc[temp.groupby(level=0)["index_right"].first()]
 
+    # remove duplicates
     gdf: gpd.GeoDataFrame = gdf.drop_duplicates(subset="geometry", ignore_index=True)
+
+    # logging: size reduction
     LOG.info(f"Geo-data compressed: {_size} -> {len(gdf)}")
+
+    # return "simplified" geospatial dataset
     return gdf
 
 
