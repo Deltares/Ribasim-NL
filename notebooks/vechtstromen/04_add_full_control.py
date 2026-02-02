@@ -164,6 +164,6 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
+    result = model.run()
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()

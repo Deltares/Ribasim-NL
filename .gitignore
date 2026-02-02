@@ -72,3 +72,4 @@ results/
 
 # Main scripts to run workflows per water authority
 notebooks/vechtstromen/main.py
+notebooks/rijn_en_ijssel/main.py
