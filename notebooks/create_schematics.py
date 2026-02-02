@@ -12,8 +12,8 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 MODEL_POST_FIX = "dynamic_model"
-ARROW_LENGTH = 800
-AUTHORITIES = ["StichtseRijnlanden"]
+ARROW_LENGTH = 1200  # 800 voor HDSR #1000 voor nzv
+AUTHORITIES = ["StichtseRijnlanden", "AaenMaas"]
 ADD_TOP10_NL = {
     "StichtseRijnlanden": [
         "Vecht",
@@ -29,7 +29,26 @@ ADD_TOP10_NL = {
         "Caspergouwse",
         "Oude Kromme Rijn",
         "Doorslag",
-    ]
+    ],
+    "AaenMaas": [
+        "Maas",
+        "Afwateringskanaal van de Maas",
+        "Julianakanaal",
+        "Zuid-Willemsvaart",
+        "Eindhovensch Kanaal",
+        "Wilhelminakanaal",
+        "Aa",
+        "Noordervaart",
+        "Kanaal Wessem-Nederweert",
+        "Kanaal van Deurne",
+        "Helenavaart",
+        "Defensie- of Peelkanaal",
+        "PeelkanaalLage Raam",
+        "De Dieze",
+        "Gekanaliseerde Dieze",
+        "Dommel",
+        "Afwateringskanaal 's-Hertogenbosch - Drongelen",
+    ],
 }
 
 

@@ -34,7 +34,7 @@ In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m
 - Rechtstreeks vanuit het ARK via het Noordergemaal.
 
 ##### Bijzondere sturing
-- Wateraanvoer onder vrij verval vanuit de Doorslag is onder normale omstandigheden niet mogelijk vanwege lagere waterstanden.
+- Wateraanvoer onder vrij verval via de Doorslag is onder normale omstandigheden niet mogelijk vanwege te weinig verval. Doorslag Sluis staat wel permanent open.
 
 ### Utrechtse Heuvelrug / Kromme Rijn
 ##### Afvoer
@@ -60,7 +60,7 @@ In extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in wer
 - De Groenwoudsedijksluis bij gemaal De Aanvoerder wordt gesloten.
 - Gemaal De Aanvoerder pompt water vanuit het ARK in de Leidsche Rijn en zet het peil aan de oostzijde op (0,20 m NAP).
 - De Haanwijkersluis tussen de Leidsche Rijn en de Oude Rijn wordt geopend; water stroomt richting de schutsluis bij  Bodegraven. 
-- Het systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de Gekanaliseerde Hollandsche IJssel (Doorslag) eveneens richting Hekendorp.
+- Het systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de via de Doorslag eveneens richting Hekendorp.
 
 ### Hollandsche IJssel
 ##### Afvoer
@@ -95,7 +95,7 @@ Poldergebieden:
 
 ##### Wateraanvoer
 - Grotendeels vanuit de Lek via inlaat De Koekoek.
-- Aanvullend vanuit de Hollandsche IJssel via de Gekanaliseerde Hollandsche IJssel (Doorslag).
+- Aanvullend vanuit de Hollandsche IJssel via de Doorslag
 
 
 ## Capaciteiten
