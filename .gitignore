@@ -69,3 +69,6 @@ venv/
 *.txt
 *.gdb/
 results/
+
+# Main scripts to run workflows per water authority
+notebooks/vechtstromen/main.py

@@ -26,6 +26,7 @@ aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/1_ontvangen_data/aanvulling f
 
 cloud.synchronize(
     filepaths=[
+        qlr_path,
         aanvoer_path,
     ]
 )
