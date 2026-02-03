@@ -22,17 +22,17 @@ model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 
 # %%
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
+profiles_gpkg = parameters_dir / "profiles.gpkg"
+static_data_xlsx = parameters_dir / "static_data_template.xlsx"
+link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
+
 # check files
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20250428/Peilvakken.shp")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/hydamo.gpkg")
 network_gpkg = cloud.joinpath(authority, "verwerkt/network.gpkg")
-
-parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
-parameters_dir.mkdir(parents=True, exist_ok=True)
-static_data_xlsx = parameters_dir / "static_data_template.xlsx"
-profiles_gpkg = parameters_dir / "profiles.gpkg"
-link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
 cloud.synchronize(
     filepaths=[
@@ -40,11 +40,9 @@ cloud.synchronize(
         top10NL_gpkg,
         hydamo_gpkg,
         network_gpkg,
-        static_data_xlsx,
-        profiles_gpkg,
-        link_geometries_gpkg,
     ]
 )
+cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 bbox = None
 # init classes
