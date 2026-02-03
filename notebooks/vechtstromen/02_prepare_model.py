@@ -18,11 +18,13 @@ short_name = "vechtstromen"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
+# paths that should be synced
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 profielpunt_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalevering_20240920/Meting_profielpunt_wvs.shp")
 profiellijn_shp = cloud.joinpath(
@@ -39,9 +41,22 @@ peilregister_xlsx = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalever
 feedback_xlsx = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/Feedbackform_20250428/20250428_Feedback Formulier.xlsx"
 )
-cloud.synchronize(filepaths=[top10NL_gpkg])
+waterinlaten = cloud.joinpath(authority, r"verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 
-waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
+cloud.synchronize(
+    filepaths=[
+        top10NL_gpkg,
+        profielpunt_shp,
+        profiellijn_shp,
+        peilgebieden_RD,
+        peilgebieden_path,
+        peilregister_xlsx,
+        feedback_xlsx,
+        waterinlaten,
+        hydamo_gpkg,
+    ]
+)
+cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -384,7 +399,6 @@ model.basin.area.df.index.name = "fid"
 
 # %% Set waterinlaten
 # --- Load Shapefile ---
-waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 waterinlaten_gdf = gpd.read_file(waterinlaten)
 
 # --- Load Waterinlaten data ---
