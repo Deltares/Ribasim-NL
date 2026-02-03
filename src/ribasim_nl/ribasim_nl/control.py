@@ -1233,8 +1233,10 @@ def add_controllers_to_uncontrolled_connector_nodes(
     supply_nodes: list[int] | None = None,
     drain_nodes: list[int] | None = None,
     flow_control_nodes: list[int] | None = None,
+    flushing_nodes: dict[int, float] | None = None,
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     us_target_level_offset_supply: float = -0.04,
+    level_difference_threshold: float | None = None,
 ):
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
@@ -1261,6 +1263,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Nodes die je expliciet als drain wilt (alleen als nog uncontrolled).
     flow_control_nodes : list[int]
         Nodes die je expliciet als flow_control wilt (alleen als nog uncontrolled).
+    flushing_nodes : dict[int, float]
+        Flushing nodes with their demands in the form of {node_id:demand} (onnly if still uncontrolled)
     control_node_types : list[Literal["Pump","Outlet"]]
         Welke connector node types meegenomen worden.
     us_target_level_offset_supply : float
@@ -1270,6 +1274,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     exclude_nodes = exclude_nodes or []
     supply_nodes = supply_nodes or []
     drain_nodes = drain_nodes or []
+    flushing_nodes = flushing_nodes or {}
     flow_control_nodes = flow_control_nodes or []
     control_node_types = control_node_types or ["Pump", "Outlet"]
 
@@ -1292,27 +1297,41 @@ def add_controllers_to_uncontrolled_connector_nodes(
         return  # niets te doen
 
     # --- 4) clip handmatige lijsten naar eligible (zo voorkom je dubbele control) ---
-    flow_set = set(flow_control_nodes) & eligible
+    flushing_set = set(flushing_nodes.keys()) & eligible
+    flow_control_set = set(flow_control_nodes) & eligible
     drain_set = set(drain_nodes) & eligible
     supply_set_manual = set(supply_nodes) & eligible
 
     # automatische supply op basis van meta_supply_node (maar alleen eligible)
     supply_set_auto = set(connector_df.index[connector_df.meta_supply_node]) & eligible
 
-    # --- 5) prioriteiten afdwingen: flow > drain > supply ---
-    # (dus: als iets in flow zit, haal het uit drain/supply; als iets in drain zit, haal uit supply)
-    drain_set -= flow_set
-    supply_set_manual -= flow_set | drain_set
-    supply_set_auto -= flow_set | drain_set
+    # --- 5) prioriteiten afdwingen: flushing_set > flow > drain > supply ---
+    # (dus: als iets in flusing_set zit, haal het uit flow/drain/supply. Als iets in flow zit, haal het uit drain/supply; als iets in drain zit, haal uit supply)
+    flow_control_set -= flushing_set
+    drain_set -= flushing_set | flow_control_set
+    supply_set_manual -= flushing_set | flow_control_set | drain_set
+    supply_set_auto -= flushing_set | flow_control_set | drain_set
 
     supply_set = supply_set_manual | supply_set_auto
 
     # --- 6) alles wat overblijft -> drain ---
-    used = flow_set | drain_set | supply_set
+    used = flow_control_set | drain_set | supply_set
     remaining = eligible - used
     drain_set = drain_set | remaining
 
     # --- 7) uitvoer: controllers toevoegen ---
+    # flow_control
+    if flow_control_set:
+        node_ids = sorted(flow_control_set)
+        flushing_nodes_df = connector_df.loc[node_ids]
+        flushing_nodes_df.loc[list(flushing_nodes.keys()), "demand_flow_rate"] = flushing_nodes.values()
+        level_difference_threshold = level_difference_threshold or model.solver.level_difference_threshold
+        add_controllers_and_demand_to_flushing_nodes(
+            model=model,
+            flushing_nodes_df=flushing_nodes_df,
+            us_threshold_offset=level_difference_threshold,
+        )
+
     # Supply
     if supply_set:
         supply_df = connector_df.loc[sorted(supply_set)]
@@ -1323,8 +1342,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         )
 
     # Flow control
-    if flow_set:
-        flow_df = connector_df.loc[sorted(flow_set)]
+    if flow_control_set:
+        flow_df = connector_df.loc[sorted(flow_control_set)]
         add_controllers_to_flow_control_nodes(
             model=model,
             flow_control_nodes_df=flow_df,
