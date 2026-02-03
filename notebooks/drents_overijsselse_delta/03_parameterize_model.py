@@ -19,16 +19,16 @@ static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 inlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/extra data/Duiker_inlaat_lijn/Duiker_inlaat_lijn.shp")
-inlaten_gdf = gpd.read_file(inlaten)
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-# cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg])
-# cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path, inlaten])
 
 # read
+inlaten_gdf = gpd.read_file(inlaten)
+
 model = Model.read(ribasim_toml)
 start_time = time.time()
 
