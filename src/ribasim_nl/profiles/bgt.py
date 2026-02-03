@@ -51,6 +51,13 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None
     # API URL
     __full_custom_url = "lv/bgt/download/v1_0/full/custom"
 
+    # full download warning
+    if geo_filter is None:
+        question = "No geo-filter provided; download BGT-data of the whole Netherlands? [y/n] "
+        if input(question) != "y":
+            msg = "Aborted download of BGT-data for the whole Netherlands"
+            raise KeyboardInterrupt(msg)
+
     # download description
     if geo_filter is None:
         data = DATA.copy()
