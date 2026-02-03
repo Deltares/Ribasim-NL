@@ -6,7 +6,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["AaenMaas"]
+SELECTION: list[str] = ["StichtseRijnlanden"]
 INCLUDE_RESULTS = False
 REBUILD = True
 

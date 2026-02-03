@@ -121,63 +121,6 @@ model.update_node(node_id=730, node_type="ManningResistance")
 # model.update_node(node_id=1349, node_type="Outlet")
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "max_flow_rate"] = 20
 
-
-# %% [markdown]
-# # Aanpak sturing per aanvoergebied
-#
-# ## verplichte invoer
-# - `polygon`: Polygoon van het aanvoergebied
-# ## optionele invoer:
-# - `flushing_nodes`: uitlaten met doorspoeldebiet (dict met {node_id:doorspoeldebiet}). Deze worden nooit automatisch gedetecteerd (!)
-# - `ignore_intersecting_links`: links die het aanvoergebied snijden, geen control-nodes bevatten en waarbij dat geaccepteerd moet worden
-# - `supply_nodes`: inlaten die niet automatisch worden gedetecteerd
-# - `drain_nodes`: uitlaten die niet automatisch worden gedetecteerd
-#
-# ## In 1x, wanneer alles goed gaat
-# `node_functions_df` kun je gebruiken om e.e.a. te plotten
-# ```
-# node_functions_df = add_controllers_to_supply_area(
-#     model=model,
-#     polygon=polygon,
-#     ignore_intersecting_links= ignore_intersecting_links,
-#     drain_nodes=drain_nodes,
-#     flushing_nodes=flushing_nodes,
-#     supply_nodes=supply_nodes,
-#     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
-#     control_node_types=CONTROL_NODE_TYPES
-# )
-# ```
-# ## Debuggen: in stappen
-# 1. bepalen positie van alle knopen relatief tot aanvoergebied (inflow, outflow, internal)
-# ```
-# node_positions_df = get_control_nodes_position_from_supply_area(
-#     model=model,
-#     polygon=polygon,
-#     control_node_types=CONTROL_NODE_TYPES,
-#     ignore_intersecting_links=ignore_intersecting_links,
-# )
-# ```
-# 2. bepalen functie van alle knopen (drain, supply, flow_control and flushing)
-# ```
-# node_functions_df = add_control_functions_to_connector_nodes(
-#     model=model,
-#     node_positions=node_positions_df["position"],
-#     supply_nodes=supply_nodes,
-#     drain_nodes=drain_nodes,
-#     flushing_nodes=flushing_nodes,
-#     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
-# )
-# ```
-#
-# 3. toevoegen van controllers aan alle knopen
-# ```
-# add_controllers_to_connector_nodes(
-#     model=model,
-#     node_functions_df=node_functions_df,
-#     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
-# )
-# ```
-
 # %%
 # Toevoegen Kromme Rijn/Amsterdam-Rijnkanaal
 
