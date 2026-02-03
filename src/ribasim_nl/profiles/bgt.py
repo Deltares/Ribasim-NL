@@ -145,6 +145,7 @@ def get_water_surfaces(wd: pathlib.Path, **kwargs) -> gpd.GeoDataFrame:
         LOG.info(f"Used downloaded BGT-data: {wd / fn}")
     # download BGT-data
     else:
+        LOG.info("Downloading BGT-data...")
         bgt_data = download_bgt_water(geo_filter=geo_filter, wd=(wd if write else None), fn=fn)
         LOG.info(f"Downloaded BGT-data ({write=})" + (f": {wd / fn}" if write else ""))
 
