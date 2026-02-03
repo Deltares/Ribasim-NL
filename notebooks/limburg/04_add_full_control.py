@@ -26,13 +26,13 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_gpkg = cloud.joinpath("Basisgegevens/waterverdeling/aanvoer.gpkg")
-aanvoer_gdf = gpd.read_file(aanvoer_gpkg, layer="aanvoergebieden")
-aanvoer_gdf = aanvoer_gdf[aanvoer_gdf["waterbeheerder"] == "Limburg"]
 cloud.synchronize(
     filepaths=[
         aanvoer_gpkg,
     ]
 )
+aanvoer_gdf = gpd.read_file(aanvoer_gpkg, layer="aanvoergebieden")
+aanvoer_gdf = aanvoer_gdf[aanvoer_gdf["waterbeheerder"] == "Limburg"]
 
 # read model
 model = Model.read(ribasim_toml)
