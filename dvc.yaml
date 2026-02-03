@@ -138,3 +138,24 @@ stages:
       - notebooks/vallei_en_veluwe
     outs:
       - data/ValleienVeluwe/modellen/ValleienVeluwe_full_control_model
+  limburg:
+    cmd:
+      - uv run python notebooks/limburg/_preprocess_profielen.py
+      - uv run python notebooks/limburg/01_fix_model.py
+      - uv run python notebooks/limburg/02_prepare_model.py
+      - uv run python notebooks/limburg/03_parameterize_model.py
+      - uv run python notebooks/limburg/04_add_full_control.py
+    deps:
+      - notebooks/limburg
+    outs:
+      - data/Limburg/modellen/Limburg_full_control_model
+  hunze_en_aas:
+    cmd:
+      - uv run python notebooks/hunze_en_aas/01_fix_model.py
+      - uv run python notebooks/hunze_en_aas/02_prepare_model.py
+      - uv run python notebooks/hunze_en_aas/03_parameterize_model.py
+      - uv run python notebooks/hunze_en_aas/04_add_full_control.py
+    deps:
+      - notebooks/hunze_en_aas
+    outs:
+      - data/HunzeenAas/modellen/HunzeenAas_full_control_model
