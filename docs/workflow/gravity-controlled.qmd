@@ -13,6 +13,21 @@ These are also run in sequence in `main.py`.
 3. `03_parameterized_model.py` will read `{authority}_prepare_model` and `static_data.xlsx` to a model `{authority}_parameterized_model`
 4. `04_add_full_control.py` adds control.
 
+In this step control-nodes will get one of these 4 functions:
+- `drain`: outlet draining an area
+- `supply`: inlet supplying an area
+- `flow_control`: flow through an area in supply (drought) and drain conditions
+- `flushing`: an outlet with a specific flow to be maintained at any conditions (supply or drain)
+
+Explanation of a node's `function` in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:
+| function      | state determined by               | flow_rate @ supply-state | flow_rate @ drain-state | Nodes added                  |
+|---------------|-----------------------------------|--------------------------|-------------------------|------------------------------|
+| supply        | downstream level                  | capacity [m3/s]          | 0 [m3/s]                | DiscreteControl              |
+| drain         | upstream level                    | 0 [m3/s]                 | capacity [m3/s]         | DiscreteControl              |
+| flow control  | upstream & downstream level       | capacity [m3/s]          | capacity [m3/s]         | DiscreteControl              |
+| flushing      | upstream level & node flow_rate   | demand [m3/s]            | capacity [m3/s]         | DiscreteControl + FlowDemand |
+
+
 Steps 5, 6 and 7 are shared between water authorities, and live directly beneath the `notebooks` directory.
 
 5. `05_add_bergend.py` adds VdGaast-based storage basins (input = models are from script 4)

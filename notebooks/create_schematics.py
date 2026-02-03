@@ -1,4 +1,16 @@
-# %%
+"""Script to create layers for schematics that are incorporated in documentation
+
+Required input-files per authority:
+- verwerkt//sturing//aanvoergebieden.gpkg
+- verwerkt//sturing//kunstwerken.gpkg
+
+Will create per authority:
+- verwerkt//sturing//watersysteem.gpkg -> all layers to create the schematic
+- verwerkt//sturing//afvoertabel.md -> table with Ribasim flow capacity in supply\demand
+
+SVG images can created based on the watersysteem.gpkg using QGIS.
+An example QGIS project can be found on the [CloudStorage](https://deltares.thegood.cloud/f/238548) (limited access)
+"""  # noqa: D301
 
 import geopandas as gpd
 import pandas as pd
