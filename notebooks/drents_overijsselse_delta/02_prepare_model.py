@@ -243,6 +243,9 @@ streefpeil = non_kdu_first.combine_first(all_first)
 streefpeil = streefpeil["min_upstream_level"]
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
+
+# manual fix to avoid exception
+streefpeil.loc[2608] = 9.35
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # %% Bepaal min_upstream_level at Manning locations`en vul de nodata basins met deze streefpeilen
@@ -328,8 +331,6 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] 
 ).at[1769, "meta_streefpeil"]
 
 model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.19
-model.basin.area.df.loc[model.basin.area.df.node_id == 2608, "meta_streefpeil"] = 9.35
-
 # %%
 
 # get all nodata streefpeilen with their profile_ids and levels
