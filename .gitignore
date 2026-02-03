@@ -57,6 +57,10 @@ venv/
 *.cpg
 *.log
 *.qlr
+*.png
+*.bat
+*.pdf
+*.svg
 *.tif
 *.csv
 *.gml

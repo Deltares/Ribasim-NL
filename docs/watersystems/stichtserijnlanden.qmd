@@ -1,0 +1,108 @@
+# Stichtse Rijnlanden
+
+- Laatst bijgewerkt: 28-01-2026
+- Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+
+## Systeembeschrijving
+![Systeembeschrijving Stichtse Rijnlanden](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/stichtserijnlanden.svg)
+
+Hieronder zijn de gebieden beschreven uit het bovenstaande figuur.
+
+### Stadsgebied Utrecht en Utrecht-Noord
+
+**Afvoer:**
+
+- Via spuisluis `Oog in Al` naar het `ARK` (hoofdroute).
+- Via het `Weerdsluiscomplex` en het Westriool naar de Utrechtse `Vecht`.
+- Via het `sifon onder het ARK` naar het `Merwedekanaal`, met afvoer onder vrij verval.
+
+**Aanvoer:**
+
+- Vanuit de Kromme Rijn via de inlaat bij `Wijk bij Duurstede` en gemaal bij `Caspargauw`.
+- Rechtstreeks vanuit het ARK via het `Noordergemaal`.
+- Vanuit het Merwedekanaal via het `sifon onder het ARK`, met aanvoer via `inlaat Vreeswijk`. Wateraanvoer onder vrij verval via de Doorslag is onder normale omstandigheden niet mogelijk vanwege te weinig verval. `Doorslag Sluis` staat wel permanent open.
+
+### Utrechtse Heuvelrug / Kromme Rijn
+De wetering aan de voet van de Utrechtse Heuvelrug **voert af** op de `Kromme Rijn`. Vanwege de helling in dit gebied is er beperkt **aanvoer** mogelijk vanuit de `Kromme Rijn`.
+
+### Kromme Rijn / Amsterdam-Rijnkanaal (ARK)
+Dit gebied **voert af** op het Amsterdam-Rijnkanaal, de Kromme Rijn en de stadswatereren Utrecht deels onder vrij verval en deels via bemalingen (niet opgenomen in bovenstaande figuur)
+
+**Aanvoer** vindt hoofdzakelijk plaats vanuit de `Kromme Rijn` via de inlaat bij `Wijk bij Duurstede`. Aanvullend wordt water aangevoerd via `Caspargauw` en de Caspargauwse wetering. In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m³/s. Water wordt als volgt gestuurd:
+
+- Bij overschrijding gaat `stuw Werkhoven` omhoog en wordt `stuw Cothen` gestreken.
+- Afvoer vindt dan bovenstrooms van `Werkhoven` plaats via de `Caspargauw` en benedenstrooms via Utrecht.
+
+### Amsterdam-Rijnkanaal (ARK) / Lek
+Dit gebied **voert af** naar het ARK, deels door bemaling en deels onder vrij verval. **Aanvoer** vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.
+
+### Leidsche – Oude Rijn
+
+**Afvoer:**
+
+- Onder normale omstandigheden loost de `Leidsche Rijn` op het `ARK` en de `Oude Rijn` via de `schutsluis bij Bodegraven`. De `Haanwijkersluis` is gesloten.
+- Overtollig water uit de polders wordt met poldergemalen uitgeslagen op de `Oude Rijn`, de `Leidsche Rijn` en het `ARK`.
+- In het noordwesten lozen polders via meerdere gemalen op de boezem van Amstel, Gooi en Vecht.
+
+**Wateraanvoer:**
+
+- Via de `Leidsche Rijn` en de `Oude Rijn`.
+- In het Noorden via het boezemsysteem van Amstel, Gooi en Vecht.
+
+**Bijzondere sturing (KWA) – Leidsche Rijn en Oude Rijn**
+
+In extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in werking:
+
+- De Groenwoudsedijksluis bij `gemaal De Aanvoerder` wordt gesloten.
+- `Gemaal De Aanvoerder` pompt water vanuit het `ARK` in de `Leidsche Rijn` en zet het peil aan de oostzijde op (0,20 m +NAP).
+- `De Haanwijkersluis` tussen de `Leidsche Rijn` en de `Oude Rijn` wordt geopend; water stroomt richting de `schutsluis bij Bodegraven`.
+- Het systeem wordt aanvullend gevoed vanuit de Lek (bij `De Koekoek`) en het `ARK` (via het `Noordergemaal`). Vanuit de Lek stroomt water via gebied `de Lopikerwaard`, via `inlaat Hekendorp`, naar de Enkele Wiericke en de `Oude Rijn`. Vanuit het `Noordergemaal` stroomt water via de via de `Doorslag` eveneens richting `Hekendorp`.
+
+### Hollandsche IJssel
+Het meeste water uit dit gebied wordt **afgevoerd** via de `Leidsche Rijn` naar het `ARK` en de `Oude Rijn` richting `Bodegraven`. Een klein deel, in het oosten van het gebied, wordt afgevoerd via de gekanaliseerde Hollandse IJssel (`Doorslag sluis`) en de `Hollandse IJssel` naar `Gouda`
+
+**Wateraanvoer:**
+De Hollandsche IJssel wordt aangevoerd via:
+
+- Via inlaat Vreeswijk, via het `Merwedekanaal` en `de Doorslag`.
+- Via de stadswateren van Utrecht, via `het sifon onder het ARK`.
+- Via het `Noordergemaal` (alleen in KWA-situaties), waarbij water uit het ARK via `het sifon onder het ARK` en `de Doorslag` wordt aangevoerd.
+
+Wateraanvoer naar polders gaat grotendeels via `de Hollandsche IJssel` en de `Leidsche–Oude Rijn`
+
+### Lopikerwaard
+Overtollig water uit de polder wordt **afgevoerd** op de Hollandsche IJssel en de Lek via vier gemalen: `De Keulevaart`, `De Koekoek`, De Pleyt en De Hoekse Molen.
+
+**Wateraanvoer:**
+
+- Grotendeels vanuit de Lek via inlaat `De Koekoek`.
+- Aanvullend vanuit de `Hollandsche IJssel` via de `Doorslag`
+
+## Capaciteiten
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+
+| naam                      | code   |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
+|:--------------------------|:-------|----------:|:----------|-----------------:|----------------:|
+| Aanvoerder, De            | G4031  |       542 | inlaat    |               30 |               0 |
+| Bodegraven Sluis          | SL0005 |       755 | uitlaat   |                0 |              30 |
+| Caspargauw                | G3003  |       601 | inlaat    |               30 |               0 |
+| Cothen Stuw               | ST3001 |       777 | doorlaat  |               30 |              30 |
+| Doorslag sluis            | SL0030 |       754 | inlaat    |               30 |               0 |
+| Haanwijkersluis           | SL0003 |       742 | inlaat    |               30 |               0 |
+| Inlaat Hekendorp          | I6098  |       141 | inlaat    |               30 |               0 |
+| Inlaat Vreeswijk          | I6119  |       252 | inlaat    |               30 |               0 |
+| Inlaat wijk bij duurstede | AF0093 |       481 | inlaat    |               30 |               0 |
+| Keulevaart, De            | G3025  |       623 | uitlaat   |                0 |              30 |
+| Koekoek, De               | G5002  |       541 | uitlaat   |                0 |              30 |
+| Noordergemaal             | G6007  |       536 | inlaat    |               30 |               0 |
+| Oog in Al spuisluis       | I1580  |       168 | uitlaat   |                0 |              30 |
+| Sifon onder Ark           | SY0070 |       468 | inlaat    |               30 |               0 |
+| Waaiersluis Gouda         | G8000  |       567 | uitlaat   |                0 |              30 |
+| Weerdsluis                | SL0009 |       757 | uitlaat   |                0 |              30 |
+| Werkhoven stuw            | ST2028 |       919 | doorlaat  |               30 |              30 |
+| Zuidersluis               | SL0016 |       758 | uitlaat   |                0 |              30 |
+
+## Bronnen
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van `Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco)` en:
+
+- [Documentatie Distributiemodel (Deel B, hoofdstuk 8)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)

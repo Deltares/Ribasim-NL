@@ -36,7 +36,7 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_path = aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg")
 
-aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/aanvoergebieden.gpkg")
+aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/sturing/aanvoergebieden.gpkg")
 cloud.synchronize(filepaths=[aanvoer_path, qlr_path, aanvoergebieden_gpkg])
 
 
@@ -86,8 +86,6 @@ model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45,
 # doorslag staat normaal open
 model.reverse_link(link_id=1470)
 model.reverse_link(link_id=1063)
-# model.remove_node(node_id=1344, remove_links=True)
-# model.remove_node(node_id=1345, remove_links=True)
 
 # De Pelikaan links omdraaien
 model.reverse_link(link_id=578)
@@ -115,15 +113,13 @@ model.reverse_link(link_id=2005)
 model.reverse_link(link_id=2073)
 model.reverse_link(link_id=24)
 
-
 model.update_node(node_id=730, node_type="ManningResistance")
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "max_flow_rate"] = 20
 
-
 # %%
-# Toevoegen Kromme Rijn/Amsterdam-Rijnkanaal
+# Toevoegen Kromme Rijn/ARK
 
-polygon = aanvoergebieden_df.loc[["Kromme Rijn/Amsterdam-Rijnkanaal"], "geometry"].union_all()
+polygon = aanvoergebieden_df.loc[["Kromme Rijn/ARK"], "geometry"].union_all()
 
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
@@ -183,8 +179,8 @@ node_functions_df = add_controllers_to_supply_area(
 )
 
 # %%
-# Toevoegen Amsterdam-Rijnkanaal/Lek
-polygon = aanvoergebieden_df.at["Amsterdam-Rijnkanaal/Lek", "geometry"]
+# Toevoegen ARK/Lek
+polygon = aanvoergebieden_df.at["ARK/Lek", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -235,9 +231,9 @@ node_functions_df = add_controllers_to_supply_area(
 
 
 # %%
-# Toevoegen Gek. Hollandse IJssel
+# Toevoegen Lopikerwaard
 
-polygon = aanvoergebieden_df.at["Gek. Hollandse IJssel", "geometry"]
+polygon = aanvoergebieden_df.at["Lopikerwaard", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -246,7 +242,7 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [1305, 1618, 2271]
+ignore_intersecting_links: list[int] = [404, 1305, 1618, 2271]
 
 # doorspoeling (op uitlaten)
 # node_id: Naam
@@ -288,9 +284,9 @@ node_functions_df = add_controllers_to_supply_area(
 
 
 # %%
-# Toevoegen Leidse Rijn-Noord
+# Toevoegen Leidsche-Oude Rijn
 
-polygon = aanvoergebieden_df.at["Leidse Rijn-Noord", "geometry"]
+polygon = aanvoergebieden_df.at["Leidsche-Oude Rijn", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -343,9 +339,9 @@ node_functions_df = add_controllers_to_supply_area(
 
 
 # %%
-# Toevoegen Leidse Rijn-Zuid
+# Toevoegen Hollandsche IJssel
 
-polygon = aanvoergebieden_df.at["Leidse Rijn-Zuid", "geometry"]
+polygon = aanvoergebieden_df.at["Hollandsche IJssel", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -390,9 +386,9 @@ node_functions_df = add_controllers_to_supply_area(
 )
 
 # %%
-# Toevoegen Stadsgebied Utrecht
+# Toevoegen Utrecht-Noord
 
-polygon = aanvoergebieden_df.at["Stadsgebied Utrecht", "geometry"]
+polygon = aanvoergebieden_df.at["Utrecht-Noord", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
