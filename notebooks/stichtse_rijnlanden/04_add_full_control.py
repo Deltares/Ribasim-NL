@@ -86,8 +86,6 @@ model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45,
 # doorslag staat normaal open
 model.reverse_link(link_id=1470)
 model.reverse_link(link_id=1063)
-# model.remove_node(node_id=1344, remove_links=True)
-# model.remove_node(node_id=1345, remove_links=True)
 
 # De Pelikaan links omdraaien
 model.reverse_link(link_id=578)
@@ -115,10 +113,7 @@ model.reverse_link(link_id=2005)
 model.reverse_link(link_id=2073)
 model.reverse_link(link_id=24)
 
-
 model.update_node(node_id=730, node_type="ManningResistance")
-# model.update_node(node_id=1291, node_type="ManningResistance")
-# model.update_node(node_id=1349, node_type="Outlet")
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "max_flow_rate"] = 20
 
 # %%
