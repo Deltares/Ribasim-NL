@@ -6,7 +6,7 @@
 ## Systeembeschrijving
 ![Systeembeschrijving Stichtse Rijnlanden](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/stichtserijnlanden.svg)
 
-Hieronder zijn de gebieden beschreven uit bovenstaande figuur
+Hieronder zijn de gebieden beschreven uit het bovenstaande figuur.
 
 ### Stadsgebied Utrecht en Utrecht-Noord
 
@@ -34,7 +34,7 @@ Dit gebied **voert af** op het Amsterdam-Rijnkanaal, de Kromme Rijn en de stadsw
 - Afvoer vindt dan bovenstrooms van `Werkhoven` plaats via de `Caspargauw` en benedenstrooms via Utrecht.
 
 ### Amsterdam-Rijnkanaal (ARK) / Lek
-Dit gebied **voert af** naar het ARK, deels door bemaling en deels onder vrij verval. **Aaanvoer** vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.
+Dit gebied **voert af** naar het ARK, deels door bemaling en deels onder vrij verval. **Aanvoer** vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.
 
 ### Leidsche – Oude Rijn
 
@@ -79,7 +79,7 @@ Overtollig water uit de polder wordt **afgevoerd** op de Hollandsche IJssel en d
 - Aanvullend vanuit de `Hollandsche IJssel` via de `Doorslag`
 
 ## Capaciteiten
-Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasimmodel) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
 | naam                      | code   |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
 |:--------------------------|:-------|----------:|:----------|-----------------:|----------------:|

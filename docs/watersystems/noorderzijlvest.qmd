@@ -37,13 +37,13 @@ Loost via gemaal `De Drie Delfzijlen` bij Delfzijl naar de Eems. Aanvoer is moge
 ### Marnerwaard
 Marnerwaard loost water via `Nieuw Robbengat` op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.
 
-In droge perioden kan water worden aangevoerd via een aantal gemalen gemalen in het zuidoosten van het gebied, alsook in het noordwersten via het het Lauwersmeer. Doorspoeling vindt plaats via de `Herculesstuw`.
+In droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de `Herculesstuw`.
 
 ### Dongeradeel
 Dongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal `Dongeradielen` op het Lauwersmeer en via de sluis `Dokkumer Nieuwezijlen` onder vrij verval.
 
 ## Capaciteiten
-Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasimmodel) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
 | naam                    | code     |   node_id | functie                |   aanvoer [m3/s] |   afvoer [m3/s] |
 |:------------------------|:---------|----------:|:-----------------------|-----------------:|----------------:|

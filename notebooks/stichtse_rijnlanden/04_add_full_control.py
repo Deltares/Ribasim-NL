@@ -42,7 +42,6 @@ cloud.synchronize(filepaths=[aanvoer_path, qlr_path, aanvoergebieden_gpkg])
 
 # %%
 # Read data
-# Read data
 model = Model.read(ribasim_toml)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
