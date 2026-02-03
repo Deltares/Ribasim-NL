@@ -133,43 +133,130 @@
     "text": "Ribasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
   },
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Ribasim-NL",
+    "objectID": "watersystems/aaenmaas.html",
+    "href": "watersystems/aaenmaas.html",
+    "title": "Aa en Maas",
     "section": "",
-    "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
-  },
-  {
-    "objectID": "workflow/gravity-controlled.html",
-    "href": "workflow/gravity-controlled.html",
-    "title": "Gravity controlled",
-    "section": "",
-    "text": "Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in src/ribasim_nl.\nUnder notebooks you’ll find 4 scripts per water authority, e.g. notebooks\\aa_en_maas, you can run in sequence. These are also run in sequence in main.py.\n\n01_fix_model.py will “fix” the GIS-models supplied by Sweco in the directories {authority}_2024_6_3 to valid Ribasim-models in the directory {authority}_fix_model\n02_prepare_model.pywill read {authority}_fix_model and add levels and flow_rate to the model and a static_data.xlsx that can be reviewed. The model will be written as {authority}_prepare_model\n03_parameterized_model.py will read {authority}_prepare_model and static_data.xlsx to a model {authority}_parameterized_model\n04_add_full_control.py adds control.\n\nSteps 5, 6 and 7 are shared between water authorities, and live directly beneath the notebooks directory.\n\n05_add_bergend.py adds VdGaast-based storage basins (input = models are from script 4)\n06_add_synthetic_forcing.py adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5\n07_add_dynamic_forcing.py adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5\n\nFinally uploaden_modellen.py uploads all models produced by script 7.",
+    "text": "Laatst bijgewerkt: 28-01-2026\nLaatste modelversie: in aanbouw\n\n\n\n\n\n\nSysteembeschrijving Aa en Maas\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 29 en 30)",
     "crumbs": [
-      "Workflows",
-      "Gravity controlled"
+      "Watersystems",
+      "Aa en Maas"
     ]
   },
   {
-    "objectID": "workflow/main-watersystem.html",
-    "href": "workflow/main-watersystem.html",
-    "title": "Main watersystem",
+    "objectID": "watersystems/aaenmaas.html#systeembeschrijving",
+    "href": "watersystems/aaenmaas.html#systeembeschrijving",
+    "title": "Aa en Maas",
     "section": "",
-    "text": "All files are in notebooks/rijkswaterstaat are numbered in order of execution.\n\n1_bathymetrie.py\nIn this script we merge data from Baseline (version j23_6-v1, non-public) with grids from bathymetrie-Nederland to one 5x5m GeoTiff.\nWe combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column baseline.\n\n\n\n\n\n\nBathymetry mask\n\n\n\n\n\n\n\nBathymetry\n\n\n\n\n\n\n\n2_basins.py\nWe derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of 1_bathymetry.py we write a CSV-file with a Basin profile.\n\n\n3_netwerk.py\nWe derive a ribasim_nl.Network (not a Ribasim network yet!) we can use to build a model_network with 5_model_netwerk.py. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from 2_basins.py as a network node will be put at the intersect of a Basin-polygon and the network.\n\n\n4_kunstwerken.py\nWe combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (model_netwerk.py).\n\n\n5_model_netwerk.py\nWe combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a .\\modellen\\hws_netwerk\\hws.toml file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.\n\n\n6_model_sturing.py\nWe take the model of 5 (.\\modellen\\hws_netwerk\\hws.toml), add control and write it to (.\\modellen\\hws_sturing\\hws.toml)\n\n\n7_model_onttrekkingen.py\nWe take the model of 6 (.\\modellen\\hws_sturing\\hws.toml), add drinking water, industry and energy demands. Then we add junctions and write it to (.\\modellen\\hws_demand\\hws.toml)\n\n\n8 update bc, state, etc.\nScripts to provide boundary/initial conditions to the model in .\\modellen\\hws_demand\\hws.toml and write it in another location.",
+    "text": "Systeembeschrijving Aa en Maas",
     "crumbs": [
-      "Workflows",
-      "Main watersystem"
+      "Watersystems",
+      "Aa en Maas"
     ]
   },
   {
-    "objectID": "workflow/watersystem.html",
-    "href": "workflow/watersystem.html",
-    "title": "Electraboezem en omgeving",
+    "objectID": "watersystems/aaenmaas.html#capaciteiten",
+    "href": "watersystems/aaenmaas.html#capaciteiten",
+    "title": "Aa en Maas",
     "section": "",
-    "text": "Per waterschap wordt het watersysteem beschreven middels de belangrijkste inlaten en uitlaten beschreven.\n\nNoorderzijlvest\n\n\n\nKunstwerken Noorderzijlvest\n\n\n\n\nElectraboezem\nHet witte gebied op de kaart wordt gevormd door de Electraboezem. De belangrijkste waterlopen zijn het Reitdiep en het Van Starkenborghkanaal, die onderling met elkaar in open verbinding staan. Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen H.D. Louwes en De Waterwolf — naar het Lauwersmeergebied. Het Lauwersmeergebied loost vervolgens via de sluizen van Lauwersoog op de Waddenzee.\nHet Van Starkenborghkanaal komt uit op de Oostersluis. Deze sluis kent alleen schutverliezen.\n\nInlaat Gaarkeuken\n\nBij Gaarkeuken kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de boezem van Noorderzijlvest.\nEen deel daarvan (tot 20 m³/s) kan via gemaal Dorkwerd worden opgepompt richting waterschap Hunze en Aa’s/Eemskanaal.\nWater dat op de Electraboezem nodig is, wordt via de sluis bij Gaarkeuken ingelaten; overschot wordt afgevoerd richting het Lauwersmeer.\nPraktisch geldt (volgens inschatting van de hydroloog) een globale verdeling van 1/5 naar de Electraboezem en 4/5 via Dorkwerd naar de Eemskanaalboezem.\n\n\n\nAanvoergebied Peize-en Eelderdiep/Fochtellerveen (grijs gebied)\nIn het zuidoosten (nabij Assen; grijs in de kaart) wordt via een reeks kleinere inlaten — Ter Aard, Huis ter Heide, Heideheim en de Jonkersburg-inlaat — water ingebracht vanuit het Noord-Willemskanaal en de Drentse Hoofdvaart (gebied van Hunze en Aa’s).\n\nDe inlaten laten ca. 0.5 m³/s toe (beschikbaarheid afhankelijk van Hunze en Aa’s).\nHet water komt uit in het gestuwde deel en voert vervolgens via de Electraboezem af.\nIn afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer.\n\n\n\nAanvoergebied zuidwesten via Leek (lichtblauw gebied)\nHet stroomgebied van het Leeksterhoofddiep en Dwarsdiep voert water af naar de Electraboezem via de Jonkersluis (Leeksterhoofddiep) en het Dwarsdiep.\n\nAanvoer van water gebeurt via het aanvoergemaal bij Leek: dit pompt water uit de Electraboezem en loost het op het Leeksterhoofddiep.\nVia de waterlopen in het gebied wordt het water naar het zuidwesten geleid, richting landbouwgronden.\nEen deel wordt gebruikt voor beregening en infiltratie, een deel voor doorspoeling; het resterende deel stroomt via het Dwarsdiep terug naar de Electraboezem.\n\n\n\n\nFivelingoboezem (geel gebied)\nDe Fivelingoboezem (lichtgeel in het oosten) loost op Delfzijl: - onder vrij verval via het spuicomplex (max. 15 m³/s), of - via gemaal De Drie Delfzijlen (max. 25 m³/s) naar de Eems.\nAanvoer is mogelijk vanuit het Damsterdiep, waarin water uit het Van Starkenborghkanaal kan worden opgemalen met een booster (max. 1.5 m³/s).\n\n\nNoordelijke kustpolders (rode en blauwe gebieden)\nDe noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (Noordpolderzijl en Spijksterpompen).\n\nIn droge periodes wordt water uit de Electraboezem (via boezemgemalen Stad en Lande, Schaphalsterzijl, Abelstok, Den Deel en Usquert en nog ) met kleine poldergemalen naar de kustpolders opgemalen.\n\n\n\nDongeradeel\nDongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. De afvoer vindt plaats met gemaal Dongeradielen op het Lauwersmeer en via de sluis Dokkumer Nieuwezijlen onder vrij verval.",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.",
+    "crumbs": [
+      "Watersystems",
+      "Aa en Maas"
+    ]
+  },
+  {
+    "objectID": "watersystems/aaenmaas.html#bronnen",
+    "href": "watersystems/aaenmaas.html#bronnen",
+    "title": "Aa en Maas",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 29 en 30)",
+    "crumbs": [
+      "Watersystems",
+      "Aa en Maas"
+    ]
+  },
+  {
+    "objectID": "watersystems/template.html",
+    "href": "watersystems/template.html",
+    "title": "{waterschap}",
+    "section": "",
+    "text": "Laatst bijgewerkt: {datum}\nLaatste modelversie: {modelversie}\n\n\n\n\n\n\nSysteembeschrijving {waterschap}\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})"
+  },
+  {
+    "objectID": "watersystems/template.html#systeembeschrijving",
+    "href": "watersystems/template.html#systeembeschrijving",
+    "title": "{waterschap}",
+    "section": "",
+    "text": "Systeembeschrijving {waterschap}"
+  },
+  {
+    "objectID": "watersystems/template.html#capaciteiten",
+    "href": "watersystems/template.html#capaciteiten",
+    "title": "{waterschap}",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven."
+  },
+  {
+    "objectID": "watersystems/template.html#bronnen",
+    "href": "watersystems/template.html#bronnen",
+    "title": "{waterschap}",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})"
+  },
+  {
+    "objectID": "watersystems/noorderzijlvest.html",
+    "href": "watersystems/noorderzijlvest.html",
+    "title": "Noorderzijlvest",
+    "section": "",
+    "text": "Laatst bijgewerkt: 28-01-2026\nLaatste modelversie: 2026.6.0\n\n\n\n\n\n\nSysteembeschrijving Noorderzijlvest\n\n\n\n\n\nBij Gaarkeuken kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.\nEen deel daarvan (tot 20 m³/s) kan via gemaal Dorkwerd worden opgepompt richting waterschap Hunze en Aa’s.\nWater dat op de Electraboezem nodig is, wordt via de sluis bij Gaarkeuken ingelaten; overschot wordt afgevoerd richting het Lauwersmeer.\nPraktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via Dorkwerd naar Hunze en Aa’s (Eemskanaalboezem).\n\n\n\n\nHet witte gebied op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen H.D. Louwes en De Waterwolf — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de Cleveringsluizen op de Waddenzee.\n\n\n\nIn afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.\nIn het zuidoosten wordt via een reeks kleinere inlaten — Jonkersbrug, Ter Aard, Huis ter Heide, Heideheimheem, Meerweg vanuit Hunze en Aa’s en Drents Overijsselse Delta water ingelaten.\n\n\n\nDit gebied voert water af naar de Electraboezem via de uitlaat Leek en het Dwarsdiep.\nDe wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij Leek, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via Leek wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.\n\n\n\nDe noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (Noordpolderzijl en Spijksterpompen).\nIn droge periodes wordt water uit de Electraboezem (via boezemgemalen Stad en Lande en Schaphalsterzijl) met kleine poldergemalen naar de kustpolders opgemalen.\n\n\n\nLoost via gemaal De Drie Delfzijlen bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de Oostersluis. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij Spijksterpompen.\n\n\n\nMarnerwaard loost water via Nieuw Robbengat op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.\nIn droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de Herculesstuw.\n\n\n\nDongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal Dongeradielen op het Lauwersmeer en via de sluis Dokkumer Nieuwezijlen onder vrij verval.\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAbelstok\nKGM156\n147\nuitlaat\n0\n10\n\n\nAllartsooginlaat\nINL201\n698\ninlaat\n20\n0\n\n\nDe Drie Delfzijlen\nKGM046\n67\nuitlaat\n0\n25\n\n\nDe Waterwolf\nKGM001\n29\ndoorlaat\n75\n75\n\n\nDokkumer Nieuwezijlen\n\n1755\nuitlaat\n0\n0\n\n\nDrie-Provinciëninlaat\nINL202\n699\ninlaat\n20\n0\n\n\nFrieschepaleninlaat\nINL077\n687\ninlaat\n20\n0\n\n\nGaarkeukeninlaat\n\n1741\ninlaat\n24\n0\n\n\nGemaal Dokwerd\n\n1753\ninlaat\n20\n0\n\n\nGemaal de Dongeradielen\n\n1748\nuitlaat\n0\n0\n\n\nH.D. Louwes\nKGM002\n30\nuitlaat\n0\n16.7\n\n\nHeidenheeminlaat\nINL055\n1743\ninlaat\n0.072\n0\n\n\nHerculesstuw\nKST0169\n412\nuitlaat (doorspoeling)\n0.2\n10.2\n\n\nHuis ter Heide-inlaat\nINL114\n1742\ninlaat\n0.105\n0\n\n\nJonkersbruginlaat\nINL095\n1739\ninlaat\n0.032\n0\n\n\nLeek\nKGM009\n36\ninlaat\n1.17\n0\n\n\nMeerweg\n\n1758\ninlaat\n0.021\n0\n\n\nNieuwe Robbengat\nKGM016\n42\nuitlaat\n0\n4.33\n\n\nNoordpolderzijl\nKGM014\n40\nuitlaat\n0\n4\n\n\nOostersluis\nKGM148\n142\ninlaat\n2.5\n0\n\n\nR.J. Cleveringsluizen\nKSL011\n724\nuitlaat\n0\n668\n\n\nSchaphalsterzijl\nKGM155_i\n146\ninlaat\n2.5\n0\n\n\nSpijksterpompen\nKGM015\n41\nuitlaat (doorspoeling)\n0.4\n12.9\n\n\nStad en Lande\nKGM003_i\n32\ninlaat\n1.5\n0\n\n\nTer Aardinlaat\nINL001\n1751\ninlaat\n0.043\n0\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel C, hoofdstuk 26)\nSweco - systeemschets\nNoorderzijlvest - beschrijving wateraanvoer en doorspoeling",
+    "crumbs": [
+      "Watersystems",
+      "Noorderzijlvest"
+    ]
+  },
+  {
+    "objectID": "watersystems/noorderzijlvest.html#systeembeschrijving",
+    "href": "watersystems/noorderzijlvest.html#systeembeschrijving",
+    "title": "Noorderzijlvest",
+    "section": "",
+    "text": "Systeembeschrijving Noorderzijlvest\n\n\n\n\n\nBij Gaarkeuken kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.\nEen deel daarvan (tot 20 m³/s) kan via gemaal Dorkwerd worden opgepompt richting waterschap Hunze en Aa’s.\nWater dat op de Electraboezem nodig is, wordt via de sluis bij Gaarkeuken ingelaten; overschot wordt afgevoerd richting het Lauwersmeer.\nPraktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via Dorkwerd naar Hunze en Aa’s (Eemskanaalboezem).\n\n\n\n\nHet witte gebied op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen H.D. Louwes en De Waterwolf — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de Cleveringsluizen op de Waddenzee.\n\n\n\nIn afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.\nIn het zuidoosten wordt via een reeks kleinere inlaten — Jonkersbrug, Ter Aard, Huis ter Heide, Heideheimheem, Meerweg vanuit Hunze en Aa’s en Drents Overijsselse Delta water ingelaten.\n\n\n\nDit gebied voert water af naar de Electraboezem via de uitlaat Leek en het Dwarsdiep.\nDe wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij Leek, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via Leek wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.\n\n\n\nDe noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (Noordpolderzijl en Spijksterpompen).\nIn droge periodes wordt water uit de Electraboezem (via boezemgemalen Stad en Lande en Schaphalsterzijl) met kleine poldergemalen naar de kustpolders opgemalen.\n\n\n\nLoost via gemaal De Drie Delfzijlen bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de Oostersluis. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij Spijksterpompen.\n\n\n\nMarnerwaard loost water via Nieuw Robbengat op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.\nIn droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de Herculesstuw.\n\n\n\nDongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal Dongeradielen op het Lauwersmeer en via de sluis Dokkumer Nieuwezijlen onder vrij verval.",
+    "crumbs": [
+      "Watersystems",
+      "Noorderzijlvest"
+    ]
+  },
+  {
+    "objectID": "watersystems/noorderzijlvest.html#capaciteiten",
+    "href": "watersystems/noorderzijlvest.html#capaciteiten",
+    "title": "Noorderzijlvest",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAbelstok\nKGM156\n147\nuitlaat\n0\n10\n\n\nAllartsooginlaat\nINL201\n698\ninlaat\n20\n0\n\n\nDe Drie Delfzijlen\nKGM046\n67\nuitlaat\n0\n25\n\n\nDe Waterwolf\nKGM001\n29\ndoorlaat\n75\n75\n\n\nDokkumer Nieuwezijlen\n\n1755\nuitlaat\n0\n0\n\n\nDrie-Provinciëninlaat\nINL202\n699\ninlaat\n20\n0\n\n\nFrieschepaleninlaat\nINL077\n687\ninlaat\n20\n0\n\n\nGaarkeukeninlaat\n\n1741\ninlaat\n24\n0\n\n\nGemaal Dokwerd\n\n1753\ninlaat\n20\n0\n\n\nGemaal de Dongeradielen\n\n1748\nuitlaat\n0\n0\n\n\nH.D. Louwes\nKGM002\n30\nuitlaat\n0\n16.7\n\n\nHeidenheeminlaat\nINL055\n1743\ninlaat\n0.072\n0\n\n\nHerculesstuw\nKST0169\n412\nuitlaat (doorspoeling)\n0.2\n10.2\n\n\nHuis ter Heide-inlaat\nINL114\n1742\ninlaat\n0.105\n0\n\n\nJonkersbruginlaat\nINL095\n1739\ninlaat\n0.032\n0\n\n\nLeek\nKGM009\n36\ninlaat\n1.17\n0\n\n\nMeerweg\n\n1758\ninlaat\n0.021\n0\n\n\nNieuwe Robbengat\nKGM016\n42\nuitlaat\n0\n4.33\n\n\nNoordpolderzijl\nKGM014\n40\nuitlaat\n0\n4\n\n\nOostersluis\nKGM148\n142\ninlaat\n2.5\n0\n\n\nR.J. Cleveringsluizen\nKSL011\n724\nuitlaat\n0\n668\n\n\nSchaphalsterzijl\nKGM155_i\n146\ninlaat\n2.5\n0\n\n\nSpijksterpompen\nKGM015\n41\nuitlaat (doorspoeling)\n0.4\n12.9\n\n\nStad en Lande\nKGM003_i\n32\ninlaat\n1.5\n0\n\n\nTer Aardinlaat\nINL001\n1751\ninlaat\n0.043\n0",
+    "crumbs": [
+      "Watersystems",
+      "Noorderzijlvest"
+    ]
+  },
+  {
+    "objectID": "watersystems/noorderzijlvest.html#bronnen",
+    "href": "watersystems/noorderzijlvest.html#bronnen",
+    "title": "Noorderzijlvest",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel C, hoofdstuk 26)\nSweco - systeemschets\nNoorderzijlvest - beschrijving wateraanvoer en doorspoeling",
+    "crumbs": [
+      "Watersystems",
+      "Noorderzijlvest"
+    ]
+  },
+  {
+    "objectID": "workflow/couple.html",
+    "href": "workflow/couple.html",
+    "title": "Coupling",
+    "section": "",
+    "text": "To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.\nThis procedure assumes there’s a meta_couple_authority column in the LevelBoundary / Static table, which is currently the case for (at least) the level controlled models.\n\nEnsure all models have a meta_couple_authority.\n\n\nnotebooks/samenvoegen_modellen.py\nFirst we determine which models we want to couple. Currently this is tested for Rijkswaterstaat, AmstelGooienVecht, Rijnland, HollandseDelta, Delfland, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g. 80 for Rijkswaterstaat. This will result in an lhm model.\n\n\nnotebooks/koppelen_modellen.py\nSecondly, we can use this lhm model to actually couple the individual models in there. To do so, each LevelBoundary with a filled in meta_couple_authority in their Static table is replaced by another node from the meta_couple_authoritys model.\nThere are several combinations possible:\n\nConnector | LevelBoundary replaced by Connector | Basin\nThe easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the Basin / area polygon). This will relink the connector node (i.e. an Outlet) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the Basin instead.\nFor the Rijkswaterstaat Basins, the new link follows the Rijkswataerstaat/verwerkt/netwerk.gpkg topology, instead of a direct line.\n\n\nOutlet | LevelBoundary . LevelBoundary | Outlet replaced by Outlet\nIn some cases, especially when coupling between two waterboards, there are two LevelBoundarys close to one another, which are treated as duplicates.\n\n\nOther connections\nThere are several other coupling connections that could happen which require further attention:\n\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Pump\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Outlet\nFix Control nodes when merging duplicates\nInvestigate whether other connections happen\n\nCurrently these cases are automatically handled as the Connector | Basin, which leaves duplicate Connector Nodes in place, and might duplicate a flow.",
     "crumbs": [
       "Workflows",
-      "Electraboezem en omgeving"
+      "Coupling"
     ]
   },
   {
@@ -184,14 +271,87 @@
     ]
   },
   {
-    "objectID": "workflow/couple.html",
-    "href": "workflow/couple.html",
-    "title": "Coupling",
+    "objectID": "workflow/main-watersystem.html",
+    "href": "workflow/main-watersystem.html",
+    "title": "Main watersystem",
     "section": "",
-    "text": "To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.\nThis procedure assumes there’s a meta_couple_authority column in the LevelBoundary / Static table, which is currently the case for (at least) the level controlled models.\n\nEnsure all models have a meta_couple_authority.\n\n\nnotebooks/samenvoegen_modellen.py\nFirst we determine which models we want to couple. Currently this is tested for Rijkswaterstaat, AmstelGooienVecht, Rijnland, HollandseDelta, Delfland, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g. 80 for Rijkswaterstaat. This will result in an lhm model.\n\n\nnotebooks/koppelen_modellen.py\nSecondly, we can use this lhm model to actually couple the individual models in there. To do so, each LevelBoundary with a filled in meta_couple_authority in their Static table is replaced by another node from the meta_couple_authoritys model.\nThere are several combinations possible:\n\nConnector | LevelBoundary replaced by Connector | Basin\nThe easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the Basin / area polygon). This will relink the connector node (i.e. an Outlet) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the Basin instead.\nFor the Rijkswaterstaat Basins, the new link follows the Rijkswataerstaat/verwerkt/netwerk.gpkg topology, instead of a direct line.\n\n\nOutlet | LevelBoundary . LevelBoundary | Outlet replaced by Outlet\nIn some cases, especially when coupling between two waterboards, there are two LevelBoundarys close to one another, which are treated as duplicates.\n\n\nOther connections\nThere are several other coupling connections that could happen which require further attention:\n\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Pump\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Outlet\nFix Control nodes when merging duplicates\nInvestigate whether other connections happen\n\nCurrently these cases are automatically handled as the Connector | Basin, which leaves duplicate Connector Nodes in place, and might duplicate a flow.",
+    "text": "All files are in notebooks/rijkswaterstaat are numbered in order of execution.\n\n1_bathymetrie.py\nIn this script we merge data from Baseline (version j23_6-v1, non-public) with grids from bathymetrie-Nederland to one 5x5m GeoTiff.\nWe combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column baseline.\n\n\n\n\n\n\nBathymetry mask\n\n\n\n\n\n\n\nBathymetry\n\n\n\n\n\n\n\n2_basins.py\nWe derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of 1_bathymetry.py we write a CSV-file with a Basin profile.\n\n\n3_netwerk.py\nWe derive a ribasim_nl.Network (not a Ribasim network yet!) we can use to build a model_network with 5_model_netwerk.py. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from 2_basins.py as a network node will be put at the intersect of a Basin-polygon and the network.\n\n\n4_kunstwerken.py\nWe combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (model_netwerk.py).\n\n\n5_model_netwerk.py\nWe combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a .\\modellen\\hws_netwerk\\hws.toml file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.\n\n\n6_model_sturing.py\nWe take the model of 5 (.\\modellen\\hws_netwerk\\hws.toml), add control and write it to (.\\modellen\\hws_sturing\\hws.toml)\n\n\n7_model_onttrekkingen.py\nWe take the model of 6 (.\\modellen\\hws_sturing\\hws.toml), add drinking water, industry and energy demands. Then we add junctions and write it to (.\\modellen\\hws_demand\\hws.toml)\n\n\n8 update bc, state, etc.\nScripts to provide boundary/initial conditions to the model in .\\modellen\\hws_demand\\hws.toml and write it in another location.",
     "crumbs": [
       "Workflows",
-      "Coupling"
+      "Main watersystem"
+    ]
+  },
+  {
+    "objectID": "workflow/gravity-controlled.html",
+    "href": "workflow/gravity-controlled.html",
+    "title": "Gravity controlled",
+    "section": "",
+    "text": "Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in src/ribasim_nl.\nUnder notebooks you’ll find 4 scripts per water authority, e.g. notebooks\\aa_en_maas, you can run in sequence. These are also run in sequence in main.py.\n\n01_fix_model.py will “fix” the GIS-models supplied by Sweco in the directories {authority}_2024_6_3 to valid Ribasim-models in the directory {authority}_fix_model\n02_prepare_model.pywill read {authority}_fix_model and add levels and flow_rate to the model and a static_data.xlsx that can be reviewed. The model will be written as {authority}_prepare_model\n03_parameterized_model.py will read {authority}_prepare_model and static_data.xlsx to a model {authority}_parameterized_model\n04_add_full_control.py adds control.\n\nIn this step control-nodes will get one of these 4 functions: - drain: outlet draining an area - supply: inlet supplying an area - flow_control: flow through an area in supply (drought) and drain conditions - flushing: an outlet with a specific flow to be maintained at any conditions (supply or drain)\nExplanation of a node’s function in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:\n\n\n\n\n\n\n\n\n\n\nfunction\nstate determined by\nflow_rate @ supply-state\nflow_rate @ drain-state\nNodes added\n\n\n\n\nsupply\ndownstream level\ncapacity [m3/s]\n0 [m3/s]\nDiscreteControl\n\n\ndrain\nupstream level\n0 [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflow control\nupstream & downstream level\ncapacity [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflushing\nupstream level & node flow_rate\ndemand [m3/s]\ncapacity [m3/s]\nDiscreteControl + FlowDemand\n\n\n\nSteps 5, 6 and 7 are shared between water authorities, and live directly beneath the notebooks directory.\n\n05_add_bergend.py adds VdGaast-based storage basins (input = models are from script 4)\n06_add_synthetic_forcing.py adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5\n07_add_dynamic_forcing.py adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5\n\nFinally uploaden_modellen.py uploads all models produced by script 7.",
+    "crumbs": [
+      "Workflows",
+      "Gravity controlled"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Ribasim-NL",
+    "section": "",
+    "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
+  },
+  {
+    "objectID": "watersystems/main.html",
+    "href": "watersystems/main.html",
+    "title": "Watersystemen (NL)",
+    "section": "",
+    "text": "Onder deze pagina staan beknopte beschrijvingen van regionale Ribasim modellen.",
+    "crumbs": [
+      "Watersystems",
+      "Watersystemen (NL)"
+    ]
+  },
+  {
+    "objectID": "watersystems/stichtserijnlanden.html",
+    "href": "watersystems/stichtserijnlanden.html",
+    "title": "Stichtse Rijnlanden",
+    "section": "",
+    "text": "Laatst bijgewerkt: 28-01-2026\nLaatste modelversie: 2026.6.0\n\n\n\n\n\n\nSysteembeschrijving Stichtse Rijnlanden\n\n\nHieronder zijn de gebieden beschreven uit het bovenstaande figuur.\n\n\nAfvoer:\n\nVia spuisluis Oog in Al naar het ARK (hoofdroute).\nVia het Weerdsluiscomplex en het Westriool naar de Utrechtse Vecht.\nVia het sifon onder het ARK naar het Merwedekanaal, met afvoer onder vrij verval.\n\nAanvoer:\n\nVanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede en gemaal bij Caspargauw.\nRechtstreeks vanuit het ARK via het Noordergemaal.\nVanuit het Merwedekanaal via het sifon onder het ARK, met aanvoer via inlaat Vreeswijk. Wateraanvoer onder vrij verval via de Doorslag is onder normale omstandigheden niet mogelijk vanwege te weinig verval. Doorslag Sluis staat wel permanent open.\n\n\n\n\nDe wetering aan de voet van de Utrechtse Heuvelrug voert af op de Kromme Rijn. Vanwege de helling in dit gebied is er beperkt aanvoer mogelijk vanuit de Kromme Rijn.\n\n\n\nDit gebied voert af op het Amsterdam-Rijnkanaal, de Kromme Rijn en de stadswatereren Utrecht deels onder vrij verval en deels via bemalingen (niet opgenomen in bovenstaande figuur)\nAanvoer vindt hoofdzakelijk plaats vanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede. Aanvullend wordt water aangevoerd via Caspargauw en de Caspargauwse wetering. In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m³/s. Water wordt als volgt gestuurd:\n\nBij overschrijding gaat stuw Werkhoven omhoog en wordt stuw Cothen gestreken.\nAfvoer vindt dan bovenstrooms van Werkhoven plaats via de Caspargauw en benedenstrooms via Utrecht.\n\n\n\n\nDit gebied voert af naar het ARK, deels door bemaling en deels onder vrij verval. Aanvoer vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.\n\n\n\nAfvoer:\n\nOnder normale omstandigheden loost de Leidsche Rijn op het ARK en de Oude Rijn via de schutsluis bij Bodegraven. De Haanwijkersluis is gesloten.\nOvertollig water uit de polders wordt met poldergemalen uitgeslagen op de Oude Rijn, de Leidsche Rijn en het ARK.\nIn het noordwesten lozen polders via meerdere gemalen op de boezem van Amstel, Gooi en Vecht.\n\nWateraanvoer:\n\nVia de Leidsche Rijn en de Oude Rijn.\nIn het Noorden via het boezemsysteem van Amstel, Gooi en Vecht.\n\nBijzondere sturing (KWA) – Leidsche Rijn en Oude Rijn\nIn extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in werking:\n\nDe Groenwoudsedijksluis bij gemaal De Aanvoerder wordt gesloten.\nGemaal De Aanvoerder pompt water vanuit het ARK in de Leidsche Rijn en zet het peil aan de oostzijde op (0,20 m +NAP).\nDe Haanwijkersluis tussen de Leidsche Rijn en de Oude Rijn wordt geopend; water stroomt richting de schutsluis bij Bodegraven.\nHet systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via gebied de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de via de Doorslag eveneens richting Hekendorp.\n\n\n\n\nHet meeste water uit dit gebied wordt afgevoerd via de Leidsche Rijn naar het ARK en de Oude Rijn richting Bodegraven. Een klein deel, in het oosten van het gebied, wordt afgevoerd via de gekanaliseerde Hollandse IJssel (Doorslag sluis) en de Hollandse IJssel naar Gouda\nWateraanvoer: De Hollandsche IJssel wordt aangevoerd via:\n\nVia inlaat Vreeswijk, via het Merwedekanaal en de Doorslag.\nVia de stadswateren van Utrecht, via het sifon onder het ARK.\nVia het Noordergemaal (alleen in KWA-situaties), waarbij water uit het ARK via het sifon onder het ARK en de Doorslag wordt aangevoerd.\n\nWateraanvoer naar polders gaat grotendeels via de Hollandsche IJssel en de Leidsche–Oude Rijn\n\n\n\nOvertollig water uit de polder wordt afgevoerd op de Hollandsche IJssel en de Lek via vier gemalen: De Keulevaart, De Koekoek, De Pleyt en De Hoekse Molen.\nWateraanvoer:\n\nGrotendeels vanuit de Lek via inlaat De Koekoek.\nAanvullend vanuit de Hollandsche IJssel via de Doorslag\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAanvoerder, De\nG4031\n542\ninlaat\n30\n0\n\n\nBodegraven Sluis\nSL0005\n755\nuitlaat\n0\n30\n\n\nCaspargauw\nG3003\n601\ninlaat\n30\n0\n\n\nCothen Stuw\nST3001\n777\ndoorlaat\n30\n30\n\n\nDoorslag sluis\nSL0030\n754\ninlaat\n30\n0\n\n\nHaanwijkersluis\nSL0003\n742\ninlaat\n30\n0\n\n\nInlaat Hekendorp\nI6098\n141\ninlaat\n30\n0\n\n\nInlaat Vreeswijk\nI6119\n252\ninlaat\n30\n0\n\n\nInlaat wijk bij duurstede\nAF0093\n481\ninlaat\n30\n0\n\n\nKeulevaart, De\nG3025\n623\nuitlaat\n0\n30\n\n\nKoekoek, De\nG5002\n541\nuitlaat\n0\n30\n\n\nNoordergemaal\nG6007\n536\ninlaat\n30\n0\n\n\nOog in Al spuisluis\nI1580\n168\nuitlaat\n0\n30\n\n\nSifon onder Ark\nSY0070\n468\ninlaat\n30\n0\n\n\nWaaiersluis Gouda\nG8000\n567\nuitlaat\n0\n30\n\n\nWeerdsluis\nSL0009\n757\nuitlaat\n0\n30\n\n\nWerkhoven stuw\nST2028\n919\ndoorlaat\n30\n30\n\n\nZuidersluis\nSL0016\n758\nuitlaat\n0\n30\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco) en:\n\nDocumentatie Distributiemodel (Deel B, hoofdstuk 8)",
+    "crumbs": [
+      "Watersystems",
+      "Stichtse Rijnlanden"
+    ]
+  },
+  {
+    "objectID": "watersystems/stichtserijnlanden.html#systeembeschrijving",
+    "href": "watersystems/stichtserijnlanden.html#systeembeschrijving",
+    "title": "Stichtse Rijnlanden",
+    "section": "",
+    "text": "Systeembeschrijving Stichtse Rijnlanden\n\n\nHieronder zijn de gebieden beschreven uit het bovenstaande figuur.\n\n\nAfvoer:\n\nVia spuisluis Oog in Al naar het ARK (hoofdroute).\nVia het Weerdsluiscomplex en het Westriool naar de Utrechtse Vecht.\nVia het sifon onder het ARK naar het Merwedekanaal, met afvoer onder vrij verval.\n\nAanvoer:\n\nVanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede en gemaal bij Caspargauw.\nRechtstreeks vanuit het ARK via het Noordergemaal.\nVanuit het Merwedekanaal via het sifon onder het ARK, met aanvoer via inlaat Vreeswijk. Wateraanvoer onder vrij verval via de Doorslag is onder normale omstandigheden niet mogelijk vanwege te weinig verval. Doorslag Sluis staat wel permanent open.\n\n\n\n\nDe wetering aan de voet van de Utrechtse Heuvelrug voert af op de Kromme Rijn. Vanwege de helling in dit gebied is er beperkt aanvoer mogelijk vanuit de Kromme Rijn.\n\n\n\nDit gebied voert af op het Amsterdam-Rijnkanaal, de Kromme Rijn en de stadswatereren Utrecht deels onder vrij verval en deels via bemalingen (niet opgenomen in bovenstaande figuur)\nAanvoer vindt hoofdzakelijk plaats vanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede. Aanvullend wordt water aangevoerd via Caspargauw en de Caspargauwse wetering. In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m³/s. Water wordt als volgt gestuurd:\n\nBij overschrijding gaat stuw Werkhoven omhoog en wordt stuw Cothen gestreken.\nAfvoer vindt dan bovenstrooms van Werkhoven plaats via de Caspargauw en benedenstrooms via Utrecht.\n\n\n\n\nDit gebied voert af naar het ARK, deels door bemaling en deels onder vrij verval. Aanvoer vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.\n\n\n\nAfvoer:\n\nOnder normale omstandigheden loost de Leidsche Rijn op het ARK en de Oude Rijn via de schutsluis bij Bodegraven. De Haanwijkersluis is gesloten.\nOvertollig water uit de polders wordt met poldergemalen uitgeslagen op de Oude Rijn, de Leidsche Rijn en het ARK.\nIn het noordwesten lozen polders via meerdere gemalen op de boezem van Amstel, Gooi en Vecht.\n\nWateraanvoer:\n\nVia de Leidsche Rijn en de Oude Rijn.\nIn het Noorden via het boezemsysteem van Amstel, Gooi en Vecht.\n\nBijzondere sturing (KWA) – Leidsche Rijn en Oude Rijn\nIn extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in werking:\n\nDe Groenwoudsedijksluis bij gemaal De Aanvoerder wordt gesloten.\nGemaal De Aanvoerder pompt water vanuit het ARK in de Leidsche Rijn en zet het peil aan de oostzijde op (0,20 m +NAP).\nDe Haanwijkersluis tussen de Leidsche Rijn en de Oude Rijn wordt geopend; water stroomt richting de schutsluis bij Bodegraven.\nHet systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via gebied de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de via de Doorslag eveneens richting Hekendorp.\n\n\n\n\nHet meeste water uit dit gebied wordt afgevoerd via de Leidsche Rijn naar het ARK en de Oude Rijn richting Bodegraven. Een klein deel, in het oosten van het gebied, wordt afgevoerd via de gekanaliseerde Hollandse IJssel (Doorslag sluis) en de Hollandse IJssel naar Gouda\nWateraanvoer: De Hollandsche IJssel wordt aangevoerd via:\n\nVia inlaat Vreeswijk, via het Merwedekanaal en de Doorslag.\nVia de stadswateren van Utrecht, via het sifon onder het ARK.\nVia het Noordergemaal (alleen in KWA-situaties), waarbij water uit het ARK via het sifon onder het ARK en de Doorslag wordt aangevoerd.\n\nWateraanvoer naar polders gaat grotendeels via de Hollandsche IJssel en de Leidsche–Oude Rijn\n\n\n\nOvertollig water uit de polder wordt afgevoerd op de Hollandsche IJssel en de Lek via vier gemalen: De Keulevaart, De Koekoek, De Pleyt en De Hoekse Molen.\nWateraanvoer:\n\nGrotendeels vanuit de Lek via inlaat De Koekoek.\nAanvullend vanuit de Hollandsche IJssel via de Doorslag",
+    "crumbs": [
+      "Watersystems",
+      "Stichtse Rijnlanden"
+    ]
+  },
+  {
+    "objectID": "watersystems/stichtserijnlanden.html#capaciteiten",
+    "href": "watersystems/stichtserijnlanden.html#capaciteiten",
+    "title": "Stichtse Rijnlanden",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAanvoerder, De\nG4031\n542\ninlaat\n30\n0\n\n\nBodegraven Sluis\nSL0005\n755\nuitlaat\n0\n30\n\n\nCaspargauw\nG3003\n601\ninlaat\n30\n0\n\n\nCothen Stuw\nST3001\n777\ndoorlaat\n30\n30\n\n\nDoorslag sluis\nSL0030\n754\ninlaat\n30\n0\n\n\nHaanwijkersluis\nSL0003\n742\ninlaat\n30\n0\n\n\nInlaat Hekendorp\nI6098\n141\ninlaat\n30\n0\n\n\nInlaat Vreeswijk\nI6119\n252\ninlaat\n30\n0\n\n\nInlaat wijk bij duurstede\nAF0093\n481\ninlaat\n30\n0\n\n\nKeulevaart, De\nG3025\n623\nuitlaat\n0\n30\n\n\nKoekoek, De\nG5002\n541\nuitlaat\n0\n30\n\n\nNoordergemaal\nG6007\n536\ninlaat\n30\n0\n\n\nOog in Al spuisluis\nI1580\n168\nuitlaat\n0\n30\n\n\nSifon onder Ark\nSY0070\n468\ninlaat\n30\n0\n\n\nWaaiersluis Gouda\nG8000\n567\nuitlaat\n0\n30\n\n\nWeerdsluis\nSL0009\n757\nuitlaat\n0\n30\n\n\nWerkhoven stuw\nST2028\n919\ndoorlaat\n30\n30\n\n\nZuidersluis\nSL0016\n758\nuitlaat\n0\n30",
+    "crumbs": [
+      "Watersystems",
+      "Stichtse Rijnlanden"
+    ]
+  },
+  {
+    "objectID": "watersystems/stichtserijnlanden.html#bronnen",
+    "href": "watersystems/stichtserijnlanden.html#bronnen",
+    "title": "Stichtse Rijnlanden",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco) en:\n\nDocumentatie Distributiemodel (Deel B, hoofdstuk 8)",
+    "crumbs": [
+      "Watersystems",
+      "Stichtse Rijnlanden"
     ]
   },
   {

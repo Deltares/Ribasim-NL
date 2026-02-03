@@ -104,6 +104,10 @@ ul.task-list li input[type="checkbox"] {
     <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
 <span class="menu-text">Workflows</span></a>
   </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../watersystems/main.html"> 
+<span class="menu-text">Watersystems</span></a>
+  </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
@@ -146,12 +150,6 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Main watersystem</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/watersystem.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Electraboezem en omgeving</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -210,6 +208,56 @@ ul.task-list li input[type="checkbox"] {
 <li><code>03_parameterized_model.py</code> will read <code>{authority}_prepare_model</code> and <code>static_data.xlsx</code> to a model <code>{authority}_parameterized_model</code></li>
 <li><code>04_add_full_control.py</code> adds control.</li>
 </ol>
+<p>In this step control-nodes will get one of these 4 functions: - <code>drain</code>: outlet draining an area - <code>supply</code>: inlet supplying an area - <code>flow_control</code>: flow through an area in supply (drought) and drain conditions - <code>flushing</code>: an outlet with a specific flow to be maintained at any conditions (supply or drain)</p>
+<p>Explanation of a node’s <code>function</code> in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 26%">
+<col style="width: 19%">
+<col style="width: 19%">
+<col style="width: 22%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>function</th>
+<th>state determined by</th>
+<th>flow_rate @ supply-state</th>
+<th>flow_rate @ drain-state</th>
+<th>Nodes added</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>supply</td>
+<td>downstream level</td>
+<td>capacity [m3/s]</td>
+<td>0 [m3/s]</td>
+<td>DiscreteControl</td>
+</tr>
+<tr class="even">
+<td>drain</td>
+<td>upstream level</td>
+<td>0 [m3/s]</td>
+<td>capacity [m3/s]</td>
+<td>DiscreteControl</td>
+</tr>
+<tr class="odd">
+<td>flow control</td>
+<td>upstream &amp; downstream level</td>
+<td>capacity [m3/s]</td>
+<td>capacity [m3/s]</td>
+<td>DiscreteControl</td>
+</tr>
+<tr class="even">
+<td>flushing</td>
+<td>upstream level &amp; node flow_rate</td>
+<td>demand [m3/s]</td>
+<td>capacity [m3/s]</td>
+<td>DiscreteControl + FlowDemand</td>
+</tr>
+</tbody>
+</table>
 <p>Steps 5, 6 and 7 are shared between water authorities, and live directly beneath the <code>notebooks</code> directory.</p>
 <ol start="5" type="1">
 <li><code>05_add_bergend.py</code> adds VdGaast-based storage basins (input = models are from script 4)</li>
