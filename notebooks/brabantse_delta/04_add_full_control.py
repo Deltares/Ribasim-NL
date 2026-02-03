@@ -157,11 +157,7 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    # TODO: Different ways of executing the model; choose the one that suits you best:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
-    # exit_code = model.run()
-
-    # assert exit_code == 0
+    result = model.run()
 
     """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
     successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the

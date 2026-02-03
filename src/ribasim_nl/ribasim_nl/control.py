@@ -253,9 +253,11 @@ def get_node_table_with_from_to_node_ids(
     ],
     max_iter=20,
 ) -> gpd.GeoDataFrame:
-    """Get a node_df from selected nodes, including upstream and downstream non-Junction type node_ids.
+    """Get a node_df from selected connector-nodes, including upstream and downstream non-Junction type node_ids.
 
-    Upstream/downstream search works recursively
+    `Connector-nodes` are "flow-type" connecting a Basin with another Basin, LevelBoundary or FlowBoundary
+
+    Upstream/downstream search works recursively, skipping Junction nodes.
 
     Parameters
     ----------
@@ -1071,7 +1073,24 @@ def add_controllers_to_connector_nodes(
     level_difference_threshold: float,
     target_level_column: str = "meta_streefpeil",
 ):
-    """Add controllers to connector nodes
+    """Add controllers to connector nodes per function
+
+    The `function` column in `node_functions_df` can have 4 values with Dutch explanations:
+    - `drain`: uitlaat
+    - `supply`: inlet
+    - `flow_control`: doorlaat
+    - `flushing`: doorspoeling (uitlaat waarbij een minimale afvoer wordt gerealiseerd)
+
+    The column `demand` in `node_functions_df` only needs a capacity at nodes of type `flusing`. For other nodes this can be NaN and will be ignored.
+
+    Explanation of a node's `function` in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:
+
+    | function      | state determined by               | flow_rate @ supply-state | flow_rate @ drain-state | Nodes added                  |
+    |---------------|-----------------------------------|--------------------------|-------------------------|------------------------------|
+    | supply        | downstream level                  | capacity [m3/s]          | 0 [m3/s]                | DiscreteControl              |
+    | drain         | upstream level                    | 0 [m3/s]                 | capacity [m3/s]         | DiscreteControl              |
+    | flow control  | upstream & downstream level       | capacity [m3/s]          | capacity [m3/s]         | DiscreteControl              |
+    | flushing      | upstream level & node flow_rate   | demand [m3/s]            | capacity [m3/s]         | DiscreteControl + FlowDemand |
 
     Parameters
     ----------
@@ -1124,6 +1143,22 @@ def add_controllers_to_supply_area(
     target_level_column: str = "meta_streefpeil",
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
+
+    The resulting `function` column can have 4 values with Dutch explanations:
+    - `drain`: uitlaat
+    - `supply`: inlet
+    - `flow_control`: doorlaat
+    - `flushing`: doorspoeling (uitlaat waarbij een minimale afvoer wordt gerealiseerd)
+
+    The column `demand` only needs a capacity at nodes of type `flusing`. For other nodes this can be NaN and will be ignored.
+
+    Explanation of a node's `function` in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:
+    | function      | state determined by               | flow_rate @ supply-state | flow_rate @ drain-state | Nodes added                  |
+    |---------------|-----------------------------------|--------------------------|-------------------------|------------------------------|
+    | supply        | downstream level                  | capacity [m3/s]          | 0 [m3/s]                | DiscreteControl              |
+    | drain         | upstream level                    | 0 [m3/s]                 | capacity [m3/s]         | DiscreteControl              |
+    | flow control  | upstream & downstream level       | capacity [m3/s]          | capacity [m3/s]         | DiscreteControl              |
+    | flushing      | upstream level & node flow_rate   | demand [m3/s]            | capacity [m3/s]         | DiscreteControl + FlowDemand |
 
     Parameters
     ----------

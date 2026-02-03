@@ -2,4 +2,4 @@
 title: "Watersystemen (NL)"
 ---
 
-Op deze pagina staat een beknopte beschrijving Regionale Ribasim-modellen
+Onder deze pagina staan beknopte beschrijvingen van regionale Ribasim modellen.
