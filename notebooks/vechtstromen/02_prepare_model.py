@@ -54,9 +54,9 @@ cloud.synchronize(
         feedback_xlsx,
         waterinlaten,
         hydamo_gpkg,
-        waterinlaten,
     ]
 )
+cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
