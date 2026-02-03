@@ -8,7 +8,7 @@ stages:
       md5: 9f4a13cbc90b8c64d66212a183aedee7.dir
       size: 55648170
       nfiles: 3
-    - path:
+    - path: 
         data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
       hash: md5
       md5: 99d614dbc936010e2b53d72927ceac7b.dir
@@ -29,13 +29,13 @@ stages:
       md5: ed393eda7ddf0b0785bc3bd3936904dc.dir
       size: 14147811
       nfiles: 4
-    - path:
+    - path: 
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
       hash: md5
       md5: cdceb31a29edea006fb7369d7e5cb41a.dir
       size: 49107122
       nfiles: 4
-    - path:
+    - path: 
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized_2025_9_11
       hash: md5
       md5: f2152ae3a799955dd02d5819cb21ae78.dir
@@ -86,7 +86,7 @@ stages:
       md5: 95d6967b95bedd7c958c141e5b1800c8.dir
       size: 15192275
       nfiles: 3
-    - path:
+    - path: 
         data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized_2025_9_0
       hash: md5
       md5: 3d59e8121decde30c171b9a92f633969.dir
@@ -107,7 +107,7 @@ stages:
       md5: cd9f96ea6857f669725edd17a0368fb1.dir
       size: 77612002
       nfiles: 3
-    - path:
+    - path: 
         data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
       hash: md5
       md5: bf47c88015d10cf9f0c4fc55ace6903f.dir
@@ -173,7 +173,7 @@ stages:
       size: 60818
       nfiles: 4
     outs:
-    - path:
+    - path: 
         data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
       hash: md5
       md5: f64bbbc6c24494be4c7be932b702360e.dir
@@ -309,7 +309,7 @@ stages:
       size: 49438
       nfiles: 4
     outs:
-    - path:
+    - path: 
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_full_control_model
       hash: md5
       md5: 89dc2a8b286918c13e9881ba7649acbb.dir
@@ -332,6 +332,21 @@ stages:
       hash: md5
       md5: b4d8c4802447bff48e8c784e679f38ae.dir
       size: 20058261
+      nfiles: 2
+  limburg:
+    cmd:
+    - uv run python notebooks/limburg/04_add_full_control.py
+    deps:
+    - path: notebooks/limburg
+      hash: md5
+      md5: 4b4116a496570b954c6215f817b55f69.dir
+      size: 36100
+      nfiles: 5
+    outs:
+    - path: data/Limburg/modellen/Limburg_full_control_model
+      hash: md5
+      md5: cfc2bf4e34eb0c23c41e2816390e9afd.dir
+      size: 22646933
       nfiles: 2
   hunze_en_aas:
     cmd:
