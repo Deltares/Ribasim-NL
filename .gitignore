@@ -68,6 +68,7 @@ venv/
 *.lyr
 *.txt
 *.gdb/
+*.pdf
 results/
 
 # Main scripts to run workflows per water authority
