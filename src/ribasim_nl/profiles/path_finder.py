@@ -329,6 +329,12 @@ def find_flow_routes(
     # initiate working variables
     flow_routes = set()
     mp_graph = shapely.MultiPoint(graph.nodes)
+    set_crossings = set(crossings)
+    n_combinations = int(0.5 * len(set_crossings) * (len(set_crossings) - 1))
+
+    # no shortest paths to be found
+    if n_combinations == 0:
+        return flow_routes
 
     # find the shortest paths
     if use_full_graph:
@@ -336,7 +342,7 @@ def find_flow_routes(
         paths = dict(nx.shortest_path(graph, weight="weight"))
 
         # select shortest paths between crossings
-        for c1, c2 in tqdm.tqdm(itertools.combinations(set(crossings), 2), f"{desc} (F)"):
+        for c1, c2 in tqdm.tqdm(itertools.combinations(set_crossings, 2), f"{desc} (F)", n_combinations):
             try:
                 # noinspection PyTypeChecker
                 path = paths[crossing_to_node(mp_graph, c1)][crossing_to_node(mp_graph, c2)]
@@ -346,7 +352,7 @@ def find_flow_routes(
                 flow_routes.update(itertools.pairwise(path))
     else:
         # loop over all combinations of (border) crossings (without order)
-        for c1, c2 in tqdm.tqdm(itertools.combinations(set(crossings), 2), f"{desc} (S)"):
+        for c1, c2 in tqdm.tqdm(itertools.combinations(set_crossings, 2), f"{desc} (S)", n_combinations):
             try:
                 path = nx.shortest_path(
                     graph,
