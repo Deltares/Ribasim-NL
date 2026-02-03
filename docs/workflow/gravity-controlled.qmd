@@ -20,6 +20,7 @@ In this step control-nodes will get one of these 4 functions:
 - `flushing`: an outlet with a specific flow to be maintained at any conditions (supply or drain)
 
 Explanation of a node's `function` in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:
+
 | function      | state determined by               | flow_rate @ supply-state | flow_rate @ drain-state | Nodes added                  |
 |---------------|-----------------------------------|--------------------------|-------------------------|------------------------------|
 | supply        | downstream level                  | capacity [m3/s]          | 0 [m3/s]                | DiscreteControl              |
