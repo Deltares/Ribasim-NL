@@ -9,7 +9,7 @@ from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
 # execute model run
-MODEL_EXEC: bool = False
+MODEL_EXEC: bool = True
 
 # model settings
 AUTHORITY: str = "ValleienVeluwe"
@@ -20,17 +20,14 @@ MODEL_ID: str = "2025_5_0"
 cloud = CloudStorage()
 
 # collect relevant data from the GoodCloud
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+ribasim_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/1_ontvangen_data/Na_levering_202401/wateraanvoer/Inlaatgebieden.shp")
 
 
-cloud.synchronize(
-    filepaths=[
-        aanvoer_path,
-    ]
-)
+cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
+cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # read model
 model = Model.read(ribasim_toml)
@@ -324,11 +321,7 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    # TODO: Different ways of executing the model; choose the one that suits you best:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
-    # exit_code = model.run()
-
-    # assert exit_code == 0
+    result = model.run()
 
     """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
     successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the

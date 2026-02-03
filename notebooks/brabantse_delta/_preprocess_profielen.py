@@ -10,6 +10,8 @@ authority = "BrabantseDelta"
 dwarsprofielen_gml = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/GML/dwarsprofiel.gml")
 dwarsprofielen_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 
+cloud.synchronize([dwarsprofielen_gml])
+
 dwarsprofielen_df = gpd.read_file(dwarsprofielen_gml)
 
 data = []

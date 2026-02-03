@@ -20,7 +20,8 @@ short_name = "dod"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
@@ -31,7 +32,9 @@ meppelerdiep_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/meppeler
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
+cloud.synchronize(
+    filepaths=[peilgebieden_path, top10NL_gpkg, hydamo_wm_gpkg, meppelerdiep_gpkg, model_edits_aanvoer_gpkg]
+)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -240,6 +243,9 @@ streefpeil = non_kdu_first.combine_first(all_first)
 streefpeil = streefpeil["min_upstream_level"]
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
+
+# manual fix to avoid exception
+streefpeil.loc[2608] = 9.35
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # %% Bepaal min_upstream_level at Manning locations`en vul de nodata basins met deze streefpeilen
@@ -325,8 +331,6 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] 
 ).at[1769, "meta_streefpeil"]
 
 model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.19
-
-
 # %%
 
 # get all nodata streefpeilen with their profile_ids and levels
