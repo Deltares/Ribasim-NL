@@ -99,16 +99,6 @@ stages:
       - notebooks/drents_overijsselse_delta
     outs:
       - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_full_control_model
-  hunze_en_aas:
-    cmd:
-      - uv run python notebooks/hunze_en_aas/01_fix_model.py
-      - uv run python notebooks/hunze_en_aas/02_prepare_model.py
-      - uv run python notebooks/hunze_en_aas/03_parameterize_model.py
-      - uv run python notebooks/hunze_en_aas/04_add_full_control.py
-    deps:
-      - notebooks/hunze_en_aas
-    outs:
-      - data/HunzeenAas/modellen/HunzeenAas_full_control_model
   rijn_en_ijssel:
     cmd:
       - uv run python notebooks/rijn_en_ijssel/01_fix_model.py
