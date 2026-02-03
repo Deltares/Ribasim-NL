@@ -41,7 +41,7 @@ peilregister_xlsx = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalever
 feedback_xlsx = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/Feedbackform_20250428/20250428_Feedback Formulier.xlsx"
 )
-waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
+waterinlaten = cloud.joinpath(authority, r"verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 
 cloud.synchronize(
     filepaths=[
