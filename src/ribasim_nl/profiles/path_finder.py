@@ -201,7 +201,7 @@ def select_crossings(
     borders = shapely.MultiPolygon(borders)
 
     # select crossings at border(s)
-    selection = crossings[crossings.within(borders)]
+    selection = crossings[crossings.intersects(borders)]
     return selection.geometry.tolist()
 
 
@@ -339,6 +339,7 @@ def find_flow_routes(
     # find the shortest paths
     if use_full_graph:
         # shortest path between all nodes
+        print(f"\r{desc} ({n_combinations=}): Full graph processing...", end="", flush=True)
         paths = dict(nx.shortest_path(graph, weight="weight"))
 
         # select shortest paths between crossings
