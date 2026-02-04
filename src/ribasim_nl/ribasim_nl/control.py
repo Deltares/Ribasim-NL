@@ -941,7 +941,7 @@ def add_controllers_and_demand_to_flushing_nodes(
     demand_node_angle: int = 45,
     name: str = "uitlaat",
     demand_name_prefix: str = "doorspoeling",
-    flushing_seasonal: bool = True,
+    flushing_seasonal: bool = False,
 ):
     """Add control nodes to connector nodes draining a system/supply-area having a certain flow-demand (flushing_nodes)
 
@@ -1102,7 +1102,7 @@ def add_controllers_to_connector_nodes(
     node_functions_df: gpd.GeoDataFrame,
     level_difference_threshold: float,
     target_level_column: str = "meta_streefpeil",
-    flushing_seasonal: bool = True,
+    flushing_seasonal: bool = False,
 ):
     """Add controllers to connector nodes per function
 
@@ -1173,7 +1173,7 @@ def add_controllers_to_supply_area(
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
-    flushing_seasonal: bool = True,
+    flushing_seasonal: bool = False,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 
@@ -1271,7 +1271,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     us_target_level_offset_supply: float = -0.04,
     level_difference_threshold: float | None = None,
-    flushing_seasonal: bool = True,
+    flushing_seasonal: bool = False,
 ):
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
