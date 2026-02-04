@@ -1357,3 +1357,56 @@ def add_controllers_to_uncontrolled_connector_nodes(
     if drain_set:
         drain_df = connector_df.loc[sorted(drain_set)]
         add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_df)
+
+
+def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
+    """Add supply, drain and flow_control functions to the node table of peilbeheerste models.
+
+    Merges outlet/pump meta-function flags into `from_to_node_table` and derives a
+    single `function` label per node: `drain`, `supply`, or `flow_control`. Flushing is not included (yet).
+
+    Parameters
+    ----------
+    model : Model
+        Ribasim model containing outlet and pump static tables.
+    from_to_node_table : gpd.GeoDataFrame
+        Node table with connector nodes, indexed by node_id and including
+        from_node_id/to_node_id columns (e.g. from `get_node_table_with_from_to_node_ids`).
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        Input table with `function` column added and intermediate meta flags removed.
+    """
+    # select connector nodes including their functions
+    outlet_nodes = model.outlet.static.df[["node_id", "meta_aanvoer"]].copy()
+    pump_nodes = model.pump.static.df[["node_id", "meta_func_afvoer", "meta_func_aanvoer"]].copy()
+
+    # convert to bool, sync column names
+    outlet_nodes = outlet_nodes.astype({"meta_aanvoer": "bool"})
+    outlet_nodes["meta_afvoer"] = True  # outlets are assumed to always be able to drain
+    pump_nodes = pump_nodes.astype({"meta_func_afvoer": "bool", "meta_func_aanvoer": "bool"})
+    pump_nodes = pump_nodes.rename(columns={"meta_func_afvoer": "meta_afvoer", "meta_func_aanvoer": "meta_aanvoer"})
+
+    # merge the functions to the from_to_node_table for both outlets and pumps
+    outlet_pumps = pd.concat([outlet_nodes, pump_nodes])
+    from_to_node_table = from_to_node_table.merge(
+        outlet_pumps,
+        left_index=True,
+        right_on="node_id",
+        how="left",
+    ).set_index("node_id")
+
+    # add column 'function': only meta_afvoer => drain, only meta_aanvoer => supply, both => flow_control
+    from_to_node_table["function"] = "flow_control"
+    from_to_node_table.loc[from_to_node_table["meta_afvoer"] & ~from_to_node_table["meta_aanvoer"], "function"] = (
+        "drain"
+    )
+    from_to_node_table.loc[~from_to_node_table["meta_afvoer"] & from_to_node_table["meta_aanvoer"], "function"] = (
+        "supply"
+    )
+
+    # discard unneeded columns
+    from_to_node_table = from_to_node_table.drop(columns=["meta_afvoer", "meta_aanvoer"])
+
+    return from_to_node_table
