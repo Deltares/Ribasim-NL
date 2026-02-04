@@ -495,11 +495,10 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
 # handmatig opgegeven flow control nodes definieren
 # 405: AF0095
 # 636: Trappersheul
-# 777: Cothen stuw
+
 # 778: ST3912
 # 814: ST6055
 # 809: Hoek de stuw
-# 919: Werkhoven
 # 1036: ST5011
 # 1063: Prinses Irenebrug
 # 1154: ST0479
@@ -522,7 +521,6 @@ flow_control_nodes = [
     778,
     809,
     814,
-    919,
     1010,
     1011,
     1033,
@@ -604,6 +602,11 @@ supply_nodes = [
 
 drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 887]
 
+
+# Flushing nodes
+# 919: Werkhoven
+flushing_nodes = {919: 5}
+
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
 add_controllers_to_uncontrolled_connector_nodes(
@@ -611,18 +614,23 @@ add_controllers_to_uncontrolled_connector_nodes(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
     us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
 model.pump.static.df.loc[model.pump.static.df.node_id == 536, "max_downstream_level"] -= 0.01
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1344, "max_downstream_level"] -= 0.01
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1345, "max_downstream_level"] -= 0.01
 
 # 3 sifons, 468,469,470 onder Ark wordt later ingeschakeld dan inlaat Vreeswijk
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 468, "max_downstream_level"] -= 0.01
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 469, "max_downstream_level"] -= 0.01
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstream_level"] -= 0.01
 
+# Caspargauw gaat pas leveren als Wijk bij Duurstede aanvoer te laag is
+model.pump.static.df.loc[model.pump.static.df.node_id == 601, "max_downstream_level"] -= 0.01
 
 # %% Junctionfy(!)
 model = junctionify(model)

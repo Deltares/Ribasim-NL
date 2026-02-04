@@ -1052,8 +1052,22 @@ def add_controllers_and_demand_to_flushing_nodes(
             name=f"{name}: {us_target_level:.2f} [m+NAP]",
         )
 
-        # add demand
-        tables = [flow_demand.Static(demand=[demand_flow_rate], demand_priority=[1])]
+        # add demand  (SEASONAL: Apr–Oct on, rest off)
+        supply_season_start = pd.to_datetime(supply_season_start)
+        year = supply_season_start.year
+
+        t0 = pd.Timestamp(year, 1, 1)  # 0
+        t_on = pd.Timestamp(year, 4, 1)  # aan vanaf 1 april
+        t_off = pd.Timestamp(year, 10, 1)  # uit vanaf 1 oktober
+
+        demand_tables = [
+            flow_demand.Time(
+                time=[t0, t_on, t_off],
+                demand=[0.0, float(demand_flow_rate), 0.0],
+                demand_priority=[1, 1, 1],
+            )
+        ]
+
         node = model.get_node(node_id=node_id)
         demand_node = model.flow_demand.add(
             _offset_new_node(
@@ -1062,7 +1076,7 @@ def add_controllers_and_demand_to_flushing_nodes(
                 angle=demand_node_angle,
                 name=f"{demand_name_prefix} {demand_flow_rate} [m3/s]",
             ),
-            tables=tables,
+            tables=demand_tables,
         )
         model.link.add(demand_node, node)
 
@@ -1315,16 +1329,20 @@ def add_controllers_to_uncontrolled_connector_nodes(
     supply_set = supply_set_manual | supply_set_auto
 
     # --- 6) alles wat overblijft -> drain ---
-    used = flow_control_set | drain_set | supply_set
+    used = flushing_set | flow_control_set | drain_set | supply_set
     remaining = eligible - used
     drain_set = drain_set | remaining
 
     # --- 7) uitvoer: controllers toevoegen ---
-    # flow_control
-    if flow_control_set:
-        node_ids = sorted(flow_control_set)
-        flushing_nodes_df = connector_df.loc[node_ids]
-        flushing_nodes_df.loc[list(flushing_nodes.keys()), "demand_flow_rate"] = flushing_nodes.values()
+    # Flushing
+    if flushing_set:
+        node_ids = sorted(flushing_set)
+        flushing_nodes_df = connector_df.loc[node_ids].copy()
+
+        # demand_flow_rate kolom vullen (alleen voor deze flushing nodes)
+        flushing_nodes_df["demand_flow_rate"] = pd.Series(index=flushing_nodes_df.index, dtype="float")
+        flushing_nodes_df.loc[node_ids, "demand_flow_rate"] = [flushing_nodes[n] for n in node_ids]
+
         level_difference_threshold = level_difference_threshold or model.solver.level_difference_threshold
         add_controllers_and_demand_to_flushing_nodes(
             model=model,
