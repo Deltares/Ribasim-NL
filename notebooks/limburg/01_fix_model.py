@@ -16,7 +16,7 @@ cloud = CloudStorage()
 
 authority = "Limburg"
 name = "limburg"
-run_model = False
+run_model = True
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -37,11 +37,11 @@ basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer=
 rename_basin_area_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="rename_basin_area")
 add_basin_area_gdf = gpd.read_file(model_edits_gpkg, layer="add_basin_area")
 connect_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="connect_basins")
-reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_edge")
+reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_link")
 add_basin_outlet_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="add_basin_outlet")
 remove_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
-update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")
-merge_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="merge_basins")
+# update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")
+# merge_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="merge_basins")
 
 
 # %% some stuff we'll need again
@@ -285,16 +285,16 @@ for row in remove_node_gdf.itertuples():
 
 
 # %% update nodes
-for row in update_node_gdf.itertuples():
-    model.update_node(
-        node_id=row.node_id,
-        node_type=row.node_type,
-        node_properties={"meta_code_waterbeheerder": row.meta_code_waterbeheerder},
-    )
+# for row in update_node_gdf.itertuples():
+#     model.update_node(
+#         node_id=row.node_id,
+#         node_type=row.node_type,
+#         node_properties={"meta_code_waterbeheerder": row.meta_code_waterbeheerder},
+#     )
 
 # %% merge_basins
-for row in merge_basins_gdf.itertuples():
-    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=row.are_connected)
+# for row in merge_basins_gdf.itertuples():
+#     model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=row.are_connected)
 
 # %% change node_type
 

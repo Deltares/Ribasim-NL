@@ -12,7 +12,7 @@ short_name = "limburg"
 
 run_model = True
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 
@@ -20,8 +20,8 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg], check_on_remote=False)
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+cloud.synchronize(filepaths=[static_data_xlsx])
+cloud.synchronize(filepaths=[ribasim_dir, profiles_gpkg], check_on_remote=False)
 
 # %%
 

@@ -103,15 +103,22 @@ def _target_level(
                     raise ValueError(msg)
             else:
                 target_level = model.basin.area.df.set_index("node_id").at[node_id, target_level_column]
-        else:  # node type is LevelBoundary
-            if node_id not in model.level_boundary.static.df["node_id"].values:  # node_id missing in Basin.Area table
-                if allow_missing:
-                    return None
-                else:
-                    msg = f"Listen node: {node_id} not found in LevelBoundary.Static table"
-                    raise ValueError(msg)
-            else:
-                target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].max()
+        else:  # node type is LevelBoundary. We get the min-value from time-table or static-table if available
+            target_level = None
+
+            # read from time-table table exist and node_id is in it
+            if model.level_boundary.time.df is not None:
+                if node_id in model.level_boundary.time.df["node_id"].values:
+                    target_level = model.level_boundary.time.df.set_index("node_id").loc[[node_id], "level"].min()
+
+            # read from static-table exist and node_id is in it
+            elif model.level_boundary.static.df is not None:
+                if node_id in model.level_boundary.static.df["node_id"].values:
+                    target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].min()
+
+            if (not allow_missing) and (target_level is None):
+                msg = f"Listen node: {node_id} not found in LevelBoundary.Time or LevelBoundary.Static table"
+                raise ValueError(msg)
 
     # Return target_level or raise Exception if missing and not allowed
     if target_level is None:
@@ -253,9 +260,11 @@ def get_node_table_with_from_to_node_ids(
     ],
     max_iter=20,
 ) -> gpd.GeoDataFrame:
-    """Get a node_df from selected nodes, including upstream and downstream non-Junction type node_ids.
+    """Get a node_df from selected connector-nodes, including upstream and downstream non-Junction type node_ids.
 
-    Upstream/downstream search works recursively
+    `Connector-nodes` are "flow-type" connecting a Basin with another Basin, LevelBoundary or FlowBoundary
+
+    Upstream/downstream search works recursively, skipping Junction nodes.
 
     Parameters
     ----------
@@ -338,6 +347,7 @@ def add_control_functions_to_connector_nodes(
     node_positions: pd.Series,
     drain_nodes: list[int],
     supply_nodes: list[int],
+    flow_control_nodes: list[int],
     flushing_nodes: dict[int, float],
     is_supply_node_column: str = "meta_supply_node",
 ) -> gpd.GeoDataFrame:
@@ -353,6 +363,8 @@ def add_control_functions_to_connector_nodes(
         List of node_ids that is forced to the function `drain`
     supply_nodes : list[int]
         List of node_ids that is forced to the function `supply`
+    flow_control_nodes: list[int]
+        List of node_ids that will be forced to the function `flow_control`
     flushing_nodes : dict[int, float]
         Flushing nodes with their demands in the form of {node_id:demand}
     is_supply_node_column : str, optional
@@ -385,6 +397,13 @@ def add_control_functions_to_connector_nodes(
             f"user-defined `drain_nodes` not found in outflow+inflow+internal nodes: {missing_drain_nodes}"
         )
 
+    # check on missing flow_control nodes
+    missing_flow_control_nodes = [i for i in flow_control_nodes if i not in all_nodes]
+    if missing_flow_control_nodes:
+        raise ValueError(
+            f"user-defined `flow_control_nodes` not found in outflow+inflow+internal nodes: {missing_flow_control_nodes}"
+        )
+
     # check on flushing nodes
     missing_flushing_nodes = [i for i in flushing_nodes.keys() if i not in all_nodes]
     if missing_flushing_nodes:
@@ -401,7 +420,7 @@ def add_control_functions_to_connector_nodes(
     if is_supply_node_column not in selected_nodes_df.columns:
         selected_nodes_df[is_supply_node_column] = False
     selected_nodes_df.loc[supply_nodes, is_supply_node_column] = True
-    inflow_nodes = [i for i in inflow_nodes if i not in drain_nodes + list(flushing_nodes.keys())]
+    inflow_nodes = [i for i in inflow_nodes if i not in drain_nodes + list(flushing_nodes.keys()) + flow_control_nodes]
     supply_nodes = sorted(
         set(selected_nodes_df[selected_nodes_df[is_supply_node_column]].index.to_list() + inflow_nodes)
     )
@@ -410,7 +429,7 @@ def add_control_functions_to_connector_nodes(
     drain_nodes = sorted(set(drain_nodes + outflow_nodes))
 
     # expand drain_nodes based on reverse connections to supply nodes
-    candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes]
+    candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes + flow_control_nodes]
     supply_nodes_df = selected_nodes_df.loc[supply_nodes]
     drain_nodes = sorted(
         [
@@ -423,7 +442,6 @@ def add_control_functions_to_connector_nodes(
 
     # list all flow_control_nodes
     graph = model.graph
-    flow_control_nodes = []
     skip_nodes = drain_nodes + supply_nodes + list(flushing_nodes.keys())
     _all_downstream_nodes: list[int] = []
     for node_id in supply_nodes:
@@ -450,6 +468,10 @@ def add_control_functions_to_connector_nodes(
     # Step: add demand_flow_rate for flushing nodes
     selected_nodes_df["demand_flow_rate"] = pd.Series(dtype="float")
     selected_nodes_df.loc[list(flushing_nodes.keys()), "demand_flow_rate"] = list(flushing_nodes.values())
+
+    # Last check
+    if len(all_nodes) != len(selected_nodes_df):
+        raise ValueError(f"len(node_position) != len(node_functions): {len(all_nodes)} != {len(selected_nodes_df)}")
 
     return selected_nodes_df
 
@@ -560,6 +582,14 @@ def get_control_nodes_position_from_supply_area(
             f"WARNING: ambiguous position of nodes {duplicated_node_ids}. Define function manually in `supply_nodes` or `drain_nodes`"
         )
     node_df = node_df[~node_df.index.duplicated()]
+
+    # check if nodes al ready have control
+    control_link_df = _read_link_table(model=model, link_type="control")
+    controlled_nodes = control_link_df.to_node_id.values
+    has_control = [i for i in node_df.index.values if i in controlled_nodes]
+    if has_control:
+        print(f"WARNING connector-nodes {has_control} in supply-area are already controlled. Nodes will be skipped")
+    node_df = node_df[~node_df.isin(has_control)]
 
     return node_df
 
@@ -1050,7 +1080,24 @@ def add_controllers_to_connector_nodes(
     level_difference_threshold: float,
     target_level_column: str = "meta_streefpeil",
 ):
-    """Add controllers to connector nodes
+    """Add controllers to connector nodes per function
+
+    The `function` column in `node_functions_df` can have 4 values with Dutch explanations:
+    - `drain`: uitlaat
+    - `supply`: inlet
+    - `flow_control`: doorlaat
+    - `flushing`: doorspoeling (uitlaat waarbij een minimale afvoer wordt gerealiseerd)
+
+    The column `demand` in `node_functions_df` only needs a capacity at nodes of type `flusing`. For other nodes this can be NaN and will be ignored.
+
+    Explanation of a node's `function` in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:
+
+    | function      | state determined by               | flow_rate @ supply-state | flow_rate @ drain-state | Nodes added                  |
+    |---------------|-----------------------------------|--------------------------|-------------------------|------------------------------|
+    | supply        | downstream level                  | capacity [m3/s]          | 0 [m3/s]                | DiscreteControl              |
+    | drain         | upstream level                    | 0 [m3/s]                 | capacity [m3/s]         | DiscreteControl              |
+    | flow control  | upstream & downstream level       | capacity [m3/s]          | capacity [m3/s]         | DiscreteControl              |
+    | flushing      | upstream level & node flow_rate   | demand [m3/s]            | capacity [m3/s]         | DiscreteControl + FlowDemand |
 
     Parameters
     ----------
@@ -1063,29 +1110,41 @@ def add_controllers_to_connector_nodes(
     target_level_column : str, optional
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
     """
+    # make sure add-api will not duplicate node-ids
+    model._update_used_ids()
+
+    # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
+    if not supply_nodes_df.empty:
+        add_controllers_to_supply_nodes(
+            model=model,
+            us_target_level_offset_supply=-0.04,
+            supply_nodes_df=supply_nodes_df,
+        )
+
+    # add drain nodes
     drain_nodes_df = node_functions_df[node_functions_df["function"] == "drain"]
+    if not drain_nodes_df.empty:
+        add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
+
+    # add flow control nodes
     flow_control_nodes_df = node_functions_df[node_functions_df["function"] == "flow_control"]
+    if not flow_control_nodes_df.empty:
+        add_controllers_to_flow_control_nodes(
+            model=model,
+            flow_control_nodes_df=flow_control_nodes_df,
+            us_threshold_offset=level_difference_threshold,
+        )
+
+    # add flusing_nodes_df
     flushing_nodes_df = node_functions_df[node_functions_df["function"] == "flushing"]
-
-    add_controllers_to_supply_nodes(
-        model=model,
-        us_target_level_offset_supply=-0.04,
-        supply_nodes_df=supply_nodes_df,
-    )
-    add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
-    add_controllers_to_flow_control_nodes(
-        model=model,
-        flow_control_nodes_df=flow_control_nodes_df,
-        us_threshold_offset=level_difference_threshold,
-    )
-
-    add_controllers_and_demand_to_flushing_nodes(
-        model=model,
-        flushing_nodes_df=flushing_nodes_df,
-        us_threshold_offset=level_difference_threshold,
-        target_level_column=target_level_column,
-    )
+    if not flushing_nodes_df.empty:
+        add_controllers_and_demand_to_flushing_nodes(
+            model=model,
+            flushing_nodes_df=flushing_nodes_df,
+            us_threshold_offset=level_difference_threshold,
+            target_level_column=target_level_column,
+        )
 
 
 def add_controllers_to_supply_area(
@@ -1096,12 +1155,29 @@ def add_controllers_to_supply_area(
     flushing_nodes: dict[int, float],
     supply_nodes: list[int],
     level_difference_threshold: float,
-    exclude_nodes: list[int] = [],
+    flow_control_nodes: list[int] | None = None,
+    exclude_nodes: list[int] | None = None,
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
+
+    The resulting `function` column can have 4 values with Dutch explanations:
+    - `drain`: uitlaat
+    - `supply`: inlet
+    - `flow_control`: doorlaat
+    - `flushing`: doorspoeling (uitlaat waarbij een minimale afvoer wordt gerealiseerd)
+
+    The column `demand` only needs a capacity at nodes of type `flusing`. For other nodes this can be NaN and will be ignored.
+
+    Explanation of a node's `function` in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:
+    | function      | state determined by               | flow_rate @ supply-state | flow_rate @ drain-state | Nodes added                  |
+    |---------------|-----------------------------------|--------------------------|-------------------------|------------------------------|
+    | supply        | downstream level                  | capacity [m3/s]          | 0 [m3/s]                | DiscreteControl              |
+    | drain         | upstream level                    | 0 [m3/s]                 | capacity [m3/s]         | DiscreteControl              |
+    | flow control  | upstream & downstream level       | capacity [m3/s]          | capacity [m3/s]         | DiscreteControl              |
+    | flushing      | upstream level & node flow_rate   | demand [m3/s]            | capacity [m3/s]         | DiscreteControl + FlowDemand |
 
     Parameters
     ----------
@@ -1114,14 +1190,16 @@ def add_controllers_to_supply_area(
         Be cautious (!), only add id's to this list if you are sure it won't affect supply, by default []
     drain_nodes : list[int]
         List of node_ids that will be forced to drain
-    flushing_nodes_df : gpd.GeoDataFrame
-        GeoDataFrame of connector nodes having a flusing function, including from_node_id and to_node_id, and demand_flow_rate column
+    flushing_nodes : dict[int, float]
+        Flushing nodes with their demands in the form of {node_id:demand}
     supply_nodes : list[int]
         List of node_ids that will be forced to supply
+    flow_control_nodes: list[int], optional
+        List of node_ids that will be forced to flow_control. By default None
     level_difference_threshold : float
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
     exclude_nodes : list[int], optional
-        List of node_ids that are within the supply area, but will be ignored, by default []
+        List of node_ids that are within the supply area, but will be ignored, by default None
     control_node_types : list[str], optional
         Node_types considered to be control nodes , by default ["Outlet", "Pump"]
     is_supply_node_column : str, optional
@@ -1134,6 +1212,9 @@ def add_controllers_to_supply_area(
     gpd.GeoDataFrame
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand` for verification
     """
+    flow_control_nodes = flow_control_nodes or []
+    exclude_nodes = exclude_nodes or []
+
     node_positions_df = get_control_nodes_position_from_supply_area(
         model=model,
         polygon=polygon,
@@ -1149,6 +1230,7 @@ def add_controllers_to_supply_area(
         supply_nodes=supply_nodes,
         drain_nodes=drain_nodes,
         flushing_nodes=flushing_nodes,
+        flow_control_nodes=flow_control_nodes,
         is_supply_node_column=is_supply_node_column,
     )
 
@@ -1164,117 +1246,114 @@ def add_controllers_to_supply_area(
 
 
 def add_controllers_to_uncontrolled_connector_nodes(
-    model: Model,
+    model: "Model",
     us_threshold_offset: float,
-    exclude_nodes: list[int] = [],
-    supply_nodes: list[int] = [],
-    flow_control_nodes: list[int] = [],
-    control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
+    exclude_nodes: list[int] | None = None,
+    supply_nodes: list[int] | None = None,
+    drain_nodes: list[int] | None = None,
+    flow_control_nodes: list[int] | None = None,
+    control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
+    us_target_level_offset_supply: float = -0.04,
 ):
-    """Add connector-nodes to uncontrolled connector nodes.
+    """
+    Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
+
+    Regels (simpel en voorspelbaar):
+    1) Alleen nodes zonder bestaande control-link én niet in exclude_nodes worden meegenomen.
+    2) Functie-toewijzing met prioriteit:
+       - flow_control_nodes  (hoogste prioriteit)
+       - drain_nodes
+       - supply_nodes + meta_supply_node (laagste prioriteit)
+       - alles wat overblijft -> drain
+    3) Nodes die al controlled zijn worden genegeerd (dus geen dubbele control-innneighbors).
 
     Parameters
     ----------
     model : Model
-        Ribasim model
     us_threshold_offset : float
-        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
-    exclude_nodes : list[int], optional
-        List of node_ids that are within the supply area, but will be ignored, by default []
+        Offset voor flow-control discrete control (moet matchen met solver threshold).
+    exclude_nodes : list[int]
+        Connector-nodes die je niet wilt aansturen.
     supply_nodes : list[int]
-        List of node_ids that will be forced to supply
-    flushing_nodes_df : gpd.GeoDataFrame
-        GeoDataFrame of connector nodes having a flusing function, including from_node_id and to_node_id, and demand_flow_rate column
-    control_node_types : list[str], optional
-        Node_types considered to be control nodes , by default ["Outlet", "Pump"]
+        Nodes die je expliciet als supply wilt (alleen als nog uncontrolled).
+    drain_nodes : list[int]
+        Nodes die je expliciet als drain wilt (alleen als nog uncontrolled).
+    flow_control_nodes : list[int]
+        Nodes die je expliciet als flow_control wilt (alleen als nog uncontrolled).
+    control_node_types : list[Literal["Pump","Outlet"]]
+        Welke connector node types meegenomen worden.
+    us_target_level_offset_supply : float
+        Offset voor supply controls.
     """
-    # get all controlled nodes
-    link_df = _read_link_table(model=model, link_type="control")
-    controlled_nodes = link_df.to_node_id.to_list()
+    # make sure add-api will not duplicate node-ids
+    model._update_used_ids()
 
-    # node_table including upstream/downstream node ids
+    # --- defaults veilig maken (nooit [] als default-arg) ---
+    exclude_nodes = exclude_nodes or []
+    supply_nodes = supply_nodes or []
+    drain_nodes = drain_nodes or []
+    flow_control_nodes = flow_control_nodes or []
+    control_node_types = control_node_types or ["Pump", "Outlet"]
+
+    # --- 1) bepaal welke connector nodes al controlled zijn ---
+    control_links = _read_link_table(model=model, link_type="control")
+    controlled = set(control_links.to_node_id.to_list())
+
+    # --- 2) haal connector nodes + from/to ---
     node_df = get_node_table_with_from_to_node_ids(model=model)
-    connector_nodes_df = node_df[node_df.node_type.isin(control_node_types)]
+    connector_df = node_df[node_df.node_type.isin(control_node_types)].copy()
 
-    # get all uncontrolled nodes
-    uncontrolled_nodes = connector_nodes_df[
-        ~connector_nodes_df.index.isin(controlled_nodes + exclude_nodes)
-    ].index.values
+    # zorg dat meta_supply_node bestaat
+    if "meta_supply_node" not in connector_df.columns:
+        connector_df["meta_supply_node"] = False
+    connector_df["meta_supply_node"] = connector_df["meta_supply_node"].fillna(False).astype(bool)
 
-    # define supply_nodes and add
-    supply_mask = connector_nodes_df.index.isin(uncontrolled_nodes) & connector_nodes_df.meta_supply_node.astype(bool)
-    supply_mask = supply_mask | connector_nodes_df.index.isin(supply_nodes)
-    supply_nodes_df = connector_nodes_df[supply_mask]
+    # --- 3) bepaal welke nodes we überhaupt mogen aanpassen ---
+    eligible = set(connector_df.index) - controlled - set(exclude_nodes)
+    if not eligible:
+        return  # niets te doen
 
-    add_controllers_to_supply_nodes(
-        model=model,
-        us_target_level_offset_supply=-0.04,
-        supply_nodes_df=supply_nodes_df,
-    )
+    # --- 4) clip handmatige lijsten naar eligible (zo voorkom je dubbele control) ---
+    flow_set = set(flow_control_nodes) & eligible
+    drain_set = set(drain_nodes) & eligible
+    supply_set_manual = set(supply_nodes) & eligible
 
-    # define flow_control_nodes and add
-    flow_control_nodes_df = connector_nodes_df.loc[flow_control_nodes]
-    add_controllers_to_flow_control_nodes(
-        model=model,
-        flow_control_nodes_df=flow_control_nodes_df,
-        us_threshold_offset=us_threshold_offset,
-    )
+    # automatische supply op basis van meta_supply_node (maar alleen eligible)
+    supply_set_auto = set(connector_df.index[connector_df.meta_supply_node]) & eligible
 
-    # we add controls to all other nodes as drains
-    drain_nodes = [i for i in uncontrolled_nodes if i not in flow_control_nodes + supply_nodes_df.index.to_list()]
-    drain_nodes_df = connector_nodes_df.loc[drain_nodes]
+    # --- 5) prioriteiten afdwingen: flow > drain > supply ---
+    # (dus: als iets in flow zit, haal het uit drain/supply; als iets in drain zit, haal uit supply)
+    drain_set -= flow_set
+    supply_set_manual -= flow_set | drain_set
+    supply_set_auto -= flow_set | drain_set
 
-    add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
+    supply_set = supply_set_manual | supply_set_auto
 
+    # --- 6) alles wat overblijft -> drain ---
+    used = flow_set | drain_set | supply_set
+    remaining = eligible - used
+    drain_set = drain_set | remaining
 
-def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
-    """Add supply, drain and flow_control functions to the node table of peilbeheerste models.
+    # --- 7) uitvoer: controllers toevoegen ---
+    # Supply
+    if supply_set:
+        supply_df = connector_df.loc[sorted(supply_set)]
+        add_controllers_to_supply_nodes(
+            model=model,
+            us_target_level_offset_supply=us_target_level_offset_supply,
+            supply_nodes_df=supply_df,
+        )
 
-    Merges outlet/pump meta-function flags into `from_to_node_table` and derives a
-    single `function` label per node: `drain`, `supply`, or `flow_control`. Flushing is not included (yet).
+    # Flow control
+    if flow_set:
+        flow_df = connector_df.loc[sorted(flow_set)]
+        add_controllers_to_flow_control_nodes(
+            model=model,
+            flow_control_nodes_df=flow_df,
+            us_threshold_offset=us_threshold_offset,
+        )
 
-    Parameters
-    ----------
-    model : Model
-        Ribasim model containing outlet and pump static tables.
-    from_to_node_table : gpd.GeoDataFrame
-        Node table with connector nodes, indexed by node_id and including
-        from_node_id/to_node_id columns (e.g. from `get_node_table_with_from_to_node_ids`).
-
-    Returns
-    -------
-    gpd.GeoDataFrame
-        Input table with `function` column added and intermediate meta flags removed.
-    """
-    # select connector nodes including their functions
-    outlet_nodes = model.outlet.static.df[["node_id", "meta_aanvoer"]].copy()
-    pump_nodes = model.pump.static.df[["node_id", "meta_func_afvoer", "meta_func_aanvoer"]].copy()
-
-    # convert to bool, sync column names
-    outlet_nodes = outlet_nodes.astype({"meta_aanvoer": "bool"})
-    outlet_nodes["meta_afvoer"] = True  # outlets are assumed to always be able to drain
-    pump_nodes = pump_nodes.astype({"meta_func_afvoer": "bool", "meta_func_aanvoer": "bool"})
-    pump_nodes = pump_nodes.rename(columns={"meta_func_afvoer": "meta_afvoer", "meta_func_aanvoer": "meta_aanvoer"})
-
-    # merge the functions to the from_to_node_table for both outlets and pumps
-    outlet_pumps = pd.concat([outlet_nodes, pump_nodes])
-    from_to_node_table = from_to_node_table.merge(
-        outlet_pumps,
-        left_index=True,
-        right_on="node_id",
-        how="left",
-    ).set_index("node_id")
-
-    # add column 'function': only meta_afvoer => drain, only meta_aanvoer => supply, both => flow_control
-    from_to_node_table["function"] = "flow_control"
-    from_to_node_table.loc[from_to_node_table["meta_afvoer"] & ~from_to_node_table["meta_aanvoer"], "function"] = (
-        "drain"
-    )
-    from_to_node_table.loc[~from_to_node_table["meta_afvoer"] & from_to_node_table["meta_aanvoer"], "function"] = (
-        "supply"
-    )
-
-    # discard unneeded columns
-    from_to_node_table = from_to_node_table.drop(columns=["meta_afvoer", "meta_aanvoer"])
-
-    return from_to_node_table
+    # Drain
+    if drain_set:
+        drain_df = connector_df.loc[sorted(drain_set)]
+        add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_df)

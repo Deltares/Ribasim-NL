@@ -24,11 +24,7 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(AUTHORITY, "aangeleverd/Na_levering/HyDAMO_WM_20230720.gpkg")
 
-cloud.synchronize(
-    filepaths=[
-        aanvoer_path,
-    ]
-)
+cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
 
 # %%
 # read model
@@ -226,6 +222,6 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
+    result = model.run()
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()

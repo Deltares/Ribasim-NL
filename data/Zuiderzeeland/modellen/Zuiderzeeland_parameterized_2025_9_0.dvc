@@ -1,4 +1,4 @@
-md5: e17642c769da866ce52152f55740ccc7
+md5: 2cced8980d1a68e4f9637ef919c4f674
 frozen: true
 deps:
 - md5: e9d395e75b01d8df6fa53704eeef5372.dir
@@ -8,8 +8,8 @@ deps:
   path:
     remote://modeldata/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0
 outs:
-- md5: 11117af02574228c502e06c4711f52db.dir
-  size: 33614025
-  nfiles: 15
+- md5: c6944916dee6388016fd8eb7b265168f.dir
+  size: 16092995
+  nfiles: 3
   hash: md5
   path: Zuiderzeeland_parameterized_2025_9_0

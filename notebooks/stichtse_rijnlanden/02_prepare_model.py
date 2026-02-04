@@ -1,5 +1,4 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import pandas as pd
@@ -18,7 +17,8 @@ short_name = "hdsr"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
@@ -26,10 +26,8 @@ hydroobject_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydroobject.gpk
 peilgebieden_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden.gpkg")
 peilgebieden_vig_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden_vigerend.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
-model_edits_extra_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_extra.gpkg")
-model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_gpkg, top10NL_gpkg, hydroobject_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_gpkg, peilgebieden_vig_gpkg, top10NL_gpkg, hydroobject_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -51,66 +49,6 @@ else:
     fix_link_geometries(model, network, max_straight_line_ratio=5)
     model.link.df.reset_index().to_file(link_geometries_gpkg)
 
-
-# %% Quick fix basins
-
-actions = ["remove_basin_area", "add_basin", "add_basin_area", "update_node", "redirect_link", "move_node"]
-actions = [i for i in actions if i in gpd.list_layers(model_edits_extra_gpkg).name.to_list()]
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_extra_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
-
-
-# %%
-actions = ["add_basin", "update_node", "connect_basins"]
-actions = [i for i in actions if i in gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()]
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
-# %%
-#   Model fixes
-model.remove_node(node_id=663, remove_links=True)
-model.remove_node(node_id=86, remove_links=True)
-model.remove_node(node_id=669, remove_links=True)
-model.remove_node(node_id=737, remove_links=True)
-# model.remove_node(node_id=1197, remove_links=True)
-model.merge_basins(basin_id=1408, to_basin_id=1672)
-model.merge_basins(basin_id=1524, to_basin_id=1975)
-model.merge_basins(basin_id=1425, to_basin_id=1558)
-model.merge_basins(basin_id=1995, to_basin_id=1646)
-model.merge_basins(basin_id=1692, to_basin_id=1646)
-model.merge_basins(basin_id=1514, to_basin_id=1577)
-model.merge_basins(basin_id=1522, to_basin_id=1507)
-model.merge_basins(basin_id=1681, to_basin_id=1763)
-model.merge_basins(basin_id=1638, to_basin_id=1762)
-model.merge_basins(basin_id=1761, to_basin_id=1724)
-model.merge_basins(basin_id=1724, to_basin_id=1754)
-model.merge_basins(basin_id=1754, to_basin_id=1765)
-model.merge_basins(basin_id=1765, to_basin_id=1778)
-model.merge_basins(basin_id=1735, to_basin_id=1778)
-
-model.redirect_link(link_id=2272, from_node_id=1572)
-model.update_node(node_id=1194, node_type="Outlet")
-model.update_node(node_id=678, node_type="Outlet")
-model.update_node(node_id=730, node_type="Outlet")
 
 # %%
 # add streefpeilen

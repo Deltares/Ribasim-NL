@@ -1,4 +1,4 @@
-md5: d15166d1e32d363c5ff58a4f2765867a
+md5: 5580f44a53ff61d13e9ad558c6297d39
 frozen: true
 deps:
 - md5: e0448160a534ec6f5e26c88a005a00ae.dir
@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://modeldata/Delfland/modellen/Delfland_parameterized_2025_9_1
 outs:
-- md5: 62687d86223334eed590f9f7e8a693b0.dir
-  size: 26010388
-  nfiles: 16
+- md5: ed393eda7ddf0b0785bc3bd3936904dc.dir
+  size: 14147811
+  nfiles: 4
   hash: md5
   path: Delfland_parameterized_2025_9_1
