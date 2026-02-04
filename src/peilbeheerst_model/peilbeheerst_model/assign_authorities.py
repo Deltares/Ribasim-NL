@@ -1,6 +1,10 @@
 import geopandas as gpd
 import pandas as pd
 
+from ribasim_nl import CloudStorage
+
+cloud = CloudStorage()
+
 
 # TODO: Embed correct usage of `static` v. `time` dataframes in `AssignAuthorities`
 class AssignAuthorities:
@@ -23,6 +27,8 @@ class AssignAuthorities:
         RWS_buffer=1000,
         custom_nodes=None,
     ):
+        # make sure files exist locally
+        cloud.synchronize([ws_grenzen_path, RWS_grenzen_path])
         self.ws_grenzen_path = ws_grenzen_path
         self.RWS_grenzen_path = RWS_grenzen_path
 

@@ -1,4 +1,4 @@
-md5: cc8421a7a4581cfc032f3066cf51a375
+md5: 7a4c1fd0f8e61792ce5e049b1520f9c7
 frozen: true
 deps:
 - md5: 815a0fa32d583496ac2470426dced0d0.dir
@@ -8,8 +8,8 @@ deps:
   path:
     remote://modeldata/Scheldestromen/modellen/Scheldestromen_parameterized_2025_9_0
 outs:
-- md5: 008df9f7c617cab700d631df1fa98978.dir
-  size: 27087594
-  nfiles: 15
+- md5: 95d6967b95bedd7c958c141e5b1800c8.dir
+  size: 15192275
+  nfiles: 3
   hash: md5
   path: Scheldestromen_parameterized_2025_9_0

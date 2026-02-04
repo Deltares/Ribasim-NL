@@ -1,4 +1,4 @@
-md5: 24938dd51dc4e950fb08b8d1ec69de2a
+md5: e6f412454ec3092f3494b3781cff9a19
 frozen: true
 deps:
 - md5: a4f0769ae54d57e510ce098fa1c45444.dir
@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://modeldata/AaenMaas/modellen/AaenMaas_2025_9_0
 outs:
-- md5: f95762ba1c46bca62755daa02f44d94b.dir
-  size: 93678776
-  nfiles: 8
+- md5: 9f4a13cbc90b8c64d66212a183aedee7.dir
+  size: 55648170
+  nfiles: 3
   hash: md5
   path: AaenMaas_2025_9_0

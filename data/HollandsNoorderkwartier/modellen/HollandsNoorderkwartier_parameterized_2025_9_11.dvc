@@ -1,4 +1,4 @@
-md5: 9ac3ad2c8dd81498d095396bb3be5404
+md5: ef6a92c254ec0de105a3496920c13cbc
 frozen: true
 deps:
 - md5: c8e2dddc319daf4e6db45d9b172e6710.dir
@@ -8,8 +8,8 @@ deps:
   path:
     remote://modeldata/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized_2025_9_11
 outs:
-- md5: 91527d0144a3c5abc85323be4d57e3ab.dir
-  size: 47988006
-  nfiles: 15
+- md5: f2152ae3a799955dd02d5819cb21ae78.dir
+  size: 22903099
+  nfiles: 3
   hash: md5
   path: HollandsNoorderkwartier_parameterized_2025_9_11

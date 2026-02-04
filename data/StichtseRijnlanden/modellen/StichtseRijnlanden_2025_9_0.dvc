@@ -1,4 +1,4 @@
-md5: a39fb80fad70893724e4c1e67c3ba696
+md5: 7c0f2b7b0895d1df1f2928dc1b1a5bf0
 frozen: true
 deps:
 - md5: 7a7cbb702b33f3c17b723cf7437d1ce6.dir
@@ -8,8 +8,8 @@ deps:
   path:
     remote://modeldata/StichtseRijnlanden/modellen/StichtseRijnlanden_2025_9_0
 outs:
-- md5: 76c363afc3eba1ace093dcce982f3c1c.dir
-  size: 78677543
-  nfiles: 9
+- md5: ab8d9a35d8a6597d791a8c6d9e00cd33.dir
+  size: 52399866
+  nfiles: 3
   hash: md5
   path: StichtseRijnlanden_2025_9_0
