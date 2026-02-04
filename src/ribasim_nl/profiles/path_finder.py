@@ -322,7 +322,7 @@ def find_flow_routes(
     :return: set of graph-edges that are part of at least one shortest route between crossings
     :rtype: set[tuple[tuple, tuple]]
     """
-    if len(crossings) >= graph.number_of_nodes():
+    if len(crossings) > graph.number_of_nodes():
         LOG.warning(f"More crossings ({len(crossings)}) than graph-nodes ({graph.number_of_nodes()})")
     desc = "Finding main routes"
 
