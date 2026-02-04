@@ -941,6 +941,7 @@ def add_controllers_and_demand_to_flushing_nodes(
     demand_node_angle: int = 45,
     name: str = "uitlaat",
     demand_name_prefix: str = "doorspoeling",
+    flushing_seasonal: bool = True,
 ):
     """Add control nodes to connector nodes draining a system/supply-area having a certain flow-demand (flushing_nodes)
 
@@ -1052,7 +1053,7 @@ def add_controllers_and_demand_to_flushing_nodes(
             name=f"{name}: {us_target_level:.2f} [m+NAP]",
         )
 
-        # add demand  (SEASONAL: Apr–Oct on, rest off)
+        # add demand (SEASONAL: Apr–Oct on, rest off) + CYCLIC
         supply_season_start = pd.to_datetime(supply_season_start)
         year = supply_season_start.year
 
@@ -1069,12 +1070,14 @@ def add_controllers_and_demand_to_flushing_nodes(
         ]
 
         node = model.get_node(node_id=node_id)
+
         demand_node = model.flow_demand.add(
             _offset_new_node(
                 node=node,
                 offset=new_nodes_offset,
                 angle=demand_node_angle,
                 name=f"{demand_name_prefix} {demand_flow_rate} [m3/s]",
+                cyclic_time=bool(flushing_seasonal),  # <-- HIER zit cyclic
             ),
             tables=demand_tables,
         )
