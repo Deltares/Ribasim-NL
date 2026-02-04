@@ -18,7 +18,7 @@ AUTHORITY: str = "StichtseRijnlanden"  # authority
 SHORT_NAME: str = "hdsr"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
-FLUSHING_SEASONAL: bool = True  # True = Apr–Oct aan (cyclisch), False = altijd aan (constant)
+FLUSHING_SEASONAL: bool = False  # True = Apr–Oct aan (cyclisch), False = altijd aan (constant)
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 746: Oudewater sluis
@@ -617,6 +617,7 @@ add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
     us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
+    flushing_seasonal=FLUSHING_SEASONAL,
 )
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren

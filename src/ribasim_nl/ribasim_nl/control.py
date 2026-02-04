@@ -1053,21 +1053,34 @@ def add_controllers_and_demand_to_flushing_nodes(
             name=f"{name}: {us_target_level:.2f} [m+NAP]",
         )
 
-        # add demand (SEASONAL: Apr–Oct on, rest off) + CYCLIC
+        # add demand:
+        # - seasonal: Apr–Oct aan (cyclic Time-table)
+        # - non-seasonal: altijd aan (Static, jaar-onafhankelijk)
+
         supply_season_start = pd.to_datetime(supply_season_start)
         year = supply_season_start.year
 
-        t0 = pd.Timestamp(year, 1, 1)  # 0
+        t0 = pd.Timestamp(year, 1, 1)
         t_on = pd.Timestamp(year, 4, 1)  # aan vanaf 1 april
         t_off = pd.Timestamp(year, 10, 1)  # uit vanaf 1 oktober
 
-        demand_tables = [
-            flow_demand.Time(
-                time=[t0, t_on, t_off],
-                demand=[0.0, float(demand_flow_rate), 0.0],
-                demand_priority=[1, 1, 1],
-            )
-        ]
+        if flushing_seasonal:
+            demand_tables = [
+                flow_demand.Time(
+                    time=[t0, t_on, t_off],
+                    demand=[0.0, float(demand_flow_rate), 0.0],
+                    demand_priority=[1, 1, 1],
+                )
+            ]
+            cyclic = True
+        else:
+            demand_tables = [
+                flow_demand.Static(
+                    demand=[float(demand_flow_rate)],
+                    demand_priority=[1],
+                )
+            ]
+            cyclic = False  # bij Static niet essentieel, maar netjes
 
         node = model.get_node(node_id=node_id)
 
@@ -1077,7 +1090,7 @@ def add_controllers_and_demand_to_flushing_nodes(
                 offset=new_nodes_offset,
                 angle=demand_node_angle,
                 name=f"{demand_name_prefix} {demand_flow_rate} [m3/s]",
-                cyclic_time=bool(flushing_seasonal),  # <-- HIER zit cyclic
+                cyclic_time=cyclic,
             ),
             tables=demand_tables,
         )
@@ -1089,6 +1102,7 @@ def add_controllers_to_connector_nodes(
     node_functions_df: gpd.GeoDataFrame,
     level_difference_threshold: float,
     target_level_column: str = "meta_streefpeil",
+    flushing_seasonal: bool = True,
 ):
     """Add controllers to connector nodes per function
 
@@ -1142,6 +1156,7 @@ def add_controllers_to_connector_nodes(
         flushing_nodes_df=flushing_nodes_df,
         us_threshold_offset=level_difference_threshold,
         target_level_column=target_level_column,
+        flushing_seasonal=flushing_seasonal,
     )
 
 
@@ -1158,6 +1173,7 @@ def add_controllers_to_supply_area(
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
+    flushing_seasonal: bool = True,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 
@@ -1238,6 +1254,7 @@ def add_controllers_to_supply_area(
         node_functions_df=node_functions_df,
         level_difference_threshold=level_difference_threshold,
         target_level_column=target_level_column,
+        flushing_seasonal=flushing_seasonal,
     )
 
     return node_functions_df
@@ -1254,6 +1271,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     us_target_level_offset_supply: float = -0.04,
     level_difference_threshold: float | None = None,
+    flushing_seasonal: bool = True,
 ):
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
@@ -1351,6 +1369,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
             model=model,
             flushing_nodes_df=flushing_nodes_df,
             us_threshold_offset=level_difference_threshold,
+            flushing_seasonal=flushing_seasonal,
         )
 
     # Supply
