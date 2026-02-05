@@ -980,6 +980,8 @@ def add_controllers_and_demand_to_flushing_nodes(
         Name assigned to control-node, by default "uitlaat"
     demand_name_prefix: str, optional
         Prefix assigned to name in demand-node, by default "doorspoeling
+    flushing_seasonal: bool, optional
+        If True, flushing will be applied in summer season (April - October) only.
     """
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in flushing_nodes_df.itertuples():
