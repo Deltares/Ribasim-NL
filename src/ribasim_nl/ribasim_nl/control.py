@@ -1142,6 +1142,8 @@ def add_controllers_to_connector_nodes(
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
     target_level_column : str, optional
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
+    flushing_seasonal: bool, optional
+        If True, flushing will be applied in summer season (April - October) only.
     """
     # make sure add-api will not duplicate node-ids
     model._update_used_ids()
