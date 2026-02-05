@@ -103,15 +103,22 @@ def _target_level(
                     raise ValueError(msg)
             else:
                 target_level = model.basin.area.df.set_index("node_id").at[node_id, target_level_column]
-        else:  # node type is LevelBoundary
-            if node_id not in model.level_boundary.static.df["node_id"].values:  # node_id missing in Basin.Area table
-                if allow_missing:
-                    return None
-                else:
-                    msg = f"Listen node: {node_id} not found in LevelBoundary.Static table"
-                    raise ValueError(msg)
-            else:
-                target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].max()
+        else:  # node type is LevelBoundary. We get the min-value from time-table or static-table if available
+            target_level = None
+
+            # read from time-table table exist and node_id is in it
+            if model.level_boundary.time.df is not None:
+                if node_id in model.level_boundary.time.df["node_id"].values:
+                    target_level = model.level_boundary.time.df.set_index("node_id").loc[[node_id], "level"].min()
+
+            # read from static-table exist and node_id is in it
+            elif model.level_boundary.static.df is not None:
+                if node_id in model.level_boundary.static.df["node_id"].values:
+                    target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].min()
+
+            if (not allow_missing) and (target_level is None):
+                msg = f"Listen node: {node_id} not found in LevelBoundary.Time or LevelBoundary.Static table"
+                raise ValueError(msg)
 
     # Return target_level or raise Exception if missing and not allowed
     if target_level is None:
@@ -1054,7 +1061,7 @@ def add_controllers_and_demand_to_flushing_nodes(
         )
 
         # add demand:
-        # - seasonal: Apr–Oct aan (cyclic Time-table)
+        # - seasonal: Apr tot Oct aan (cyclic Time-table)
         # - non-seasonal: altijd aan (Static, jaar-onafhankelijk)
 
         supply_season_start = pd.to_datetime(supply_season_start)
@@ -1134,30 +1141,42 @@ def add_controllers_to_connector_nodes(
     target_level_column : str, optional
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
     """
+    # make sure add-api will not duplicate node-ids
+    model._update_used_ids()
+
+    # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
+    if not supply_nodes_df.empty:
+        add_controllers_to_supply_nodes(
+            model=model,
+            us_target_level_offset_supply=-0.04,
+            supply_nodes_df=supply_nodes_df,
+        )
+
+    # add drain nodes
     drain_nodes_df = node_functions_df[node_functions_df["function"] == "drain"]
+    if not drain_nodes_df.empty:
+        add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
+
+    # add flow control nodes
     flow_control_nodes_df = node_functions_df[node_functions_df["function"] == "flow_control"]
+    if not flow_control_nodes_df.empty:
+        add_controllers_to_flow_control_nodes(
+            model=model,
+            flow_control_nodes_df=flow_control_nodes_df,
+            us_threshold_offset=level_difference_threshold,
+        )
+
+    # add flusing_nodes_df
     flushing_nodes_df = node_functions_df[node_functions_df["function"] == "flushing"]
-
-    add_controllers_to_supply_nodes(
-        model=model,
-        us_target_level_offset_supply=-0.04,
-        supply_nodes_df=supply_nodes_df,
-    )
-    add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
-    add_controllers_to_flow_control_nodes(
-        model=model,
-        flow_control_nodes_df=flow_control_nodes_df,
-        us_threshold_offset=level_difference_threshold,
-    )
-
-    add_controllers_and_demand_to_flushing_nodes(
-        model=model,
-        flushing_nodes_df=flushing_nodes_df,
-        us_threshold_offset=level_difference_threshold,
-        target_level_column=target_level_column,
-        flushing_seasonal=flushing_seasonal,
-    )
+    if not flushing_nodes_df.empty:
+        add_controllers_and_demand_to_flushing_nodes(
+            model=model,
+            flushing_nodes_df=flushing_nodes_df,
+            us_threshold_offset=level_difference_threshold,
+            target_level_column=target_level_column,
+            flushing_seasonal=flushing_seasonal,
+        )
 
 
 def add_controllers_to_supply_area(
@@ -1305,6 +1324,9 @@ def add_controllers_to_uncontrolled_connector_nodes(
     us_target_level_offset_supply : float
         Offset voor supply controls.
     """
+    # make sure add-api will not duplicate node-ids
+    model._update_used_ids()
+
     # --- defaults veilig maken (nooit [] als default-arg) ---
     exclude_nodes = exclude_nodes or []
     supply_nodes = supply_nodes or []

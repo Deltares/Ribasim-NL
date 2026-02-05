@@ -8,7 +8,7 @@ stages:
       md5: 9f4a13cbc90b8c64d66212a183aedee7.dir
       size: 55648170
       nfiles: 3
-    - path: 
+    - path:
         data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
       hash: md5
       md5: 99d614dbc936010e2b53d72927ceac7b.dir
@@ -29,13 +29,13 @@ stages:
       md5: ed393eda7ddf0b0785bc3bd3936904dc.dir
       size: 14147811
       nfiles: 4
-    - path: 
+    - path:
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
       hash: md5
       md5: cdceb31a29edea006fb7369d7e5cb41a.dir
       size: 49107122
       nfiles: 4
-    - path: 
+    - path:
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized_2025_9_11
       hash: md5
       md5: f2152ae3a799955dd02d5819cb21ae78.dir
@@ -86,7 +86,7 @@ stages:
       md5: 95d6967b95bedd7c958c141e5b1800c8.dir
       size: 15192275
       nfiles: 3
-    - path: 
+    - path:
         data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized_2025_9_0
       hash: md5
       md5: 3d59e8121decde30c171b9a92f633969.dir
@@ -107,7 +107,7 @@ stages:
       md5: cd9f96ea6857f669725edd17a0368fb1.dir
       size: 77612002
       nfiles: 3
-    - path: 
+    - path:
         data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
       hash: md5
       md5: bf47c88015d10cf9f0c4fc55ace6903f.dir
@@ -151,8 +151,8 @@ stages:
     deps:
     - path: notebooks/noorderzijlvest
       hash: md5
-      md5: 661381f5efc162be330a605c6dd45398.dir
-      size: 32694
+      md5: ce16a0143883d98669f3bddcfc4bcf04.dir
+      size: 32702
       nfiles: 4
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
@@ -169,14 +169,14 @@ stages:
     deps:
     - path: notebooks/stichtse_rijnlanden
       hash: md5
-      md5: ef3e106f328bc23bf24ab3fa131ee53b.dir
-      size: 60818
+      md5: 3d1c503482924830c01dfb0d4e3db6de.dir
+      size: 60631
       nfiles: 4
     outs:
-    - path: 
+    - path:
         data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
       hash: md5
-      md5: f64bbbc6c24494be4c7be932b702360e.dir
+      md5: 69d130f969f45030e2ae28adb2425d92.dir
       size: 16580801
       nfiles: 2
   bathymetry:
@@ -309,7 +309,7 @@ stages:
       size: 49438
       nfiles: 4
     outs:
-    - path: 
+    - path:
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_full_control_model
       hash: md5
       md5: 89dc2a8b286918c13e9881ba7649acbb.dir
@@ -335,6 +335,10 @@ stages:
       nfiles: 2
   limburg:
     cmd:
+    - uv run python notebooks/limburg/_preprocess_profielen.py
+    - uv run python notebooks/limburg/01_fix_model.py
+    - uv run python notebooks/limburg/02_prepare_model.py
+    - uv run python notebooks/limburg/03_parameterize_model.py
     - uv run python notebooks/limburg/04_add_full_control.py
     deps:
     - path: notebooks/limburg
