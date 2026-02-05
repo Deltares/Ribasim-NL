@@ -46,10 +46,10 @@ model = Model.read(ribasim_toml)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
-# alle uitlaten en inlaten op 50m3/s, geen cap verdeling. Dit wordt de max flow in model.
+# alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
-model.outlet.static.df.flow_rate = 30
-model.pump.static.df.flow_rate = 30
+model.outlet.static.df.max_flow_rate = model.outlet.static.df.flow_rate
+model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
 # %%
 # Identificeren aanvoerknopen en voorzien van afvoercapaciteit
@@ -78,7 +78,7 @@ for node_type in CONTROL_NODE_TYPES:
 
     mask = static_df.node_id.isin(node_ids) & ((static_df.flow_rate == 0) | (static_df.flow_rate.isna()))
 
-    static_df.loc[mask, "flow_rate"] = 20
+#    static_df.loc[mask, "flow_rate"] = 20
 
 # %% model fixes
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
@@ -114,7 +114,6 @@ model.reverse_link(link_id=2073)
 model.reverse_link(link_id=24)
 
 model.update_node(node_id=730, node_type="ManningResistance")
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "max_flow_rate"] = 20
 
 # %%
 # Toevoegen Kromme Rijn/ARK

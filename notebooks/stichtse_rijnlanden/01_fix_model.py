@@ -604,6 +604,22 @@ model.outlet.node.df.loc[
     model.outlet.node.df["meta_object_type"].isin(["stuw", "afsluitmiddel", "sluis"]), "meta_gestuwd"
 ] = True
 
+# remove_nodes
+model.remove_node(node_id=251, remove_links=True)
+model.remove_node(node_id=482, remove_links=True)
+model.remove_node(node_id=93, remove_links=True)
+model.remove_node(node_id=1344, remove_links=True)
+model.remove_node(node_id=469, remove_links=True)
+model.remove_node(node_id=470, remove_links=True)
+model.remove_node(node_id=198, remove_links=True)
+model.remove_node(node_id=139, remove_links=True)
+model.remove_node(node_id=173, remove_links=True)
+model.remove_node(node_id=252, remove_links=True)
+model.remove_node(node_id=884, remove_links=True)
+model.remove_node(node_id=934, remove_links=True)
+model.remove_node(node_id=748, remove_links=True)
+model.remove_node(node_id=2)
+
 # set bovenstroomse basins als gestuwd
 node_df = model.node_table().df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
