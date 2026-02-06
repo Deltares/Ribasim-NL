@@ -120,6 +120,7 @@ with warnings.catch_warnings():
     ribasim_model.set_crs("EPSG:28992")
 
 # model specific tweaks
+
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
@@ -273,7 +274,6 @@ else:
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(
@@ -283,70 +283,35 @@ ribasim_param.set_aanvoer_flags(
     load_geometry_kw={"layer": "Aanvoergebied_Afvoergebied_polders"},
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
+
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02
+LEVEL_DIFFERENCE_THRESHOLD = 0.04
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
-ribasim_model._used_node_ids.node_ids
-ribasim_model._used_node_ids.max_node_id
-# DiscreteControl(node, variable, condition, logic)
+# prevent error from happening, temp fix
 ribasim_model = ribasim_model._update_used_ids()
-
 ribasim_model.write(ribasim_work_dir_model_toml)
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 460]
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 124]
+
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     target_level_column="meta_streefpeil",
 )
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 460]
 
-# ribasim_model.node_table()
-
-ribasim_model.level_boundary.time.df.set_index("node_id").loc[[551], "level"]
-ribasim_model.level_boundary.static.df
-ribasim_model.discrete_control.node  # [1667]
-# ribasim_model._used_node_ids.new_id()
-
-NoI = 1667
-print(NoI in ribasim_model.discrete_control.node.df.index)
-print(NoI in ribasim_model.pump.node.df.index)
-print(NoI in ribasim_model.outlet.node.df.index)
-print(NoI in ribasim_model.tabulated_rating_curve.node.df.index)
-print(NoI in ribasim_model.basin.node.df.index)
-print(NoI in ribasim_model.continuous_control.node.df.index)
-print(NoI in ribasim_model.discrete_control.node.df.index)
-print(NoI in ribasim_model.flow_boundary.node.df.index)
-print(NoI in ribasim_model.flow_demand.node.df.index)
-print(NoI in ribasim_model.level_boundary.node.df.index)
-print(NoI in ribasim_model.level_demand.node.df.index)
-print(NoI in ribasim_model.linear_resistance.node.df.index)
-print(NoI in ribasim_model.manning_resistance.node.df.index)
-print(NoI in ribasim_model.terminal.node.df.index)
-print(NoI in ribasim_model.user_demand.node.df.index)
-print(NoI in ribasim_model.link.df.index)
-
-
-# check if node_id 1667 is duplicated in the discrete_control.node table
-ribasim_model.discrete_control.node.df.loc[ribasim_model.discrete_control.node.df.index == NoI]
-
-# check for duplicated index in from_to_node_function_table
-from_to_node_function_table[from_to_node_function_table.index.duplicated()]
-
-NoI = 1666
-ribasim_model.discrete_control.node.df.loc[ribasim_model.discrete_control.node.df.index == NoI]
-ribasim_model.discrete_control.variable.df.loc[ribasim_model.discrete_control.variable.df.node_id == NoI]
-ribasim_model.discrete_control.condition.df.loc[ribasim_model.discrete_control.condition.df.node_id == NoI]
-ribasim_model.discrete_control.logic.df.loc[ribasim_model.discrete_control.logic.df.node_id == NoI]
+# if flow_rate is 0, set to 20
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20
+ribasim_model.outlet.static.df.max_flow_rate = ribasim_model.outlet.static.df.flow_rate.copy()
 
 # wateraanvoer node to other waterboard. Set max downstream level to a low value to prevent unwanted control actions
 ribasim_model.outlet.static.df.loc[
