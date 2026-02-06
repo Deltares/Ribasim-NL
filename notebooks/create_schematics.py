@@ -1,3 +1,4 @@
+# %%
 """Script to create layers for schematics that are incorporated in documentation
 
 Required input-files per authority:
