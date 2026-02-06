@@ -1071,7 +1071,6 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
 
     # select all basins which are not "bergend"
     basin_nodes = ribasim_model.basin.state.df.copy()
-    # peilgebied_basins = basin_nodes.loc[basin_nodes.meta_categorie == "doorgaand", "node_id"]
     boezem_basins = basin_nodes.loc[basin_nodes.meta_categorie == "hoofdwater", "node_id"]
 
     # select the nodes which originate from a boezem, and the ones which go to a boezem. Use the link table for this.
@@ -1130,14 +1129,20 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     ribasim_model.pump.static.df.loc[outlet_pump_nodes_afvoer, "meta_categorie"] = "Uitlaat boezem, afvoer gemaal"
     ribasim_model.pump.static.df.loc[outlet_pump_nodes_aanvoer, "meta_categorie"] = "Uitlaat boezem, aanvoer gemaal"
 
-    # identify the outlets and pumps at the regular peilgebieden
+    # identify the outlets and pumps between regular peilgebieden
     ribasim_model.outlet.static.df.loc[
         ~(
             (ribasim_model.outlet.static.df.node_id.isin(nodes_from_boezem))
             | (ribasim_model.outlet.static.df.node_id.isin(nodes_to_boezem))
         ),
         "meta_categorie",
-    ] = "Reguliere stuw"
+    ] = "Uitlaat peilgebied peilgebied, stuw"
+
+    ribasim_model.outlet.static.df.loc[
+        (ribasim_model.outlet.static.df.meta_categorie == "Uitlaat peilgebied peilgebied, stuw")
+        & (ribasim_model.outlet.static.df.meta_aanvoer == 1),
+        "meta_categorie",
+    ] = "Inlaat uitlaat peilgebied peilgebied, stuw"
 
     ribasim_model.pump.static.df.loc[
         ~(
@@ -1150,15 +1155,24 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     # differentiate between reguliere afvoer and regulieren aanvoer gemalen
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.meta_categorie == "Regulier gemaal")
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1)
         & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
         "meta_categorie",
-    ] = "Regulier afvoer gemaal"
+    ] = "Afvoer gemaal peilgebied peilgebied"
 
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.meta_categorie == "Regulier gemaal")
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 0)
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1),
         "meta_categorie",
-    ] = "Regulier aanvoer gemaal"
+    ] = "Aanvoer gemaal peilgebied peilgebied"
+
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.meta_categorie == "Regulier gemaal")
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1)
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1),
+        "meta_categorie",
+    ] = "Afvoer aanvoer gemaal peilgebied peilgebied"
 
     # repeat for the boundary nodes
     # identify the buitenwater uitlaten and inlaten. A part will be overwritten later, if its a boundary & boezem.
@@ -1167,29 +1181,46 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     ] = "Uitlaat buitenwater peilgebied, stuw"
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1)
         & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
         "meta_categorie",
     ] = "Uitlaat buitenwater peilgebied, afvoer gemaal"
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0)
+        & (ribasim_model.pump.static.df.meta_func_afvoer != 1),
         "meta_categorie",
     ] = "Uitlaat buitenwater peilgebied, aanvoer gemaal"
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1)
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1),
+        "meta_categorie",
+    ] = "Uitlaat buitenwater peilgebied, aanvoer afvoer gemaal"
 
     ribasim_model.outlet.static.df.loc[
         ribasim_model.outlet.static.df.node_id.isin(nodes_from_boundary), "meta_categorie"
     ] = "Inlaat buitenwater peilgebied, stuw"
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0)
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1),
         "meta_categorie",
     ] = "Inlaat buitenwater peilgebied, afvoer gemaal"
 
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1)
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 0),
         "meta_categorie",
     ] = "Inlaat buitenwater peilgebied, aanvoer gemaal"
+
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1)
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1),
+        "meta_categorie",
+    ] = "Inlaat buitenwater peilgebied, aanvoer afvoer gemaal"
 
     # boundary & boezem. This is the part where a portion of the already defined meta_categorie will be overwritten by the code above.
     ribasim_model.outlet.static.df.loc[
@@ -1201,14 +1232,16 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),  # to
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0)  # to
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1),  # to
         "meta_categorie",
     ] = "Uitlaat buitenwater boezem, afvoer gemaal"
 
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_to_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),  # to
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1)  # to
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 0),  # to
         "meta_categorie",
     ] = "Uitlaat buitenwater boezem, aanvoer gemaal"
 
@@ -1220,16 +1253,26 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),  # from
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0)  # from
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1),  # from
         "meta_categorie",
     ] = "Inlaat buitenwater boezem, afvoer gemaal"
 
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),  # from
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1)  # from
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 0),  # from
         "meta_categorie",
     ] = "Inlaat buitenwater boezem, aanvoer gemaal"
+
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boundary))
+        & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1)  # from
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1),  # from
+        "meta_categorie",
+    ] = "Inlaat buitenwater boezem, aanvoer afvoer gemaal"
 
     # boezem & boezem.
     ribasim_model.outlet.static.df.loc[
@@ -1241,21 +1284,49 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0),
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0)
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 1),
         "meta_categorie",
     ] = "Boezem boezem, afvoer gemaal"
 
     ribasim_model.pump.static.df.loc[
         (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
         & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
-        & (ribasim_model.pump.static.df.meta_func_aanvoer != 0),
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 1)
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 0),
         "meta_categorie",
     ] = "Boezem boezem, aanvoer gemaal"
 
-    # some pumps have been added due to the feedback form. Assume all these nodes are afvoer gemalen
+    ribasim_model.pump.static.df.loc[
+        (ribasim_model.pump.static.df.node_id.isin(nodes_from_boezem))
+        & (ribasim_model.pump.static.df.node_id.isin(nodes_to_boezem))
+        & (ribasim_model.pump.static.df.meta_func_aanvoer == 0)
+        & (ribasim_model.pump.static.df.meta_func_afvoer == 0),
+        "meta_categorie",
+    ] = "Boezem boezem, aanvoer afvoer gemaal"
+
+    # some pumps have been added manually. Assume all these nodes are afvoer gemalen if no data is supplied.
     ribasim_model.pump.static.df.fillna({"meta_func_afvoer": 1}, inplace=True)
     ribasim_model.pump.static.df.fillna({"meta_func_aanvoer": 0}, inplace=True)
     ribasim_model.pump.static.df.fillna({"meta_func_circulatie": 0}, inplace=True)
+
+    # raise error if there are still nodes without a meta_categorie
+    if ribasim_model.outlet.static.df["meta_categorie"].isna().any():
+        missing_outlets = ribasim_model.outlet.static.df[ribasim_model.outlet.static.df["meta_categorie"].isna()]
+        print("The following outlets are missing a meta_categorie:")
+        print(missing_outlets)
+        raise ValueError("Some outlets are missing a meta_categorie. Please check the output above.")
+    if ribasim_model.pump.static.df["meta_categorie"].isna().any():
+        missing_pumps = ribasim_model.pump.static.df[ribasim_model.pump.static.df["meta_categorie"].isna()]
+        print("The following pumps are missing a meta_categorie:")
+        print(missing_pumps)
+        raise ValueError("Some pumps are missing a meta_categorie. Please check the output above.")
+
+    # remove meta_type_verbinding if it exists, as this is no longer relevant and may cause confusion
+    if "meta_type_verbinding" in ribasim_model.outlet.static.df.columns:
+        ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.drop(columns=["meta_type_verbinding"])
+    if "meta_type_verbinding" in ribasim_model.pump.static.df.columns:
+        ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=["meta_type_verbinding"])
 
 
 def set_aanvoer_flags(
@@ -2412,7 +2483,7 @@ def find_upstream_downstream_target_levels(ribasim_model: ribasim.Model, node: s
                 "meta_func_aanvoer",
                 "meta_func_circulatie",
                 "meta_type_verbinding",
-                "meta_categorie",
+                # "meta_categorie",
             ]
         ]  # prevent errors if the function is ran before
     else:
