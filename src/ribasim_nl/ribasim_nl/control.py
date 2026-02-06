@@ -1360,33 +1360,32 @@ def add_controllers_to_uncontrolled_connector_nodes(
 
 
 def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
-    """Add supply, drain and flow_control functions to the node table of peilbeheerste models.
+    """Assign `function` to connector nodes using `meta_categorie`.
 
-    Merges outlet/pump meta-function flags into `from_to_node_table` and derives a
-    single `function` label per node: `drain`, `supply`, or `flow_control`. Flushing is not included (yet).
+    Merges outlet/pump meta flags into `from_to_node_table`, then assigns a single
+    `function` label per node based on category lists:
+    - `supply` (inlaat/aanvoer)
+    - `flow_control` (doorlaat)
+    - `drain` (uitlaat/afvoer)
+
+    Flushing is not handled here.
 
     Parameters
     ----------
     model : Model
         Ribasim model containing outlet and pump static tables.
     from_to_node_table : gpd.GeoDataFrame
-        Node table with connector nodes, indexed by node_id and including
-        from_node_id/to_node_id columns (e.g. from `get_node_table_with_from_to_node_ids`).
+        Connector-node table indexed by `node_id`, including `from_node_id`/`to_node_id`
+        (e.g. from `get_node_table_with_from_to_node_ids`).
 
     Returns
     -------
     gpd.GeoDataFrame
-        Input table with `function` column added and intermediate meta flags removed.
+        Same table with `function` set and helper meta columns removed.
     """
-    # select connector nodes including their functions
-    outlet_nodes = model.outlet.static.df[["node_id", "meta_aanvoer"]].copy()
-    pump_nodes = model.pump.static.df[["node_id", "meta_func_afvoer", "meta_func_aanvoer"]].copy()
-
-    # convert to bool, sync column names
-    outlet_nodes = outlet_nodes.astype({"meta_aanvoer": "bool"})
-    outlet_nodes["meta_afvoer"] = True  # outlets are assumed to always be able to drain
-    pump_nodes = pump_nodes.astype({"meta_func_afvoer": "bool", "meta_func_aanvoer": "bool"})
-    pump_nodes = pump_nodes.rename(columns={"meta_func_afvoer": "meta_afvoer", "meta_func_aanvoer": "meta_aanvoer"})
+    # select connector nodes including their categories
+    outlet_nodes = model.outlet.static.df[["node_id", "meta_categorie"]].copy()
+    pump_nodes = model.pump.static.df[["node_id", "meta_categorie"]].copy()
 
     # merge the functions to the from_to_node_table for both outlets and pumps
     outlet_pumps = pd.concat([outlet_nodes, pump_nodes])
@@ -1397,16 +1396,59 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
         how="left",
     ).set_index("node_id")
 
-    # add column 'function': only meta_afvoer => drain, only meta_aanvoer => supply, both => flow_control
-    from_to_node_table["function"] = "flow_control"
-    from_to_node_table.loc[from_to_node_table["meta_afvoer"] & ~from_to_node_table["meta_aanvoer"], "function"] = (
-        "drain"
-    )
-    from_to_node_table.loc[~from_to_node_table["meta_afvoer"] & from_to_node_table["meta_aanvoer"], "function"] = (
-        "supply"
-    )
+    # select all supply categories from identify_node_metacatgory
+    supply_categories = [
+        "Inlaat boezem, stuw",
+        "Inlaat boezem, aanvoer gemaal",
+        "Uitlaat boezem, aanvoer gemaal",
+        "Aanvoer gemaal peilgebied peilgebied",
+        "Uitlaat buitenwater peilgebied, aanvoer gemaal",
+        "Inlaat buitenwater peilgebied, stuw",
+        "Uitlaat buitenwater boezem, aanvoer gemaal",
+        "Inlaat buitenwater boezem, stuw",
+        "Inlaat buitenwater boezem, aanvoer gemaal",
+        "Boezem boezem, aanvoer gemaal",
+        "Inlaat buitenwater peilgebied, aanvoer gemaal",
+        # strictly not supply, but treat them as supply to prevent a LB fully discharging on a peilgebied. Will be fixed when coupling.
+        "Uitlaat buitenwater peilgebied, stuw",
+        "Inlaat buitenwater peilgebied, afvoer gemaal",
+        "Inlaat buitenwater boezem, afvoer gemaal",
+    ]
 
-    # discard unneeded columns
-    from_to_node_table = from_to_node_table.drop(columns=["meta_afvoer", "meta_aanvoer"])
+    # select all doorlaat (flow_control) categories from identify_node_metacatgory
+    doorlaat_categories = [
+        "Boezem boezem, stuw",
+        "Inlaat uitlaat peilgebied peilgebied, stuw",
+        "Uitlaat buitenwater peilgebied, aanvoer afvoer gemaal",
+        "Inlaat buitenwater peilgebied, aanvoer afvoer gemaal",
+        "Inlaat buitenwater boezem, aanvoer afvoer gemaal",
+        "Boezem boezem, aanvoer afvoer gemaal",
+    ]
 
+    # select all drain categories from identify_node_metacatgory
+    drain_categories = [
+        "Inlaat boezem, afvoer gemaal",
+        "Uitlaat boezem, stuw",
+        "Uitlaat boezem, afvoer gemaal",
+        "Uitlaat peilgebied peilgebied, stuw",
+        "Afvoer gemaal peilgebied peilgebied",
+        "Afvoer aanvoer gemaal peilgebied peilgebied",
+        "Uitlaat buitenwater peilgebied, afvoer gemaal",
+        "Uitlaat buitenwater boezem, stuw",
+        "Uitlaat buitenwater boezem, afvoer gemaal",
+        "Boezem boezem, afvoer gemaal",
+    ]
+
+    # if meta_categorie is in supply_categories, set function to supply (overwriting previous function if needed)
+    # from_to_node_table.loc[from_to_node_table["meta_categorie"].str.contains("Inlaat", na=False), "function"] = "supply"
+    from_to_node_table.loc[from_to_node_table["meta_categorie"].isin(supply_categories), "function"] = "supply"
+    from_to_node_table.loc[from_to_node_table["meta_categorie"].isin(doorlaat_categories), "function"] = "flow_control"
+    from_to_node_table.loc[from_to_node_table["meta_categorie"].isin(drain_categories), "function"] = "drain"
+
+    # raise ValueError if there are still any nodes with function missing (NaN)
+    if from_to_node_table["function"].isna().any():
+        missing = from_to_node_table[from_to_node_table["function"].isna()]
+        raise ValueError(
+            f"Some nodes are missing a function after merging meta_categorie. Please check the following nodes and their meta_categorie:\n{missing[['from_node_id', 'to_node_id', 'meta_categorie']]}"
+        )
     return from_to_node_table
