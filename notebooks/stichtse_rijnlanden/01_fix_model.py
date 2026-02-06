@@ -605,7 +605,6 @@ model.outlet.node.df.loc[
 ] = True
 
 # remove_nodes
-model.remove_node(node_id=251, remove_links=True)
 model.remove_node(node_id=482, remove_links=True)
 model.remove_node(node_id=93, remove_links=True)
 model.remove_node(node_id=1344, remove_links=True)
@@ -614,11 +613,14 @@ model.remove_node(node_id=470, remove_links=True)
 model.remove_node(node_id=198, remove_links=True)
 model.remove_node(node_id=139, remove_links=True)
 model.remove_node(node_id=173, remove_links=True)
-model.remove_node(node_id=252, remove_links=True)
+model.remove_node(node_id=251, remove_links=True)
 model.remove_node(node_id=884, remove_links=True)
 model.remove_node(node_id=934, remove_links=True)
 model.remove_node(node_id=748, remove_links=True)
-model.remove_node(node_id=2)
+model.remove_node(node_id=77, remove_links=True)
+model.remove_node(node_id=27, remove_links=True)
+model.remove_node(node_id=68, remove_links=True)
+
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node_table().df
