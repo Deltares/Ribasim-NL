@@ -29,9 +29,7 @@ def make_depth_profiles(
         lambda g: shapely.LineString(g) if len(g) > 1 else None
     )
     profile_lines.dropna(inplace=True)
-    return gpd.GeoDataFrame(
-        {"profiellijnid": profile_lines.index}, geometry=profile_lines.values, crs=profile_points.crs
-    )
+    return gpd.GeoDataFrame({"line_id": profile_lines.index}, geometry=profile_lines.values, crs=profile_points.crs)
 
 
 def depth_from_hydrotopes(
