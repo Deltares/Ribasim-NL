@@ -1420,7 +1420,7 @@ def set_aanvoer_flags(
 
     # reset ribasim model
     ribasim_model = so.model
-    return ribasim_model
+    return
 
 
 def load_model_settings(file_path):
