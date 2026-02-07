@@ -600,6 +600,7 @@ def add_controllers_to_drain_nodes(
     target_level_column: str = "meta_streefpeil",
     control_node_offset: float = 10,
     control_node_angle: int = 90,
+    max_flow_capacity: float = 100,
     name: str = "uitlaat",
     update_meta_info: bool = True,
 ):
@@ -619,6 +620,8 @@ def add_controllers_to_drain_nodes(
         Offset control-node with respect to connector-node, by default 10
     control_node_angle : int, optional
         Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
+    max_flow_capacity : float, optional
+        Maximum drain capacity [m3/s] applied in drain-state, by default 100
     name : str, optional
         Name assigned to control-nodes, by default "uitlaat"
     update_meta_info: bool, optional
@@ -672,7 +675,7 @@ def add_controllers_to_drain_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
-                    flow_rate=[0, 100],
+                    flow_rate=[0, max_flow_capacity],
                     max_flow_rate=[0, original_max_flow_rate],
                     control_state=control_state,
                 )
@@ -1079,6 +1082,7 @@ def add_controllers_to_connector_nodes(
     node_functions_df: gpd.GeoDataFrame,
     level_difference_threshold: float,
     target_level_column: str = "meta_streefpeil",
+    drain_capacity: float = 100,
 ):
     """Add controllers to connector nodes per function
 
@@ -1109,6 +1113,8 @@ def add_controllers_to_connector_nodes(
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
     target_level_column : str, optional
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
+    drain_capacity : float, optional
+        Maximum drain capacity [m3/s] for drain nodes, by default 100
     """
     # make sure add-api will not duplicate node-ids
     model._update_used_ids()
@@ -1125,7 +1131,11 @@ def add_controllers_to_connector_nodes(
     # add drain nodes
     drain_nodes_df = node_functions_df[node_functions_df["function"] == "drain"]
     if not drain_nodes_df.empty:
-        add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
+        add_controllers_to_drain_nodes(
+            model=model,
+            drain_nodes_df=drain_nodes_df,
+            max_flow_capacity=drain_capacity,
+        )
 
     # add flow control nodes
     flow_control_nodes_df = node_functions_df[node_functions_df["function"] == "flow_control"]
@@ -1451,4 +1461,5 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
         raise ValueError(
             f"Some nodes are missing a function after merging meta_categorie. Please check the following nodes and their meta_categorie:\n{missing[['from_node_id', 'to_node_id', 'meta_categorie']]}"
         )
+
     return from_to_node_table
