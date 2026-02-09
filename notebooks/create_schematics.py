@@ -31,7 +31,7 @@ OFFSETS = {
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["StichtseRijnlanden"]
+AUTHORITIES = ["StichtseRijnlanden", "AaenMaas"]
 ADD_TOP10_NL = {
     "StichtseRijnlanden": [
         "Vecht",
@@ -59,13 +59,28 @@ ADD_TOP10_NL = {
         "Noordervaart",
         "Kanaal Wessem-Nederweert",
         "Kanaal van Deurne",
+        "De Raam",
+        "Lage Raam",
+        "Hoge Raam",
+        "Graafsche Raam",
         "Helenavaart",
+        "Hertogswetering",
+        "Leigraaf",
+        "Leijgraaf",
+        "Hertogswetering|Putwielen",
         "Defensie- of Peelkanaal",
-        "PeelkanaalLage Raam",
+        "Peelkanaal",
         "De Dieze",
         "Gekanaliseerde Dieze",
         "Dommel",
+        "Burgemeester Delenkanaal",
+        "De Vliet",
+        "Teefelse Wetering",
         "Afwateringskanaal 's-Hertogenbosch - Drongelen",
+        "Máximakanaal",
+        "Sambeekse Uitwatering",
+        "Groote Wetering",
+        "Ertveld Plas",
     ],
     "Noorderzijlvest": [
         "Van Starkenborghkanaal",
