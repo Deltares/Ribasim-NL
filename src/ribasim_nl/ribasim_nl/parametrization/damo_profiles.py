@@ -1,3 +1,4 @@
+# %%
 import geopandas as gpd
 import pandas as pd
 from pydantic import BaseModel, ConfigDict

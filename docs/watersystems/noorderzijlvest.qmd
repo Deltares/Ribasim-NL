@@ -1,0 +1,81 @@
+# Noorderzijlvest
+
+- Laatst bijgewerkt: 28-01-2026
+- Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
+
+## Systeembeschrijving
+![Systeembeschrijving Noorderzijlvest](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/noorderzijlvest.svg)
+
+### Inlaat Gaarkeuken
+- Bij `Gaarkeuken` kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.
+- Een deel daarvan (tot 20 m³/s) kan via `gemaal Dorkwerd` worden opgepompt richting waterschap Hunze en Aa’s.
+- Water dat op de Electraboezem nodig is, wordt via de sluis bij `Gaarkeuken` ingelaten; overschot wordt afgevoerd richting het `Lauwersmeer`.
+- Praktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via `Dorkwerd` naar Hunze en Aa's (Eemskanaalboezem).
+
+### Electraboezem
+Het witte gebied op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen `H.D. Louwes` en `De Waterwolf` — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de `Cleveringsluizen` op de Waddenzee.
+
+
+### Peizerdiep
+In afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.
+
+In het zuidoosten wordt via een reeks kleinere inlaten — `Jonkersbrug`, `Ter Aard`, `Huis ter Heide`, `Heideheimheem`, `Meerweg` vanuit Hunze en Aa's en Drents Overijsselse Delta water ingelaten.
+
+### Jonkersvaart
+Dit gebied voert water af naar de Electraboezem via de uitlaat `Leek` en het Dwarsdiep.
+
+De wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij `Leek`, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via `Leek` wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.
+
+### Noordpolder en Spijksterpompen
+De noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (`Noordpolderzijl` en `Spijksterpompen`).
+
+In droge periodes wordt water uit de Electraboezem (via boezemgemalen `Stad en Lande` en  `Schaphalsterzijl`) met kleine poldergemalen naar de kustpolders opgemalen.
+
+### De Fivelingoboezem
+Loost via gemaal `De Drie Delfzijlen` bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de `Oostersluis`. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij `Spijksterpompen`.
+
+### Marnerwaard
+Marnerwaard loost water via `Nieuw Robbengat` op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.
+
+In droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de `Herculesstuw`.
+
+### Dongeradeel
+Dongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal `Dongeradielen` op het Lauwersmeer en via de sluis `Dokkumer Nieuwezijlen` onder vrij verval.
+
+## Capaciteiten
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+
+| naam                    | code     |   node_id | functie                |   aanvoer [m3/s] |   afvoer [m3/s] |
+|:------------------------|:---------|----------:|:-----------------------|-----------------:|----------------:|
+| Abelstok                | KGM156   |       147 | uitlaat                |            0     |           10    |
+| Allartsooginlaat        | INL201   |       698 | inlaat                 |           20     |            0    |
+| De Drie Delfzijlen      | KGM046   |        67 | uitlaat                |            0     |           25    |
+| De Waterwolf            | KGM001   |        29 | doorlaat               |           75     |           75    |
+| Dokkumer Nieuwezijlen   |          |      1755 | uitlaat                |            0     |            0    |
+| Drie-Provinciëninlaat   | INL202   |       699 | inlaat                 |           20     |            0    |
+| Frieschepaleninlaat     | INL077   |       687 | inlaat                 |           20     |            0    |
+| Gaarkeukeninlaat        |          |      1741 | inlaat                 |           24     |            0    |
+| Gemaal Dokwerd          |          |      1753 | inlaat                 |           20     |            0    |
+| Gemaal de Dongeradielen |          |      1748 | uitlaat                |            0     |            0    |
+| H.D. Louwes             | KGM002   |        30 | uitlaat                |            0     |           16.7  |
+| Heidenheeminlaat        | INL055   |      1743 | inlaat                 |            0.072 |            0    |
+| Herculesstuw            | KST0169  |       412 | uitlaat (doorspoeling) |            0.2   |           10.2  |
+| Huis ter Heide-inlaat   | INL114   |      1742 | inlaat                 |            0.105 |            0    |
+| Jonkersbruginlaat       | INL095   |      1739 | inlaat                 |            0.032 |            0    |
+| Leek                    | KGM009   |        36 | inlaat                 |            1.17  |            0    |
+| Meerweg                 |          |      1758 | inlaat                 |            0.021 |            0    |
+| Nieuwe Robbengat        | KGM016   |        42 | uitlaat                |            0     |            4.33 |
+| Noordpolderzijl         | KGM014   |        40 | uitlaat                |            0     |            4    |
+| Oostersluis             | KGM148   |       142 | inlaat                 |            2.5   |            0    |
+| R.J. Cleveringsluizen   | KSL011   |       724 | uitlaat                |            0     |          668    |
+| Schaphalsterzijl        | KGM155_i |       146 | inlaat                 |            2.5   |            0    |
+| Spijksterpompen         | KGM015   |        41 | uitlaat (doorspoeling) |            0.4   |           12.9  |
+| Stad en Lande           | KGM003_i |        32 | inlaat                 |            1.5   |            0    |
+| Ter Aardinlaat          | INL001   |      1751 | inlaat                 |            0.043 |            0    |
+
+## Bronnen
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+
+- [Documentatie Distributiemodel (Deel C, hoofdstuk 26)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
+- [Sweco - systeemschets](bronnen/noorderzijlvest/sweco_systeemschets.png)
+- [Noorderzijlvest - beschrijving wateraanvoer en doorspoeling](bronnen/noorderzijlvest/wateraanvoer_en_doorspoeling_input_voor_ribasim_lhm_model_noorderzijlvest.pdf)

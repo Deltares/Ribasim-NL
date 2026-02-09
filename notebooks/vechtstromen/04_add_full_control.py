@@ -8,7 +8,7 @@ from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
 # execute model run
-MODEL_EXEC: bool = False
+MODEL_EXEC: bool = True
 
 # model settings
 AUTHORITY: str = "Vechtstromen"
@@ -19,16 +19,18 @@ MODEL_ID: str = "2025_7_0"
 cloud = CloudStorage()
 
 # collect relevant data from the GoodCloud
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+ribasim_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/1_ontvangen_data/aanvulling feb 24/Wateraanvoergebieden.shp")
 
 cloud.synchronize(
     filepaths=[
+        qlr_path,
         aanvoer_path,
     ]
 )
+cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 # %%
 # read model
 model = Model.read(ribasim_toml)
@@ -163,6 +165,6 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
+    result = model.run()
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()
