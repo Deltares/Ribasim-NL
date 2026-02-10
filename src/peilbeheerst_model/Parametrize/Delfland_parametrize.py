@@ -301,17 +301,38 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 # manual adjustments to control settings
-from_doorlaat_to_inlaat = [167, 371, 239, 223, 306, 525, 377, 150]
+from_doorlaat_to_inlaat = [167, 371, 239, 223, 306, 525, 377, 150, 224]
 
 from_to_node_function_table.loc[from_to_node_function_table.index.isin(from_doorlaat_to_inlaat), "function"] = "supply"
 
-# outlet_copy = ribasim_model.outlet.static.df[['node_id', 'meta_categorie', 'meta_from_node_id', 'meta_to_node_id', 'meta_from_level', 'meta_to_level', 'meta_aanvoer']].copy()
-# pump_copy = ribasim_model.pump.static.df[['node_id', 'meta_categorie', 'meta_func_afvoer', 'meta_func_aanvoer', 'meta_func_circulatie', 'meta_from_node_id', 'meta_to_node_id', 'meta_from_level', 'meta_to_level']].copy()
+outlet_copy = ribasim_model.outlet.static.df[
+    [
+        "node_id",
+        "meta_categorie",
+        "meta_from_node_id",
+        "meta_to_node_id",
+        "meta_from_level",
+        "meta_to_level",
+        "meta_aanvoer",
+    ]
+].copy()
+pump_copy = ribasim_model.pump.static.df[
+    [
+        "node_id",
+        "meta_categorie",
+        "meta_func_afvoer",
+        "meta_func_aanvoer",
+        "meta_func_circulatie",
+        "meta_from_node_id",
+        "meta_to_node_id",
+        "meta_from_level",
+        "meta_to_level",
+    ]
+].copy()
 
-# prevent error from happening, temp fix
-ribasim_model = ribasim_model._update_used_ids()
-ribasim_model.write(ribasim_work_dir_model_toml)
-ribasim_model = Model.read(ribasim_work_dir_model_toml)
+# update node_ids
+# ribasim_model = ribasim_model._update_used_ids()
+ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
 
 add_controllers_to_connector_nodes(
     model=ribasim_model,
@@ -322,8 +343,8 @@ add_controllers_to_connector_nodes(
 )
 
 # add the meta_data to the pump and outlet tables again
-# ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.merge(outlet_copy, on="node_id", how="left")
-# ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(pump_copy, on="node_id", how="left")
+ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.merge(outlet_copy, on="node_id", how="left")
+ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(pump_copy, on="node_id", how="left")
 
 # if flow_rate is 0, set to 20
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20
