@@ -153,9 +153,9 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
     assert len(ml) == 0
 
     endpoints = []
-    endpoint_refs: list[tuple] = []  # (index, is_start)
+    endpoint_refs: list[tuple[int, bool]] = []  # (index, is_start)
 
-    for i, line in tqdm.tqdm(union_objects.geometry.items(), "Extracting hydro-objects' endpoints", len(union_objects)):
+    for i, line in tqdm.tqdm(union_objects.geometry.items(), "Extracting endpoints", len(union_objects)):
         c = (*line.coords,)
         endpoints.extend([c[0], c[-1]])
         endpoint_refs.extend([(i, True), (i, False)])
@@ -169,13 +169,13 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
     unique_labels = set(labels)
     unique_labels.discard(-1)
 
-    for label in tqdm.tqdm(unique_labels, "Define cluster centroids"):
+    for label in tqdm.tqdm(unique_labels, "Defining cluster centroids"):
         (indices,) = np.where(labels == label)
         centroid = tuple(endpoints[indices].mean(axis=0))
         for i in indices:
             snap_points[i] = centroid
 
-    for i, (index, is_start) in tqdm.tqdm(enumerate(endpoint_refs), "Updating hydro-objects' endpoints"):
+    for i, (index, is_start) in tqdm.tqdm(enumerate(endpoint_refs), "Updating hydro-objects", len(endpoint_refs)):
         if i in snap_points:
             line = union_objects.geometry.iloc[index]
             c = list(line.coords)
@@ -183,28 +183,6 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
             union_objects.loc[index, "geometry"] = shapely.LineString(c)
 
     return union_objects
-
-    # hydro_objects = connect_linestrings_within_distance(hydro_objects, buffer)
-    # hydro_objects = gpd.GeoDataFrame(geometry=[*hydro_objects.union_all().geoms], crs=hydro_objects.crs)
-    # return hydro_objects
-
-    # # check for "real" MultiLineString-entries
-    # ml = hydro_objects[hydro_objects.geometry.type == "MultiLineString"]
-    # if len(ml) > 0:
-    #     ml["n_linestring"] = ml.geometry.apply(lambda mls: len(mls.geoms))
-    #     n_ml = sum(ml["n_linestring"] > 1)
-    #     if n_ml > 0:
-    #         LOG.warning("MultiLineString-entries found when generating a graph")
-    # else:
-    #     n_ml = 0
-    #
-    # # preprocess (Multi)LineString-entries
-    # hydro_objects = connect_linestrings_within_distance(hydro_objects, buffer)
-    # if n_ml == 0:
-    #     hydro_objects.index = hydro_objects.index.droplevel(-1)
-    # elif reset_multi_index:
-    #     hydro_objects.reset_index(drop=True, inplace=True)
-    # return hydro_objects
 
 
 def generate_graph(hydro_objects: gpd.GeoDataFrame) -> nx.Graph:
