@@ -121,7 +121,9 @@ def split_hydro_objects(
             new_lines = split_line_at_point(line, p, eps=buffer)
         hydro_objects.loc[i, "geometry"] = shapely.MultiLineString(new_lines)
 
-    hydro_objects = hydro_objects.explode().reset_index(drop=True)
+    hydro_objects = hydro_objects.explode()
+    hydro_objects = hydro_objects[hydro_objects.length > 0].reset_index(drop=True)
+
     return hydro_objects
 
 
