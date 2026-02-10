@@ -1,5 +1,6 @@
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import shapely
 
 from profiles import hydrotopes as ht
@@ -92,6 +93,11 @@ def depth_from_hydrotopes(
     temp = gpd.sjoin(hydro_objects, hydrotope_map, how="left", predicate="intersects", rsuffix="map").reset_index(
         drop=False
     )
+    if temp["index_map"].isna().sum() > 0:
+        _na_index = temp["index_map"].isna()
+        _temp = gpd.sjoin_nearest(hydro_objects[_na_index], hydrotope_map, how="left", rsuffix="map")
+        temp = pd.concat([temp.dropna(), _temp])
+
     temp["overlap"] = temp.apply(
         lambda row: row["geometry"].intersection(hydrotope_map.loc[row["index_map"], "geometry"]).length, axis=1
     )
