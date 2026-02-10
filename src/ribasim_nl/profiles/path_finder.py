@@ -15,7 +15,7 @@ import networkx as nx
 import numpy as np
 import shapely
 import tqdm
-from shapely.ops import nearest_points, split
+from shapely.ops import nearest_points
 from sklearn.cluster import DBSCAN
 
 LOG = logging.getLogger(__name__)
@@ -63,8 +63,29 @@ def simplify_geodata(
     return gdf
 
 
+def cut_line_near_point(
+    line: shapely.LineString, point: shapely.Point, *, eps: float = 1e-3
+) -> shapely.LineString | shapely.MultiLineString:
+    if point.distance(line) > eps:
+        return line
+
+    distance = line.project(point)
+    if distance <= eps or distance >= line.length - eps:
+        return line
+
+    coordinates = np.array(line.coords)
+    segments = coordinates[1:] - coordinates[:-1]
+    seg_lengths = np.linalg.norm(segments, axis=1)
+    cum_lengths = np.cumsum(seg_lengths)
+    i = np.searchsorted(cum_lengths, distance) + 1
+
+    line1 = shapely.LineString([*coordinates[:i], point])
+    line2 = shapely.LineString([point, *coordinates[i:]])
+    return shapely.MultiLineString([line1, line2])
+
+
 def split_hydro_objects(
-    hydro_objects: gpd.GeoDataFrame, split_locations: gpd.GeoDataFrame, *, buffer: float = 1e-2, redraw: bool = False
+    hydro_objects: gpd.GeoDataFrame, split_locations: gpd.GeoDataFrame, *, buffer: float = 1e-2
 ) -> gpd.GeoDataFrame:
     """Split the hydro-objects at point-locations, enforcing node-locations on the graph.
 
@@ -77,35 +98,17 @@ def split_hydro_objects(
     :return: split hydro-objects
     :rtype: geopandas.GeoDataFrame
     """
-    if redraw:
-        hydro_objects = (
-            gpd.GeoDataFrame(geometry=[hydro_objects.union_all()], crs=hydro_objects.crs)
-            .explode()
-            .reset_index(drop=True)
-        )
+    points = split_locations.sjoin(hydro_objects, predicate="dwithin", distance=buffer, rsuffix="line")
 
-    # select non-split locations
-    temp = split_locations.buffer(buffer).intersection(hydro_objects.union_all())
-    temp = temp[~temp.is_empty]
-    subset = split_locations[split_locations.index.isin(temp[temp.type == "LineString"].index)]
+    for p, i in tqdm.tqdm(points[["geometry", "index_line"]].values, f"Splitting hydro-objects ({buffer=})"):
+        line = hydro_objects.geometry.iloc[i]
+        hydro_objects.loc[i, "geometry"] = cut_line_near_point(line, p, eps=buffer)
 
-    # split hydro-objects
-    for p in tqdm.tqdm(subset.geometry.values, "Splitting hydro-objects at crossings"):
-        dist = p.distance(hydro_objects.geometry.values)
-        if sum(dist < buffer) == 1:
-            (line,) = hydro_objects.loc[dist < buffer, "geometry"].values
-            _p = line.interpolate(line.project(p))
-            hydro_objects.loc[dist < buffer, "geometry"] = shapely.MultiLineString(split(line, _p))
-
-    if redraw:
-        hydro_objects = hydro_objects.explode().reset_index(drop=True)
-
+    hydro_objects = hydro_objects.explode().reset_index(drop=True)
     return hydro_objects
 
 
-def fully_connected_network(
-    hydro_objects: gpd.GeoDataFrame, *, buffer: float = 1e-2, reset_multi_index: bool = True
-) -> gpd.GeoDataFrame:
+def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 1e-2) -> gpd.GeoDataFrame:
     """Ensure the hydro-objects are properly connected.
 
     In using a buffer, hydro-objects are fully connected by searching for other hydro-objects at the endpoints within a
