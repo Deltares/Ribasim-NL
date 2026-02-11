@@ -99,9 +99,11 @@ def estimate_width(
 
     :param hydro_objects: geospatial data of hydro-objects
     :param bgt_data: geospatial data with BGT-polygons
+    :param drop_na: drop hydro-objects with undefined width estimates, defaults to True
 
     :type hydro_objects: geopandas.GeoDataFrame
     :type bgt_data: geopandas.GeoDataFrame
+    :type drop_na: bool, optional
 
     :return: hydro-objects with width-estimates
     :rtype: geopandas.GeoDataFrame
