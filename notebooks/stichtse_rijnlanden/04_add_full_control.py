@@ -18,7 +18,7 @@ AUTHORITY: str = "StichtseRijnlanden"  # authority
 SHORT_NAME: str = "hdsr"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
-
+FLUSHING_SEASONAL: bool = False  # True = Apr–Oct aan (cyclisch), False = altijd aan (constant)
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 746: Oudewater sluis
@@ -46,10 +46,10 @@ model = Model.read(ribasim_toml)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
-# alle uitlaten en inlaten op 50m3/s, geen cap verdeling. Dit wordt de max flow in model.
+# alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
-model.outlet.static.df.flow_rate = 30
-model.pump.static.df.flow_rate = 30
+model.outlet.static.df.max_flow_rate = model.outlet.static.df.flow_rate
+model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
 # %%
 # Identificeren aanvoerknopen en voorzien van afvoercapaciteit
@@ -78,7 +78,7 @@ for node_type in CONTROL_NODE_TYPES:
 
     mask = static_df.node_id.isin(node_ids) & ((static_df.flow_rate == 0) | (static_df.flow_rate.isna()))
 
-    static_df.loc[mask, "flow_rate"] = 20
+#    static_df.loc[mask, "flow_rate"] = 20
 
 # %% model fixes
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
@@ -114,7 +114,6 @@ model.reverse_link(link_id=2073)
 model.reverse_link(link_id=24)
 
 model.update_node(node_id=730, node_type="ManningResistance")
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "max_flow_rate"] = 20
 
 # %%
 # Toevoegen Kromme Rijn/ARK
@@ -495,11 +494,10 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
 # handmatig opgegeven flow control nodes definieren
 # 405: AF0095
 # 636: Trappersheul
-# 777: Cothen stuw
+
 # 778: ST3912
 # 814: ST6055
 # 809: Hoek de stuw
-# 919: Werkhoven
 # 1036: ST5011
 # 1063: Prinses Irenebrug
 # 1154: ST0479
@@ -522,7 +520,6 @@ flow_control_nodes = [
     778,
     809,
     814,
-    919,
     1010,
     1011,
     1033,
@@ -604,6 +601,11 @@ supply_nodes = [
 
 drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 887]
 
+
+# Flushing nodes
+# 919: Werkhoven
+flushing_nodes = {919: 5}
+
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
 add_controllers_to_uncontrolled_connector_nodes(
@@ -611,18 +613,24 @@ add_controllers_to_uncontrolled_connector_nodes(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
     us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
+    flushing_seasonal=FLUSHING_SEASONAL,
 )
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
 model.pump.static.df.loc[model.pump.static.df.node_id == 536, "max_downstream_level"] -= 0.01
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1344, "max_downstream_level"] -= 0.01
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1345, "max_downstream_level"] -= 0.01
 
 # 3 sifons, 468,469,470 onder Ark wordt later ingeschakeld dan inlaat Vreeswijk
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 468, "max_downstream_level"] -= 0.01
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 469, "max_downstream_level"] -= 0.01
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstream_level"] -= 0.01
 
+# Caspargauw gaat pas leveren als Wijk bij Duurstede aanvoer te laag is
+model.pump.static.df.loc[model.pump.static.df.node_id == 601, "max_downstream_level"] -= 0.01
 
 # %% Junctionfy(!)
 model = junctionify(model)
