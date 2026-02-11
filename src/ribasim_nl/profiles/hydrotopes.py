@@ -4,6 +4,7 @@ import dataclasses
 import typing
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from ribasim_nl import CloudStorage
@@ -197,9 +198,12 @@ class Hydrotope:
     name: str
     depths: tuple[float, float, float, float]
 
+    thresholds: tuple[float, float, float] = dataclasses.field(default=(1, 3, 6), init=False, repr=False)
+
     def __post_init__(self):
         """Post-initiation input validation."""
         assert len(self.depths) == 4
+        assert len(self.thresholds) == 3
 
     def depth(self, width: float) -> float:
         """Representative depth of hydrotope based on the width.
@@ -210,13 +214,7 @@ class Hydrotope:
         :return: representative depth
         :rtype: float
         """
-        if width < 1:
-            return self.depths[0]
-        elif width < 3:
-            return self.depths[1]
-        elif width < 6:
-            return self.depths[2]
-        return self.depths[3]
+        return self.depths[np.searchsorted(self.thresholds, width)]
 
 
 def get_hydrotopes_map(
