@@ -73,9 +73,12 @@ def couple_bgt_to_hydro_objects(
         return out
 
     # couple BGT-data to hydro-objects
+    # > main route coupling
     main_route = hydro_objects["main-route"].to_numpy(dtype=bool)
     ct1 = couple_bgt(hydro_objects[main_route], bgt_data)
-    ct2 = couple_bgt(hydro_objects[~main_route], bgt_data[~bgt_data.index.isin(itertools.chain(*ct1.values))])
+    # > non-main route coupling
+    used_bgt = set(itertools.chain(*ct1.values))
+    ct2 = couple_bgt(hydro_objects[~main_route], bgt_data[~bgt_data.index.isin(used_bgt)])
 
     # write BGT-coupling to hydro-objects
     couple_table = pd.concat([ct1, ct2], axis=0, ignore_index=False, sort=True)
@@ -90,7 +93,7 @@ def couple_bgt_to_hydro_objects(
 
 # TODO: Decide on how to deal with NaNs. Current implementation: Drop NaNs
 def estimate_width(
-    hydro_objects: gpd.GeoDataFrame, bgt_data: gpd.GeoDataFrame, *, dropna: bool = True
+    hydro_objects: gpd.GeoDataFrame, bgt_data: gpd.GeoDataFrame, *, drop_na: bool = True
 ) -> gpd.GeoDataFrame:
     """Estimate representative width of hydro-objects based on BGT-data.
 
@@ -150,11 +153,11 @@ def estimate_width(
     def representative_width(indices: list[int]) -> float | None:
         """Take the mean of estimated widths of all connected polygons."""
         if indices:
-            return float(np.mean([width_calculator(bgt_data.loc[i, "geometry"]) for i in indices]))
+            return float(np.mean([width_calculator(bgt_data.geometry.iloc[i]) for i in indices]))
         return None
 
     # assign representative width estimates to the hydro-objects
     hydro_objects["width"] = hydro_objects["index_bgt"].apply(representative_width)
-    if dropna:
+    if drop_na:
         hydro_objects.dropna(subset="width", inplace=True, ignore_index=True)
     return hydro_objects
