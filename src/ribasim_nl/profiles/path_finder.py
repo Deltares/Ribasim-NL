@@ -109,6 +109,7 @@ def split_hydro_objects(
     :return: split hydro-objects
     :rtype: geopandas.GeoDataFrame
     """
+    hydro_objects["geometry"] = hydro_objects.force_2d()
     points = split_locations.sjoin(hydro_objects, predicate="dwithin", distance=buffer, rsuffix="line")
 
     for p, i in tqdm.tqdm(points[["geometry", "index_line"]].values, "Splitting hydro-objects"):
