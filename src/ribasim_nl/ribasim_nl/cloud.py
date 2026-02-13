@@ -248,7 +248,7 @@ class CloudStorage:
                 auth=self.auth,
             )
 
-    def download_content(self, url: str, overwrite: bool = False) -> None:
+    def download_content(self, url: str, overwrite: bool = True) -> None:
         """Download content of a directory recursively."""
         # get all content (files and directories from url)
         content = self.content(url)
@@ -450,7 +450,7 @@ class CloudStorage:
 
         return ModelVersion(model, today.year, today.month, revision)
 
-    def synchronize(self, filepaths: list[Path], check_on_remote: bool = True) -> None:
+    def synchronize(self, filepaths: list[Path], check_on_remote: bool = True, overwrite: bool = True) -> None:
         for path in filepaths:
             path = Path(path)
             url = self.joinurl(*path.relative_to(self.data_dir).parts)
@@ -459,15 +459,20 @@ class CloudStorage:
                 r = requests.head(url, auth=self.auth)
                 r.raise_for_status()
 
-            # check if file exists local, if not download
-            if not path.exists():
+            # check if file exists local, if not download (or force overwrite)
+            if overwrite or not path.exists():
                 print(f"download data for {path}")
 
                 if path.suffix == ".shp":  # with shapes we are to download the parent
                     path = path.parent
                     url = self.joinurl(*path.relative_to(self.data_dir).parts)
 
-                if self.content(url):
-                    self.download_content(url)
-                else:
-                    self.download_file(url)
+                try:
+                    if self.content(url):
+                        self.download_content(url, overwrite=overwrite)
+                    else:
+                        self.download_file(url)
+                except requests.HTTPError as exc:
+                    if check_on_remote or exc.response is None or exc.response.status_code != 404:
+                        raise
+                    logger.warning("remote path not found, skipping: %s", url)
