@@ -124,7 +124,6 @@ kwk_media_path = cloud.joinpath("Rijkswaterstaat/verwerkt/kwk_media.csv")
 
 cloud.synchronize(
     filepaths=[
-        baseline,
         krw_lichaam,
         kwk_media_path,
         nis_hws,
@@ -136,6 +135,7 @@ cloud.synchronize(
         primaire_kunstwerken,
     ]
 )
+cloud.synchronize(filepaths=[baseline], overwrite=False)
 
 # output
 hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")

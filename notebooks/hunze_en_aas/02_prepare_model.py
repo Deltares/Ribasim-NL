@@ -30,7 +30,8 @@ profielen_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20230606_H
 peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/peilgebieden.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg, hydamo_gpkg, profielen_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_path, hydamo_gpkg, profielen_gpkg])
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 # %% init things
 model = Model.read(ribasim_toml)

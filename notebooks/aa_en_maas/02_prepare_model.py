@@ -37,13 +37,13 @@ cloud.synchronize(
     filepaths=[
         peilgebieden_path,
         stuwen_shp,
-        top10NL_gpkg,
         profiles_gpkg,
         aam_data_gpkg,
         waterschap_grenzen,
         rws_waterschap_grenzen,
     ]
 )
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

@@ -45,7 +45,6 @@ waterinlaten = cloud.joinpath(authority, r"verwerkt/1_ontvangen_data/aanvulling 
 
 cloud.synchronize(
     filepaths=[
-        top10NL_gpkg,
         profielpunt_shp,
         profiellijn_shp,
         peilgebieden_RD,
@@ -56,6 +55,7 @@ cloud.synchronize(
         hydamo_gpkg,
     ]
 )
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %% init things

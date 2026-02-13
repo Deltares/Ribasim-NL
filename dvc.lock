@@ -169,15 +169,15 @@ stages:
     deps:
     - path: notebooks/stichtse_rijnlanden
       hash: md5
-      md5: 3d1c503482924830c01dfb0d4e3db6de.dir
-      size: 60631
+      md5: e32693210690693c6bf6340ee47c24be.dir
+      size: 62884
       nfiles: 4
     outs:
     - path:
         data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
       hash: md5
-      md5: 69d130f969f45030e2ae28adb2425d92.dir
-      size: 16580801
+      md5: 30e40811ef48422baed1601f2cbd0aa0.dir
+      size: 16584897
       nfiles: 2
   bathymetry:
     cmd: uv run python notebooks/rijkswaterstaat/1_bathymetrie.py
