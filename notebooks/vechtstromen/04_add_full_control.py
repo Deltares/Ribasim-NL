@@ -30,7 +30,6 @@ cloud.synchronize(
         aanvoer_path,
     ]
 )
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 # %%
 # read model
 model = Model.read(ribasim_toml)

@@ -42,7 +42,6 @@ cloud.synchronize(
     ]
 )
 cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 bbox = None
 # init classes

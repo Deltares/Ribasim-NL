@@ -450,14 +450,13 @@ class CloudStorage:
 
         return ModelVersion(model, today.year, today.month, revision)
 
-    def synchronize(self, filepaths: list[Path], check_on_remote: bool = True, overwrite: bool = True) -> None:
+    def synchronize(self, filepaths: list[Path], overwrite: bool = True) -> None:
         for path in filepaths:
             path = Path(path)
             url = self.joinurl(*path.relative_to(self.data_dir).parts)
             # check if file exists on remote, if not raise for status
-            if check_on_remote:
-                r = requests.head(url, auth=self.auth)
-                r.raise_for_status()
+            r = requests.head(url, auth=self.auth)
+            r.raise_for_status()
 
             # check if file exists local, if not download (or force overwrite)
             if overwrite or not path.exists():
@@ -467,12 +466,7 @@ class CloudStorage:
                     path = path.parent
                     url = self.joinurl(*path.relative_to(self.data_dir).parts)
 
-                try:
-                    if self.content(url):
-                        self.download_content(url, overwrite=overwrite)
-                    else:
-                        self.download_file(url)
-                except requests.HTTPError as exc:
-                    if check_on_remote or exc.response is None or exc.response.status_code != 404:
-                        raise
-                    logger.warning("remote path not found, skipping: %s", url)
+                if self.content(url):
+                    self.download_content(url, overwrite=overwrite)
+                else:
+                    self.download_file(url)

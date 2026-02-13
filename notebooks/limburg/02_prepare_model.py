@@ -30,7 +30,6 @@ top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 cloud.synchronize(filepaths=[stuwen_shp, hydamo_gpkg, profielen_gpkg])
 cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

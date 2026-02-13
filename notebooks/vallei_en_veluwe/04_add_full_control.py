@@ -27,7 +27,6 @@ aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/1_ontvangen_data/Na_levering_
 
 
 cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # read model
 model = Model.read(ribasim_toml)
