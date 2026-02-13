@@ -205,19 +205,14 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/verwerkt/bathymetrie
       hash: md5
-      md5: f7fb6f3b7acbc6aef28561bdfbd73620.dir
-      size: 770731640
-      nfiles: 4
+      md5: 578e06b03fda41973f96f1662dd28de4.dir
+      size: 276892759
+      nfiles: 3
     - path: notebooks/rijkswaterstaat
       hash: md5
-      md5: 43310f018dc47409e9913f5aee4fa755.dir
-      size: 94730
+      md5: 2bf5b04a1a610806906629fbf40fcc3e.dir
+      size: 94816
       nfiles: 13
-    - path: src/ribasim_nl/ribasim_nl
-      hash: md5
-      md5: 831b42047d6044bf9f75be7ceeac3c54.dir
-      size: 471039
-      nfiles: 60
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
