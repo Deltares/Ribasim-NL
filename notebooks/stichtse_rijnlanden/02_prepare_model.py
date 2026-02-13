@@ -27,7 +27,8 @@ peilgebieden_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden.g
 peilgebieden_vig_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden_vigerend.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_gpkg, peilgebieden_vig_gpkg, top10NL_gpkg, hydroobject_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_gpkg, peilgebieden_vig_gpkg, hydroobject_gpkg])
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

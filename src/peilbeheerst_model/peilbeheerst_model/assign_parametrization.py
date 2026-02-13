@@ -31,7 +31,7 @@ class AssignMetaData:
         self.param_file = self.cloud.joinpath(authority, "verwerkt/Parametrisatie_data", param_name)
 
     def _get_model_from_cloud(self) -> Model:
-        self.cloud.synchronize(filepaths=[self.model_dir], check_on_remote=True)
+        self.cloud.synchronize(filepaths=[self.model_dir])
         model = Model.read(self.model_dir / "ribasim.toml")
 
         return model
@@ -41,7 +41,7 @@ class AssignMetaData:
         layer: str,
     ) -> tuple[pd.DataFrame, float, float]:
         # Load the paramfile
-        self.cloud.synchronize(filepaths=[self.param_file], check_on_remote=True)
+        self.cloud.synchronize(filepaths=[self.param_file])
         df_object = gpd.read_file(self.param_file, layer=layer)
         if not df_object.index.is_unique:
             raise IndexError(f"The index of {layer=} is not unique")

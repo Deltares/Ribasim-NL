@@ -70,6 +70,8 @@ venv/
 *.xlsm
 *.log
 *.lyr
+*.msg
+*.cst
 *.txt
 *.gdb/
 *.pdf
