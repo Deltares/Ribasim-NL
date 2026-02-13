@@ -64,8 +64,8 @@ cloud.synchronize(
     ]
 )
 
-# download the feedback forms, overwrite the old ones
-cloud.download_verwerkt(authority=waterschap, overwrite=True)
+# refresh only the feedback form from cloud (instead of all "verwerkt" files)
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -286,8 +286,6 @@ ribasim_param.set_aanvoer_flags(
     load_geometry_kw={"layer": "Aanvoergebied_Afvoergebied_polders"},
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 561]
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 72]
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
