@@ -75,7 +75,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0b37c64f34216b628666a8dac638b53b.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-afa37c5c79185640b9c231024f4fe5ea.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script src="../site_libs/quarto-contrib/kbd/kbd.js"></script>
 <link href="../site_libs/quarto-contrib/kbd/kbd.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
@@ -251,9 +251,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The Ribasim-NL code downloads from and uploads to <a href="../cloudstorage.html">cloud storage</a>. The password to access the cloud storage, and local directory it interacts with, both need to be configured. To be able to run the Ribasim core, it needs to either find the <code>ribasim</code> executable in the Path, or you configure it.</p>
 <p>In the root of the repository is a <code>.env.default</code> file that can serve as a template to copy to <code>.env</code>. The <code>.env</code> file is gitignored because it is different per developer, and to avoid leaking the password.</p>
 <p>Here is an example for a filled in <code>.env</code> file:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_NL_CLOUD_PASS</span><span class="ot">=</span><span class="st">your_password_here</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_NL_DATA_DIR</span><span class="ot">=</span><span class="st">c:\data\ribasim-nl</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_EXE</span><span class="ot">=</span><span class="st">c:\bin\ribasim\ribasim.exe</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_NL_CLOUD_PASS</span><span class="ot">=</span><span class="st">'your_password_here'</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_NL_DATA_DIR</span><span class="ot">=</span><span class="st">'data'</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_EXE</span><span class="ot">=</span><span class="st">'C:/bin/ribasim/ribasim.exe'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>These values will be applied using <a href="https://docs.pydantic.dev/latest/concepts/pydantic_settings/">pydantic-settings</a>. If you prefer to set these environment variables in your OS or terminal that will also work.</p>
 
 
