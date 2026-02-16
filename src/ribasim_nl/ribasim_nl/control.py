@@ -600,6 +600,7 @@ def add_controllers_to_drain_nodes(
     target_level_column: str = "meta_streefpeil",
     control_node_offset: float = 10,
     control_node_angle: int = 90,
+    max_flow_capacity: float = 100,
     name: str = "uitlaat",
     update_meta_info: bool = True,
 ):
@@ -619,6 +620,8 @@ def add_controllers_to_drain_nodes(
         Offset control-node with respect to connector-node, by default 10
     control_node_angle : int, optional
         Clock-wise (0 degrees is North) angle control-node with respect to connector-node, by default 90
+    max_flow_capacity : float, optional
+        Maximum drain capacity [m3/s] applied in drain-state, by default 100
     name : str, optional
         Name assigned to control-nodes, by default "uitlaat"
     update_meta_info: bool, optional
@@ -672,7 +675,7 @@ def add_controllers_to_drain_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
-                    flow_rate=[0, 100],
+                    flow_rate=[0, max_flow_capacity],
                     max_flow_rate=[0, original_max_flow_rate],
                     control_state=control_state,
                 )
@@ -1079,6 +1082,7 @@ def add_controllers_to_connector_nodes(
     node_functions_df: gpd.GeoDataFrame,
     level_difference_threshold: float,
     target_level_column: str = "meta_streefpeil",
+    drain_capacity: float = 100,
 ):
     """Add controllers to connector nodes per function
 
@@ -1109,6 +1113,8 @@ def add_controllers_to_connector_nodes(
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
     target_level_column : str, optional
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
+    drain_capacity : float, optional
+        Maximum drain capacity [m3/s] for drain nodes, by default 100
     """
     # make sure add-api will not duplicate node-ids
     model._update_used_ids()
@@ -1125,7 +1131,11 @@ def add_controllers_to_connector_nodes(
     # add drain nodes
     drain_nodes_df = node_functions_df[node_functions_df["function"] == "drain"]
     if not drain_nodes_df.empty:
-        add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_nodes_df)
+        add_controllers_to_drain_nodes(
+            model=model,
+            drain_nodes_df=drain_nodes_df,
+            max_flow_capacity=drain_capacity,
+        )
 
     # add flow control nodes
     flow_control_nodes_df = node_functions_df[node_functions_df["function"] == "flow_control"]
@@ -1357,3 +1367,99 @@ def add_controllers_to_uncontrolled_connector_nodes(
     if drain_set:
         drain_df = connector_df.loc[sorted(drain_set)]
         add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_df)
+
+
+def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
+    """Assign `function` to connector nodes using `meta_categorie`.
+
+    Merges outlet/pump meta flags into `from_to_node_table`, then assigns a single
+    `function` label per node based on category lists:
+    - `supply` (inlaat/aanvoer)
+    - `flow_control` (doorlaat)
+    - `drain` (uitlaat/afvoer)
+
+    Flushing is not handled here.
+
+    Parameters
+    ----------
+    model : Model
+        Ribasim model containing outlet and pump static tables.
+    from_to_node_table : gpd.GeoDataFrame
+        Connector-node table indexed by `node_id`, including `from_node_id`/`to_node_id`
+        (e.g. from `get_node_table_with_from_to_node_ids`).
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        Same table with `function` set and helper meta columns removed.
+    """
+    # select connector nodes including their categories
+    outlet_nodes = model.outlet.static.df[["node_id", "meta_categorie"]].copy()
+    pump_nodes = model.pump.static.df[["node_id", "meta_categorie"]].copy()
+
+    # merge the functions to the from_to_node_table for both outlets and pumps
+    outlet_pumps = pd.concat([outlet_nodes, pump_nodes])
+    from_to_node_table = from_to_node_table.merge(
+        outlet_pumps,
+        left_index=True,
+        right_on="node_id",
+        how="left",
+    ).set_index("node_id")
+
+    # select all supply categories from identify_node_metacatgory
+    supply_categories = [
+        "Inlaat boezem, stuw",
+        "Inlaat boezem, aanvoer gemaal",
+        "Uitlaat boezem, aanvoer gemaal",
+        "Aanvoer gemaal peilgebied peilgebied",
+        "Uitlaat buitenwater peilgebied, aanvoer gemaal",
+        "Inlaat buitenwater peilgebied, stuw",
+        "Uitlaat buitenwater boezem, aanvoer gemaal",
+        "Inlaat buitenwater boezem, stuw",
+        "Inlaat buitenwater boezem, aanvoer gemaal",
+        "Boezem boezem, aanvoer gemaal",
+        "Inlaat buitenwater peilgebied, aanvoer gemaal",
+        # strictly not supply, but treat them as supply to prevent a LB fully discharging on a peilgebied. Will be fixed when coupling.
+        "Uitlaat buitenwater peilgebied, stuw",
+        "Inlaat buitenwater peilgebied, afvoer gemaal",
+        "Inlaat buitenwater boezem, afvoer gemaal",
+    ]
+
+    # select all doorlaat (flow_control) categories from identify_node_metacatgory
+    doorlaat_categories = [
+        "Boezem boezem, stuw",
+        "Inlaat uitlaat peilgebied peilgebied, stuw",
+        "Uitlaat buitenwater peilgebied, aanvoer afvoer gemaal",
+        "Inlaat buitenwater peilgebied, aanvoer afvoer gemaal",
+        "Inlaat buitenwater boezem, aanvoer afvoer gemaal",
+        "Boezem boezem, aanvoer afvoer gemaal",
+    ]
+
+    # select all drain categories from identify_node_metacatgory
+    drain_categories = [
+        "Inlaat boezem, afvoer gemaal",
+        "Uitlaat boezem, stuw",
+        "Uitlaat boezem, afvoer gemaal",
+        "Uitlaat peilgebied peilgebied, stuw",
+        "Afvoer gemaal peilgebied peilgebied",
+        "Afvoer aanvoer gemaal peilgebied peilgebied",
+        "Uitlaat buitenwater peilgebied, afvoer gemaal",
+        "Uitlaat buitenwater boezem, stuw",
+        "Uitlaat buitenwater boezem, afvoer gemaal",
+        "Boezem boezem, afvoer gemaal",
+    ]
+
+    # if meta_categorie is in supply_categories, set function to supply (overwriting previous function if needed)
+    # from_to_node_table.loc[from_to_node_table["meta_categorie"].str.contains("Inlaat", na=False), "function"] = "supply"
+    from_to_node_table.loc[from_to_node_table["meta_categorie"].isin(supply_categories), "function"] = "supply"
+    from_to_node_table.loc[from_to_node_table["meta_categorie"].isin(doorlaat_categories), "function"] = "flow_control"
+    from_to_node_table.loc[from_to_node_table["meta_categorie"].isin(drain_categories), "function"] = "drain"
+
+    # raise ValueError if there are still any nodes with function missing (NaN)
+    if from_to_node_table["function"].isna().any():
+        missing = from_to_node_table[from_to_node_table["function"].isna()]
+        raise ValueError(
+            f"Some nodes are missing a function after merging meta_categorie. Please check the following nodes and their meta_categorie:\n{missing[['from_node_id', 'to_node_id', 'meta_categorie']]}"
+        )
+
+    return from_to_node_table
