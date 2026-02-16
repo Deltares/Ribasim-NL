@@ -16,7 +16,7 @@ def sanitize_node_table(
     node_columns = model.basin.node.columns() + meta_columns
 
     # remove names and clean columns
-    for node_type in model.node_table().df.node_type.unique():
+    for node_type in model.node.df.node_type.unique():
         table = getattr(model, pascal_to_snake_case(node_type))
 
         # copy data from one column to the other (or overwrite with default)

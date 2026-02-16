@@ -28,9 +28,7 @@ model.link.df.drop_duplicates(inplace=True)
 # %% wegschrijven fouten
 
 # niet-bestaande fouten
-mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
-    model.node_table().df.index
-)
+mask = model.link.df.to_node_id.isin(model.node.df.index) & model.link.df.from_node_id.isin(model.node.df.index)
 
 link_mist_node_df = model.link.df[~mask]
 model.link.df = model.link.df[mask]

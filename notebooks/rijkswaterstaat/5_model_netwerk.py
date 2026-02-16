@@ -421,7 +421,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
     # ]
 
     # listen_node_id = (
-    #     model.node_table()
+    #     model.node
     #     .df.reset_index()
     #     .set_index("meta_meetlocatie_code")
     #     .at[verdeelsleutel_properties["Meetlocatiecode"], "node_id"]
@@ -683,7 +683,7 @@ for row in basin_poly_gdf.itertuples():
 
     model.basin.add(basin_node, data)
 
-    nodes_series = model.node_table().df["node_type"].apply(pascal_to_snake_case)
+    nodes_series = model.node.df["node_type"].apply(pascal_to_snake_case)
 
     # connect all nodes_from to basin
     for node_id in nodes_from:

@@ -30,7 +30,7 @@ for authority in WATER_AUTHORITIES:
 
     # add Node_Data
     sheet = workbook.sheets["Node_Data"]
-    df = model.node_table().df.reset_index()[["node_id", "name", "node_type", "subnetwork_id"]]
+    df = model.node.df.reset_index()[["node_id", "name", "node_type", "subnetwork_id"]]
     sheet.range("A2").value = df.to_numpy()
 
     # add Link_Data

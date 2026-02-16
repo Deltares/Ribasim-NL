@@ -87,7 +87,7 @@ class Flushing:
             df_flushing_subset = self._dissolve_flushing_data(df_flushing_subset)
 
         # Get handles to relevant tables
-        all_nodes = model.node_table().df[["node_type", "geometry"]].copy()
+        all_nodes = model.node.df[["node_type", "geometry"]].copy()
         df_outlet_static = model.outlet.static.df.set_index("node_id").copy()
         df_pump_static = model.pump.static.df.set_index("node_id").copy()
 
@@ -238,7 +238,7 @@ class Flushing:
         uniq_times = model.basin.time.df.time.unique()
         new_flow_demand = model.flow_demand.add(
             Node(
-                model.node_table().df.index.max() + 1,
+                model.node.df.index.max() + 1,
                 Point(
                     target_node.geometry.x + self.flushing_geom_offset,
                     target_node.geometry.y,
@@ -283,7 +283,7 @@ class Flushing:
         uniq_times = model.basin.time.df.time.unique()
         new_level_demand = model.level_demand.add(
             Node(
-                model.node_table().df.index.max() + 1,
+                model.node.df.index.max() + 1,
                 Point(
                     target_node.geometry.x + self.flushing_geom_offset,
                     target_node.geometry.y,

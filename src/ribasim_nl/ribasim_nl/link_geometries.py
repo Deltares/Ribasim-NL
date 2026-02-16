@@ -61,7 +61,7 @@ def fix_link_geometries(
          If the new line is `max_straight_line_ratio` times longer than straight line distance we don't accept the geometry.
          Defaults to 5.
     """
-    node_df = model.node_table().df
+    node_df = model.node.df
     if node_ids is None:
         node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index
     for node_id in tqdm(node_ids, desc="fix line geometries"):

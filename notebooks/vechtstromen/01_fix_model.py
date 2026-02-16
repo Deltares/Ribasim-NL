@@ -146,11 +146,11 @@ for row in link_df.itertuples():
 
 # add level_boundaries at twentekanaal for later coupling
 hws_model = Model.read(hws_model_toml)
-basin_ids = hws_model.node_table().df[hws_model.node_table().df.name.str.contains("Twentekanaal")].index.to_list()
+basin_ids = hws_model.node.df[hws_model.node.df.name.str.contains("Twentekanaal")].index.to_list()
 twentekanaal_poly = hws_model.basin.area.df[hws_model.basin.area.df.node_id.isin(basin_ids)].union_all()
 
 connect_node_ids = [
-    i for i in set(link_df[["from_node_id", "to_node_id"]].to_numpy().flatten()) if i in model._used_node_ids
+    i for i in set(link_df[["from_node_id", "to_node_id"]].to_numpy().flatten()) if i in model.node.df.index
 ]
 
 for node_id in connect_node_ids:
@@ -1074,7 +1074,7 @@ model.pump.node.df["meta_gestuwd"] = True
 model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
+node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
@@ -1259,7 +1259,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node_table().df.node_type.unique():
+for node_type in model.node.df.node_type.unique():
     table = getattr(model, pascal_to_snake_case(node_type)).node
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
@@ -1276,7 +1276,7 @@ model.pump.node.df["meta_gestuwd"] = True
 model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
+node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]

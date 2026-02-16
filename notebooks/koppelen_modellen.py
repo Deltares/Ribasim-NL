@@ -83,7 +83,7 @@ def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Netw
     model = Model.read(toml_file)
 
     # Remove nodes if exists
-    node_ids = model.node_table().df.index.to_numpy()
+    node_ids = model.node.df.index.to_numpy()
     for i in remove_nodes:
         if i in node_ids:
             model.remove_node(node_id=i, remove_links=True)
