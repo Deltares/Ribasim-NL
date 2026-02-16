@@ -2633,3 +2633,67 @@ def change_outlet_func(ribasim_model: ribasim.Model, node_id: int, func: str, va
     :type value: int
     """
     change_func(ribasim_model, node_id, "outlet", func, value)
+
+
+def remove_non_free_flowing_outlets(
+    ribasim_model: ribasim.Model, to_exclude: typing.Iterable[int], threshold: float = 0, printing: bool = False
+) -> ribasim.Model:
+    """Remove outlets that are not free-flowing based on upstream/downstream level metadata.
+
+    An outlet is marked for removal when
+    ``meta_from_level - meta_to_level < -threshold``. Candidate outlets are then
+    filtered so that outlets connected to any ``LevelBoundary`` node and outlets in
+    ``to_exclude`` are kept.
+
+    This function mutates the model in place by removing selected outlet rows from
+    ``outlet.static.df`` and ``outlet.node.df``, and by removing all links connected
+    to those outlet node IDs from ``link.df``.
+
+    Args:
+        ribasim_model: Ribasim model object containing outlet, level boundary, and
+            link tables.
+        to_exclude: Iterable of outlet ``node_id`` values that must not be removed.
+        threshold: Minimum allowed downstream level excess (m); defaults to ``0``.
+        printing: If ``True``, print the number and IDs of removed outlets.
+
+    Returns
+    -------
+        The same ``ribasim_model`` instance after in-place modification.
+    """
+    non_free_flowing_outlets_ids = ribasim_model.outlet.static.df.loc[
+        ribasim_model.outlet.static.df.meta_from_level - ribasim_model.outlet.static.df.meta_to_level < -threshold,
+        "node_id",
+    ]
+
+    level_boundary_node_ids = ribasim_model.level_boundary.node.df.index
+    us_level_boundary_outlets = ribasim_model.link.df.loc[
+        ribasim_model.link.df.to_node_id.isin(level_boundary_node_ids), "from_node_id"
+    ].to_list()
+    ds_level_boundary_outlets = ribasim_model.link.df.loc[
+        ribasim_model.link.df.from_node_id.isin(level_boundary_node_ids), "to_node_id"
+    ].to_list()
+    level_boundary_outlets = set(us_level_boundary_outlets + ds_level_boundary_outlets)
+    non_free_flowing_outlets_ids = non_free_flowing_outlets_ids[
+        ~non_free_flowing_outlets_ids.isin(level_boundary_outlets)
+    ]
+
+    non_free_flowing_outlets_ids = non_free_flowing_outlets_ids[~non_free_flowing_outlets_ids.isin(to_exclude)]
+
+    ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.loc[
+        ~ribasim_model.outlet.static.df.node_id.isin(non_free_flowing_outlets_ids)
+    ]
+    ribasim_model.outlet.node.df = ribasim_model.outlet.node.df.loc[
+        ~ribasim_model.outlet.node.df.index.isin(non_free_flowing_outlets_ids)
+    ]
+
+    links_to_remove = ribasim_model.link.df.loc[
+        ribasim_model.link.df.from_node_id.isin(non_free_flowing_outlets_ids)
+        | ribasim_model.link.df.to_node_id.isin(non_free_flowing_outlets_ids)
+    ]
+    ribasim_model.link.df = ribasim_model.link.df.loc[~ribasim_model.link.df.index.isin(links_to_remove.index)]
+
+    if printing:
+        print(f"Following {len(non_free_flowing_outlets_ids)} non free flowing outlets were removed:")
+        print(non_free_flowing_outlets_ids)
+
+    return ribasim_model
