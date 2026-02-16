@@ -30,7 +30,7 @@ from ribasim_nl import CloudStorage, settings
 def get_current_max_node_id(ribasim_model: ribasim.Model) -> int:
     with warnings.catch_warnings():
         warnings.simplefilter(action="ignore", category=FutureWarning)
-        df_all_nodes = ribasim_model.node_table().df
+        df_all_nodes = ribasim_model.node.df
 
     if len(df_all_nodes) == 0:
         max_id = 1
@@ -2034,7 +2034,7 @@ def add_continuous_control_node(
             ]
         except IndexError:
             listen_targets = []
-            node_types = [ribasim_model.node_table().df.loc[i, "node_type"] for i in listen_nodes]
+            node_types = [ribasim_model.node.df.loc[i, "node_type"] for i in listen_nodes]
             for i, t in zip(listen_nodes, node_types):
                 match t.lower():
                     case "basin":

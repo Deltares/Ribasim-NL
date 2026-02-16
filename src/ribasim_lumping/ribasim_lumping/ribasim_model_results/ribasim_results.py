@@ -230,7 +230,7 @@ def plot_results_basins_ribasim_model(
     simulation_path: Path,
 ):
     ribasim_results = read_ribasim_model_results(simulation_path=simulation_path)
-    node_df = ribasim_model.node_table().df
+    node_df = ribasim_model.node.df
     assert node_df is not None
     basin_nos = node_df[node_df.node_type == "Basin"].node_id
     for basin_no in basin_nos:

@@ -35,7 +35,7 @@ class Parameterize(BaseModel):
             print("  ✅ static_data_xlsx bestaat lokaal.")
 
         # add meta_function as we will need that for further parametrization
-        if "meta_function" not in self.model.node_table().df.columns:
+        if "meta_function" not in self.model.node.df.columns:
             print("🧩 meta_function kolom ontbreekt → wordt toegevoegd via populate_function_column()")
             for node_type in ["Pump", "Outlet"]:
                 print(f"  ➕ Populeer meta_function voor {node_type}...")  # noqa: RUF001

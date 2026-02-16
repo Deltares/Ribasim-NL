@@ -12,7 +12,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
     model.link.df.loc[:, ["to_node_id"]] = model.link.df["to_node_id"].apply(lambda x: node_index[x])
 
     # renumber all node-tables (node, static, area, ...)
-    for node_type in model.node_table().df.node_type.unique():
+    for node_type in model.node.df.node_type.unique():
         ribasim_node = getattr(model, pascal_to_snake_case(node_type))
         for attr in ribasim_node.model_fields.keys():
             table = getattr(ribasim_node, attr)
@@ -54,7 +54,7 @@ def prefix_index(
     ------
         ValueError: If any node_id exceeds the max_digits limit
     """
-    node_ids = model.node_table().df.index
+    node_ids = model.node.df.index
 
     # Check if any node_id exceeds max_digits
     max_node_id = node_ids.max()
@@ -110,11 +110,11 @@ def reset_index(model: Model, node_start=1, link_start=1, original_index_postfix
         ribasim.Model: reindexed model
     """
     # only reset nodes if we have to
-    node_ids = model.node_table().df.index
+    node_ids = model.node.df.index
     node_id_min = node_ids.min()
     node_id_max = node_ids.max()
     expected_length = node_id_max - node_id_min + 1
-    if not ((node_start == node_id_min) and (expected_length == len(model.node_table().df))):
+    if not ((node_start == node_id_min) and (expected_length == len(model.node.df))):
         # create a re-index for nodes
         node_index = pd.Series(data=[i + node_start for i in range(len(node_ids))], index=node_ids).astype("int32")
         model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)

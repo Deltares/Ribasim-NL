@@ -30,7 +30,7 @@ class MissingTable(Exception):
 
 def _read_node_table(model: Model) -> gpd.GeoDataFrame:
     """Read node_table model from model."""
-    df = model.node_table().df
+    df = model.node.df
     if df is None:
         raise MissingTable(table="Node table")
     return df

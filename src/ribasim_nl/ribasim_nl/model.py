@@ -172,7 +172,7 @@ class Model(Model):
                 target="to_node_id",
                 create_using=nx.DiGraph,
             )
-            node_table_df = self.node_table().df.copy()
+            node_table_df = self.node.df.copy()
             if "meta_function" not in node_table_df.columns:
                 node_table_df.loc[:, "meta_function"] = ""
             node_attributes = node_table_df.rename(columns={"meta_function": "function"})[
@@ -191,7 +191,7 @@ class Model(Model):
 
     @property
     def next_node_id(self):
-        return self.node_table().df.index.max() + 1
+        return self.node.df.index.max() + 1
 
     @property
     def computation_time(self):
@@ -292,7 +292,7 @@ class Model(Model):
     def find_node_id(self, ds_node_id=None, us_node_id=None, **kwargs) -> int:
         """Find a node_id by it's properties"""
         # get node table
-        df = self.node_table().df
+        df = self.node.df
 
         # filter node ids by properties
         for column, value in kwargs.items():
@@ -342,7 +342,7 @@ class Model(Model):
         """Get upstream basin-profile"""
         upstream_node_id = self.upstream_node_id(node_id)
 
-        node_type = self.node_table().df.loc[upstream_node_id].node_type
+        node_type = self.node.df.loc[upstream_node_id].node_type
         if node_type != "Basin":
             raise ValueError(f"Upstream node_type is not a Basin, but {node_type}")
         else:
@@ -359,14 +359,14 @@ class Model(Model):
         """Get upstream basin-profile"""
         downstream_node_id = self.downstream_node_id(node_id)
 
-        node_type = self.node_table().df.loc[downstream_node_id].node_type
+        node_type = self.node.df.loc[downstream_node_id].node_type
         if node_type != "Basin":
             raise ValueError(f"Upstream node_type is not a Basin, but {node_type}")
         else:
             return self.basin.profile[downstream_node_id]
 
     def get_node_type(self, node_id: int):
-        return self.node_table().df.at[node_id, "node_type"]
+        return self.node.df.at[node_id, "node_type"]
 
     def get_node(self, node_id: int):
         """Return model-node by node_id"""
@@ -375,19 +375,7 @@ class Model(Model):
 
     def remove_node(self, node_id: int, remove_links: bool = False):
         """Remove node from model"""
-        node_type = self.get_node_type(node_id)
-
-        # read existing table
-        table = getattr(self, pascal_to_snake_case(node_type))
-
-        # remove node from all tables
-        for attr in table.model_fields.keys():
-            df = getattr(table, attr).df
-            if df is not None:
-                if "node_id" in df.columns:
-                    getattr(table, attr).df = df[df.node_id != node_id]
-                else:
-                    getattr(table, attr).df = df[df.index != node_id]
+        self._remove_node_id(node_id)
 
         if remove_links and (self.link.df is not None):
             for row in self.link.df[self.link.df.from_node_id == node_id].itertuples():
@@ -398,10 +386,6 @@ class Model(Model):
                 self.remove_link(
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
-
-        # remove from used node-ids so we can add it again in the same table
-        if node_id in table._parent._used_node_ids:
-            table._parent._used_node_ids.node_ids.remove(node_id)
 
     def update_node(self, node_id, node_type, data: list | None = None, node_properties: dict = {}):
         existing_node_type = self.node_table().df.at[node_id, "node_type"]
@@ -424,8 +408,8 @@ class Model(Model):
                     getattr(table, attr).df = df[df.index != node_id]
 
         # remove from used node-ids so we can add it again in the same table
-        if node_id in table._parent._used_node_ids:
-            table._parent._used_node_ids.node_ids.remove(node_id)
+        if node_id in table._parent.node._used_node_ids:
+            table._parent.node._used_node_ids.node_ids.remove(node_id)
 
         # add to table
         table = getattr(self, pascal_to_snake_case(node_type))
@@ -727,7 +711,7 @@ class Model(Model):
         self.basin.area.df = pd.concat([self.basin.area.df, area_df])
 
     def move_node(self, node_id: int, geometry: Point):
-        node_type = self.node_table().df.at[node_id, "node_type"]
+        node_type = self.node.df.at[node_id, "node_type"]
 
         # read existing table
         table = getattr(self, pascal_to_snake_case(node_type))
@@ -814,7 +798,7 @@ class Model(Model):
             raise ValueError("Assign a Basin Node to your model first")
 
     def reset_link_geometry(self, link_ids: list | None = None):
-        node_df = self.node_table().df
+        node_df = self.node.df
         if link_ids is not None:
             df = self.link.df[self.link.df.index.isin(link_ids)]
         else:
@@ -828,12 +812,12 @@ class Model(Model):
 
     @property
     def link_from_node_type(self):
-        node_df = self.node_table().df
+        node_df = self.node.df
         return self.link.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
     @property
     def link_to_node_type(self):
-        node_df = self.node_table().df
+        node_df = self.node.df
         return self.link.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
     def split_basin(
@@ -980,7 +964,7 @@ class Model(Model):
 
         if node_id not in self.basin.node.df.index:
             raise ValueError(f"{node_id} is not a basin")
-        to_node_type = self.node_table().df.at[to_node_id, "node_type"]
+        to_node_type = self.node.df.at[to_node_id, "node_type"]
         if to_node_type not in ["Basin", "FlowBoundary", "LevelBoundary"]:
             raise ValueError(
                 f'{to_node_id} not of valid type: {to_node_type} not in ["Basin", "FlowBoundary", "LevelBoundary"]'
@@ -1082,14 +1066,14 @@ class Model(Model):
 
     def invalid_topology_at_node(self, link_type: str = "flow") -> gpd.GeoDataFrame:
         df_graph = self.link.df
-        df_node = self.node_table().df
+        df_node = self.node.df
         # Join df_link with df_node to get to_node_type
         df_graph = df_graph.join(df_node[["node_type"]], on="from_node_id", how="left", rsuffix="_from")
         df_graph = df_graph.rename(columns={"node_type": "from_node_type"})
 
         df_graph = df_graph.join(df_node[["node_type"]], on="to_node_id", how="left", rsuffix="_to")
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
-        df_node = self.node_table().df
+        df_node = self.node.df
 
         """Check if the neighbor amount of the two nodes connected by the given link meet the minimum requirements."""
         errors = []

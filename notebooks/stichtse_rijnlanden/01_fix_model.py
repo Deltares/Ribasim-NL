@@ -623,7 +623,7 @@ model.remove_node(node_id=68, remove_links=True)
 
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
+node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]

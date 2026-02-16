@@ -35,7 +35,7 @@ def add_demand(
         outlet_basin_node = inlet_basin_node
 
     # define demand_node
-    demand_node_id = model.node_table().df.index.max() + 1
+    demand_node_id = model.node.df.index.max() + 1
     demand_node = Node(demand_node_id, geometry=geometry, name=name, **kwargs)
     if min_level is None:
         min_level = model.basin.profile[inlet_basin_node.node_id].level.min() + 0.1
@@ -76,7 +76,7 @@ def add_demand(
     model.link.add(inlet_basin_node, model.user_demand[demand_node_id], geometry=line, name=name)
 
     if outlet_as_terminal:
-        terminal_node_id = model.node_table().df.index.max() + 1
+        terminal_node_id = model.node.df.index.max() + 1
         model.terminal.add(Node(terminal_node_id, outlet_geometry))
         terminal_node = model.terminal[terminal_node_id]
 

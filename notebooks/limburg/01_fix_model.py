@@ -365,7 +365,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node_table().df.node_type.unique():
+for node_type in model.node.df.node_type.unique():
     table = getattr(model, pascal_to_snake_case(node_type)).node
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
@@ -404,14 +404,10 @@ model.basin.node.df["meta_gestuwd"] = False
 model.outlet.node.df["meta_gestuwd"] = False
 model.pump.node.df["meta_gestuwd"] = True
 
-node_ids = (
-    model.node_table()
-    .df[
-        model.node_table().df["meta_code_waterbeheerder"].str.startswith("S_")
-        | model.node_table().df["meta_code_waterbeheerder"].str.startswith("P_")
-    ]
-    .index
-)
+node_ids = model.node.df[
+    model.node.df["meta_code_waterbeheerder"].str.startswith("S_")
+    | model.node.df["meta_code_waterbeheerder"].str.startswith("P_")
+].index
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_ids]
 

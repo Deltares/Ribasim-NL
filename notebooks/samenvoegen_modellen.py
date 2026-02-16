@@ -220,7 +220,7 @@ def read_and_prepare_model(model_path: Path) -> Model:
 
 
 def add_meta_waterbeheerder(model: Model, authority: str) -> None:
-    for node_type in model.node_table().df.node_type.unique():
+    for node_type in model.node.df.node_type.unique():
         ribasim_node = getattr(model, pascal_to_snake_case(node_type))
         ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = authority
 
