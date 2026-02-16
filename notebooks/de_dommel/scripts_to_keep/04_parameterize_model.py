@@ -199,7 +199,7 @@ model.basin.state.df = state_df
 
 # %%
 # Stuwen als tabulated_rating_cuves
-for row in model.node_table().df[model.node_table().df.meta_object_type == "stuw"].itertuples():
+for row in model.node.df[model.node.df.meta_object_type == "stuw"].itertuples():
     node_id = row.Index
 
     # get weir
@@ -219,10 +219,10 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "stuw
 
     # get upstream, if at flowboundary downstream profile
     basin_node_id = model.upstream_node_id(node_id)
-    if not model.node_table().df.at[basin_node_id, "node_type"] == "Basin":
+    if not model.node.df.at[basin_node_id, "node_type"] == "Basin":
         basin_node_id = model.downstream_node_id(node_id)
 
-    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
+    profile = profile_df.set_index("profiel_id").loc[model.node.df.at[basin_node_id, "meta_profile_id"]]
 
     # get level
 
@@ -262,7 +262,7 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "stuw
     )
 
 # %% Duikers als tabulated_rating_cuves
-for row in model.node_table().df[model.node_table().df.meta_object_type == "duikersifonhevel"].itertuples():
+for row in model.node.df[model.node.df.meta_object_type == "duikersifonhevel"].itertuples():
     node_id = row.Index
 
     # get culvert
@@ -275,10 +275,10 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "duik
 
     # get upstream, if at flowboundary downstream profile
     basin_node_id = model.upstream_node_id(node_id)
-    if not model.node_table().df.at[basin_node_id, "node_type"] == "Basin":
+    if not model.node.df.at[basin_node_id, "node_type"] == "Basin":
         basin_node_id = model.downstream_node_id(node_id)
 
-    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
+    profile = profile_df.set_index("profiel_id").loc[model.node.df.at[basin_node_id, "meta_profile_id"]]
 
     # get level
 
@@ -334,12 +334,12 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "duik
     )
 
 # %% gemalen als pump
-for row in model.node_table().df[model.node_table().df.meta_object_type == "gemaal"].itertuples():
+for row in model.node.df[model.node.df.meta_object_type == "gemaal"].itertuples():
     node_id = row.Index
 
     # get upstream profile
     basin_node_id = model.upstream_node_id(node_id)
-    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
+    profile = profile_df.set_index("profiel_id").loc[model.node.df.at[basin_node_id, "meta_profile_id"]]
     min_upstream_level = profile.waterlijnhoogte
 
     kgm = kgm_df.loc[row.name]
@@ -371,12 +371,12 @@ for row in model.node_table().df[model.node_table().df.meta_object_type == "gema
     )
 
 # %% update open water
-for row in model.node_table().df[model.node_table().df.node_type == "ManningResistance"].itertuples():
+for row in model.node.df[model.node.df.node_type == "ManningResistance"].itertuples():
     node_id = row.Index
 
     # get depth
     basin_node_id = model.upstream_node_id(node_id)
-    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
+    profile = profile_df.set_index("profiel_id").loc[model.node.df.at[basin_node_id, "meta_profile_id"]]
     depth = profile.insteekhoogte - profile.bodemhoogte
 
     # compute profile_width from slope
@@ -404,15 +404,15 @@ for row in model.node_table().df[model.node_table().df.node_type == "ManningResi
 
 
 # %% update outlets
-for row in model.node_table().df[model.node_table().df.node_type == "Outlet"].itertuples():
+for row in model.node.df[model.node.df.node_type == "Outlet"].itertuples():
     node_id = row.Index
 
     # get upstream, if at flowboundary downstream profile
     basin_node_id = model.upstream_node_id(node_id)
-    if not model.node_table().df.at[basin_node_id, "node_type"] == "Basin":
+    if not model.node.df.at[basin_node_id, "node_type"] == "Basin":
         basin_node_id = model.downstream_node_id(node_id)
 
-    profile = profile_df.set_index("profiel_id").loc[model.node_table().df.at[basin_node_id, "meta_profile_id"]]
+    profile = profile_df.set_index("profiel_id").loc[model.node.df.at[basin_node_id, "meta_profile_id"]]
 
     height = round(profile.insteekhoogte - profile.bodemhoogte, 2)
     width = round(profile.geometry.length, 2)
@@ -428,9 +428,7 @@ for row in model.node_table().df[model.node_table().df.node_type == "Outlet"].it
 
 # %% clean boundaries
 model.flow_boundary.static.df = model.flow_boundary.static.df[
-    model.flow_boundary.static.df.node_id.isin(
-        model.node_table().df[model.node_table().df.node_type == "FlowBoundary"].index
-    )
+    model.flow_boundary.static.df.node_id.isin(model.node.df[model.node.df.node_type == "FlowBoundary"].index)
 ]
 model.flow_boundary.static.df.loc[:, "flow_rate"] = 0
 # %% write model

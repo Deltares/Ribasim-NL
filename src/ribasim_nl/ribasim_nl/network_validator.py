@@ -56,7 +56,7 @@ class NetworkValidator:
 
     @property
     def node_df(self):
-        return self.model.node_table().df
+        return self.model.node.df
 
     @property
     def link_df(self):

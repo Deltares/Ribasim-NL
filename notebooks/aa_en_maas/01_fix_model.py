@@ -481,7 +481,7 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # %% sanitize node-table
 # TabulatedRatingCurve to Outlet
-for row in model.node_table().df[model.node_table().df.node_type == "TabulatedRatingCurve"].itertuples():
+for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].itertuples():
     node_id = row.Index
     model.update_node(node_id=node_id, node_type="Outlet")
 
@@ -512,7 +512,7 @@ geometry = df.set_index("code").at["261HTE", "geometry"]
 model.connect_basins(from_basin_id=1280, to_basin_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
+node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]

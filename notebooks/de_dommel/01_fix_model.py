@@ -115,12 +115,12 @@ for row in network_validator.node_internal_basin().itertuples():
     if row.Index not in model.basin.area.df.node_id.to_numpy():  # remove or change to level-boundary
         link_select_df = model.link.df[model.link.df.to_node_id == row.Index]
         if len(link_select_df) == 1:
-            if model.node_table().df.at[link_select_df.iloc[0]["from_node_id"], "node_type"] == "FlowBoundary":
+            if model.node.df.at[link_select_df.iloc[0]["from_node_id"], "node_type"] == "FlowBoundary":
                 model.remove_node(row.Index)
                 model.remove_node(link_select_df.iloc[0]["from_node_id"])
                 model.link.df.drop(index=link_select_df.index[0], inplace=True)
 
-df = model.node_table().df[model.node_table().df.node_type == "Basin"]
+df = model.node.df[model.node.df.node_type == "Basin"]
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291876800
 boundary_node = Node(node_id=28, geometry=model.flow_boundary[28].geometry)
@@ -296,7 +296,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node_table().df.node_type.unique():
+for node_type in model.node.df.node_type.unique():
     table = getattr(model, pascal_to_snake_case(node_type)).node
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
@@ -317,7 +317,7 @@ model.pump.node.df["meta_gestuwd"] = True
 model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"] == "stuw", "meta_gestuwd"] = True
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
+node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]

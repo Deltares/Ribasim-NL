@@ -48,9 +48,7 @@ lines_gdf = gpd.read_file(
     fid_as_index=True,
 )
 
-points = (
-    model.node_table().df[model.node_table().df.node_type.isin(["TabulatedRatingCurve", "Outlet", "Pump"])].geometry
-)
+points = model.node.df[model.node.df.node_type.isin(["TabulatedRatingCurve", "Outlet", "Pump"])].geometry
 
 for row in lines_gdf.itertuples():
     line = row.geometry
@@ -90,9 +88,7 @@ pump_data = pump.Static(flow_rate=[10])
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
 # 76 links bij opgeheven nodes verwijderen
-mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
-    model.node_table().df.index
-)
+mask = model.link.df.to_node_id.isin(model.node.df.index) & model.link.df.from_node_id.isin(model.node.df.index)
 missing_links_df = model.link.df[~mask]
 
 model.link.df = model.link.df[~model.link.df.index.isin(missing_links_df.index)]
@@ -185,7 +181,7 @@ model.merge_basins(basin_id=1077, to_basin_id=1124)
 
 # %% assign Basin / Area using KWKuit
 
-node_df = model.node_table().df
+node_df = model.node.df
 
 
 # we find Basin area if we kan find KWKuit in the model
@@ -326,7 +322,7 @@ model.remove_unassigned_basin_area()
 # %% TabulatedRatingCurve to Outlet
 
 # TabulatedRatingCurve to Outlet
-for row in model.node_table().df[model.node_table().df.node_type == "TabulatedRatingCurve"].itertuples():
+for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].itertuples():
     node_id = row.Index
     model.update_node(node_id=node_id, node_type="Outlet")
 

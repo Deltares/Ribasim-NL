@@ -263,7 +263,7 @@ model.pump.node.df["meta_gestuwd"] = True
 model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
+node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
