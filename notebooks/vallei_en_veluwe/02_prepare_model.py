@@ -37,12 +37,11 @@ network_gpkg = cloud.joinpath(authority, "verwerkt/network.gpkg")
 cloud.synchronize(
     filepaths=[
         peilgebieden_path,
-        top10NL_gpkg,
         hydamo_gpkg,
         network_gpkg,
     ]
 )
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 bbox = None
 # init classes

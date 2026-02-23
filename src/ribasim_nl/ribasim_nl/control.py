@@ -951,6 +951,7 @@ def add_controllers_and_demand_to_flushing_nodes(
     demand_node_angle: int = 45,
     name: str = "uitlaat",
     demand_name_prefix: str = "doorspoeling",
+    flushing_seasonal: bool = False,
 ):
     """Add control nodes to connector nodes draining a system/supply-area having a certain flow-demand (flushing_nodes)
 
@@ -982,6 +983,8 @@ def add_controllers_and_demand_to_flushing_nodes(
         Name assigned to control-node, by default "uitlaat"
     demand_name_prefix: str, optional
         Prefix assigned to name in demand-node, by default "doorspoeling
+    flushing_seasonal: bool, optional
+        If True, flushing will be applied in summer season (April - October) only.
     """
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in flushing_nodes_df.itertuples():
@@ -1062,17 +1065,46 @@ def add_controllers_and_demand_to_flushing_nodes(
             name=f"{name}: {us_target_level:.2f} [m+NAP]",
         )
 
-        # add demand
-        tables = [flow_demand.Static(demand=[demand_flow_rate], demand_priority=[1])]
+        # add demand:
+        # - seasonal: Apr tot Oct aan (cyclic Time-table)
+        # - non-seasonal: altijd aan (Static, jaar-onafhankelijk)
+
+        supply_season_start = pd.to_datetime(supply_season_start)
+        year = supply_season_start.year
+
+        t0 = pd.Timestamp(year, 1, 1)
+        t_on = pd.Timestamp(year, 4, 1)  # aan vanaf 1 april
+        t_off = pd.Timestamp(year, 10, 1)  # uit vanaf 1 oktober
+
+        if flushing_seasonal:
+            demand_tables = [
+                flow_demand.Time(
+                    time=[t0, t_on, t_off],
+                    demand=[0.0, float(demand_flow_rate), 0.0],
+                    demand_priority=[1, 1, 1],
+                )
+            ]
+            cyclic = True
+        else:
+            demand_tables = [
+                flow_demand.Static(
+                    demand=[float(demand_flow_rate)],
+                    demand_priority=[1],
+                )
+            ]
+            cyclic = False  # bij Static niet essentieel, maar netjes
+
         node = model.get_node(node_id=node_id)
+
         demand_node = model.flow_demand.add(
             _offset_new_node(
                 node=node,
                 offset=new_nodes_offset,
                 angle=demand_node_angle,
                 name=f"{demand_name_prefix} {demand_flow_rate} [m3/s]",
+                cyclic_time=cyclic,
             ),
-            tables=tables,
+            tables=demand_tables,
         )
         model.link.add(demand_node, node)
 
@@ -1083,6 +1115,7 @@ def add_controllers_to_connector_nodes(
     level_difference_threshold: float,
     target_level_column: str = "meta_streefpeil",
     drain_capacity: float = 100,
+    flushing_seasonal: bool = False,
 ):
     """Add controllers to connector nodes per function
 
@@ -1115,6 +1148,8 @@ def add_controllers_to_connector_nodes(
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
     drain_capacity : float, optional
         Maximum drain capacity [m3/s] for drain nodes, by default 100
+    flushing_seasonal: bool, optional
+        If True, flushing will be applied in summer season (April - October) only.
     """
     # make sure add-api will not duplicate node-ids
     model._update_used_ids()
@@ -1154,6 +1189,7 @@ def add_controllers_to_connector_nodes(
             flushing_nodes_df=flushing_nodes_df,
             us_threshold_offset=level_difference_threshold,
             target_level_column=target_level_column,
+            flushing_seasonal=flushing_seasonal,
         )
 
 
@@ -1170,6 +1206,7 @@ def add_controllers_to_supply_area(
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
+    flushing_seasonal: bool = False,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 
@@ -1250,6 +1287,7 @@ def add_controllers_to_supply_area(
         node_functions_df=node_functions_df,
         level_difference_threshold=level_difference_threshold,
         target_level_column=target_level_column,
+        flushing_seasonal=flushing_seasonal,
     )
 
     return node_functions_df
@@ -1262,8 +1300,11 @@ def add_controllers_to_uncontrolled_connector_nodes(
     supply_nodes: list[int] | None = None,
     drain_nodes: list[int] | None = None,
     flow_control_nodes: list[int] | None = None,
+    flushing_nodes: dict[int, float] | None = None,
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     us_target_level_offset_supply: float = -0.04,
+    level_difference_threshold: float | None = None,
+    flushing_seasonal: bool = False,
 ):
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
@@ -1290,6 +1331,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Nodes die je expliciet als drain wilt (alleen als nog uncontrolled).
     flow_control_nodes : list[int]
         Nodes die je expliciet als flow_control wilt (alleen als nog uncontrolled).
+    flushing_nodes : dict[int, float]
+        Flushing nodes with their demands in the form of {node_id:demand} (onnly if still uncontrolled)
     control_node_types : list[Literal["Pump","Outlet"]]
         Welke connector node types meegenomen worden.
     us_target_level_offset_supply : float
@@ -1302,6 +1345,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     exclude_nodes = exclude_nodes or []
     supply_nodes = supply_nodes or []
     drain_nodes = drain_nodes or []
+    flushing_nodes = flushing_nodes or {}
     flow_control_nodes = flow_control_nodes or []
     control_node_types = control_node_types or ["Pump", "Outlet"]
 
@@ -1324,27 +1368,46 @@ def add_controllers_to_uncontrolled_connector_nodes(
         return  # niets te doen
 
     # --- 4) clip handmatige lijsten naar eligible (zo voorkom je dubbele control) ---
-    flow_set = set(flow_control_nodes) & eligible
+    flushing_set = set(flushing_nodes.keys()) & eligible
+    flow_control_set = set(flow_control_nodes) & eligible
     drain_set = set(drain_nodes) & eligible
     supply_set_manual = set(supply_nodes) & eligible
 
     # automatische supply op basis van meta_supply_node (maar alleen eligible)
     supply_set_auto = set(connector_df.index[connector_df.meta_supply_node]) & eligible
 
-    # --- 5) prioriteiten afdwingen: flow > drain > supply ---
-    # (dus: als iets in flow zit, haal het uit drain/supply; als iets in drain zit, haal uit supply)
-    drain_set -= flow_set
-    supply_set_manual -= flow_set | drain_set
-    supply_set_auto -= flow_set | drain_set
+    # --- 5) prioriteiten afdwingen: flushing_set > flow > drain > supply ---
+    # (dus: als iets in flusing_set zit, haal het uit flow/drain/supply. Als iets in flow zit, haal het uit drain/supply; als iets in drain zit, haal uit supply)
+    flow_control_set -= flushing_set
+    drain_set -= flushing_set | flow_control_set
+    supply_set_manual -= flushing_set | flow_control_set | drain_set
+    supply_set_auto -= flushing_set | flow_control_set | drain_set
 
     supply_set = supply_set_manual | supply_set_auto
 
     # --- 6) alles wat overblijft -> drain ---
-    used = flow_set | drain_set | supply_set
+    used = flushing_set | flow_control_set | drain_set | supply_set
     remaining = eligible - used
     drain_set = drain_set | remaining
 
     # --- 7) uitvoer: controllers toevoegen ---
+    # Flushing
+    if flushing_set:
+        node_ids = sorted(flushing_set)
+        flushing_nodes_df = connector_df.loc[node_ids].copy()
+
+        # demand_flow_rate kolom vullen (alleen voor deze flushing nodes)
+        flushing_nodes_df["demand_flow_rate"] = pd.Series(index=flushing_nodes_df.index, dtype="float")
+        flushing_nodes_df.loc[node_ids, "demand_flow_rate"] = [flushing_nodes[n] for n in node_ids]
+
+        level_difference_threshold = level_difference_threshold or model.solver.level_difference_threshold
+        add_controllers_and_demand_to_flushing_nodes(
+            model=model,
+            flushing_nodes_df=flushing_nodes_df,
+            us_threshold_offset=level_difference_threshold,
+            flushing_seasonal=flushing_seasonal,
+        )
+
     # Supply
     if supply_set:
         supply_df = connector_df.loc[sorted(supply_set)]
@@ -1355,8 +1418,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         )
 
     # Flow control
-    if flow_set:
-        flow_df = connector_df.loc[sorted(flow_set)]
+    if flow_control_set:
+        flow_df = connector_df.loc[sorted(flow_control_set)]
         add_controllers_to_flow_control_nodes(
             model=model,
             flow_control_nodes_df=flow_df,

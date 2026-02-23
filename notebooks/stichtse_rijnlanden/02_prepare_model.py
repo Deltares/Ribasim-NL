@@ -27,7 +27,8 @@ peilgebieden_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden.g
 peilgebieden_vig_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden_vigerend.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_gpkg, peilgebieden_vig_gpkg, top10NL_gpkg, hydroobject_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_gpkg, peilgebieden_vig_gpkg, hydroobject_gpkg])
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -286,14 +287,65 @@ streefpeil.name = "streefpeil"
 
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+
 # %%
-## PUMP.flow_rate
+## PUMP.flow_rate on code
 gkw_gemaal_df = get_data_from_gkw(authority=authority, layers=["gemaal"])
 flow_rate = gkw_gemaal_df.set_index("code")["maximalecapaciteit"] / 60  # m3/minuut to m3/s
 flow_rate.name = "flow_rate"
 static_data.add_series(node_type="Pump", series=flow_rate)
 
+# add date on node_id
+flow_rate = pd.Series(
+    {
+        602: 0.5,
+        578: 0.7,
+        554: 0.75,
+        596: 0.9,
+        584: 1,
+        587: 1,
+        588: 1.25,
+        616: 1.75,
+        608: 1.8,
+        619: 1.95,
+        600: 2.5,
+        601: 3.3,
+        617: 4,
+        623: 5.34,
+        557: 5.5,
+        542: 7,
+        541: 11.2,
+        536: 12,
+        567: 14,
+    },
+    name="flow_rate",
+)
+flow_rate.index.name = "node_id"
+static_data.add_series(node_type="Pump", series=flow_rate)
 
+# %%
+flow_rate = pd.Series(
+    {
+        752: 56,
+        755: 25,
+        252: 18,
+        757: 16,
+        756: 12,
+        468: 12,
+        481: 10,
+        753: 7,
+        754: 7,
+        141: 6.2,
+        742: 6.2,
+        761: 6,
+        100: 3,
+        758: 0,
+    },
+    name="flow_rate",
+)
+flow_rate.index.name = "node_id"
+static_data.add_series(node_type="Outlet", series=flow_rate)
+static_data.outlet.loc[static_data.outlet.flow_rate.isna(), "flow_rate"] = 20
 # %%
 
 model.basin.area.df.set_index("node_id", inplace=True)
