@@ -150,7 +150,7 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
     :return: fully connected network of hydro-objects
     :rtype: geopandas.GeoDataFrame
     """
-    union_objects = gpd.GeoDataFrame(geometry=[*hydro_objects.union_all().geoms], crs=hydro_objects.crs)
+    union_objects = gpd.GeoDataFrame(geometry=[*hydro_objects.force_2d().union_all().geoms], crs=hydro_objects.crs)
 
     ml = union_objects[union_objects.geometry.type == "MultiLineString"]
     assert len(ml) == 0
