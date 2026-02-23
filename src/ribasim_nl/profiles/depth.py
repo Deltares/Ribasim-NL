@@ -1,6 +1,5 @@
 import geopandas as gpd
 import numpy as np
-import pandas as pd
 import shapely
 
 from profiles import hydrotopes as ht
@@ -90,19 +89,20 @@ def depth_from_hydrotopes(
         hydrotope_map.to_crs(hydro_objects.crs)
 
     # find overlapping hydrotopes per hydro-object
-    temp = gpd.sjoin(hydro_objects, hydrotope_map, how="left", predicate="intersects", rsuffix="map").reset_index(
-        drop=False
-    )
-    if temp["index_map"].isna().sum() > 0:
-        _na_index = temp["index_map"].isna()
-        _temp = gpd.sjoin_nearest(hydro_objects[_na_index], hydrotope_map, how="left", rsuffix="map")
-        temp = pd.concat([temp.dropna(), _temp])
+    temp = gpd.sjoin(hydro_objects, hydrotope_map, how="left", predicate="intersects", rsuffix="map")
+    mask = temp["index_map"].isna()
+    if mask.any():
+        _temp = gpd.sjoin_nearest(hydro_objects.loc[temp.index[mask]], hydrotope_map, how="left", rsuffix="map")
+        print(temp[mask])
+        temp.update(_temp)
+        print(temp[mask])
 
     temp["overlap"] = temp.apply(
         lambda row: row["geometry"].intersection(hydrotope_map.loc[row["index_map"], "geometry"]).length, axis=1
     )
 
     # assign the hydrotope with the largest overlap per hydro-object
+    temp.reset_index(drop=False, inplace=True)
     idx = temp.groupby("index")["overlap"].idxmax()
     hydro_objects["ht_code"] = temp.loc[idx, col_fid]
 
@@ -115,6 +115,7 @@ def depth_from_hydrotopes(
     return hydro_objects
 
 
+# TODO: Coupling of measured cross-sections to hydro-objects seems to be non-functioning (or at least not properly)
 def depth_from_measurements(hydro_objects: gpd.GeoDataFrame, cross_sections: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Determine representative depths of hydro-objects based on measured profiles (if present).
 
