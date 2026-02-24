@@ -87,6 +87,7 @@ def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = No
     # > export intermediate output
     export_intermediate_output: bool = kwargs.get("export_intermediate_output", False)
     wd_intermediate_output: pathlib.Path | None = kwargs.get("wd_intermediate_output")
+    create_wd_intermediate: bool = kwargs.get("create_wd_intermediate", True)
     _fn_graph = "graph.gpkg"
     _fn_int_output = "int_output.gpkg"
 
@@ -103,6 +104,8 @@ def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = No
     if export_intermediate_output and wd_intermediate_output is None:
         msg = f"When exporting the intermediate output ({export_intermediate_output=}), a working directory must be provided: {wd_intermediate_output=}"
         raise ValueError(msg)
+    if export_intermediate_output and create_wd_intermediate:
+        wd_intermediate_output.mkdir(parents=True, exist_ok=True)
 
     # split dataframes
     match len(data):
