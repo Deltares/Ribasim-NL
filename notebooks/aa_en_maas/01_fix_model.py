@@ -1,4 +1,5 @@
 # %%
+import inspect
 
 import geopandas as gpd
 import numpy as np
@@ -466,6 +467,34 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
 # %% remove_nodes
 for row in remove_nodes_df.itertuples():
     model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
+
+    # %% Connect basins:
+actions = [
+    "connect_basins",
+]
+
+available_layers = gpd.list_layers(model_edits_gpkg).name.to_list()
+actions = [a for a in actions if a in available_layers]
+
+for action in actions:
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+
+    df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+
+    # als er een volgorde-kolom is: respecteer die
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+
+    for row in df.itertuples():
+        # alleen kwargs die daadwerkelijk in de method signature zitten
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+
+        # GeoPandas zet lege waarden vaak als NaN; filter die eruit
+        kwargs = {k: v for k, v in kwargs.items() if pd.notna(v)}
+
+        method(**kwargs)
+
 
 # %% corrigeren knoop-topologie
 outlet_data = outlet.Static(flow_rate=[100])
