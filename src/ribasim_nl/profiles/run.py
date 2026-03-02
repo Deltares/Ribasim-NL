@@ -219,6 +219,15 @@ def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = No
 
     # basin profiles
     basin_profiles = cross_section.assign_basin_profiles(basins, hydro_objects, as_geo_dataframe=True)
+
+    # NaN-valued basin profiles
+    if sum(basin_profiles["area"].isna()) > 0:
+        print("NaN-values present in profile-table!")
+        if not input("Continue? [y/n] ") == "y":
+            print(basin_profiles[basin_profiles.isna()], end="\n\n")
+            raise KeyboardInterrupt
+
+    # export basin profiles
     if export_intermediate_output:
         basin_profiles.to_file(str(wd_intermediate_output / _fn_int_output), layer="basin_profiles")
     return basin_profiles
