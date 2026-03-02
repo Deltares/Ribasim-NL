@@ -93,8 +93,10 @@ def assign_basin_profiles(
 
     # validate required data
     _ho_cols = hydro_objects.columns
-    for col in ("main-route", "width", "depth", "ht_code"):
-        assert col in _ho_cols, f'Column-name "{col}" missing, which contains required data.'
+    missing = [col for col in ("main-route", "width", "depth", "ht_code") if col not in _ho_cols]
+    if any(missing):
+        msg = f"Column-name(s) with required data missing: {missing=}"
+        raise ValueError(msg)
 
     # warn if hydro-objects are a mix of 'doorgaand' and 'bergend'
     if len(hydro_objects["main-route"].unique()) > 1:
