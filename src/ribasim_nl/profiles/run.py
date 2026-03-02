@@ -29,7 +29,7 @@ def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = No
     :param kwargs: optional arguments
 
     :key cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
-    :key drop_nan_hydro_objects: drop hydro-objects for which no width and/or depth can be determined, defaults to False
+    :key drop_nan_hydro_objects: drop hydro-objects for which no width and/or depth can be determined, defaults to True
     :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None
         Required if no `HydrotopeTable` is provided (i.e., `hydrotope_table=None`)
     :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to True
@@ -66,7 +66,7 @@ def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = No
     """
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
-    drop_nan_hydro_objects: bool = kwargs.get("drop_nan_hydro_objects", False)
+    drop_nan_hydro_objects: bool = kwargs.get("drop_nan_hydro_objects", True)
     # > hydrotopes
     fn_hydrotopes: pathlib.Path | str | None = kwargs.get("fn_hydrotopes")
     # > generation of depth profile lines
@@ -92,6 +92,9 @@ def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = No
     _fn_int_output = "int_output.gpkg"
 
     # validate optional arguments
+    # > non-dropping of NaN-valued hydro-objects
+    if not drop_nan_hydro_objects:
+        LOG.critical(f"Debug mode: {drop_nan_hydro_objects=}: Profiles are undefined.")
     # > hydrotope data
     if hydrotope_table is None and fn_hydrotopes is None:
         msg = f"Either a table with hydrotopes must be given ({hydrotope_table=}), or a *.csv-file with hydrotopes ({fn_hydrotopes=})"
