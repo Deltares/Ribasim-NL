@@ -1,6 +1,7 @@
 """Generation of profiles table for Amstel, Gooi en Vecht."""
 
 import geopandas as gpd
+import pandas as pd
 
 from profiles import run
 from ribasim_nl import CloudStorage
@@ -43,14 +44,20 @@ def main(
         fn_bgt=fn_bgt,
         fn_hydrotopes=fn_hydrotopes,
         export_intermediate_output=export_intermediate_output,
-        wd_intermediate_output=cloud.joinpath(water_authority, "verwerkt", "intermediate"),
+        wd_intermediate_output=cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate"),
     )
+    if sum(profiles_table["area"].isna()) > 0:
+        print("NaN-values present in profile-table!")
+        if not input("Continue? [y/n] ") == "y":
+            raise KeyboardInterrupt
 
     # export profile table
     if export_profile_table:
-        print(profiles_table)
-        raise NotImplementedError
+        fn_table = cloud.joinpath(water_authority, "verwerkt", "profielen", "profiel_tabel.csv")
+        fn_table.parent.mkdir(exist_ok=True)
+        table = pd.DataFrame(profiles_table[[c for c in profiles_table.columns if c != "geometry"]])
+        table.to_csv(fn_table, index=False)
 
 
 if __name__ == "__main__":
-    main(export_profile_table=False, export_intermediate_output=True)
+    main(export_profile_table=True, export_intermediate_output=True)
