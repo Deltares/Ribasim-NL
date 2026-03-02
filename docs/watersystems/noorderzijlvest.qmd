@@ -1,3 +1,4 @@
+
 # Noorderzijlvest
 
 - Laatst bijgewerkt: 28-01-2026
@@ -5,6 +6,7 @@
 
 ## Systeembeschrijving
 ![Systeembeschrijving Noorderzijlvest](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/noorderzijlvest.svg)
+![Systeembeschrijving Noorderzijlvest](d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Noorderzijlvest\verwerkt\sturing\NZV.svg)
 
 ### Inlaat Gaarkeuken
 - Bij `Gaarkeuken` kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.
@@ -13,7 +15,7 @@
 - Praktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via `Dorkwerd` naar Hunze en Aa's (Eemskanaalboezem).
 
 ### Electraboezem
-Het witte gebied op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen `H.D. Louwes` en `De Waterwolf` — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de `Cleveringsluizen` op de Waddenzee.
+Het witte gebied en zalmroze gebied (Elektraboezem-Oost) op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen `H.D. Louwes` (toekomstig Hunsingo) en `De Waterwolf` — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de `Cleveringsluizen` op de Waddenzee.
 
 
 ### Peizerdiep
@@ -21,7 +23,7 @@ In afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Ele
 
 In het zuidoosten wordt via een reeks kleinere inlaten — `Jonkersbrug`, `Ter Aard`, `Huis ter Heide`, `Heideheimheem`, `Meerweg` vanuit Hunze en Aa's en Drents Overijsselse Delta water ingelaten.
 
-### Jonkersvaart
+### Jonkersvaart/Dwarsdiep
 Dit gebied voert water af naar de Electraboezem via de uitlaat `Leek` en het Dwarsdiep.
 
 De wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij `Leek`, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via `Leek` wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.
@@ -29,7 +31,7 @@ De wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij `Leek`, a
 ### Noordpolder en Spijksterpompen
 De noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (`Noordpolderzijl` en `Spijksterpompen`).
 
-In droge periodes wordt water uit de Electraboezem (via boezemgemalen `Stad en Lande` en  `Schaphalsterzijl`) met kleine poldergemalen naar de kustpolders opgemalen.
+In droge periodes wordt water uit de Electraboezem (via boezemgemalen `Stad en Lande`,  `Schaphalsterzijl` en `Tilburg`) met kleine aanvoergemalen naar de kustpolders opgemalen.
 
 ### De Fivelingoboezem
 Loost via gemaal `De Drie Delfzijlen` bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de `Oostersluis`. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij `Spijksterpompen`.

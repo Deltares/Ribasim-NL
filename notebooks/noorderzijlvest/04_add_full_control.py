@@ -29,10 +29,9 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 # 1744: Gaarkeukensluis
 # 1745: Groevesluis Noord
 # 1746: Roggenkampsluis
-# 1747: Sluis bj Munnekezijlsterried (inlaat?)
 # 1756: Oostersluis
 # 1752: Dokwerdersluis
-EXCLUDE_NODES = {716, 722, 725, 1738, 1740, 1744, 1745, 1746, 1747, 1752, 1756}
+EXCLUDE_NODES = {716, 722, 725, 1738, 1740, 1744, 1745, 1746, 1752, 1756}
 
 # %%
 # Definieren paden en syncen met cloud

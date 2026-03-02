@@ -589,7 +589,7 @@ def get_control_nodes_position_from_supply_area(
     has_control = [i for i in node_df.index.values if i in controlled_nodes]
     if has_control:
         print(f"WARNING connector-nodes {has_control} in supply-area are already controlled. Nodes will be skipped")
-    node_df = node_df[~node_df.isin(has_control)]
+    node_df = node_df[~node_df.index.isin(has_control)]
 
     return node_df
 

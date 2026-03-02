@@ -210,7 +210,9 @@ model.link.add(outlet_node, model.level_boundary[66])
 
 # EINDE ISSUES
 
-
+##fixes:
+model.remove_node(node_id=574, remove_links=True)  # verwijderen Manning knoop naast outlet
+model.remove_node(node_id=602, remove_links=True)  # verwijderen Manning knoop naast outlet
 # %%
 # corrigeren knoop-topologie
 

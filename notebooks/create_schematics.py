@@ -7,7 +7,7 @@ Required input-files per authority:
 
 Will create per authority:
 - verwerkt//sturing//watersysteem.gpkg -> all layers to create the schematic
-- verwerkt//sturing//afvoertabel.md -> table with Ribasim flow capacity in supply\demand
+- verwerkt//sturing//afvoertabel.md -> table with Ribasim flow capacity in supply\\demand
 
 SVG images can created based on the watersysteem.gpkg using QGIS.
 An example QGIS project can be found on the [CloudStorage](https://deltares.thegood.cloud/f/238548) (limited access)
@@ -25,13 +25,13 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 MODEL_POST_FIX = "dynamic_model"
-ARROW_LENGTH = {"StichtseRijnlanden": 800, "Noorderzijlvest": 1200, "AaenMaas": 1400}
+ARROW_LENGTH = {"StichtseRijnlanden": 800, "Noorderzijlvest": 1200, "AaenMaas": 1600}
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["StichtseRijnlanden", "AaenMaas"]
+AUTHORITIES = ["AaenMaas"]
 ADD_TOP10_NL = {
     "StichtseRijnlanden": [
         "Vecht",
@@ -81,6 +81,7 @@ ADD_TOP10_NL = {
         "Sambeekse Uitwatering",
         "Groote Wetering",
         "Ertveld Plas",
+        "Afleidingskanaal",
     ],
     "Noorderzijlvest": [
         "Van Starkenborghkanaal",
@@ -172,7 +173,7 @@ for authority in AUTHORITIES:
     df["geometry"] = df["geometry"].apply(fix_geometry)
     df.reset_index()[["aanvoergebied", "geometry"]].to_file(system_gpkg, layer="aanvoergebieden")
 
-    # maks layer
+    # mask layer
     df = gpd.read_file(water_authorities_gpkg)
     poly_mask = df.loc[df.nationalCode == waterbeheercode[authority], "geometry"].union_all()
     mask_box = generate_mask_box(
@@ -228,12 +229,14 @@ for authority in AUTHORITIES:
         arrow_length = ARROW_LENGTH.get(authority, 1000)
         node_id = row.node_id
         if pd.isna(node_id):
-            ValueError(f"node_id is NaN for fid {fid}. Search by name and code not implemented yet")
+            raise ValueError(f"node_id is NaN for fid {fid}. Search by name and code not implemented yet")
 
-        # get/set functie
+        # --- get/set functie (FIX: node_func altijd gedefinieerd) ---
+        node_func = row.functie  # kan al gevuld zijn
+
         control_node_ids = control_links_df[control_links_df.to_node_id == node_id].from_node_id.values
-        if pd.isna(row.functie):
-            if len(control_node_ids) > 1:  # if multiple control_node_ids, one if them is flow demand
+        if pd.isna(node_func):
+            if len(control_node_ids) > 1:  # if multiple control_node_ids, one of them is flow demand
                 node_func = "uitlaat (doorspoeling)"
             elif len(control_node_ids) == 1:  # else we can strip the function from the name
                 discrete_control_node = model.discrete_control.node.df[
@@ -250,6 +253,7 @@ for authority in AUTHORITIES:
             node_type = connector_nodes_df.at[node_id, "node_type"]
             static_df = getattr(model, pascal_to_snake_case(node_type)).static.df
             static_df = static_df[static_df.node_id == node_id]
+
             # get/set aanvoer
             if pd.isna(row["aanvoer [m3/s]"]):
                 if node_func == "uitlaat (doorspoeling)":
@@ -261,6 +265,7 @@ for authority in AUTHORITIES:
                         static_df.control_state == "aanvoer"
                     ].max_flow_rate.max()
 
+            # get/set afvoer
             if pd.isna(row["afvoer [m3/s]"]):
                 structures_src_df.loc[fid, "afvoer [m3/s]"] = static_df[
                     static_df.control_state == "afvoer"
@@ -294,11 +299,13 @@ for authority in AUTHORITIES:
     if len(arrows) > 0:
         gpd.GeoDataFrame(arrows, crs=structures_src_df.crs).to_file(system_gpkg, layer="richting")
 
-    mask = structures_src_df.add_label & ~structures_src_df.naam.isna() & structures_src_df.functie != "geen"
+    # FIX: mask ook echt gebruiken
+    mask = structures_src_df.add_label & ~structures_src_df.naam.isna() & (structures_src_df.functie != "geen")
+
     table_md.write_text(
-        structures_src_df[structures_src_df.add_label][
-            ["naam", "code", "node_id", "functie", "aanvoer [m3/s]", "afvoer [m3/s]"]
-        ]
+        structures_src_df[mask][["naam", "code", "node_id", "functie", "aanvoer [m3/s]", "afvoer [m3/s]"]]
         .sort_values(by=["naam"])
         .to_markdown(index=False)
     )
+
+# %%

@@ -45,6 +45,8 @@ mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
+# Fix streefpeil:
+model.basin.area.df.loc[model.basin.area.df.node_id == 1273, "meta_streefpeil"] = 6.4
 # Write model
 add_check_basin_level(model=model)
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
