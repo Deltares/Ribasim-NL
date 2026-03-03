@@ -66,8 +66,9 @@ def main(
     :rtype: tuple[geopandas.GeoDataFrame, geopandas.GeoDataFrame]
 
     :raises ValueError: if both `hydrotope_table` and `fn_hydrotopes` are undefined (i.e., `None`)
-    :raises ValueError: if `wd_intermediate_output` is defined while `export_intermediate_output=True`
+    :raises ValueError: if `wd_intermediate_output` is not defined while `export_intermediate_output=True`
     :raises ValueError: if less than three (3) or more than four (4) geospatial dataframes are provided as `data`
+    :raises KeyboardInterrupt: if NaN-values are found in the profile table and user-input aborts further continuation
     """
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
@@ -244,13 +245,15 @@ def main(
         print("NaN-values present in profile-table (flowing/'doorgaand')")
         if not input("Continue? [y/n] ") == "y":
             print(flowing_profiles[flowing_profiles.isna()], end="\n\n")
-            raise KeyboardInterrupt
+            msg = f"Abort profile table generation with NaN-values: {sum(flowing_profiles.isna())} NaN-values found"
+            raise KeyboardInterrupt(msg)
         print(flowing_profiles, end="\n\n")
     if sum(storing_profiles["area"].isna()) > 0:
         print("NaN-values present in profile-table (storing/'bergend')")
         if not input("Continue? [y/n] ") == "y":
             print(storing_profiles[storing_profiles.isna()], end="\n\n")
-            raise KeyboardInterrupt
+            msg = f"Abort profile table generation with NaN-values: {sum(storing_profiles.isna())} NaN-values found"
+            raise KeyboardInterrupt(msg)
         print(storing_profiles, end="\n\n")
 
     # fill storing basins with BGT-data
