@@ -143,3 +143,39 @@ def assign_basin_profiles(
     if as_geo_dataframe:
         return gpd.GeoDataFrame(table)
     return table
+
+
+def full_bgt_coverage(
+    profiles_fixed: pd.DataFrame, profiles_exp: pd.DataFrame, basins: gpd.GeoDataFrame, bgt: gpd.GeoDataFrame, **kwargs
+) -> pd.DataFrame | gpd.GeoDataFrame:
+    # optional arguments
+    as_geo_dataframe: bool = kwargs.get("as_geo_dataframe", False)
+    margin: float = kwargs.get("margin", 1e-4)
+    min_valid_area: float | None = kwargs.get("min_valid_area")
+    min_df: bool = kwargs.get("min_df", True)
+
+    # determine water surface area per basin based on hydro-objects
+    df_profiles = pd.merge(profiles_fixed, profiles_exp, how="outer", on="node_id", suffixes=("_f", "_s"))
+    df_areas = df_profiles.groupby("node_id")[["area_f", "area_s"]].agg("max")
+    df_areas["total_area"] = df_areas.sum(axis=1, skipna=True, numeric_only=True, min_count=1)
+
+    # determine water surface area per basin based on BGT-data
+    if min_df:
+        basins = basins[["node_id", "geometry"]]
+        bgt = bgt[["geometry"]]
+    bgt_basin = gpd.overlay(bgt, basins, how="intersection", keep_geom_type=True)
+    bgt_basin = bgt_basin.dissolve(by="node_id", method="unary")
+
+    # set invalid areas to zero (too small/dummy values)
+    if min_valid_area is not None:
+        profiles_exp.loc[profiles_exp["area"] < min_valid_area, "area"] = 0
+
+    # area multiplication factor
+    factor = (bgt_basin.area - df_areas["total_area"]) / df_areas["total_area"]
+    profiles_exp["area"] *= factor[profiles_exp["node_id"]].values
+    profiles_exp["area"] = np.maximum(profiles_exp["area"], margin)
+
+    # return modified table (optionally as GeoDataFrame)
+    if as_geo_dataframe:
+        return gpd.GeoDataFrame(df_profiles)
+    return df_profiles

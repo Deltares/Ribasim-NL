@@ -79,6 +79,7 @@ def main(
     # > BGT-data
     fn_bgt: pathlib.Path | str | None = kwargs.get("fn_bgt")
     bgt_buffer: float = kwargs.get("bgt_buffer", 0.1)
+    bgt_full_coverage: bool = kwargs.get("bgt_full_coverage", True)
     # > network patching
     patch_network: bool = kwargs.get("patch_network", True)
     patch_buffer: float = kwargs.get("patch_buffer", 1)
@@ -237,6 +238,12 @@ def main(
             print(storing_profiles[storing_profiles.isna()], end="\n\n")
             raise KeyboardInterrupt
         print(storing_profiles, end="\n\n")
+
+    # fill storing basins with BGT-data
+    if bgt_full_coverage:
+        storing_profiles = cross_section.full_bgt_coverage(
+            flowing_profiles, storing_profiles, basins, bgt_data, as_geo_dataframe=True, min_valid_area=1e-3
+        )
 
     # export basin profiles
     if export_intermediate_output:
