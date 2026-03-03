@@ -738,12 +738,14 @@ class CrossingsToRibasim:
             )
 
             check_SP["line_geom"] = check_SP.apply(
-                lambda row: LineString(list(row["line_geom"].coords)[::-1])
-                if (
-                    row["distance_start_from"] + row["distance_end_to"]
-                    > row["distance_start_to"] + row["distance_end_from"]
-                )
-                else row["line_geom"],
+                lambda row: (
+                    LineString(list(row["line_geom"].coords)[::-1])
+                    if (
+                        row["distance_start_from"] + row["distance_end_to"]
+                        > row["distance_start_to"] + row["distance_end_from"]
+                    )
+                    else row["line_geom"]
+                ),
                 axis=1,
             )
             links.update(check_SP)
