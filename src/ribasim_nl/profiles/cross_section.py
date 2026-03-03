@@ -103,12 +103,12 @@ def assign_basin_profiles(
         LOG.critical("Basin profiles assigned without distinction in profile-type")
 
     # couple hydro-objects to basins
-    temp = gpd.sjoin(basins, hydro_objects, how="left", predicate="intersects", lsuffix="basin", rsuffix="ho")
-    temp.dropna(subset=["index_ho"], inplace=True)
+    gdf_joined = gpd.sjoin(basins, hydro_objects, how="left", predicate="intersects", lsuffix="basin", rsuffix="ho")
+    gdf_joined.dropna(subset=["index_ho"], inplace=True)
 
     # weighted average of profile dimensions
-    temp["length"] = hydro_objects.loc[temp["index_ho"], "geometry"].length.values
-    grouped = temp.groupby("node_id")
+    gdf_joined["length"] = hydro_objects.loc[gdf_joined["index_ho"], "geometry"].length.values
+    grouped = gdf_joined.groupby("node_id")
     width = grouped.apply(lambda row: weighted_average(row["width"], row["length"]), include_groups=False)
     depth = grouped.apply(lambda row: weighted_average(row["depth"], row["length"]), include_groups=False)
     length = grouped["length"].agg("sum")
@@ -117,27 +117,29 @@ def assign_basin_profiles(
     depth.name = "depth"
     width.name = "width"
     dimensions = pd.concat([depth, width, length], axis=1, ignore_index=False)
-    dimensions = pd.concat([basins.set_index("node_id"), dimensions], axis=1, ignore_index=False).reset_index(
-        drop=False
-    )
+    dimensions = pd.concat(
+        [basins.set_index("node_id"), dimensions], axis=1, join="inner", ignore_index=False
+    ).reset_index(drop=False)
 
     # clean up dataframe
     dimensions["meta_streefpeil"] = pd.to_numeric(dimensions["meta_streefpeil"], errors="coerce").fillna(0)
 
     # define basin-profiles
-    temp = dimensions.apply(
+    df_profiles = dimensions.apply(
         lambda row: trapezoidal_profile(
             row["depth"], row["width"], float(row["meta_streefpeil"]), slope=slope, margin=(0, margin)
         ),
         axis=1,
     ).explode()
-    temp = pd.DataFrame(temp.tolist(), columns=["level", "area"], index=temp.index)
-    temp["area"] *= dimensions["length"]
-    temp.replace({"area": (0, margin)}, inplace=True)
+    df_profiles = pd.DataFrame(df_profiles.tolist(), columns=["level", "area"], index=df_profiles.index)
+    df_profiles["node_id"] = dimensions["node_id"]
+    df_profiles["area"] *= dimensions["length"]
+    df_profiles.replace({"area": (0, margin)}, inplace=True)
 
     # define 'Basin / profile'-table
-    table = pd.concat([temp, basins[["node_id"]]], axis=1)
-    table = table[["node_id", "level", "area"]]
+    table = df_profiles[["node_id", "level", "area"]]
+
+    # return table (optionally as GeoDataFrame)
     if as_geo_dataframe:
         return gpd.GeoDataFrame(table)
     return table
