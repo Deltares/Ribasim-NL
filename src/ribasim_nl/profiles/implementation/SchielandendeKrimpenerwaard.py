@@ -32,10 +32,14 @@ def main(
     fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "database.gpkg")
     gdf_basins = gpd.read_file(fn_basins, layer="Basin / area")
     # > crossings
-    fn_crossings = cloud.joinpath(water_authority, "verwerkt", "Crossings", "hhsk_crossings_v04.gpkg")
+    fn_crossings = cloud.joinpath(
+        water_authority, "verwerkt", "Crossings", "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg"
+    )
     gdf_crossings = gpd.read_file(fn_crossings, layer="crossings_hydroobject_filtered")
     # > hydro-objects
-    fn_hydro_objects = cloud.joinpath(water_authority, "verwerkt", "Crossings", "hhsk_crossings_v04.gpkg")
+    fn_hydro_objects = cloud.joinpath(
+        water_authority, "verwerkt", "Crossings", "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg"
+    )
     gdf_hydro_objects = gpd.read_file(fn_hydro_objects, layer="hydroobject")
     # > cross-sections
     fn_cross_sections = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
