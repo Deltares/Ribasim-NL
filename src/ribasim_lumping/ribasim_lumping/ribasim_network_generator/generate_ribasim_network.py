@@ -785,9 +785,11 @@ def regenerate_node_ids(
     boundary_connections["basin_node_id"] = boundary_connections["basin"] + len_split_nodes + len_boundaries
     boundary_connections["from_node_id"] = (
         boundary_connections.apply(
-            lambda x: x["basin_node_id"]
-            if x["connection"].startswith("basin")
-            else (x["boundary_node_id"] if x["connection"].startswith("boundary") else x["split_node_node_id"]),
+            lambda x: (
+                x["basin_node_id"]
+                if x["connection"].startswith("basin")
+                else (x["boundary_node_id"] if x["connection"].startswith("boundary") else x["split_node_node_id"])
+            ),
             axis=1,
         )
         .fillna(-1)
@@ -795,9 +797,11 @@ def regenerate_node_ids(
     )
     boundary_connections["to_node_id"] = (
         boundary_connections.apply(
-            lambda x: x["basin_node_id"]
-            if x["connection"].endswith("basin")
-            else (x["boundary_node_id"] if x["connection"].endswith("boundary") else x["split_node_node_id"]),
+            lambda x: (
+                x["basin_node_id"]
+                if x["connection"].endswith("basin")
+                else (x["boundary_node_id"] if x["connection"].endswith("boundary") else x["split_node_node_id"])
+            ),
             axis=1,
         )
         .fillna(-1)
