@@ -126,7 +126,7 @@ def main(
 
     # align all CRS
     for gdf in data:
-        gdf.to_crs(epsg=epsg)
+        gdf.to_crs(epsg=epsg, inplace=True)
 
     # split dataframes
     match len(data):
