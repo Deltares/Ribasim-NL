@@ -8,15 +8,15 @@ from ribasim_nl import CloudStorage
 
 
 def main(
-    *, export_profile_table: bool = True, overwrite: bool = False, export_intermediate_output: bool = False
+    *, export_profile_tables: bool = True, overwrite: bool = False, export_intermediate_output: bool = False
 ) -> None:
     """Execute profile table generator for Amstel, Gooi en Vecht.
 
-    :param export_profile_table: export profile tables as *.csv-files, defaults to True
+    :param export_profile_tables: export profile tables as *.csv-files, defaults to True
     :param overwrite: overwrite GoodCloud-data, defaults to False
     :param export_intermediate_output: export intermediate output for checking/debugging, defaults to False
 
-    :type export_profile_table: bool, optional
+    :type export_profile_tables: bool, optional
     :type overwrite: bool, optional
     :type export_intermediate_output: bool, optional
     """
@@ -59,7 +59,7 @@ def main(
     )
 
     # export profile table
-    if export_profile_table:
+    if export_profile_tables:
         wd_table = cloud.joinpath(water_authority, "verwerkt", "profielen")
         wd_table.parent.mkdir(exist_ok=True)
         for table, name in zip(profiles_tables, ("doorgaande", "bergend")):
@@ -69,4 +69,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main(export_profile_table=True, export_intermediate_output=True)
+    main(export_profile_tables=True, export_intermediate_output=True)
