@@ -32,6 +32,7 @@ def main(
 
     :key cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :key drop_nan_hydro_objects: drop hydro-objects for which no width and/or depth can be determined, defaults to True
+    :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
     :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None
         Required if no `HydrotopeTable` is provided (i.e., `hydrotope_table=None`)
     :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to True
@@ -55,6 +56,8 @@ def main(
     :key export_intermediate_output: export intermediate output, e.g., for debugging, defaults to False
         If `export_intermediate_output=True`, a working directory must be defined, i.e., `wd_intermediate_output`
     :key wd_intermediate_output: working directory for intermediate output files, defaults to None
+    :key create_wd_intermediate: create working directory for intermediate output files (if non-existing), including the
+        parents, defaults to True
 
     :type data: geopandas.GeoDataFrame
     :type hydrotope_table: hydrotopes.HydrotopeTable
@@ -69,6 +72,7 @@ def main(
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
     drop_nan_hydro_objects: bool = kwargs.get("drop_nan_hydro_objects", True)
+    epsg: int = kwargs.get("epsg", 28992)
     # > hydrotopes
     fn_hydrotopes: pathlib.Path | str | None = kwargs.get("fn_hydrotopes")
     # > generation of depth profile lines
@@ -112,6 +116,10 @@ def main(
         raise ValueError(msg)
     if export_intermediate_output and create_wd_intermediate:
         wd_intermediate_output.mkdir(parents=True, exist_ok=True)
+
+    # align all CRS
+    for gdf in data:
+        gdf.to_crs(epsg=epsg)
 
     # split dataframes
     match len(data):
