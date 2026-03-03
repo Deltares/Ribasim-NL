@@ -1,8 +1,12 @@
+import logging
+
 import geopandas as gpd
 import numpy as np
 import shapely
 
 from profiles import hydrotopes as ht
+
+LOG = logging.getLogger(__name__)
 
 
 def make_depth_profiles(
@@ -92,10 +96,11 @@ def depth_from_hydrotopes(
     temp = gpd.sjoin(hydro_objects, hydrotope_map, how="left", predicate="intersects", rsuffix="map")
     mask = temp["index_map"].isna()
     if mask.any():
+        LOG.warning(f"Hydro-objects outside hydrotope map ({sum(mask)}) linked to nearest hydrotope")
         _temp = gpd.sjoin_nearest(hydro_objects.loc[temp.index[mask]], hydrotope_map, how="left", rsuffix="map")
-        print(temp[mask])
+        LOG.debug(temp[mask])
         temp.update(_temp)
-        print(temp[mask])
+        LOG.debug(temp[mask])
 
     temp["overlap"] = temp.apply(
         lambda row: row["geometry"].intersection(hydrotope_map.loc[row["index_map"], "geometry"]).length, axis=1
