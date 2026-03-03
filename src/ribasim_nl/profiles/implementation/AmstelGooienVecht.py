@@ -10,6 +10,16 @@ from ribasim_nl import CloudStorage
 def main(
     *, export_profile_table: bool = True, overwrite: bool = False, export_intermediate_output: bool = False
 ) -> None:
+    """Execute profile table generator for Amstel, Gooi en Vecht.
+
+    :param export_profile_table: export profile tables as *.csv-files, defaults to True
+    :param overwrite: overwrite GoodCloud-data, defaults to False
+    :param export_intermediate_output: export intermediate output for checking/debugging, defaults to False
+
+    :type export_profile_table: bool, optional
+    :type overwrite: bool, optional
+    :type export_intermediate_output: bool, optional
+    """
     water_authority = "AmstelGooienVecht"
 
     # get files from the cloud
