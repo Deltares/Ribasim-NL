@@ -67,6 +67,11 @@ def main(
             table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
             table.to_csv(fn_table, index=False)
 
+        # upload profile files
+        cloud.upload_content(wd_table, overwrite=True)
+        if export_intermediate_output:
+            cloud.upload_content(wd_table / "intermediate", overwrite=True)
+
 
 if __name__ == "__main__":
     main(export_profile_tables=True, export_intermediate_output=True)
