@@ -15,7 +15,9 @@ from ribasim_nl import CloudStorage
 LOG = logging.getLogger(__name__)
 
 
-def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = None, **kwargs) -> gpd.GeoDataFrame:
+def main(
+    *data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = None, **kwargs
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Full profile-generating workflow.
 
     :param data: geospatial datasets:
@@ -57,8 +59,8 @@ def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = No
     :type data: geopandas.GeoDataFrame
     :type hydrotope_table: hydrotopes.HydrotopeTable
 
-    :return: basin profiles
-    :rtype: pandas.DataFrame
+    :return: basin profiles for flowing/'doorgaand' and storing/'bergend' separately
+    :rtype: tuple[geopandas.GeoDataFrame, geopandas.GeoDataFrame]
 
     :raises ValueError: if both `hydrotope_table` and `fn_hydrotopes` are undefined (i.e., `None`)
     :raises ValueError: if `wd_intermediate_output` is defined while `export_intermediate_output=True`
@@ -215,19 +217,29 @@ def main(*data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = No
     if cross_sections is not None:
         hydro_objects = depth.depth_from_measurements(hydro_objects, cross_sections)
     if export_intermediate_output:
-        hydro_objects.to_file(str(wd_intermediate_output / _fn_int_output), layer="hydro-objects")
+        hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")
 
     # basin profiles
-    basin_profiles = cross_section.assign_basin_profiles(basins, hydro_objects, as_geo_dataframe=True)
+    main_route = hydro_objects["main-route"].values
+    flowing_profiles = cross_section.assign_basin_profiles(basins, hydro_objects[main_route], as_geo_dataframe=True)
+    storing_profiles = cross_section.assign_basin_profiles(basins, hydro_objects[~main_route], as_geo_dataframe=True)
 
     # NaN-valued basin profiles
-    if sum(basin_profiles["area"].isna()) > 0:
-        print("NaN-values present in profile-table!")
+    if sum(flowing_profiles["area"].isna()) > 0:
+        print("NaN-values present in profile-table (flowing/'doorgaand')")
         if not input("Continue? [y/n] ") == "y":
-            print(basin_profiles[basin_profiles.isna()], end="\n\n")
+            print(flowing_profiles[flowing_profiles.isna()], end="\n\n")
             raise KeyboardInterrupt
+        print(flowing_profiles, end="\n\n")
+    if sum(storing_profiles["area"].isna()) > 0:
+        print("NaN-values present in profile-table (storing/'bergend')")
+        if not input("Continue? [y/n] ") == "y":
+            print(storing_profiles[storing_profiles.isna()], end="\n\n")
+            raise KeyboardInterrupt
+        print(storing_profiles, end="\n\n")
 
     # export basin profiles
     if export_intermediate_output:
-        basin_profiles.to_file(str(wd_intermediate_output / _fn_int_output), layer="basin_profiles")
-    return basin_profiles
+        flowing_profiles.to_file(wd_intermediate_output / _fn_int_output, layer="basin_profiles_doorgaand")
+        storing_profiles.to_file(wd_intermediate_output / _fn_int_output, layer="basin_profiles_bergend")
+    return flowing_profiles, storing_profiles
