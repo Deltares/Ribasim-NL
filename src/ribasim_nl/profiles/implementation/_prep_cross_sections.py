@@ -11,6 +11,17 @@ LOG = logging.getLogger(__name__)
 
 
 def get_basins(water_authority: str, cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
+    """Get geospatial data of basins.
+
+    :param water_authority: name of water authority
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+
+    :type water_authority: str
+    :type cloud: CloudStorage, optional
+
+    :return: basin data
+    :rtype: geopandas.GeoDataFrame
+    """
     fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "database.gpkg")
     return gpd.read_file(fn_basins, layer="Basin / area")
 
@@ -18,6 +29,19 @@ def get_basins(water_authority: str, cloud: CloudStorage = CloudStorage()) -> gp
 def points2lines_general(
     basins: gpd.GeoDataFrame, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0
 ) -> gpd.GeoDataFrame:
+    """General translation from (x,y,z)-points to (x,y)-lines.
+
+    :param basins: basin polygons
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :param buffer: buffer around basins within which points are searched, defaults to 0
+
+    :type basins: geopandas.GeoDataFrame
+    :type cloud: CloudStorage, optional
+    :type buffer: float, optional
+
+    :return: cross-sectional profiles
+    :rtype: geopandas.GeoDataFrame
+    """
     fn = cloud.joinpath("Basisgegevens", "profielen", "Profielen_NL.gpkg")
     LOG.info(f"Reading file: {fn}")
     points = gpd.read_file(fn, layer="profielpunt", bbox=tuple(basins.total_bounds))
@@ -27,10 +51,19 @@ def points2lines_general(
         LOG.critical("No datapoints within the basin collection: Empty GeoDataFrame")
         return points
     lines = make_depth_profiles(points)
+    lines.rename(columns={"line_id": "profiellijnid"}, inplace=True)
     return lines
 
 
 def points2lines_agv(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
+    """Generation of measurements to cross-sectional profiles for Amstel, Gooi en Vecht.
+
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :type cloud: CloudStorage, optional
+
+    :return: cross-sectional profiles
+    :rtype: geopandas.GeoDataFrame
+    """
     fn = cloud.joinpath("Basisgegevens", "profielen", "AGV", "metingprofielpunt.gml")
     points = gpd.read_file(fn)
     lines = make_depth_profiles(points, col_profile_id="metingProfielLijnID")
@@ -39,6 +72,14 @@ def points2lines_agv(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
 
 
 def points2lines_delfland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
+    """Generation of measurements to cross-sectional profiles for Delfland.
+
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :type cloud: CloudStorage, optional
+
+    :return: cross-sectional profiles
+    :rtype: geopandas.GeoDataFrame
+    """
     fn = cloud.joinpath("Basisgegevens", "profielen", "Delfland", "Profielen_Delfland.gpkg")
     points = gpd.read_file(fn, layer="Dwarsprofiel_point", columns=["OBJECTID", "BodemHo", "geometry"])
     lines = gpd.read_file(fn, layer="Dwarsprofiel_line", columns=["OBJECTID", "geometry"])
@@ -53,6 +94,14 @@ def points2lines_delfland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFr
 
 
 def points2lines_rivierenland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
+    """Generation of measurements to cross-sectional profiles for Rivierenland.
+
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :type cloud: CloudStorage, optional
+
+    :return: cross-sectional profiles
+    :rtype: geopandas.GeoDataFrame
+    """
     fn = cloud.joinpath("Basisgegevens", "profielen", "Rivierenland", "Profielen_Rivierenland.gpkg")
     lines = gpd.read_file(fn, layer="Profiellijn")
     lines["profiellijnid"] = lines.index.copy()
@@ -60,6 +109,17 @@ def points2lines_rivierenland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDa
 
 
 def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer: float = 0) -> gpd.GeoDataFrame:
+    """Generation of measurements to cross-sectional profiles for Scheldestromen.
+
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :param buffer: maximum distance between points and lines to be connected, defaults to 0
+
+    :type cloud: CloudStorage, optional
+    :type buffer: float, optional
+
+    :return: cross-sectional profiles
+    :rtype: geopandas.GeoDataFrame
+    """
     fn = cloud.joinpath("Basisgegevens", "profielen", "Scheldestromen", "Profielen_Scheldestromen.gpkg")
     points = gpd.read_file(fn, layer="profielpunt", columns=["OBJECTID"])
     lines = gpd.read_file(fn, layer="profiellijn", columns=["PRO_ID"])
@@ -70,6 +130,19 @@ def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer:
 
 
 def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0) -> gpd.GeoDataFrame:
+    """Get cross-sectional profiles for a given water authority.
+
+    :param water_authority: name of water authority
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :param buffer: buffer-argument as used by some implementations, defaults to 0
+
+    :type water_authority: str
+    :type cloud: CloudStorage, optional
+    :type buffer: float, optional
+
+    :return: cross-sectional profiles
+    :rtype: geopandas.GeoDataFrame
+    """
     match water_authority:
         case "AmstelGooienVecht":
             return points2lines_agv(cloud=cloud)
@@ -87,6 +160,18 @@ def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, 
 def export_to_cloud(
     water_authority: str, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0, overwrite: bool = False
 ) -> None:
+    """Export cross-sectional profiles to the GoodCloud.
+
+    :param water_authority: name of water authority
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :param buffer: buffer-argument as used by some implementations, defaults to 0
+    :param overwrite: overwrite data from the GoodCloud, defaults to False
+
+    :type water_authority: str
+    :type cloud: CloudStorage, optional
+    :type buffer: float, optional
+    :type overwrite: bool, optional
+    """
     # sync cloud: Basisgegevens - profielen
     cloud.download_basisgegevens(["profielen"], overwrite=overwrite)
 
@@ -101,7 +186,6 @@ def export_to_cloud(
 
     # get data
     lines = get_profiles(water_authority, cloud, buffer=buffer)
-    print(lines.columns)
 
     # upload data
     fn = "lines_z.gpkg"
@@ -129,5 +213,6 @@ if __name__ == "__main__":
     # parse arguments
     args = parser.parse_args()
 
+    # execute preprocessing
     logging.basicConfig(level=args.log.upper())
     export_to_cloud(args.water_authority, buffer=args.buffer)
