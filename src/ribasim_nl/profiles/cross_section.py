@@ -198,5 +198,5 @@ def full_bgt_coverage(
 
     # return modified table (optionally as GeoDataFrame)
     if as_geo_dataframe:
-        return gpd.GeoDataFrame(df_profiles)
-    return df_profiles
+        return gpd.GeoDataFrame(profiles_exp)
+    return profiles_exp
