@@ -146,13 +146,37 @@ def assign_basin_profiles(
 
 
 def full_bgt_coverage(
-    profiles_fixed: pd.DataFrame, profiles_exp: pd.DataFrame, basins: gpd.GeoDataFrame, bgt: gpd.GeoDataFrame, **kwargs
+    profiles_fixed: pd.DataFrame | gpd.GeoDataFrame,
+    profiles_exp: pd.DataFrame | gpd.GeoDataFrame,
+    basins: gpd.GeoDataFrame,
+    bgt: gpd.GeoDataFrame,
+    **kwargs,
 ) -> pd.DataFrame | gpd.GeoDataFrame:
+    """Enforce full usage of BGT-data per basin by including it in the profiles' A(h)-relation.
+
+    :param profiles_fixed: non-expandable basin profiles (i.e., 'doorgaand')
+    :param profiles_exp: expandable basin profiles (i.e., 'bergend')
+    :param basins: basin polygons
+    :param bgt: BGT-dataset
+    :param kwargs: optional arguments
+
+    :key as_geo_dataframe: enforce output as geopandas.GeoDataFrame, otherwise type of `profiles_exp` will be kept,
+        defaults to False
+    :key margin: bottom-of-profile dummy value, defaults to 1e-4
+    :key min_valid_area: minimum area (mainly relevant for bottom-of-profile area), default to None
+
+    :type profiles_fixed: pandas.DataFrame | geopandas.GeoDataFrame
+    :type profiles_exp: pandas.DataFrame | geopandas.GeoDataFrame
+    :type basins: geopandas.GeoDataFrame
+    :type bgt: geopandas.GeoDataFrame
+
+    :return: expanded basin profiles ('bergend')
+    :rtype: pandas.DataFrame | geopandas.GeoDataFrame
+    """
     # optional arguments
     as_geo_dataframe: bool = kwargs.get("as_geo_dataframe", False)
     margin: float = kwargs.get("margin", 1e-4)
     min_valid_area: float | None = kwargs.get("min_valid_area")
-    min_df: bool = kwargs.get("min_df", True)
 
     # determine water surface area per basin based on hydro-objects
     df_profiles = pd.merge(profiles_fixed, profiles_exp, how="outer", on="node_id", suffixes=("_f", "_s"))
@@ -160,10 +184,7 @@ def full_bgt_coverage(
     df_areas["total_area"] = df_areas.sum(axis=1, skipna=True, numeric_only=True, min_count=1)
 
     # determine water surface area per basin based on BGT-data
-    if min_df:
-        basins = basins[["node_id", "geometry"]]
-        bgt = bgt[["geometry"]]
-    bgt_basin = gpd.overlay(bgt, basins, how="intersection", keep_geom_type=True)
+    bgt_basin = gpd.overlay(bgt[["geometry"]], basins[["node_id", "geometry"]], how="intersection", keep_geom_type=True)
     bgt_basin = bgt_basin.dissolve(by="node_id", method="unary")
 
     # set invalid areas to zero (too small/dummy values)
