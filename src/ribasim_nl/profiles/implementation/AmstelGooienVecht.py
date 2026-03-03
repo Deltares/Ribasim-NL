@@ -27,36 +27,35 @@ def main(
     # > hydro-objects
     fn_hydro_objects = cloud.joinpath(water_authority, "verwerkt", "Crossings", "agv_crossings_v05.gpkg")
     gdf_hydro_objects = gpd.read_file(fn_hydro_objects, layer="hydroobject")
-    # # > cross-sections
-    # fn_cross_sections = None
-    # gdf_cross_sections = gpd.read_file(fn_cross_sections, layer='profielpunt')
+    # > cross-sections
+    fn_cross_sections = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
+    gdf_cross_sections = gpd.read_file(fn_cross_sections)
     # > BGT-data
     fn_bgt = cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
     # > hydrotopes
     fn_hydrotopes = cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv")
 
     # execute profile generation
-    profiles_table = run.main(
+    profiles_tables = run.main(
         gdf_basins,
         gdf_crossings,
         gdf_hydro_objects,
+        gdf_cross_sections,
         cloud=cloud,
         fn_bgt=fn_bgt,
         fn_hydrotopes=fn_hydrotopes,
         export_intermediate_output=export_intermediate_output,
         wd_intermediate_output=cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate"),
     )
-    if sum(profiles_table["area"].isna()) > 0:
-        print("NaN-values present in profile-table!")
-        if not input("Continue? [y/n] ") == "y":
-            raise KeyboardInterrupt
 
     # export profile table
     if export_profile_table:
-        fn_table = cloud.joinpath(water_authority, "verwerkt", "profielen", "profiel_tabel.csv")
-        fn_table.parent.mkdir(exist_ok=True)
-        table = pd.DataFrame(profiles_table[[c for c in profiles_table.columns if c != "geometry"]])
-        table.to_csv(fn_table, index=False)
+        wd_table = cloud.joinpath(water_authority, "verwerkt", "profielen")
+        wd_table.parent.mkdir(exist_ok=True)
+        for table, name in zip(profiles_tables, ("doorgaande", "bergend")):
+            fn_table = wd_table / f"profielen_{name}.csv"
+            table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
+            table.to_csv(fn_table, index=False)
 
 
 if __name__ == "__main__":
