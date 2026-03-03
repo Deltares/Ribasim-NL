@@ -19,7 +19,6 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %%
 # read

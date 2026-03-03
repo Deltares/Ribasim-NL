@@ -17,7 +17,6 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 cloud.synchronize(filepaths=[static_data_xlsx])
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # %%
 # read
@@ -61,7 +60,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 906, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 164, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_level"] = 0.52
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 481, "flow_rate"] = 20
+
 
 # stadswater Utrecht beneden peil
 node_ids = [1401, 1406, 1414, 1422, 1426, 1452, 1576, 1588, 1654, 1660, 1668, 1673, 1757, 1760, 1766, 1778]

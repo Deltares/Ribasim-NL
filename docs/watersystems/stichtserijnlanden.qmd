@@ -81,26 +81,26 @@ Overtollig water uit de polder wordt **afgevoerd** op de Hollandsche IJssel en d
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
-| naam                      | code   |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
-|:--------------------------|:-------|----------:|:----------|-----------------:|----------------:|
-| Aanvoerder, De            | G4031  |       542 | inlaat    |               30 |               0 |
-| Bodegraven Sluis          | SL0005 |       755 | uitlaat   |                0 |              30 |
-| Caspargauw                | G3003  |       601 | inlaat    |               30 |               0 |
-| Cothen Stuw               | ST3001 |       777 | doorlaat  |               30 |              30 |
-| Doorslag sluis            | SL0030 |       754 | inlaat    |               30 |               0 |
-| Haanwijkersluis           | SL0003 |       742 | inlaat    |               30 |               0 |
-| Inlaat Hekendorp          | I6098  |       141 | inlaat    |               30 |               0 |
-| Inlaat Vreeswijk          | I6119  |       252 | inlaat    |               30 |               0 |
-| Inlaat wijk bij duurstede | AF0093 |       481 | inlaat    |               30 |               0 |
-| Keulevaart, De            | G3025  |       623 | uitlaat   |                0 |              30 |
-| Koekoek, De               | G5002  |       541 | uitlaat   |                0 |              30 |
-| Noordergemaal             | G6007  |       536 | inlaat    |               30 |               0 |
-| Oog in Al spuisluis       | I1580  |       168 | uitlaat   |                0 |              30 |
-| Sifon onder Ark           | SY0070 |       468 | inlaat    |               30 |               0 |
-| Waaiersluis Gouda         | G8000  |       567 | uitlaat   |                0 |              30 |
-| Weerdsluis                | SL0009 |       757 | uitlaat   |                0 |              30 |
-| Werkhoven stuw            | ST2028 |       919 | doorlaat  |               30 |              30 |
-| Zuidersluis               | SL0016 |       758 | uitlaat   |                0 |              30 |
+| naam                      | code   |   node_id | functie                |   aanvoer [m3/s] |   afvoer [m3/s] |
+|:--------------------------|:-------|----------:|:-----------------------|-----------------:|----------------:|
+| Aanvoerder, De            | G4031  |       542 | inlaat                 |              7   |            0    |
+| Bodegraven Sluis          | SL0005 |       755 | uitlaat                |              0   |           25    |
+| Caspargauw                | G3003  |       601 | inlaat                 |              3.3 |            0    |
+| Cothen Stuw               | ST3001 |       777 | doorlaat               |             20   |           20    |
+| Doorslag sluis            | SL0030 |       754 | inlaat                 |              7   |            0    |
+| Haanwijkersluis           | SL0003 |       742 | inlaat                 |              6.2 |            0    |
+| Inlaat Hekendorp          | I6098  |       141 | inlaat                 |              6.2 |            0    |
+| Inlaat Vreeswijk          | I6119  |       252 | inlaat                 |             18   |            0    |
+| Inlaat wijk bij duurstede | AF0093 |       481 | inlaat                 |             10   |            0    |
+| Keulevaart, De            | G3025  |       623 | uitlaat                |              0   |            5.34 |
+| Koekoek, De               | G5002  |       541 | uitlaat                |              0   |           11.2  |
+| Noordergemaal             | G6007  |       536 | inlaat                 |             12   |            0    |
+| Oog in Al spuisluis       | I1580  |       168 | uitlaat                |              0   |           20    |
+| Sifon onder ARK           | SY0070 |       468 | inlaat                 |             12   |            0    |
+| Waaiersluis Gouda         | G8000  |       567 | uitlaat                |              0   |           14    |
+| Weerdsluis                | SL0009 |       757 | uitlaat                |              0   |           16    |
+| Werkhoven stuw            | ST2028 |       919 | uitlaat (doorspoeling) |              5   |           20    |
+| Zuidersluis               | SL0016 |       758 | uitlaat                |              0   |            0    |
 
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van `Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco)` en:
