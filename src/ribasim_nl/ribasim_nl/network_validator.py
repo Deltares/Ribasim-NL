@@ -115,9 +115,11 @@ class NetworkValidator:
         """Check if the `from_node_type` in link-table in matches the `node_type` of the corresponding node in the node-table"""
         node_df = self.node_df
         mask = ~self.link_df.apply(
-            lambda row: node_df.at[row["from_node_id"], "node_type"] == row["from_node_type"]
-            if row["from_node_id"] in node_df.index
-            else False,
+            lambda row: (
+                node_df.at[row["from_node_id"], "node_type"] == row["from_node_type"]
+                if row["from_node_id"] in node_df.index
+                else False
+            ),
             axis=1,
         )
         return self.link_df[mask]
@@ -126,9 +128,11 @@ class NetworkValidator:
         """Check if the `to_node_type` in link-table in matches the `node_type` of the corresponding node in the node-table"""
         node_df = self.node_df
         mask = ~self.link_df.apply(
-            lambda row: node_df.at[row["to_node_id"], "node_type"] == row["to_node_type"]
-            if row["to_node_id"] in node_df.index
-            else False,
+            lambda row: (
+                node_df.at[row["to_node_id"], "node_type"] == row["to_node_type"]
+                if row["to_node_id"] in node_df.index
+                else False
+            ),
             axis=1,
         )
         return self.link_df[mask]
