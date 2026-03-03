@@ -104,7 +104,10 @@ def main(
         LOG.critical(f"Debug mode: {drop_nan_hydro_objects=}: Profiles are undefined.")
     # > hydrotope data
     if hydrotope_table is None and fn_hydrotopes is None:
-        msg = f"Either a table with hydrotopes must be given ({hydrotope_table=}), or a *.csv-file with hydrotopes ({fn_hydrotopes=})"
+        msg = (
+            f"Either a table with hydrotopes must be given ({hydrotope_table=}), "
+            f"or a *.csv-file with hydrotopes ({fn_hydrotopes=})"
+        )
         raise ValueError(msg)
     if hydrotope_table is None:
         hydrotope_table = ht.HydrotopeTable.from_csv(fn_hydrotopes)
@@ -112,7 +115,10 @@ def main(
         LOG.warning(f"Hydrotope-table specified; skipped {fn_hydrotopes=}")
     # > intermediate output
     if export_intermediate_output and wd_intermediate_output is None:
-        msg = f"When exporting the intermediate output ({export_intermediate_output=}), a working directory must be provided: {wd_intermediate_output=}"
+        msg = (
+            f"When exporting the intermediate output ({export_intermediate_output=}), "
+            f"a working directory must be provided: {wd_intermediate_output=}"
+        )
         raise ValueError(msg)
     if export_intermediate_output and create_wd_intermediate:
         wd_intermediate_output.mkdir(parents=True, exist_ok=True)
