@@ -105,7 +105,7 @@ def export_to_cloud(
 
     # upload data
     fn = "lines_z.gpkg"
-    lines.to_file(str(src / fn))
+    lines.to_file(src / fn)
     cloud.upload_file(src / fn)
     print(f"File saved: {src / fn}")
 
