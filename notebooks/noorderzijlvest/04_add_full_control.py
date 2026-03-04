@@ -216,6 +216,7 @@ node_functions_df = add_controllers_to_supply_area(
 )
 
 # %%
+# %%
 # Toevoegen Peizerdiep
 
 polygon = aanvoergebieden_df.at["Peizerdiep", "geometry"]
@@ -226,7 +227,8 @@ ignore_intersecting_links: list[int] = []
 
 # doorspoeling (op uitlaten)
 # node_id: Naam
-flushing_nodes = {}
+# flushing_nodes = {419: 0.01, 391: 0.01}
+flushing_nodes = {419: {"winter": 0, "summer": 0.043 * 0.25}, 391: {"winter": 0.043, "summer": 0.043 * 0.75}}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # node_id: Naam
@@ -333,10 +335,10 @@ model.add_control_node(
 # %% add all remaining inlets/outlets
 
 
-# 29: De Waterwolf
+# 728: Lamerburen Schutsluis (bij complex De Waterwolf)
 # 640: KST1027
 # 641: KST1030
-flow_control_nodes = [29, 640, 641]
+flow_control_nodes = [728, 640, 641]
 
 # 39 Zuidhornder Zuidertocht
 # 165: Harssensbosch

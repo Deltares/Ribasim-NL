@@ -489,9 +489,10 @@ def add_control_functions_to_connector_nodes(
     selected_nodes_df["demand_flow_rate"] = pd.Series(dtype="float")
     selected_nodes_df["demand_flow_rate_summer"] = pd.Series(dtype="float")
     selected_nodes_df["demand_flow_rate_winter"] = pd.Series(dtype="float")
-    selected_nodes_df.loc[
-        list(flushing_nodes.keys()), ["demand_flow_rate", "demand_flow_rate_summer", "demand_flow_rate_winter"]
-    ] = parse_flushing_values(flushing_nodes)
+    if flushing_nodes:
+        selected_nodes_df.loc[
+            list(flushing_nodes.keys()), ["demand_flow_rate", "demand_flow_rate_summer", "demand_flow_rate_winter"]
+        ] = parse_flushing_values(flushing_nodes)
 
     # Last check
     if len(all_nodes) != len(selected_nodes_df):
