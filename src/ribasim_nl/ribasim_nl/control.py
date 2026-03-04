@@ -348,7 +348,7 @@ def add_control_functions_to_connector_nodes(
     drain_nodes: list[int],
     supply_nodes: list[int],
     flow_control_nodes: list[int],
-    flushing_nodes: dict[int, float],
+    flushing_nodes: dict[int, float | dict[str, float]],
     is_supply_node_column: str = "meta_supply_node",
 ) -> gpd.GeoDataFrame:
     """Add control functions `drain`, `supply`, `flusing` or `flow_control` to nodes
@@ -365,7 +365,7 @@ def add_control_functions_to_connector_nodes(
         List of node_ids that is forced to the function `supply`
     flow_control_nodes: list[int]
         List of node_ids that will be forced to the function `flow_control`
-    flushing_nodes : dict[int, float]
+    flushing_nodes : dict[int, float | dict[str, float]]
         Flushing nodes with their demands in the form of {node_id:demand}
     is_supply_node_column : str, optional
         Column in model.pump.node.df and model.outlet.node.df indicates if node is a supply-node, by default "meta_supply_node"
@@ -375,6 +375,26 @@ def add_control_functions_to_connector_nodes(
     gpd.GeoDataFrame
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand` that can be used in `add_controllers_to_connector_nodes` function
     """
+
+    def parse_flushing_values(flushing_nodes: dict[int, float | dict[str, float]]):
+        def value_to_list(value):
+            if isinstance(value, (int, float)):
+                return [value, value, value]
+            if isinstance(value, dict):
+                try:
+                    return [value["summer"], value["summer"], value["winter"]]
+                except KeyError:
+                    raise ValueError(
+                        f'flushing node dict value should be {{"summer": float, "winter": float}}, got {value}'
+                    )
+
+            else:
+                raise ValueError(
+                    f'flushing node value should be either float or dict as {{"summer": float, "winter": float}}, got {value}'
+                )
+
+        return [value_to_list(i) for i in flushing_nodes.values()]
+
     # get a node_table with node_type, from_node_id, to_node_id, function (drain, supply, flow_control or flushing) and demand_flow_rate (if flushing)
 
     # Step: check if we miss any user-defined supply, drain or flushing nodes
@@ -467,7 +487,11 @@ def add_control_functions_to_connector_nodes(
 
     # Step: add demand_flow_rate for flushing nodes
     selected_nodes_df["demand_flow_rate"] = pd.Series(dtype="float")
-    selected_nodes_df.loc[list(flushing_nodes.keys()), "demand_flow_rate"] = list(flushing_nodes.values())
+    selected_nodes_df["demand_flow_rate_summer"] = pd.Series(dtype="float")
+    selected_nodes_df["demand_flow_rate_winter"] = pd.Series(dtype="float")
+    selected_nodes_df.loc[
+        list(flushing_nodes.keys()), ["demand_flow_rate", "demand_flow_rate_summer", "demand_flow_rate_winter"]
+    ] = parse_flushing_values(flushing_nodes)
 
     # Last check
     if len(all_nodes) != len(selected_nodes_df):
@@ -1188,7 +1212,7 @@ def add_controllers_to_supply_area(
     polygon: Polygon,
     ignore_intersecting_links: list[int],
     drain_nodes: list[int],
-    flushing_nodes: dict[int, float],
+    flushing_nodes: dict[int, float | dict[str, float]],
     supply_nodes: list[int],
     level_difference_threshold: float,
     flow_control_nodes: list[int] | None = None,
@@ -1196,7 +1220,6 @@ def add_controllers_to_supply_area(
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
-    flushing_seasonal: bool = False,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 
@@ -1227,7 +1250,7 @@ def add_controllers_to_supply_area(
         Be cautious (!), only add id's to this list if you are sure it won't affect supply, by default []
     drain_nodes : list[int]
         List of node_ids that will be forced to drain
-    flushing_nodes : dict[int, float]
+    flushing_nodes : dict[int, float | dict[str, float]]
         Flushing nodes with their demands in the form of {node_id:demand}
     supply_nodes : list[int]
         List of node_ids that will be forced to supply
@@ -1277,7 +1300,6 @@ def add_controllers_to_supply_area(
         node_functions_df=node_functions_df,
         level_difference_threshold=level_difference_threshold,
         target_level_column=target_level_column,
-        flushing_seasonal=flushing_seasonal,
     )
 
     return node_functions_df

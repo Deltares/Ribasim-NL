@@ -443,7 +443,7 @@ model.outlet.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenh
 model.outlet.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
 model.outlet.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
 model.outlet.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
-
+model.outlet.node.df.loc[728, ["name"]] = ["Sluis Lammerburen"]
 
 #  %% write model
 model.use_validation = True
