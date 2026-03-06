@@ -37,8 +37,8 @@ def link_geometry_from_hydroobject(
     """
     geometry = None
 
-    from_point = drop_z(model.node_table().df.at[from_node_id, "geometry"])
-    to_point = drop_z(model.node_table().df.at[to_node_id, "geometry"])
+    from_point = drop_z(model.node.df.at[from_node_id, "geometry"])
+    to_point = drop_z(model.node.df.at[to_node_id, "geometry"])
     straight_line_distance = from_point.distance(to_point)
     # get or add node_from
     distance = network.nodes.distance(from_point)
