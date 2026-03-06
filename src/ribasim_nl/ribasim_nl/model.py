@@ -383,7 +383,7 @@ class Model(Model):
                 )
 
     def update_node(self, node_id, node_type, data: list | None = None, node_properties: dict = {}):
-        existing_node_type = self.node_table().df.at[node_id, "node_type"]
+        existing_node_type = self.node.df.at[node_id, "node_type"]
 
         # read existing table
         table = getattr(self, pascal_to_snake_case(existing_node_type))
@@ -405,6 +405,9 @@ class Model(Model):
         # remove from used node-ids so we can add it again in the same table
         if node_id in table._parent.node._used_node_ids:
             table._parent.node._used_node_ids.node_ids.remove(node_id)
+
+        # remove from global node table before re-adding to avoid duplicate index
+        self.node.df = self.node.df[self.node.df.index != node_id]
 
         # add to table
         table = getattr(self, pascal_to_snake_case(node_type))

@@ -594,7 +594,7 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
+ribasim_model._used_node_ids.max_node_id = ribasim_model.node.df.index.max()
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
