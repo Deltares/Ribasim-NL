@@ -12,12 +12,7 @@ from pydantic import BaseModel
 from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
 from ribasim.utils import _concat
-
-try:
-    from ribasim.validation import flow_link_neighbor_amount as link_amount
-except ImportError:
-    from ribasim.validation import flow_link_neighbor_amount as link_amount
-
+from ribasim.validation import link_neighbor_amount as link_amount
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
@@ -1100,14 +1095,15 @@ class Model(Model):
         # loop over all the "from_node" and check if they have enough outneighbor
         for _, row in from_node_info.iterrows():
             # from node's outneighbor
-            if row["from_node_count"] < link_amount[row["from_node_type"]][2]:
+            min_outneighbors = link_amount[link_type][row["from_node_type"]][2]
+            if row["from_node_count"] < min_outneighbors:
                 node_id = row["from_node_id"]
                 errors += [
                     {
                         "geometry": df_node.at[node_id, "geometry"],
                         "node_id": node_id,
                         "node_type": df_node.at[node_id, "node_type"],
-                        "exception": f"must have at least {link_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})",
+                        "exception": f"must have at least {min_outneighbors} outneighbor(s) (got {row['from_node_count']})",
                     }
                 ]
 
@@ -1127,14 +1123,15 @@ class Model(Model):
 
         # loop over all the "to_node" and check if they have enough inneighbor
         for _, row in to_node_info.iterrows():
-            if row["to_node_count"] < link_amount[row["to_node_type"]][0]:
+            min_inneighbors = link_amount[link_type][row["to_node_type"]][0]
+            if row["to_node_count"] < min_inneighbors:
                 node_id = row["to_node_id"]
                 errors += [
                     {
                         "geometry": df_node.at[node_id, "geometry"],
                         "node_id": node_id,
                         "node_type": df_node.at[node_id, "node_type"],
-                        "exception": f"must have at least {link_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})",
+                        "exception": f"must have at least {min_inneighbors} inneighbor(s) (got {row['to_node_count']})",
                     }
                 ]
 
