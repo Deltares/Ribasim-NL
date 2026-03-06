@@ -468,18 +468,7 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
                 how="left",
             )
 
-        # avoid making too large jumps in flow rates, by multiplying the flow_rates only when the max Q has not been reached yet
-        column_name_bounds = "found_lower_upper_bound_" + str(situation)
-        from_to_node_function_table.loc[
-            from_to_node_function_table[column_name_direction] == "lower", column_name_bounds
-        ] = True
-
-        # determine new flow rates per connector node in the from_to_node_function_table
-        column_name_new_flow_rate = "new_flow_rate_iteration_" + str(iteration) + "_" + situation
-        # increase flow rates when direction == higher, without having another value which is higher: multiply by 2
-        # from_to_node_function_table.loc[
-        #     (from_to_node_function_table[column_name_direction] == "higher") & (from_to
-
+        ### Bisection method ###
         from_to_node_function_table = update_from_to_node_function_table_with_new_flow_rate(
             from_to_node_function_table=from_to_node_function_table,
             iteration=iteration + 1,
@@ -487,27 +476,38 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
             column_name_direction=column_name_direction,
         )
 
-        # if too low and not in between
+        # if lower values have been assigned for the water_demand situation, then overwrite the max_flow_rate with the value from water_drainage
+        def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
+            # determine all column names for drainage
+            drainage_columns = [
+                c
+                for c in from_to_node_function_table.columns
+                if c.startswith("new_max_flow_rates_") and c.endswith("_water_drainage")
+            ]
 
-        ### pump and outlet analysis ###
-        # based on the scale_direction_iteration column, determine which pump and outlet nodes should be scaled higher or lower, based on the from_to_node_function_table
-        # basin_ids_to_scale_higher = basin_exceedance.loc[basin_exceedance[column_name_direction] == "higher"]["node_id"]
-        # basin_ids_to_scale_lower = basin_exceedance.loc[basin_exceedance[column_name_direction] == "lower"]["node_id"]
+            # determine highest drainage value for each row
+            from_to_node_function_table["max_drainage_value"] = from_to_node_function_table[drainage_columns].max(
+                axis=1
+            )
 
-        # # scale higher values of drainage situation
-        # if situation == "water_drainage":
-        #     basin_ids_to_scale_higher = basin_exceedance.loc[basin_exceedance[column_name_direction] == "higher"][
-        #         "node_id"
-        #     ]
-        #     nodes_to_scale_higher = from_to_node_function_table.loc[
-        #         (from_to_node_function_table["function"].isin(["drain", "flow_control"]))
-        #         & (from_to_node_function_table["allowed_to_scale"])
-        #         & (from_to_node_function_table[column_name_direction] == "higher")
-        #     ]["node_id"]
-        #     nodes_to_scale_lower = from_to_node_function_table.loc[
-        #         (from_to_node_function_table["function"].isin(["drain", "flow_control"]))
-        #         & (from_to_node_function_table["allowed_to_scale"])
-        #         & (from_to_node_function_table[column_name_direction] == "lower")
-        #     ]["node_id"]
-        # if first_iteration:
-        # print(1)
+            # determine the latest column name for demand
+            demand_columns = [
+                c
+                for c in from_to_node_function_table.columns
+                if c.startswith("new_max_flow_rates_") and c.endswith("_water_demand")
+            ]
+
+            # only replace value if a demand situation has already been processed
+            if len(demand_columns) > 0:
+                latest_demand_column = demand_columns[-1]
+
+                # overwrite demand values with drainage values
+                from_to_node_function_table.loc[
+                    from_to_node_function_table[latest_demand_column]
+                    < from_to_node_function_table["max_drainage_value"],
+                    latest_demand_column,
+                ] = from_to_node_function_table["max_drainage_value"]
+
+            return from_to_node_function_table
+
+        from_to_node_function_table = overwrite_demand_values_with_drainage_values(from_to_node_function_table)
