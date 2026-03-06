@@ -1,8 +1,8 @@
 import pathlib
 
 import pandas as pd
+from ribasim import run_ribasim
 
-from peilbeheerst_model import supply
 from ribasim_nl import Model
 
 # assumptions: meta_wateraanvoer column exists in basin area dataframe
@@ -117,11 +117,11 @@ def set_vertical_static_forcing(
     )
 
     if situation == "water_drainage":
-        precipitation = design_precipitation_event / 1000 / 24 * 3600  # convert mm/day to m/s
+        precipitation = design_precipitation_event / 1000 / (24 * 3600)  # convert mm/day to m/s
         potential_evaporation = 0.0
     elif situation == "water_demand":
         precipitation = 0.0
-        potential_evaporation = design_potential_evaporation_event / 1000 / 24 * 3600  # convert mm/day to m/s
+        potential_evaporation = design_potential_evaporation_event / 1000 / (24 * 3600)  # convert mm/day to m/s
     else:
         raise ValueError(f"Unknown situation: {situation}. Options are 'water_drainage' and 'water_demand'.")
 
@@ -138,17 +138,24 @@ def set_vertical_static_forcing(
 
 
 # paths and parameters
-ribasim_model_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_parameterized_2026_2_0\ribasim.toml"
+ribasim_model_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_parameterized_2026_3_0\ribasim.toml"
 ribasim_scaling_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\ribasim.toml"
 results_path = pathlib.Path(ribasim_scaling_path).parent / "results" / "basin.arrow"
-max_iterations = 10
-initial_guess_flow_rate_outlet = 10  # m3/s, will be updated iteratively
-initial_guess_flow_rate_pump = 50.0  # m3/s, will be updated iteratively. Set higher than outlet to force flow through pumps when both are available, as water is primarily pumped away to the boezem instead of passing it to other basins.
-design_precipitation_event = 15  # mm/day
+max_iterations = 1
+initial_guess_flow_rate_outlet = 0.1  # m3/s, will be updated iteratively
+initial_guess_flow_rate_pump = 10.0  # m3/s, will be updated iteratively. Set higher than outlet to force flow through pumps when both are available, as water is primarily pumped away to the boezem instead of passing it to other basins.
+design_precipitation_event = 10  # mm/day
 design_potential_evaporation_event = 5  # mm/day
 node_id_exclusion_list = []  # list of node_id's of outlet and pump nodes which should not be scaled
 printing = True
-
+level_boundary_waterlevel_drainage_situation = -999
+level_boundary_waterlevel_demand_situation = 999
+from_to_node_function_table = pd.read_csv(
+    "from_to_node_function_table.csv"
+)  # table with from_node_id, to_node_id and function (drain, supply, flow_control) for each connector node
+max_deviation = 0.05
+max_days = 10
+add_information_to_from_to_node_function_table = True
 
 # load model, create df with basin information, set node_id as index
 ribasim_model = Model.read(ribasim_model_path)
@@ -161,47 +168,62 @@ ribasim_model.pump.static.df["meta_known_flow_rate"] = True
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"] = False
 ###########################
 
-situations = ["water_drainage", "water_demand"]
+# situations = ["water_drainage", "water_demand"]
+situations = ["water_drainage"]
+
 
 # Set initial conditions equal to the target levels
 initial_water_level, basin_information = set_initial_water_levels(ribasim_model)
 
-# change meta_(func_)aanvoer to Boolean
-bool_map = {True: True, False: False, "True": True, "False": False, "true": True, "false": False}
-ribasim_model.basin.area.df["meta_aanvoer"] = ribasim_model.basin.area.df["meta_aanvoer"].map(bool_map)
-ribasim_model.outlet.static.df["meta_aanvoer"] = ribasim_model.outlet.static.df["meta_aanvoer"].map(bool_map)
-ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].map(bool_map)
-ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].map(bool_map)
+# use the from_to_node_function_table to determine which nodes are used for supply, drain and flow_control
+drain_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "drain"]
+supply_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "supply"]
+flow_control_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "flow_control"]
 
-# Apply outlet meta_aanvoer labelling and overrule non-hoofdwater routes when direct hoofdwater supply exists.
-supply.SupplyOutlet(ribasim_model).exec(overruling_enabled=True)
+
+# change meta_(func_)aanvoer to Boolean
+# bool_map = {True: True, False: False, "True": True, "False": False, "true": True, "false": False}
+# ribasim_model.basin.area.df["meta_aanvoer"] = ribasim_model.basin.area.df["meta_aanvoer"].map(bool_map)
+# ribasim_model.outlet.static.df["meta_aanvoer"] = ribasim_model.outlet.static.df["meta_aanvoer"].map(bool_map)
+# ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].map(bool_map)
+# ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].map(bool_map)
 
 # determine two df's for the downstream + upstream connector nodes which should be used in the scaling
 doorgaand_hoofdwater_basins = basin_information.loc[basin_information["meta_categorie"] != "bergend"]
-outlet_nodes = ribasim_model.outlet.static.df[["node_id", "meta_aanvoer", "meta_known_flow_rate"]].copy()
-pump_nodes = ribasim_model.pump.static.df[
-    ["node_id", "meta_func_afvoer", "meta_func_aanvoer", "meta_known_flow_rate"]
-].copy()
+outlet_nodes = ribasim_model.outlet.static.df[["node_id", "meta_known_flow_rate"]].copy()
+pump_nodes = ribasim_model.pump.static.df[["node_id", "meta_known_flow_rate"]].copy()
 
-# only select connector nodes with(out) meta_known_flow_rate == False, as only these need to be scaled
-outlet_nodes_to_scale = outlet_nodes.loc[~outlet_nodes["meta_known_flow_rate"]]
-pump_nodes_to_scale = pump_nodes.loc[~pump_nodes["meta_known_flow_rate"]]
+# concat the pump and outlet nodes into one dataframe, and merge with the from_to_node_function_table to add the meta_known_flow_rate information to the from_to_node_function_table
+connector_nodes_to_scale = pd.concat([pump_nodes, outlet_nodes], ignore_index=True)
+from_to_node_function_table = from_to_node_function_table.merge(connector_nodes_to_scale, on="node_id", how="left")
+
+# determine which nodes are allowed to be scaled
+from_to_node_function_table["allowed_to_scale"] = True
+from_to_node_function_table.loc[
+    from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale"
+] = False
+from_to_node_function_table.loc[from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale"] = False
+
+# # only select connector nodes with(out) meta_known_flow_rate == False, as only these need to be scaled
+# outlet_nodes_to_scale = outlet_nodes.loc[~outlet_nodes["meta_known_flow_rate"]]
+# pump_nodes_to_scale = pump_nodes.loc[~pump_nodes["meta_known_flow_rate"]]
 
 # exclude the nodes defined by the modeller
-outlet_nodes_to_scale = outlet_nodes_to_scale.loc[~outlet_nodes_to_scale["node_id"].isin(node_id_exclusion_list)]
-pump_nodes_to_scale = pump_nodes_to_scale.loc[~pump_nodes_to_scale["node_id"].isin(node_id_exclusion_list)]
+# outlet_nodes_to_scale = outlet_nodes_to_scale.loc[~outlet_nodes_to_scale["node_id"].isin(node_id_exclusion_list)]
+# pump_nodes_to_scale = pump_nodes_to_scale.loc[~pump_nodes_to_scale["node_id"].isin(node_id_exclusion_list)]
+
 
 # make a selection of all nodes which can be used for drainage and supply, based on the meta_func_afvoer and meta_aanvoer columns
 # assume that all outlet nodes can always be used for drainage, and only those with meta_aanvoer == True can be used for supply
-drainage_connector_nodes_to_scale = pd.concat(
-    [pump_nodes_to_scale.loc[pump_nodes_to_scale["meta_func_afvoer"]], outlet_nodes_to_scale]
-)
-supply_connector_nodes_to_scale = pd.concat(
-    [
-        pump_nodes_to_scale.loc[pump_nodes_to_scale["meta_func_aanvoer"]],
-        outlet_nodes_to_scale.loc[outlet_nodes_to_scale["meta_aanvoer"]],
-    ]
-)
+# drainage_connector_nodes_to_scale = pd.concat(
+#     [pump_nodes_to_scale.loc[pump_nodes_to_scale["meta_func_afvoer"]], outlet_nodes_to_scale]
+# )
+# supply_connector_nodes_to_scale = pd.concat(
+#     [
+#         pump_nodes_to_scale.loc[pump_nodes_to_scale["meta_func_aanvoer"]],
+#         outlet_nodes_to_scale.loc[outlet_nodes_to_scale["meta_aanvoer"]],
+#     ]
+# )
 
 # TO DO
 # run first simulation, check where waterlevels are not met
@@ -209,9 +231,16 @@ supply_connector_nodes_to_scale = pd.concat(
 # use bisection method to find optimal scaling factor for these nodes
 # rerun simulation with scaled nodes
 
-for situation in situations:
+for situation in situations:  # loop through drainage (afvoer) and demand (aanvoer) situation
     first_iteration = True
 
+    # dont let gravity pose a problem for the level boundaries
+    if situation == "water_drainage":
+        ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_drainage_situation
+    elif situation == "water_demand":
+        ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_demand_situation
+
+    # loop through each iteration
     for iteration in range(max_iterations):
         if printing:
             print(f"Starting iteration {iteration + 1}/{max_iterations} for situation: {situation}")
@@ -229,12 +258,12 @@ for situation in situations:
             if printing:
                 print("Replacing initial guess flow rates for outlets and pumps with unknown flow rates.")
 
-            # ribasim_model.outlet.static.df.loc[~ribasim_model.outlet.static.df["meta_known_flow_rate"], "flow_rate"] = (
-            #     initial_guess_flow_rate_outlet
-            # )
-            # ribasim_model.pump.static.df.loc[~ribasim_model.pump.static.df["meta_known_flow_rate"], "flow_rate"] = (
-            #     initial_guess_flow_rate_pump
-            # )
+            ribasim_model.outlet.static.df.loc[
+                ~ribasim_model.outlet.static.df["meta_known_flow_rate"], "max_flow_rate"
+            ] = initial_guess_flow_rate_outlet
+            ribasim_model.pump.static.df.loc[~ribasim_model.pump.static.df["meta_known_flow_rate"], "max_flow_rate"] = (
+                initial_guess_flow_rate_pump
+            )
 
             # write model
             if printing:
@@ -246,12 +275,122 @@ for situation in situations:
                 False  # avoid resetting initial water levels and initial guess flow rates in next iterations
             )
 
+            # create df to store the basin results of the scaling process, with node_id as index and streefpeil
+            basin_df_scaling_results = (
+                basin_information[["node_id", "meta_streefpeil", "meta_categorie"]].reset_index(drop=True).copy()
+            )
+            basin_df_scaling_results = basin_df_scaling_results.loc[
+                basin_df_scaling_results["meta_categorie"] != "bergend"
+            ]  # ignore bergende basins
+
+            # # create df to store the max_flow_rate of the pump and outlet nodes for each iteration
+            # pump_df_scaling_results = ribasim_model.pump.static.df[
+            #     ["node_id", "max_flow_rate", "meta_known_flow_rate"]
+            # ].copy()
+            # outlet_df_scaling_results = ribasim_model.outlet.static.df[
+            #     ["node_id", "max_flow_rate", "meta_known_flow_rate"]
+            # ].copy()
+
+            # # add the information of the max_flow_rates of the pump and outlet nodes to the pump_df_scaling_results and outlet_df_scaling_results dfs
+            # pump_df_scaling_results = pump_df_scaling_results.merge(
+            #     ribasim_model.pump.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
+            #     on="node_id",
+            #     how="left",
+            # )
+            # outlet_df_scaling_results = outlet_df_scaling_results.merge(
+            #     ribasim_model.outlet.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
+            #     on="node_id",
+            #     how="left",
+            # )
+
+            # add max_flow_rate of pump and outlet nodes to from_to_node_function_table
+            max_flow_rate_df = pd.concat(
+                [
+                    ribasim_model.pump.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
+                    ribasim_model.outlet.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
+                ],
+                ignore_index=True,
+            )
+            from_to_node_function_table = from_to_node_function_table.merge(max_flow_rate_df, on="node_id", how="left")
+
         # run simulation
         if printing:
             print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-        # run_ribasim(toml_path=ribasim_scaling_path)
-        # extract results
-        ribasim_water_levels = pd.read_feather(results_path)
+        run_ribasim(toml_path=ribasim_scaling_path)
 
-#
+        # extract results, only select relevant columns, merge streefpeil to node_id
+        ribasim_water_levels = pd.read_feather(results_path)
+        ribasim_water_levels = ribasim_water_levels[["time", "node_id", "level"]]
+        ribasim_water_levels = ribasim_water_levels.merge(
+            basin_information[["meta_streefpeil"]], left_on="node_id", right_index=True, how="left"
+        )
+
+        ### basin analysis ###
+        # determine which basins exceed the maximum allowed deviation and duration from the streefpeil
+        column_name_iteration = "exceeds_deviation_duration_iteration_" + str(iteration) + "_" + situation
+        ribasim_water_levels["deviation"] = ribasim_water_levels["level"] - ribasim_water_levels["meta_streefpeil"]
+        ribasim_water_levels[column_name_iteration] = ribasim_water_levels["deviation"] > max_deviation
+
+        # group by basin and determine for how many timesteps the deviation is exceeded
+        basin_exceedance = ribasim_water_levels.groupby("node_id")[column_name_iteration].sum().reset_index()
+        basin_exceedance = basin_exceedance.merge(
+            basin_information[["meta_streefpeil"]], left_on="node_id", right_index=True, how="left"
+        )
+
+        # determine which basins needs to be scaled higher or lower based on the exceeds_deviation_duration_iteration
+        column_name_direction = "scale_direction_iteration_" + str(iteration) + "_" + situation
+        basin_exceedance[column_name_direction] = None
+        basin_exceedance.loc[basin_exceedance[column_name_iteration] > max_days, column_name_direction] = (
+            "higher"  # if the deviation is exceeded for more than max_days, the flow rate should be scaled higher
+        )
+        basin_exceedance.loc[basin_exceedance[column_name_iteration] <= max_days, column_name_direction] = (
+            "lower"  # if lower, then the flow rate can be set lower
+        )
+
+        # TODO: possibly delete this later when not needed anymore
+        # add the information to the basin_df_scaling_results df
+        basin_df_scaling_results = basin_df_scaling_results.merge(
+            basin_exceedance[["node_id", column_name_iteration, column_name_direction]], on="node_id", how="left"
+        )
+
+        ### bridge basin --> connector nodes ###
+        # add the information to the from_to_node_function_table, based on the situation (drainage: checking downstream nodes, demand: checking upstream nodes)
+        if situation == "water_drainage":
+            from_to_node_function_table = from_to_node_function_table.merge(
+                basin_exceedance.set_index("node_id")[[column_name_iteration, column_name_direction]],
+                left_on="to_node_id",
+                right_index=True,
+                how="left",
+            )
+        elif situation == "water_demand":
+            from_to_node_function_table = from_to_node_function_table.merge(
+                basin_exceedance.set_index("node_id")[[column_name_iteration, column_name_direction]],
+                left_on="from_node_id",
+                right_index=True,
+                how="left",
+            )
+
+        ### pump and outlet analysis ###
+        # based on the scale_direction_iteration column, determine which pump and outlet nodes should be scaled higher or lower, based on the from_to_node_function_table
+        basin_ids_to_scale_higher = basin_exceedance.loc[basin_exceedance[column_name_direction] == "higher"]["node_id"]
+        basin_ids_to_scale_lower = basin_exceedance.loc[basin_exceedance[column_name_direction] == "lower"]["node_id"]
+
+        # scale higher values of drainage situation
+
+        if situation == "water_drainage":
+            basin_ids_to_scale_higher = basin_exceedance.loc[basin_exceedance[column_name_direction] == "higher"][
+                "node_id"
+            ]
+            nodes_to_scale_higher = from_to_node_function_table.loc[
+                (from_to_node_function_table["function"].isin(["drain", "flow_control"]))
+                & (from_to_node_function_table["allowed_to_scale"])
+                & (from_to_node_function_table[column_name_direction] == "higher")
+            ]["node_id"]
+            nodes_to_scale_lower = from_to_node_function_table.loc[
+                (from_to_node_function_table["function"].isin(["drain", "flow_control"]))
+                & (from_to_node_function_table["allowed_to_scale"])
+                & (from_to_node_function_table[column_name_direction] == "lower")
+            ]["node_id"]
+        # if first_iteration:
+        # print(1)
