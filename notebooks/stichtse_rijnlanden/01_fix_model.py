@@ -144,7 +144,7 @@ model.update_node(1965, "LevelBoundary", data=[level_data])
 # opheffen ST3122
 geometry = Point(117995, 443062.5)
 model.move_node(node_id=889, geometry=geometry)
-model.tabulated_rating_curve.node.df.loc[889, "name"] = "ST1985"
+model.node.df.loc[889, "name"] = "ST1985"
 
 for link_id in [359, 360, 361]:
     model.redirect_link(link_id=link_id, to_node_id=1572)
@@ -567,11 +567,20 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # basins and outlets we've added do not have category, we fill with hoofdwater
-model.basin.node.df.loc[model.basin.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
-model.outlet.node.df.loc[model.outlet.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[
+    (model.node.df["node_type"] == "Basin") & model.node.df["meta_categorie"].isna(),
+    "meta_categorie",
+] = "hoofdwater"
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df["meta_categorie"].isna(),
+    "meta_categorie",
+] = "hoofdwater"
 
 # somehow Sluis Engelen (beheerregister AAM) has been named Henriettesluis
-model.outlet.node.df.loc[model.outlet.node.df.name == "Henriëttesluis", "name"] = "AKW855"
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & (model.node.df.name == "Henriëttesluis"),
+    "name",
+] = "AKW855"
 
 # manning resistance must be outlet
 model.update_node(node_id=1212, node_type="Outlet")  # duiker wordt outlet, was manning
@@ -590,9 +599,9 @@ df.set_index("code", inplace=True)
 names = df["naam"].str.title()
 
 # set meta_gestuwd in basins
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
 model.basin.area.df[model.basin.area.df.node_id != 1423]
 # set stuwen als gestuwd
@@ -600,8 +609,10 @@ model.basin.area.df[model.basin.area.df.node_id != 1423]
 # 1349 was Manning maar is duiker dus outlet
 model.update_node(node_id=1349, node_type="Outlet")
 
-model.outlet.node.df.loc[
-    model.outlet.node.df["meta_object_type"].isin(["stuw", "afsluitmiddel", "sluis"]), "meta_gestuwd"
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet")
+    & model.node.df["meta_object_type"].isin(["stuw", "afsluitmiddel", "sluis"]),
+    "meta_gestuwd",
 ] = True
 
 # remove_nodes
@@ -627,14 +638,15 @@ node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
+model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
+    "meta_gestuwd",
+] = True
 
 sanitize_node_table(
     model,

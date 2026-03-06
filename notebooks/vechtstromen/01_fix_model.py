@@ -75,7 +75,8 @@ outlet_data = outlet.Static(flow_rate=[100])
 
 
 # # drop z in basin.nodes, zodat we hieronder geen crashes meer krijgen.
-model.basin.node.df.loc[:, "geometry"] = model.basin.node.df.geometry.apply(drop_z)
+basin_mask = model.node.df["node_type"] == "Basin"
+model.node.df.loc[basin_mask, "geometry"] = model.node.df.loc[basin_mask, "geometry"].apply(drop_z)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385111465
 
@@ -94,7 +95,7 @@ model.update_node(2250, "LevelBoundary", data=[level_data])
 # verplaats basin 1375 naar het hydroobject
 node_id = 1375
 
-model.basin.node.df.loc[node_id, "geometry"] = hydroobject_gdf.at[3135, "geometry"].interpolate(0.5, normalized=True)
+model.node.df.loc[node_id, "geometry"] = hydroobject_gdf.at[3135, "geometry"].interpolate(0.5, normalized=True)
 link_ids = model.link.df[
     (model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)
 ].index.to_list()
@@ -191,7 +192,7 @@ for row in link_df.itertuples():
 
 # basin met node_id 1436 te verplaatsen naar locatie basin node_id 2259
 basin_id = 1436
-model.basin.node.df.loc[basin_id, "geometry"] = model.basin[2259].geometry
+model.node.df.loc[basin_id, "geometry"] = model.basin[2259].geometry
 link_ids = model.link.df[
     (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
 ].index.to_list()
@@ -207,7 +208,7 @@ model.link.add(model.basin[basin_id], model.pump[635])
 
 # basin met node_id 2250 verplaatsen naar logische plek bovenstrooms ST05005 en bendenstrooms ST02886 op hydroobjec
 basin_id = 2255
-model.basin.node.df.loc[basin_id, ["geometry"]] = hydroobject_gdf.at[6444, "geometry"].interpolate(0.5, normalized=True)
+model.node.df.loc[basin_id, ["geometry"]] = hydroobject_gdf.at[6444, "geometry"].interpolate(0.5, normalized=True)
 
 link_ids = model.link.df[
     (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
@@ -608,7 +609,7 @@ manning_node = model.manning_resistance.add(
     Node(geometry=drop_z(line.intersection(hydroobject_gdf.at[6866, "geometry"]))), tables=[manning_data]
 )
 
-model.basin.node.df.loc[1909, "geometry"] = drop_z(model.basin[1909].geometry)
+model.node.df.loc[1909, "geometry"] = drop_z(model.basin[1909].geometry)
 model.link.add(model.basin[1909], manning_node)
 model.link.add(manning_node, model.basin[1539], geometry=link(manning_node.geometry, model.basin[1539].geometry))
 
@@ -622,7 +623,7 @@ model.split_basin(line=line)
 manning_node = model.manning_resistance.add(
     Node(geometry=line.intersection(hydroobject_gdf.at[6879, "geometry"])), tables=[manning_data]
 )
-model.basin.node.df.loc[1881, "geometry"] = drop_z(model.basin[1881].geometry)
+model.node.df.loc[1881, "geometry"] = drop_z(model.basin[1881].geometry)
 model.link.add(model.basin[1881], manning_node)
 model.link.add(manning_node, model.basin[2181], geometry=link(manning_node.geometry, model.basin[2181].geometry))
 
@@ -1065,27 +1066,31 @@ df.set_index("code", inplace=True)
 names = df["naam"]
 
 # set meta_gestuwd in basins
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
 # set stuwen als gestuwd
 
-model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df["meta_object_type"].isin(["stuw"]),
+    "meta_gestuwd",
+] = True
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
+model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
+    "meta_gestuwd",
+] = True
 
 
 sanitize_node_table(
@@ -1264,30 +1269,34 @@ for node_type in model.node.df.node_type.unique():
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # %%
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.node.df["node_type"] == "FlowBoundary", "meta_categorie"] = "buitenlandse aanvoer"
 
 # set meta_gestuwd in basins
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
 # set stuwen als gestuwd
 
-model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df["meta_object_type"].isin(["stuw"]),
+    "meta_gestuwd",
+] = True
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node.df
 node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
+model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
+    "meta_gestuwd",
+] = True
 
 #  %% write model
 model.basin.area.df.loc[:, ["meta_area"]] = model.basin.area.df.area

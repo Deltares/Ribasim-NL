@@ -344,13 +344,11 @@ sanitize_node_table(
 )
 
 # Gemalen, inlaten, stuwen, etc krijgen meta_code_waterbeheerder, wanneer de naam nog steeds niet gevonden is
-model.pump.node.df.loc[model.pump.node.df.name == "", "name"] = model.pump.node.df[model.pump.node.df.name == ""][
-    "meta_code_waterbeheerder"
-]
+pump_mask = (model.node.df["node_type"] == "Pump") & (model.node.df.name == "")
+model.node.df.loc[pump_mask, "name"] = model.node.df.loc[pump_mask, "meta_code_waterbeheerder"]
 
-model.outlet.node.df.loc[model.outlet.node.df.name == "", "name"] = model.outlet.node.df[
-    model.outlet.node.df.name == ""
-]["meta_code_waterbeheerder"]
+outlet_mask = (model.node.df["node_type"] == "Outlet") & (model.node.df.name == "")
+model.node.df.loc[outlet_mask, "name"] = model.node.df.loc[outlet_mask, "meta_code_waterbeheerder"]
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
 for row in model.flow_boundary.node.df.itertuples():
@@ -435,10 +433,10 @@ model.update_node(node_id=1017, node_type="Outlet")
 model.update_node(node_id=1753, node_type="Pump", node_properties={"name": "Gemaal Dorkwerd"})
 
 # inlaten gelijk gezet aan WAM portaal: https://wamportaal.noorderzijlvest.nl/wam
-model.outlet.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]
-model.outlet.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
-model.outlet.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
-model.outlet.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
+model.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]
+model.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
+model.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
+model.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
 
 
 #  %% write model

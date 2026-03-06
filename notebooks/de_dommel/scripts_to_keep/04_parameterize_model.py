@@ -185,7 +185,7 @@ for row in model.basin.node.df.itertuples():
         ]
     )
 
-    model.basin.node.df.loc[row.Index, ["meta_profile_id"]] = profile[PROFIEL_LINE_ID_COLUMN]
+    model.node.df.loc[row.Index, ["meta_profile_id"]] = profile[PROFIEL_LINE_ID_COLUMN]
 
 
 basin_profile_df.reset_index(inplace=True, drop=True)

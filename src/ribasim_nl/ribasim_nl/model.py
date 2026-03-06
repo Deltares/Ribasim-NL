@@ -709,13 +709,8 @@ class Model(Model):
         self.basin.area.df = pd.concat([self.basin.area.df, area_df])
 
     def move_node(self, node_id: int, geometry: Point):
-        node_type = self.node.df.at[node_id, "node_type"]
-
-        # read existing table
-        table = getattr(self, pascal_to_snake_case(node_type))
-
         # update geometry
-        table.node.df.loc[node_id, ["geometry"]] = geometry
+        self.node.df.loc[node_id, ["geometry"]] = geometry
 
         # reset all links
         link_ids = self.link.df[
@@ -1049,7 +1044,7 @@ class Model(Model):
         # Merge geometry
         avg_x = (outlet_a.geometry.x + outlet_b.geometry.x) / 2
         avg_y = (outlet_a.geometry.y + outlet_b.geometry.y) / 2
-        self.outlet.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)
+        self.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)
 
         # Merge attributes
         self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_a_id, "max_downstream_level"] = (

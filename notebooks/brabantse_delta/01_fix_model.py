@@ -207,15 +207,15 @@ sanitize_node_table(
 )
 
 # label flow-boundaries to buitenlandse-aanvoer
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.node.df["node_type"] == "FlowBoundary", "meta_categorie"] = "buitenlandse aanvoer"
 
 
 # %%
 
 # init gestuwd voor basins, pumps en outlets
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
 #
 node_ids = model.node.df[
@@ -225,13 +225,14 @@ node_ids = model.node.df[
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_ids]
 
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
+model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
 
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
+    "meta_gestuwd",
+] = True
 
 
 #  %% write model
