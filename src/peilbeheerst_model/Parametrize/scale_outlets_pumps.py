@@ -137,6 +137,101 @@ def set_vertical_static_forcing(
     return ribasim_model
 
 
+def update_from_to_node_function_table_with_new_flow_rate(
+    from_to_node_function_table: pd.DataFrame,
+    iteration: int,
+    situation: str,
+    column_name_direction: str,
+) -> pd.DataFrame:
+    """
+    Update and return from_to_node_function_table with a new flow-rate guess column.
+
+    The output column is named new_max_flow_rates_[iteration]_[situation].
+
+    Rules:
+    - If direction == 'higher' and latest is above all preceding values: multiply latest by 2.
+    - If direction == 'lower' and latest is below all preceding values: divide latest by 2.
+    - Otherwise use bisection with closest preceding value above latest:
+      sqrt(latest * closest_above).
+    """
+    column_name_new_flow_rate = "new_max_flow_rates_" + str(iteration) + "_" + situation
+
+    # Find all historical new_max_flow_rates columns for this situation
+    history_prefix = "new_max_flow_rates_"
+    history_suffix = "_" + situation
+    history_columns = [
+        c for c in from_to_node_function_table.columns if c.startswith(history_prefix) and c.endswith(history_suffix)
+    ]
+
+    # Sort history by iteration number in the column name
+    def _iteration_from_column(col_name: str) -> int:
+        return int(col_name.replace(history_prefix, "").replace(history_suffix, ""))
+
+    history_columns = sorted(history_columns, key=_iteration_from_column)
+
+    # Create output column for this iteration
+    from_to_node_function_table[column_name_new_flow_rate] = pd.NA
+
+    for row_idx in from_to_node_function_table.index:
+        direction_value = from_to_node_function_table.at[row_idx, column_name_direction]
+
+        # Collect non-null historical values for this row
+        row_history = []
+        for col in history_columns:
+            val = from_to_node_function_table.at[row_idx, col]
+            if pd.notna(val):
+                row_history.append(float(val))
+
+        # No history yet: fall back to current max_flow_rate if present
+        if len(row_history) == 0:
+            base_value = from_to_node_function_table.at[row_idx, "max_flow_rate"]
+            if pd.notna(base_value):
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = float(base_value)
+            continue
+
+        latest_value = row_history[-1]
+        preceding_values = row_history[:-1]
+
+        # Only one known value so far: expand directly by direction
+        if len(preceding_values) == 0:
+            if direction_value == "higher":
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value * 2.0
+            elif direction_value == "lower":
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value / 2.0
+            continue
+
+        if direction_value == "higher":
+            if latest_value > max(preceding_values):
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value * 2.0
+            else:
+                values_above = [v for v in preceding_values if v > latest_value]
+                if len(values_above) > 0:
+                    closest_above = min(values_above)
+                    from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = (
+                        latest_value * closest_above
+                    ) ** 0.5
+                else:
+                    from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value * 2.0
+
+        elif direction_value == "lower":
+            if latest_value < min(preceding_values):
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value / 2.0
+            else:
+                values_above = [v for v in preceding_values if v > latest_value]
+                if len(values_above) > 0:
+                    closest_above = min(values_above)
+                    from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = (
+                        latest_value * closest_above
+                    ) ** 0.5
+                else:
+                    from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value / 2.0
+
+        else:
+            from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value
+
+    return from_to_node_function_table
+
+
 # paths and parameters
 ribasim_model_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_parameterized_2026_3_0\ribasim.toml"
 ribasim_scaling_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\ribasim.toml"
@@ -199,6 +294,8 @@ from_to_node_function_table = from_to_node_function_table.merge(connector_nodes_
 
 # determine which nodes are allowed to be scaled
 from_to_node_function_table["allowed_to_scale"] = True
+from_to_node_function_table["found_lower_upper_bound_drainage"] = "Unknown"
+from_to_node_function_table["found_lower_upper_bound_supply"] = "Unknown"
 from_to_node_function_table.loc[
     from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale"
 ] = False
@@ -371,26 +468,46 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
                 how="left",
             )
 
+        # avoid making too large jumps in flow rates, by multiplying the flow_rates only when the max Q has not been reached yet
+        column_name_bounds = "found_lower_upper_bound_" + str(situation)
+        from_to_node_function_table.loc[
+            from_to_node_function_table[column_name_direction] == "lower", column_name_bounds
+        ] = True
+
+        # determine new flow rates per connector node in the from_to_node_function_table
+        column_name_new_flow_rate = "new_flow_rate_iteration_" + str(iteration) + "_" + situation
+        # increase flow rates when direction == higher, without having another value which is higher: multiply by 2
+        # from_to_node_function_table.loc[
+        #     (from_to_node_function_table[column_name_direction] == "higher") & (from_to
+
+        from_to_node_function_table = update_from_to_node_function_table_with_new_flow_rate(
+            from_to_node_function_table=from_to_node_function_table,
+            iteration=iteration + 1,
+            situation=situation,
+            column_name_direction=column_name_direction,
+        )
+
+        # if too low and not in between
+
         ### pump and outlet analysis ###
         # based on the scale_direction_iteration column, determine which pump and outlet nodes should be scaled higher or lower, based on the from_to_node_function_table
-        basin_ids_to_scale_higher = basin_exceedance.loc[basin_exceedance[column_name_direction] == "higher"]["node_id"]
-        basin_ids_to_scale_lower = basin_exceedance.loc[basin_exceedance[column_name_direction] == "lower"]["node_id"]
+        # basin_ids_to_scale_higher = basin_exceedance.loc[basin_exceedance[column_name_direction] == "higher"]["node_id"]
+        # basin_ids_to_scale_lower = basin_exceedance.loc[basin_exceedance[column_name_direction] == "lower"]["node_id"]
 
-        # scale higher values of drainage situation
-
-        if situation == "water_drainage":
-            basin_ids_to_scale_higher = basin_exceedance.loc[basin_exceedance[column_name_direction] == "higher"][
-                "node_id"
-            ]
-            nodes_to_scale_higher = from_to_node_function_table.loc[
-                (from_to_node_function_table["function"].isin(["drain", "flow_control"]))
-                & (from_to_node_function_table["allowed_to_scale"])
-                & (from_to_node_function_table[column_name_direction] == "higher")
-            ]["node_id"]
-            nodes_to_scale_lower = from_to_node_function_table.loc[
-                (from_to_node_function_table["function"].isin(["drain", "flow_control"]))
-                & (from_to_node_function_table["allowed_to_scale"])
-                & (from_to_node_function_table[column_name_direction] == "lower")
-            ]["node_id"]
+        # # scale higher values of drainage situation
+        # if situation == "water_drainage":
+        #     basin_ids_to_scale_higher = basin_exceedance.loc[basin_exceedance[column_name_direction] == "higher"][
+        #         "node_id"
+        #     ]
+        #     nodes_to_scale_higher = from_to_node_function_table.loc[
+        #         (from_to_node_function_table["function"].isin(["drain", "flow_control"]))
+        #         & (from_to_node_function_table["allowed_to_scale"])
+        #         & (from_to_node_function_table[column_name_direction] == "higher")
+        #     ]["node_id"]
+        #     nodes_to_scale_lower = from_to_node_function_table.loc[
+        #         (from_to_node_function_table["function"].isin(["drain", "flow_control"]))
+        #         & (from_to_node_function_table["allowed_to_scale"])
+        #         & (from_to_node_function_table[column_name_direction] == "lower")
+        #     ]["node_id"]
         # if first_iteration:
         # print(1)
