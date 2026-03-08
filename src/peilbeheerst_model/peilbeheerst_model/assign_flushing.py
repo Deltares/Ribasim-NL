@@ -27,6 +27,7 @@ class Flushing:
         significant_overlap: float = 0.5,
         convert_to_m3s: float = 1 / (1000 * 365 * 24 * 3600),
         dissolve_by_val: bool = True,
+        create_nodes: bool = False,
         debug_output: bool = False,
     ):
         """Initialize the Flushing class for adding flushing information to a Ribasim model.
@@ -51,6 +52,8 @@ class Flushing:
             Conversion factor to convert flushing_col to m3/s, by default 1 / (1000 * 365 * 24 * 3600)
         dissolve_by_val: bool, optional
             Dissolve geospatially by the integer value of 'flushing_col', by default True
+        create_nodes: bool, optional
+            Create demand nodes, by default False
         debug_output: bool, optional
             Print debug node - basin choices, by default True
         """
@@ -64,11 +67,12 @@ class Flushing:
         self.significant_overlap = significant_overlap
         self.convert_to_m3s = convert_to_m3s
         self.dissolve_by_val = dissolve_by_val
+        self.create_nodes = create_nodes
         self.debug_output = debug_output
 
     def add_flushing(
         self,
-    ) -> ModelNL | Model:
+    ) -> tuple[ModelNL | Model, pd.DataFrame]:
         """Add flushing information to the Ribasim model.
 
         Returns
@@ -88,8 +92,10 @@ class Flushing:
 
         # Get handles to relevant tables
         all_nodes = model.node_table().df[["node_type", "geometry"]].copy()
-        df_outlet_static = model.outlet.static.df.set_index("node_id").copy()
-        df_pump_static = model.pump.static.df.set_index("node_id").copy()
+        df_outlet_static = model.outlet.static.df.copy()
+        df_outlet_static = df_outlet_static[df_outlet_static.control_state == "afvoer"].set_index("node_id")
+        df_pump_static = model.pump.static.df.copy()
+        df_pump_static = df_pump_static[df_pump_static.control_state == "afvoer"].set_index("node_id")
 
         # Get an extended basin table with no 'bergend' basins
         df_basin = model.basin.node.df[["meta_categorie"]].join(
@@ -102,6 +108,13 @@ class Flushing:
         model.reset_graph
 
         # Find matching basins for each flushing geometry
+        df_demand = {
+            "nid": [],
+            "demand_type": [],
+            "demand": [],
+            f"meta_{self.flushing_id}": [],
+            "meta_basin_nid": [],
+        }
         for flushing_row in df_flushing_subset.itertuples():
             flush_id = getattr(flushing_row, self.flushing_id)
             flush_val = getattr(flushing_row, self.flushing_col)
@@ -169,9 +182,15 @@ class Flushing:
                 demand = demand * self.convert_to_m3s
                 dfd.loc[group.index, "flow_demand"] += demand / len(group.path_id.unique())
 
-                # add level demands to each basin to indicate streefpeil
+                # Add level demands to each basin to indicate streefpeil
                 demand = float(model.basin.area.df[model.basin.area.df.node_id == basin_nid].meta_streefpeil.iat[0])
-                model = self.add_level_demand(model, model.basin[basin_nid], demand)
+                if self.create_nodes:
+                    model = self.add_level_demand(model, model.basin[basin_nid], demand)
+                df_demand["nid"].append(basin_nid)
+                df_demand["demand_type"].append("level")
+                df_demand["demand"].append(demand)
+                df_demand[f"meta_{self.flushing_id}"].append(None)
+                df_demand["meta_basin_nid"].append(None)
 
             # Add flow demand as ribasim nodes to the selected nodes. In case
             # multiple basins are connected to the same node, sum individual
@@ -194,13 +213,21 @@ class Flushing:
                     f"meta_{self.flushing_id}": flush_id,
                     "meta_basin_nid": ",".join(map(str, group_basins)),
                 }
-                model = self.add_flushing_demand(model, target_node, demand, metadata=metadata)
+                if self.create_nodes:
+                    model = self.add_flushing_demand(model, target_node, demand, metadata=metadata)
+                df_demand["nid"].append(target_nid)
+                df_demand["demand_type"].append("flow")
+                df_demand["demand"].append(demand)
+                df_demand[f"meta_{self.flushing_id}"].append(metadata[f"meta_{self.flushing_id}"])
+                df_demand["meta_basin_nid"].append(metadata["meta_basin_nid"])
 
                 # Release min_upstream_level
-                if target_type == "Pump":
+                if self.create_nodes and target_type == "Pump":
                     subpart.static.df.loc[subpart.static.df.node_id == target_nid, "min_upstream_level"] = pd.NA
 
-        return model
+        df_demand = pd.DataFrame(df_demand)
+
+        return model, df_demand
 
     def add_flushing_demand(
         self,
@@ -365,7 +392,7 @@ class Flushing:
                 # Only pumps for now
                 if all_nodes.node_type.at[nid] == "Pump":
                     bool_afvoer = bool(df_pump_static.at[nid, "meta_func_afvoer"])
-                    bool_afvoer = bool_afvoer or bool(df_pump_static.at[nid, "meta_func_circulair"])
+                    bool_afvoer = bool_afvoer or bool(df_pump_static.at[nid, "meta_func_circulatie"])
                 node_lookup[nid] = (nid_type, bool_afvoer)
 
         dfd = {
