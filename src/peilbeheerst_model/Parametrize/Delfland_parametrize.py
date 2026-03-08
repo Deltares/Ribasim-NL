@@ -332,6 +332,12 @@ pump_copy = ribasim_model.pump.static.df[
 # ribasim_model = ribasim_model._update_used_ids()
 ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
 
+# Add flushing data
+flush = Flushing(ribasim_model)
+_, df_demand = flush.add_flushing()
+for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+    from_to_node_function_table.at[row.nid, "demand"] = row.demand
+
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
@@ -414,10 +420,6 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
-
-# Add flushing data
-flush = Flushing(ribasim_model)
-_, df_demand = flush.add_flushing()
 
 # set numerical settings
 # write model output
