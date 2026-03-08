@@ -7,6 +7,7 @@ import warnings
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -674,8 +675,11 @@ assign = AssignAuthorities(
 ribasim_model = assign.assign_authorities()
 
 # Add flushing data
-# flush = Flushing(ribasim_model)
-# flush.add_flushing()
+flush = Flushing(ribasim_model)
+_, df_demand = flush.add_flushing()
+from_to_node_function_table["demand"]
+for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+    from_to_node_function_table.at[row.nid, "demand"] = row.demand
 
 # set numerical settings
 # write model output
