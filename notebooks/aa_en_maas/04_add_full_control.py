@@ -18,7 +18,6 @@ AUTHORITY: str = "AaenMaas"
 SHORT_NAME: str = "aam"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
-FLUSHING_SEASONAL: bool = False  # True = Apr to Oct aan (cyclisch), False = altijd aan (constant)
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 745: Sluis Engelen, alles via Crevecoeur
@@ -641,7 +640,7 @@ ignore_intersecting_links: list[int] = [472, 704, 781, 1409, 1650]
 # doorspoeling (op uitlaten)
 #
 
-flushing_nodes = {}
+flushing_nodes = {376: {"summer": 0.05, "winter": 0}}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
@@ -669,6 +668,10 @@ node_functions_df = add_controllers_to_supply_area(
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
+
+mask = model.outlet.static.df.node_id == 376
+model.outlet.static.df.loc[mask, "flow_rate"] = 0
+
 # %%
 # Toevoegen Someren
 
@@ -1091,7 +1094,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
     us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
-    flushing_seasonal=FLUSHING_SEASONAL,
 )
 
 # %%
