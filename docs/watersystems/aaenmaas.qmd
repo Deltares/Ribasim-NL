@@ -102,6 +102,8 @@ wordt op de Zuid-Willemsvaart benedenstrooms terugkomt op de Aa.
 **Waterafvoer:**
 - Gemaal Mierlo kan water lozen op het Eindhovenschkanaal. Dat vervolgens afvoert naar de Zuid-Willemsvaart. 
 - Gemaal Wilhelminakanaal kan water lozen vanaf de Goorloop op het Wilhelminakanaal. met 1.8 m3/s
+**Wateraanvoer:**
+
 
 ## Someren
 

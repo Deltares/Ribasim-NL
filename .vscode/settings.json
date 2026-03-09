@@ -12,6 +12,5 @@
             "notebook.source.organizeImports": "explicit"
         }
     },
-    "python-envs.pythonProjects": [],
     "autoDocstring.docstringFormat": "numpy"
 }

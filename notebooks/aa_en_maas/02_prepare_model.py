@@ -86,6 +86,50 @@ profiles_df.set_index("profiel_id", inplace=True)
 # add streefpeilen
 add_streefpeil(model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="ZOMERPEIL", code="CODE")
 
+# Forceer basin streefpeil
+static_data.reset_data_frame(node_type="Basin")
+static_data.basin.loc[static_data.basin["node_id"] == 1273, "streefpeil"] = 6.4
+static_data.basin.loc[static_data.basin["node_id"] == 1849, "streefpeil"] = 30.75
+static_data.basin.loc[static_data.basin["node_id"] == 1496, "streefpeil"] = 4.2
+static_data.basin.loc[static_data.basin["node_id"] == 2006, "streefpeil"] = 11.66
+static_data.basin.loc[static_data.basin["node_id"] == 1550, "streefpeil"] = 21.93
+static_data.basin.loc[static_data.basin["node_id"] == 2011, "streefpeil"] = 22
+static_data.basin.loc[static_data.basin["node_id"] == 1689, "streefpeil"] = 15
+static_data.basin.loc[static_data.basin["node_id"] == 1406, "streefpeil"] = 7.3
+static_data.basin.loc[static_data.basin["node_id"] == 1149, "streefpeil"] = 6.95
+static_data.basin.loc[static_data.basin["node_id"] == 1465, "streefpeil"] = 6.95
+static_data.basin.loc[static_data.basin["node_id"] == 1517, "streefpeil"] = 13
+
+# Drongelens kanaal en Dieze op streefpeil 2.2m (WATAK)
+static_data.basin.loc[static_data.basin["node_id"] == 1275, "streefpeil"] = 2.2
+static_data.basin.loc[static_data.basin["node_id"] == 1743, "streefpeil"] = 2.2
+static_data.basin.loc[static_data.basin["node_id"] == 1879, "streefpeil"] = 2.2
+static_data.basin.loc[static_data.basin["node_id"] == 1801, "streefpeil"] = 2.2
+static_data.basin.loc[static_data.basin["node_id"] == 1950, "streefpeil"] = 2.2
+static_data.basin.loc[static_data.basin["node_id"] == 1394, "streefpeil"] = 2.2
+static_data.basin.loc[static_data.basin["node_id"] == 2016, "streefpeil"] = 2.2
+static_data.basin.loc[static_data.basin["node_id"] == 1627, "streefpeil"] = 2.2
+
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1273, "meta_streefpeil"] = 6.4
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1849, "meta_streefpeil"] = 30.75
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1496, "meta_streefpeil"] = 4.2
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 2006, "meta_streefpeil"] = 11.66
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1550, "meta_streefpeil"] = 21.93
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1689, "meta_streefpeil"] = 15
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1406, "meta_streefpeil"] = 7.3
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1149, "meta_streefpeil"] = 6.95
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1465, "meta_streefpeil"] = 6.95
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1517, "meta_streefpeil"] = 13
+
+# Drongelens kanaal en Dieze op streefpeil 2.2m (WATAK)
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1275, "meta_streefpeil"] = 2.2
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1743, "meta_streefpeil"] = 2.2
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1879, "meta_streefpeil"] = 2.2
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1801, "meta_streefpeil"] = 2.2
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1950, "meta_streefpeil"] = 2.2
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1394, "meta_streefpeil"] = 2.2
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 2016, "meta_streefpeil"] = 2.2
+model.basin.area.df.loc[model.basin.area.df["node_id"] == 1627, "meta_streefpeil"] = 2.2
 
 # %%
 # OUTLET
@@ -157,6 +201,10 @@ static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True
 gkw_gemaal_df = get_data_from_gkw(authority=authority, layers=["gemaal"])
 flow_rate = gkw_gemaal_df.set_index("code")["maximalecapaciteit"] / 60  # m3/minuut to m3/s
 flow_rate.name = "flow_rate"
+# --- Gemaal Veluwe heeft een capaciteit van 1.5m3/s ---
+static_data.reset_data_frame(node_type="Pump")  # zorgt dat static_data.pump up-to-date is
+static_data.pump.loc[static_data.pump["node_id"] == 100, "flow_rate"] = 1.5
+
 static_data.add_series(node_type="Pump", series=flow_rate)
 
 

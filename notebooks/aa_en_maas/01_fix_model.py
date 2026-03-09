@@ -211,8 +211,9 @@ model.link.add(outlet_node, model.level_boundary[66])
 # EINDE ISSUES
 
 ##fixes:
-model.remove_node(node_id=574, remove_links=True)  # verwijderen Manning knoop naast outlet
-model.remove_node(node_id=602, remove_links=True)  # verwijderen Manning knoop naast outlet
+for node_id in [57, 602, 683, 684, 1053]:
+    model.remove_node(node_id, remove_links=True)
+
 # %%
 # corrigeren knoop-topologie
 
@@ -470,7 +471,15 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
 for row in remove_nodes_df.itertuples():
     model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
 
-    # %% Connect basins:
+# %% merge nodes
+model.merge_basins(basin_id=1321, to_basin_id=1411, are_connected=True)
+model.merge_basins(basin_id=1562, to_basin_id=1411, are_connected=True)
+model.merge_basins(basin_id=1155, to_basin_id=1514, are_connected=True)
+model.merge_basins(basin_id=1565, to_basin_id=1618, are_connected=True)
+model.merge_basins(basin_id=2006, to_basin_id=1618, are_connected=True)
+model.merge_basins(basin_id=1366, to_basin_id=1249, are_connected=True)
+
+# %% Connect basins:
 actions = [
     "connect_basins",
 ]
