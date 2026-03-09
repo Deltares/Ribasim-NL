@@ -102,7 +102,7 @@ Here is an example for a filled in `.env` file:
 ```ini
 RIBASIM_NL_CLOUD_PASS='your_password_here'
 RIBASIM_NL_DATA_DIR='data'
-RIBASIM_HOME='C:/bin/ribasim'
+RIBASIM_HOME='bin/ribasim'
 ```
 
 These values will be applied using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
