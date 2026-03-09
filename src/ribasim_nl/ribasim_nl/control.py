@@ -349,7 +349,7 @@ def add_control_functions_to_connector_nodes(
     drain_nodes: list[int],
     supply_nodes: list[int],
     flow_control_nodes: list[int],
-    flushing_nodes: dict[int, float | dict[str, float]],
+    flushing_nodes: dict[int, float | dict[Literal["summer", "winter"], float]],
     is_supply_node_column: str = "meta_supply_node",
 ) -> gpd.GeoDataFrame:
     """Add control functions `drain`, `supply`, `flusing` or `flow_control` to nodes
@@ -1230,7 +1230,7 @@ def add_controllers_to_supply_area(
     polygon: Polygon,
     ignore_intersecting_links: list[int],
     drain_nodes: list[int],
-    flushing_nodes: dict[int, float | dict[str, float]],
+    flushing_nodes: dict[int, float | dict[Literal["summer", "winter"], float]],
     supply_nodes: list[int],
     level_difference_threshold: float,
     flow_control_nodes: list[int] | None = None,

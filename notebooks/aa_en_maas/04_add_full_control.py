@@ -1,8 +1,18 @@
 # %%
 
+from datetime import datetime
+from typing import Literal
+
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim.nodes import flow_demand, outlet
+from ribasim_nl.control import (
+    _offset_new_node,
+    _target_level,
+    add_controllers_to_supply_area,
+    add_controllers_to_uncontrolled_connector_nodes,
+    get_node_table_with_from_to_node_ids,
+)
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon
@@ -22,8 +32,91 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 745: Sluis Engelen, alles via Crevecoeur
 
-EXCLUDE_NODES = {}
-EXCLUDE_SUPPLY_NODES = [745]
+
+DISCHARGE_SUPPLY_NODES = {376: {"summer": 0.05, "winter": 0}}
+EXCLUDE_NODES = set(DISCHARGE_SUPPLY_NODES.keys())
+
+
+def add_discharge_supply_nodes(
+    discharge_supply_nodes: dict[Literal["summer", "winter"] : float],
+    us_target_level_offset_supply: float = -0.04,
+    new_nodes_offset: float = 10,
+    demand_node_angle: int = 45,
+    demand_name_prefix: str = "inlaat",
+):
+    # get tables and nodes
+    node_table_df = get_node_table_with_from_to_node_ids(model, node_ids=list(discharge_supply_nodes.keys()))
+    node_types = model.node_table().df["node_type"]
+
+    # demand parameters
+    summer_season_start: tuple[int, int] = (1, 4)
+    winter_season_start: tuple[int, int] = (1, 10)
+    time = [
+        datetime(2020, *summer_season_start),
+        datetime(2020, *winter_season_start),
+        datetime(2021, *summer_season_start),
+    ]
+
+    for node_id, demand in discharge_supply_nodes.items():
+        demand_flow_rate_summer = demand["summer"]
+        demand_flow_rate_winter = demand["winter"]
+
+        print(f"Adding supply_node {node_id}: summer={demand_flow_rate_summer} | winter={demand_flow_rate_winter}")
+        demand_flow_str = (
+            str(demand_flow_rate_summer)
+            if demand_flow_rate_summer == demand_flow_rate_winter
+            else f"{demand_flow_rate_summer}/{demand_flow_rate_winter}"
+        )
+
+        # update static table
+        us_target_level = _target_level(
+            model=model,
+            node_id=node_table_df.at[node_id, "from_node_id"],
+            target_level_column="meta_streefpeil",
+            node_types=node_types,
+            allow_missing=False,
+        )
+
+        model.update_node(
+            node_id,
+            "Outlet",
+            [
+                outlet.Static(
+                    min_upstream_level=[us_target_level + us_target_level_offset_supply],
+                    flow_rate=[0],
+                )
+            ],
+        )
+
+        # demand parameters
+        demand_node_name = f"{demand_name_prefix} {demand_flow_str} [m3/s]"
+        demand_tables = [
+            flow_demand.Time(
+                time=time,
+                demand=[
+                    float(demand_flow_rate_summer),
+                    float(demand_flow_rate_winter),
+                    float(demand_flow_rate_summer),
+                ],
+                demand_priority=[1, 1, 1],
+            )
+        ]
+        cyclic = True
+
+        # add demand_node
+        node = model.get_node(node_id=node_id)
+        demand_node = model.flow_demand.add(
+            _offset_new_node(
+                node=node,
+                offset=new_nodes_offset,
+                angle=demand_node_angle,
+                name=demand_node_name,
+                cyclic_time=cyclic,
+            ),
+            tables=demand_tables,
+        )
+        model.link.add(demand_node, node)
+
 
 # %%
 # Definieren paden en syncen met cloud
@@ -48,8 +141,6 @@ model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
 
 # fixes:
-# model.remove_node(node_id=574, remove_links=True)  # verwijderen Manning knoop naast outlet
-# model.remove_node(node_id=602, remove_links=True)  # verwijderen Manning knoop naast outlet
 model.remove_node(node_id=683, remove_links=True)  # verwijderen Manning knoop naast outlet
 model.remove_node(node_id=684, remove_links=True)  # verwijderen Manning knoop naast outlet
 model.remove_node(node_id=1053, remove_links=True)  # verwijderen Manning knoop naast outlet
@@ -201,6 +292,9 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_leve
 model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
 
+# %%
+# Toevoegen alle aanvoer-knopen (zonder peilhandhaving)
+add_discharge_supply_nodes(discharge_supply_nodes=DISCHARGE_SUPPLY_NODES)
 
 # %%
 # Toevoegen Mierlo
@@ -640,7 +734,7 @@ ignore_intersecting_links: list[int] = [472, 704, 781, 1409, 1650]
 # doorspoeling (op uitlaten)
 #
 
-flushing_nodes = {376: {"summer": 0.05, "winter": 0}}
+flushing_nodes = {}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
@@ -648,9 +742,7 @@ flushing_nodes = {376: {"summer": 0.05, "winter": 0}}
 drain_nodes = [324]
 
 # handmatig opgegeven supply nodes (inlaten)
-
 supply_nodes = [335]
-
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = []
@@ -669,10 +761,7 @@ node_functions_df = add_controllers_to_supply_area(
     control_node_types=CONTROL_NODE_TYPES,
 )
 
-mask = model.outlet.static.df.node_id == 376
-model.outlet.static.df.loc[mask, "flow_rate"] = 0
-model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "aanvoer"), "max_flow_rate"] = 0.05
-model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "afvoer"), "max_flow_rate"] = 0
+
 # %%
 # Toevoegen Someren
 
@@ -747,11 +836,9 @@ flushing_nodes = {}
 drain_nodes = [217, 294, 668]
 
 # handmatig opgegeven supply nodes (inlaten)
-
 supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
-
 flow_control_nodes = [748]
 
 # toevoegen sturing
