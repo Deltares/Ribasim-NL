@@ -88,7 +88,6 @@ if __name__ == "__main__":
 
         # sync paths
         cloud.synchronize(filepaths=[peilgebieden_path])
-        cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)  # local model is not on remote
 
         # read model
         model = Model.read(ribasim_toml)

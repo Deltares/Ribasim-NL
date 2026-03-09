@@ -31,7 +31,6 @@ aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/areas.gpkg")
 model_edits_aanvoer_gpkg = cloud.joinpath(AUTHORITY, "verwerkt/model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[aanvoer_path, model_edits_aanvoer_gpkg, qlr_path])
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
 
 # read model
 model = Model.read(ribasim_toml)
