@@ -1152,7 +1152,8 @@ def add_controllers_to_connector_nodes(
         If True, flushing will be applied in summer season (April - October) only.
     """
     # make sure add-api will not duplicate node-ids
-    model._update_used_ids()
+    model.node._update_used_ids()
+    model.link._update_used_ids()
 
     # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
@@ -1339,7 +1340,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Offset voor supply controls.
     """
     # make sure add-api will not duplicate node-ids
-    model._update_used_ids()
+    model.node._update_used_ids()
+    model.link._update_used_ids()
 
     # --- defaults veilig maken (nooit [] als default-arg) ---
     exclude_nodes = exclude_nodes or []
