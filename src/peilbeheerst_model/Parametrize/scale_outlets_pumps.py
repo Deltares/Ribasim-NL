@@ -270,9 +270,15 @@ def overwrite_guessed_flow_rates_if_not_allowed_to_scale(from_to_node_function_t
         return from_to_node_function_table
 
     last_new_flow_rate_column = new_flow_rate_columns[-1]
-    from_to_node_function_table.loc[not from_to_node_function_table["allowed_to_scale"], last_new_flow_rate_column] = (
-        from_to_node_function_table["max_flow_rate"]
-    )
+
+    mask_false = from_to_node_function_table["allowed_to_scale"].eq(False)
+    from_to_node_function_table.loc[mask_false, last_new_flow_rate_column] = from_to_node_function_table[
+        "max_flow_rate"
+    ]
+
+    # from_to_node_function_table.loc[not from_to_node_function_table["allowed_to_scale"], last_new_flow_rate_column] = (
+    #     from_to_node_function_table["max_flow_rate"]
+    # )
 
     return from_to_node_function_table
 
