@@ -1,5 +1,6 @@
 import pathlib
 
+import matplotlib.pyplot as plt
 import pandas as pd
 from ribasim import run_ribasim
 
@@ -111,10 +112,11 @@ def set_vertical_static_forcing(
     #     raise ValueError(f"Unknown situation: {situation}. Options are 'water_drainage' and 'water_demand'.")
 
     # percentage open water may differ. To reduce lines of code: only set drainage and infiltration fluxes, based on size of the basin
-    ribasim_model.basin.area.df["meta_area"] = ribasim_model.basin.area.df.area
-    ribasim_model.basin.time.df = ribasim_model.basin.time.df.merge(
-        ribasim_model.basin.area.df[["node_id", "meta_area"]], left_on="node_id", right_on="node_id", how="left"
-    )
+    if "meta_area" not in ribasim_model.basin.time.df.columns:
+        ribasim_model.basin.area.df["meta_area"] = ribasim_model.basin.area.df.area
+        ribasim_model.basin.time.df = ribasim_model.basin.time.df.merge(
+            ribasim_model.basin.area.df[["node_id", "meta_area"]], left_on="node_id", right_on="node_id", how="left"
+        )
 
     if situation == "water_drainage":
         precipitation = design_precipitation_event / 1000 / (24 * 3600)  # convert mm/day to m/s
@@ -283,11 +285,75 @@ def overwrite_guessed_flow_rates_if_not_allowed_to_scale(from_to_node_function_t
     return from_to_node_function_table
 
 
+def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table):
+    # retrieve the last column name starting with "new_max_flow_rates_"
+    new_flow_rate_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
+    if len(new_flow_rate_columns) == 0:
+        return ribasim_model
+    last_new_flow_rate_column = new_flow_rate_columns[-1]
+
+    # select only the relevant columns from from_to_node_function_table
+    flow_rate_updates = from_to_node_function_table[["node_id", last_new_flow_rate_column]]
+    flow_rate_updates = flow_rate_updates.rename(columns={last_new_flow_rate_column: "max_flow_rate"})
+    flow_rate_updates = flow_rate_updates.dropna(subset=["max_flow_rate"])
+    flow_rate_updates = flow_rate_updates.drop_duplicates(subset=["node_id"], keep="last")
+    flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"]
+
+    # update the max_flow_rate in the ribasim_model for the pump and outlet nodes.
+    pump_df = ribasim_model.pump.static.df.copy()
+    pump_df["max_flow_rate"] = pump_df["node_id"].map(flow_rate_updates).fillna(pump_df["max_flow_rate"])
+    ribasim_model.pump.static.df = pump_df
+
+    outlet_df = ribasim_model.outlet.static.df.copy()
+    outlet_df["max_flow_rate"] = outlet_df["node_id"].map(flow_rate_updates).fillna(outlet_df["max_flow_rate"])
+    ribasim_model.outlet.static.df = outlet_df
+
+    return ribasim_model
+
+
+def plot_guessed_max_flow_rate_per_iteration(from_to_node_function_table, node_id):
+    guessed_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
+
+    if len(guessed_columns) == 0:
+        raise ValueError("No guessed max flow rate columns found (new_max_flow_rates_*).")
+
+    row = from_to_node_function_table.loc[from_to_node_function_table["node_id"] == node_id]
+    if row.empty:
+        raise ValueError(f"node_id {node_id} not found in from_to_node_function_table.")
+
+    points = []
+    for column in guessed_columns:
+        parts = column.split("_")
+        iteration = int(parts[4])
+        situation = "_".join(parts[5:])
+        value = row.iloc[0][column]
+        if pd.notna(value):
+            points.append((situation, iteration, float(value)))
+
+    if len(points) == 0:
+        raise ValueError(f"No guessed max flow rate values found for node_id {node_id}.")
+
+    plot_df = pd.DataFrame(points, columns=["situation", "iteration", "max_flow_rate"])
+    plot_df = plot_df.sort_values(["situation", "iteration"])
+
+    plt.figure(figsize=(10, 5))
+    for situation, group in plot_df.groupby("situation"):
+        plt.plot(group["iteration"], group["max_flow_rate"], marker="o", label=situation)
+
+    plt.title(f"Guessed max_flow_rate per iteration for node_id {node_id}")
+    plt.xlabel("Iteration")
+    plt.ylabel("Guessed max_flow_rate [m3/s]")
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
 # paths and parameters
 ribasim_model_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_parameterized_2026_3_0\ribasim.toml"
 ribasim_scaling_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\ribasim.toml"
 results_path = pathlib.Path(ribasim_scaling_path).parent / "results" / "basin.arrow"
-max_iterations = 1
+max_iterations = 10
 initial_guess_flow_rate_outlet = 0.1  # m3/s, will be updated iteratively
 initial_guess_flow_rate_pump = 10.0  # m3/s, will be updated iteratively. Set higher than outlet to force flow through pumps when both are available, as water is primarily pumped away to the boezem instead of passing it to other basins.
 design_precipitation_event = 10  # mm/day
@@ -310,7 +376,7 @@ original_initial_waterlevels = ribasim_model.basin.state.df.copy()  # will be te
 
 # WEGHALEN #########################################################
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-ribasim_model.pump.static.df["meta_known_flow_rate"] = True
+ribasim_model.pump.static.df["meta_known_flow_rate"] = False
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"] = False
 ###########################
 
@@ -352,6 +418,16 @@ from_to_node_function_table.loc[
     from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale"
 ] = False
 from_to_node_function_table.loc[from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale"] = False
+
+# add max_flow_rate of pump and outlet nodes to from_to_node_function_table
+max_flow_rate_df = pd.concat(
+    [
+        ribasim_model.pump.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
+        ribasim_model.outlet.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
+    ],
+    ignore_index=True,
+)
+from_to_node_function_table = from_to_node_function_table.merge(max_flow_rate_df, on="node_id", how="left")
 
 # TO DO
 # run first simulation, check where waterlevels are not met
@@ -411,16 +487,6 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
                 basin_df_scaling_results["meta_categorie"] != "bergend"
             ]  # ignore bergende basins
 
-            # add max_flow_rate of pump and outlet nodes to from_to_node_function_table
-            max_flow_rate_df = pd.concat(
-                [
-                    ribasim_model.pump.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
-                    ribasim_model.outlet.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
-                ],
-                ignore_index=True,
-            )
-            from_to_node_function_table = from_to_node_function_table.merge(max_flow_rate_df, on="node_id", how="left")
-
         # run simulation
         if printing:
             print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
@@ -467,17 +533,27 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
         if situation == "water_drainage":
             from_to_node_function_table = from_to_node_function_table.merge(
                 basin_exceedance.set_index("node_id")[[column_name_iteration, column_name_direction]],
-                left_on="to_node_id",
+                left_on="from_node_id",
                 right_index=True,
                 how="left",
             )
         elif situation == "water_demand":
             from_to_node_function_table = from_to_node_function_table.merge(
                 basin_exceedance.set_index("node_id")[[column_name_iteration, column_name_direction]],
-                left_on="from_node_id",
+                left_on="to_node_id",
                 right_index=True,
                 how="left",
             )
+
+        # if drainage situation, do not scale supply nodes, and vice versa.
+        if situation == "water_drainage":
+            from_to_node_function_table.loc[
+                from_to_node_function_table.function.isin(["supply"]), column_name_direction
+            ] = "equal"
+        elif situation == "water_demand":
+            from_to_node_function_table.loc[
+                from_to_node_function_table.function.isin(["drain"]), column_name_direction
+            ] = "equal"
 
         ### Bisection method ###
         from_to_node_function_table = update_from_to_node_function_table_with_new_flow_rate(
@@ -493,5 +569,26 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
         # if there are nodes which are not allowed to be scaled, overwrite the guessed flow rates with the original max_flow_rate from the ribasim model
         from_to_node_function_table = overwrite_guessed_flow_rates_if_not_allowed_to_scale(from_to_node_function_table)
 
+        # update the max_flow_rate in the ribasim_model based on the new flow rates in the from_to_node_function_table
+        ribasim_model = update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table)
+
+        # set flow rate equal to max flow rate
+        ribasim_model.outlet.static.df.flow_rate = ribasim_model.outlet.static.df.max_flow_rate
+        ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.max_flow_rate
+
+        # store model
+        ribasim_model.write(ribasim_scaling_path)
 
 pd.set_option("display.max_columns", None)
+
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 119]
+from_to_node_function_table.loc[from_to_node_function_table.node_id == 119]
+
+
+print("Done")
+
+# Set the node id you want to inspect.
+node_id_to_plot = 517
+plot_guessed_max_flow_rate_per_iteration(
+    from_to_node_function_table=from_to_node_function_table, node_id=node_id_to_plot
+)
