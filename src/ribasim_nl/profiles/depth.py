@@ -144,7 +144,6 @@ def depth_from_measurements(hydro_objects: gpd.GeoDataFrame, cross_sections: gpd
         """Take the mean of estimated depths of all connected cross-sections."""
         if indices and -1 not in indices:
             return float(np.nanmean([depth_calculator(cross_sections.geometry.iloc[i]) for i in indices]))
-            # return float(np.nanmean([depth_calculator(cross_sections.loc[i, "geometry"]) for i in indices]))
         return None
 
     # assure cross-sections contain z-coordinates
