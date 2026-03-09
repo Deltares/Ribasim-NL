@@ -232,6 +232,51 @@ def update_from_to_node_function_table_with_new_flow_rate(
     return from_to_node_function_table
 
 
+def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
+    # determine all column names for drainage
+    drainage_columns = [
+        c
+        for c in from_to_node_function_table.columns
+        if c.startswith("new_max_flow_rates_") and c.endswith("_water_drainage")
+    ]
+
+    # determine highest drainage value for each row
+    from_to_node_function_table["max_drainage_value"] = from_to_node_function_table[drainage_columns].max(axis=1)
+
+    # determine the latest column name for demand
+    demand_columns = [
+        c
+        for c in from_to_node_function_table.columns
+        if c.startswith("new_max_flow_rates_") and c.endswith("_water_demand")
+    ]
+
+    # only replace value if a demand situation has already been processed
+    if len(demand_columns) > 0:
+        latest_demand_column = demand_columns[-1]
+
+        # overwrite demand values with drainage values
+        from_to_node_function_table.loc[
+            from_to_node_function_table[latest_demand_column] < from_to_node_function_table["max_drainage_value"],
+            latest_demand_column,
+        ] = from_to_node_function_table["max_drainage_value"]
+
+    return from_to_node_function_table
+
+
+def overwrite_guessed_flow_rates_if_not_allowed_to_scale(from_to_node_function_table):
+    # retrieve the last column name starting with "new_max_flow_rates_"
+    new_flow_rate_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
+    if len(new_flow_rate_columns) == 0:
+        return from_to_node_function_table
+
+    last_new_flow_rate_column = new_flow_rate_columns[-1]
+    from_to_node_function_table.loc[not from_to_node_function_table["allowed_to_scale"], last_new_flow_rate_column] = (
+        from_to_node_function_table["max_flow_rate"]
+    )
+
+    return from_to_node_function_table
+
+
 # paths and parameters
 ribasim_model_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_parameterized_2026_3_0\ribasim.toml"
 ribasim_scaling_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\ribasim.toml"
@@ -296,31 +341,11 @@ from_to_node_function_table = from_to_node_function_table.merge(connector_nodes_
 from_to_node_function_table["allowed_to_scale"] = True
 from_to_node_function_table["found_lower_upper_bound_drainage"] = "Unknown"
 from_to_node_function_table["found_lower_upper_bound_supply"] = "Unknown"
+from_to_node_function_table["max_drainage_value"] = None
 from_to_node_function_table.loc[
     from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale"
 ] = False
 from_to_node_function_table.loc[from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale"] = False
-
-# # only select connector nodes with(out) meta_known_flow_rate == False, as only these need to be scaled
-# outlet_nodes_to_scale = outlet_nodes.loc[~outlet_nodes["meta_known_flow_rate"]]
-# pump_nodes_to_scale = pump_nodes.loc[~pump_nodes["meta_known_flow_rate"]]
-
-# exclude the nodes defined by the modeller
-# outlet_nodes_to_scale = outlet_nodes_to_scale.loc[~outlet_nodes_to_scale["node_id"].isin(node_id_exclusion_list)]
-# pump_nodes_to_scale = pump_nodes_to_scale.loc[~pump_nodes_to_scale["node_id"].isin(node_id_exclusion_list)]
-
-
-# make a selection of all nodes which can be used for drainage and supply, based on the meta_func_afvoer and meta_aanvoer columns
-# assume that all outlet nodes can always be used for drainage, and only those with meta_aanvoer == True can be used for supply
-# drainage_connector_nodes_to_scale = pd.concat(
-#     [pump_nodes_to_scale.loc[pump_nodes_to_scale["meta_func_afvoer"]], outlet_nodes_to_scale]
-# )
-# supply_connector_nodes_to_scale = pd.concat(
-#     [
-#         pump_nodes_to_scale.loc[pump_nodes_to_scale["meta_func_aanvoer"]],
-#         outlet_nodes_to_scale.loc[outlet_nodes_to_scale["meta_aanvoer"]],
-#     ]
-# )
 
 # TO DO
 # run first simulation, check where waterlevels are not met
@@ -379,26 +404,6 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
             basin_df_scaling_results = basin_df_scaling_results.loc[
                 basin_df_scaling_results["meta_categorie"] != "bergend"
             ]  # ignore bergende basins
-
-            # # create df to store the max_flow_rate of the pump and outlet nodes for each iteration
-            # pump_df_scaling_results = ribasim_model.pump.static.df[
-            #     ["node_id", "max_flow_rate", "meta_known_flow_rate"]
-            # ].copy()
-            # outlet_df_scaling_results = ribasim_model.outlet.static.df[
-            #     ["node_id", "max_flow_rate", "meta_known_flow_rate"]
-            # ].copy()
-
-            # # add the information of the max_flow_rates of the pump and outlet nodes to the pump_df_scaling_results and outlet_df_scaling_results dfs
-            # pump_df_scaling_results = pump_df_scaling_results.merge(
-            #     ribasim_model.pump.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
-            #     on="node_id",
-            #     how="left",
-            # )
-            # outlet_df_scaling_results = outlet_df_scaling_results.merge(
-            #     ribasim_model.outlet.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
-            #     on="node_id",
-            #     how="left",
-            # )
 
             # add max_flow_rate of pump and outlet nodes to from_to_node_function_table
             max_flow_rate_df = pd.concat(
@@ -477,37 +482,10 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
         )
 
         # if lower values have been assigned for the water_demand situation, then overwrite the max_flow_rate with the value from water_drainage
-        def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
-            # determine all column names for drainage
-            drainage_columns = [
-                c
-                for c in from_to_node_function_table.columns
-                if c.startswith("new_max_flow_rates_") and c.endswith("_water_drainage")
-            ]
-
-            # determine highest drainage value for each row
-            from_to_node_function_table["max_drainage_value"] = from_to_node_function_table[drainage_columns].max(
-                axis=1
-            )
-
-            # determine the latest column name for demand
-            demand_columns = [
-                c
-                for c in from_to_node_function_table.columns
-                if c.startswith("new_max_flow_rates_") and c.endswith("_water_demand")
-            ]
-
-            # only replace value if a demand situation has already been processed
-            if len(demand_columns) > 0:
-                latest_demand_column = demand_columns[-1]
-
-                # overwrite demand values with drainage values
-                from_to_node_function_table.loc[
-                    from_to_node_function_table[latest_demand_column]
-                    < from_to_node_function_table["max_drainage_value"],
-                    latest_demand_column,
-                ] = from_to_node_function_table["max_drainage_value"]
-
-            return from_to_node_function_table
-
         from_to_node_function_table = overwrite_demand_values_with_drainage_values(from_to_node_function_table)
+
+        # if there are nodes which are not allowed to be scaled, overwrite the guessed flow rates with the original max_flow_rate from the ribasim model
+        from_to_node_function_table = overwrite_guessed_flow_rates_if_not_allowed_to_scale(from_to_node_function_table)
+
+
+pd.set_option("display.max_columns", None)
