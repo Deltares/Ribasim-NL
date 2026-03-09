@@ -84,7 +84,7 @@ class RibasimFeedbackProcessor:
 
     @staticmethod
     def load_ribasim_model(ribasim_toml):
-        model = ribasim.Model(filepath=ribasim_toml)
+        model = ribasim.Model.read(ribasim_toml)
         return model
 
     def get_current_max_nodeid(self):

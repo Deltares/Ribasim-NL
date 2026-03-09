@@ -63,7 +63,7 @@ class Control:
     def read_model_output(self):
         df_basin = pd.read_feather(self.path_basin_output)
         df_link = pd.read_feather(self.path_link_output)
-        model = Model(filepath=self.path_ribasim_toml)
+        model = Model.read(self.path_ribasim_toml)
 
         self.df_basin = df_basin
         self.df_link = df_link

@@ -32,7 +32,7 @@ def _load_model(model: str | ribasim.Model) -> ribasim.Model:
     if not model.endswith(".toml"):
         model += f"{os.sep}ribasim.toml"
 
-    return ribasim.Model(filepath=model)
+    return ribasim.Model.read(model)
 
 
 # TODO: Add the `special_load_geometry()`-function as a built-in feature via `kwargs`?

@@ -898,7 +898,7 @@ def iterate_TRC(
             # Read model
             with warnings.catch_warnings():
                 warnings.simplefilter(action="ignore", category=FutureWarning)
-                ribasim_model = ribasim.Model(filepath=path_ribasim_toml)
+                ribasim_model = ribasim.Model.read(path_ribasim_toml)
 
             # assert that all upstream nodes of a tabulated_rating_curve are basins.
             df_trc = ribasim_model.link.df[ribasim_model.link.df.to_node_type == "TabulatedRatingCurve"]
