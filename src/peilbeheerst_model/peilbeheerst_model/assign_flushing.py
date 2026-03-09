@@ -93,15 +93,17 @@ class Flushing:
         # Get handles to relevant tables
         all_nodes = model.node_table().df[["node_type", "geometry"]].copy()
         df_outlet_static = model.outlet.static.df.copy()
-        df_outlet_static = df_outlet_static[df_outlet_static.control_state == "afvoer"].set_index("node_id")
+        # df_outlet_static = df_outlet_static[df_outlet_static.control_state == "afvoer"]
+        df_outlet_static = df_outlet_static.set_index("node_id")
         df_pump_static = model.pump.static.df.copy()
-        df_pump_static = df_pump_static[df_pump_static.control_state == "afvoer"].set_index("node_id")
+        # df_pump_static = df_pump_static[df_pump_static.control_state == "afvoer"]
+        df_pump_static = df_pump_static.set_index("node_id")
 
         # Get an extended basin table with no 'bergend' basins
-        df_basin = model.basin.node.df[["meta_categorie"]].join(
+        df_basin = model.basin.node.df[["meta_node_id"]].join(
             model.basin.area.df.set_index("node_id")[["meta_aanvoer", "geometry"]]
         )
-        df_basin = df_basin[df_basin.meta_categorie != "bergend"]
+        df_basin = df_basin[df_basin.index == df_basin.meta_node_id]
         df_basin = gpd.GeoDataFrame(df_basin, crs=model.basin.area.df.crs)
 
         # Reset the internal graph to ensure we have the most up-to-date version

@@ -602,6 +602,7 @@ ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.m
 flush = Flushing(ribasim_model)
 _, df_demand = flush.add_flushing()
 for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+    from_to_node_function_table.at[row.nid, "function"] = "flushing"
     from_to_node_function_table.at[row.nid, "demand"] = row.demand
 
 add_controllers_to_connector_nodes(
