@@ -671,7 +671,8 @@ node_functions_df = add_controllers_to_supply_area(
 
 mask = model.outlet.static.df.node_id == 376
 model.outlet.static.df.loc[mask, "flow_rate"] = 0
-
+model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "aanvoer"), "max_flow_rate"] = 0.05
+model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "afvoer"), "max_flow_rate"] = 0
 # %%
 # Toevoegen Someren
 
