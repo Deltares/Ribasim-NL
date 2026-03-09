@@ -18,7 +18,7 @@ AUTHORITY: str = "AaenMaas"
 SHORT_NAME: str = "aam"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
-FLUSHING_SEASONAL: bool = False  # True = Apr–Oct aan (cyclisch), False = altijd aan (constant)
+FLUSHING_SEASONAL: bool = False  # True = Apr to Oct aan (cyclisch), False = altijd aan (constant)
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 745: Sluis Engelen, alles via Crevecoeur
@@ -33,7 +33,7 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(r"AaenMaas/verwerkt/sturing/aanvoergebieden.gpkg")
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, aanvoergebieden_gpkg])
+cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 
 # %%
 # Read data

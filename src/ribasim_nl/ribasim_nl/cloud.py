@@ -450,7 +450,7 @@ class CloudStorage:
 
         return ModelVersion(model, today.year, today.month, revision)
 
-    def synchronize(self, filepaths: list[Path], overwrite: bool = True) -> None:
+    def synchronize(self, filepaths: list[Path], overwrite: bool = False) -> None:
         for path in filepaths:
             path = Path(path)
             url = self.joinurl(*path.relative_to(self.data_dir).parts)
