@@ -353,7 +353,7 @@ def plot_guessed_max_flow_rate_per_iteration(from_to_node_function_table, node_i
 ribasim_model_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_parameterized_2026_3_0\ribasim.toml"
 ribasim_scaling_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\ribasim.toml"
 results_path = pathlib.Path(ribasim_scaling_path).parent / "results" / "basin.arrow"
-max_iterations = 10
+max_iterations = 20
 initial_guess_flow_rate_outlet = 0.1  # m3/s, will be updated iteratively
 initial_guess_flow_rate_pump = 10.0  # m3/s, will be updated iteratively. Set higher than outlet to force flow through pumps when both are available, as water is primarily pumped away to the boezem instead of passing it to other basins.
 design_precipitation_event = 10  # mm/day
@@ -378,6 +378,12 @@ original_initial_waterlevels = ribasim_model.basin.state.df.copy()  # will be te
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
 ribasim_model.pump.static.df["meta_known_flow_rate"] = False
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"] = False
+
+# also temp
+ribasim_model.pump.static.df.max_flow_rate = 10
+ribasim_model.outlet.static.df.max_flow_rate = 0.10
+
+
 ###########################
 
 # situations = ["water_drainage", "water_demand"]
@@ -588,7 +594,9 @@ from_to_node_function_table.loc[from_to_node_function_table.node_id == 119]
 print("Done")
 
 # Set the node id you want to inspect.
-node_id_to_plot = 517
+node_id_to_plot = 297
 plot_guessed_max_flow_rate_per_iteration(
     from_to_node_function_table=from_to_node_function_table, node_id=node_id_to_plot
 )
+
+from_to_node_function_table.loc[from_to_node_function_table.node_id == 297]
