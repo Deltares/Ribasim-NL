@@ -57,12 +57,11 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 for node_type in CONTROL_NODE_TYPES:
     # set is supply
     node_df = model.get_component(node_type).node.df
-    node_df[IS_SUPPLY_NODE_COLUMN] = (
+    model.node.df.loc[node_df.index, IS_SUPPLY_NODE_COLUMN] = (
         node_df["meta_code_waterbeheerder"].str.startswith("INL")
         | node_df["meta_code_waterbeheerder"].str.startswith("i")
         | node_df["meta_code_waterbeheerder"].str.endswith("i")
     ) & ~(node_df.node_type.isin(CONTROL_NODE_TYPES) & node_df["meta_code_waterbeheerder"].str.endswith("fictief"))
-    model.get_component(node_type).node.df = node_df
 
     # force nan or 0 to 20 m3/s
     node_ids = node_df[node_df[IS_SUPPLY_NODE_COLUMN]].index.values
