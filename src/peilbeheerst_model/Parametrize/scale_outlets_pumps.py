@@ -155,8 +155,8 @@ def set_vertical_static_forcing(
     ribasim_model.basin.time.df["infiltration"] = ribasim_model.basin.time.df["meta_area"] * potential_evaporation
 
     # as the drainage or infiltration is already set, set the other fluxes to zero
-    ribasim_model.basin.time.df["precipitation"] = precipitation
-    ribasim_model.basin.time.df["potential_evaporation"] = potential_evaporation
+    ribasim_model.basin.time.df["precipitation"] = 0
+    ribasim_model.basin.time.df["potential_evaporation"] = 0
     ribasim_model.basin.time.df["surface_runoff"] = 0.0
 
     return ribasim_model
@@ -272,11 +272,11 @@ def update_from_to_node_function_table_with_new_flow_rate(
             if latest_value < min(preceding_values):
                 from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value / 2.0
             else:
-                values_above = [v for v in preceding_values if v > latest_value]
-                if len(values_above) > 0:
-                    closest_above = min(values_above)
+                values_below = [v for v in preceding_values if v < latest_value]
+                if len(values_below) > 0:
+                    closest_below = max(values_below)
                     from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = (
-                        latest_value * closest_above
+                        latest_value * closest_below
                     ) ** 0.5
                 else:
                     from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value / 2.0
@@ -354,6 +354,36 @@ def overwrite_guessed_flow_rates_if_not_allowed_to_scale(from_to_node_function_t
     from_to_node_function_table.loc[mask_false, last_new_flow_rate_column] = from_to_node_function_table[
         "max_flow_rate"
     ]
+
+    return from_to_node_function_table
+
+
+def cap_guessed_flow_rates_at_maximum(from_to_node_function_table, max_scaled_flow_rate):
+    """Cap guessed flow rates at a defined maximum to prevent unrealistic values.
+
+    Parameters
+    ----------
+    from_to_node_function_table : pd.DataFrame
+        Connector-node table with guessed flow-rate columns.
+    max_scaled_flow_rate : float
+        The maximum allowed flow rate in m3/s.
+
+    Returns
+    -------
+    pd.DataFrame
+        The updated table with guessed flow rates capped at the specified maximum.
+    """
+    # retrieve the last column name starting with "new_max_flow_rates_"
+    new_flow_rate_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
+    if len(new_flow_rate_columns) == 0:
+        return from_to_node_function_table
+
+    last_new_flow_rate_column = new_flow_rate_columns[-1]
+
+    # cap the guessed flow rates at the defined maximum
+    from_to_node_function_table.loc[
+        from_to_node_function_table[last_new_flow_rate_column] > max_scaled_flow_rate, last_new_flow_rate_column
+    ] = max_scaled_flow_rate
 
     return from_to_node_function_table
 
@@ -455,11 +485,11 @@ def plot_guessed_max_flow_rate_per_iteration(from_to_node_function_table, node_i
 ribasim_model_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_parameterized_2026_3_0\ribasim.toml"
 ribasim_scaling_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\ribasim.toml"
 results_path = pathlib.Path(ribasim_scaling_path).parent / "results" / "basin.arrow"
-max_iterations = 20
+max_iterations = 12
 initial_guess_flow_rate_outlet = 0.1  # m3/s, will be updated iteratively
 initial_guess_flow_rate_pump = 10.0  # m3/s, will be updated iteratively. Set higher than outlet to force flow through pumps when both are available, as water is primarily pumped away to the boezem instead of passing it to other basins.
 design_precipitation_event = 10  # mm/day
-design_potential_evaporation_event = 5  # mm/day
+design_potential_evaporation_event = 1.5  # mm/day
 node_id_exclusion_list = []  # list of node_id's of outlet and pump nodes which should not be scaled
 printing = True
 level_boundary_waterlevel_drainage_situation = -999
@@ -467,8 +497,9 @@ level_boundary_waterlevel_demand_situation = 999
 from_to_node_function_table = pd.read_csv(
     "from_to_node_function_table.csv"
 )  # table with from_node_id, to_node_id and function (drain, supply, flow_control) for each connector node
-max_deviation = 0.05
+max_deviation = 0.02
 max_days = 5
+max_scaled_flow_rate = 50  # to avoid unrealistically high values, which may occur in special cases
 add_information_to_from_to_node_function_table = True
 
 # load model, create df with basin information, set node_id as index
@@ -493,7 +524,8 @@ ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.max_flow_rate 
 ###########################
 
 situations = ["water_drainage", "water_demand"]
-# situations = ["water_drainage"]
+situations = ["water_demand", "water_drainage"]
+# situations = ["water_demand"]
 
 
 # Set initial conditions equal to the target levels
@@ -655,6 +687,11 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
         # if there are nodes which are not allowed to be scaled, overwrite the guessed flow rates with the original max_flow_rate from the ribasim model
         from_to_node_function_table = overwrite_guessed_flow_rates_if_not_allowed_to_scale(from_to_node_function_table)
 
+        # cap the max_flow_rate at the defined maximum
+        from_to_node_function_table = cap_guessed_flow_rates_at_maximum(
+            from_to_node_function_table, max_scaled_flow_rate
+        )
+
         # update the max_flow_rate in the ribasim_model based on the new flow rates in the from_to_node_function_table
         ribasim_model = update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table)
 
@@ -680,7 +717,18 @@ warn_for_to_high_flow_rates(ribasim_model)
 print("Done")
 
 # Inspect results.
-node_id_to_plot = 570
+supply_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "supply"]
+
+count = 0
+for supply_node_id in supply_nodes.node_id:
+    plot_guessed_max_flow_rate_per_iteration(
+        from_to_node_function_table=from_to_node_function_table, node_id=supply_node_id
+    )
+    count += 1
+    if count >= 20:
+        break
+
+node_id_to_plot = 201
 plot_guessed_max_flow_rate_per_iteration(
     from_to_node_function_table=from_to_node_function_table, node_id=node_id_to_plot
 )
