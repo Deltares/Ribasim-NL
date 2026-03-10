@@ -6,9 +6,7 @@ from ribasim import run_ribasim
 
 from ribasim_nl import Model
 
-# assumptions: meta_wateraanvoer column exists in basin area dataframe
-# assumptions: meta_aanvoer, meta_func_afvoer, meta_func_aanvoer exists in outlet.static and pump.static dataframes
-# assumptions: all outlets can always be used to drain water, and can only be used to supply water when meta_aanvoer == True
+pd.set_option("display.max_columns", None)
 
 
 def set_initial_water_levels(ribasim_model):
@@ -365,49 +363,39 @@ level_boundary_waterlevel_demand_situation = 999
 from_to_node_function_table = pd.read_csv(
     "from_to_node_function_table.csv"
 )  # table with from_node_id, to_node_id and function (drain, supply, flow_control) for each connector node
-max_deviation = 0.05
-max_days = 10
+max_deviation = 0.01
+max_days = 5
 add_information_to_from_to_node_function_table = True
 
 # load model, create df with basin information, set node_id as index
 ribasim_model = Model.read(ribasim_model_path)
 original_meteo = ribasim_model.basin.time.df.copy()  # will be temporarily modified
 original_initial_waterlevels = ribasim_model.basin.state.df.copy()  # will be temporarily modified
+original_from_to_node_function_table = from_to_node_function_table.copy()  # will be temporarily modified
 
 # WEGHALEN #########################################################
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-ribasim_model.pump.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df["meta_known_flow_rate"] = True
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"] = False
 
 # also temp
-ribasim_model.pump.static.df.max_flow_rate = 10
+# ribasim_model.pump.static.df.max_flow_rate = 10
 ribasim_model.outlet.static.df.max_flow_rate = 0.10
 
+# if max_flow_rate is 0, change to 0.1
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
 
 ###########################
 
-# situations = ["water_drainage", "water_demand"]
-situations = ["water_drainage"]
+situations = ["water_drainage", "water_demand"]
+# situations = ["water_drainage"]
 
 
 # Set initial conditions equal to the target levels
 initial_water_level, basin_information = set_initial_water_levels(ribasim_model)
 
-# use the from_to_node_function_table to determine which nodes are used for supply, drain and flow_control
-drain_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "drain"]
-supply_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "supply"]
-flow_control_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "flow_control"]
-
-
-# change meta_(func_)aanvoer to Boolean
-# bool_map = {True: True, False: False, "True": True, "False": False, "true": True, "false": False}
-# ribasim_model.basin.area.df["meta_aanvoer"] = ribasim_model.basin.area.df["meta_aanvoer"].map(bool_map)
-# ribasim_model.outlet.static.df["meta_aanvoer"] = ribasim_model.outlet.static.df["meta_aanvoer"].map(bool_map)
-# ribasim_model.pump.static.df["meta_func_aanvoer"] = ribasim_model.pump.static.df["meta_func_aanvoer"].map(bool_map)
-# ribasim_model.pump.static.df["meta_func_afvoer"] = ribasim_model.pump.static.df["meta_func_afvoer"].map(bool_map)
-
 # determine two df's for the downstream + upstream connector nodes which should be used in the scaling
-doorgaand_hoofdwater_basins = basin_information.loc[basin_information["meta_categorie"] != "bergend"]
 outlet_nodes = ribasim_model.outlet.static.df[["node_id", "meta_known_flow_rate"]].copy()
 pump_nodes = ribasim_model.pump.static.df[["node_id", "meta_known_flow_rate"]].copy()
 
@@ -434,12 +422,6 @@ max_flow_rate_df = pd.concat(
     ignore_index=True,
 )
 from_to_node_function_table = from_to_node_function_table.merge(max_flow_rate_df, on="node_id", how="left")
-
-# TO DO
-# run first simulation, check where waterlevels are not met
-# scale only the connector nodes that influence these basins which are also in the drainage_connector_nodes or supply_connector_nodes dataframes
-# use bisection method to find optimal scaling factor for these nodes
-# rerun simulation with scaled nodes
 
 for situation in situations:  # loop through drainage (afvoer) and demand (aanvoer) situation
     first_iteration = True
@@ -486,12 +468,12 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
             )
 
             # create df to store the basin results of the scaling process, with node_id as index and streefpeil
-            basin_df_scaling_results = (
-                basin_information[["node_id", "meta_streefpeil", "meta_categorie"]].reset_index(drop=True).copy()
-            )
-            basin_df_scaling_results = basin_df_scaling_results.loc[
-                basin_df_scaling_results["meta_categorie"] != "bergend"
-            ]  # ignore bergende basins
+            # basin_df_scaling_results = (
+            #     basin_information[["node_id", "meta_streefpeil", "meta_categorie"]].reset_index(drop=True).copy()
+            # )
+            # basin_df_scaling_results = basin_df_scaling_results.loc[
+            #     basin_df_scaling_results["meta_categorie"] != "bergend"
+            # ]  # ignore bergende basins
 
         # run simulation
         if printing:
@@ -510,7 +492,15 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
         # determine which basins exceed the maximum allowed deviation and duration from the streefpeil
         column_name_iteration = "exceeds_deviation_duration_iteration_" + str(iteration) + "_" + situation
         ribasim_water_levels["deviation"] = ribasim_water_levels["level"] - ribasim_water_levels["meta_streefpeil"]
-        ribasim_water_levels[column_name_iteration] = ribasim_water_levels["deviation"] > max_deviation
+
+        if (
+            situation == "water_drainage"
+        ):  # in drainage situation, check where water levels are too high, so deviation is above the max_deviation threshold
+            ribasim_water_levels[column_name_iteration] = ribasim_water_levels["deviation"] > max_deviation
+        elif (
+            situation == "water_demand"
+        ):  # in demand situation, check where water levels are too low, so deviation is below the negative max_deviation threshold
+            ribasim_water_levels[column_name_iteration] = ribasim_water_levels["deviation"] < -max_deviation
 
         # group by basin and determine for how many timesteps the deviation is exceeded
         basin_exceedance = ribasim_water_levels.groupby("node_id")[column_name_iteration].sum().reset_index()
@@ -530,9 +520,9 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
 
         # TODO: possibly delete this later when not needed anymore
         # add the information to the basin_df_scaling_results df
-        basin_df_scaling_results = basin_df_scaling_results.merge(
-            basin_exceedance[["node_id", column_name_iteration, column_name_direction]], on="node_id", how="left"
-        )
+        # basin_df_scaling_results = basin_df_scaling_results.merge(
+        #     basin_exceedance[["node_id", column_name_iteration, column_name_direction]], on="node_id", how="left"
+        # )
 
         ### bridge basin --> connector nodes ###
         # add the information to the from_to_node_function_table, based on the situation (drainage: checking downstream nodes, demand: checking upstream nodes)
@@ -585,18 +575,22 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
         # store model
         ribasim_model.write(ribasim_scaling_path)
 
-pd.set_option("display.max_columns", None)
-
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 119]
 from_to_node_function_table.loc[from_to_node_function_table.node_id == 119]
 
+# replace the original meteo and initial water levels in the ribasim model
+ribasim_model.basin.time.df = original_meteo
+ribasim_model.basin.state.df = original_initial_waterlevels
+if not add_information_to_from_to_node_function_table:
+    from_to_node_function_table = original_from_to_node_function_table
 
 print("Done")
 
-# Set the node id you want to inspect.
-node_id_to_plot = 297
+# Inspect results.
+node_id_to_plot = 570
 plot_guessed_max_flow_rate_per_iteration(
     from_to_node_function_table=from_to_node_function_table, node_id=node_id_to_plot
 )
 
-from_to_node_function_table.loc[from_to_node_function_table.node_id == 297]
+from_to_node_function_table.loc[from_to_node_function_table.node_id == node_id_to_plot]
+ribasim_model.basin.time.df
