@@ -298,6 +298,8 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level
 
 # %%
 # Toevoegen alle aanvoer-knopen (zonder peilhandhaving)
+model.outlet.node.df.at[601, "meta_code_waterbeheerder"] = "261JS"
+
 summer_col = "ZOMER_DROO"
 winter_col = "WINTER"
 code_col = "CODE_1"
@@ -326,12 +328,12 @@ code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
 code_df = code_df.reset_index(drop=False).set_index("code")
 
 discharge_supply_df = discharge_supply_df[discharge_supply_df["code"].isin(code_df.index.to_list())]
-
+discharge_supply_df["node_id"] = [code_df.at[i, "node_id"] for i in discharge_supply_df.code.values]
 discharge_supply_nodes = {
-    int(code_df.at[row.code, "node_id"]): {"summer": row.summer, "winter": row.winter}
-    for row in discharge_supply_df.itertuples()
+    int(row.node_id): {"summer": row.summer, "winter": row.winter} for row in discharge_supply_df.itertuples()
 }
 
+discharge_supply_df.to_file(cloud.joinpath(r"AaenMaas\verwerkt\sturing\aanvoerpunten.gpkg"))
 add_discharge_supply_nodes(discharge_supply_nodes=discharge_supply_nodes)
 EXCLUDE_NODES = set(discharge_supply_nodes.keys())
 
@@ -1182,7 +1184,7 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # EXCLUDE NODES op 0 m3/s zetten
 
-mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES.difference(set(DISCHARGE_SUPPLY_NODES.keys())))
+mask = model.outlet.static.df.node_id.isin(list(DISCHARGE_SUPPLY_NODES.keys()))
 model.outlet.static.df.loc[mask, "flow_rate"] = 0
 model.outlet.static.df.loc[mask, "min_flow_rate"] = 0
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
