@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
 import geopandas as gpd
-from ribasim import Model
+
+from ribasim_nl.model import Model
 
 
 def within_distance(row, gdf, tolerance=1.0) -> bool:

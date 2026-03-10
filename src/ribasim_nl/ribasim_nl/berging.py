@@ -9,11 +9,12 @@ import tqdm
 from geopandas import GeoDataFrame
 from rasterio.windows import from_bounds
 from rasterstats import zonal_stats
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.nodes import basin, tabulated_rating_curve
 from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
+from ribasim_nl.model import Model
 
 BANDEN = {
     "maaiveld": 1,

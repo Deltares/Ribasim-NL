@@ -4,9 +4,11 @@ import warnings
 
 import pandas as pd
 import yaml
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.nodes import basin, discrete_control, level_boundary, outlet, pump
 from shapely.geometry import Point
+
+from ribasim_nl import Model
 
 warnings.filterwarnings("ignore")
 

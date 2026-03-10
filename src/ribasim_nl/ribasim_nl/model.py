@@ -7,9 +7,10 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import pandas as pd
+import ribasim
 import shapely
 from pydantic import BaseModel
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
 from ribasim.utils import _concat
 from ribasim.validation import link_neighbor_amount as link_amount
@@ -75,7 +76,7 @@ class Results(BaseModel):
         return self._basin_df
 
 
-class Model(Model):
+class Model(ribasim.Model):
     _basin_results: Results | None = None
     _basin_outstate: Results | None = None
     _flow_results: Results | None = None

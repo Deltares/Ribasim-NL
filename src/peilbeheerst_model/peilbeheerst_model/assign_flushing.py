@@ -5,19 +5,18 @@ import numpy as np
 import pandas as pd
 import shapely
 from networkx import DiGraph, simple_cycles
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.geometry.link import NodeData
 from ribasim.nodes import flow_demand, level_demand
 from shapely.geometry import MultiPolygon, Point, Polygon
 
-from ribasim_nl import CloudStorage
-from ribasim_nl import Model as ModelNL
+from ribasim_nl import CloudStorage, Model
 
 
 class Flushing:
     def __init__(
         self,
-        model: ModelNL | Model | Path | str,
+        model: Model | Path | str,
         lhm_flushing_path: Path | str = "Basisgegevens/LHM/lsw_flushing.gpkg",
         flushing_layer: str = "lsw_flushing_lhm43",
         flushing_id: str = "LSWNR",
@@ -32,7 +31,7 @@ class Flushing:
 
         Parameters
         ----------
-        model : ModelNL | Model | Path | str
+        model : Model | Path | str
             The Ribasim model to add flushing to, or a path to the model
         lhm_flushing_path : Path | str, optional
             Path to the flushing geopackage, by default "Basisgegevens/LHM/lsw_flushing.gpkg"
@@ -67,12 +66,12 @@ class Flushing:
 
     def add_flushing(
         self,
-    ) -> ModelNL | Model:
+    ) -> Model:
         """Add flushing information to the Ribasim model.
 
         Returns
         -------
-        ModelNL | Model
+        Model
             The updated Ribasim model with flushing information added
         """
         # Synchronize flushing data and model files
@@ -203,7 +202,7 @@ class Flushing:
 
     def add_flushing_demand(
         self,
-        model: ModelNL | Model,
+        model: Model,
         target_node: NodeData,
         demand: float,
         metadata: dict[str, str] | None,
@@ -212,7 +211,7 @@ class Flushing:
 
         Parameters
         ----------
-        model : ModelNL | Model
+        model : Model
             The model to add the flushing demand to
         target_node : NodeData
             The node to connect the flushing demand to
@@ -259,7 +258,7 @@ class Flushing:
 
     def add_level_demand(
         self,
-        model: ModelNL | Model,
+        model: Model,
         target_node: NodeData,
         demand: float,
     ):
@@ -267,7 +266,7 @@ class Flushing:
 
         Parameters
         ----------
-        model : ModelNL | Model
+        model : Model
             The model to add the level demand to
         target_node : NodeData
             The node to connect the level demand to
@@ -304,7 +303,7 @@ class Flushing:
 
     def _find_downstream_nodes(
         self,
-        model: ModelNL | Model,
+        model: Model,
         paths: list[list[int]],
         all_nodes: gpd.GeoDataFrame,
         df_outlet_static: pd.DataFrame,
@@ -514,17 +513,17 @@ class Flushing:
 
     def _sync_files(
         self,
-    ) -> tuple[ModelNL | Model, gpd.GeoDataFrame]:
+    ) -> tuple[Model, gpd.GeoDataFrame]:
         """Synchronize and load required files.
 
         Returns
         -------
-        tuple[ModelNL | Model, gpd.GeoDataFrame]
+        tuple[Model, gpd.GeoDataFrame]
             Tuple containing:
             - The loaded Ribasim model
             - GeoDataFrame with flushing data
         """
-        is_model = isinstance(self.model, ModelNL) or isinstance(self.model, Model)
+        is_model = isinstance(self.model, Model)
 
         # Synchronize flushing data and model files
         filepaths = [self.lhm_flushing_path]
@@ -535,7 +534,7 @@ class Flushing:
         # Read the ribasim model
         model = self.model
         if not is_model:
-            model = ModelNL.read(self.model)
+            model = Model.read(self.model)
 
         # Open the flushing data
         df_flushing = gpd.read_file(self.lhm_flushing_path, layer=self.flushing_layer)

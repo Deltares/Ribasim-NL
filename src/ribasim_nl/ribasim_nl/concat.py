@@ -1,6 +1,6 @@
 import pandas as pd
-from ribasim import Model
 
+from ribasim_nl.model import Model
 from ribasim_nl.reset_index import reset_index
 
 

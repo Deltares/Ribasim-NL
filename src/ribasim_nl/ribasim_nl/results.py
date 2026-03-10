@@ -1,6 +1,7 @@
 import pandas as pd
 from pandas import DataFrame
-from ribasim import Model
+
+from ribasim_nl.model import Model
 
 
 def basin_results(model: Model) -> DataFrame:
