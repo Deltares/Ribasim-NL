@@ -45,7 +45,7 @@ class NetworkValidator:
 
     Parameters
     ----------
-    model: ribasim.Model
+    model: Model
         Ribasim model
     tolerance: float (default=1)
         Tolerance to use for snapping. Should be in the units of the model.crs

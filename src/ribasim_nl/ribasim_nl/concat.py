@@ -10,14 +10,14 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
     Parameters
     ----------
     models : list[Model]
-        List with ribasim.Model
+        List with Model instances
     keep_original_index: bool
         Boolean for keeping original index. If not indices will be reset to avoid duplicate indices
 
     Returns
     -------
     Model
-        concatenated ribasim.Model
+        concatenated Model
     """
     # models will be concatenated to first model.
     if not keep_original_index:

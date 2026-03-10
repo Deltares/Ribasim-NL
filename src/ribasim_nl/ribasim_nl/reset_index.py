@@ -40,14 +40,14 @@ def prefix_index(
     """Reindex node-tables and links with a prefix and a max number of digits
 
     Args:
-        model (Model): ribasim.Model to be reindexed
+        model (Model): Model to be reindexed
         prefix_id (int): integer used as prefix
         max_digits (int, optional): max digits in original node_ids. Defaults to 4.
         original_index_postfix (str | None, optional): if provided the original index will be stored in a meta-column. Defaults to "waterbeheerder".
 
     Returns
     -------
-        ribasim.Model: reindexed model
+        Model: reindexed model
 
     Raises
     ------
@@ -99,14 +99,14 @@ def reset_index(model: Model, node_start=1, link_start=1, original_index_postfix
     """Reset a model index to a given node_start and link_start number. Will result in sub-sequent node_ids and link_ids from node_start and link_start.
 
     Args:
-        model (Model): ribasim.Model to be reindexed
+        model (Model): Model to be reindexed
         node_start (int, optional): start node_id. Defaults to 1.
         link_start (int, optional): start link_id. Defaults to 1.
         original_index_postfix (str | None, optional): if provided the original index will be stored in a meta-column. Defaults to "waterbeheerder".
 
     Returns
     -------
-        ribasim.Model: reindexed model
+        Model: reindexed model
     """
     # only reset nodes if we have to
     node_ids = model.node.df.index

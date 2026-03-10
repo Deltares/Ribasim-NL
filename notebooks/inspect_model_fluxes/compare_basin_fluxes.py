@@ -8,9 +8,8 @@ from pathlib import Path
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
-import ribasim
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 # connect to the cloud and synchronize
 cloud = CloudStorage()
@@ -24,7 +23,7 @@ cloud.synchronize(filepaths=[lhm_path])
 # The 2025 LHM models have inactive nodes that cannot be automatically migrated.
 # Read files directly if an error occurs.
 try:
-    lhm = ribasim.Model.read(lhm_model_path)
+    lhm = Model.read(lhm_model_path)
     lhm_basin_area_df = lhm.basin.area.df.copy()
     lhm_basin_time_df = lhm.basin.time.df.copy()
     lhm_links_df = lhm.links.df.copy()

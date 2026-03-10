@@ -7,7 +7,7 @@ from ribasim_nl.model import Model
 
 
 def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"], static_data_xlsx: Path) -> Model:
-    """Add function-column 'meta_function' to ribasim.Model node table using an Excel spreadsheet with data.
+    """Add function-column 'meta_function' to Model node table using an Excel spreadsheet with data.
 
     Args:
         model (Model): Ribasim model

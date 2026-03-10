@@ -5,9 +5,8 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 import pandas as pd
 import requests
-import ribasim
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 # %% Nieuwe excel inlezen
 
@@ -42,7 +41,7 @@ CONFIG = {
 ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient")
 plots_dir = ribasim_model_dir / "plots"
 ribasim_toml = ribasim_model_dir / "hws.toml"
-model = ribasim.Model.read(ribasim_toml)
+model = Model.read(ribasim_toml)
 start_time, end_time = model.starttime + timedelta(days=40), model.endtime
 
 plots_dir.mkdir(exist_ok=True)
@@ -139,7 +138,7 @@ CONFIG = {
 ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient")
 plots_dir = ribasim_model_dir / "plots"
 ribasim_toml = ribasim_model_dir / "hws.toml"
-model = ribasim.Model.read(ribasim_toml)
+model = Model.read(ribasim_toml)
 
 start_time = model.starttime + timedelta(days=40)
 end_time = model.endtime

@@ -10,7 +10,7 @@ from bokeh.palettes import Category10
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.wkt import loads
 
-from ribasim_nl import CloudStorage, settings
+from ribasim_nl import CloudStorage, Model, settings
 
 
 class CrossingsToRibasim:
@@ -1288,7 +1288,7 @@ class RibasimNetwork:
         _type_
             _description_
         """
-        model = ribasim.Model(
+        model = Model(
             modelname=self.model_characteristics["waterschap"]
             + "_"
             + self.model_characteristics["modelname"]
