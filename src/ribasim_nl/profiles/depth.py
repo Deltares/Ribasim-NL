@@ -161,7 +161,7 @@ def depth_from_measurements(
 
     # flag hydro-objects: use of measurements
     hydro_objects["depth_measured"] = ~temp["index_xs"].isin([[-1]])
-    hydro_objects["depth_measured"] = hydro_objects["depth_measured"].fillna(False).astype(bool)
+    hydro_objects.loc[hydro_objects["depth_measured"].isna(), "depth_measured"] = False
     if only_main_route:
         assert np.all(~hydro_objects.loc[~hydro_objects["main-route"], "depth_measured"])
 
