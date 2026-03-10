@@ -632,19 +632,15 @@ model.remove_node(node_id=68, remove_links=True)
 
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node.df
-node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
-model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index.intersection(upstream_node_ids)
+model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
 downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
-model.node.df.loc[
-    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
-    "meta_gestuwd",
-] = True
+model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 
 sanitize_node_table(
     model,
