@@ -35,7 +35,7 @@ def main(
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
     :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None
         Required if no `HydrotopeTable` is provided (i.e., `hydrotope_table=None`)
-    :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to True
+    :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to False
     :key kw_make_depth_profile: optional arguments for making depth profile lines, defaults to {}
     :key simplify_geometries: simplify geometries by removing duplicates, defaults to True
     :key fn_bgt: geospatial file with previously downloaded BGT-data, or where to export the newly downloaded BGT-data
@@ -77,7 +77,7 @@ def main(
     # > hydrotopes
     fn_hydrotopes: pathlib.Path | str | None = kwargs.get("fn_hydrotopes")
     # > generation of depth profile lines
-    create_depth_profile_lines: bool = kwargs.get("create_depth_profile_lines", True)
+    create_depth_profile_lines: bool = kwargs.get("create_depth_profile_lines", False)
     kw_make_depth_profile: dict[str, str] = kwargs.get("kw_make_depth_profile", {})
     # > simplification of geometries: removing duplicates
     simplify_geometries: bool = kwargs.get("simplify_geometries", True)
