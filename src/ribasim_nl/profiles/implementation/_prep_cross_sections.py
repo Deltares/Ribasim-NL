@@ -179,6 +179,12 @@ def export_to_cloud(
     folders = water_authority, "verwerkt", "profielen", "intermediate"
     src = cloud.joinpath(*folders)
 
+    # re-preprocess cross-sections
+    fn = "lines_z.gpkg"
+    if (src / fn).exists():
+        if input(f"Cross-sections for {water_authority} already preprocessed; redo? [y/n] ") != "y":
+            return
+
     # ensure existence of working directories
     src.mkdir(parents=True, exist_ok=True)
     cloud.create_dir(*folders[:-1])
@@ -188,7 +194,6 @@ def export_to_cloud(
     lines = get_profiles(water_authority, cloud, buffer=buffer)
 
     # upload data
-    fn = "lines_z.gpkg"
     lines.to_file(src / fn)
     cloud.upload_file(src / fn)
     print(f"File saved: {src / fn}")
