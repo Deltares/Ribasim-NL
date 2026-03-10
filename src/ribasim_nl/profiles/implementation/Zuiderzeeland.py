@@ -25,6 +25,7 @@ def main(
     # get files from the cloud
     cloud = CloudStorage()
     cloud.download_verwerkt(water_authority, overwrite)
+    cloud.download_aangeleverd(water_authority, overwrite)
     cloud.download_basisgegevens(["Hydrotypen"], overwrite)
 
     # read files
@@ -35,8 +36,10 @@ def main(
     fn_crossings = cloud.joinpath(water_authority, "verwerkt", "Crossings", "zzl_crossings_v05.gpkg")
     gdf_crossings = gpd.read_file(fn_crossings, layer="crossings_hydroobject_filtered")
     # > hydro-objects
-    fn_hydro_objects = cloud.joinpath(water_authority, "verwerkt", "Crossings", "zzl_crossings_v05.gpkg")
-    gdf_hydro_objects = gpd.read_file(fn_hydro_objects, layer="hydroobject")
+    fn_hydro_objects = cloud.joinpath(
+        water_authority, "aangeleverd", "Na_levering", "zzl_watergangen_nalevering", "zzl_Watergangen.shp"
+    )
+    gdf_hydro_objects = gpd.read_file(fn_hydro_objects)
     # > cross-sections
     fn_cross_sections = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
     gdf_cross_sections = gpd.read_file(fn_cross_sections)
@@ -44,6 +47,9 @@ def main(
     fn_bgt = cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
     # > hydrotopes
     fn_hydrotopes = cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv")
+
+    # special treatment: filter hydro-objects
+    gdf_hydro_objects = gdf_hydro_objects[~gdf_hydro_objects["OWASRTKN"].isin((13, 21, 37, 99))].reset_index(drop=True)
 
     # execute profile generation
     profiles_tables = run.main(
