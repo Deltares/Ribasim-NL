@@ -4,7 +4,6 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 
@@ -366,7 +365,7 @@ for node_id in model.manning_resistance.node.df[
 
 # nodes we've added do not have category, we fill with hoofdwater
 for node_type in model.node.df.node_type.unique():
-    table = getattr(model, pascal_to_snake_case(node_type)).node
+    table = model.get_component(node_type).node
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have

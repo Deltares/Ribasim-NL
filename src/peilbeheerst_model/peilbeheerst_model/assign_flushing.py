@@ -8,7 +8,6 @@ from networkx import DiGraph, simple_cycles
 from ribasim import Model, Node
 from ribasim.geometry.link import NodeData
 from ribasim.nodes import flow_demand, level_demand
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from ribasim_nl import CloudStorage
@@ -186,7 +185,7 @@ class Flushing:
                     continue
 
                 # Select the target node
-                subpart = getattr(model, pascal_to_snake_case(target_type))
+                subpart = model.get_component(target_type)
                 target_node = subpart[target_nid]
 
                 # Create and link the flow_demand
@@ -227,7 +226,7 @@ class Flushing:
         None
 
         """
-        df_static = getattr(getattr(model, pascal_to_snake_case(target_node.node_type)), "static").df
+        df_static = model.get_component(target_node.node_type).static.df
         max_flow_rate = df_static.set_index("node_id").loc[target_node.node_id, ["flow_rate", "max_flow_rate"]].max()
         if max_flow_rate < demand:
             print(f"WARNING: {target_node} has {max_flow_rate=:.2e}m3/s, setting a greater {demand=:.2e}m3/s")

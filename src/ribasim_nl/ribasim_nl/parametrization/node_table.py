@@ -3,7 +3,6 @@ from typing import Literal
 
 import pandas as pd
 
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.model import Model
 
 
@@ -22,7 +21,7 @@ def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"],
     static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
     # update function - column
     if node_type in static_data_sheets:
-        table = getattr(model, pascal_to_snake_case(node_type)).node
+        table = model.get_component(node_type).node
         # add node_id to static_data
         static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type)
         if "node_id" not in static_data.columns:

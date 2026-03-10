@@ -1,7 +1,6 @@
 import pandas as pd
 from ribasim import Model
 
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.reset_index import reset_index
 
 
@@ -40,8 +39,8 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
 
         # merge tables
         for node_type in set(model.node.df.node_type.unique()).union(merge_model.node.df.node_type.unique()):
-            model_node = getattr(model, pascal_to_snake_case(node_type))
-            merge_model_node = getattr(merge_model, pascal_to_snake_case(node_type))
+            model_node = model.get_component(node_type)
+            merge_model_node = merge_model.get_component(node_type)
             for attr in model_node.model_fields.keys():
                 model_node_table = getattr(model_node, attr)
                 model_df = model_node_table.df

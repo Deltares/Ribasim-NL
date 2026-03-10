@@ -1,7 +1,6 @@
 # %%
 import pandas as pd
 
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.model import Model
 
 
@@ -13,7 +12,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
 
     # renumber all node-tables (node, static, area, ...)
     for node_type in model.node.df.node_type.unique():
-        ribasim_node = getattr(model, pascal_to_snake_case(node_type))
+        ribasim_node = model.get_component(node_type)
         for attr in ribasim_node.model_fields.keys():
             table = getattr(ribasim_node, attr)
             try:

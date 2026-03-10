@@ -1,7 +1,6 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -57,7 +56,7 @@ model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 # aanmaken node_df en specificeren supply_nodes
 # knopen die beginnen met INL, i of eindigen op i, maar niet op fictief
 for node_type in CONTROL_NODE_TYPES:
-    node_df = getattr(model, pascal_to_snake_case(node_type)).node.df
+    node_df = model.get_component(node_type).node.df
 
     node_df[IS_SUPPLY_NODE_COLUMN] = (
         node_df["meta_code_waterbeheerder"].str.startswith("INL")
@@ -69,12 +68,12 @@ for node_type in CONTROL_NODE_TYPES:
         | node_df.index.isin(EXCLUDE_SUPPLY_NODES)
     )
 
-    getattr(model, pascal_to_snake_case(node_type)).node.df = node_df
+    model.get_component(node_type).node.df = node_df
 
     # force nan or 0 to 20 m3/s
     node_ids = node_df[node_df[IS_SUPPLY_NODE_COLUMN]].index.values
     print(node_ids)
-    static_df = getattr(model, pascal_to_snake_case(node_type)).static.df
+    static_df = model.get_component(node_type).static.df
 
     mask = static_df.node_id.isin(node_ids) & ((static_df.flow_rate == 0) | (static_df.flow_rate.isna()))
 

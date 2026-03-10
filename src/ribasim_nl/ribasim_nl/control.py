@@ -663,10 +663,7 @@ def add_controllers_to_drain_nodes(
         # update static table
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
-            getattr(model, pascal_to_snake_case(node_type))
-            .static.df.set_index("node_id")
-            .loc[[node_id], "flow_rate"]
-            .max()
+            model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -772,10 +769,7 @@ def add_controllers_to_supply_nodes(
         node_type = connector_node.node_type
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
-            getattr(model, pascal_to_snake_case(node_type))
-            .static.df.set_index("node_id")
-            .loc[[node_id], "flow_rate"]
-            .max()
+            model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -886,10 +880,7 @@ def add_controllers_to_flow_control_nodes(
         # update static table
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
-            getattr(model, pascal_to_snake_case(node_type))
-            .static.df.set_index("node_id")
-            .loc[[node_id], "flow_rate"]
-            .max()
+            model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -1010,10 +1001,7 @@ def add_controllers_and_demand_to_flushing_nodes(
         # update static table
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
-            getattr(model, pascal_to_snake_case(node_type))
-            .static.df.set_index("node_id")
-            .loc[[node_id], "flow_rate"]
-            .max()
+            model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(

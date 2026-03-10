@@ -5,7 +5,6 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.cloud import ModelVersion
 from ribasim_nl.geometry import drop_z, link, split_basin, split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
@@ -1265,7 +1264,7 @@ for node_id in model.manning_resistance.node.df[
 
 # nodes we've added do not have category, we fill with hoofdwater
 for node_type in model.node.df.node_type.unique():
-    table = getattr(model, pascal_to_snake_case(node_type)).node
+    table = model.get_component(node_type).node
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # %%

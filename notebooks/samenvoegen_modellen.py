@@ -5,7 +5,6 @@ from typing import Any
 
 import ribasim
 from ribasim_nl.aquo import waterbeheercode
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.cloud import ModelVersion
 
 from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
@@ -221,7 +220,7 @@ def read_and_prepare_model(model_path: Path) -> Model:
 
 def add_meta_waterbeheerder(model: Model, authority: str) -> None:
     for node_type in model.node.df.node_type.unique():
-        ribasim_node = getattr(model, pascal_to_snake_case(node_type))
+        ribasim_node = model.get_component(node_type)
         ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = authority
 
 

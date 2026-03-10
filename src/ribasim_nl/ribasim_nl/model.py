@@ -363,10 +363,14 @@ class Model(Model):
     def get_node_type(self, node_id: int):
         return self.node.df.at[node_id, "node_type"]
 
+    def get_component(self, node_type: str):
+        """Return model component for a given node_type string (e.g. 'Outlet' → model.outlet)"""
+        return getattr(self, pascal_to_snake_case(node_type))
+
     def get_node(self, node_id: int):
         """Return model-node by node_id"""
         node_type = self.get_node_type(node_id)
-        return getattr(self, pascal_to_snake_case(node_type))[node_id]
+        return self.get_component(node_type)[node_id]
 
     def remove_node(self, node_id: int, remove_links: bool = False):
         """Remove node from model"""
