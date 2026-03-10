@@ -567,14 +567,12 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # basins and outlets we've added do not have category, we fill with hoofdwater
-model.node.df.loc[
-    (model.node.df["node_type"] == "Basin") & model.node.df["meta_categorie"].isna(),
-    "meta_categorie",
-] = "hoofdwater"
-model.node.df.loc[
-    (model.node.df["node_type"] == "Outlet") & model.node.df["meta_categorie"].isna(),
-    "meta_categorie",
-] = "hoofdwater"
+model.node.df.loc[model.basin.node.df.index[model.basin.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
+model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
 
 # somehow Sluis Engelen (beheerregister AAM) has been named Henriettesluis
 model.node.df.loc[

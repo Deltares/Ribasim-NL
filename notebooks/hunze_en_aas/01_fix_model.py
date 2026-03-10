@@ -181,14 +181,12 @@ for node_id in model.manning_resistance.node.df[
 
 
 # basins and outlets we've added do not have category, we fill with hoofdwater
-model.node.df.loc[
-    (model.node.df["node_type"] == "Basin") & model.node.df["meta_categorie"].isna(),
-    "meta_categorie",
-] = "hoofdwater"
-model.node.df.loc[
-    (model.node.df["node_type"] == "Outlet") & model.node.df["meta_categorie"].isna(),
-    "meta_categorie",
-] = "hoofdwater"
+model.node.df.loc[model.basin.node.df.index[model.basin.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
+model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])

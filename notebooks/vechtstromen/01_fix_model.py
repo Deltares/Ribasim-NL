@@ -1269,7 +1269,7 @@ for node_type in model.node.df.node_type.unique():
     table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # %%
-model.node.df.loc[model.node.df["node_type"] == "FlowBoundary", "meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 # set meta_gestuwd in basins
 model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False

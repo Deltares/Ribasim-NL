@@ -358,7 +358,7 @@ model.link.add(level_boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1609])
 
 # label flow-boundaries to buitenlandse-aanvoer
-model.node.df.loc[model.node.df["node_type"] == "FlowBoundary", "meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")

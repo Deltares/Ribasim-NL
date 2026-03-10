@@ -237,18 +237,15 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # basins and outlets we've added do not have category, we fill with hoofdwater
-model.node.df.loc[
-    (model.node.df["node_type"] == "Basin") & model.node.df["meta_categorie"].isna(),
-    "meta_categorie",
-] = "hoofdwater"
-model.node.df.loc[
-    (model.node.df["node_type"] == "Outlet") & model.node.df["meta_categorie"].isna(),
-    "meta_categorie",
-] = "hoofdwater"
-model.node.df.loc[
-    (model.node.df["node_type"] == "Pump") & model.node.df["meta_categorie"].isna(),
-    "meta_categorie",
-] = "hoofdwater"
+model.node.df.loc[model.basin.node.df.index[model.basin.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
+model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
+model.node.df.loc[model.pump.node.df.index[model.pump.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = pd.concat(
@@ -301,7 +298,7 @@ sanitize_node_table(
 )
 
 # %%
-model.node.df.loc[model.node.df["node_type"] == "FlowBoundary", "meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)

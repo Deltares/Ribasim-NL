@@ -207,7 +207,7 @@ sanitize_node_table(
 )
 
 # label flow-boundaries to buitenlandse-aanvoer
-model.node.df.loc[model.node.df["node_type"] == "FlowBoundary", "meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 
 # %%
