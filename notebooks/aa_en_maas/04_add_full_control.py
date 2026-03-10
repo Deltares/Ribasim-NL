@@ -49,8 +49,8 @@ def add_discharge_supply_nodes(
     node_types = model.node_table().df["node_type"]
 
     # demand parameters
-    summer_season_start: tuple[int, int] = (1, 4)
-    winter_season_start: tuple[int, int] = (1, 10)
+    summer_season_start: tuple[int, int] = (4, 1)
+    winter_season_start: tuple[int, int] = (10, 1)
     time = [
         datetime(2020, *summer_season_start),
         datetime(2020, *winter_season_start),
@@ -84,6 +84,8 @@ def add_discharge_supply_nodes(
                 outlet.Static(
                     min_upstream_level=[us_target_level + us_target_level_offset_supply],
                     flow_rate=[0],
+                    min_flow_rate=[float("nan")],
+                    max_flow_rate=[float("nan")],
                 )
             ],
         )
@@ -102,8 +104,6 @@ def add_discharge_supply_nodes(
             )
         ]
         cyclic = True
-
-        # add demand_node
         node = model.get_node(node_id=node_id)
         demand_node = model.flow_demand.add(
             _offset_new_node(
@@ -125,6 +125,10 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(r"AaenMaas/verwerkt/sturing/aanvoergebieden.gpkg")
+aanvoerpunten_shp = cloud.joinpath(
+    r"AaenMaas\verwerkt\1_ontvangen_data\wateraanvoer_27-2-2026\wateraanvoersysteem_WAM.shp"
+)
+
 cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 
 # %%
@@ -294,7 +298,42 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level
 
 # %%
 # Toevoegen alle aanvoer-knopen (zonder peilhandhaving)
-add_discharge_supply_nodes(discharge_supply_nodes=DISCHARGE_SUPPLY_NODES)
+summer_col = "ZOMER_DROO"
+winter_col = "WINTER"
+code_col = "CODE_1"
+discharge_supply_df = gpd.read_file(aanvoerpunten_shp).rename(
+    columns={summer_col: "summer", winter_col: "winter", code_col: "code"}
+)[["code", "summer", "winter", "geometry"]]
+discharge_supply_df.index += 1
+
+# drop Na
+discharge_supply_df = discharge_supply_df[discharge_supply_df[["summer", "winter"]].notna().all(axis=1)]
+
+# drop %
+discharge_supply_df = discharge_supply_df[
+    ~(discharge_supply_df["summer"].str.endswith("%") | discharge_supply_df["winter"].str.endswith("%"))
+]
+
+# convert to numeric
+discharge_supply_df["summer"] = discharge_supply_df["summer"].str.replace(",", ".").astype(float)
+discharge_supply_df["winter"] = discharge_supply_df["winter"].str.replace(",", ".").astype(float)
+
+# make code (and node type) table
+node_table_df = model.node_table().df
+code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
+    ["meta_code_waterbeheerder", "node_type"]
+].rename(columns={"meta_code_waterbeheerder": "code"})
+code_df = code_df.reset_index(drop=False).set_index("code")
+
+discharge_supply_df = discharge_supply_df[discharge_supply_df["code"].isin(code_df.index.to_list())]
+
+discharge_supply_nodes = {
+    int(code_df.at[row.code, "node_id"]): {"summer": row.summer, "winter": row.winter}
+    for row in discharge_supply_df.itertuples()
+}
+
+add_discharge_supply_nodes(discharge_supply_nodes=discharge_supply_nodes)
+EXCLUDE_NODES = set(discharge_supply_nodes.keys())
 
 # %%
 # Toevoegen Mierlo
@@ -1146,7 +1185,8 @@ node_functions_df = add_controllers_to_supply_area(
 
 # %%
 # EXCLUDE NODES op 0 m3/s zetten
-mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES)
+
+mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES.difference(set(DISCHARGE_SUPPLY_NODES.keys())))
 model.outlet.static.df.loc[mask, "flow_rate"] = 0
 model.outlet.static.df.loc[mask, "min_flow_rate"] = 0
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0

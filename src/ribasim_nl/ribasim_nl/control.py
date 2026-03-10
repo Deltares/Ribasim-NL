@@ -970,8 +970,8 @@ def add_controllers_and_demand_to_flushing_nodes(
     demand_threshold_offset: float = 0.001,
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
-    summer_season_start: tuple[int, int] = (1, 4),
-    winter_season_start: tuple[int, int] = (1, 10),
+    summer_season_start: tuple[int, int] = (4, 1),
+    winter_season_start: tuple[int, int] = (10, 1),
     new_nodes_offset: float = 10,
     control_node_angle: int = 90,
     demand_node_angle: int = 45,
@@ -996,9 +996,9 @@ def add_controllers_and_demand_to_flushing_nodes(
     target_level_column : str, optional
         Column in Basin.Area table that contains target level, by default "meta_streefpeil"
     summer_season_start: tuple[int, int], optional
-        Start of summer-season to populate demand time-table (day, month), by default (1, 4)
+        Start of summer-season to populate demand time-table (month, day), by default (4, 1)
     winter_season_start: tuple[int, int], optional
-        Start of winter-season to populate demand time-table (day, month), by default (1, 10)
+        Start of winter-season to populate demand time-table (month, day), by default (10, 1)
     new_nodes_offset : float, optional
         Offset control-node and demand-node with respect to connector-node, by default 10
     control_node_angle : int, optional
