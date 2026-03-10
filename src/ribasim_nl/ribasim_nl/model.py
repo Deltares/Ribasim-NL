@@ -20,7 +20,6 @@ from shapely.geometry.base import BaseGeometry
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import split_basin
-from ribasim_nl.parametrization.parameterize import Parameterize
 from ribasim_nl.run_model import parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
 
@@ -82,10 +81,12 @@ class Model(ribasim.Model):
     _flow_results: Results | None = None
     _link_results: Results | None = None
     _graph: nx.Graph | None = None
-    _parameterize: Parameterize | None = None
+    _parameterize: object | None = None
 
     def __init__(self, **data):
         super().__init__(**data)
+        from ribasim_nl.parametrization.parameterize import Parameterize
+
         self._parameterize = Parameterize(model=self)
         self._set_netcdf_input()
 
