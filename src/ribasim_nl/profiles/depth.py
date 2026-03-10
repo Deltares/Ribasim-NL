@@ -120,15 +120,18 @@ def depth_from_hydrotopes(
     return hydro_objects
 
 
-# TODO: Coupling of measured cross-sections to hydro-objects seems to be non-functioning (or at least not properly)
-def depth_from_measurements(hydro_objects: gpd.GeoDataFrame, cross_sections: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def depth_from_measurements(
+    hydro_objects: gpd.GeoDataFrame, cross_sections: gpd.GeoDataFrame, *, only_main_route: bool = True
+) -> gpd.GeoDataFrame:
     """Determine representative depths of hydro-objects based on measured profiles (if present).
 
     :param hydro_objects: geospatial data of hydro-objects
     :param cross_sections: geospatial data of measured cross-sections
+    :param only_main_route: only use measured cross-sectional profiles on main route hydro-objects, defaults to True
 
     :type hydro_objects: geopandas.GeoDataFrame
     :type cross_sections: geopandas.GeoDataFrame
+    :type only_main_route: bool, optional
 
     :return: hydro-objects with depth-estimates
     :rtype: geopandas.GeoDataFrame
@@ -150,12 +153,17 @@ def depth_from_measurements(hydro_objects: gpd.GeoDataFrame, cross_sections: gpd
     assert all(cross_sections.has_z)
 
     # couple hydro-objects to cross-sections
-    temp = hydro_objects.sjoin(cross_sections, how="left", predicate="intersects", rsuffix="xs")
+    temp = (hydro_objects[hydro_objects["main-route"]] if only_main_route else hydro_objects).sjoin(
+        cross_sections, how="left", predicate="intersects", rsuffix="xs"
+    )
     temp["index_xs"] = temp["index_xs"].fillna(-1).astype(int)
     temp = temp.groupby(level=0)["index_xs"].apply(list).to_frame()
 
     # flag hydro-objects: use of measurements
     hydro_objects["depth_measured"] = ~temp["index_xs"].isin([[-1]])
+    hydro_objects["depth_measured"] = hydro_objects["depth_measured"].fillna(False).astype(bool)
+    if only_main_route:
+        assert np.all(~hydro_objects.loc[~hydro_objects["main-route"], "depth_measured"])
 
     # update depth estimate
     temp["depth"] = temp["index_xs"].apply(representative_depth)
@@ -164,9 +172,6 @@ def depth_from_measurements(hydro_objects: gpd.GeoDataFrame, cross_sections: gpd
 
     # add cross-section coupling
     hydro_objects["index_xs"] = temp["index_xs"]
-    hydro_objects.loc[~hydro_objects["depth_measured"], "index_xs"] = np.empty(
-        sum(~hydro_objects["depth_measured"]), dtype=list
-    )
 
     # return updated hydro-objects
     return hydro_objects
