@@ -383,7 +383,7 @@ drain_nodes = [92, 312, 353, 400]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [226, 280, 997]
+supply_nodes = [226, 280]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -481,12 +481,11 @@ drain_nodes = [
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [172, 192, 186, 235, 251, 278, 317, 379, 731]
+supply_nodes = [186, 251, 278, 379, 731]
 
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [
-    113,
     140,
     347,
     481,
@@ -505,7 +504,6 @@ flow_control_nodes = [
     819,
     821,
     948,
-    957,
     1050,
 ]
 
@@ -574,7 +572,7 @@ drain_nodes = [83, 107, 122, 139, 150, 170, 210, 244, 256, 342, 421, 304, 487, 5
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [183, 375, 418, 521, 640, 1054]
+supply_nodes = [183, 375, 521, 640, 1054]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -923,11 +921,11 @@ drain_nodes = [288, 469, 479, 632]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [510, 531, 935]
+supply_nodes = [510, 531]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [218, 372, 569, 686]
+flow_control_nodes = []
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -997,11 +995,11 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [124, 697, 919, 920, 366, 452, 490, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1014, 1016]
+drain_nodes = [697, 919, 920, 366, 452, 490, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1014, 1016]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [203, 657, 241, 384, 179, 313, 286, 753, 850]
+supply_nodes = [203, 657, 753, 850]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1135,7 +1133,6 @@ flushing_nodes = {}
 
 drain_nodes = [
     198,
-    289,
     394,
     135,
     257,
@@ -1152,7 +1149,6 @@ drain_nodes = [
     126,
     488,
     925,
-    996,
     209,
     551,
     266,
@@ -1161,7 +1157,7 @@ drain_nodes = [
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [80, 160, 259, 308, 181, 985, 392, 215]
+supply_nodes = [80, 160, 308, 181, 985, 392, 215]
 
 # handmatig opgegeven supply nodes (inlaten)
 
