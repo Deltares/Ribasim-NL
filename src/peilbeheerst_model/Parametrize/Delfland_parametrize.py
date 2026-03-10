@@ -21,6 +21,7 @@ from ribasim_nl.control import (
 )
 from shapely import Point
 
+from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
@@ -52,17 +53,17 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/Delfland_aanvoergebiedafvoergebied.gdb")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        meteo_path,
-    ]
-)
+# cloud.synchronize(
+#     filepaths=[
+#         ribasim_base_model_dir,
+#         FeedbackFormulier_path,
+#         ws_grenzen_path,
+#         RWS_grenzen_path,
+#         qlr_path,
+#         aanvoer_path,
+#         meteo_path,
+#     ]
+# )
 
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -286,6 +287,9 @@ ribasim_param.set_aanvoer_flags(
     load_geometry_kw={"layer": "Aanvoergebied_Afvoergebied_polders"},
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
+# Apply outlet meta_aanvoer labelling and overrule non-hoofdwater routes when direct hoofdwater supply exists.
+supply.SupplyOutlet(ribasim_model).exec(overruling_enabled=True)
+
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
@@ -297,7 +301,7 @@ ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["me
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
-
+from_to_node_function_table.to_csv("from_to_node_function_table.csv")
 # manual adjustments to control settings
 from_doorlaat_to_inlaat = [167, 371, 239, 223, 306, 525, 377, 150, 224]
 
@@ -340,9 +344,31 @@ add_controllers_to_connector_nodes(
     drain_capacity=20,
 )
 
-# add the meta_data to the pump and outlet tables again
-ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.merge(outlet_copy, on="node_id", how="left")
-ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(pump_copy, on="node_id", how="left")
+# replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
+outlet_columns_to_add_back = [
+    "meta_categorie",
+    "meta_from_node_id",
+    "meta_to_node_id",
+    "meta_from_level",
+    "meta_to_level",
+    "meta_aanvoer",
+]
+pump_columns_to_add_back = [
+    "meta_categorie",
+    "meta_func_afvoer",
+    "meta_func_aanvoer",
+    "meta_func_circulatie",
+    "meta_from_node_id",
+    "meta_to_node_id",
+    "meta_from_level",
+    "meta_to_level",
+]
+ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.drop(columns=outlet_columns_to_add_back).merge(
+    outlet_copy, on="node_id", how="left"
+)
+ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=pump_columns_to_add_back).merge(
+    pump_copy, on="node_id", how="left"
+)
 
 # if flow_rate is 0, set to 20
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20
