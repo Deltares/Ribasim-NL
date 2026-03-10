@@ -182,8 +182,10 @@ def export_to_cloud(
     # re-preprocess cross-sections
     fn = "lines_z.gpkg"
     if (src / fn).exists():
-        if input(f"Cross-sections for {water_authority} already preprocessed; redo? [y/n] ") != "y":
+        if input(f"Cross-sections for {water_authority} already preprocessed; redo? [y/n]\n") != "y":
+            LOG.warning(f"Execution aborted: No redoing of cross-section preprocessing for {water_authority}")
             return
+        LOG.info(f"Redoing cross-section preprocessing for {water_authority}")
 
     # ensure existence of working directories
     src.mkdir(parents=True, exist_ok=True)
