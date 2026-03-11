@@ -553,7 +553,6 @@ drain_nodes = [
     385,
     408,
     419,
-    584,
     621,
     804,
     955,
@@ -654,7 +653,7 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [83, 107, 122, 139, 150, 170, 210, 244, 256, 342, 421, 304, 487, 597, 982, 1051]
+drain_nodes = [83, 107, 139, 150, 170, 210, 244, 256, 342, 421, 304, 487, 597, 982, 1051]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1290,6 +1289,17 @@ model.outlet.static.df.loc[mask, "flow_rate"] = 0
 model.outlet.static.df.loc[mask, "min_flow_rate"] = 0
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
 
+# %% Toevoegen sturing op inlaten
+
+# add discharge supply nodes -> no control, but flow-demand-node
+add_discharge_supply_nodes(discharge_supply_nodes=discharge_supply_nodes)
+
+# add level supply nodes -> discrete control, no flow-demand
+add_controllers_to_supply_nodes(
+    model=model,
+    us_target_level_offset_supply=-0.04,
+    supply_nodes_df=supply_nodes_df,
+)
 
 # %% add all remaining inlets/outlets
 # add all remaing outlets
@@ -1323,17 +1333,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
 
-# %% Toevoegen sturing op inlaten
-
-# add discharge supply nodes -> no control, but flow-demand-node
-add_discharge_supply_nodes(discharge_supply_nodes=discharge_supply_nodes)
-
-# add level supply nodes -> discrete control, no flow-demand
-add_controllers_to_supply_nodes(
-    model=model,
-    us_target_level_offset_supply=-0.04,
-    supply_nodes_df=supply_nodes_df,
-)
 
 # %%
 # Gemaal Veluwe
@@ -1374,6 +1373,7 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 # %%
 
 # hoofd run met verdamping
+model.starttime
 update_basin_static(model=model, evaporation_mm_per_day=1)
 model.write(ribasim_toml_dry)
 
