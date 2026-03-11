@@ -7,30 +7,35 @@
 - Here the manual adjustments have already been made
 """
 
-# %% Import necessary libraries
+# %%
+# Import necessary libraries
 import os
 import subprocess
 from pathlib import Path
 
 import pandas as pd
 from ribasim.delwaq import generate, parse, plot_fraction
+from ribasim_nl.model import Model
 
-# %% set path of Ribasim model
+# %%
+# set path of Ribasim model
 model_name = "lhm_coupled_2025_9_0"
 
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "modellen" / model_name
+model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / model_name
 toml_path = model_path / "lhm.toml"
 assert toml_path.is_file()
 
 
-# %% generate delwaq input files and graph variable
+# %%
+# generate delwaq input files and graph variable
 output_folder = "delwaq"
 
 output_path = model_path / output_folder
 graph, substances = generate(toml_path, output_path)
 
 
-# %% manually edit delwaq.inp
+# %%
+# manually edit `delwaq.inp`
 # TODO: include in generate function
 """
 Block 1:
@@ -45,7 +50,7 @@ Block 6:
     - add:  INCLUDE 'loadswq.id'           (links ribasim basins to delwaq segments)
     - add:  INCLUDE 'B6_loads.inc'         (timeseries loads for new substances on Basin nodes)
     - add:  INCLUDE 'include_ANIMO.inc'    (load Agriculture and Nature, from conversion ANIMO model results)
-    
+
 Block 8:
     - Change contents to (without indentation):
             INITIALS Continuity Drainage FlowBoundary Initial LevelBoundary Precipitation SurfaceRunoff UserDemand NO3 NH4 OON PO4 AAP OOP
@@ -55,7 +60,8 @@ Block 8:
 
 """
 
-# %% write loadswq.id for loads in delwaq (based on graph variable)
+# %%
+# write loadswq.id for loads in delwaq (based on graph variable)
 # TODO: include in generate function
 node2node = pd.DataFrame(
     [(k, v["id"], v["type"]) for k, v in graph.nodes(data=True)], columns=["delwaq_id", "ribasim_id", "type"]
@@ -81,21 +87,27 @@ format of loadswq.id (without indentation):
 <delwaq_segnr> '<ribasim_nodeid>' ' ' '<ribasim_nodetype>'
 
 """
+# %%
+# pause here and proceed with steps in README.md
 
-# %% manually add input timeseries (boundwq.dat & b6_loads.inc) to delwaq folder
+# %%
+# manually add input timeseries (boundwq.dat & b6_loads.inc) to delwaq folder
 
-# TODO: (lower priority) add data to ribasim model beforehand so generate handles them automatically
-# requires timeseries to be in long format with columns ['ribasim_id', 'time', 'substance', 'value']
+# TODO: automation: add data to ribasim model beforehand so generate.py handles them automatically
+# requires timeseries to be in long format with columns ['ribasim_nodeid', 'time', 'substance', 'value']
 # requires modification of generate.py for loads on Basin nodes UPDATE: this has been done as of 1-12-2025, accessible through editable install?
 
-# %% Set path of Ribasim model
-output_folder = "delwaq_combined_testing"  # changed folder name with delwaq.inp modifications and added files: boundwq_rwzi.dat, boundwq_ba.dat, loadswq.id, b6_loads.inc
+# %%
+########## RUNNING DELWAQ SIMULATION ##########
+
+# Define path of Ribasim model again
+output_folder = "delwaq"  # change folder name with delwaq.inp modifications and added files: boundwq_rwzi.dat, boundwq_ba.dat, loadswq.id, b6_loads.inc to prevent overwriting
 
 output_path = model_path / output_folder
 assert toml_path.is_file()
 
-
-# %% run delwaq from python code
+# %%
+# run delwaq from python code
 dimr_path = Path(os.environ["DIMR_PATH"])
 dimr_config_path = output_path / "dimr_config.xml"
 
@@ -105,7 +117,8 @@ print(result.stderr)
 result.check_returncode()
 
 
-# %% before parsing model: include manually added substance/load
+# %%
+# before parsing model: include manually added substance/load
 # TODO: include in generate function
 substances.add("NO3")
 substances.add("NH4")
@@ -114,18 +127,27 @@ substances.add("PO4")
 substances.add("AAP")
 substances.add("OOP")
 
-# %% parse delwaq results
+# %%
+# parse delwaq results
 nmodel = parse(toml_path, graph, substances, output_folder=output_path)
 
 # %% check added loads in specified Ribasim nodes
 plot_fraction(nmodel, 700970, ["NO3"])  # node downstream of BA 700008; see lhm.toml in QGIS
 # fraction exceeds 1, units unclear
 
-# %% save results for QGIS visualization
+# %% just to check if model can be read again
+model = Model.read(toml_path)
+model.basin.concentration  # should include new substances
+model.basin.concentration_external
+
+# %%
+# save results for QGIS visualization
 nmodel.basin.concentration_external._write_arrow("concentration.arrow", nmodel.filepath.parent, nmodel.results_dir)
+
+nmodel.write("c:/Users/leeuw_je/Projecten/LWKM_Ribasim/clouddata/modellen/lhm_coupled_2025_9_0/lhm_test.toml")
+
+nmodel.basin.concentration_external.filepath = "results/concentration.arrow"
 
 # display(nmodel.basin.concentration_external)
 
 # does not show anything
-
-# %%
