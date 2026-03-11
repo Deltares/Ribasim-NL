@@ -296,7 +296,7 @@ model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
 
 # %%
-# Toevoegen alle aanvoer-knopen (zonder peilhandhaving)
+# Toevoegen alle aanvoer-knopen
 model.outlet.node.df.at[246, "meta_code_waterbeheerder"] = "294EC"
 model.outlet.node.df.at[298, "meta_code_waterbeheerder"] = "WSL_Meij"
 model.outlet.node.df.at[968, "meta_code_waterbeheerder"] = "275JD"
@@ -369,9 +369,6 @@ discharge_supply_nodes = {
 
 discharge_supply_df.to_file(cloud.joinpath(r"AaenMaas\verwerkt\sturing\aanvoerpunten.gpkg"))
 
-# add discharge supply nodes -> no control, but flow-demand-node
-add_discharge_supply_nodes(discharge_supply_nodes=discharge_supply_nodes)
-
 
 # add level supply nodes, no flow-demand-node, but discrete control on downstream basin level
 level_supply_nodes = [
@@ -408,9 +405,7 @@ level_supply_nodes = [
     985,
     1054,
     1067,
-    1502,
     2020,
-    2022,
 ]
 
 double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes.keys()]
@@ -419,14 +414,10 @@ if double_defined:
 
 supply_nodes_df = get_node_table_with_from_to_node_ids(model=model, node_ids=level_supply_nodes)
 
-add_controllers_to_supply_nodes(
-    model=model,
-    us_target_level_offset_supply=-0.04,
-    supply_nodes_df=supply_nodes_df,
-)
+all_nodes = list(discharge_supply_nodes.keys()) + level_supply_nodes
 
-
-model.outlet.node.df.loc[list(discharge_supply_nodes.keys()) + level_supply_nodes, IS_SUPPLY_NODE_COLUMN] = True
+model.outlet.node.df[IS_SUPPLY_NODE_COLUMN] = model.outlet.node.df.index.isin(all_nodes)
+model.pump.node.df[IS_SUPPLY_NODE_COLUMN] = model.pump.node.df.index.isin(all_nodes)
 
 
 # %%
@@ -478,7 +469,6 @@ drain_nodes = [92, 312, 353, 400]
 # handmatig opgegeven supply nodes (inlaten)
 
 supply_nodes = [226, 280]
-
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [681, 776, 934, 1089, 974]
@@ -1331,6 +1321,18 @@ add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
     us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
+)
+
+# %% Toevoegen sturing op inlaten
+
+# add discharge supply nodes -> no control, but flow-demand-node
+add_discharge_supply_nodes(discharge_supply_nodes=discharge_supply_nodes)
+
+# add level supply nodes -> discrete control, no flow-demand
+add_controllers_to_supply_nodes(
+    model=model,
+    us_target_level_offset_supply=-0.04,
+    supply_nodes_df=supply_nodes_df,
 )
 
 # %%
