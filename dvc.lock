@@ -189,9 +189,9 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/verwerkt/bathymetrie
       hash: md5
-      md5: 578e06b03fda41973f96f1662dd28de4.dir
-      size: 276892759
-      nfiles: 3
+      md5: a0535db0cef0342e088189db921f7e68.dir
+      size: 587513735
+      nfiles: 4
   rijkswaterstaat:
     cmd:
     - uv run python notebooks/rijkswaterstaat/2_basins.py
@@ -210,8 +210,8 @@ stages:
       nfiles: 4
     - path: notebooks/rijkswaterstaat
       hash: md5
-      md5: 70e96258a6c1c0956e98bbf3efb31b53.dir
-      size: 94784
+      md5: 8dc8b60b270003f6f46e48c1e7de456f.dir
+      size: 94693
       nfiles: 13
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
@@ -228,8 +228,8 @@ stages:
     deps:
     - path: notebooks/rijn_en_ijssel
       hash: md5
-      md5: 62594dcf9daf4aec058c1abe53c69189.dir
-      size: 27695
+      md5: d6231c8af79cd2b89cc7309e7c0ea899.dir
+      size: 27534
       nfiles: 4
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_full_control_model
@@ -263,8 +263,8 @@ stages:
     deps:
     - path: notebooks/de_dommel
       hash: md5
-      md5: 894597dd16b2f9a9eb20b1430174305b.dir
-      size: 48565
+      md5: c5bf2888e1346129e868110f9bd1b378.dir
+      size: 48362
       nfiles: 7
     outs:
     - path: data/DeDommel/modellen/DeDommel_parameterized_model
@@ -282,8 +282,8 @@ stages:
     deps:
     - path: notebooks/brabantse_delta
       hash: md5
-      md5: 60985faf6159d2cc9f871ffcd9d6fb36.dir
-      size: 45126
+      md5: 5b22c28d2ad806ac8a155b0ad191ef9f.dir
+      size: 45037
       nfiles: 6
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_full_control_model
@@ -319,8 +319,8 @@ stages:
     deps:
     - path: notebooks/vallei_en_veluwe
       hash: md5
-      md5: 81a08567d30dfc084b6acd7ccf6dc839.dir
-      size: 63948
+      md5: 65e8315a4b74108d9a4cb816371e6c35.dir
+      size: 63783
       nfiles: 4
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_full_control_model
@@ -338,8 +338,8 @@ stages:
     deps:
     - path: notebooks/limburg
       hash: md5
-      md5: 12b3824147d34edbde5cb7faf0b5c5dc.dir
-      size: 36133
+      md5: 5bba0d2cd50bf9e5ce1520aac36c8b88.dir
+      size: 36044
       nfiles: 5
     outs:
     - path: data/Limburg/modellen/Limburg_full_control_model
