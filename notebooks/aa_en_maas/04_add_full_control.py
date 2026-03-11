@@ -58,6 +58,7 @@ def add_discharge_supply_nodes(
     ]
 
     for node_id, demand in discharge_supply_nodes.items():
+        print(node_id)
         demand_flow_rate_summer = demand["summer"]
         demand_flow_rate_winter = demand["winter"]
 
@@ -298,7 +299,40 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level
 
 # %%
 # Toevoegen alle aanvoer-knopen (zonder peilhandhaving)
+model.outlet.node.df.at[246, "meta_code_waterbeheerder"] = "294EC"
+model.outlet.node.df.at[298, "meta_code_waterbeheerder"] = "WSL_Meij"
+model.outlet.node.df.at[968, "meta_code_waterbeheerder"] = "275JD"
+model.outlet.node.df.at[875, "meta_code_waterbeheerder"] = "287GB"
+model.outlet.node.df.at[397, "meta_code_waterbeheerder"] = "287DF"
+model.outlet.node.df.at[894, "meta_code_waterbeheerder"] = "275ZKS"
+model.outlet.node.df.at[367, "meta_code_waterbeheerder"] = "261LGD"
+
+# Bakelse Aa
+model.outlet.node.df.at[2035, "meta_code_waterbeheerder"] = "261CZA"
 model.outlet.node.df.at[601, "meta_code_waterbeheerder"] = "261JS"
+model.outlet.node.df.at[905, "meta_code_waterbeheerder"] = "261CQA"
+model.outlet.node.df.at[761, "meta_code_waterbeheerder"] = "261JN"
+model.outlet.node.df.at[156, "meta_code_waterbeheerder"] = "261JIA"
+
+# Peelsche Loop
+model.outlet.node.df.at[358, "meta_code_waterbeheerder"] = "261N"
+model.outlet.node.df.at[535, "meta_code_waterbeheerder"] = "253V"
+model.outlet.node.df.at[2031, "meta_code_waterbeheerder"] = "251U"
+model.outlet.node.df.at[417, "meta_code_waterbeheerder"] = "253LG"
+model.outlet.node.df.at[829, "meta_code_waterbeheerder"] = "251LAA"
+
+# Maaskant-Oost
+model.outlet.node.df.at[203, "meta_code_waterbeheerder"] = "114P18"
+model.outlet.node.df.at[850, "meta_code_waterbeheerder"] = "114FF"
+model.outlet.node.df.at[144, "meta_code_waterbeheerder"] = "108TDE"
+model.outlet.node.df.at[2022, "meta_code_waterbeheerder"] = "WSL_VBMB"
+model.outlet.node.df.at[657, "meta_code_waterbeheerder"] = "114LAC"
+
+
+# Maaskant-Midden
+model.outlet.node.df.at[160, "meta_code_waterbeheerder"] = "104MGT"
+model.outlet.node.df.at[392, "meta_code_waterbeheerder"] = "103BIB"
+
 
 summer_col = "ZOMER_DROO"
 winter_col = "WINTER"
@@ -322,6 +356,8 @@ discharge_supply_df["winter"] = discharge_supply_df["winter"].str.replace(",", "
 
 # make code (and node type) table
 node_table_df = model.node_table().df
+
+
 code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
     ["meta_code_waterbeheerder", "node_type"]
 ].rename(columns={"meta_code_waterbeheerder": "code"})
@@ -478,7 +514,6 @@ drain_nodes = [
     628,
     818,
     980,
-    981,
 ]
 
 # handmatig opgegeven supply nodes (inlaten)
@@ -506,6 +541,7 @@ flow_control_nodes = [
     819,
     821,
     948,
+    981,
     1050,
 ]
 
@@ -685,15 +721,15 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [847, 905]
+drain_nodes = [847, 760, 905]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [156, 601, 2035]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [361, 352]
+flow_control_nodes = [328, 361, 352, 708]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -732,14 +768,14 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [843, 960]
+drain_nodes = [843, 960, 318]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [227, 358, 535, 2031]
+supply_nodes = [227]
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = []
+flow_control_nodes = [122, 154, 158, 177, 338, 538, 584, 622, 710, 826, 828, 909, 954]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -1001,7 +1037,7 @@ drain_nodes = [697, 919, 920, 366, 452, 490, 615, 922, 194, 151, 182, 144, 509, 
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [203, 657, 753, 850]
+supply_nodes = [203, 753, 850]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1134,6 +1170,8 @@ flushing_nodes = {}
 #
 
 drain_nodes = [
+    112,
+    159,
     198,
     394,
     135,
@@ -1153,8 +1191,12 @@ drain_nodes = [
     925,
     209,
     551,
+    265,
     266,
+    303,
     341,
+    398,
+    872,
 ]
 
 # handmatig opgegeven supply nodes (inlaten)
@@ -1203,7 +1245,7 @@ flow_control_nodes = [701, 822, 917, 916]
 supply_nodes = [369, 406, 2020, 2022, 527, 1502]
 #
 
-drain_nodes = [120, 210, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 777, 748, 891, 971]
+drain_nodes = [120, 210, 267, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 777, 748, 891, 971]
 
 
 # Flushing nodes
@@ -1233,6 +1275,17 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 934, "max_downstrea
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 212, "max_downstream_level"] = 3.12
 # Crevecoeur
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2018, "max_flow_rate"] = 300
+
+# 220: #253ZOM Deze stuw zit niet in model en lastig in te bouwen met huidige basins. Daarom Outlet 220 (253BG) en flow op 0 gezet
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 220, "flow_rate"] = 0
+
+# Procentuele Verdeling Peelsche Loop uitlaten naar aanvoergebied Leygraaf opgelegd door flow_rate
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 220, "flow_rate"] = 25
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 680, "flow_rate"] = 50
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "flow_rate"] = 25
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 956, "flow_rate"] = 20
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "flow_rate"] = 5
+
 
 # %% Junctionfy(!)
 model = junctionify(model)

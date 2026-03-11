@@ -470,6 +470,7 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
 # %% remove_nodes
 for row in remove_nodes_df.itertuples():
     model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
+model.remove_node(node_id=501, remove_links=True)
 
 # %% merge nodes
 model.merge_basins(basin_id=1321, to_basin_id=1411, are_connected=True)
