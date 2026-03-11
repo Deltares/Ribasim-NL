@@ -369,11 +369,11 @@ discharge_supply_nodes = {
 
 discharge_supply_df.to_file(cloud.joinpath(r"AaenMaas\verwerkt\sturing\aanvoerpunten.gpkg"))
 
-# add discharge supply nodes
+# add discharge supply nodes -> no control, but flow-demand-node
 add_discharge_supply_nodes(discharge_supply_nodes=discharge_supply_nodes)
 
 
-# add level supply nodes
+# add level supply nodes, no flow-demand-node, but discrete control on downstream basin level
 level_supply_nodes = [
     80,
     160,
@@ -412,6 +412,10 @@ level_supply_nodes = [
     2020,
     2022,
 ]
+
+double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes.keys()]
+if double_defined:
+    raise ValueError(f"these nodes are labelled as q-supply and level-supply {double_defined}")
 
 supply_nodes_df = get_node_table_with_from_to_node_ids(model=model, node_ids=level_supply_nodes)
 
