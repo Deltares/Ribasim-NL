@@ -10,6 +10,7 @@ from ribasim_nl.control import (
     _offset_new_node,
     _target_level,
     add_controllers_to_supply_area,
+    add_controllers_to_supply_nodes,
     add_controllers_to_uncontrolled_connector_nodes,
     get_node_table_with_from_to_node_ids,
 )
@@ -31,10 +32,7 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 745: Sluis Engelen, alles via Crevecoeur
-
-
-DISCHARGE_SUPPLY_NODES = {376: {"summer": 0.05, "winter": 0}}
-EXCLUDE_NODES = set(DISCHARGE_SUPPLY_NODES.keys())
+EXCLUDE_NODES = {}
 
 
 def add_discharge_supply_nodes(
@@ -370,8 +368,62 @@ discharge_supply_nodes = {
 }
 
 discharge_supply_df.to_file(cloud.joinpath(r"AaenMaas\verwerkt\sturing\aanvoerpunten.gpkg"))
+
+# add discharge supply nodes
 add_discharge_supply_nodes(discharge_supply_nodes=discharge_supply_nodes)
-EXCLUDE_NODES = set(discharge_supply_nodes.keys())
+
+
+# add level supply nodes
+level_supply_nodes = [
+    80,
+    160,
+    166,
+    181,
+    183,
+    186,
+    203,
+    211,
+    215,
+    226,
+    227,
+    251,
+    278,
+    280,
+    308,
+    335,
+    369,
+    375,
+    379,
+    392,
+    406,
+    510,
+    521,
+    527,
+    531,
+    640,
+    731,
+    734,
+    753,
+    850,
+    985,
+    1054,
+    1067,
+    1502,
+    2020,
+    2022,
+]
+
+supply_nodes_df = get_node_table_with_from_to_node_ids(model=model, node_ids=level_supply_nodes)
+
+add_controllers_to_supply_nodes(
+    model=model,
+    us_target_level_offset_supply=-0.04,
+    supply_nodes_df=supply_nodes_df,
+)
+
+
+model.outlet.node.df.loc[list(discharge_supply_nodes.keys()) + level_supply_nodes, IS_SUPPLY_NODE_COLUMN] = True
+
 
 # %%
 # Toevoegen Mierlo
@@ -439,6 +491,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 # %%
 # Toevoegen Leijgraaf
@@ -557,6 +610,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 # %%
 # Toevoegen Hurkske/Aa
@@ -628,6 +682,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 
 # %%
@@ -694,6 +749,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 
 
@@ -743,6 +799,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 # %%
 # Toevoegen Peelsche Loop
@@ -789,6 +846,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 # %%
 # Toevoegen Neerkant
@@ -834,6 +892,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 
 
@@ -883,6 +942,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 # %%
 # Toevoegen Helmond
@@ -928,6 +988,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 
 
@@ -977,6 +1038,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 
 
@@ -1077,6 +1139,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 
 # %%
@@ -1125,6 +1188,7 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 
 
@@ -1220,13 +1284,14 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
+    add_supply_nodes=False,
 )
 
 
 # %%
 # EXCLUDE NODES op 0 m3/s zetten
 
-mask = model.outlet.static.df.node_id.isin(list(DISCHARGE_SUPPLY_NODES.keys()))
+mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES)
 model.outlet.static.df.loc[mask, "flow_rate"] = 0
 model.outlet.static.df.loc[mask, "min_flow_rate"] = 0
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0

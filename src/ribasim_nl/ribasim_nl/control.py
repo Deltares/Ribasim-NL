@@ -1151,6 +1151,7 @@ def add_controllers_to_connector_nodes(
     level_difference_threshold: float,
     target_level_column: str = "meta_streefpeil",
     drain_capacity: float = 100,
+    add_supply_nodes: bool = True,
 ):
     """Add controllers to connector nodes per function
 
@@ -1183,13 +1184,16 @@ def add_controllers_to_connector_nodes(
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
     drain_capacity : float, optional
         Maximum drain capacity [m3/s] for drain nodes, by default 100
+    add_supply_nodes: bool, optional
+        Dirty flag to toggle adding supply nodes. Use this flag to identify flushing nodes between supply-nodes and drain nodes, but avoid adding the control itself
+        This is usefull if you want to add a different type of supply-node later. Default is True
     """
     # make sure add-api will not duplicate node-ids
     model._update_used_ids()
 
     # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
-    if not supply_nodes_df.empty:
+    if (not supply_nodes_df.empty) and add_supply_nodes:
         add_controllers_to_supply_nodes(
             model=model,
             us_target_level_offset_supply=-0.04,
@@ -1238,6 +1242,7 @@ def add_controllers_to_supply_area(
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
+    add_supply_nodes: bool = False,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 
@@ -1284,6 +1289,9 @@ def add_controllers_to_supply_area(
         Column in model.pump.node.df and model.outlet.node.df indicates if node is a supply-node, by default "meta_supply_node"
     target_level_column : str, optional
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
+    add_supply_nodes: bool, optional
+        Dirty flag to toggle adding supply nodes. Use this flag to identify flushing nodes between supply-nodes and drain nodes, but avoid adding the control itself
+        This is usefull if you want to add a different type of supply-node later. Default is True
 
     Returns
     -------
@@ -1318,6 +1326,7 @@ def add_controllers_to_supply_area(
         node_functions_df=node_functions_df,
         level_difference_threshold=level_difference_threshold,
         target_level_column=target_level_column,
+        add_supply_nodes=add_supply_nodes,
     )
 
     return node_functions_df
