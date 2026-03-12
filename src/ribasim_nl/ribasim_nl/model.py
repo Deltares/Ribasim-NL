@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import ribasim
 import shapely
+import xarray as xr
 from pydantic import BaseModel
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
@@ -50,8 +51,8 @@ class default_tables:
 DEFAULT_TABLES = default_tables()
 
 
-def read_arrow(filepath: Path) -> pd.DataFrame:
-    df = pd.read_feather(filepath)
+def read_results(filepath: Path) -> pd.DataFrame:
+    df = xr.open_dataset(filepath).to_dataframe().reset_index()
     if "time" in df.columns:
         df.set_index("time", inplace=True)
     return df
@@ -71,8 +72,8 @@ class Results(BaseModel):
     @property
     def df(self) -> pd.DataFrame:
         if self._df is None:
-            self._basin_df = read_arrow(self.filepath)
-        return self._basin_df
+            self._df = read_results(self.filepath)
+        return self._df
 
 
 class Model(ribasim.Model):
@@ -96,28 +97,28 @@ class Model(ribasim.Model):
     @property
     def basin_results(self):
         if self._basin_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
+            filepath = self.filepath.parent.joinpath(self.results_dir, "basin.nc").absolute().resolve()
             self._basin_results = Results(filepath=filepath)
         return self._basin_results
 
     @property
     def link_results(self):
         if self._link_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.arrow").absolute().resolve()
+            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.nc").absolute().resolve()
             self._link_results = Results(filepath=filepath)
         return self._link_results
 
     @property
     def flow_results(self):
         if self._flow_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.arrow").absolute().resolve()
+            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.nc").absolute().resolve()
             self._flow_results = Results(filepath=filepath)
         return self._flow_results
 
     @property
     def basin_outstate(self):
         if self._basin_outstate is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "basin_state.arrow").absolute().resolve()
+            filepath = self.filepath.parent.joinpath(self.results_dir, "basin_state.nc").absolute().resolve()
             self._basin_outstate = Results(filepath=filepath)
         return self._basin_outstate
 
