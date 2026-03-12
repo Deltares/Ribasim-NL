@@ -114,7 +114,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model.read(ribasim_work_dir_model_toml)
     ribasim_model.set_crs("EPSG:28992")
 
 # Uitlaat toevoegen at Ter Schelling
@@ -594,7 +594,7 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
+ribasim_model.node._update_used_ids()
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
@@ -651,7 +651,8 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2700, "
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
+mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
+ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 
 # last formatting of the tables

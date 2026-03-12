@@ -1,10 +1,11 @@
 stages:
   bathymetry:
-    cmd: "uv run python notebooks/rijkswaterstaat/1_bathymetrie.py"
+    cmd: uv run python notebooks/rijkswaterstaat/1_bathymetrie.py
     deps:
       - notebooks/rijkswaterstaat/1_bathymetrie.py
     outs:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
+    frozen: true
   rijkswaterstaat:
     cmd:
       - uv run python notebooks/rijkswaterstaat/2_basins.py
@@ -32,7 +33,7 @@ stages:
     outs:
       - data/BrabantseDelta/modellen/BrabantseDelta_full_control_model
   samenvoegen:
-    cmd: "uv run python notebooks/samenvoegen_modellen.py"
+    cmd: uv run python notebooks/samenvoegen_modellen.py
     frozen: true
     deps:
       - data/Rijkswaterstaat/modellen/hws_2025_10_0

@@ -29,7 +29,7 @@ def empty_table_df(
         pd.DataFrame: DataFrame for static table
     """
     # read node from model
-    node = getattr(model, pascal_to_snake_case(node_type))
+    node = model.get_component(node_type)
     meta_columns = [i for i in meta_columns if i in node.node.df.columns]
 
     # get correct dtypes

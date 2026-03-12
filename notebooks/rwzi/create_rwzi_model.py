@@ -12,11 +12,11 @@ import numpy as np
 import pandas as pd
 import pyodbc
 import ribasim
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.nodes import flow_boundary
 from shapely.geometry import Point
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 # %% get input data
 cloud = CloudStorage()

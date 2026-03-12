@@ -5,20 +5,18 @@ import numpy as np
 import pandas as pd
 import shapely
 from networkx import DiGraph, simple_cycles
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.geometry.link import NodeData
 from ribasim.nodes import flow_demand, level_demand
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from shapely.geometry import MultiPolygon, Point, Polygon
 
-from ribasim_nl import CloudStorage
-from ribasim_nl import Model as ModelNL
+from ribasim_nl import CloudStorage, Model
 
 
 class Flushing:
     def __init__(
         self,
-        model: ModelNL | Model | Path | str,
+        model: Model | Path | str,
         lhm_flushing_path: Path | str = "Basisgegevens/LHM/lsw_flushing.gpkg",
         flushing_layer: str = "lsw_flushing_lhm43",
         flushing_id: str = "LSWNR",
@@ -33,7 +31,7 @@ class Flushing:
 
         Parameters
         ----------
-        model : ModelNL | Model | Path | str
+        model : Model | Path | str
             The Ribasim model to add flushing to, or a path to the model
         lhm_flushing_path : Path | str, optional
             Path to the flushing geopackage, by default "Basisgegevens/LHM/lsw_flushing.gpkg"
@@ -68,12 +66,12 @@ class Flushing:
 
     def add_flushing(
         self,
-    ) -> ModelNL | Model:
+    ) -> Model:
         """Add flushing information to the Ribasim model.
 
         Returns
         -------
-        ModelNL | Model
+        Model
             The updated Ribasim model with flushing information added
         """
         # Synchronize flushing data and model files
@@ -87,7 +85,7 @@ class Flushing:
             df_flushing_subset = self._dissolve_flushing_data(df_flushing_subset)
 
         # Get handles to relevant tables
-        all_nodes = model.node_table().df[["node_type", "geometry"]].copy()
+        all_nodes = model.node.df[["node_type", "geometry"]].copy()
         df_outlet_static = model.outlet.static.df.set_index("node_id").copy()
         df_pump_static = model.pump.static.df.set_index("node_id").copy()
 
@@ -186,7 +184,7 @@ class Flushing:
                     continue
 
                 # Select the target node
-                subpart = getattr(model, pascal_to_snake_case(target_type))
+                subpart = model.get_component(target_type)
                 target_node = subpart[target_nid]
 
                 # Create and link the flow_demand
@@ -204,7 +202,7 @@ class Flushing:
 
     def add_flushing_demand(
         self,
-        model: ModelNL | Model,
+        model: Model,
         target_node: NodeData,
         demand: float,
         metadata: dict[str, str] | None,
@@ -213,7 +211,7 @@ class Flushing:
 
         Parameters
         ----------
-        model : ModelNL | Model
+        model : Model
             The model to add the flushing demand to
         target_node : NodeData
             The node to connect the flushing demand to
@@ -227,7 +225,7 @@ class Flushing:
         None
 
         """
-        df_static = getattr(getattr(model, pascal_to_snake_case(target_node.node_type)), "static").df
+        df_static = model.get_component(target_node.node_type).static.df
         max_flow_rate = df_static.set_index("node_id").loc[target_node.node_id, ["flow_rate", "max_flow_rate"]].max()
         if max_flow_rate < demand:
             print(f"WARNING: {target_node} has {max_flow_rate=:.2e}m3/s, setting a greater {demand=:.2e}m3/s")
@@ -238,7 +236,7 @@ class Flushing:
         uniq_times = model.basin.time.df.time.unique()
         new_flow_demand = model.flow_demand.add(
             Node(
-                model.node_table().df.index.max() + 1,
+                model.node.df.index.max() + 1,
                 Point(
                     target_node.geometry.x + self.flushing_geom_offset,
                     target_node.geometry.y,
@@ -260,7 +258,7 @@ class Flushing:
 
     def add_level_demand(
         self,
-        model: ModelNL | Model,
+        model: Model,
         target_node: NodeData,
         demand: float,
     ):
@@ -268,7 +266,7 @@ class Flushing:
 
         Parameters
         ----------
-        model : ModelNL | Model
+        model : Model
             The model to add the level demand to
         target_node : NodeData
             The node to connect the level demand to
@@ -283,7 +281,7 @@ class Flushing:
         uniq_times = model.basin.time.df.time.unique()
         new_level_demand = model.level_demand.add(
             Node(
-                model.node_table().df.index.max() + 1,
+                model.node.df.index.max() + 1,
                 Point(
                     target_node.geometry.x + self.flushing_geom_offset,
                     target_node.geometry.y,
@@ -305,7 +303,7 @@ class Flushing:
 
     def _find_downstream_nodes(
         self,
-        model: ModelNL | Model,
+        model: Model,
         paths: list[list[int]],
         all_nodes: gpd.GeoDataFrame,
         df_outlet_static: pd.DataFrame,
@@ -515,17 +513,17 @@ class Flushing:
 
     def _sync_files(
         self,
-    ) -> tuple[ModelNL | Model, gpd.GeoDataFrame]:
+    ) -> tuple[Model, gpd.GeoDataFrame]:
         """Synchronize and load required files.
 
         Returns
         -------
-        tuple[ModelNL | Model, gpd.GeoDataFrame]
+        tuple[Model, gpd.GeoDataFrame]
             Tuple containing:
             - The loaded Ribasim model
             - GeoDataFrame with flushing data
         """
-        is_model = isinstance(self.model, ModelNL) or isinstance(self.model, Model)
+        is_model = isinstance(self.model, Model)
 
         # Synchronize flushing data and model files
         filepaths = [self.lhm_flushing_path]
@@ -536,7 +534,7 @@ class Flushing:
         # Read the ribasim model
         model = self.model
         if not is_model:
-            model = ModelNL.read(self.model)
+            model = Model.read(self.model)
 
         # Open the flushing data
         df_flushing = gpd.read_file(self.lhm_flushing_path, layer=self.flushing_layer)
