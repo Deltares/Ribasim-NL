@@ -44,7 +44,7 @@ The conversion script `ER_data_conversion_delwaq.py` is an adaptation of:
 
    Results may already be included in a downloaded Ribasim model, otherwise:
 
-   In a CLI: <path_to_ribasin.exe> <path_to_lhm.toml>
+   In a CLI: <path_to_ribasim.exe> <path_to_lhm.toml>
 
    Simulation period can be adjusted in the model's `.toml` file
 
