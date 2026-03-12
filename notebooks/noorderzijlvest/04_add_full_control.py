@@ -64,6 +64,7 @@ for node_type in CONTROL_NODE_TYPES:
     ) & ~(node_df.node_type.isin(CONTROL_NODE_TYPES) & node_df["meta_code_waterbeheerder"].str.endswith("fictief"))
 
     # force nan or 0 to 20 m3/s
+    node_df = model.node.df.loc[node_df.index]
     node_ids = node_df[node_df[IS_SUPPLY_NODE_COLUMN]].index.values
     static_df = model.get_component(node_type).static.df
     mask = static_df.node_id.isin(node_ids) & (static_df.flow_rate == 0 | static_df.flow_rate.isna())

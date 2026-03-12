@@ -151,14 +151,14 @@ stages:
     deps:
     - path: notebooks/noorderzijlvest
       hash: md5
-      md5: ebb5d15982db491ca734bc1e8a9f09a1.dir
-      size: 32636
+      md5: 8b9eed7a78682d9afebde58ccdb0af35.dir
+      size: 32501
       nfiles: 4
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
       hash: md5
-      md5: 3429bccbd97a38cd0c30724754f2ffb9.dir
-      size: 9924801
+      md5: 8dae8d7b11ed14452b4fbab77934587d.dir
+      size: 10055873
       nfiles: 2
   stichtse_rijnlanden:
     cmd:
@@ -169,15 +169,15 @@ stages:
     deps:
     - path: notebooks/stichtse_rijnlanden
       hash: md5
-      md5: a682f479c8ce14754b853c0d980a6700.dir
-      size: 63123
+      md5: e9475b0f1cb179e2a61302baec1e79fe.dir
+      size: 62892
       nfiles: 4
     outs:
     - path:
         data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
       hash: md5
-      md5: 47ad67dd7e12e7ca884e451dd13b1aeb.dir
-      size: 16838849
+      md5: 07882393d7c4e450048d632ebda5926b.dir
+      size: 16810177
       nfiles: 2
   bathymetry:
     cmd: uv run python notebooks/rijkswaterstaat/1_bathymetrie.py

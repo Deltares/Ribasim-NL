@@ -69,6 +69,7 @@ for node_type in CONTROL_NODE_TYPES:
     )
 
     # force nan or 0 to 20 m3/s
+    node_df = model.node.df.loc[node_df.index]
     node_ids = node_df[node_df[IS_SUPPLY_NODE_COLUMN]].index.values
     print(node_ids)
     static_df = model.get_component(node_type).static.df
