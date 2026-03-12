@@ -143,7 +143,7 @@ class AddStorageBasins:
         bergende_node["meta_node_id"] = bergende_node.index.copy()
 
         # concat all the new tables to the existing model
-        self.ribasim_model.basin.node.df = pd.concat([self.ribasim_model.basin.node.df, bergende_node])
+        self.ribasim_model.node.df = pd.concat([self.ribasim_model.node.df, bergende_node])
         self.ribasim_model.basin.static = pd.concat([self.ribasim_model.basin.static.df, bergende_static]).reset_index(
             drop=True
         )
@@ -157,9 +157,7 @@ class AddStorageBasins:
             drop=True
         )
 
-        self.ribasim_model.manning_resistance.node.df = pd.concat(
-            [self.ribasim_model.manning_resistance.node.df, manning_node]
-        )
+        self.ribasim_model.node.df = pd.concat([self.ribasim_model.node.df, manning_node])
         self.ribasim_model.manning_resistance.static = pd.concat(
             [self.ribasim_model.manning_resistance.static.df, manning_static]
         ).reset_index(drop=True)

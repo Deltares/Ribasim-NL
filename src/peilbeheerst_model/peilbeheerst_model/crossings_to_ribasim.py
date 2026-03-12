@@ -1779,7 +1779,8 @@ class RibasimNetwork:
         )
         pump_node = pump_node.rename(columns={"meta_name": "name"})
         pump_node = pump_node.drop_duplicates()
-        model.pump.node.df = pump_node
+        pump_ids = model.pump.node.df.index
+        model.node.df = pd.concat([model.node.df.drop(pump_ids), pump_node])
 
         # aggregation areas (AA)
         # step 1: retrieve the coordinates of the aggregation areas in the basin.area table
@@ -1806,7 +1807,8 @@ class RibasimNetwork:
         coordinates_AA_ribasim = coordinates_AA_ribasim.drop(columns="name_to_remove")
         coordinates_AA_ribasim = coordinates_AA_ribasim.drop_duplicates()
 
-        model.basin.node.df = coordinates_AA_ribasim
+        basin_ids = model.basin.node.df.index
+        model.node.df = pd.concat([model.node.df.drop(basin_ids), coordinates_AA_ribasim])
 
         return model
 
