@@ -1,3 +1,5 @@
+"""Preparation of cross-section data with water authority specific approaches (if required)."""
+
 import logging
 
 import geopandas as gpd
