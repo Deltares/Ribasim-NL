@@ -100,9 +100,9 @@ The `.env` file is gitignored because it is different per developer, and to avoi
 Here is an example for a filled in `.env` file:
 
 ```ini
-RIBASIM_NL_CLOUD_PASS=your_password_here
-RIBASIM_NL_DATA_DIR=c:\data\ribasim-nl
-RIBASIM_EXE=c:\bin\ribasim\ribasim.exe
+RIBASIM_NL_CLOUD_PASS='your_password_here'
+RIBASIM_NL_DATA_DIR='data'
+RIBASIM_EXE='C:/bin/ribasim/ribasim.exe'
 ```
 
 These values will be applied using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).

@@ -14,6 +14,11 @@ from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcess
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.control import (
+    add_controllers_to_connector_nodes,
+    add_function_to_peilbeheerst_node_table,
+    get_node_table_with_from_to_node_ids,
+)
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing
@@ -59,8 +64,8 @@ cloud.synchronize(
     ]
 )
 
-# download the feedback forms, overwrite the old ones
-cloud.download_verwerkt(authority=waterschap, overwrite=True)
+# refresh only the feedback form from cloud (instead of all "verwerkt" files)
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -114,13 +119,11 @@ with warnings.catch_warnings():
     ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
     ribasim_model.set_crs("EPSG:28992")
 
-# check basin area
-ribasim_param.validate_basin_area(ribasim_model)
-
-# check streefpeilen at manning nodes
-ribasim_param.validate_manning_basins(ribasim_model)
-
 # model specific tweaks
+
+# should have been boezem
+ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df.node_id == 3, "meta_categorie"] = "hoofdwater"
+
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
@@ -206,6 +209,12 @@ ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary
 ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
 ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
 
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
+
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
+
 # insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
     ribasim_model,
@@ -268,7 +277,6 @@ else:
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(
@@ -278,8 +286,72 @@ ribasim_param.set_aanvoer_flags(
     load_geometry_kw={"layer": "Aanvoergebied_Afvoergebied_polders"},
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
-ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-ribasim_param.add_continuous_control(ribasim_model, dy=-50)
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
+
+# ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
+# ribasim_param.add_continuous_control(ribasim_model, dy=-50)
+
+LEVEL_DIFFERENCE_THRESHOLD = 0.04
+ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
+
+from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
+from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
+from_to_node_function_table["demand"] = None
+
+# manual adjustments to control settings
+from_doorlaat_to_inlaat = [167, 371, 239, 223, 306, 525, 377, 150, 224]
+
+from_to_node_function_table.loc[from_to_node_function_table.index.isin(from_doorlaat_to_inlaat), "function"] = "supply"
+
+outlet_copy = ribasim_model.outlet.static.df[
+    [
+        "node_id",
+        "meta_categorie",
+        "meta_from_node_id",
+        "meta_to_node_id",
+        "meta_from_level",
+        "meta_to_level",
+        "meta_aanvoer",
+    ]
+].copy()
+pump_copy = ribasim_model.pump.static.df[
+    [
+        "node_id",
+        "meta_categorie",
+        "meta_func_afvoer",
+        "meta_func_aanvoer",
+        "meta_func_circulatie",
+        "meta_from_node_id",
+        "meta_to_node_id",
+        "meta_from_level",
+        "meta_to_level",
+    ]
+].copy()
+
+# update node_ids
+# ribasim_model = ribasim_model._update_used_ids()
+ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
+
+add_controllers_to_connector_nodes(
+    model=ribasim_model,
+    node_functions_df=from_to_node_function_table,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    target_level_column="meta_streefpeil",
+    drain_capacity=20,
+)
+
+# add the meta_data to the pump and outlet tables again
+ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.merge(outlet_copy, on="node_id", how="left")
+ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(pump_copy, on="node_id", how="left")
+
+# if flow_rate is 0, set to 20
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20
+ribasim_model.outlet.static.df.max_flow_rate = ribasim_model.outlet.static.df.flow_rate.copy()
+
+# wateraanvoer node to other waterboard. Set max downstream level to a low value to prevent unwanted control actions
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df.node_id == 433, "max_downstream_level"
+] = -0.63  # 2 cm below Rijnlands streefpeil, to avoid too much water entering from Delfland
 
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
@@ -303,7 +375,7 @@ assign_metadata.add_meta_to_basins(
 )
 
 # presumably wrong conversion of flow capacity in the data
-increase_flow_rate_pumps = [463, 232]
+increase_flow_rate_pumps = [463, 232, 474, 298]
 ribasim_model.pump.static.df.loc[
     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
 ] *= 60

@@ -77,9 +77,11 @@ def add_wfd_id_to_hydroobjects(
 
     # 5. Remove overlapping polygons with less than 90 % overlap
     hydroobjects[wfd_id_column] = hydroobjects.apply(
-        lambda x: x["most_overlapping_polygon_id"]
-        if x["most_overlapping_polygon_area"] > overlap_ratio * x["left_area"]
-        else None,
+        lambda x: (
+            x["most_overlapping_polygon_id"]
+            if x["most_overlapping_polygon_area"] > overlap_ratio * x["left_area"]
+            else None
+        ),
         axis=1,
     )
 
