@@ -50,6 +50,7 @@ venv/
 *.gpkg
 *.toml
 *.dbf
+*.xlsx
 *.shp*
 *.prj
 *.sbn
@@ -58,4 +59,25 @@ venv/
 *.cpg
 *.log
 *.qlr
+*.png
+*.bat
+*.pdf
+*.svg
+*.tif
+*.csv
+*.gml
+*.gfs
+*.xml
+*.pdf
+*.xlsm
+*.log
+*.lyr
+*.msg
+*.cst
+*.txt
+*.gdb/
+*.pdf
 results/
+
+# Main scripts to run workflows per water authority
+notebooks/*/main.py

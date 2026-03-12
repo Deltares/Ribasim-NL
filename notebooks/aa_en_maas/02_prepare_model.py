@@ -20,7 +20,8 @@ short_name = "aam"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 
@@ -36,13 +37,13 @@ cloud.synchronize(
     filepaths=[
         peilgebieden_path,
         stuwen_shp,
-        top10NL_gpkg,
         profiles_gpkg,
         aam_data_gpkg,
         waterschap_grenzen,
         rws_waterschap_grenzen,
     ]
 )
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

@@ -3,6 +3,7 @@ import time
 
 import pandas as pd
 from peilbeheerst_model.controle_output import Control
+from ribasim import run_ribasim
 from ribasim_nl.check_basin_level import add_check_basin_level
 
 from ribasim_nl import CloudStorage, Model
@@ -11,7 +12,7 @@ cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
@@ -19,9 +20,8 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-# # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg])
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+# you need the excel, but the model should be local-only by running 01_fix_model.py
+cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg, qlr_path])
 
 # %%
 
@@ -35,7 +35,7 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 # Fix afvoer
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "flow_rate"] = 0.0
 
 # %%
 
@@ -52,8 +52,7 @@ model.write(ribasim_toml)
 # %%
 
 # run model
-result = model.run()
-assert result.exit_code == 0
+run_ribasim(ribasim_toml)
 
 # # %%
 controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)

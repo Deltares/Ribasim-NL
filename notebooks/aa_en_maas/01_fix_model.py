@@ -256,10 +256,9 @@ model.tabulated_rating_curve.static.df = df
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2431933060
-node_ids = [280, 335, 373, 879]
 model.tabulated_rating_curve.static.df.loc[
-    model.tabulated_rating_curve.static.df.node_id.isin([280, 335, 373, 879]), "active"
-] = False
+    model.tabulated_rating_curve.static.df.node_id.isin([280, 335, 373, 879]), "flow_rate"
+] = 0.0
 
 
 # %%

@@ -11,16 +11,15 @@ authority = "ValleienVeluwe"
 short_name = "venv"
 run_model = True
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
-# # you need the excel, but the model should be local-only by running 01_fix_model.py
-# cloud.synchronize(filpaths=[static_data_xlsx])
-# cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+# you need the excel, but the model should be local-only by running 01_fix_model.py
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
 
 # %%
 
@@ -59,10 +58,10 @@ model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 44,
 model.pump.static.df.loc[model.pump.static.df.node_id == 1283, "max_downstream_level"] = -0.9
 
 # manning_node, wrong basin (anders lek)
-model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == 646, "active"] = False
+model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == 646, "manning_n"] = 100.0
 
 # Duikers naast hoofdwaterloop inactive (anders lek)
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 588, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 588, "flow_rate"] = 0.0
 
 # Schele Duiker (HKV, 2009)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 400, "max_flow_rate"] = 1
@@ -96,8 +95,8 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 1285, "max_downstream_l
 model.pump.static.df.loc[model.pump.static.df.node_id == 1285, "min_upstream_level"] = -1.01
 
 # Inactive, basin niet ok, lek
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 495, "active"] = False
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 389, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 495, "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 389, "flow_rate"] = 0.0
 
 # Afvoergemaal Nijkerk en Hertog Reijnout no downstream_waterlevel
 model.pump.static.df.loc[model.pump.static.df.node_id == 267, "max_downstream_level"] = pd.NA

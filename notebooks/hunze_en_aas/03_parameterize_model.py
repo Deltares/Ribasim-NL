@@ -9,15 +9,14 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 authority = "HunzeenAas"
 short_name = "hea"
-run_model = False
+run_model = True
 static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-# cloud.synchronize(filepaths=[static_data_xlsx])
-# cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
 
 # %%
 
@@ -43,11 +42,11 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_f
 node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KDU")].index.to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 1
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 183, "active"] = False
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1220, "active"] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 134, "active"] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 728, "active"] = False
-model.pump.static.df.loc[model.pump.static.df.node_id == 62, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 183, "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1220, "flow_rate"] = 0.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 134, "flow_rate"] = 0.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 728, "flow_rate"] = 0.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 62, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 570, "min_upstream_level"] = -1.27
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 815, "min_upstream_level"] = -1.27
 
@@ -81,7 +80,6 @@ if run_model:
     result = model.run()
     assert result.exit_code == 0
 
-# %%
-controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-indicators = controle_output.run_afvoer()
+    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+    indicators = controle_output.run_afvoer()
 # %%

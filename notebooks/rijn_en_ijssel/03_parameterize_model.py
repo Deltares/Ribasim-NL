@@ -11,9 +11,9 @@ cloud = CloudStorage()
 authority = "RijnenIJssel"
 short_name = "wrij"
 
-run_model = False
+run_model = True
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 
@@ -21,8 +21,7 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg], check_on_remote=False)
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+cloud.synchronize(filepaths=[static_data_xlsx])
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 # %%
@@ -39,8 +38,8 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # %% fixes
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 471, "active"] = False
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 472, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 471, "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 472, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 119, "min_upstream_level"] = 11
 
 # %%

@@ -1,4 +1,4 @@
-md5: f88f40a57f82580f71ada67ecfd1c550
+md5: e82bf5670a8ca3d925ccdd490a7515dc
 frozen: true
 deps:
 - md5: d96d7032e4145a9ad40075bda06997ba.dir
@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://modeldata/RijnenIJssel/modellen/RijnenIJssel_2025_9_0
 outs:
-- md5: 2c6fca3f653b4a2b5fc84bd3eeb4510a.dir
-  size: 50865576
-  nfiles: 8
+- md5: 86a1b8442f54b646e87bc348efcc88b4.dir
+  size: 31222146
+  nfiles: 3
   hash: md5
   path: RijnenIJssel_2025_9_0

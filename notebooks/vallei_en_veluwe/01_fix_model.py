@@ -25,7 +25,7 @@ fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
-cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg])
+cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, model_edits_aanvoer_gpkg])
 
 # %% read model
 model = Model.read(ribasim_toml)
@@ -231,13 +231,14 @@ model.reverse_direction_at_node(302)  #
 model.reverse_direction_at_node(479)  # Laakse Duiker
 
 
-actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
-for action in actions:
+layers = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
+for layer in layers:
+    action = layer.replace("_edge", "_link")
     print(action)
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=layer, fid_as_index=True)
     if "order" in df.columns:
         df.sort_values("order", inplace=True)
     for row in df.itertuples():

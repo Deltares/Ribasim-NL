@@ -1,4 +1,4 @@
-md5: 8bc09b5ddd5df9676e88dffa6ff713b6
+md5: 3910fc01544f02c453fc3cd23d8a9fa3
 frozen: true
 deps:
 - md5: 88316b14d10b623dbbc3bd4a5f3f32d7.dir
@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://modeldata/Vechtstromen/modellen/Vechtstromen_2025_9_0
 outs:
-- md5: da33f0417baa9ed37580e1273ed2940f.dir
-  size: 114249516
-  nfiles: 8
+- md5: cd9f96ea6857f669725edd17a0368fb1.dir
+  size: 77612002
+  nfiles: 3
   hash: md5
   path: Vechtstromen_2025_9_0

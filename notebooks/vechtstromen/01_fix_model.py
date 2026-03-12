@@ -6,6 +6,7 @@ import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.cloud import ModelVersion
 from ribasim_nl.geometry import drop_z, link, split_basin, split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -18,8 +19,19 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 cloud = CloudStorage()
 authority = "Vechtstromen"
 name = "vechtstromen"
-run_model = False
+run_model = True
 
+
+def get_latest_hws_model_version() -> ModelVersion:
+    model_versions = [
+        i for i in cloud.uploaded_models("Rijkswaterstaat") if i is not None and getattr(i, "model", None) == "hws"
+    ]
+    if model_versions:
+        return sorted(model_versions, key=lambda x: getattr(x, "sorter", ""))[-1]
+    raise ValueError("No Rijkswatersdtaat/modellen/hws models found")
+
+
+# paths that should be synced
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
@@ -27,8 +39,13 @@ model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+hws_model = get_latest_hws_model_version().path_string
+hws_model_dir = cloud.joinpath(f"Rijkswaterstaat/modellen/{hws_model}")
+hws_model_toml = hws_model_dir / "hws.toml"
 
-cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg, ribasim_areas_gpkg])
+cloud.synchronize(
+    filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, hydamo_gpkg, ribasim_areas_gpkg, hws_model_dir]
+)
 
 # %%
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
@@ -128,7 +145,7 @@ for row in link_df.itertuples():
     model.remove_link(from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=True)
 
 # add level_boundaries at twentekanaal for later coupling
-hws_model = Model.read(cloud.joinpath("Rijkswaterstaat/modellen/hws/hws.toml"))
+hws_model = Model.read(hws_model_toml)
 basin_ids = hws_model.node_table().df[hws_model.node_table().df.name.str.contains("Twentekanaal")].index.to_list()
 twentekanaal_poly = hws_model.basin.area.df[hws_model.basin.area.df.node_id.isin(basin_ids)].union_all()
 

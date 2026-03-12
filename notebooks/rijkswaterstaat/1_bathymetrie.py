@@ -22,9 +22,9 @@ cloud = CloudStorage()
 
 
 out_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/bathymetrie")
-out_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True, parents=True)
 baseline_file = cloud.joinpath(
-    "baseline-nl_land-j23_6-v1/baseline.gdb"
+    "Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb"
 )  # dit bestand is read-only voor D2HYDRO ivm verwerkersovereenkomst
 layer = "bedlevel_points"
 
@@ -35,7 +35,8 @@ bathymetrie_nl = cloud.joinpath("Rijkswaterstaat/aangeleverd/bathymetrie")
 water_mask_path = out_dir / "water-mask.gpkg"
 
 
-cloud.synchronize(filepaths=[bathymetrie_nl, krw_poly_gpkg, baseline_file, water_mask_path])
+cloud.synchronize(filepaths=[krw_poly_gpkg, water_mask_path])
+cloud.synchronize(filepaths=[baseline_file, bathymetrie_nl], overwrite=False)
 
 res = 5
 tile_size = 10000

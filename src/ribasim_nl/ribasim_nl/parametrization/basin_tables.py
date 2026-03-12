@@ -50,7 +50,7 @@ def update_basin_static(
 
 def update_basin_profile(
     model: Model,
-    percentages_map: dict = {"hoofdwater": 90, "doorgaand": 10, "bergend": 3},
+    percentages_map: dict = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2},
     default_percentage: int = 10,
     profile_depth=3,
 ):
@@ -67,6 +67,7 @@ def update_basin_profile(
     for category, percentage in percentages_map.items():
         node_ids = model.basin.node.df.loc[model.basin.node.df.meta_categorie == category].index.to_numpy()
         profile.loc[profile.node_id.isin(node_ids), "percentage"] = percentage
+        print(percentage)
 
     # calculate area at invert from percentage
     profile["area"] = profile["geometry"].area * profile["percentage"] / 100

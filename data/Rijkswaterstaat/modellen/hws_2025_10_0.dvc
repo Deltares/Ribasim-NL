@@ -1,4 +1,4 @@
-md5: a168422f4f600462dd5db6462adef89a
+md5: f4c7a78259f986fe5ffb03daaa15a621
 frozen: true
 deps:
 - md5: 76165c5bff0cf20fa468e8766ba163ff.dir
@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://modeldata/Rijkswaterstaat/modellen/hws_2025_10_0
 outs:
-- md5: 700914d929b4633fbf6c1bba4a8c8f55.dir
-  size: 47001133
-  nfiles: 12
+- md5: d3429cc229353a009a2feb17f27576c7.dir
+  size: 42700954
+  nfiles: 2
   hash: md5
   path: hws_2025_10_0

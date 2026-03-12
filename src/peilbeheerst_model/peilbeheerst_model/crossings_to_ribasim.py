@@ -738,12 +738,14 @@ class CrossingsToRibasim:
             )
 
             check_SP["line_geom"] = check_SP.apply(
-                lambda row: LineString(list(row["line_geom"].coords)[::-1])
-                if (
-                    row["distance_start_from"] + row["distance_end_to"]
-                    > row["distance_start_to"] + row["distance_end_from"]
-                )
-                else row["line_geom"],
+                lambda row: (
+                    LineString(list(row["line_geom"].coords)[::-1])
+                    if (
+                        row["distance_start_from"] + row["distance_end_to"]
+                        > row["distance_start_to"] + row["distance_end_from"]
+                    )
+                    else row["line_geom"]
+                ),
                 axis=1,
             )
             links.update(check_SP)
@@ -1032,7 +1034,6 @@ class RibasimNetwork:
 
         pump_static = pd.DataFrame()
         pump_static["node_id"] = pump_nodes["node_id"]
-        pump_static["active"] = np.nan
         pump_static["flow_rate"] = 0
         pump_static["min_flow_rate"] = np.nan
         pump_static["max_flow_rate"] = np.nan
@@ -1066,7 +1067,6 @@ class RibasimNetwork:
 
         level_boundary_static = pd.DataFrame()
         level_boundary_static["node_id"] = level_boundary_nodes["node_id"]
-        level_boundary_static["active"] = np.nan
         level_boundary_static["level"] = 0
 
         # comply to Ribasim 2024.11
@@ -1097,7 +1097,6 @@ class RibasimNetwork:
 
         flow_boundary_static = pd.DataFrame()
         flow_boundary_static["node_id"] = flow_boundary_nodes["node_id"]
-        flow_boundary_static["active"] = np.nan
         flow_boundary_static["flow_rate"] = 0
 
         # comply to Ribasim 2024.11
@@ -1138,7 +1137,6 @@ class RibasimNetwork:
 
         manning_resistance_static = pd.DataFrame()
         manning_resistance_static["node_id"] = manning_resistance_nodes["node_id"]
-        manning_resistance_static["active"] = np.nan
         manning_resistance_static["length"] = 1000
         manning_resistance_static["manning_n"] = 0.02
         manning_resistance_static["profile_width"] = 2
