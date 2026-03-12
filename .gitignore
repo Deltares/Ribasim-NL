@@ -37,6 +37,8 @@ notebooks/rijkswaterstaat/plots/
 /src/peilbeheerst_model/peilbeheerst_model/Oud
 /src/peilbeheerst_model/ribasim
 
+/notebooks/ribasim_delwaq/postprocessing/get_WQdata_waterinfo.py
+
 .env
 venv/
 .venv/
