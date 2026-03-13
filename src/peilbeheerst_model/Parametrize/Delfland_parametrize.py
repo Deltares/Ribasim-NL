@@ -56,17 +56,17 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/Delfland_aanvoergebiedafvoergebied.gdb")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 
-# cloud.synchronize(
-#     filepaths=[
-#         ribasim_base_model_dir,
-#         FeedbackFormulier_path,
-#         ws_grenzen_path,
-#         RWS_grenzen_path,
-#         qlr_path,
-#         aanvoer_path,
-#         meteo_path,
-#     ]
-# )
+cloud.synchronize(
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+        meteo_path,
+    ]
+)
 
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 cloud.download_file(cloud.file_url(FeedbackFormulier_path))
