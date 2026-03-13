@@ -243,14 +243,14 @@ def main(
     # NaN-valued basin profiles
     if sum(flowing_profiles["area"].isna()) > 0:
         print("NaN-values present in profile-table (flowing/'doorgaand')")
-        if not input("Continue? [y/n] ") == "y":
+        if input("Continue? [y/n] ") != "y":
             print(flowing_profiles[flowing_profiles.isna()], end="\n\n")
             msg = f"Abort profile table generation with NaN-values: {sum(flowing_profiles.isna())} NaN-values found"
             raise KeyboardInterrupt(msg)
         print(flowing_profiles, end="\n\n")
     if sum(storing_profiles["area"].isna()) > 0:
         print("NaN-values present in profile-table (storing/'bergend')")
-        if not input("Continue? [y/n] ") == "y":
+        if input("Continue? [y/n] ") != "y":
             print(storing_profiles[storing_profiles.isna()], end="\n\n")
             msg = f"Abort profile table generation with NaN-values: {sum(storing_profiles.isna())} NaN-values found"
             raise KeyboardInterrupt(msg)
