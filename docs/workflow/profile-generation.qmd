@@ -1,0 +1,69 @@
+---
+title: "Profile generation"
+---
+
+The generation of representative profiles is mainly relevant for water quality simulations.
+The profiles -- represented by $A(h)$-relations -- largely determine the retention time of water in a basin,
+where the distinction between _doorgaand_ and _bergend_ is crucial:
+_doorgaand_ represents flowing water bodies, while
+_bergend_ represents stagnant water bodies.
+
+These profiles also form the basis for the coupling with the groundwater modelling.
+
+# Profile generation workflow
+
+Profiles are generated per water authority, as
+(1) data sources are available per water authority, and
+(2) data sources are formatted differently per water authority.
+
+Prior to generating the profiles, the data is preprocessed:
+
+0. Preprocessing of data sources, which includes
+    generating `LINESTRING Z`-objects of measured cross-sections,
+    removing duplicate hydro-objects,
+    repairing hydro-objects along HyDAMO-standards,
+    downloading BGT-data from their web-API.
+
+Subsequently, the following steps are executed on a per-basin basis:
+
+1.  Select relevant hydro-objects and crossings (i.e., within a basin);
+2.  Generate graph (or network) from hydro-objects (using `networkx`);
+3.  Determine the shortest path(s) between crossings, which separates the hydro-objects as _doorgaand_ versus _bergend_;
+4.  Couple BGT-polygons to hydro-objects (non-intersecting BGT-polygons will be classified as _bergend_ at a later stage);
+5.  Estimate representative width per hydro-object based on coupled BGT-polygon's surface area and circumference;
+6.  Estimate representative depth per hydro-object based on width and hydrotope (using a look-up table);
+7.  Update representative depth of hydro-objects labelled as _doorgaand_ using measured cross-sections, if available;
+8.  Define a trapezoidal cross-sectional profile using the representative width and depth (and a slope of $1:3$, default);
+9.  Define the $A(h)$-relation for _doorgaand_ and _bergend_ separately using the length of the hydro-objects;
+10. Correct the $A(h)$-relation of _bergend_ by including non-intersecting BGT-polygons' surface areas (as preluded to in 5.);
+11. Write two basin profile tables with $A(h)$-relations: one for _doorgaand_, and one for _bergend_.
+
+# Profile generation code
+
+The profile generation is coded as standalone and intended to be executed prior to model generation, ideally once.
+Therefore, all relevant code is grouped inside a `profiles`-module:
+`src/ribasim_nl/ribasim_nl/profiles` for the source-code, and
+`src/peilbeheerst_model/profiles` for the implementation-code.
+This results in the following structures:
+- For the source-code:
+```
+src/ribasim_nl/ribasim_nl/profiles/
+ -  __init__.py
+ -  <source-code>.py
+```
+- For the implementation-code:
+```
+src/peilbeheerst_model/profiles/
+ -  __init__.py
+ -  _prep_cross_sections.py
+ -  <water-authority>.py
+```
+
+As part of the implementation code, there is the preprocessing of cross-sections (`_prep_cross_sections.py`),
+which should be executed prior to running any of the `<water-authority>.py` scripts.
+This way, the measured cross-sections are preprocessed so they are presented as `LINESTRING Z`-objects.
+Preprocessing of the measured cross-sections must be done per water authority:
+```bash
+uv run src/peilbeheerst_model/profiles/_prep_cross_sections.py <water-authority>
+```
+This call has to be done only once (or when changes are made to the data sourced and/or source code).
