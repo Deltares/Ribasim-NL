@@ -541,7 +541,7 @@ def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
         waterschap, "verwerkt", "Parametrisatie_data", "from_to_node_function_table_scaled_max_flow_rates.csv"
     )
     from_to_node_function_table.to_csv(from_to_node_function_table_path)
-    cloud.upload_content(from_to_node_function_table_path, overwrite=True)
+    cloud.upload_file(from_to_node_function_table_path)
 
     print("from_to_node_function_table with estimated flow rates saved to the GoodCloud.")
 
@@ -821,7 +821,7 @@ def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingCon
     scaled_max_flow_rates_path = cloud.joinpath(
         config.waterschap, "verwerkt", "Parametrisatie_data", "from_to_node_function_table_scaled_max_flow_rates.csv"
     )
-    cloud.synchronize(scaled_max_flow_rates_path)
+    cloud.synchronize([scaled_max_flow_rates_path])
 
     return pd.read_csv(scaled_max_flow_rates_path)
 
