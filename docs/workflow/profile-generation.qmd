@@ -58,16 +58,16 @@ src/ribasim_nl/ribasim_nl/profiles/
 ```
 src/peilbeheerst_model/profiles/
  -  __init__.py
- -  _prep_cross_sections.py
+ -  prep_cross_sections.py
  -  <water-authority>.py
 ```
 
-As part of the implementation code, there is the preprocessing of cross-sections ([`_prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles/_prep_cross_sections.py)),
+As part of the implementation code, there is the preprocessing of cross-sections ([`prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles/prep_cross_sections.py)),
 which should be executed prior to running any of the [`<water-authority>.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles) scripts.
 This way, the measured cross-sections are preprocessed so they are presented as `LINESTRING Z`-objects.
 Preprocessing of the measured cross-sections must be done per water authority:
 ```bash
-uv run src/peilbeheerst_model/profiles/_prep_cross_sections.py <water-authority>
+uv run src/peilbeheerst_model/profiles/prep_cross_sections.py <water-authority>
 ```
 This call has to be done only once per water authority
 (or when changes are made to the data sources and/or source code).
