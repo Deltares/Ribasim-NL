@@ -29,7 +29,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -440,6 +440,7 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         waterschap=waterschap,
         cloud=cloud,
         RESCALE_FLOW_CAPACITIES=RESCALE_FLOW_CAPACITIES,
+        max_iterations=20,
     )
 )
 
