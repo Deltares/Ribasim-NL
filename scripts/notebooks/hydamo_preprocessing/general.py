@@ -433,20 +433,24 @@ def get_most_overlapping_polygon(
     left_geodataframe["overlapping_areas"] = left_geodataframe["overlapping_areas"].apply(lambda x: pd.DataFrame(x))
 
     left_geodataframe["most_overlapping_polygon_id"] = left_geodataframe.apply(
-        lambda x: x["overlapping_areas"][
-            x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
-        ]["id"].values[0]
-        if len(x["overlapping_areas"]) != 0
-        else None,
+        lambda x: (
+            x["overlapping_areas"][
+                x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
+            ]["id"].values[0]
+            if len(x["overlapping_areas"]) != 0
+            else None
+        ),
         axis=1,
     )
 
     left_geodataframe["most_overlapping_polygon_area"] = left_geodataframe.apply(
-        lambda x: x["overlapping_areas"][
-            x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
-        ]["overlapping_area"].values[0]
-        if len(x["overlapping_areas"]) != 0
-        else None,
+        lambda x: (
+            x["overlapping_areas"][
+                x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
+            ]["overlapping_area"].values[0]
+            if len(x["overlapping_areas"]) != 0
+            else None
+        ),
         axis=1,
     )
 
@@ -517,9 +521,11 @@ def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, righ
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].notna()])
     if isinstance(right_gdf, gpd.GeoDataFrame):
         left_gdf["touching_polygons"] = left_gdf.apply(
-            lambda x: x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]
-            if x["right_id"] is not None
-            else x["touching_polygons"],
+            lambda x: (
+                x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]
+                if x["right_id"] is not None
+                else x["touching_polygons"]
+            ),
             axis=1,
         )
     left_gdf["most_adjacent_polygon"] = left_gdf.apply(
