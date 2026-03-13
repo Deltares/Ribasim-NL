@@ -4,7 +4,7 @@ import geopandas as gpd
 import numpy as np
 import shapely
 
-from profiles import hydrotopes as ht
+from ribasim_nl.profiles import hydrotopes as ht
 
 LOG = logging.getLogger(__name__)
 

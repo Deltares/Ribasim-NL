@@ -2,9 +2,8 @@
 
 import geopandas as gpd
 import pandas as pd
-
-from src.ribasim_nl.profiles import run
-from src.ribasim_nl.ribasim_nl.cloud import CloudStorage
+from ribasim_nl.cloud import CloudStorage
+from ribasim_nl.profiles import run
 
 
 def main(

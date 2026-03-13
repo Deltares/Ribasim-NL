@@ -8,9 +8,9 @@ import momepy
 import pandas as pd
 import shapely
 
-from profiles import bgt, cross_section, depth, path_finder, width
-from profiles import hydrotopes as ht
 from ribasim_nl import CloudStorage
+from ribasim_nl.profiles import bgt, cross_section, depth, path_finder, width
+from ribasim_nl.profiles import hydrotopes as ht
 
 LOG = logging.getLogger(__name__)
 
