@@ -3,7 +3,6 @@ from __future__ import annotations
 import pathlib
 from dataclasses import dataclass, field
 
-import matplotlib.pyplot as plt
 import pandas as pd
 from ribasim import run_ribasim
 
@@ -37,9 +36,7 @@ class OutletPumpScalingConfig:
     situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
     apply_temporary_debug_changes: bool = False
     debug_outlet_max_flow_rate: float = 0.10
-    supply_nodes_to_plot: int = 20
     RESCALE_FLOW_CAPACITIES: bool = True
-    node_id_to_plot: int | None = None
 
     @property
     def results_path(self) -> pathlib.Path:
@@ -473,59 +470,6 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     return ribasim_model
 
 
-def plot_guessed_max_flow_rate_per_iteration(from_to_node_function_table, node_id):
-    """Plot guessed flow rates per iteration for a single connector node.
-
-    Parameters
-    ----------
-    from_to_node_function_table : pd.DataFrame
-        Connector-node table containing guessed flow-rate columns.
-    node_id : int
-        Node identifier to plot.
-
-    Raises
-    ------
-    ValueError
-        If no guessed flow-rate columns exist, the node is missing, or all
-        guessed values for that node are empty.
-    """
-    guessed_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
-
-    if len(guessed_columns) == 0:
-        raise ValueError("No guessed max flow rate columns found (new_max_flow_rates_*).")
-
-    row = from_to_node_function_table.loc[from_to_node_function_table["node_id"] == node_id]
-    if row.empty:
-        raise ValueError(f"node_id {node_id} not found in from_to_node_function_table.")
-
-    points = []
-    for column in guessed_columns:
-        parts = column.split("_")
-        iteration = int(parts[4])
-        situation = "_".join(parts[5:])
-        value = row.iloc[0][column]
-        if pd.notna(value):
-            points.append((situation, iteration, float(value)))
-
-    if len(points) == 0:
-        raise ValueError(f"No guessed max flow rate values found for node_id {node_id}.")
-
-    plot_df = pd.DataFrame(points, columns=["situation", "iteration", "max_flow_rate"])
-    plot_df = plot_df.sort_values(["situation", "iteration"])
-
-    plt.figure(figsize=(10, 5))
-    for situation, group in plot_df.groupby("situation"):
-        plt.plot(group["iteration"], group["max_flow_rate"], marker="o", label=situation)
-
-    plt.title(f"Guessed max_flow_rate per iteration for node_id {node_id}")
-    plt.xlabel("Iteration")
-    plt.ylabel("Guessed max_flow_rate [m3/s]")
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
-
 def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
     """Save the from_to_node_function_table with estimated flow rates to a CSV file.
 
@@ -792,23 +736,6 @@ class _OutletPumpScaler:
         warn_for_to_high_flow_rates(ribasim_model)
 
         print("Done")
-
-        # Inspect results.
-        supply_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "supply"]
-
-        count = 0
-        for supply_node_id in supply_nodes.node_id:
-            plot_guessed_max_flow_rate_per_iteration(
-                from_to_node_function_table=from_to_node_function_table, node_id=supply_node_id
-            )
-            count += 1
-            if count >= config.supply_nodes_to_plot:
-                break
-
-        if config.node_id_to_plot is not None:
-            plot_guessed_max_flow_rate_per_iteration(
-                from_to_node_function_table=from_to_node_function_table, node_id=config.node_id_to_plot
-            )
 
         # upload the from_to_node_function_table with scaled flow rates to the goodcloud
         upload_from_to_node_function_table(from_to_node_function_table, config.waterschap)
