@@ -1,16 +1,16 @@
-"""Generation of profiles table for Scheldestromen."""
+"""Generation of profiles table for Schieland en de Krimpenerwaard."""
 
 import geopandas as gpd
 import pandas as pd
 
-from profiles import run
-from ribasim_nl import CloudStorage
+from src.ribasim_nl.profiles import run
+from src.ribasim_nl.ribasim_nl.cloud import CloudStorage
 
 
 def main(
     *, export_profile_tables: bool = True, overwrite: bool = False, export_intermediate_output: bool = False
 ) -> None:
-    """Execute profile table generator for Scheldestromen.
+    """Execute profile table generator for Schieland en de Krimpenerwaard.
 
     :param export_profile_tables: export profile tables as *.csv-files, defaults to True
     :param overwrite: overwrite GoodCloud-data, defaults to False
@@ -20,7 +20,7 @@ def main(
     :type overwrite: bool, optional
     :type export_intermediate_output: bool, optional
     """
-    water_authority = "Scheldestromen"
+    water_authority = "SchielandendeKrimpenerwaard"
 
     # get files from the cloud
     cloud = CloudStorage()
@@ -32,10 +32,14 @@ def main(
     fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "database.gpkg")
     gdf_basins = gpd.read_file(fn_basins, layer="Basin / area")
     # > crossings
-    fn_crossings = cloud.joinpath(water_authority, "verwerkt", "Crossings", "scheldestromen_crossings_v02.gpkg")
+    fn_crossings = cloud.joinpath(
+        water_authority, "verwerkt", "Crossings", "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg"
+    )
     gdf_crossings = gpd.read_file(fn_crossings, layer="crossings_hydroobject_filtered")
     # > hydro-objects
-    fn_hydro_objects = cloud.joinpath(water_authority, "verwerkt", "Crossings", "scheldestromen_crossings_v02.gpkg")
+    fn_hydro_objects = cloud.joinpath(
+        water_authority, "verwerkt", "Crossings", "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg"
+    )
     gdf_hydro_objects = gpd.read_file(fn_hydro_objects, layer="hydroobject")
     # > cross-sections
     fn_cross_sections = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
