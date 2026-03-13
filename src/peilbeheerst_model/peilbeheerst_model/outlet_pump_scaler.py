@@ -15,6 +15,12 @@ __all__ = ["OutletPumpScalingConfig", "scale_outlets_pumps"]
 
 @dataclass
 class OutletPumpScalingConfig:
+    """Configuration for outlet and pump max_flow_rate scaling.
+
+    The configuration bundles the loaded Ribasim model, the from_to_node_function_table,
+    and the scenario settings used by the iterative scaling routine.
+    """
+
     ribasim_model_path: str | pathlib.Path
     ribasim_model: Model
     from_to_node_function_table: pd.DataFrame
@@ -40,6 +46,7 @@ class OutletPumpScalingConfig:
 
     @property
     def results_path(self) -> pathlib.Path:
+        """Return the expected Ribasim basin-results file for the model run."""
         return pathlib.Path(self.ribasim_model_path).parent / "results" / "basin.arrow"
 
 
@@ -475,12 +482,14 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
 
 
 def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
-    """Save the from_to_node_function_table with estimated flow rates to a CSV file.
+    """Write the scaled connector table locally and upload the CSV to GoodCloud.
 
     Parameters
     ----------
     from_to_node_function_table : pd.DataFrame
-        Connector-node table containing estimated flow-rate columns.
+        Connector-node table containing the scaled flow-rate columns.
+    waterschap : str
+        Water-authority name used to build the cloud destination path.
     """
     cloud = CloudStorage()
 
@@ -495,10 +504,21 @@ def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
 
 
 class _OutletPumpScaler:
+    """Execute the iterative outlet and pump scaling workflow for one model."""
+
     def __init__(self, config: OutletPumpScalingConfig):
+        """Store the scaler configuration for a single run."""
         self.config = config
 
     def run(self):
+        """Scale connector capacities by iteratively running demand and drainage scenarios.
+
+        Returns
+        -------
+        tuple[Model, pd.DataFrame]
+            The updated Ribasim model and the connector-node table with the
+            scaling history.
+        """
         config = self.config
 
         # load model, create df with basin information, set node_id as index
@@ -746,6 +766,18 @@ class _OutletPumpScaler:
 
 
 def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig):
+    """Download and load a previously saved scaled connector table from GoodCloud.
+
+    Parameters
+    ----------
+    config : OutletPumpScalingConfig
+        Scaling configuration containing the cloud client and authority name.
+
+    Returns
+    -------
+    pd.DataFrame
+        The downloaded connector-node table.
+    """
     cloud = config.cloud
     scaled_max_flow_rates_path = cloud.joinpath(
         config.waterschap, "verwerkt", "Parametrisatie_data", "from_to_node_function_table_scaled_max_flow_rates.csv"
@@ -756,7 +788,19 @@ def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingCon
 
 
 def scale_outlets_pumps(config: OutletPumpScalingConfig):
-    """Run outlet and pump max-flow scaling using the provided configuration."""
+    """Scale outlet and pump capacities or load a previously scaled result.
+
+    Parameters
+    ----------
+    config : OutletPumpScalingConfig
+        Complete scaler configuration.
+
+    Returns
+    -------
+    tuple[Model, pd.DataFrame]
+        The updated Ribasim model and the connector-node table used to set
+        connector capacities.
+    """
     if config.RESCALE_FLOW_CAPACITIES:
         return _OutletPumpScaler(config).run()
     else:
