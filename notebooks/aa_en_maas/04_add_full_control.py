@@ -143,23 +143,6 @@ model.outlet.static.df.flow_rate = 30
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
 
-# fixes:
-model.remove_node(node_id=683, remove_links=True)  # verwijderen Manning knoop naast outlet
-model.remove_node(node_id=684, remove_links=True)  # verwijderen Manning knoop naast outlet
-model.remove_node(node_id=1053, remove_links=True)  # verwijderen Manning knoop naast outlet
-model.remove_node(node_id=467, remove_links=True)  # verwijderen Manning knoop naast outlet
-model.remove_node(node_id=439, remove_links=True)  # verwijderen Manning knoop naast outlet
-model.remove_node(node_id=634, remove_links=True)  # verwijderen Manning knoop naast outlet
-model.remove_node(node_id=587, remove_links=True)  # verwijderen Manning knoop naast outlet
-model.remove_node(node_id=809, remove_links=True)
-model.remove_node(node_id=213, remove_links=True)
-model.remove_node(node_id=415, remove_links=True)
-model.remove_node(node_id=364, remove_links=True)
-model.remove_node(node_id=811, remove_links=True)
-model.remove_node(node_id=682, remove_links=True)
-model.remove_node(node_id=664, remove_links=True)
-
-
 model.update_node(node_id=586, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=479, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=531, node_type="Outlet")  # wordt outlet, was manning
@@ -228,7 +211,6 @@ model.update_node(node_id=555, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=559, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=718, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=481, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=461, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=691, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=1046, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=438, node_type="Outlet")  # wordt outlet, was manning
@@ -248,6 +230,10 @@ model.update_node(node_id=470, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=1014, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=490, node_type="Outlet")  # wordt outlet, was manning
 
+model.update_node(node_id=649, node_type="Outlet")  # wordt outlet, was manning
+model.update_node(node_id=476, node_type="Outlet")  # wordt outlet, was manning
+
+
 # ligt benedenstrooms een stuw
 model.update_node(node_id=1077, node_type="Outlet")  # wordt outlet, was manning
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1077, "min_upstream_level"] = 4.48499
@@ -259,19 +245,14 @@ model.merge_basins(basin_id=1303, to_basin_id=1360, are_connected=True)
 model.merge_basins(basin_id=1707, to_basin_id=1346, are_connected=True)
 model.merge_basins(basin_id=1162, to_basin_id=1457, are_connected=True)
 model.merge_basins(basin_id=1468, to_basin_id=1277, are_connected=True)
-model.merge_basins(basin_id=1155, to_basin_id=1514, are_connected=True)
 model.merge_basins(basin_id=1355, to_basin_id=1517, are_connected=True)
 model.merge_basins(basin_id=1344, to_basin_id=1626, are_connected=True)
 model.merge_basins(basin_id=1428, to_basin_id=1589, are_connected=True)
-model.merge_basins(basin_id=1565, to_basin_id=1618, are_connected=True)
-model.merge_basins(basin_id=2006, to_basin_id=1618, are_connected=True)
-model.merge_basins(basin_id=1366, to_basin_id=1249, are_connected=True)
 model.merge_basins(basin_id=1668, to_basin_id=1710, are_connected=True)
 model.merge_basins(basin_id=1292, to_basin_id=1484, are_connected=True)
 model.merge_basins(basin_id=1966, to_basin_id=1580, are_connected=True)
 model.merge_basins(basin_id=1281, to_basin_id=1642, are_connected=True)
 model.merge_basins(basin_id=1642, to_basin_id=1510, are_connected=True)
-
 model.merge_basins(basin_id=1571, to_basin_id=1332, are_connected=True)
 model.merge_basins(basin_id=1332, to_basin_id=1582, are_connected=True)
 model.merge_basins(basin_id=1208, to_basin_id=1279, are_connected=True)
@@ -286,6 +267,9 @@ model.update_node(node_id=92, node_type="Pump")  # wordt outlet, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 92, "min_upstream_level"] = 16.56
 model.update_node(node_id=226, node_type="Pump")  # wordt outlet, was outlet
 
+# Teveel inlaten naar Oefeltse Raam
+model.remove_node(295, remove_links=True)
+model.remove_node(574, remove_links=True)
 
 # Gemaal Veluwe
 model.update_node(node_id=100, node_type="Pump")  # wordt outlet, was outlet
@@ -306,7 +290,7 @@ model.outlet.node.df.at[894, "meta_code_waterbeheerder"] = "275ZKS"
 model.outlet.node.df.at[367, "meta_code_waterbeheerder"] = "261LGD"
 
 # Bakelse Aa
-model.outlet.node.df.at[2035, "meta_code_waterbeheerder"] = "261CZA"
+model.outlet.node.df.at[3095, "meta_code_waterbeheerder"] = "261CZA"
 model.outlet.node.df.at[601, "meta_code_waterbeheerder"] = "261JS"
 model.outlet.node.df.at[905, "meta_code_waterbeheerder"] = "261CQA"
 model.outlet.node.df.at[761, "meta_code_waterbeheerder"] = "261JN"
@@ -315,9 +299,10 @@ model.outlet.node.df.at[156, "meta_code_waterbeheerder"] = "261JIA"
 # Peelsche Loop
 model.outlet.node.df.at[358, "meta_code_waterbeheerder"] = "261N"
 model.outlet.node.df.at[535, "meta_code_waterbeheerder"] = "253V"
-model.outlet.node.df.at[2031, "meta_code_waterbeheerder"] = "251U"
+model.outlet.node.df.at[3091, "meta_code_waterbeheerder"] = "251U"
 model.outlet.node.df.at[417, "meta_code_waterbeheerder"] = "253LG"
 model.outlet.node.df.at[829, "meta_code_waterbeheerder"] = "251LAA"
+
 
 # Maaskant-Oost
 model.outlet.node.df.at[203, "meta_code_waterbeheerder"] = "114P18"
@@ -325,11 +310,33 @@ model.outlet.node.df.at[850, "meta_code_waterbeheerder"] = "114FF"
 model.outlet.node.df.at[144, "meta_code_waterbeheerder"] = "108TDE"
 model.outlet.node.df.at[2022, "meta_code_waterbeheerder"] = "WSL_VBMB"
 model.outlet.node.df.at[657, "meta_code_waterbeheerder"] = "114LAC"
-
+model.outlet.node.df.at[3089, "meta_code_waterbeheerder"] = "114WRD"
 
 # Maaskant-Midden
 model.outlet.node.df.at[160, "meta_code_waterbeheerder"] = "104MGT"
 model.outlet.node.df.at[392, "meta_code_waterbeheerder"] = "103BIB"
+
+# Mierlo
+model.pump.node.df.at[226, "meta_code_waterbeheerder"] = "234FL_1"
+model.outlet.node.df.at[340, "meta_code_waterbeheerder"] = "217L"
+
+# Whkanaal
+model.outlet.node.df.at[314, "meta_code_waterbeheerder"] = "234CJ"
+
+# Z_W West
+# model.outlet.node.df.at[146, "meta_code_waterbeheerder"] = "217GDW" Stuw niet op juiste plaats
+model.outlet.node.df.at[211, "meta_code_waterbeheerder"] = "203KDZ"
+
+# Helmond:
+model.pump.node.df.at[737, "meta_code_waterbeheerder"] = "201JVL"
+
+# Peelrijt Dommel
+model.outlet.node.df.at[3094, "meta_code_waterbeheerder"] = "280X"
+
+# Hurkske Aa
+model.outlet.node.df.at[161, "meta_code_waterbeheerder"] = "257IA"
+model.outlet.node.df.at[93, "meta_code_waterbeheerder"] = "254BAA"
+model.outlet.node.df.at[191, "meta_code_waterbeheerder"] = "235VGZ"
 
 
 summer_col = "ZOMER_DROO"
@@ -373,7 +380,9 @@ discharge_supply_df.to_file(cloud.joinpath(r"AaenMaas\verwerkt\sturing\aanvoerpu
 # add level supply nodes, no flow-demand-node, but discrete control on downstream basin level
 level_supply_nodes = [
     80,
+    149,
     160,
+    161,
     166,
     181,
     183,
@@ -381,9 +390,9 @@ level_supply_nodes = [
     203,
     211,
     215,
-    226,
     227,
     251,
+    276,
     278,
     280,
     308,
@@ -400,6 +409,7 @@ level_supply_nodes = [
     640,
     731,
     734,
+    737,
     753,
     850,
     985,
@@ -464,14 +474,14 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [92, 312, 353, 400]
+drain_nodes = [85, 92, 312, 353, 400]
 
 # handmatig opgegeven supply nodes (inlaten)
 
 supply_nodes = [226, 280]
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [681, 776, 934, 1089, 974]
+flow_control_nodes = [681, 774, 775, 776, 934, 1089, 974]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -569,15 +579,20 @@ supply_nodes = [186, 251, 278, 379, 731]
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [
+    130,
     140,
     347,
+    377,
     481,
     496,
+    628,
     766,
     767,
     573,
     718,
     768,
+    806,
+    807,
     808,
     810,
     813,
@@ -661,7 +676,7 @@ supply_nodes = [183, 375, 521, 640, 1054]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [155, 212, 332, 823, 824, 1062]
+flow_control_nodes = [155, 212, 332, 388, 823, 824, 1051, 1062]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -728,7 +743,7 @@ supply_nodes = [166, 211]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [146, 205, 239, 413, 438, 526, 533, 790, 791, 952]
+flow_control_nodes = [205, 239, 413, 438, 526, 533, 790, 791, 952]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -917,7 +932,7 @@ drain_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = []
+supply_nodes = [246]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1013,11 +1028,11 @@ drain_nodes = [288, 469, 479, 632]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [510, 531]
+supply_nodes = [355, 510, 531]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = []
+flow_control_nodes = [218, 469]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -1055,12 +1070,14 @@ ignore_intersecting_links: list[int] = [
     175,
     190,
     388,
+    476,
     499,
     528,
     529,
     603,
     604,
     648,
+    649,
     659,
     660,
     676,
@@ -1088,7 +1105,7 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [697, 919, 920, 366, 452, 490, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1014, 1016]
+drain_nodes = [919, 920, 366, 452, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1016]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1097,14 +1114,20 @@ supply_nodes = [203, 753, 850]
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [
+    127,
+    249,
+    697,
     698,
     863,
     864,
     362,
+    490,
     494,
     915,
     755,
     271,
+    857,
+    858,
     866,
     867,
     868,
@@ -1115,6 +1138,7 @@ flow_control_nodes = [
     859,
     865,
     1001,
+    1014,
     1018,
     1058,
 ]
@@ -1305,7 +1329,7 @@ add_controllers_to_supply_nodes(
 # add all remaing outlets
 # handmatig opgegeven flow control nodes definieren
 
-flow_control_nodes = [701, 822, 917, 916]
+flow_control_nodes = [333, 701, 822, 917, 916]
 
 # handmatig opgegeven supply nodes (inlaten)
 #
@@ -1335,14 +1359,7 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 
 # %%
-# Gemaal Veluwe
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "max_flow_rate"] = 1.5
 
-# Gemaal Mierlo heeft Manning knopen, haal min_upstream waterstand niet, geen aanvoer, daarom verlaagd
-model.pump.static.df.loc[model.pump.static.df.node_id == 226, "min_upstream_level"] = 14.35
-
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 934, "max_downstream_level"] = 12
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 212, "max_downstream_level"] = 3.12
 # Crevecoeur
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2018, "max_flow_rate"] = 300
 
@@ -1356,6 +1373,28 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "flow_rate"] =
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 956, "flow_rate"] = 20
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "flow_rate"] = 5
 
+
+# Fixes: Pump wordt overschreven door outlet bij demand!
+
+# Gemaal Veluwe
+model.update_node(node_id=100, node_type="Pump")  # wordt pump was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.78
+
+# Inlaat Waranda pump
+model.update_node(node_id=3089, node_type="Pump")  # wordt pump was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 3089, "flow_rate"] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 3089, "min_upstream_level"] = 10.36
+
+# Inlaat Sambeek
+model.update_node(node_id=124, node_type="Pump")  # wordt pump, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 124, "flow_rate"] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 124, "min_upstream_level"] = 10.36
+
+# Gemaal Mierlo
+model.update_node(node_id=226, node_type="Pump")  # wordt pump, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 226, "flow_rate"] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 226, "min_upstream_level"] = 14
 
 # %% Junctionfy(!)
 model = junctionify(model)
@@ -1372,9 +1411,10 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 
 # %%
 
+
 # hoofd run met verdamping
 model.starttime
-update_basin_static(model=model, evaporation_mm_per_day=1)
+update_basin_static(model=model, evaporation_mm_per_day=0.1)
 model.starttime = datetime(2020, 5, 1)
 model.endtime = datetime(2020, 9, 1)
 model.write(ribasim_toml_dry)

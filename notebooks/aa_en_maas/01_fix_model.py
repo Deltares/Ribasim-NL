@@ -145,6 +145,7 @@ for link_id in [131, 398, 407, 495, 513, 515, 894]:
 # Corrigeren netwerk bij Spuisluis Crèvecoeur
 model.remove_node(411, remove_links=True)
 model.remove_node(4, remove_links=True)
+
 model.redirect_link(link_id=2018, to_node_id=1950)
 
 outlet_node = model.outlet.add(
@@ -209,9 +210,8 @@ model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[66])
 
 # EINDE ISSUES
-
 ##fixes:
-for node_id in [57, 602, 683, 684, 1053]:
+for node_id in [213, 364, 415, 439, 467, 501, 587, 602, 634, 664, 682, 683, 684, 809, 811, 1053]:
     model.remove_node(node_id, remove_links=True)
 
 # %%
@@ -470,7 +470,7 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
 # %% remove_nodes
 for row in remove_nodes_df.itertuples():
     model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
-model.remove_node(node_id=501, remove_links=True)
+
 
 # %% merge nodes
 model.merge_basins(basin_id=1321, to_basin_id=1411, are_connected=True)
@@ -482,6 +482,8 @@ model.merge_basins(basin_id=1366, to_basin_id=1249, are_connected=True)
 
 # %% Connect basins:
 actions = [
+    "add_basin",
+    "update_node",
     "connect_basins",
 ]
 
