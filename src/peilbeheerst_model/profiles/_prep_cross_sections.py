@@ -5,8 +5,8 @@ import logging
 import geopandas as gpd
 import pandas as pd
 import shapely
+from ribasim_nl.profiles.depth import make_depth_profiles
 
-from profiles.depth import make_depth_profiles
 from ribasim_nl import CloudStorage
 
 LOG = logging.getLogger(__name__)
