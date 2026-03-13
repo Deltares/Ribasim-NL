@@ -460,11 +460,15 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
 
     # update the max_flow_rate in the ribasim_model for the pump and outlet nodes.
     pump_df = ribasim_model.pump.static.df.copy()
-    pump_df["max_flow_rate"] = pump_df["node_id"].map(flow_rate_updates).fillna(pump_df["max_flow_rate"])
+    pump_flow_rate_updates = pump_df["node_id"].map(flow_rate_updates)
+    pump_update_mask = pump_flow_rate_updates.notna()
+    pump_df.loc[pump_update_mask, "max_flow_rate"] = pump_flow_rate_updates.loc[pump_update_mask].to_numpy()
     ribasim_model.pump.static.df = pump_df
 
     outlet_df = ribasim_model.outlet.static.df.copy()
-    outlet_df["max_flow_rate"] = outlet_df["node_id"].map(flow_rate_updates).fillna(outlet_df["max_flow_rate"])
+    outlet_flow_rate_updates = outlet_df["node_id"].map(flow_rate_updates)
+    outlet_update_mask = outlet_flow_rate_updates.notna()
+    outlet_df.loc[outlet_update_mask, "max_flow_rate"] = outlet_flow_rate_updates.loc[outlet_update_mask].to_numpy()
     ribasim_model.outlet.static.df = outlet_df
 
     return ribasim_model
