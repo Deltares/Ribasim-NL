@@ -32,7 +32,6 @@ def main(
 
     :key cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :key debug: flag for debug-mode, defaults to False
-    :key drop_nan_hydro_objects: drop hydro-objects for which no width and/or depth can be determined, defaults to True
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
     :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None
         Required if no `HydrotopeTable` is provided (i.e., `hydrotope_table=None`)
@@ -74,7 +73,6 @@ def main(
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
     debug: bool = kwargs.get("debug", False)
-    drop_nan_hydro_objects: bool = kwargs.get("drop_nan_hydro_objects", True)
     epsg: int = kwargs.get("epsg", 28992)
     # > hydrotopes
     fn_hydrotopes: pathlib.Path | str | None = kwargs.get("fn_hydrotopes")
@@ -102,9 +100,6 @@ def main(
     _fn_int_output = "int_output.gpkg"
 
     # validate optional arguments
-    # > non-dropping of NaN-valued hydro-objects
-    if not drop_nan_hydro_objects:
-        LOG.critical(f"Debug mode: {drop_nan_hydro_objects=}: Profiles are undefined.")
     # > hydrotope data
     if hydrotope_table is None and fn_hydrotopes is None:
         msg = (
@@ -223,13 +218,11 @@ def main(
 
     # BGT-coupling
     hydro_objects = width.couple_bgt_to_hydro_objects(hydro_objects, bgt_data, min_overlap=bgt_buffer)
-    hydro_objects = width.estimate_width(hydro_objects, bgt_data, drop_na=drop_nan_hydro_objects)
+    hydro_objects = width.estimate_width(hydro_objects, bgt_data, drop_na=True)
 
     # depth from hydrotopes
     hydrotope_map = ht.get_hydrotopes_map(cloud=cloud)
-    hydro_objects = depth.depth_from_hydrotopes(
-        hydro_objects, hydrotope_map, hydrotope_table, drop_na=drop_nan_hydro_objects
-    )
+    hydro_objects = depth.depth_from_hydrotopes(hydro_objects, hydrotope_map, hydrotope_table, drop_na=True)
 
     # depth from measurements
     if cross_sections is not None:
