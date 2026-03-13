@@ -25,7 +25,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -332,6 +332,12 @@ pump_copy = ribasim_model.pump.static.df[
 # ribasim_model = ribasim_model._update_used_ids()
 ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
 
+# Add flushing data
+flush = Flushing(ribasim_model)
+_, df_demand = flush.add_flushing()
+for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+    from_to_node_function_table.at[row.nid, "demand"] = row.demand
+
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
@@ -341,8 +347,12 @@ add_controllers_to_connector_nodes(
 )
 
 # add the meta_data to the pump and outlet tables again
-ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.merge(outlet_copy, on="node_id", how="left")
-ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(pump_copy, on="node_id", how="left")
+ribasim_model.outlet.static.df = (
+    ribasim_model.outlet.static.df.set_index("node_id").combine_first(outlet_copy.set_index("node_id")).reset_index()
+)
+ribasim_model.pump.static.df = (
+    ribasim_model.pump.static.df.set_index("node_id").combine_first(pump_copy.set_index("node_id")).reset_index()
+)
 
 # if flow_rate is 0, set to 20
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20
@@ -410,10 +420,6 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
-
-# Add flushing data
-flush = Flushing(ribasim_model)
-flush.add_flushing()
 
 # set numerical settings
 # write model output
