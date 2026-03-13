@@ -42,8 +42,10 @@ Subsequently, the following steps are executed on a per-basin basis:
 
 The profile generation is coded as standalone and intended to be executed prior to model generation, ideally once.
 Therefore, all relevant code is grouped inside a `profiles`-module:
- -  `src/ribasim_nl/ribasim_nl/profiles` for the source-code, and
- -  `src/peilbeheerst_model/profiles` for the implementation-code.
+
+ -  source-code: [`src/ribasim_nl/ribasim_nl/profiles`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles), and
+ -  implementation-code: [`src/peilbeheerst_model/profiles`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles).
+
 This results in the following structures:
 
 - For the source-code:
@@ -60,8 +62,8 @@ src/peilbeheerst_model/profiles/
  -  <water-authority>.py
 ```
 
-As part of the implementation code, there is the preprocessing of cross-sections (`_prep_cross_sections.py`),
-which should be executed prior to running any of the `<water-authority>.py` scripts.
+As part of the implementation code, there is the preprocessing of cross-sections ([`_prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles/_prep_cross_sections.py)),
+which should be executed prior to running any of the [`<water-authority>.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles) scripts.
 This way, the measured cross-sections are preprocessed so they are presented as `LINESTRING Z`-objects.
 Preprocessing of the measured cross-sections must be done per water authority:
 ```bash
