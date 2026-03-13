@@ -60,7 +60,7 @@ def set_initial_water_levels(ribasim_model):
     print("Setting initial water levels based on basin area target levels.")
 
     # create dataframe with basin information
-    target_levels = ribasim_model.basin.area.df.copy()[["node_id", "meta_streefpeil", "meta_aanvoer"]]
+    target_levels = ribasim_model.basin.area.df.copy()[["node_id", "meta_streefpeil"]]
     bergend_doorgaand = ribasim_model.basin.node.df.copy()[["node_type"]]
     bergend_doorgaand = bergend_doorgaand.merge(
         ribasim_model.basin.state.df[["node_id", "meta_categorie"]], on="node_id", how="left"
@@ -557,8 +557,6 @@ class _OutletPumpScaler:
 
         # determine which nodes are allowed to be scaled
         from_to_node_function_table["allowed_to_scale"] = True
-        from_to_node_function_table["found_lower_upper_bound_drainage"] = "Unknown"
-        from_to_node_function_table["found_lower_upper_bound_supply"] = "Unknown"
         from_to_node_function_table["max_drainage_value"] = None
         from_to_node_function_table.loc[
             from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale"
