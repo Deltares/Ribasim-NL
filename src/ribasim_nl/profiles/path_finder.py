@@ -434,7 +434,7 @@ def label_flow_hydro_objects(
 
 
 def label_main_routes(
-    basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, crossings: gpd.GeoDataFrame, **kwargs
+    basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, crossings: gpd.GeoDataFrame, *, buffer: float = 1e-2
 ) -> gpd.GeoDataFrame:
     """Full pipeline function labelling the hydro-objects as main route (or not).
 
@@ -448,20 +448,14 @@ def label_main_routes(
     :param basins: Ribasim-basins
     :param hydro_objects: geospatial data of hydro-objects
     :param crossings: crossings-data
-    :param kwargs: optional arguments
-
-    :key buffer: buffer-radius near endpoints within which other hydro-objects are connected, and buffer-distance at basin-border in selecting crossings, defaults to 1e-2
-    :key reset_multi_index: reset_multi_index: reset multi-indexing to single-indexing, defaults to True
+    :param buffer: buffer-radius near endpoints within which other hydro-objects are connected, and buffer-distance at
+        basin-border in selecting crossings, defaults to 1e-2
 
     :return: hydro-objects with main routes labelled
     :rtype: geopandas.GeoDataFrame
     """
-    # optional arguments
-    buffer: float = kwargs.get("buffer", 1e-2)
-    reset_multi_index: bool = kwargs.get("reset_multi_index", True)
-
     # prepare hydro-objects: ensure hydro-objects are connected
-    hydro_objects = fully_connected_network(hydro_objects, buffer=buffer, reset_multi_index=reset_multi_index)
+    hydro_objects = fully_connected_network(hydro_objects, buffer=buffer)
 
     # generate network graph
     graph = generate_graph(hydro_objects)
