@@ -179,7 +179,9 @@ def full_bgt_coverage(
     min_valid_area: float | None = kwargs.get("min_valid_area")
 
     # determine water surface area per basin based on hydro-objects
-    df_profiles = pd.merge(profiles_fixed, profiles_exp, how="outer", on="node_id", suffixes=("_f", "_s"))
+    df_profiles = pd.merge(
+        profiles_fixed, profiles_exp, how="outer", on="node_id", suffixes=("_f", "_s"), validate=None
+    )
     df_areas = df_profiles.groupby("node_id")[["area_f", "area_s"]].agg("max")
     df_areas["total_area"] = df_areas.sum(axis=1, skipna=True, numeric_only=True, min_count=1)
 

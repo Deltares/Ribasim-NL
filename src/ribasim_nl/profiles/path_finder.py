@@ -173,7 +173,7 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
     unique_labels.discard(-1)
 
     for label in tqdm.tqdm(unique_labels, "Defining cluster centroids"):
-        (indices,) = np.where(labels == label)
+        indices = np.flatnonzero(labels == label)
         centroid = tuple(endpoints[indices].mean(axis=0))
         for i in indices:
             snap_points[i] = centroid
