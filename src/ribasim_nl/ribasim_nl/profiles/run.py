@@ -31,6 +31,7 @@ def main(
     :param kwargs: optional arguments
 
     :key cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
+    :key debug: flag for debug-mode, defaults to False
     :key drop_nan_hydro_objects: drop hydro-objects for which no width and/or depth can be determined, defaults to True
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
     :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None
@@ -68,10 +69,11 @@ def main(
     :raises ValueError: if both `hydrotope_table` and `fn_hydrotopes` are undefined (i.e., `None`)
     :raises ValueError: if `wd_intermediate_output` is not defined while `export_intermediate_output=True`
     :raises ValueError: if less than three (3) or more than four (4) geospatial dataframes are provided as `data`
-    :raises KeyboardInterrupt: if NaN-values are found in the profile table and user-input aborts further continuation
+    :raises ValueError: if NaN-values are found in one of the profile tables and debug-mode is not enabled
     """
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
+    debug: bool = kwargs.get("debug", False)
     drop_nan_hydro_objects: bool = kwargs.get("drop_nan_hydro_objects", True)
     epsg: int = kwargs.get("epsg", 28992)
     # > hydrotopes
@@ -242,19 +244,21 @@ def main(
 
     # NaN-valued basin profiles
     if sum(flowing_profiles["area"].isna()) > 0:
-        print("NaN-values present in profile-table (flowing/'doorgaand')")
-        if input("Continue? [y/n] ") != "y":
-            print(flowing_profiles[flowing_profiles.isna()], end="\n\n")
+        if debug:
+            LOG.warning(
+                f"NaN-values present in profile-table (flowing/'doorgaand'):\n{flowing_profiles[flowing_profiles.isna()]}"
+            )
+        else:
             msg = f"Abort profile table generation with NaN-values: {sum(flowing_profiles.isna())} NaN-values found"
-            raise KeyboardInterrupt(msg)
-        print(flowing_profiles, end="\n\n")
+            raise ValueError(msg)
     if sum(storing_profiles["area"].isna()) > 0:
-        print("NaN-values present in profile-table (storing/'bergend')")
-        if input("Continue? [y/n] ") != "y":
-            print(storing_profiles[storing_profiles.isna()], end="\n\n")
+        if debug:
+            LOG.warning(
+                f"NaN-values present in profile-table (storing/'bergend')\n{storing_profiles[storing_profiles.isna()]}"
+            )
+        else:
             msg = f"Abort profile table generation with NaN-values: {sum(storing_profiles.isna())} NaN-values found"
-            raise KeyboardInterrupt(msg)
-        print(storing_profiles, end="\n\n")
+            raise ValueError(msg)
 
     # fill storing basins with BGT-data
     if bgt_full_coverage:
