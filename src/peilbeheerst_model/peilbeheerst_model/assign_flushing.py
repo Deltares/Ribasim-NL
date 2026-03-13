@@ -70,9 +70,7 @@ class Flushing:
         self.create_nodes = create_nodes
         self.debug_output = debug_output
 
-    def add_flushing(
-        self,
-    ) -> tuple[ModelNL | Model, pd.DataFrame]:
+    def add_flushing(self, df_function: pd.DataFrame | None = None) -> tuple[ModelNL | Model, pd.DataFrame]:
         """Add flushing information to the Ribasim model.
 
         Returns
@@ -143,13 +141,15 @@ class Flushing:
             # Make a DataFrame of the allowed nodes (node type) present in the
             # paths found. For downstream nodes, we want all pumps that are
             # designated as 'afvoer'.
-            dfd = self._find_downstream_nodes(model, downstream_paths, all_nodes, df_outlet_static, df_pump_static)
+            dfd = self._find_downstream_nodes(
+                model, downstream_paths, all_nodes, df_outlet_static, df_pump_static, df_function
+            )
             dfd = dfd[dfd.afvoer].copy()
 
             # No allowed downstream nodes found at all, log warning and continue
             if len(dfd) == 0:
                 basin_nids = basin_matches.node_id.tolist()
-                print(f"WARNING: Polygon {flush_id=} with basin node_id's={basin_nids} has no valid upstream nodes")
+                print(f"WARNING: Polygon {flush_id=} with basin node_id's={basin_nids} has no valid downstream nodes")
                 continue
 
             # Determine the contribution of each matching basin
@@ -164,7 +164,7 @@ class Flushing:
                 max_cover = basin_matches.rel_area_flush.sum() * 100
                 current_cover = df_flush.rel_area_flush.sum() * 100
                 print(
-                    f"WARNING: Polygon {flush_id=} missing upstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}, {current_cover=:.1f}%, {max_cover=:.1f}%"
+                    f"WARNING: Polygon {flush_id=} missing downstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}, {current_cover=:.1f}%, {max_cover=:.1f}%"
                 )
 
             if self.debug_output:
@@ -339,8 +339,9 @@ class Flushing:
         all_nodes: gpd.GeoDataFrame,
         df_outlet_static: pd.DataFrame,
         df_pump_static: pd.DataFrame,
+        df_function: pd.DataFrame | None,
     ) -> pd.DataFrame:
-        """Find upstream nodes that can be used for flushing.
+        """Find downstream nodes that can be used for flushing.
 
         Parameters
         ----------
@@ -356,7 +357,7 @@ class Flushing:
         Returns
         -------
         pd.DataFrame
-            DataFrame containing upstream nodes and their properties
+            DataFrame containing downstream nodes and their properties
         """
         # Find unique nodes over all paths
         uniq_nodes = np.unique(np.concatenate(paths))
@@ -375,8 +376,9 @@ class Flushing:
         df_control_links = df_control_links.set_index("to_node_id")
         node_lookup = {}
         for nid in uniq_nodes:
+            # Only pumps for now
             nid_type = all_nodes.node_type.at[nid]
-            if nid_type in ["Pump"]:  # ignore outlet for now
+            if nid_type in ["Pump"]:
                 if nid in df_control_links.index:
                     # This node has incoming control links, check if a
                     # FlowDemand node is present already
@@ -391,10 +393,21 @@ class Flushing:
                 if not allowed:
                     continue
 
-                # Only pumps for now
-                if all_nodes.node_type.at[nid] == "Pump":
-                    bool_afvoer = bool(df_pump_static.at[nid, "meta_func_afvoer"])
-                    bool_afvoer = bool_afvoer or bool(df_pump_static.at[nid, "meta_func_circulatie"])
+                if df_function is None:
+                    # Determine allowed nodes based on metadata
+                    if all_nodes.node_type.at[nid] == "Pump":
+                        bool_afvoer = bool(df_pump_static.at[nid, "meta_func_afvoer"])
+                        bool_afvoer = bool_afvoer or bool(df_pump_static.at[nid, "meta_func_circulatie"])
+                    else:
+                        # future fail-safe: in case we expand beyond pumps, we need to code this
+                        raise NotImplementedError(
+                            f"Unsupported flushing node_type={all_nodes.node_type.at[nid]} (metadata not yet implemented)"
+                        )
+                else:
+                    # Determine allowed nodes based on df_function
+                    # node_type is already checked at start of loop
+                    bool_afvoer = bool((nid in df_function.index) and (df_function.at[nid, "function"] == "drain"))
+
                 node_lookup[nid] = (nid_type, bool_afvoer)
 
         dfd = {
@@ -410,7 +423,7 @@ class Flushing:
             basin_nid = path[0]
 
             for i, nid in enumerate(path):
-                # We don't need duplicate upstream node_id's originating from
+                # We don't need duplicate downstream node_id's originating from
                 # the same basin or non-applicable nodes
                 if nid not in node_lookup or (basin_nid, nid) in is_added:
                     continue
@@ -479,7 +492,7 @@ class Flushing:
         valid_nodes: set[int],
         successors: dict[int, set[int]],
     ):
-        """Perform depth-first search to find upstream paths.
+        """Perform depth-first search to find downstream paths.
 
         Parameters
         ----------

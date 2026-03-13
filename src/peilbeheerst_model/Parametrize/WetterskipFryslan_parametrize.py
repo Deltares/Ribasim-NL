@@ -603,7 +603,7 @@ ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.m
 
 # Add flushing data
 flush = Flushing(ribasim_model)
-_, df_demand = flush.add_flushing()
+_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
 for row in df_demand[df_demand.demand_type == "flow"].itertuples():
     from_to_node_function_table.at[row.nid, "function"] = "flushing"
     from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
