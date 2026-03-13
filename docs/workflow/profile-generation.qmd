@@ -42,9 +42,10 @@ Subsequently, the following steps are executed on a per-basin basis:
 
 The profile generation is coded as standalone and intended to be executed prior to model generation, ideally once.
 Therefore, all relevant code is grouped inside a `profiles`-module:
-`src/ribasim_nl/ribasim_nl/profiles` for the source-code, and
-`src/peilbeheerst_model/profiles` for the implementation-code.
+ -  `src/ribasim_nl/ribasim_nl/profiles` for the source-code, and
+ -  `src/peilbeheerst_model/profiles` for the implementation-code.
 This results in the following structures:
+
 - For the source-code:
 ```
 src/ribasim_nl/ribasim_nl/profiles/
@@ -66,4 +67,12 @@ Preprocessing of the measured cross-sections must be done per water authority:
 ```bash
 uv run src/peilbeheerst_model/profiles/_prep_cross_sections.py <water-authority>
 ```
-This call has to be done only once (or when changes are made to the data sourced and/or source code).
+This call has to be done only once per water authority
+(or when changes are made to the data sources and/or source code).
+
+Subsequently, the profile tables (_doorgaand_ and _bergend_) are generated/updated per water authority as well:
+```bash
+uv run src/peilbeheerst_model/profiles/<water-authority>.py
+```
+Again, this call has to be done only once per water authority
+(or when changes are mode to the data sources and/or source code).
