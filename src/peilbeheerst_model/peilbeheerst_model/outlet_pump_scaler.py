@@ -531,6 +531,7 @@ class _OutletPumpScaler:
         original_from_to_node_function_table = from_to_node_function_table.copy()  # will be temporarily modified
         original_level_boundary_static = ribasim_model.level_boundary.static.df.copy()
         original_level_boundary_time = ribasim_model.level_boundary.time.df.copy()
+        original_basin_time = ribasim_model.basin.time.df.copy()
 
         # WEGHALEN #########################################################
         if config.apply_temporary_debug_changes:
@@ -748,6 +749,7 @@ class _OutletPumpScaler:
         # replace the original meteo, initial water levels and boundary levels in the ribasim model
         ribasim_model.basin.time.df = original_meteo
         ribasim_model.basin.state.df = original_initial_waterlevels
+        ribasim_model.basin.time.df = original_basin_time
         ribasim_model.level_boundary.time.df = original_level_boundary_time
         ribasim_model.level_boundary.static.df = original_level_boundary_static
 
