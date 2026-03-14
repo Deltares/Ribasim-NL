@@ -2,147 +2,185 @@
 
 
 import geopandas as gpd
-import pandas as pd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
+from ribasim_nl.control import (
+    add_controllers_to_supply_area,
+)
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from shapely.geometry import MultiPolygon
 
-from peilbeheerst_model import ribasim_parametrization
-from ribasim_nl import CloudStorage, Model, check_basin_level
+from ribasim_nl import CloudStorage, Model
 
-# execute model run
-MODEL_EXEC: bool = True
+# %%
 
-# model settings
-AUTHORITY: str = "Limburg"
+# Globale settings
+
+LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
+MODEL_EXEC: bool = True  # execute model run
+AUTHORITY: str = "limburg"
 SHORT_NAME: str = "limburg"
-MODEL_ID: str = "2025_7_0"
+CONTROL_NODE_TYPES = ["Outlet", "Pump"]
+IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
-# connect with the GoodCloud
+# Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
+EXCLUDE_NODES = {}
+
+# %%
+
+# Definieren paden en syncen met cloud
 cloud = CloudStorage()
-
-# collect relevant data from the GoodCloud
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoer_gpkg = cloud.joinpath("Basisgegevens/waterverdeling/aanvoer.gpkg")
-cloud.synchronize(
-    filepaths=[
-        aanvoer_gpkg,
-    ]
-)
-aanvoer_gdf = gpd.read_file(aanvoer_gpkg, layer="aanvoergebieden")
-aanvoer_gdf = aanvoer_gdf[aanvoer_gdf["waterbeheerder"] == "Limburg"]
 
-# read model
+cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
+
+# %%#
+# Read data
 model = Model.read(ribasim_toml)
-original_model = model.model_copy(deep=True)
-update_basin_static(model=model, evaporation_mm_per_day=1)
 
-# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
-update_levels = model.basin_outstate.df.set_index("node_id")["level"]
-basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
-mask = model.basin.area.df["node_id"].isin(basin_ids)
-model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
-    lambda x: update_levels[x]
+aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
+
+# alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
+# En als flow_rate niet bekend is de flow
+model.outlet.static.df.max_flow_rate = 30
+model.outlet.static.df.flow_rate = 30
+model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
+# %% Toevoegen
+
+polygon = aanvoergebieden_df.loc[["Kromme Rijn/ARK"], "geometry"].union_all()
+
+# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
+polygon = polygon.buffer(0).buffer(0)
+
+if isinstance(polygon, MultiPolygon):
+    polygon = max(polygon.geoms, key=lambda g: g.area)
+
+
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [2175]
+
+# doorspoeling (op uitlaten)
+# 41: Spijksterpompen
+
+flushing_nodes = {}
+
+# handmatig opgegeven drain nodes (uitlaten) definieren
+# 864: Achterrijn Stuw
+# 893: ST6050 2E Veld
+# 969: ST0842 Trechtweg
+# 971: ST0010
+# 1126: Pelikaan
+# 1145: ST003 Eindstuw Raaphofwetering
+# 1168: ST0733
+# 1223: ST0815
+# 2110:
+# 851: ST0014 Koppeldijk stuw
+# 923: ST1264 Hevelstuw Ravensewetering
+drain_nodes = [554, 851, 864, 893, 969, 971, 1126, 1145, 1168, 1223, 2110]
+
+# handmatig opgegeven supply nodes (inlaten)
+# 554: G0007 Koppeldijk gemaal
+# 589: Mastwetering
+# 624: G4481 Pelikaan
+# 851: ST0014 Koppeldijk stuw
+# 648: G3007 Trechtweg
+# 649: Voorhavendijk
+
+supply_nodes = [554, 589, 624, 648, 649]
+
+# 1107:ST0826
+flow_control_nodes = [1107]
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    control_node_types=CONTROL_NODE_TYPES,
 )
-add_from_to_nodes_and_levels(model)
-
-# re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, aanvoer_gdf, overruling_enabled=False)
-ribasim_parametrization.determine_min_upstream_max_downstream_levels(
-    model,
-    AUTHORITY,
-    aanvoer_upstream_offset=0.02,
-    aanvoer_downstream_offset=0.0,
-    afvoer_upstream_offset=0.02,
-    afvoer_downstream_offset=0.0,
-)
-check_basin_level.add_check_basin_level(model=model)
-
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
-mask = model.outlet.static.df["meta_aanvoer"] == 0
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = original_model.outlet.static.df.flow_rate
-model.pump.static.df.flow_rate = original_model.pump.static.df.flow_rate
 
 
-# %% bovenstroomse outlets op 10m3/s zetten en boundary afvoer pumps/outlets
-# geen downstreamm level en aanvoer  pumps/outlets geen upstream level
-def set_values_where(df, updates, node_ids=None, key_col="node_id", mask=None):
-    if mask is None:
-        mask = df[key_col].isin(node_ids)
-    sub = df.loc[mask]
-    for col, val in updates.items():
-        df.loc[mask, col] = val(sub) if callable(val) else val
-    return int(mask.sum())
-
-
-# === 1. Bepaal upstream/downstream connection nodes ===
-upstream_outlet_nodes = model.upstream_connection_node_ids(node_type="Outlet")
-downstream_outlet_nodes = model.downstream_connection_node_ids(node_type="Outlet")
-upstream_pump_nodes = model.upstream_connection_node_ids(node_type="Pump")
-downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
-
-# === 1a. Upstream outlets met aanvoer: max_downstream = min_upstream + 0.02 en min_upstream = NA
-out_static = model.outlet.static.df
-pump_static = model.pump.static.df
-mask_upstream_aanvoer = out_static["node_id"].isin(upstream_outlet_nodes)
-
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_categorie"] == "hoofdwater"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-
-# %%
-# === 1a. Upstream outlets (bij boundaries) met aanvoer ===
-set_values_where(
-    out_static,
-    mask=mask_upstream_aanvoer,
-    updates={
-        "max_downstream_level": lambda d: d["min_upstream_level"] + 0.02,
-        "min_upstream_level": pd.NA,
-    },
-)
-
-updates_plan = [
-    # Upstream boundary: Outlets en Pumps
-    (out_static, upstream_outlet_nodes, {"flow_rate": 100, "max_flow_rate": 100}),
-    (pump_static, upstream_pump_nodes, {"flow_rate": 100, "max_flow_rate": 100, "min_upstream_level": pd.NA}),
-    # Downstream boundary: Outlets en Pumps
-    (out_static, downstream_outlet_nodes, {"max_downstream_level": pd.NA}),
-    (pump_static, downstream_pump_nodes, {"max_downstream_level": pd.NA}),
-]
-
-for df, nodes, updates in updates_plan:
-    set_values_where(df, node_ids=nodes, updates=updates)
-
-# Alle pumps corrigeren met offset
-set_values_where(
-    pump_static,
-    mask=pump_static.index.notna(),  # alle rijen
-    updates={"max_downstream_level": lambda d: d["max_downstream_level"] - 0.02},
-)
+# %% fixes
+# Peelkanaal open verbinding
+model.update_node(node_id=251, node_type="ManningResistance")  # wordt  Manning
+# Node 1165 is een stuw
+model.update_node(node_id=1156, node_type="Outlet")  # wordt  Outlet
+# Node 217 is een stuw
+model.update_node(node_id=217, node_type="Outlet")  # wordt  Outlet
+# Node 1166 is een stuw
+model.update_node(node_id=1166, node_type="Outlet")  # wordt  Outlet
+# Node 813 is een stuw
+model.update_node(node_id=813, node_type="Outlet")  # wordt  Outlet
+# Node 1213 is een stuw
+model.update_node(node_id=1213, node_type="Outlet")  # wordt  Outlet
+# Node 1066 is een stuw
+model.update_node(node_id=1066, node_type="Outlet")  # wordt  Outlet
+# Node 1143 is een stuw
+model.update_node(node_id=1143, node_type="Outlet")  # wordt  Outlet
+# Node 1158 is een stuw
+model.update_node(node_id=1158, node_type="Outlet")  # wordt  Outlet
+# Node 1159 is een stuw
+model.update_node(node_id=1159, node_type="Outlet")  # wordt  Outlet
+# Node 1205 is een stuw
+model.update_node(node_id=1205, node_type="Outlet")  # wordt  Outlet
+# Node 1208 is een stuw
+model.update_node(node_id=1208, node_type="Outlet")  # wordt  Outlet
+# Node 1209 is een stuw
+model.update_node(node_id=1209, node_type="Outlet")  # wordt  Outlet
+# Node 1210 is een stuw
+model.update_node(node_id=1210, node_type="Outlet")  # wordt  Outlet
+# Node 1211 is een stuw
+model.update_node(node_id=1211, node_type="Outlet")  # wordt  Outlet
+# Node 820 is een stuw
+model.update_node(node_id=820, node_type="Outlet")  # wordt  Outlet
+# Node 827 is een stuw
+model.update_node(node_id=827, node_type="Outlet")  # wordt  Outlet
+# Node 1243 is een stuw
+model.update_node(node_id=1243, node_type="Outlet")  # wordt  Outlet
+# Node 1244 is een stuw
+model.update_node(node_id=1244, node_type="Outlet")  # wordt  Outlet
 
 model.merge_basins(basin_id=2461, to_basin_id=2070, are_connected=True)
 model.merge_basins(basin_id=2070, to_basin_id=2360, are_connected=True)
 model.merge_basins(basin_id=1885, to_basin_id=2360, are_connected=True)
 model.merge_basins(basin_id=2205, to_basin_id=2144, are_connected=True)
+# %%
 
-# %% sturing uit alle niet-gestuwde outlets halen
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-non_control_mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
+# hoofd run met verdamping
+update_basin_static(model=model, evaporation_mm_per_day=1)
+model.write(ribasim_toml_dry)
 
-# write model
-ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-
-model.pump.static.df["meta_func_afvoer"] = 1
-model.pump.static.df["meta_func_aanvoer"] = 0
-model.write(ribasim_toml)
-
-# run model
+# run hoofdmodel
 if MODEL_EXEC:
-    model.run()
+    result = model.run()
+    controle_output = Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path)
+    indicators = controle_output.run_all()
+    model = Model.read(ribasim_toml_dry)
+
+# prerun om het model te initialiseren met neerslag
+update_basin_static(model=model, precipitation_mm_per_day=2)
+model.write(ribasim_toml_wet)
+
+# run prerun model
+if MODEL_EXEC:
+    prerun_result = model.run()
+    controle_output = Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path)
+    indicators = controle_output.run_all()
+    model = Model.read(ribasim_toml_wet)
+
+# hoofd run
+update_basin_static(model=model, precipitation_mm_per_day=1.5)
+model.write(ribasim_toml)
+# run hoofdmodel
+if MODEL_EXEC:
+    result = model.run()
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()
