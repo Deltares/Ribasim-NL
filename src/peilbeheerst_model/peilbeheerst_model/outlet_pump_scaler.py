@@ -3,20 +3,29 @@ from __future__ import annotations
 import pathlib
 from dataclasses import dataclass, field
 
-import matplotlib.pyplot as plt
 import pandas as pd
 from ribasim import run_ribasim
 
-from ribasim_nl import Model
+from ribasim_nl import CloudStorage, Model
 
 pd.set_option("display.max_columns", None)
+
+__all__ = ["OutletPumpScalingConfig", "scale_outlets_pumps"]
 
 
 @dataclass
 class OutletPumpScalingConfig:
+    """Configuration for outlet and pump max_flow_rate scaling.
+
+    The configuration bundles the loaded Ribasim model, the from_to_node_function_table,
+    and the scenario settings used by the iterative scaling routine.
+    """
+
     ribasim_model_path: str | pathlib.Path
-    ribasim_scaling_path: str | pathlib.Path
-    from_to_node_function_table_path: str | pathlib.Path
+    ribasim_model: Model
+    from_to_node_function_table: pd.DataFrame
+    waterschap: str
+    cloud: CloudStorage
     max_iterations: int = 12
     initial_guess_flow_rate_outlet: float = 0.1
     initial_guess_flow_rate_pump: float = 10.0
@@ -33,13 +42,12 @@ class OutletPumpScalingConfig:
     situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
     apply_temporary_debug_changes: bool = False
     debug_outlet_max_flow_rate: float = 0.10
-    supply_nodes_to_plot: int = 20
-    node_id_to_plot: int | None = None
-    output_table_path: str | pathlib.Path | None = None
+    RESCALE_FLOW_CAPACITIES: bool = True
 
     @property
     def results_path(self) -> pathlib.Path:
-        return pathlib.Path(self.ribasim_scaling_path).parent / "results" / "basin.arrow"
+        """Return the expected Ribasim basin-results file for the model run."""
+        return pathlib.Path(self.ribasim_model_path).parent / "results" / "basin.arrow"
 
 
 def set_initial_water_levels(ribasim_model):
@@ -59,9 +67,12 @@ def set_initial_water_levels(ribasim_model):
     print("Setting initial water levels based on basin area target levels.")
 
     # create dataframe with basin information
-    target_levels = ribasim_model.basin.area.df.copy()[["node_id", "meta_streefpeil", "meta_aanvoer"]]
-    bergend_doorgaand = ribasim_model.basin.node.df.copy()[["node_type", "meta_categorie"]]
-    basin_information = bergend_doorgaand.merge(target_levels, left_index=True, right_on="node_id", how="left")
+    target_levels = ribasim_model.basin.area.df.copy()[["node_id", "meta_streefpeil"]]
+    bergend_doorgaand = ribasim_model.basin.node.df.copy()[["node_type"]]
+    bergend_doorgaand = bergend_doorgaand.merge(
+        ribasim_model.basin.state.df[["node_id", "meta_categorie"]], on="node_id", how="left"
+    )
+    basin_information = bergend_doorgaand.merge(target_levels, on="node_id", how="left")
 
     # streefpeil of bergende bakje may be missing, extract from nodes and edges by identifying the basin downstream of the downstream connector node
     bergende_basins = bergend_doorgaand.loc[bergend_doorgaand["meta_categorie"] == "bergend"].reset_index(
@@ -104,12 +115,17 @@ def set_initial_water_levels(ribasim_model):
         missing_basins = basin_information[basin_information["meta_streefpeil"].isnull()]
         raise ValueError(f"The following basins are missing a meta_streefpeil value:\n{missing_basins}")
 
-    initial_water_level = ribasim_model.basin.state.df.copy()
-    initial_water_level = initial_water_level.drop(columns=["level"])
-    initial_water_level = initial_water_level.merge(
-        basin_information[["meta_streefpeil"]], left_on="node_id", right_index=True, how="left"
-    )
+    initial_water_level = basin_information[["node_id", "meta_categorie", "meta_streefpeil"]]
     initial_water_level = initial_water_level.rename(columns={"meta_streefpeil": "level"})
+
+    # avoid profile error
+    basin_ids = ribasim_model.basin.node.df.loc[
+        ribasim_model.basin.node.df.node_type == "Basin", "meta_node_id"
+    ].to_numpy()
+
+    ribasim_model.basin.profile = ribasim_model.basin.profile.df.loc[
+        ribasim_model.basin.profile.df.node_id.isin(basin_ids)
+    ].reset_index(drop=True)
 
     return initial_water_level, basin_information
 
@@ -451,84 +467,71 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
 
     # update the max_flow_rate in the ribasim_model for the pump and outlet nodes.
     pump_df = ribasim_model.pump.static.df.copy()
-    pump_df["max_flow_rate"] = pump_df["node_id"].map(flow_rate_updates).fillna(pump_df["max_flow_rate"])
+    pump_flow_rate_updates = pump_df["node_id"].map(flow_rate_updates)
+    pump_update_mask = pump_flow_rate_updates.notna()
+    pump_df.loc[pump_update_mask, "max_flow_rate"] = pump_flow_rate_updates.loc[pump_update_mask].to_numpy()
     ribasim_model.pump.static.df = pump_df
 
     outlet_df = ribasim_model.outlet.static.df.copy()
-    outlet_df["max_flow_rate"] = outlet_df["node_id"].map(flow_rate_updates).fillna(outlet_df["max_flow_rate"])
+    outlet_flow_rate_updates = outlet_df["node_id"].map(flow_rate_updates)
+    outlet_update_mask = outlet_flow_rate_updates.notna()
+    outlet_df.loc[outlet_update_mask, "max_flow_rate"] = outlet_flow_rate_updates.loc[outlet_update_mask].to_numpy()
     ribasim_model.outlet.static.df = outlet_df
 
     return ribasim_model
 
 
-def plot_guessed_max_flow_rate_per_iteration(from_to_node_function_table, node_id):
-    """Plot guessed flow rates per iteration for a single connector node.
+def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
+    """Write the scaled connector table locally and upload the CSV to GoodCloud.
 
     Parameters
     ----------
     from_to_node_function_table : pd.DataFrame
-        Connector-node table containing guessed flow-rate columns.
-    node_id : int
-        Node identifier to plot.
-
-    Raises
-    ------
-    ValueError
-        If no guessed flow-rate columns exist, the node is missing, or all
-        guessed values for that node are empty.
+        Connector-node table containing the scaled flow-rate columns.
+    waterschap : str
+        Water-authority name used to build the cloud destination path.
     """
-    guessed_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
+    cloud = CloudStorage()
 
-    if len(guessed_columns) == 0:
-        raise ValueError("No guessed max flow rate columns found (new_max_flow_rates_*).")
+    # Upload from_to_node_function_table to waterschap/verwerkt
+    from_to_node_function_table_path = cloud.joinpath(
+        waterschap, "verwerkt", "Parametrisatie_data", "from_to_node_function_table_scaled_max_flow_rates.csv"
+    )
+    from_to_node_function_table.to_csv(from_to_node_function_table_path)
+    cloud.upload_file(from_to_node_function_table_path)
 
-    row = from_to_node_function_table.loc[from_to_node_function_table["node_id"] == node_id]
-    if row.empty:
-        raise ValueError(f"node_id {node_id} not found in from_to_node_function_table.")
-
-    points = []
-    for column in guessed_columns:
-        parts = column.split("_")
-        iteration = int(parts[4])
-        situation = "_".join(parts[5:])
-        value = row.iloc[0][column]
-        if pd.notna(value):
-            points.append((situation, iteration, float(value)))
-
-    if len(points) == 0:
-        raise ValueError(f"No guessed max flow rate values found for node_id {node_id}.")
-
-    plot_df = pd.DataFrame(points, columns=["situation", "iteration", "max_flow_rate"])
-    plot_df = plot_df.sort_values(["situation", "iteration"])
-
-    plt.figure(figsize=(10, 5))
-    for situation, group in plot_df.groupby("situation"):
-        plt.plot(group["iteration"], group["max_flow_rate"], marker="o", label=situation)
-
-    plt.title(f"Guessed max_flow_rate per iteration for node_id {node_id}")
-    plt.xlabel("Iteration")
-    plt.ylabel("Guessed max_flow_rate [m3/s]")
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    print("from_to_node_function_table with estimated flow rates saved to the GoodCloud.")
 
 
-class OutletPumpScaler:
+class _OutletPumpScaler:
+    """Execute the iterative outlet and pump scaling workflow for one model."""
+
     def __init__(self, config: OutletPumpScalingConfig):
+        """Store the scaler configuration for a single run."""
         self.config = config
 
     def run(self):
+        """Scale connector capacities by iteratively running demand and drainage scenarios.
+
+        Returns
+        -------
+        tuple[Model, pd.DataFrame]
+            The updated Ribasim model and the connector-node table with the
+            scaling history.
+        """
         config = self.config
 
         # load model, create df with basin information, set node_id as index
-        ribasim_model = Model.read(config.ribasim_model_path)
-        from_to_node_function_table = pd.read_csv(
-            config.from_to_node_function_table_path
+        ribasim_model = config.ribasim_model
+        from_to_node_function_table = (
+            config.from_to_node_function_table
         )  # table with from_node_id, to_node_id and function (drain, supply, flow_control) for each connector node
         original_meteo = ribasim_model.basin.time.df.copy()  # will be temporarily modified
         original_initial_waterlevels = ribasim_model.basin.state.df.copy()  # will be temporarily modified
         original_from_to_node_function_table = from_to_node_function_table.copy()  # will be temporarily modified
+        original_level_boundary_static = ribasim_model.level_boundary.static.df.copy()
+        original_level_boundary_time = ribasim_model.level_boundary.time.df.copy()
+        original_basin_time = ribasim_model.basin.time.df.copy()
 
         # WEGHALEN #########################################################
         if config.apply_temporary_debug_changes:
@@ -563,7 +566,6 @@ class OutletPumpScaler:
         max_days = config.max_days
         max_scaled_flow_rate = config.max_scaled_flow_rate
         add_information_to_from_to_node_function_table = config.add_information_to_from_to_node_function_table
-        ribasim_scaling_path = config.ribasim_scaling_path
 
         # Set initial conditions equal to the target levels
         initial_water_level, basin_information = set_initial_water_levels(ribasim_model)
@@ -580,8 +582,6 @@ class OutletPumpScaler:
 
         # determine which nodes are allowed to be scaled
         from_to_node_function_table["allowed_to_scale"] = True
-        from_to_node_function_table["found_lower_upper_bound_drainage"] = "Unknown"
-        from_to_node_function_table["found_lower_upper_bound_supply"] = "Unknown"
         from_to_node_function_table["max_drainage_value"] = None
         from_to_node_function_table.loc[
             from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale"
@@ -606,6 +606,7 @@ class OutletPumpScaler:
                 ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_drainage_situation
             elif situation == "water_demand":
                 ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_demand_situation
+            ribasim_model.level_boundary.static.df = None
 
             # loop through each iteration
             for iteration in range(max_iterations):
@@ -637,7 +638,7 @@ class OutletPumpScaler:
                         print(
                             "Writing updated Ribasim model with: \n - (temporarily) changed initial water levels \n - (temporarily) changed vertical fluxes \n - initial guessed flow rates."
                         )
-                    ribasim_model.write(ribasim_scaling_path)
+                    ribasim_model.write(config.ribasim_model_path)
                     first_iteration = (
                         False  # avoid resetting initial water levels and initial guess flow rates in next iterations
                     )
@@ -646,7 +647,7 @@ class OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=ribasim_scaling_path)
+                run_ribasim(toml_path=config.ribasim_model_path)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
                 ribasim_water_levels = pd.read_feather(results_path)
@@ -743,11 +744,15 @@ class OutletPumpScaler:
                 ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.max_flow_rate
 
                 # store model
-                ribasim_model.write(ribasim_scaling_path)
+                ribasim_model.write(config.ribasim_model_path)
 
-        # replace the original meteo and initial water levels in the ribasim model
+        # replace the original meteo, initial water levels and boundary levels in the ribasim model
         ribasim_model.basin.time.df = original_meteo
         ribasim_model.basin.state.df = original_initial_waterlevels
+        ribasim_model.basin.time.df = original_basin_time
+        ribasim_model.level_boundary.time.df = original_level_boundary_time
+        ribasim_model.level_boundary.static.df = original_level_boundary_static
+
         if not add_information_to_from_to_node_function_table:
             from_to_node_function_table = original_from_to_node_function_table
 
@@ -756,28 +761,53 @@ class OutletPumpScaler:
 
         print("Done")
 
-        # Inspect results.
-        supply_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "supply"]
-
-        count = 0
-        for supply_node_id in supply_nodes.node_id:
-            plot_guessed_max_flow_rate_per_iteration(
-                from_to_node_function_table=from_to_node_function_table, node_id=supply_node_id
-            )
-            count += 1
-            if count >= config.supply_nodes_to_plot:
-                break
-
-        if config.node_id_to_plot is not None:
-            plot_guessed_max_flow_rate_per_iteration(
-                from_to_node_function_table=from_to_node_function_table, node_id=config.node_id_to_plot
-            )
-
-        if config.output_table_path is not None:
-            from_to_node_function_table.to_csv(config.output_table_path, index=False)
+        # upload the from_to_node_function_table with scaled flow rates to the goodcloud
+        upload_from_to_node_function_table(from_to_node_function_table, config.waterschap)
 
         return ribasim_model, from_to_node_function_table
 
 
+def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig):
+    """Download and load a previously saved scaled connector table from GoodCloud.
+
+    Parameters
+    ----------
+    config : OutletPumpScalingConfig
+        Scaling configuration containing the cloud client and authority name.
+
+    Returns
+    -------
+    pd.DataFrame
+        The downloaded connector-node table.
+    """
+    cloud = config.cloud
+    scaled_max_flow_rates_path = cloud.joinpath(
+        config.waterschap, "verwerkt", "Parametrisatie_data", "from_to_node_function_table_scaled_max_flow_rates.csv"
+    )
+    cloud.synchronize([scaled_max_flow_rates_path])
+
+    return pd.read_csv(scaled_max_flow_rates_path)
+
+
 def scale_outlets_pumps(config: OutletPumpScalingConfig):
-    return OutletPumpScaler(config).run()
+    """Scale outlet and pump capacities or load a previously scaled result.
+
+    Parameters
+    ----------
+    config : OutletPumpScalingConfig
+        Complete scaler configuration.
+
+    Returns
+    -------
+    tuple[Model, pd.DataFrame]
+        The updated Ribasim model and the connector-node table used to set
+        connector capacities.
+    """
+    if config.RESCALE_FLOW_CAPACITIES:
+        return _OutletPumpScaler(config).run()
+    else:
+        from_to_node_function_table = load_from_to_node_function_table_from_goodcloud(config)
+
+        # update the max_flow_rate in the ribasim_model based on the new flow rates in the from_to_node_function_table
+        ribasim_model = update_max_flow_rates_in_ribasim_model(config.ribasim_model, from_to_node_function_table)
+        return ribasim_model, from_to_node_function_table
