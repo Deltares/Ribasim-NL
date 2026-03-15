@@ -5,14 +5,21 @@ import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
+import xarray as xr
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.control import (
+    add_controllers_to_connector_nodes,
+    add_function_to_peilbeheerst_node_table,
+    get_node_table_with_from_to_node_ids,
+)
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -21,6 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -48,20 +56,20 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/afvoergebiedaanvoergebied.gpkg")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        meteo_path,
-    ]
-)
+# cloud.synchronize(
+#     filepaths=[
+#         ribasim_base_model_dir,
+#         FeedbackFormulier_path,
+#         ws_grenzen_path,
+#         RWS_grenzen_path,
+#         qlr_path,
+#         aanvoer_path,
+#         meteo_path,
+#     ]
+# )
 
 # download the Feedback Formulieren, overwrite the old ones
-cloud.download_verwerkt(authority=waterschap, overwrite=True)
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -285,6 +293,8 @@ if DYNAMIC_CONDITIONS:
 
     # Add dynamic groundwater
     offline_budgets = AssignOfflineBudgets()
+    if offline_budgets.lhm_budget_path.exists():
+        offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -326,7 +336,6 @@ else:
     aanvoergebieden = None
 
 # add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(
@@ -338,9 +347,118 @@ ribasim_param.set_aanvoer_flags(
     outlet_aanvoer_on=856,
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 109, "meta_aanvoer"] = True
-ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-ribasim_param.add_continuous_control(ribasim_model, dy=-200)
+# Apply outlet meta_aanvoer labelling and overrule non-hoofdwater routes when direct hoofdwater supply exists.
+supply.SupplyOutlet(ribasim_model).exec(overruling_enabled=True)
+
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
+
+# ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
+# ribasim_param.add_continuous_control(ribasim_model, dy=-50)
+
+LEVEL_DIFFERENCE_THRESHOLD = 0.04
+ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
+
+from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
+from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
+from_to_node_function_table["demand"] = None
+
+# change function to inlaat
+to_inlaat = [338, 390, 417, 435, 450, 456, 518, 539, 541, 548, 632, 679, 710, 722, 738, 741, 774, 789, 861, 1014, 1018]
+from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_inlaat), "function"] = "supply"
+
+# change function to flow_control
+to_flow_control = [290, 557, 762, 1013, 1033]
+from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_flow_control), "function"] = "flow_control"
+
+# change function to drain
+to_drain = [256, 626]
+from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_drain), "function"] = "drain"
+
+outlet_copy = ribasim_model.outlet.static.df[
+    [
+        "node_id",
+        "meta_categorie",
+        "meta_from_node_id",
+        "meta_to_node_id",
+        "meta_from_level",
+        "meta_to_level",
+        "meta_aanvoer",
+    ]
+].copy()
+pump_copy = ribasim_model.pump.static.df[
+    [
+        "node_id",
+        "meta_categorie",
+        "meta_func_afvoer",
+        "meta_func_aanvoer",
+        "meta_func_circulatie",
+        "meta_from_node_id",
+        "meta_to_node_id",
+        "meta_from_level",
+        "meta_to_level",
+    ]
+].copy()
+
+# update node_ids
+# ribasim_model = ribasim_model._update_used_ids()
+ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
+
+add_controllers_to_connector_nodes(
+    model=ribasim_model,
+    node_functions_df=from_to_node_function_table,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    target_level_column="meta_streefpeil",
+    drain_capacity=20,
+)
+
+# replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
+outlet_columns_to_add_back = [
+    "meta_categorie",
+    "meta_from_node_id",
+    "meta_to_node_id",
+    "meta_from_level",
+    "meta_to_level",
+    "meta_aanvoer",
+]
+pump_columns_to_add_back = [
+    "meta_categorie",
+    "meta_func_afvoer",
+    "meta_func_aanvoer",
+    "meta_func_circulatie",
+    "meta_from_node_id",
+    "meta_to_node_id",
+    "meta_from_level",
+    "meta_to_level",
+]
+ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.drop(columns=outlet_columns_to_add_back).merge(
+    outlet_copy, on="node_id", how="left"
+)
+ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=pump_columns_to_add_back).merge(
+    pump_copy, on="node_id", how="left"
+)
+
+# there are some duplicates in the discrete control? Remove them
+control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
+dup_control = []
+all_nodes = ribasim_model.node_table().df[["node_type"]]
+for to_node_id, group in control.groupby("to_node_id"):
+    if len(group) == 1:
+        continue
+    elif len(group) == 2:
+        group = group.merge(all_nodes, left_on="from_node_id", right_index=True, how="inner")
+        if set(group.node_type.tolist()) == {"DiscreteControl", "FlowDemand"}:
+            continue
+        else:
+            dup_control.append(group.from_node_id.iat[0])
+    else:
+        raise ValueError(
+            f"found {len(group)} incoming control links for {to_node_id=} from {set(group.from_node_id.tolist())}"
+        )
+
+for duplicate in dup_control:
+    ribasim_model.remove_node(duplicate, True)
+    print(f"Removed duplicate control node {duplicate}")
+
 
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
@@ -363,7 +481,14 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
-# @TODO: properly retrieve unkown pumping capacities based on upstream surface area
+# manually assign better names (as suggested by JWV in FF)
+ribasim_model.basin.node.df.loc[19, "name"] = "Kromme Mijdrecht"
+ribasim_model.basin.node.df.loc[97, "name"] = "Amstel-Drecht kanaal"
+ribasim_model.basin.node.df.loc[20, "name"] = "Amstel"
+ribasim_model.basin.node.df.loc[85, "name"] = "Amstel"
+ribasim_model.basin.node.df.loc[86, "name"] = "Amstel"
+
+
 ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.flow_rate.fillna(value=25)
 ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.max_flow_rate.fillna(value=25)
 increase_flow_rate_pumps = [412, 146]
@@ -383,6 +508,32 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
+
+# set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
+ribasim_model.outlet.static.df.meta_known_flow_capacities = False
+ribasim_model.pump.static.df.loc[
+    (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
+    "meta_known_flow_capacities",
+] = False
+
+# kan weg als er geschaald wordt
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 1.0
+# If RESCALE_FLOW_CAPACITIES: scale max_flow_rates of the connector nodes which have no predefined max_flow_rates. If not, load the from_to_node_function_table with the scaled max flow rates from GoodCloud.
+ribasim_model, from_to_node_function_table = scale_outlets_pumps(
+    OutletPumpScalingConfig(
+        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model=ribasim_model,
+        from_to_node_function_table=from_to_node_function_table,
+        apply_temporary_debug_changes=True,
+        waterschap=waterschap,
+        cloud=cloud,
+        RESCALE_FLOW_CAPACITIES=True,
+        max_iterations=20,
+    )
+)
+
+# manually assign max_flow_rates (as suggested by JWV in FF)
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 826, "max_flow_rate"] = 0.05
 
 # assign authorities
 assign = AssignAuthorities(
