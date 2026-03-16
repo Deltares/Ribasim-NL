@@ -43,12 +43,12 @@ class OutletPumpScalingConfig:
     RESCALE_FLOW_CAPACITIES: bool = True
 
 
-def set_initial_water_levels(ribasim_model):
+def set_initial_water_levels(ribasim_model: Model) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Set basin initial water levels equal to target levels.
 
     Parameters
     ----------
-    ribasim_model : ribasim.Model
+    ribasim_model : ribasim_nl.Model
         The Ribasim model to update.
 
     Returns
@@ -123,12 +123,12 @@ def set_initial_water_levels(ribasim_model):
     return initial_water_level, basin_information
 
 
-def check_known_flow_rate_columns(ribasim_model):
+def check_known_flow_rate_columns(ribasim_model: Model) -> None:
     """Validate presence and completeness of `meta_known_flow_rate` columns.
 
     Parameters
     ----------
-    ribasim_model : ribasim.Model
+    ribasim_model : ribasim_nl.Model
         The Ribasim model whose pump and outlet static tables are checked.
 
     Raises
@@ -156,13 +156,16 @@ def check_known_flow_rate_columns(ribasim_model):
 
 
 def set_vertical_static_forcing(
-    ribasim_model, situation, design_precipitation_event, design_potential_evaporation_event
-):
+    ribasim_model: Model,
+    situation: str,
+    design_precipitation_event: float,
+    design_potential_evaporation_event: float,
+) -> Model:
     """Set basin forcing terms for a drainage or demand design ("maatgevende") situation.
 
     Parameters
     ----------
-    ribasim_model : ribasim.Model
+    ribasim_model : ribasim_nl.Model
         The Ribasim model to update.
     situation : str
         Scenario name, expected to be `water_drainage` or `water_demand`.
@@ -173,7 +176,7 @@ def set_vertical_static_forcing(
 
     Returns
     -------
-    ribasim.Model
+    ribasim_nl.Model
         The model with updated basin time forcing.
     """
     # percentage open water may differ. To reduce lines of code: only set drainage and infiltration fluxes, based on size of the basin
@@ -204,12 +207,12 @@ def set_vertical_static_forcing(
     return ribasim_model
 
 
-def warn_for_to_high_flow_rates(ribasim_model):
+def warn_for_to_high_flow_rates(ribasim_model: Model) -> None:
     """Print a warning for pump or outlet nodes with very high flow rates.
 
     Parameters
     ----------
-    ribasim_model : ribasim.Model
+    ribasim_model : ribasim_nl.Model
         The Ribasim model whose pump and outlet `max_flow_rate` values are checked.
 
     Notes
@@ -430,19 +433,19 @@ def cap_guessed_flow_rates_at_maximum(from_to_node_function_table, max_scaled_fl
     return from_to_node_function_table
 
 
-def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table):
+def update_max_flow_rates_in_ribasim_model(ribasim_model: Model, from_to_node_function_table: pd.DataFrame) -> Model:
     """Copy the latest guessed connector flow rates into the Ribasim model.
 
     Parameters
     ----------
-    ribasim_model : ribasim.Model
+    ribasim_model : ribasim_nl.Model
         The model whose pump and outlet static tables are updated.
     from_to_node_function_table : pd.DataFrame
         Connector-node table containing guessed flow-rate columns.
 
     Returns
     -------
-    ribasim.Model
+    ribasim_nl.Model
         The model with updated pump and outlet `max_flow_rate` values.
     """
     # retrieve the last column name starting with "new_max_flow_rates_"
