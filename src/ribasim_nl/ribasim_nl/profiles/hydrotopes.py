@@ -104,7 +104,7 @@ class HydrotopeTable:
         :rtype: HydrotopeTable
         """
         collection = {**self.collector, **other.collector}
-        return self.__init__(*collection.values())
+        return HydrotopeTable(*collection.values())
 
     @classmethod
     def from_csv(cls, fn: str, **kwargs) -> "HydrotopeTable":
