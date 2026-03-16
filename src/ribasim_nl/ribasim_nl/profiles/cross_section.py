@@ -165,6 +165,30 @@ def assign_basin_profiles(
     return table
 
 
+@typing.overload
+def full_bgt_coverage(
+    profiles_fixed: pd.DataFrame | gpd.GeoDataFrame,
+    profiles_exp: pd.DataFrame | gpd.GeoDataFrame,
+    basins: gpd.GeoDataFrame,
+    bgt: gpd.GeoDataFrame,
+    *,
+    as_geo_dataframe: typing.Literal[True],
+    **kwargs,
+) -> gpd.GeoDataFrame: ...
+
+
+@typing.overload
+def full_bgt_coverage(
+    profiles_fixed: pd.DataFrame | gpd.GeoDataFrame,
+    profiles_exp: pd.DataFrame | gpd.GeoDataFrame,
+    basins: gpd.GeoDataFrame,
+    bgt: gpd.GeoDataFrame,
+    *,
+    as_geo_dataframe: typing.Literal[False] = False,
+    **kwargs,
+) -> pd.DataFrame: ...
+
+
 def full_bgt_coverage(
     profiles_fixed: pd.DataFrame | gpd.GeoDataFrame,
     profiles_exp: pd.DataFrame | gpd.GeoDataFrame,
