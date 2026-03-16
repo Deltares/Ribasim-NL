@@ -276,7 +276,7 @@ def crossing_to_node(graph: nx.Graph | shapely.MultiPoint, crossing: shapely.Poi
     return nearest_node.x, nearest_node.y
 
 
-def full_graph_search(basin: shapely.Polygon, graph: nx.Graph, crossings: tuple[shapely.Point, ...], **kwargs) -> bool:
+def full_graph_search(basin: shapely.Polygon, graph: nx.Graph, crossings: list[shapely.Point], **kwargs) -> bool:
     """Estimation whether a full graph search would be computationally more efficient than a source-target search.
 
     In case the graph is 'dense' and/or the number of crossings constitute for a percentage of the graph's nodes, a full
@@ -318,7 +318,7 @@ def full_graph_search(basin: shapely.Polygon, graph: nx.Graph, crossings: tuple[
 
     :type basin: shapely.Polygon
     :type graph: networkx.Graph
-    :type crossings: tuple[shapely.Point, ...]
+    :type crossings: list[shapely.Point]
 
     :return: whether to perform a full graph search
     :rtype: bool
@@ -358,7 +358,7 @@ def full_graph_search(basin: shapely.Polygon, graph: nx.Graph, crossings: tuple[
 
 
 def find_flow_routes(
-    graph: nx.Graph, crossings: tuple[shapely.Point, ...], *, use_full_graph: bool = False
+    graph: nx.Graph, crossings: list[shapely.Point], *, use_full_graph: bool = False
 ) -> set[tuple[tuple[int, int], tuple[int, int]]]:
     """Find all shortest routes between combinations of crossings.
 
@@ -368,7 +368,7 @@ def find_flow_routes(
         of searching for the shortest paths between the pairs of crossings, defaults to False
 
     :type graph: networkx.Graph
-    :type crossings: tuple[shapely.Point, ...]
+    :type crossings: list[shapely.Point]
     :type use_full_graph: bool, optional
 
     :return: set of graph-edges that are part of at least one shortest route between crossings

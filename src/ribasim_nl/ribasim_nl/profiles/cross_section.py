@@ -13,6 +13,7 @@ The definition of the basin profiles consists of a tabulated A(h)-relation. Ever
 """
 
 import logging
+import typing
 
 import geopandas as gpd
 import numpy as np
@@ -68,6 +69,22 @@ def trapezoidal_profile(
 
     bottom_width = width - 2 * slope * depth
     return [(z_ref, width), (z_ref - depth + v_margin, max(bottom_width, h_margin)), (z_ref - depth, h_margin)]
+
+
+@typing.overload
+def assign_basin_profiles(
+    basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, *, as_geo_dataframe: typing.Literal[True], **kwargs
+) -> gpd.GeoDataFrame: ...
+
+
+@typing.overload
+def assign_basin_profiles(
+    basins: gpd.GeoDataFrame,
+    hydro_objects: gpd.GeoDataFrame,
+    *,
+    as_geo_dataframe: typing.Literal[False] = False,
+    **kwargs,
+) -> pd.DataFrame: ...
 
 
 def assign_basin_profiles(

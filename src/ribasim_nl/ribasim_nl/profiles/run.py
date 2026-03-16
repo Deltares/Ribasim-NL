@@ -108,6 +108,7 @@ def main(
         )
         raise ValueError(msg)
     if hydrotope_table is None:
+        assert fn_hydrotopes is not None
         hydrotope_table = ht.HydrotopeTable.from_csv(fn_hydrotopes)
     elif fn_hydrotopes is not None:
         LOG.warning(f"Hydrotope-table specified; skipped {fn_hydrotopes=}")
@@ -118,7 +119,7 @@ def main(
             f"a working directory must be provided: {wd_intermediate_output=}"
         )
         raise ValueError(msg)
-    if export_intermediate_output and create_wd_intermediate:
+    if wd_intermediate_output is not None and create_wd_intermediate:
         wd_intermediate_output.mkdir(parents=True, exist_ok=True)
 
     # align all CRS
@@ -167,7 +168,7 @@ def main(
         )
 
     # collectors
-    main_route_idx = set()
+    main_route_idx: set[int] = set()
     point_collector = []
     line_collector = []
 
@@ -194,13 +195,13 @@ def main(
         main_route_idx.update(indices)
 
         # update collectors
-        if export_intermediate_output:
+        if wd_intermediate_output is not None:
             points, lines = momepy.nx_to_gdf(graph)
             point_collector.append(points)
             line_collector.append(lines)
 
     # concatenate basin-groups of point- and line-data
-    if export_intermediate_output:
+    if wd_intermediate_output is not None:
         points = pd.concat(point_collector, axis=0)
         lines = pd.concat(line_collector, axis=0)
         points.to_file(wd_intermediate_output / _fn_graph, layer="points")
@@ -208,7 +209,7 @@ def main(
 
     # label hydro-objects
     hydro_objects["main-route"] = hydro_objects.index.isin(main_route_idx)
-    if export_intermediate_output:
+    if wd_intermediate_output is not None:
         hydro_objects[hydro_objects["main-route"]].to_file(wd_intermediate_output / _fn_int_output, layer="main-route")
         if internal_crossings:
             _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)
@@ -227,7 +228,7 @@ def main(
     # depth from measurements
     if cross_sections is not None:
         hydro_objects = depth.depth_from_measurements(hydro_objects, cross_sections)
-    if export_intermediate_output:
+    if wd_intermediate_output is not None:
         hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")
 
     # basin profiles
@@ -260,7 +261,7 @@ def main(
         )
 
     # export basin profiles
-    if export_intermediate_output:
+    if wd_intermediate_output is not None:
         flowing_profiles.to_file(wd_intermediate_output / _fn_int_output, layer="basin_profiles_doorgaand")
         storing_profiles.to_file(wd_intermediate_output / _fn_int_output, layer="basin_profiles_bergend")
     return flowing_profiles, storing_profiles
