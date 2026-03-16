@@ -122,6 +122,9 @@ def explode_linestrings(gdf, interval):
 
 
 def connect_linestrings_within_distance(gdf, max_distance=4):
+    # FIXME: This function breaks when both ends of the LineString are modified. Instead, the function
+    #  `ribasim_nl.profiles.path_finder.fully_connected_network()` can be used. Here, both ends of the LineString can be
+    #  modified without problems (and this function is faster by implementing `sklearn.cluster.DBSCAN`).
     gdf = gdf.explode(ignore_index=False, index_parts=True)
     gdf["geometry"] = gdf.make_valid()
     gdf["geometry"] = gdf.geometry.apply(shapely.force_2d)
