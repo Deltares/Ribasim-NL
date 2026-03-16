@@ -1,3 +1,5 @@
+"""Iteratively scale pump and outlet max_flow_rate values for design precipitation and evaporation events."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -6,8 +8,6 @@ import pandas as pd
 from ribasim import run_ribasim
 
 from ribasim_nl import CloudStorage, Model
-
-pd.set_option("display.max_columns", None)
 
 __all__ = ["OutletPumpScalingConfig", "scale_outlets_pumps"]
 

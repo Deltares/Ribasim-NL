@@ -1,9 +1,9 @@
 ---
-title: "Scale outlets and pumps"
+title: "Scale max_flow_rates outlets and pumps based on design events"
 ---
 
 Workflow for iteratively scaling outlet and pump capacities in a Ribasim model until basin water levels stay within an allowed deviation from the target level.
-The implementation lives in [`src/peilbeheerst_model/Parametrize/scale_outlets_pumps.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/Parametrize/scale_outlets_pumps.py).
+The implementation lives in [`src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py).
 
 ## Purpose
 
