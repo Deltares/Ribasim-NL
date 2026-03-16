@@ -21,7 +21,7 @@ import pandas as pd
 LOG = logging.getLogger(__name__)
 
 
-def weighted_average(values: np.ndarray[float], weights: np.ndarray[float]) -> float:
+def weighted_average(values: np.ndarray, weights: np.ndarray) -> float:
     """Calculation of the weighted average.
 
     :param values: values to take the weighted average of
@@ -38,7 +38,7 @@ def weighted_average(values: np.ndarray[float], weights: np.ndarray[float]) -> f
 
 def trapezoidal_profile(
     depth: float, width: float, z_ref: float = 0, slope: float = 1 / 3, margin: float | tuple[float, float] = 1e-4
-) -> list[tuple]:
+) -> list[tuple[float, float]]:
     """Trapezoidal profile based on (maximum) depth, width (at surface), and slope.
 
     :param depth: (maximum) water depth
@@ -55,13 +55,16 @@ def trapezoidal_profile(
     :type margin: float | tuple[float, float], optional
 
     :return: A(h)-relation description as a list of (h, W)-coordinates
-    :rtype: list[tuple]
+    :rtype: list[tuple[float, float]]
     """
-    if hasattr(margin, "__len__"):
+    if isinstance(margin, (tuple, list)):
         assert len(margin) == 2
         h_margin, v_margin = margin
-    else:
+    elif isinstance(margin, (float, int)):
         h_margin = v_margin = margin
+    else:
+        msg = f"`margin` must be a tuple[float, float] or a float; {type(margin)=}"
+        raise NotImplementedError(msg)
 
     bottom_width = width - 2 * slope * depth
     return [(z_ref, width), (z_ref - depth + v_margin, max(bottom_width, h_margin)), (z_ref - depth, h_margin)]
