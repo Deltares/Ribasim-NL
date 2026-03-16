@@ -46,7 +46,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None
     # optional arguments
     fn: str = kwargs.get("fn", "bgt_water.gpkg")
     sleep_time: float = kwargs.get("sleep_time", 1)
-    wd: pathlib.Path = kwargs.get("wd")
+    wd: pathlib.Path | None = kwargs.get("wd")
 
     # API URL
     __full_custom_url = "lv/bgt/download/v1_0/full/custom"
