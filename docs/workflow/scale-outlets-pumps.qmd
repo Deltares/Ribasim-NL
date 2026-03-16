@@ -32,7 +32,7 @@ This workflow is intended to be run after a water board model has already been b
 The script expects at least the following inputs to be available:
 
 - a Ribasim model
-- basin target levels in `ribasim_model.basin.area.df["meta_streefpeil"]`,
+- basin target levels in `model.basin.area.df["meta_streefpeil"]`,
 - connector metadata in pump and outlet tables, including `meta_known_flow_rate`,
 - a `from_to_node_function_table.csv` with at least:
   - `node_id`
@@ -109,10 +109,10 @@ Additional safeguards are then applied:
 
 The latest guessed values are copied into:
 
-- `ribasim_model.pump.static.df["max_flow_rate"]`
-- `ribasim_model.outlet.static.df["max_flow_rate"]`
+- `model.pump.static.df["max_flow_rate"]`
+- `model.outlet.static.df["max_flow_rate"]`
 
-using `update_max_flow_rates_in_ribasim_model(...)`.
+using `update_max_flow_rates_in_model(...)`.
 
 ### 7. Inspect warnings and diagnostics
 
