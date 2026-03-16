@@ -65,7 +65,7 @@ def simplify_geodata(
 
 def split_line_at_point(
     line: shapely.LineString, point: shapely.Point, *, eps: float = 1e-3
-) -> (shapely.LineString, ...):
+) -> tuple[shapely.LineString, ...]:
     """Split a line at a point allowing for some margin.
 
     Instead of requiring the point to be exactly on the line - no room for rounding errors -, this function allows for
@@ -150,34 +150,42 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
     :return: fully connected network of hydro-objects
     :rtype: geopandas.GeoDataFrame
     """
+    # redraw hydro-objects
     union_objects = gpd.GeoDataFrame(geometry=[*hydro_objects.force_2d().union_all().geoms], crs=hydro_objects.crs)
+    assert len(union_objects[union_objects.geometry.type == "MultiLineString"]) == 0, (
+        "No MultiLineString-objects allowed"
+    )
 
-    ml = union_objects[union_objects.geometry.type == "MultiLineString"]
-    assert len(ml) == 0
-
-    endpoints = []
+    # initiate collectors
+    _endpoints: list[tuple[float, float]] = []  # (x, y)
     endpoint_refs: list[tuple[int, bool]] = []  # (index, is_start)
 
+    # extract endpoints for clustering
     for i, line in tqdm.tqdm(union_objects.geometry.items(), "Extracting endpoints", len(union_objects)):
         c = (*line.coords,)
-        endpoints.extend([c[0], c[-1]])
+        _endpoints.extend([c[0], c[-1]])
         endpoint_refs.extend([(i, True), (i, False)])
 
-    endpoints = np.array(endpoints)
+    # convert to numpy-array for further processing
+    endpoints: np.ndarray = np.array(_endpoints, dtype=float)
 
+    # cluster endpoints
     db = DBSCAN(eps=buffer, min_samples=2, metric="euclidean")
     labels = db.fit_predict(endpoints)
 
+    # initiate working parameters
     snap_points = {}
     unique_labels = set(labels)
     unique_labels.discard(-1)
 
+    # define cluster centroids
     for label in tqdm.tqdm(unique_labels, "Defining cluster centroids"):
         indices = np.flatnonzero(labels == label)
         centroid = tuple(endpoints[indices].mean(axis=0))
         for i in indices:
             snap_points[i] = centroid
 
+    # update hydro-objects
     for i, (index, is_start) in tqdm.tqdm(enumerate(endpoint_refs), "Updating hydro-objects", len(endpoint_refs)):
         if i in snap_points:
             line = union_objects.geometry.iloc[index]
@@ -185,6 +193,7 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
             c[0 if is_start else -1] = snap_points[i]
             union_objects.loc[index, "geometry"] = shapely.LineString(c)
 
+    # return modified hydro-objects
     return union_objects
 
 
