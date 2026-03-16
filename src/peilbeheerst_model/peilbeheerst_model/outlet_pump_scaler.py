@@ -631,7 +631,7 @@ class _OutletPumpScaler:
                         print(
                             "Writing updated Ribasim model with: \n - (temporarily) changed initial water levels \n - (temporarily) changed vertical fluxes \n - initial guessed flow rates."
                         )
-                    ribasim_model.write(config.ribasim_model_path)
+                    ribasim_model.write(ribasim_model.filepath)
                     first_iteration = (
                         False  # avoid resetting initial water levels and initial guess flow rates in next iterations
                     )
@@ -640,7 +640,7 @@ class _OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=config.ribasim_model_path)
+                run_ribasim(toml_path=ribasim_model.filepath)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
                 ribasim_water_levels = pd.read_feather(config.ribasim_model.results_path / "basin.arrow")
@@ -737,7 +737,7 @@ class _OutletPumpScaler:
                 ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.max_flow_rate
 
                 # store model
-                ribasim_model.write(config.ribasim_model_path)
+                ribasim_model.write(ribasim_model.filepath)
 
         # replace the original meteo, initial water levels and boundary levels in the ribasim model
         ribasim_model.basin.time.df = original_meteo
