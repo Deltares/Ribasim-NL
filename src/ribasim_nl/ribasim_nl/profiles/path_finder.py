@@ -113,7 +113,7 @@ def split_hydro_objects(
     points = split_locations.sjoin(hydro_objects, predicate="dwithin", distance=buffer, rsuffix="line")
 
     for p, i in tqdm.tqdm(points[["geometry", "index_line"]].values, "Splitting hydro-objects"):
-        line = hydro_objects.geometry.iloc[i]
+        line: shapely.LineString = hydro_objects.geometry.iloc[i]
         if isinstance(line, shapely.MultiLineString):
             new_lines = tuple(
                 itertools.chain.from_iterable(split_line_at_point(_line, p, eps=buffer) for _line in line.geoms)
