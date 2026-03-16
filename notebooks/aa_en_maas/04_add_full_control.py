@@ -1345,7 +1345,6 @@ drain_nodes = [120, 210, 267, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 
 # flushing_nodes = {919: 5}
 flushing_nodes = {}
 
-# %% Toevoegen waar nog geen sturing is toegevoegd
 
 add_controllers_to_uncontrolled_connector_nodes(
     model=model,
