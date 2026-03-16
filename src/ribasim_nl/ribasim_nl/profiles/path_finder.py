@@ -149,6 +149,8 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
 
     :return: fully connected network of hydro-objects
     :rtype: geopandas.GeoDataFrame
+
+    :raises AssertionError: if `MultiLineString`-objects remain after union-exploding the hydro-objects
     """
     # redraw hydro-objects
     union_objects = gpd.GeoDataFrame(geometry=[*hydro_objects.force_2d().union_all().geoms], crs=hydro_objects.crs)
