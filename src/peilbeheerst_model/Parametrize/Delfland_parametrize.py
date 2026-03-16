@@ -358,9 +358,6 @@ add_controllers_to_connector_nodes(
 ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.merge(outlet_copy, on="node_id", how="left")
 ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(pump_copy, on="node_id", how="left")
 
-# if flow_rate is 0, set to 20
-# ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20
-
 # wateraanvoer node to other waterboard. Set max downstream level to a low value to prevent unwanted control actions
 ribasim_model.outlet.static.df.loc[
     ribasim_model.outlet.static.df.node_id == 433, "max_downstream_level"
