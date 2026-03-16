@@ -29,7 +29,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -340,6 +340,12 @@ pump_copy = ribasim_model.pump.static.df[
 # ribasim_model = ribasim_model._update_used_ids()
 ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
 
+# Add flushing data
+flush = Flushing(ribasim_model)
+_, df_demand = flush.add_flushing()
+for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+    from_to_node_function_table.at[row.nid, "demand"] = row.demand
+
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
@@ -348,31 +354,9 @@ add_controllers_to_connector_nodes(
     drain_capacity=20,
 )
 
-# replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
-outlet_columns_to_add_back = [
-    "meta_categorie",
-    "meta_from_node_id",
-    "meta_to_node_id",
-    "meta_from_level",
-    "meta_to_level",
-    "meta_aanvoer",
-]
-pump_columns_to_add_back = [
-    "meta_categorie",
-    "meta_func_afvoer",
-    "meta_func_aanvoer",
-    "meta_func_circulatie",
-    "meta_from_node_id",
-    "meta_to_node_id",
-    "meta_from_level",
-    "meta_to_level",
-]
-ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.drop(columns=outlet_columns_to_add_back).merge(
-    outlet_copy, on="node_id", how="left"
-)
-ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=pump_columns_to_add_back).merge(
-    pump_copy, on="node_id", how="left"
-)
+# add the meta_data to the pump and outlet tables again
+ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.merge(outlet_copy, on="node_id", how="left")
+ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(pump_copy, on="node_id", how="left")
 
 # if flow_rate is 0, set to 20
 # ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20
@@ -459,10 +443,6 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
-
-# Add flushing data
-flush = Flushing(ribasim_model)
-flush.add_flushing()
 
 # set numerical settings
 # write model output
