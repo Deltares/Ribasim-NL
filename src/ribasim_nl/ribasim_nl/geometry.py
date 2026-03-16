@@ -259,7 +259,7 @@ def split_line(
             MultiLineString with two lines if being split otherwise a single LineString. This will be deprecated,
             resulting in returning a tuple of LineString-objects.
     """
-    # deprecation warnings: migration of function
+    # deprecation warnings
     if deprecated:
         warnings.warn(
             "Passing 'tolerance' positionally is deprecated. Use keyword argument 'tolerance='.",
