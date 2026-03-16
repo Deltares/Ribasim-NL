@@ -38,7 +38,7 @@ def weighted_average(values: np.ndarray, weights: np.ndarray) -> float:
 
 
 def trapezoidal_profile(
-    depth: float, width: float, z_ref: float = 0, slope: float = 1 / 3, margin: float | tuple[float, float] = 1e-4
+    depth: float, width: float, z_ref: float = 0, slope: float = 1 / 3, margin: float | tuple[float, float] = 1e-3
 ) -> list[tuple[float, float]]:
     """Trapezoidal profile based on (maximum) depth, width (at surface), and slope.
 
@@ -46,7 +46,7 @@ def trapezoidal_profile(
     :param width: width (at the surface)
     :param z_ref: reference (water) level, defaults to 0
     :param slope: slope (v/h) of the banks of the profile, defaults to 1/3
-    :param margin: spatial step for defining a horizontal bottom, defaults to 1e-4
+    :param margin: spatial step for defining a horizontal bottom, defaults to 1e-3
         When two values are given, the first is considered as the horizontal margin, and the second as vertical margin.
 
     :type depth: float
@@ -68,7 +68,7 @@ def trapezoidal_profile(
         raise NotImplementedError(msg)
 
     bottom_width = width - 2 * slope * depth
-    return [(z_ref, width), (z_ref - depth + v_margin, max(bottom_width, h_margin)), (z_ref - depth, h_margin)]
+    return [(z_ref, width), (z_ref - depth + v_margin, max(bottom_width, 2 * h_margin)), (z_ref - depth, h_margin)]
 
 
 @typing.overload
@@ -97,7 +97,7 @@ def assign_basin_profiles(
     :param kwargs: optional arguments
 
     :key as_geo_dataframe: return profile table as a `geopandas.GeoDataFrame` (without geometry), defaults to False
-    :key margin: spatial step for defining a horizontal bottom, defaults to 1e-4
+    :key margin: spatial step for defining a horizontal bottom, defaults to 1e-3
     :key slope: slope (v/h) of the banks of the profile, defaults to 1/3
 
     :type basins: geopandas.GeoDataFrame
@@ -108,7 +108,7 @@ def assign_basin_profiles(
     """
     # optional arguments
     as_geo_dataframe: bool = kwargs.get("as_geo_dataframe", False)
-    margin: float = kwargs.get("margin", 1e-4)
+    margin: float = kwargs.get("margin", 1e-3)
     slope: float = kwargs.get("slope", 1 / 3)
 
     # validate required data
@@ -124,10 +124,10 @@ def assign_basin_profiles(
 
     # couple hydro-objects to basins
     gdf_joined = gpd.sjoin(basins, hydro_objects, how="left", predicate="intersects", lsuffix="basin", rsuffix="ho")
-    gdf_joined.dropna(subset=["index_ho"], inplace=True)
+    gdf_joined = gdf_joined.dropna(subset="index_ho")
 
     # weighted average of profile dimensions
-    gdf_joined["length"] = hydro_objects.loc[gdf_joined["index_ho"], "geometry"].length.values
+    gdf_joined["length"] = hydro_objects.geometry.loc[gdf_joined["index_ho"]].length.values
     grouped = gdf_joined.groupby("node_id")
     width = grouped.apply(lambda row: weighted_average(row["width"], row["length"]), include_groups=False)
     depth = grouped.apply(lambda row: weighted_average(row["depth"], row["length"]), include_groups=False)
@@ -154,7 +154,7 @@ def assign_basin_profiles(
     df_profiles = pd.DataFrame(df_profiles.tolist(), columns=["level", "area"], index=df_profiles.index)
     df_profiles["node_id"] = dimensions["node_id"]
     df_profiles["area"] *= dimensions["length"]
-    df_profiles.replace({"area": (0, margin)}, inplace=True)
+    df_profiles["area"] = np.maximum(df_profiles["area"], margin)
 
     # define 'Basin / profile'-table
     table = df_profiles[["node_id", "level", "area"]]
@@ -206,7 +206,7 @@ def full_bgt_coverage(
 
     :key as_geo_dataframe: enforce output as geopandas.GeoDataFrame, otherwise type of `profiles_exp` will be kept,
         defaults to False
-    :key margin: bottom-of-profile dummy value, defaults to 1e-4
+    :key margin: bottom-of-profile dummy value, defaults to 1e-3
     :key min_valid_area: minimum area (mainly relevant for bottom-of-profile area), default to None
 
     :type profiles_fixed: pandas.DataFrame | geopandas.GeoDataFrame
@@ -219,7 +219,7 @@ def full_bgt_coverage(
     """
     # optional arguments
     as_geo_dataframe: bool = kwargs.get("as_geo_dataframe", False)
-    margin: float = kwargs.get("margin", 1e-4)
+    margin: float = kwargs.get("margin", 1e-3)
     min_valid_area: float | None = kwargs.get("min_valid_area")
 
     # determine water surface area per basin based on hydro-objects
