@@ -552,7 +552,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
         get_outlet_geometries[["meta_node_id", "geometry"]], left_on="node_id", right_on="meta_node_id"
     )
     outlet["node_type"] = "Outlet"
-    outlet["flow_rate"] = 0  # default setting
+    outlet["flow_rate"] = 25  # default setting
     outlet["meta_categorie"] = "Inlaat"
 
     outlet_node = outlet[["node_id", "meta_node_id", "node_type", "geometry"]]
@@ -1065,6 +1065,29 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
     # # optional arguments
     # aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
 
+    # update meta_from/to_node_type
+    node_df = ribasim_model.node_table().df.reset_index()[["node_id", "node_type"]]
+    link_df = ribasim_model.link.df.copy()
+
+    updated_link_df = link_df.drop(
+        columns=["meta_from_node_type", "meta_to_node_type"],
+        errors="ignore",
+    )
+
+    updated_link_df = updated_link_df.merge(
+        node_df.rename(columns={"node_id": "from_node_id", "node_type": "meta_from_node_type"}),
+        on="from_node_id",
+        how="left",
+    )
+
+    updated_link_df = updated_link_df.merge(
+        node_df.rename(columns={"node_id": "to_node_id", "node_type": "meta_to_node_type"}),
+        on="to_node_id",
+        how="left",
+    )
+
+    ribasim_model.link.df = updated_link_df
+
     # create new columsn to store the meta categorie of each node
     ribasim_model.outlet.static.df["meta_categorie"] = np.nan
     ribasim_model.pump.static.df["meta_categorie"] = np.nan
@@ -1079,10 +1102,14 @@ def identify_node_meta_categorie(ribasim_model: ribasim.Model, **kwargs):
 
     # select the nodes which originate from, and go to a boundary
     nodes_from_boundary = ribasim_model.link.df.loc[
-        ribasim_model.link.df.meta_from_node_type == "LevelBoundary", "to_node_id"
+        (ribasim_model.link.df.meta_from_node_type == "LevelBoundary")
+        | (ribasim_model.link.df.meta_from_node_type == "level_boundary"),
+        "to_node_id",
     ]
     nodes_to_boundary = ribasim_model.link.df.loc[
-        ribasim_model.link.df.meta_to_node_type == "LevelBoundary", "from_node_id"
+        (ribasim_model.link.df.meta_from_node_type == "LevelBoundary")
+        | (ribasim_model.link.df.meta_from_node_type == "level_boundary"),
+        "from_node_id",
     ]
 
     # some pumps do not have a function yet, as they may have been changed due to the feedback forms. Set it to afvoer.
@@ -1523,6 +1550,7 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: ribasim.Model, w
         print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
         pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
+    outlet.flow_rate = outlet.flow_rate.fillna(25)
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
     ribasim_model.pump.static.df = pump
@@ -2697,3 +2725,6 @@ def remove_non_free_flowing_outlets(
         print(non_free_flowing_outlets_ids)
 
     return ribasim_model
+
+
+# %%
