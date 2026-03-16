@@ -269,7 +269,8 @@ def split_line(
         tolerance = deprecated[0]
     if as_multilinestring:
         warnings.warn(
-            "The 'split_line'-function will return tuple with LineString-objects in the future. Change to the future behaviour by setting 'as_multilinestring=False'.",
+            "The 'split_line'-function will return tuple with LineString-objects in the future. "
+            "Change to the future behaviour by setting 'as_multilinestring=False'.",
             DeprecationWarning,
             stacklevel=2,
         )
