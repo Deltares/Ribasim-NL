@@ -257,8 +257,12 @@ def main(
     # fill storing basins with BGT-data
     if bgt_full_coverage:
         storing_profiles = cross_section.full_bgt_coverage(
-            flowing_profiles, storing_profiles, basins, bgt_data, as_geo_dataframe=True, min_valid_area=1e-3
+            flowing_profiles, storing_profiles, basins, bgt_data, as_geo_dataframe=True, min_valid_area=2e-3
         )
+
+    # assure no zero area-values
+    assert flowing_profiles["area"].astype(bool).sum(axis=0) == 0
+    assert storing_profiles["area"].astype(bool).sum(axis=0) == 0
 
     # export basin profiles
     if wd_intermediate_output is not None:
