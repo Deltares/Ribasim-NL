@@ -45,7 +45,7 @@ def couple_bgt_to_hydro_objects(
     """
     # optional arguments
     bgt_id: str = kwargs.get("bgt_id", "gml_id")
-    min_overlap: float = kwargs.get("min_overlap")
+    min_overlap: float | None = kwargs.get("min_overlap")
 
     # verify preprocessing
     if "main-route" not in hydro_objects.columns:
