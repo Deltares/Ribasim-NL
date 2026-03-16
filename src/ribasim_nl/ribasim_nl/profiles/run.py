@@ -261,8 +261,12 @@ def main(
         )
 
     # assure no zero area-values
-    assert flowing_profiles["area"].astype(bool).sum(axis=0) == 0
-    assert storing_profiles["area"].astype(bool).sum(axis=0) == 0
+    assert all(flowing_profiles["area"] > 0), (
+        f"Not all profile areas are larger than zero: {flowing_profiles[~flowing_profiles['area'] > 0]}"
+    )
+    assert all(storing_profiles["area"] > 0), (
+        f"Not all profile areas are larger than zero: {storing_profiles[~storing_profiles['area'] > 0]}"
+    )
 
     # export basin profiles
     if wd_intermediate_output is not None:

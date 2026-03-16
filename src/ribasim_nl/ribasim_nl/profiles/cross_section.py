@@ -241,6 +241,7 @@ def full_bgt_coverage(
     factor = (bgt_basin.area - df_areas["total_area"]) / df_areas["total_area"]
     profiles_exp["area"] *= factor[profiles_exp["node_id"]].values
     profiles_exp["area"] = np.maximum(profiles_exp["area"], margin)
+    profiles_exp = profiles_exp.dropna(subset="area")
 
     # return modified table (optionally as GeoDataFrame)
     if as_geo_dataframe:
