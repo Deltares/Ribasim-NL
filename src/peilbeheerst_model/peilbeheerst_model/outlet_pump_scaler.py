@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pathlib
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -21,7 +20,6 @@ class OutletPumpScalingConfig:
     and the scenario settings used by the iterative scaling routine.
     """
 
-    ribasim_model_path: str | pathlib.Path
     ribasim_model: Model
     from_to_node_function_table: pd.DataFrame
     waterschap: str
@@ -43,11 +41,6 @@ class OutletPumpScalingConfig:
     apply_temporary_debug_changes: bool = False
     debug_outlet_max_flow_rate: float = 0.10
     RESCALE_FLOW_CAPACITIES: bool = True
-
-    @property
-    def results_path(self) -> pathlib.Path:
-        """Return the expected Ribasim basin-results file for the model run."""
-        return pathlib.Path(self.ribasim_model_path).parent / "results" / "basin.arrow"
 
 
 def set_initial_water_levels(ribasim_model):
@@ -552,7 +545,7 @@ class _OutletPumpScaler:
         ###########################
 
         situations = config.situations
-        results_path = config.results_path
+
         max_iterations = config.max_iterations
         initial_guess_flow_rate_outlet = config.initial_guess_flow_rate_outlet
         initial_guess_flow_rate_pump = config.initial_guess_flow_rate_pump
@@ -650,7 +643,7 @@ class _OutletPumpScaler:
                 run_ribasim(toml_path=config.ribasim_model_path)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
-                ribasim_water_levels = pd.read_feather(results_path)
+                ribasim_water_levels = pd.read_feather(config.ribasim_model.results_path / "basin.arrow")
                 ribasim_water_levels = ribasim_water_levels[["time", "node_id", "level"]]
                 ribasim_water_levels = ribasim_water_levels.merge(
                     basin_information[["meta_streefpeil"]], left_on="node_id", right_index=True, how="left"

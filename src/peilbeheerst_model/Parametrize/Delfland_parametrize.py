@@ -417,7 +417,6 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 # If RESCALE_FLOW_CAPACITIES: scale max_flow_rates of the connector nodes which have no predefined max_flow_rates. If not, load the from_to_node_function_table with the scaled max flow rates from GoodCloud.
 ribasim_model, from_to_node_function_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
-        ribasim_model_path=ribasim_work_dir_model_toml,
         ribasim_model=ribasim_model,
         from_to_node_function_table=from_to_node_function_table,
         apply_temporary_debug_changes=True,
