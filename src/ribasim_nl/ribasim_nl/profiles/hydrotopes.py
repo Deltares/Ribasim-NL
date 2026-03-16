@@ -52,7 +52,7 @@ class HydrotopeTable:
         """
         return len(self.collector)
 
-    def __iter__(self) -> typing.Iterable[int]:
+    def __iter__(self) -> typing.Iterator[int]:
         """Iterator-function: Iterating over table `collector`-attribute (`dict`)
 
         :return: dictionary-iterator

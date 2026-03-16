@@ -78,7 +78,7 @@ def depth_from_hydrotopes(
     min_map: bool = kwargs.get("min_map", True)
 
     # verify definition of all occurring hydrotopes
-    unique_fids = hydrotope_map[col_fid].unique()
+    unique_fids = list(hydrotope_map[col_fid].unique())
     if not all(i in unique_fids for i in hydrotopes):
         missing = [i for i in unique_fids if i not in hydrotopes]
         msg = f"Not all occurring hydrotopes initiated: {missing=}"
@@ -143,7 +143,7 @@ def depth_from_measurements(
         """Depth equals maximum depth, i.e., minimum z-coordinate."""
         return -np.min(line.coords, axis=0)[2]
 
-    def representative_depth(indices: (int, ...)) -> float | None:
+    def representative_depth(indices: tuple[int, ...]) -> float | None:
         """Take the mean of estimated depths of all connected cross-sections."""
         if indices and -1 not in indices:
             return float(np.nanmean([depth_calculator(cross_sections.geometry.iloc[i]) for i in indices]))
