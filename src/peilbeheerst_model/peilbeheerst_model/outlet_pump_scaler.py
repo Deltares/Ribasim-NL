@@ -20,7 +20,7 @@ class OutletPumpScalingConfig:
     and the scenario settings used by the iterative scaling routine.
     """
 
-    ribasim_model: Model
+    model: Model
     from_to_node_function_table: pd.DataFrame
     waterschap: str
     cloud: CloudStorage
@@ -43,12 +43,12 @@ class OutletPumpScalingConfig:
     RESCALE_FLOW_CAPACITIES: bool = True
 
 
-def set_initial_water_levels(ribasim_model: Model) -> tuple[pd.DataFrame, pd.DataFrame]:
+def set_initial_water_levels(model: Model) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Set basin initial water levels equal to target levels.
 
     Parameters
     ----------
-    ribasim_model : ribasim_nl.Model
+    model : ribasim_nl.Model
         The Ribasim model to update.
 
     Returns
@@ -60,10 +60,10 @@ def set_initial_water_levels(ribasim_model: Model) -> tuple[pd.DataFrame, pd.Dat
     print("Setting initial water levels based on basin area target levels.")
 
     # create dataframe with basin information
-    target_levels = ribasim_model.basin.area.df.copy()[["node_id", "meta_streefpeil"]]
-    bergend_doorgaand = ribasim_model.basin.node.df.copy()[["node_type"]]
+    target_levels = model.basin.area.df.copy()[["node_id", "meta_streefpeil"]]
+    bergend_doorgaand = model.basin.node.df.copy()[["node_type"]]
     bergend_doorgaand = bergend_doorgaand.merge(
-        ribasim_model.basin.state.df[["node_id", "meta_categorie"]], on="node_id", how="left"
+        model.basin.state.df[["node_id", "meta_categorie"]], on="node_id", how="left"
     )
     basin_information = bergend_doorgaand.merge(target_levels, on="node_id", how="left")
 
@@ -72,13 +72,13 @@ def set_initial_water_levels(ribasim_model: Model) -> tuple[pd.DataFrame, pd.Dat
         drop=False
     )  # select bergende basins
     bergende_basins = bergende_basins.merge(
-        ribasim_model.link.df[["from_node_id", "to_node_id"]], left_on="node_id", right_on="from_node_id", how="left"
+        model.link.df[["from_node_id", "to_node_id"]], left_on="node_id", right_on="from_node_id", how="left"
     )
     bergende_basins = bergende_basins.rename(columns={"to_node_id": "bergende_connector_node_id"}).drop(
         columns=["from_node_id"]
     )
     bergende_basins = bergende_basins.merge(
-        ribasim_model.link.df[["from_node_id", "to_node_id"]],
+        model.link.df[["from_node_id", "to_node_id"]],
         left_on="bergende_connector_node_id",
         right_on="from_node_id",
         how="left",
@@ -112,23 +112,21 @@ def set_initial_water_levels(ribasim_model: Model) -> tuple[pd.DataFrame, pd.Dat
     initial_water_level = initial_water_level.rename(columns={"meta_streefpeil": "level"})
 
     # avoid profile error
-    basin_ids = ribasim_model.basin.node.df.loc[
-        ribasim_model.basin.node.df.node_type == "Basin", "meta_node_id"
-    ].to_numpy()
+    basin_ids = model.basin.node.df.loc[model.basin.node.df.node_type == "Basin", "meta_node_id"].to_numpy()
 
-    ribasim_model.basin.profile = ribasim_model.basin.profile.df.loc[
-        ribasim_model.basin.profile.df.node_id.isin(basin_ids)
-    ].reset_index(drop=True)
+    model.basin.profile = model.basin.profile.df.loc[model.basin.profile.df.node_id.isin(basin_ids)].reset_index(
+        drop=True
+    )
 
     return initial_water_level, basin_information
 
 
-def check_known_flow_rate_columns(ribasim_model: Model) -> None:
+def check_known_flow_rate_columns(model: Model) -> None:
     """Validate presence and completeness of `meta_known_flow_rate` columns.
 
     Parameters
     ----------
-    ribasim_model : ribasim_nl.Model
+    model : ribasim_nl.Model
         The Ribasim model whose pump and outlet static tables are checked.
 
     Raises
@@ -137,26 +135,26 @@ def check_known_flow_rate_columns(ribasim_model: Model) -> None:
         If the required column is missing or contains NaN values.
     """
     # check whether column meta_known_flow_rate exists in the outlet and the pump table, if not raise error
-    if "meta_known_flow_rate" not in ribasim_model.outlet.static.df.columns:
+    if "meta_known_flow_rate" not in model.outlet.static.df.columns:
         raise ValueError("Column 'meta_known_flow_rate' is missing from outlet static data.")
-    if "meta_known_flow_rate" not in ribasim_model.pump.static.df.columns:
+    if "meta_known_flow_rate" not in model.pump.static.df.columns:
         raise ValueError("Column 'meta_known_flow_rate' is missing from pump static data.")
 
     # check whether there are any NaN values in the meta_known_flow_rate column, if so raise error and show which nodes are missing
-    if ribasim_model.pump.static.df["meta_known_flow_rate"].isnull().any():
-        missing_nodes = ribasim_model.pump.static.df[ribasim_model.pump.static.df["meta_known_flow_rate"].isnull()]
+    if model.pump.static.df["meta_known_flow_rate"].isnull().any():
+        missing_nodes = model.pump.static.df[model.pump.static.df["meta_known_flow_rate"].isnull()]
         raise ValueError(
             f"Column 'meta_known_flow_rate' in pump static data contains NaN values for the following nodes:\n{missing_nodes}"
         )
-    if ribasim_model.outlet.static.df["meta_known_flow_rate"].isnull().any():
-        missing_nodes = ribasim_model.outlet.static.df[ribasim_model.outlet.static.df["meta_known_flow_rate"].isnull()]
+    if model.outlet.static.df["meta_known_flow_rate"].isnull().any():
+        missing_nodes = model.outlet.static.df[model.outlet.static.df["meta_known_flow_rate"].isnull()]
         raise ValueError(
             f"Column 'meta_known_flow_rate' in outlet static data contains NaN values for the following nodes:\n{missing_nodes}"
         )
 
 
 def set_vertical_static_forcing(
-    ribasim_model: Model,
+    model: Model,
     situation: str,
     design_precipitation_event: float,
     design_potential_evaporation_event: float,
@@ -165,7 +163,7 @@ def set_vertical_static_forcing(
 
     Parameters
     ----------
-    ribasim_model : ribasim_nl.Model
+    model : ribasim_nl.Model
         The Ribasim model to update.
     situation : str
         Scenario name, expected to be `water_drainage` or `water_demand`.
@@ -180,10 +178,10 @@ def set_vertical_static_forcing(
         The model with updated basin time forcing.
     """
     # percentage open water may differ. To reduce lines of code: only set drainage and infiltration fluxes, based on size of the basin
-    if "meta_area" not in ribasim_model.basin.time.df.columns:
-        ribasim_model.basin.area.df["meta_area"] = ribasim_model.basin.area.df.area
-        ribasim_model.basin.time.df = ribasim_model.basin.time.df.merge(
-            ribasim_model.basin.area.df[["node_id", "meta_area"]], left_on="node_id", right_on="node_id", how="left"
+    if "meta_area" not in model.basin.time.df.columns:
+        model.basin.area.df["meta_area"] = model.basin.area.df.area
+        model.basin.time.df = model.basin.time.df.merge(
+            model.basin.area.df[["node_id", "meta_area"]], left_on="node_id", right_on="node_id", how="left"
         )
 
     if situation == "water_drainage":
@@ -196,31 +194,31 @@ def set_vertical_static_forcing(
         raise ValueError(f"Unknown situation: {situation}. Options are 'water_drainage' and 'water_demand'.")
 
     # calculate fluxes based on area: m2/s to m3/s
-    ribasim_model.basin.time.df["drainage"] = ribasim_model.basin.time.df["meta_area"] * precipitation
-    ribasim_model.basin.time.df["infiltration"] = ribasim_model.basin.time.df["meta_area"] * potential_evaporation
+    model.basin.time.df["drainage"] = model.basin.time.df["meta_area"] * precipitation
+    model.basin.time.df["infiltration"] = model.basin.time.df["meta_area"] * potential_evaporation
 
     # as the drainage or infiltration is already set, set the other fluxes to zero
-    ribasim_model.basin.time.df["precipitation"] = 0
-    ribasim_model.basin.time.df["potential_evaporation"] = 0
-    ribasim_model.basin.time.df["surface_runoff"] = 0.0
+    model.basin.time.df["precipitation"] = 0
+    model.basin.time.df["potential_evaporation"] = 0
+    model.basin.time.df["surface_runoff"] = 0.0
 
-    return ribasim_model
+    return model
 
 
-def warn_for_to_high_flow_rates(ribasim_model: Model) -> None:
+def warn_for_to_high_flow_rates(model: Model) -> None:
     """Print a warning for pump or outlet nodes with very high flow rates.
 
     Parameters
     ----------
-    ribasim_model : ribasim_nl.Model
+    model : ribasim_nl.Model
         The Ribasim model whose pump and outlet `max_flow_rate` values are checked.
 
     Notes
     -----
     A warning is printed when any node exceeds 25 m3/s.
     """
-    pump_flow_rates = ribasim_model.pump.static.df[["node_id", "max_flow_rate"]]
-    outlet_flow_rates = ribasim_model.outlet.static.df[["node_id", "max_flow_rate"]]
+    pump_flow_rates = model.pump.static.df[["node_id", "max_flow_rate"]]
+    outlet_flow_rates = model.outlet.static.df[["node_id", "max_flow_rate"]]
     flow_rates = pd.concat([pump_flow_rates, outlet_flow_rates], ignore_index=True)
     high_flow_rates = flow_rates[flow_rates["max_flow_rate"] > 25]
     if not high_flow_rates.empty:
@@ -433,12 +431,12 @@ def cap_guessed_flow_rates_at_maximum(from_to_node_function_table, max_scaled_fl
     return from_to_node_function_table
 
 
-def update_max_flow_rates_in_ribasim_model(ribasim_model: Model, from_to_node_function_table: pd.DataFrame) -> Model:
+def update_max_flow_rates_in_model(model: Model, from_to_node_function_table: pd.DataFrame) -> Model:
     """Copy the latest guessed connector flow rates into the Ribasim model.
 
     Parameters
     ----------
-    ribasim_model : ribasim_nl.Model
+    model : ribasim_nl.Model
         The model whose pump and outlet static tables are updated.
     from_to_node_function_table : pd.DataFrame
         Connector-node table containing guessed flow-rate columns.
@@ -451,7 +449,7 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model: Model, from_to_node_fu
     # retrieve the last column name starting with "new_max_flow_rates_"
     new_flow_rate_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
     if len(new_flow_rate_columns) == 0:
-        return ribasim_model
+        return model
     last_new_flow_rate_column = new_flow_rate_columns[-1]
 
     # select only the relevant columns from from_to_node_function_table
@@ -461,20 +459,20 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model: Model, from_to_node_fu
     flow_rate_updates = flow_rate_updates.drop_duplicates(subset=["node_id"], keep="last")
     flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"]
 
-    # update the max_flow_rate in the ribasim_model for the pump and outlet nodes.
-    pump_df = ribasim_model.pump.static.df.copy()
+    # update the max_flow_rate in the model for the pump and outlet nodes.
+    pump_df = model.pump.static.df.copy()
     pump_flow_rate_updates = pump_df["node_id"].map(flow_rate_updates)
     pump_update_mask = pump_flow_rate_updates.notna()
     pump_df.loc[pump_update_mask, "max_flow_rate"] = pump_flow_rate_updates.loc[pump_update_mask].to_numpy()
-    ribasim_model.pump.static.df = pump_df
+    model.pump.static.df = pump_df
 
-    outlet_df = ribasim_model.outlet.static.df.copy()
+    outlet_df = model.outlet.static.df.copy()
     outlet_flow_rate_updates = outlet_df["node_id"].map(flow_rate_updates)
     outlet_update_mask = outlet_flow_rate_updates.notna()
     outlet_df.loc[outlet_update_mask, "max_flow_rate"] = outlet_flow_rate_updates.loc[outlet_update_mask].to_numpy()
-    ribasim_model.outlet.static.df = outlet_df
+    model.outlet.static.df = outlet_df
 
-    return ribasim_model
+    return model
 
 
 def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
@@ -518,32 +516,30 @@ class _OutletPumpScaler:
         config = self.config
 
         # load model, create df with basin information, set node_id as index
-        ribasim_model = config.ribasim_model
+        model = config.model
         from_to_node_function_table = (
             config.from_to_node_function_table
         )  # table with from_node_id, to_node_id and function (drain, supply, flow_control) for each connector node
-        original_meteo = ribasim_model.basin.time.df.copy()  # will be temporarily modified
-        original_initial_waterlevels = ribasim_model.basin.state.df.copy()  # will be temporarily modified
+        original_meteo = model.basin.time.df.copy()  # will be temporarily modified
+        original_initial_waterlevels = model.basin.state.df.copy()  # will be temporarily modified
         original_from_to_node_function_table = from_to_node_function_table.copy()  # will be temporarily modified
-        original_level_boundary_static = ribasim_model.level_boundary.static.df.copy()
-        original_level_boundary_time = ribasim_model.level_boundary.time.df.copy()
-        original_basin_time = ribasim_model.basin.time.df.copy()
+        original_level_boundary_static = model.level_boundary.static.df.copy()
+        original_level_boundary_time = model.level_boundary.time.df.copy()
+        original_basin_time = model.basin.time.df.copy()
 
         # WEGHALEN #########################################################
         if config.apply_temporary_debug_changes:
-            ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-            ribasim_model.pump.static.df["meta_known_flow_rate"] = True
-            ribasim_model.pump.static.df.loc[
-                ribasim_model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"
-            ] = False
+            model.outlet.static.df["meta_known_flow_rate"] = False
+            model.pump.static.df["meta_known_flow_rate"] = True
+            model.pump.static.df.loc[model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"] = False
 
             # also temp
-            # ribasim_model.pump.static.df.max_flow_rate = 10
-            ribasim_model.outlet.static.df.max_flow_rate = config.debug_outlet_max_flow_rate
+            # model.pump.static.df.max_flow_rate = 10
+            model.outlet.static.df.max_flow_rate = config.debug_outlet_max_flow_rate
 
             # if max_flow_rate is 0, change to 0.1
-            ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
-            ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
+            model.pump.static.df.loc[model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
+            model.outlet.static.df.loc[model.outlet.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
 
         ###########################
 
@@ -564,11 +560,11 @@ class _OutletPumpScaler:
         add_information_to_from_to_node_function_table = config.add_information_to_from_to_node_function_table
 
         # Set initial conditions equal to the target levels
-        initial_water_level, basin_information = set_initial_water_levels(ribasim_model)
+        initial_water_level, basin_information = set_initial_water_levels(model)
 
         # determine two df's for the downstream + upstream connector nodes which should be used in the scaling
-        outlet_nodes = ribasim_model.outlet.static.df[["node_id", "meta_known_flow_rate"]].copy()
-        pump_nodes = ribasim_model.pump.static.df[["node_id", "meta_known_flow_rate"]].copy()
+        outlet_nodes = model.outlet.static.df[["node_id", "meta_known_flow_rate"]].copy()
+        pump_nodes = model.pump.static.df[["node_id", "meta_known_flow_rate"]].copy()
 
         # concat the pump and outlet nodes into one dataframe, and merge with the from_to_node_function_table to add the meta_known_flow_rate information to the from_to_node_function_table
         connector_nodes_to_scale = pd.concat([pump_nodes, outlet_nodes], ignore_index=True)
@@ -587,8 +583,8 @@ class _OutletPumpScaler:
         # add max_flow_rate of pump and outlet nodes to from_to_node_function_table
         max_flow_rate_df = pd.concat(
             [
-                ribasim_model.pump.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
-                ribasim_model.outlet.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
+                model.pump.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
+                model.outlet.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
             ],
             ignore_index=True,
         )
@@ -599,10 +595,10 @@ class _OutletPumpScaler:
 
             # dont let gravity pose a problem for the level boundaries
             if situation == "water_drainage":
-                ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_drainage_situation
+                model.level_boundary.time.df["level"] = level_boundary_waterlevel_drainage_situation
             elif situation == "water_demand":
-                ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_demand_situation
-            ribasim_model.level_boundary.static.df = None
+                model.level_boundary.time.df["level"] = level_boundary_waterlevel_demand_situation
+            model.level_boundary.static.df = None
 
             # loop through each iteration
             for iteration in range(max_iterations):
@@ -610,31 +606,31 @@ class _OutletPumpScaler:
                     print(f"Starting iteration {iteration + 1}/{max_iterations} for situation: {situation}")
 
                 if first_iteration:
-                    ribasim_model = set_vertical_static_forcing(
-                        ribasim_model, situation, design_precipitation_event, design_potential_evaporation_event
+                    model = set_vertical_static_forcing(
+                        model, situation, design_precipitation_event, design_potential_evaporation_event
                     )
-                    ribasim_model.basin.state.df = initial_water_level
+                    model.basin.state.df = initial_water_level
 
                     # check if known_flow_rate columns exist and filled correctly
-                    check_known_flow_rate_columns(ribasim_model)
+                    check_known_flow_rate_columns(model)
 
                     # Set initial guess flow_rate for outlets and pumps with unknown flow_rate
                     if printing:
                         print("Replacing initial guess flow rates for outlets and pumps with unknown flow rates.")
 
-                    ribasim_model.outlet.static.df.loc[
-                        ~ribasim_model.outlet.static.df["meta_known_flow_rate"], "max_flow_rate"
-                    ] = initial_guess_flow_rate_outlet
-                    ribasim_model.pump.static.df.loc[
-                        ~ribasim_model.pump.static.df["meta_known_flow_rate"], "max_flow_rate"
-                    ] = initial_guess_flow_rate_pump
+                    model.outlet.static.df.loc[~model.outlet.static.df["meta_known_flow_rate"], "max_flow_rate"] = (
+                        initial_guess_flow_rate_outlet
+                    )
+                    model.pump.static.df.loc[~model.pump.static.df["meta_known_flow_rate"], "max_flow_rate"] = (
+                        initial_guess_flow_rate_pump
+                    )
 
                     # write model
                     if printing:
                         print(
                             "Writing updated Ribasim model with: \n - (temporarily) changed initial water levels \n - (temporarily) changed vertical fluxes \n - initial guessed flow rates."
                         )
-                    ribasim_model.write(ribasim_model.filepath)
+                    model.write(model.filepath)
                     first_iteration = (
                         False  # avoid resetting initial water levels and initial guess flow rates in next iterations
                     )
@@ -643,10 +639,10 @@ class _OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=ribasim_model.filepath)
+                run_ribasim(toml_path=model.filepath)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
-                ribasim_water_levels = pd.read_feather(config.ribasim_model.results_path / "basin.arrow")
+                ribasim_water_levels = pd.read_feather(config.model.results_path / "basin.arrow")
                 ribasim_water_levels = ribasim_water_levels[["time", "node_id", "level"]]
                 ribasim_water_levels = ribasim_water_levels.merge(
                     basin_information[["meta_streefpeil"]], left_on="node_id", right_index=True, how="left"
@@ -732,35 +728,35 @@ class _OutletPumpScaler:
                     from_to_node_function_table, max_scaled_flow_rate
                 )
 
-                # update the max_flow_rate in the ribasim_model based on the new flow rates in the from_to_node_function_table
-                ribasim_model = update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table)
+                # update the max_flow_rate in the model based on the new flow rates in the from_to_node_function_table
+                model = update_max_flow_rates_in_model(model, from_to_node_function_table)
 
                 # set flow rate equal to max flow rate
-                ribasim_model.outlet.static.df.flow_rate = ribasim_model.outlet.static.df.max_flow_rate
-                ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.max_flow_rate
+                model.outlet.static.df.flow_rate = model.outlet.static.df.max_flow_rate
+                model.pump.static.df.flow_rate = model.pump.static.df.max_flow_rate
 
                 # store model
-                ribasim_model.write(ribasim_model.filepath)
+                model.write(model.filepath)
 
         # replace the original meteo, initial water levels and boundary levels in the ribasim model
-        ribasim_model.basin.time.df = original_meteo
-        ribasim_model.basin.state.df = original_initial_waterlevels
-        ribasim_model.basin.time.df = original_basin_time
-        ribasim_model.level_boundary.time.df = original_level_boundary_time
-        ribasim_model.level_boundary.static.df = original_level_boundary_static
+        model.basin.time.df = original_meteo
+        model.basin.state.df = original_initial_waterlevels
+        model.basin.time.df = original_basin_time
+        model.level_boundary.time.df = original_level_boundary_time
+        model.level_boundary.static.df = original_level_boundary_static
 
         if not add_information_to_from_to_node_function_table:
             from_to_node_function_table = original_from_to_node_function_table
 
         # raise warning if the newest max_flow_rates exceed the 25 m3/s
-        warn_for_to_high_flow_rates(ribasim_model)
+        warn_for_to_high_flow_rates(model)
 
         print("Done")
 
         # upload the from_to_node_function_table with scaled flow rates to the goodcloud
         upload_from_to_node_function_table(from_to_node_function_table, config.waterschap)
 
-        return ribasim_model, from_to_node_function_table
+        return model, from_to_node_function_table
 
 
 def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig):
@@ -804,6 +800,6 @@ def scale_outlets_pumps(config: OutletPumpScalingConfig):
     else:
         from_to_node_function_table = load_from_to_node_function_table_from_goodcloud(config)
 
-        # update the max_flow_rate in the ribasim_model based on the new flow rates in the from_to_node_function_table
-        ribasim_model = update_max_flow_rates_in_ribasim_model(config.ribasim_model, from_to_node_function_table)
-        return ribasim_model, from_to_node_function_table
+        # update the max_flow_rate in the model based on the new flow rates in the from_to_node_function_table
+        model = update_max_flow_rates_in_model(config.model, from_to_node_function_table)
+        return model, from_to_node_function_table
