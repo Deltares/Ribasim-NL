@@ -18,6 +18,8 @@ import tqdm
 from shapely.ops import nearest_points
 from sklearn.cluster import DBSCAN
 
+from ribasim_nl import geometry
+
 LOG = logging.getLogger(__name__)
 
 
@@ -116,10 +118,14 @@ def split_hydro_objects(
         line: shapely.LineString = hydro_objects.geometry.iloc[i]
         if isinstance(line, shapely.MultiLineString):
             new_lines = tuple(
-                itertools.chain.from_iterable(split_line_at_point(_line, p, eps=buffer) for _line in line.geoms)
+                itertools.chain.from_iterable(
+                    geometry.split_line(_line, p, tolerance=buffer, as_multilinestring=False) for _line in line.geoms
+                )
+                # itertools.chain.from_iterable(split_line_at_point(_line, p, eps=buffer) for _line in line.geoms)
             )
         else:
-            new_lines = split_line_at_point(line, p, eps=buffer)
+            new_lines = geometry.split_line(line, p, tolerance=buffer, as_multilinestring=False)
+            # new_lines = split_line_at_point(line, p, eps=buffer)
         hydro_objects.loc[i, "geometry"] = shapely.MultiLineString(new_lines)
 
     hydro_objects = hydro_objects.explode()
