@@ -65,38 +65,6 @@ def simplify_geodata(
     return out
 
 
-def split_line_at_point(
-    line: shapely.LineString, point: shapely.Point, *, eps: float = 1e-3
-) -> tuple[shapely.LineString, ...]:
-    """Split a line at a point allowing for some margin.
-
-    Instead of requiring the point to be exactly on the line - no room for rounding errors -, this function allows for
-    some rounding errors, defined by `eps`. The line is split at the point, making the point part of the line. The same
-    `eps`-argument also determines whether the point is near enough to the line, and if not, the line is not split.
-    Also, when the point is close to the line's boundaries - close being defined by `eps` -, the line is not split.
-
-    :param line: line to be split
-    :param point: point at which to split the line
-    :param eps:
-    """
-    if point.distance(line) > eps:
-        return (line,)
-
-    distance = line.project(point)
-    if distance <= eps or distance >= line.length - eps:
-        return (line,)
-
-    coordinates = np.array(line.coords)
-    segments = coordinates[1:] - coordinates[:-1]
-    seg_lengths = np.linalg.norm(segments, axis=1)
-    cum_lengths = np.cumsum(seg_lengths)
-    i = np.searchsorted(cum_lengths, distance) + 1
-
-    line1 = shapely.LineString([*coordinates[:i], point])
-    line2 = shapely.LineString([point, *coordinates[i:]])
-    return line1, line2
-
-
 def split_hydro_objects(
     hydro_objects: gpd.GeoDataFrame, split_locations: gpd.GeoDataFrame, *, buffer: float = 1e-2
 ) -> gpd.GeoDataFrame:
@@ -121,11 +89,9 @@ def split_hydro_objects(
                 itertools.chain.from_iterable(
                     geometry.split_line(_line, p, tolerance=buffer, as_multilinestring=False) for _line in line.geoms
                 )
-                # itertools.chain.from_iterable(split_line_at_point(_line, p, eps=buffer) for _line in line.geoms)
             )
         else:
             new_lines = geometry.split_line(line, p, tolerance=buffer, as_multilinestring=False)
-            # new_lines = split_line_at_point(line, p, eps=buffer)
         hydro_objects.loc[i, "geometry"] = shapely.MultiLineString(new_lines)
 
     hydro_objects = hydro_objects.explode()
