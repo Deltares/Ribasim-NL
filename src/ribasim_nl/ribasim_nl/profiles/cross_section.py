@@ -38,7 +38,7 @@ def weighted_average(values: np.ndarray, weights: np.ndarray) -> float:
 
 
 def trapezoidal_profile(
-    depth: float, width: float, z_ref: float = 0, slope: float = 1 / 3, margin: float | tuple[float, float] = 1e-3
+    depth: float, width: float, z_ref: float = 0, slope: float = 1 / 3, min_width: float = 1e-3
 ) -> list[tuple[float, float]]:
     """Trapezoidal profile based on (maximum) depth, width (at surface), and slope.
 
@@ -46,29 +46,25 @@ def trapezoidal_profile(
     :param width: width (at the surface)
     :param z_ref: reference (water) level, defaults to 0
     :param slope: slope (v/h) of the banks of the profile, defaults to 1/3
-    :param margin: spatial step for defining a horizontal bottom, defaults to 1e-3
-        When two values are given, the first is considered as the horizontal margin, and the second as vertical margin.
+    :param min_width: spatial step for defining a horizontal bottom, defaults to 1e-3
 
     :type depth: float
     :type width: float
     :type z_ref: float, optional
     :type slope: float, optional
-    :type margin: float | tuple[float, float], optional
+    :type min_width: float, optional
 
     :return: A(h)-relation description as a list of (h, W)-coordinates
     :rtype: list[tuple[float, float]]
+
+    :raises ValueError: if `min_width` is less than or equal to zero
     """
-    if isinstance(margin, (tuple, list)):
-        assert len(margin) == 2
-        h_margin, v_margin = margin
-    elif isinstance(margin, (float, int)):
-        h_margin = v_margin = margin
-    else:
-        msg = f"`margin` must be a tuple[float, float] or a float; {type(margin)=}"
-        raise NotImplementedError(msg)
+    if min_width <= 0:
+        msg = f"Bottom width must be larger than zero: {min_width=}"
+        raise ValueError(msg)
 
     bottom_width = width - 2 * slope * depth
-    return [(z_ref, width), (z_ref - depth + v_margin, max(bottom_width, 2 * h_margin)), (z_ref - depth, h_margin)]
+    return [(z_ref, width), (z_ref - depth, max(bottom_width, min_width))]
 
 
 @typing.overload
@@ -147,7 +143,7 @@ def assign_basin_profiles(
     # define basin-profiles
     df_profiles = dimensions.apply(
         lambda row: trapezoidal_profile(
-            row["depth"], row["width"], float(row["meta_streefpeil"]), slope=slope, margin=(0, margin)
+            row["depth"], row["width"], float(row["meta_streefpeil"]), slope=slope, min_width=margin
         ),
         axis=1,
     ).explode()
