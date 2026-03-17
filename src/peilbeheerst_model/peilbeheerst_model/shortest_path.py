@@ -10,28 +10,16 @@ import numpy as np
 import pandas as pd
 import shapely
 import tqdm.auto as tqdm
-from shapely.geometry import LineString, MultiLineString, Point
-from shapely.ops import split
+from shapely.geometry import LineString, Point
 from shapely.wkt import dumps
 
 from peilbeheerst_model.waterschappen import waterschap_data
+from ribasim_nl import geometry
 
 # ### Define functions
 # 1. splitting functions
 # 2. connect graphs functions
 # 3. explode nodes functions
-
-
-def split_line_at_point(line, point):
-    buff = point.buffer(1e-4)  # Small buffer around the point
-    split_result = split(line, buff)
-    if len(split_result.geoms) in [2, 3]:
-        # Assume first and last segments are the result, ignore tiny middle segment if exists
-        result = MultiLineString([split_result.geoms[0], split_result.geoms[-1]])
-    else:
-        # Return the original line as a MultiLineString for consistency if no split occurred
-        result = MultiLineString([line])
-    return result
 
 
 def split_lines_at_intersections(gdf_object):
@@ -52,7 +40,9 @@ def split_lines_at_intersections(gdf_object):
                 if isinstance(intersection, Point):
                     # Split the current line at the intersection point
                     try:
-                        split_result = split_line_at_point(row.geometry, intersection)
+                        split_result = geometry.split_line(
+                            row.geometry, intersection, tolerance=1e-4, as_multilinestring=True
+                        )
                         for geom in split_result.geoms:
                             new_row = row.copy()
                             new_row.geometry = geom
@@ -122,6 +112,9 @@ def explode_linestrings(gdf, interval):
 
 
 def connect_linestrings_within_distance(gdf, max_distance=4):
+    # FIXME: This function breaks when both ends of the LineString are modified. Instead, the function
+    #  `ribasim_nl.profiles.path_finder.fully_connected_network()` can be used. Here, both ends of the LineString can be
+    #  modified without problems (and this function is faster by implementing `sklearn.cluster.DBSCAN`).
     gdf = gdf.explode(ignore_index=False, index_parts=True)
     gdf["geometry"] = gdf.make_valid()
     gdf["geometry"] = gdf.geometry.apply(shapely.force_2d)

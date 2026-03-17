@@ -19,6 +19,7 @@ dependencies = [
     "ipykernel>=6.30.1",
     "jupyterlab>=4.4.9",
     "matplotlib>=3.10.6",
+    "momepy>=0.11.0",
     "mypy>=1.18.2",
     "netcdf4>=1.7.2",
     "networkx>=3.5",

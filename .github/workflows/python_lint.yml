@@ -28,5 +28,7 @@ jobs:
         run: uv sync --locked
       - name: Run pre-commit
         run: uv run pre-commit run --all-files
-      - name: Run mypy
+      - name: Run mypy on hydamo
         run: uv run mypy --ignore-missing-imports src/hydamo
+      - name: Run mypy on ribasim_nl/profiles
+        run: uv run mypy --ignore-missing-imports src/ribasim_nl/ribasim_nl/profiles
