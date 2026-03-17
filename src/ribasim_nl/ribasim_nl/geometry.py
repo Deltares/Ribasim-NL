@@ -151,6 +151,11 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Pol
     Point | Polygon | MultiPolygon
         Output geometry
     """
+    # TODO: There is a built-in method in `shapely` that does this: `shapely.force_2d(geometry)`.
+    #  Transition to this built-in approach?
+    #  Suggestion transition strategy:
+    #  Change this function to `return shapely.force_2d()` and raise a warning that this function will deprecated.
+
     # MultiPolygon
     if isinstance(geometry, MultiPolygon):
         geometry = MultiPolygon([drop_z(poly) for poly in geometry.geoms])
@@ -192,6 +197,11 @@ def link(point_from: Point, point_to: Point) -> LineString:
     -------
         LineString: LineString without z-coordinate
     """
+    # TODO: This could be one-liner without the need to (explicitly) re-initiate any points. There are two options:
+    #  (1) Use the `shapely.force_2d()`-function on both Point-instances:
+    #      `return LineString([shapely.force_2d(point_from), shapely.force_2d(point_to)])` (exactly the same behaviour);
+    #  (2) Use the `shapely.force_2d()`-function on the LineString-instances:
+    #      `return shapely.force_2d(LineString([point_from, point_to]))` (should be the same/similar behaviour).
     if point_from.has_z:
         point_from = Point(point_from.x, point_from.y)
     if point_to.has_z:
