@@ -5,8 +5,10 @@ import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
+import xarray as xr
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -25,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
+DYNAMIC_CONDITIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -481,6 +483,8 @@ if DYNAMIC_CONDITIONS:
 
     # Add dynamic groundwater
     offline_budgets = AssignOfflineBudgets()
+    if offline_budgets.lhm_budget_path.exists():
+        offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -594,7 +598,16 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
+# update node_ids
 ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
+
+# Add flushing data
+flush = Flushing(ribasim_model)
+_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
+for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+    from_to_node_function_table.at[row.nid, "function"] = "flushing"
+    from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
+
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
@@ -605,8 +618,22 @@ add_controllers_to_connector_nodes(
 
 # there are some duplicates in the discrete control? Remove them
 control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
-dup_control = control[control.to_node_id.duplicated(keep=False)]
-dup_control = dup_control.drop_duplicates(subset=["to_node_id"], keep="first")["from_node_id"].to_list()
+dup_control = []
+all_nodes = ribasim_model.node_table().df[["node_type"]]
+for to_node_id, group in control.groupby("to_node_id"):
+    if len(group) == 1:
+        continue
+    elif len(group) == 2:
+        group = group.merge(all_nodes, left_on="from_node_id", right_index=True, how="inner")
+        if set(group.node_type.tolist()) == {"DiscreteControl", "FlowDemand"}:
+            continue
+        else:
+            dup_control.append(group.from_node_id.iat[0])
+    else:
+        raise ValueError(
+            f"found {len(group)} incoming control links for {to_node_id=} from {set(group.from_node_id.tolist())}"
+        )
+
 for duplicate in dup_control:
     ribasim_model.remove_node(duplicate, True)
     print(f"Removed duplicate control node {duplicate}")
@@ -673,9 +700,6 @@ assign = AssignAuthorities(
 )
 ribasim_model = assign.assign_authorities()
 
-# Add flushing data
-# flush = Flushing(ribasim_model)
-# flush.add_flushing()
 
 # set numerical settings
 # write model output
