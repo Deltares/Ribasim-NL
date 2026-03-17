@@ -42,7 +42,7 @@ class OutletPumpScalingConfig:
     situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
     apply_temporary_debug_changes: bool = False
     debug_outlet_max_flow_rate: float = 0.10
-    RESCALE_FLOW_CAPACITIES: bool = True
+    rescale_flow_capacities: bool = True
 
     @property
     def results_path(self) -> pathlib.Path:
@@ -803,7 +803,7 @@ def scale_outlets_pumps(config: OutletPumpScalingConfig):
         The updated Ribasim model and the connector-node table used to set
         connector capacities.
     """
-    if config.RESCALE_FLOW_CAPACITIES:
+    if config.rescale_flow_capacities:
         return _OutletPumpScaler(config).run()
     else:
         from_to_node_function_table = load_from_to_node_function_table_from_goodcloud(config)
