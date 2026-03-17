@@ -1,5 +1,5 @@
 ---
-title: "Scale max_flow_rates outlets and pumps based on design events"
+title: "Scale max flow rates outlets and pumps based on design events"
 ---
 
 Workflow for iteratively scaling outlet and pump capacities in a Ribasim model until basin water levels stay within an allowed deviation from the target level.
@@ -22,9 +22,9 @@ This workflow is intended to be run after a water board model has already been b
 1. Build the Ribasim network for the water board.
 2. Prepare `from_to_node_function_table.csv`.
    This table links connector nodes to upstream and downstream basins and indicates whether a connector functions in drainage or demand.
-3. Open and configure `src/peilbeheerst_model/Parametrize/scale_outlets_pumps.py` from your ribasim model parametrize code.
+3. Open and configure `src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py` from your ribasim model parametrize code.
    Set the model path, results path, initial guesses, design events, exclusions, and iteration settings.
-4. Run `src/peilbeheerst_model/Parametrize/scale_outlets_pumps.py` from your ribasim model parametrize code.
+4. Run `src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py` from your ribasim model parametrize code.
    The script writes temporary scaled models, runs Ribasim repeatedly, reads results, and updates guessed outlet and pump capacities.
 
 ## Inputs
@@ -88,7 +88,7 @@ The direction is stored per iteration as one of:
 
 - `higher`
 - `lower`
-- 'equal'
+- `equal`
 
 ### 5. Update guessed flow rates
 
