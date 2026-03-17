@@ -531,27 +531,27 @@ ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=pump_co
     pump_copy, on="node_id", how="left"
 )
 
-# there are some duplicates in the discrete control? Remove them
-control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
-dup_control = []
-all_nodes = ribasim_model.node_table().df[["node_type"]]
-for to_node_id, group in control.groupby("to_node_id"):
-    if len(group) == 1:
-        continue
-    elif len(group) == 2:
-        group = group.merge(all_nodes, left_on="from_node_id", right_index=True, how="inner")
-        if set(group.node_type.tolist()) == {"DiscreteControl", "FlowDemand"}:
-            continue
-        else:
-            dup_control.append(group.from_node_id.iat[0])
-    else:
-        raise ValueError(
-            f"found {len(group)} incoming control links for {to_node_id=} from {set(group.from_node_id.tolist())}"
-        )
-
-for duplicate in dup_control:
-    ribasim_model.remove_node(duplicate, True)
-    print(f"Removed duplicate control node {duplicate}")
+# # there are some duplicates in the discrete control? Remove them
+# control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
+# dup_control = []
+# all_nodes = ribasim_model.node_table().df[["node_type"]]
+# for to_node_id, group in control.groupby("to_node_id"):
+#     if len(group) == 1:
+#         continue
+#     elif len(group) == 2:
+#         group = group.merge(all_nodes, left_on="from_node_id", right_index=True, how="inner")
+#         if set(group.node_type.tolist()) == {"DiscreteControl", "FlowDemand"}:
+#             continue
+#         else:
+#             dup_control.append(group.from_node_id.iat[0])
+#     else:
+#         raise ValueError(
+#             f"found {len(group)} incoming control links for {to_node_id=} from {set(group.from_node_id.tolist())}"
+#         )
+#
+# for duplicate in dup_control:
+#     ribasim_model.remove_node(duplicate, True)
+#     print(f"Removed duplicate control node {duplicate}")
 
 
 # assign metadata for pumps and basins
