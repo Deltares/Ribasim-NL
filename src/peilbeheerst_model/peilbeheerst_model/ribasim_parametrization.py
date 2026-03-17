@@ -862,7 +862,9 @@ def tqdm_subprocess(cmd, suffix=None, print_other=True, leave=True):
         desc = f"{desc} {suffix}"
 
     with tqdm.tqdm(total=100, desc=desc, leave=leave) as pbar:
-        process = subprocess.Popen(cmd, shell=False, bufsize=1, universal_newlines=True, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            cmd, shell=False, bufsize=1, universal_newlines=True, stderr=subprocess.PIPE, encoding="utf-8"
+        )
         for line in process.stderr:
             if line.startswith("Simulating"):
                 cur_perc = int(line.split("%")[0].lower().replace("simulating", ""))
