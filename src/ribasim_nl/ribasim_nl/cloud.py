@@ -138,15 +138,12 @@ class CloudStorage:
         return Path(file_path).relative_to(self.data_dir)
 
     def joinurl(self, *args: str) -> str:
-        if args:
-            return f"{self.url}/{'/'.join(args)}"
-        else:
-            return self.url
+        return "/".join((self.url, *args))
 
     def joinpath(self, *args: str) -> Path:
         return self.data_dir.joinpath(*args)
 
-    def upload_file(self, file_path: Path) -> None:
+    def upload_file(self, file_path: str | Path) -> None:
         # get url
         url = self.file_url(file_path)
 
