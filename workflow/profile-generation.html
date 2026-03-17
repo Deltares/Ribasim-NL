@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Main watersystem – Ribasim-NL</title>
+<title>Profile generation – Ribasim-NL</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -19,6 +19,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -69,6 +104,35 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -130,7 +194,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/main-watersystem.html">Main watersystem</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/profile-generation.html">Profile generation</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -148,7 +212,7 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link active">
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Main watersystem</span></a>
   </div>
 </li>
@@ -172,7 +236,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/profile-generation.html" class="sidebar-item-text sidebar-link">
+  <a href="../workflow/profile-generation.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Profile generation</span></a>
   </div>
 </li>
@@ -186,14 +250,8 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#bathymetrie.py" id="toc-bathymetrie.py" class="nav-link active" data-scroll-target="#bathymetrie.py">1_bathymetrie.py</a></li>
-  <li><a href="#basins.py" id="toc-basins.py" class="nav-link" data-scroll-target="#basins.py">2_basins.py</a></li>
-  <li><a href="#netwerk.py" id="toc-netwerk.py" class="nav-link" data-scroll-target="#netwerk.py">3_netwerk.py</a></li>
-  <li><a href="#kunstwerken.py" id="toc-kunstwerken.py" class="nav-link" data-scroll-target="#kunstwerken.py">4_kunstwerken.py</a></li>
-  <li><a href="#model_netwerk.py" id="toc-model_netwerk.py" class="nav-link" data-scroll-target="#model_netwerk.py">5_model_netwerk.py</a></li>
-  <li><a href="#model_sturing.py" id="toc-model_sturing.py" class="nav-link" data-scroll-target="#model_sturing.py">6_model_sturing.py</a></li>
-  <li><a href="#model_onttrekkingen.py" id="toc-model_onttrekkingen.py" class="nav-link" data-scroll-target="#model_onttrekkingen.py">7_model_onttrekkingen.py</a></li>
-  <li><a href="#update-bc-state-etc." id="toc-update-bc-state-etc." class="nav-link" data-scroll-target="#update-bc-state-etc.">8 update bc, state, etc.</a></li>
+  <li><a href="#profile-generation-workflow" id="toc-profile-generation-workflow" class="nav-link active" data-scroll-target="#profile-generation-workflow">Profile generation workflow</a></li>
+  <li><a href="#profile-generation-code" id="toc-profile-generation-code" class="nav-link" data-scroll-target="#profile-generation-code">Profile generation code</a></li>
   </ul>
 </nav>
     </div>
@@ -202,7 +260,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Main watersystem</h1>
+<h1 class="title">Profile generation</h1>
 </div>
 
 
@@ -219,59 +277,57 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>All files are in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/rijkswaterstaat"><code>notebooks/rijkswaterstaat</code></a> are numbered in order of execution.</p>
-<section id="bathymetrie.py" class="level1">
-<h1>1_bathymetrie.py</h1>
-<p>In this script we merge data from Baseline (version j23_6-v1, non-public) with grids from <a href="https://maps.rijkswaterstaat.nl/geoweb55/index.html?viewer=Bathymetrie_Nederland">bathymetrie-Nederland</a> to one 5x5m GeoTiff.</p>
-<p>We combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column <code>baseline</code>.</p>
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_mask.png" class="img-fluid figure-img"></p>
-<figcaption>Bathymetry mask</figcaption>
-</figure>
-</div>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/bathymetrie_result.png" class="img-fluid figure-img"></p>
-<figcaption>Bathymetry</figcaption>
-</figure>
-</div>
-</div>
-</div>
-</div>
+<p>The generation of representative profiles is mainly relevant for water quality simulations. The profiles – represented by <span class="math inline">\(A(h)\)</span>-relations – largely determine the retention time of water in a basin, where the distinction between <em>doorgaand</em> and <em>bergend</em> is crucial: <em>doorgaand</em> represents flowing water bodies, while <em>bergend</em> represents stagnant water bodies.</p>
+<p>These profiles also form the basis for the coupling with the groundwater modelling.</p>
+<section id="profile-generation-workflow" class="level1">
+<h1>Profile generation workflow</h1>
+<p>Profiles are generated per water authority, as (1) data sources are available per water authority, and (2) data sources are formatted differently per water authority.</p>
+<p>Prior to generating the profiles, the data is preprocessed:</p>
+<ol start="0" type="1">
+<li>Preprocessing of data sources, which includes generating <code>LINESTRING Z</code>-objects of measured cross-sections, removing duplicate hydro-objects, repairing hydro-objects along HyDAMO-standards, downloading BGT-data from their web-API.</li>
+</ol>
+<p>Subsequently, the following steps are executed on a per-basin basis:</p>
+<ol type="1">
+<li>Select relevant hydro-objects and crossings (i.e., within a basin);</li>
+<li>Generate graph (or network) from hydro-objects (using <code>networkx</code>);</li>
+<li>Determine the shortest path(s) between crossings, which separates the hydro-objects as <em>doorgaand</em> versus <em>bergend</em>;</li>
+<li>Couple BGT-polygons to hydro-objects (non-intersecting BGT-polygons will be classified as <em>bergend</em> at a later stage);</li>
+<li>Estimate representative width per hydro-object based on coupled BGT-polygon’s surface area and circumference;</li>
+<li>Estimate representative depth per hydro-object based on width and hydrotope (using a look-up table);</li>
+<li>Update representative depth of hydro-objects labelled as <em>doorgaand</em> using measured cross-sections, if available;</li>
+<li>Define a trapezoidal cross-sectional profile using the representative width and depth (and a slope of <span class="math inline">\(1:3\)</span>, default);</li>
+<li>Define the <span class="math inline">\(A(h)\)</span>-relation for <em>doorgaand</em> and <em>bergend</em> separately using the length of the hydro-objects;</li>
+<li>Correct the <span class="math inline">\(A(h)\)</span>-relation of <em>bergend</em> by including non-intersecting BGT-polygons’ surface areas (as preluded to in 5.);</li>
+<li>Write two basin profile tables with <span class="math inline">\(A(h)\)</span>-relations: one for <em>doorgaand</em>, and one for <em>bergend</em>.</li>
+</ol>
 </section>
-<section id="basins.py" class="level1">
-<h1>2_basins.py</h1>
-<p>We derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of <code>1_bathymetry.py</code> we write a CSV-file with a Basin profile.</p>
-</section>
-<section id="netwerk.py" class="level1">
-<h1>3_netwerk.py</h1>
-<p>We derive a <code>ribasim_nl.Network</code> (not a Ribasim network yet!) we can use to build a model_network with <code>5_model_netwerk.py</code>. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from <code>2_basins.py</code> as a network node will be put at the intersect of a Basin-polygon and the network.</p>
-</section>
-<section id="kunstwerken.py" class="level1">
-<h1>4_kunstwerken.py</h1>
-<p>We combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (<code>model_netwerk.py</code>).</p>
-</section>
-<section id="model_netwerk.py" class="level1">
-<h1>5_model_netwerk.py</h1>
-<p>We combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a <code>.\modellen\hws_netwerk\hws.toml</code> file. This excludes control (e.g.&nbsp;bifurcations of Monsin and Pannerden) and demand/supply.</p>
-</section>
-<section id="model_sturing.py" class="level1">
-<h1>6_model_sturing.py</h1>
-<p>We take the model of 5 (<code>.\modellen\hws_netwerk\hws.toml</code>), add control and write it to (<code>.\modellen\hws_sturing\hws.toml</code>)</p>
-</section>
-<section id="model_onttrekkingen.py" class="level1">
-<h1>7_model_onttrekkingen.py</h1>
-<p>We take the model of 6 (<code>.\modellen\hws_sturing\hws.toml</code>), add drinking water, industry and energy demands. Then we add junctions and write it to (<code>.\modellen\hws_demand\hws.toml</code>)</p>
-</section>
-<section id="update-bc-state-etc." class="level1">
-<h1>8 update bc, state, etc.</h1>
-<p>Scripts to provide boundary/initial conditions to the model in <code>.\modellen\hws_demand\hws.toml</code> and write it in another location.</p>
+<section id="profile-generation-code" class="level1">
+<h1>Profile generation code</h1>
+<p>The profile generation is coded as standalone and intended to be executed prior to model generation, ideally once. Therefore, all relevant code is grouped inside a <code>profiles</code>-module:</p>
+<ul>
+<li>source-code: <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles"><code>src/ribasim_nl/ribasim_nl/profiles</code></a>, and</li>
+<li>implementation-code: <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles"><code>src/peilbeheerst_model/profiles</code></a>.</li>
+</ul>
+<p>This results in the following structures:</p>
+<ul>
+<li>For the source-code:</li>
+</ul>
+<pre><code>src/ribasim_nl/ribasim_nl/profiles/
+ -  __init__.py
+ -  &lt;source-code&gt;.py</code></pre>
+<ul>
+<li>For the implementation-code:</li>
+</ul>
+<pre><code>src/peilbeheerst_model/profiles/
+ -  __init__.py
+ -  prep_cross_sections.py
+ -  &lt;water-authority&gt;.py</code></pre>
+<p>As part of the implementation code, there is the preprocessing of cross-sections (<a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles/prep_cross_sections.py"><code>prep_cross_sections.py</code></a>), which should be executed prior to running any of the <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles"><code>&lt;water-authority&gt;.py</code></a> scripts. This way, the measured cross-sections are preprocessed so they are presented as <code>LINESTRING Z</code>-objects. Preprocessing of the measured cross-sections must be done per water authority:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run src/peilbeheerst_model/profiles/prep_cross_sections.py <span class="op">&lt;</span>water-authority<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This call has to be done only once per water authority (or when changes are made to the data sources and/or source code).</p>
+<p>Subsequently, the profile tables (<em>doorgaand</em> and <em>bergend</em>) are generated/updated per water authority as well:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run src/peilbeheerst_model/profiles/<span class="op">&lt;</span>water-authority<span class="op">&gt;</span>.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Again, this call has to be done only once per water authority (or when changes are mode to the data sources and/or source code).</p>
 
 
 </section>
