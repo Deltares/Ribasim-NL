@@ -199,22 +199,15 @@
     ]
   },
   {
-    "objectID": "workflow/main-watersystem.html",
-    "href": "workflow/main-watersystem.html",
-    "title": "Main watersystem",
+    "objectID": "workflow/gravity-controlled.html",
+    "href": "workflow/gravity-controlled.html",
+    "title": "Gravity controlled",
     "section": "",
-    "text": "All files are in notebooks/rijkswaterstaat are numbered in order of execution.\n\n1_bathymetrie.py\nIn this script we merge data from Baseline (version j23_6-v1, non-public) with grids from bathymetrie-Nederland to one 5x5m GeoTiff.\nWe combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column baseline.\n\n\n\n\n\n\nBathymetry mask\n\n\n\n\n\n\n\nBathymetry\n\n\n\n\n\n\n\n2_basins.py\nWe derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of 1_bathymetry.py we write a CSV-file with a Basin profile.\n\n\n3_netwerk.py\nWe derive a ribasim_nl.Network (not a Ribasim network yet!) we can use to build a model_network with 5_model_netwerk.py. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from 2_basins.py as a network node will be put at the intersect of a Basin-polygon and the network.\n\n\n4_kunstwerken.py\nWe combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (model_netwerk.py).\n\n\n5_model_netwerk.py\nWe combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a .\\modellen\\hws_netwerk\\hws.toml file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.\n\n\n6_model_sturing.py\nWe take the model of 5 (.\\modellen\\hws_netwerk\\hws.toml), add control and write it to (.\\modellen\\hws_sturing\\hws.toml)\n\n\n7_model_onttrekkingen.py\nWe take the model of 6 (.\\modellen\\hws_sturing\\hws.toml), add drinking water, industry and energy demands. Then we add junctions and write it to (.\\modellen\\hws_demand\\hws.toml)\n\n\n8 update bc, state, etc.\nScripts to provide boundary/initial conditions to the model in .\\modellen\\hws_demand\\hws.toml and write it in another location.",
+    "text": "Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in src/ribasim_nl.\nUnder notebooks you’ll find 4 scripts per water authority, e.g. notebooks\\aa_en_maas, you can run in sequence. These are also run in sequence in main.py.\n\n01_fix_model.py will “fix” the GIS-models supplied by Sweco in the directories {authority}_2024_6_3 to valid Ribasim-models in the directory {authority}_fix_model\n02_prepare_model.pywill read {authority}_fix_model and add levels and flow_rate to the model and a static_data.xlsx that can be reviewed. The model will be written as {authority}_prepare_model\n03_parameterized_model.py will read {authority}_prepare_model and static_data.xlsx to a model {authority}_parameterized_model\n04_add_full_control.py adds control.\n\nIn this step control-nodes will get one of these 4 functions: - drain: outlet draining an area - supply: inlet supplying an area - flow_control: flow through an area in supply (drought) and drain conditions - flushing: an outlet with a specific flow to be maintained at any conditions (supply or drain)\nExplanation of a node’s function in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:\n\n\n\n\n\n\n\n\n\n\nfunction\nstate determined by\nflow_rate @ supply-state\nflow_rate @ drain-state\nNodes added\n\n\n\n\nsupply\ndownstream level\ncapacity [m3/s]\n0 [m3/s]\nDiscreteControl\n\n\ndrain\nupstream level\n0 [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflow control\nupstream & downstream level\ncapacity [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflushing\nupstream level & node flow_rate\ndemand [m3/s]\ncapacity [m3/s]\nDiscreteControl + FlowDemand\n\n\n\nSteps 5, 6 and 7 are shared between water authorities, and live directly beneath the notebooks directory.\n\n05_add_bergend.py adds VdGaast-based storage basins (input = models are from script 4)\n06_add_synthetic_forcing.py adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5\n07_add_dynamic_forcing.py adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5\n\nFinally uploaden_modellen.py uploads all models produced by script 7.",
     "crumbs": [
       "Workflows",
-      "Main watersystem"
+      "Gravity controlled"
     ]
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Ribasim-NL",
-    "section": "",
-    "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
   },
   {
     "objectID": "workflow/level-controlled.html",
@@ -228,14 +221,98 @@
     ]
   },
   {
-    "objectID": "workflow/gravity-controlled.html",
-    "href": "workflow/gravity-controlled.html",
-    "title": "Gravity controlled",
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Ribasim-NL",
     "section": "",
-    "text": "Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in src/ribasim_nl.\nUnder notebooks you’ll find 4 scripts per water authority, e.g. notebooks\\aa_en_maas, you can run in sequence. These are also run in sequence in main.py.\n\n01_fix_model.py will “fix” the GIS-models supplied by Sweco in the directories {authority}_2024_6_3 to valid Ribasim-models in the directory {authority}_fix_model\n02_prepare_model.pywill read {authority}_fix_model and add levels and flow_rate to the model and a static_data.xlsx that can be reviewed. The model will be written as {authority}_prepare_model\n03_parameterized_model.py will read {authority}_prepare_model and static_data.xlsx to a model {authority}_parameterized_model\n04_add_full_control.py adds control.\n\nIn this step control-nodes will get one of these 4 functions: - drain: outlet draining an area - supply: inlet supplying an area - flow_control: flow through an area in supply (drought) and drain conditions - flushing: an outlet with a specific flow to be maintained at any conditions (supply or drain)\nExplanation of a node’s function in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:\n\n\n\n\n\n\n\n\n\n\nfunction\nstate determined by\nflow_rate @ supply-state\nflow_rate @ drain-state\nNodes added\n\n\n\n\nsupply\ndownstream level\ncapacity [m3/s]\n0 [m3/s]\nDiscreteControl\n\n\ndrain\nupstream level\n0 [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflow control\nupstream & downstream level\ncapacity [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflushing\nupstream level & node flow_rate\ndemand [m3/s]\ncapacity [m3/s]\nDiscreteControl + FlowDemand\n\n\n\nSteps 5, 6 and 7 are shared between water authorities, and live directly beneath the notebooks directory.\n\n05_add_bergend.py adds VdGaast-based storage basins (input = models are from script 4)\n06_add_synthetic_forcing.py adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5\n07_add_dynamic_forcing.py adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5\n\nFinally uploaden_modellen.py uploads all models produced by script 7.",
+    "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
+  },
+  {
+    "objectID": "workflow/main-watersystem.html",
+    "href": "workflow/main-watersystem.html",
+    "title": "Main watersystem",
+    "section": "",
+    "text": "All files are in notebooks/rijkswaterstaat are numbered in order of execution.\n\n1_bathymetrie.py\nIn this script we merge data from Baseline (version j23_6-v1, non-public) with grids from bathymetrie-Nederland to one 5x5m GeoTiff.\nWe combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column baseline.\n\n\n\n\n\n\nBathymetry mask\n\n\n\n\n\n\n\nBathymetry\n\n\n\n\n\n\n\n2_basins.py\nWe derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of 1_bathymetry.py we write a CSV-file with a Basin profile.\n\n\n3_netwerk.py\nWe derive a ribasim_nl.Network (not a Ribasim network yet!) we can use to build a model_network with 5_model_netwerk.py. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from 2_basins.py as a network node will be put at the intersect of a Basin-polygon and the network.\n\n\n4_kunstwerken.py\nWe combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (model_netwerk.py).\n\n\n5_model_netwerk.py\nWe combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a .\\modellen\\hws_netwerk\\hws.toml file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.\n\n\n6_model_sturing.py\nWe take the model of 5 (.\\modellen\\hws_netwerk\\hws.toml), add control and write it to (.\\modellen\\hws_sturing\\hws.toml)\n\n\n7_model_onttrekkingen.py\nWe take the model of 6 (.\\modellen\\hws_sturing\\hws.toml), add drinking water, industry and energy demands. Then we add junctions and write it to (.\\modellen\\hws_demand\\hws.toml)\n\n\n8 update bc, state, etc.\nScripts to provide boundary/initial conditions to the model in .\\modellen\\hws_demand\\hws.toml and write it in another location.",
     "crumbs": [
       "Workflows",
-      "Gravity controlled"
+      "Main watersystem"
+    ]
+  },
+  {
+    "objectID": "workflow/scale-outlets-pumps.html",
+    "href": "workflow/scale-outlets-pumps.html",
+    "title": "Scale max flow rates outlets and pumps based on design events",
+    "section": "",
+    "text": "Workflow for iteratively scaling outlet and pump capacities in a Ribasim model until basin water levels stay within an allowed deviation from the target level. The implementation lives in src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py.",
+    "crumbs": [
+      "Workflows",
+      "Scale max flow rates outlets and pumps based on design events"
+    ]
+  },
+  {
+    "objectID": "workflow/scale-outlets-pumps.html#purpose",
+    "href": "workflow/scale-outlets-pumps.html#purpose",
+    "title": "Scale max flow rates outlets and pumps based on design events",
+    "section": "Purpose",
+    "text": "Purpose\nThis workflow is used after a Ribasim model has already been built and parameterized. It adjusts max_flow_rate for outlet and pump nodes whose discharge or supply capacity is unknown or still provisional. The script does this by repeatedly:\n\nrunning the model for a design situation,\nchecking which basins deviate too much from meta_streefpeil, and\nincreasing or decreasing connector capacities accordingly.",
+    "crumbs": [
+      "Workflows",
+      "Scale max flow rates outlets and pumps based on design events"
+    ]
+  },
+  {
+    "objectID": "workflow/scale-outlets-pumps.html#how-to-run",
+    "href": "workflow/scale-outlets-pumps.html#how-to-run",
+    "title": "Scale max flow rates outlets and pumps based on design events",
+    "section": "How to run",
+    "text": "How to run\nThis workflow is intended to be run after a water board model has already been built and parameterized:\n\nBuild the Ribasim network for the water board.\nPrepare from_to_node_function_table.csv. This table links connector nodes to upstream and downstream basins and indicates whether a connector functions in drainage or demand.\nOpen and configure src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py from your ribasim model parametrize code. Set the model path, results path, initial guesses, design events, exclusions, and iteration settings.\nRun src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py from your ribasim model parametrize code. The script writes temporary scaled models, runs Ribasim repeatedly, reads results, and updates guessed outlet and pump capacities.",
+    "crumbs": [
+      "Workflows",
+      "Scale max flow rates outlets and pumps based on design events"
+    ]
+  },
+  {
+    "objectID": "workflow/scale-outlets-pumps.html#inputs",
+    "href": "workflow/scale-outlets-pumps.html#inputs",
+    "title": "Scale max flow rates outlets and pumps based on design events",
+    "section": "Inputs",
+    "text": "Inputs\nThe script expects at least the following inputs to be available:\n\na Ribasim model\nbasin target levels in model.basin.area.df[\"meta_streefpeil\"],\nconnector metadata in pump and outlet tables, including meta_known_flow_rate,\na from_to_node_function_table.csv with at least:\n\nnode_id\nfrom_node_id\nto_node_id\na function classification used to distinguish drainage and demand,\n\na writable model path for the scaled model,\na results path from which basin results can be read after each Ribasim run.",
+    "crumbs": [
+      "Workflows",
+      "Scale max flow rates outlets and pumps based on design events"
+    ]
+  },
+  {
+    "objectID": "workflow/scale-outlets-pumps.html#main-steps",
+    "href": "workflow/scale-outlets-pumps.html#main-steps",
+    "title": "Scale max flow rates outlets and pumps based on design events",
+    "section": "Main steps",
+    "text": "Main steps\n\n1. Prepare the model\nThe script first loads the model and stores the original state and forcing tables. It then derives initial basin water levels from meta_streefpeil using set_initial_water_levels(...). For bergende basins without a direct target level, the script infers the level from the downstream doorgaande basin.\n\n\n2. Determine which connector nodes may be scaled\nPump and outlet nodes are collected and merged into the from_to_node_function_table. A node is marked as not scalable when:\n\nit is present in node_id_exclusion_list, or\nmeta_known_flow_rate is True (which should be set in the outlet/pump .static table).\n\nThe current max_flow_rate values are then added to the table so each iteration has a baseline.\n\n\n3. Define the design situations\nThe script runs two scenarios:\n\nwater_drainage\nwater_demand\n\nFor each situation it adjusts:\n\nlevel boundary water levels so water can flow under gravity,\nbasin drainage and infiltration forcing via set_vertical_static_forcing(...),\ninitial outlet and pump capacities for unknown capacities.\n\n\n\n4. Run iterative scaling\nFor each iteration and each situation, the script:\n\nwrites the temporary Ribasim model,\nruns Ribasim with run_ribasim(...),\nreads basin water levels from the results file,\ncomputes deviation from meta_streefpeil,\ndetermines whether each basin exceeded the allowed deviation for too many timesteps,\ntranslates that basin-level result into a connector scaling direction.\n\nThe direction is stored per iteration as one of:\n\nhigher\nlower\nequal\n\n\n\n5. Update guessed flow rates\nNew guesses are generated with update_from_to_node_function_table_with_new_flow_rate(...). The script uses earlier iterations to decide the next guess:\n\nfirst guess: double or halve the current value,\nlater guesses: move between previously tried values using a geometric mean,\nunchanged nodes: keep the latest value.\n\nAdditional safeguards are then applied:\n\noverwrite_demand_values_with_drainage_values(...) prevents demand capacities from dropping below the highest drainage guess,\noverwrite_guessed_flow_rates_if_not_allowed_to_scale(...) restores original values for protected nodes,\ncap_guessed_flow_rates_at_maximum(...) enforces max_scaled_flow_rate.\n\n\n\n6. Write guessed capacities back into the model\nThe latest guessed values are copied into:\n\nmodel.pump.static.df[\"max_flow_rate\"]\nmodel.outlet.static.df[\"max_flow_rate\"]\n\nusing update_max_flow_rates_in_model(...).\n\n\n7. Inspect warnings and diagnostics\nThe workflow includes checks and warnings for:\n\nmissing meta_known_flow_rate columns,\nmissing target levels,\nconnector flow rates above a configured threshold,\niteration history in the from_to_node_function_table.",
+    "crumbs": [
+      "Workflows",
+      "Scale max flow rates outlets and pumps based on design events"
+    ]
+  },
+  {
+    "objectID": "workflow/scale-outlets-pumps.html#important-assumptions",
+    "href": "workflow/scale-outlets-pumps.html#important-assumptions",
+    "title": "Scale max flow rates outlets and pumps based on design events",
+    "section": "Important assumptions",
+    "text": "Important assumptions\nThis workflow assumes:\n\nmeta_streefpeil is present and reliable,\nthe connector-node table correctly links basins to outlet and pump nodes,\ndesign precipitation and evaporation events are representative for the scaling task,",
+    "crumbs": [
+      "Workflows",
+      "Scale max flow rates outlets and pumps based on design events"
+    ]
+  },
+  {
+    "objectID": "workflow/scale-outlets-pumps.html#output",
+    "href": "workflow/scale-outlets-pumps.html#output",
+    "title": "Scale max flow rates outlets and pumps based on design events",
+    "section": "Output",
+    "text": "Output\nThe main outputs are:\n\nan updated Ribasim model with revised outlet and pump max_flow_rate values,\nan enriched from_to_node_function_table with iteration history,\noptional diagnostic plots showing how guessed capacities changed over time.",
+    "crumbs": [
+      "Workflows",
+      "Scale max flow rates outlets and pumps based on design events"
     ]
   },
   {
