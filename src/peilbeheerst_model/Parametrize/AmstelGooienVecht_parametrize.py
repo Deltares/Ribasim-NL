@@ -527,7 +527,7 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         apply_temporary_debug_changes=True,
         waterschap=waterschap,
         cloud=cloud,
-        RESCALE_FLOW_CAPACITIES=True,
+        rescale_flow_capacities=True,
         max_iterations=20,
     )
 )
