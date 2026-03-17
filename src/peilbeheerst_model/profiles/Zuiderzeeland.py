@@ -67,7 +67,7 @@ def main(
     if export_profile_tables:
         wd_table = cloud.joinpath(water_authority, "verwerkt", "profielen")
         wd_table.parent.mkdir(exist_ok=True)
-        for table, name in zip(profiles_tables, ("doorgaande", "bergend")):
+        for table, name in zip(profiles_tables, ("doorgaand", "bergend")):
             fn_table = wd_table / f"profielen_{name}.csv"
             table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
             table.to_csv(fn_table, index=False)
