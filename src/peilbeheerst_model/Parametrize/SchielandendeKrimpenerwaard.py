@@ -18,6 +18,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    set_outlet_functions,
 )
 from shapely import Point
 
@@ -26,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -53,6 +54,7 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/HyDamo_metWasverzachter_20230905.gpkg")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 
+# TODO: Uncomment this temporary commenting for faster code execution
 # cloud.synchronize(
 #     filepaths=[
 #         ribasim_base_model_dir,
@@ -350,6 +352,7 @@ ribasim_param.insert_standard_profile(
     boezem_percentage=boezem_percentage,
     depth_profile=2,
 )
+# TODO: Replace standard profile by determine profiles
 
 add_storage_basins = AddStorageBasins(
     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
@@ -441,12 +444,9 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
-# change function to inlaat
-to_inlaat = [182, 183, 201, 356, 468, 489, 504, 516, 524, 527, 531, 534, 612, 691, 709, 711]
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_inlaat), "function"] = "supply"
-
-# change function to flow_control
-to_flow_control = [
+# change outlet functions
+to_supply = (182, 183, 201, 356, 468, 489, 504, 516, 524, 527, 531, 534, 612, 691, 709, 711)
+to_flow_control = (
     182,
     183,
     220,  # basin die boezem voedt
@@ -455,14 +455,8 @@ to_flow_control = [
     358,
     373,  # basin die boezem voedt
     561,
-]
-
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_flow_control), "function"] = "flow_control"
-
-# change function to drain
-to_drain = []
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_drain), "function"] = "drain"
-
+)
+set_outlet_functions(from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control)
 
 outlet_copy = ribasim_model.outlet.static.df[
     [
@@ -493,6 +487,7 @@ pump_copy = ribasim_model.pump.static.df[
 # ribasim_model = ribasim_model._update_used_ids()
 ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
 
+# TODO: Add flushing
 # Add flushing data
 # flush = Flushing(ribasim_model)
 # _, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
@@ -583,6 +578,12 @@ ribasim_model.pump.static.df.loc[
     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
 ] *= 60
 
+# last formatting of the tables
+# only retain node_id's which are present in the .node table
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# TODO: Add scaling
+
 # set the max_flow_rate to the flow_rate
 ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
 
@@ -594,9 +595,6 @@ ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 ribasim_model.manning_resistance.static.df.length = 10
 ribasim_model.manning_resistance.static.df.manning_n = 0.01
 
-# last formatting of the tables
-# only retain node_id's which are present in the .node table
-ribasim_param.clean_tables(ribasim_model, waterschap)
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
