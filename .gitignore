@@ -78,6 +78,7 @@ bin/
 *.txt
 *.gdb/
 *.pdf
+*.nc
 results/
 
 # Main scripts to run workflows per water authority
