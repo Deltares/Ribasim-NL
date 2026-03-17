@@ -83,9 +83,7 @@ def split_lines_at_intersections(gdf_object):
                     # Split the current line at the intersection point
                     try:
                         # split_result = split_line_at_point(row.geometry, intersection)
-                        split_result = geometry.split_line(
-                            row.geometry, intersection, tolerance=1e-4, as_multilinestring=True
-                        )
+                        split_result = geometry.split_line(row.geometry, intersection, tolerance=1e-4)
                         for geom in split_result.geoms:
                             new_row = row.copy()
                             new_row.geometry = geom
