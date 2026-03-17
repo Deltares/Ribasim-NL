@@ -17,6 +17,7 @@ import pandas as pd
 import ribasim
 import shapely
 import tqdm.auto as tqdm
+import xarray as xr
 from ribasim.nodes import continuous_control
 from shapely.geometry import LineString
 
@@ -856,7 +857,7 @@ def iterate_TRC(
     ribasim_param.tqdm_subprocess(cmd, print_other=False, suffix="init")
 
     # Read results of initial calculation
-    df_basin = pd.read_feather(output_dir.joinpath("basin.arrow"))
+    df_basin = xr.open_dataset(output_dir.joinpath("basin.nc")).to_dataframe().reset_index()
     df_basin = df_basin.set_index("time")
 
     stored_trc = {}
@@ -894,7 +895,7 @@ def iterate_TRC(
                 streefpeil = float(ribasim_model.basin.area.df.meta_streefpeil.at[fid])
 
                 # Find water levels for this basin.
-                df_basin = pd.read_feather(output_dir.joinpath("basin.arrow"))
+                df_basin = xr.open_dataset(output_dir.joinpath("basin.nc")).to_dataframe().reset_index()
                 df_basin = df_basin.set_index("time")
                 basin_result = df_basin[df_basin.node_id == basin_node]
                 last_wl = basin_result.sort_index().level.iat[-1]

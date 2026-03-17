@@ -8,6 +8,7 @@ from pathlib import Path
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
+import xarray as xr
 
 from ribasim_nl import CloudStorage, Model
 
@@ -30,11 +31,11 @@ try:
 except Exception:
     lhm_basin_area_path = Path(lhm_path) / "input" / "database.gpkg"
     lhm_basin_time_path = Path(lhm_path) / "input" / "basin_time.arrow"
-    lhm_links_path = Path(lhm_path) / "results" / "flow.arrow"
+    lhm_links_path = Path(lhm_path) / "results" / "flow.nc"
 
     lhm_basin_area_df = gpd.read_file(lhm_basin_area_path, layer="basin / area")
     lhm_basin_time_df = pd.read_feather(lhm_basin_time_path)
-    lhm_links_df = pd.read_feather(lhm_links_path)
+    lhm_links_df = xr.open_dataset(lhm_links_path).to_dataframe().reset_index()
 
 # add the surface area to the time series dataframe
 lhm_basin_area_df["meta_area"] = lhm_basin_area_df["geometry"].area.astype(float)

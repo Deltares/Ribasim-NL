@@ -5,6 +5,7 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 import pandas as pd
 import requests
+import xarray as xr
 
 from ribasim_nl import CloudStorage, Model
 
@@ -46,9 +47,9 @@ start_time, end_time = model.starttime + timedelta(days=40), model.endtime
 
 plots_dir.mkdir(exist_ok=True)
 
-flow_df = pd.read_feather(ribasim_toml.parent / "results" / "flow.arrow").set_index("time")
+flow_df = xr.open_dataset(ribasim_toml.parent / "results" / "flow.nc").to_dataframe().reset_index().set_index("time")
 flow_df = flow_df[flow_df.index > start_time]
-basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_index("time")
+basin_df = xr.open_dataset(ribasim_toml.parent / "results" / "basin.nc").to_dataframe().reset_index().set_index("time")
 basin_df = basin_df[basin_df.index > start_time]
 
 # Read Excel file and sheet names
@@ -147,9 +148,9 @@ ribasim_model_dir
 
 plots_dir.mkdir(exist_ok=True)
 
-flow_df = pd.read_feather(ribasim_toml.parent / "results" / "flow.arrow").set_index("time")
+flow_df = xr.open_dataset(ribasim_toml.parent / "results" / "flow.nc").to_dataframe().reset_index().set_index("time")
 flow_df = flow_df[flow_df.index > start_time]
-basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_index("time")
+basin_df = xr.open_dataset(ribasim_toml.parent / "results" / "basin.nc").to_dataframe().reset_index().set_index("time")
 basin_df = basin_df[basin_df.index > start_time]
 
 meting_df = pd.read_excel(

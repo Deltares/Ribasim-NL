@@ -3,6 +3,7 @@ import subprocess
 import warnings
 
 import pandas as pd
+import xarray as xr
 import yaml
 from ribasim import Node
 from ribasim.nodes import basin, discrete_control, level_boundary, outlet, pump
@@ -288,14 +289,18 @@ class case1:
         """Load and plot some results."""
         if self.characteristics["show_results"]:
             # load in the data
-            df_basin = pd.read_feather(
-                os.path.join(
-                    self.characteristics["results_dir"],
-                    self.characteristics["case"],
-                    self.characteristics["example"],
-                    "results",
-                    "basin.arrow",
+            df_basin = (
+                xr.open_dataset(
+                    os.path.join(
+                        self.characteristics["results_dir"],
+                        self.characteristics["case"],
+                        self.characteristics["example"],
+                        "results",
+                        "basin.nc",
+                    )
                 )
+                .to_dataframe()
+                .reset_index()
             )
 
             # plot the levels
@@ -573,14 +578,18 @@ class case2:
         """Load and plot some results."""
         if self.characteristics["show_results"]:
             # load in the data
-            df_basin = pd.read_feather(
-                os.path.join(
-                    self.characteristics["results_dir"],
-                    self.characteristics["case"],
-                    self.characteristics["example"],
-                    "results",
-                    "basin.arrow",
+            df_basin = (
+                xr.open_dataset(
+                    os.path.join(
+                        self.characteristics["results_dir"],
+                        self.characteristics["case"],
+                        self.characteristics["example"],
+                        "results",
+                        "basin.nc",
+                    )
                 )
+                .to_dataframe()
+                .reset_index()
             )
 
             # plot the levels
