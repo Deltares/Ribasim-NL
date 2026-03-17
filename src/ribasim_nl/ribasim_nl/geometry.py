@@ -218,6 +218,15 @@ def project_point(line: LineString, point: Point, tolerance: float = 1) -> Point
 
 @typing.overload
 def split_line(
+    line: LineString, point: Point, *deprecated: typing.Any, tolerance: float = 0.1, as_multilinestring: None
+) -> MultiLineString | LineString: ...
+
+
+# TODO: Next transition step: Default `as_multilinestring=None` with `=True`-behaviour and a UserWarning
+
+
+@typing.overload
+def split_line(
     line: LineString,
     point: Point,
     *deprecated: typing.Any,
@@ -237,7 +246,11 @@ def split_line(
 
 
 def split_line(
-    line: LineString, point: Point, *deprecated: typing.Any, tolerance: float = 0.1, as_multilinestring: bool = True
+    line: LineString,
+    point: Point,
+    *deprecated: typing.Any,
+    tolerance: float = 0.1,
+    as_multilinestring: bool | None = True,
 ) -> MultiLineString | LineString | tuple[LineString, ...]:
     """Split a line into two lines based on a point.
 
@@ -255,23 +268,32 @@ def split_line(
 
     Returns
     -------
-        MultiLineString | LineString | tuple[LineString, ...]: in case `as_multilinestring=True`, returns a
-            MultiLineString with two lines if being split otherwise a single LineString. This will be deprecated,
-            resulting in returning a tuple of LineString-objects.
+        MultiLineString | LineString: in case `as_multilinestring=True`, returns a MultiLineString with two lines if
+            being split otherwise a single LineString (will be deprecated)
+        tuple[LineString, ...]: in case `as_multilinestring=False`, returns a tuple of one or two LineString-objects,
+            and is the intended approach for the future
     """
     # deprecation warnings
     if deprecated:
         warnings.warn(
             "Passing 'tolerance' positionally is deprecated. Use keyword argument 'tolerance='.",
-            DeprecationWarning,
+            FutureWarning,
             stacklevel=2,
         )
         tolerance = deprecated[0]
-    if as_multilinestring:
+    if as_multilinestring is None:
+        warnings.warn(
+            "Calling 'split_line' without specifying 'as_multilinestring' is deprecated. "
+            "In a future version, this will return 'tuple[LineString, ...]'. "
+            "Set 'as_multilinestring' explicitly (and set to False for future-proofing the code).",
+            UserWarning,
+            stacklevel=2,
+        )
+    elif as_multilinestring:
         warnings.warn(
             "The 'split_line'-function will return tuple with LineString-objects in the future. "
             "Change to the future behaviour by setting 'as_multilinestring=False'.",
-            DeprecationWarning,
+            FutureWarning,
             stacklevel=2,
         )
 
