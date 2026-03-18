@@ -245,7 +245,7 @@ class CloudStorage:
                 auth=self.auth,
             )
 
-    def download_content(self, url: str, overwrite: bool = True) -> None:
+    def download_content(self, url: str, overwrite: bool = settings.overwrite_files_from_cloud) -> None:
         """Download content of a directory recursively."""
         # get all content (files and directories from url)
         content = self.content(url)
@@ -447,7 +447,7 @@ class CloudStorage:
 
         return ModelVersion(model, today.year, today.month, revision)
 
-    def synchronize(self, filepaths: list[Path], overwrite: bool = True) -> None:
+    def synchronize(self, filepaths: list[Path], overwrite: bool = settings.overwrite_files_from_cloud) -> None:
         for path in filepaths:
             path = Path(path)
             url = self.joinurl(*path.relative_to(self.data_dir).parts)
