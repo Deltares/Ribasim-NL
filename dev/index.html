@@ -253,8 +253,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Here is an example for a filled in <code>.env</code> file:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_NL_CLOUD_PASS</span><span class="ot">=</span><span class="st">'your_password_here'</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_NL_DATA_DIR</span><span class="ot">=</span><span class="st">'data'</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_EXE</span><span class="ot">=</span><span class="st">'C:/bin/ribasim/ribasim.exe'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_EXE</span><span class="ot">=</span><span class="st">'C:/bin/ribasim/ribasim.exe'</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="dt">OVERWRITE_FILES_FROM_CLOUD</span><span class="ot">=</span><span class="st">'true'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>These values will be applied using <a href="https://docs.pydantic.dev/latest/concepts/pydantic_settings/">pydantic-settings</a>. If you prefer to set these environment variables in your OS or terminal that will also work.</p>
+<p><code>OVERWRITE_FILES_FROM_CLOUD</code> is optional, and true by default. When using <code>cloud.synchronize</code> or <code>cloud.download_content</code>, this will determine if local files will be overwritten if the <code>overwrite</code> keyword argument is not explicitly passed. Whilst updating datasets locally, you can set this to <code>false</code> to ensure your modifications can be tested and will not be lost. After these edits are done, you can upload the new dataset, and set it back to <code>true</code>.</p>
 
 
 </section>
