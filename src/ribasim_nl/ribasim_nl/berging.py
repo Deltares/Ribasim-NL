@@ -1,4 +1,3 @@
-# %%
 from pathlib import Path
 
 import numpy as np
@@ -33,6 +32,7 @@ BANDEN = {
 
 
 def percentage_oppervlaktewater():
+    """Single-use function to compute percentage surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
     cloud = CloudStorage()
     lhm_raster_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
     out_file = lhm_raster_file.with_name("LHM_oppervlaktewater_percentage.tif")
@@ -200,13 +200,12 @@ def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> ta
 
 
 def get_basin_profile(
-    basin_polygon: Polygon, polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res=25
+    basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res=25
 ) -> basin.Profile:
     """Generate a basin.Static table for a Polygon using LHM rasters
 
     Args:
         basin_polygon (Polygon): Polygon defining the basin
-        polygon (Polygon): Polygon defining all waters that are to be subtracted in primary waters
         max_level (float): minimal level in basin-profile
         min_level (float): maximal level in basin-profile
         lhm_raster_file (Path): path to lhm-rasters
@@ -255,7 +254,7 @@ def get_basin_profile(
             return df
 
         mask = rasterio.features.geometry_mask(
-            [polygon], out_shape=(out_height, out_width), transform=new_transform, all_touched=True, invert=True
+            [basin_polygon], out_shape=(out_height, out_width), transform=new_transform, all_touched=True, invert=True
         )
 
         num_cells = np.sum(mask)
@@ -348,7 +347,6 @@ class VdGaastBerging:
                 min_level -= 0.1
             basin_profile = get_basin_profile(
                 basin_polygon=basin_polygon,
-                polygon=basin_polygon,
                 max_level=max_level,
                 min_level=min_level,
                 lhm_raster_file=self.lhm_raster_file,
@@ -385,6 +383,3 @@ class VdGaastBerging:
                     use_add_api=self.use_add_api,
                     meta_categorie="bergend",
                 )
-
-
-# %%
