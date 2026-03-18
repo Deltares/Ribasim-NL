@@ -363,7 +363,7 @@ class VdGaastBerging:
             # add storage basin
 
             node = Node(
-                meta_perc_oppervlaktewater=oppervlaktewater_percentage,
+                meta_categorie="bergend",
                 geometry=Point(row.geometry.x + 10, row.geometry.y),
             )
             basin_node = model.basin.add(node=node, tables=data)
