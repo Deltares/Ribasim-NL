@@ -2293,10 +2293,12 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
         ribasim_model.pump.static.df.node_id.isin(pump_ids)
     ].reset_index(drop=True)
 
+    # TODO: change all meta_node_id to the index. Too risky to do it right before samenwerkdag, so we have to do it after
     # ManningResistance
-    manningresistance_ids = ribasim_model.manning_resistance.node.df.loc[
-        ribasim_model.manning_resistance.node.df.node_type == "ManningResistance", "meta_node_id"
+    manningresistance_ids = ribasim_model.manning_resistance.node.df.index[
+        ribasim_model.manning_resistance.node.df.node_type == "ManningResistance"
     ].to_numpy()
+
     ribasim_model.manning_resistance.static = ribasim_model.manning_resistance.static.df.loc[
         ribasim_model.manning_resistance.static.df.node_id.isin(manningresistance_ids)
     ].reset_index(drop=True)
