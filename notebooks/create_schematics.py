@@ -70,6 +70,7 @@ ADD_TOP10_NL = {
         "Afleidingskanaal",
     ],
     "BrabantseDelta": [
+        "Amertak",
         "Maas",
         "Bergsche Maas",
         "Markkanaal",
@@ -121,6 +122,7 @@ ADD_TOP10_NL = {
         "Afleidingskanaal",
         "Vluchthaven",
         "Haringvliet",
+        "Oude Maasje",
     ],
     "StichtseRijnlanden": [
         "Vecht",
