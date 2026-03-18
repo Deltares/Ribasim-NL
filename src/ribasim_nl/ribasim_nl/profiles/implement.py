@@ -1,31 +1,57 @@
 """Implement profiles in model generation."""
 
 import pandas as pd
+import shapely
 
+import ribasim_nl
 from ribasim_nl import CloudStorage
 
 
-def get_tables(
-    water_authority: str, cloud: CloudStorage = CloudStorage(), overwrite: bool = False
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def profile_merging(
+    left: pd.DataFrame, right: pd.DataFrame, on: str = "node_id", suffixes: tuple[str, str] = ("_left", "_right")
+) -> pd.DataFrame:
+    """Merging of profile-tables.
+
+    As profile-tables inherently contain duplicate values in the 'node_id'-column, a dummy column is created on which
+    the merge is executed in combination with the 'node_id'-column.
+
+    :param left: left dataframe
+    :param right: right dataframe
+    :param on: column-name to merge on, defaults to 'node_id'
+    :param suffixes: suffixes of duplicate column-names for the left and right dataframes,
+        defaults to ('_left', '_right')
+
+    :type left: pandas.DataFrame
+    :type right: pandas.DataFrame
+    :type on: str, optional
+    :type suffixes: tuple[str, str], optional
+
+    :return: merged profile table
+    :rtype: pandas.DataFrame
+    """
+    assert on in left.columns and on in right.columns
+    dfs = (
+        left.assign(count=lambda df: df.groupby(on).cumcount()),
+        right.assign(count=lambda df: df.groupby(on).cumcount()),
+    )
+    out = pd.merge(*dfs, how="outer", on=(on, "count"), suffixes=suffixes, validate=None).drop(columns="count")
+    return out
+
+
+def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Get profile tables
 
     :param water_authority: water authority
     :param cloud: the GoodCloud-storage, defaults to CloudStorage()
-    :param overwrite: overwrite GoodCloud-data, defaults to False
 
     :type water_authority: str
     :type cloud: CloudStorage, optional
-    :type overwrite: bool, optional
 
     :return: profile tables (flowing/'doorgaand' and storing/'bergend')
     :rtype: tuple[pandas.DataFrame, pandas.DataFrame]
 
     :raises FileNotFoundError: if profile *.csv-file(s) cannot be found
     """
-    # sync GoodCloud
-    cloud.download_verwerkt(water_authority, overwrite=overwrite)
-
     # verify existence of tables
     wd = cloud.joinpath(water_authority, "verwerkt", "profielen")
     fn_flowing = wd / "profielen_doorgaand.csv"
@@ -40,3 +66,205 @@ def get_tables(
 
     # return profile tables
     return df_flowing, df_storing
+
+
+def single_profile_nodes(
+    flowing_table: pd.DataFrame, storing_table: pd.DataFrame, *, min_area: float = 1e-3
+) -> tuple[list[int], pd.DataFrame, pd.DataFrame]:
+    """Determine which basin node-IDs consist of only flowing profiles, or only storing profiles.
+
+    Basins that have either flowing profiles, or storing profiles, well be schematised as being flowing basins only,
+    i.e., no storing basin should be added. To exclude the addition of storing basins to these flowing-only basins,
+    their node-IDs are returned to be used as input for `AddStorageBasins(additional_basins_to_exclude=[...])`.
+
+    In addition, this results in changes to the flowing and storing profiles tables. All these modifications will be
+    returned (in combination with the list of flowing-only basins).
+
+    :param flowing_table: table of flowing profiles ('doorgaand')
+    :param storing_table: table of storing profiles ('bergend')
+
+    :type flowing_table: pandas.DataFrame
+    :type storing_table: pandas.DataFrame
+
+    :return: no-storing basin node-IDs ('doorgaand'-only) and modified profile tables
+    :rtype: tuple[list[int], pandas.DataFrame, pandas.DataFrame]
+    """
+    # removing dummy values
+    df_flowing = flowing_table[flowing_table["area"] > min_area]
+    df_storing = storing_table[storing_table["area"] > min_area]
+
+    # merge tables
+    df = profile_merging(df_flowing, df_storing, suffixes=("_flowing", "_storing"))
+
+    # flag storing basin
+    assert sum(df[["area_flowing", "area_storing"]].isna().all(axis=1)) == 0
+    df["storing_basin"] = ~df[["area_flowing", "area_storing"]].isna().any(axis=1)
+
+    # modify flowing profiles table
+    df["level"] = df["level_flowing"].combine_first(df["level_storing"])
+    df["area"] = df["area_flowing"].combine_first(df["area_storing"])
+    out_flowing = df[["node_id", "level", "area"]].copy(deep=True)
+
+    # modify storing profiles table
+    out_storing = df.loc[df["storing_basin"], ["node_id", "level_storing", "area_storing"]].reset_index(drop=True)
+    out_storing.rename(columns={"level_storing": "level", "area_storing": "area"}, inplace=True)
+
+    # add non-used 'storage'-column to tables
+    out_flowing["storage"] = None
+    out_storing["storage"] = None
+
+    # list storing basin node-IDs
+    storing_ids = list(map(int, df.loc[df["storing_basin"], "node_id"].unique()))
+
+    # return processed profile data
+    return storing_ids, out_flowing, out_storing
+
+
+def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **kwargs) -> ribasim_nl.Model:
+    # optional arguments
+    cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
+    dx: float = kwargs.get("dx", 10)
+    min_area: float = kwargs.get("min_area", 1e-3)
+
+    ribasim_model._update_used_ids()
+
+    tables = get_tables(water_authority, cloud=cloud)
+    storing_ids, df_flowing, df_storing = single_profile_nodes(*tables, min_area=min_area)
+
+    # modify existing basins ('doorgaand')
+    _basin_node = ribasim_model.basin.node.df.copy()
+    _basin_profile = ribasim_model.basin.profile.df.copy()
+    ribasim_model.basin.node.df = _basin_node.assign(meta_node_id=_basin_node.index)
+    _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
+    ribasim_model.basin.profile = _profiles.combine_first(_basin_profile)[_basin_profile.columns]
+    del _basin_node, _basin_profile
+
+    # duplicate all basin-tables
+    basin_node = ribasim_model.basin.node.df.copy()
+    basin_static = ribasim_model.basin.static.df.copy()
+    basin_state = ribasim_model.basin.state.df.copy()
+    basin_area = ribasim_model.basin.area.df.copy()
+    basin_profile = df_storing.copy()
+
+    # ID-selection: add storing basins
+    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy()
+    basin_static = basin_static[basin_static["node_id"].isin(storing_ids)].copy()
+    basin_state = basin_state[basin_state["node_id"].isin(storing_ids)].copy()
+    basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy()
+
+    # node ID incrementation
+    incr_node_id = ribasim_model.next_node_id - 1
+    basin_node.index += incr_node_id
+    basin_static["node_id"] += incr_node_id
+    basin_state["node_id"] += incr_node_id
+    basin_area["node_id"] += incr_node_id
+    basin_profile["node_id"] += incr_node_id
+
+    # basin state category ('bergend')
+    basin_state["meta_categorie"] = "bergend"
+
+    # move storing basins' location and set Manning's node location
+    basin_node["flowing_geometry"] = basin_node["geometry"].copy()
+    basin_node["manning_geometry"] = basin_node["geometry"].translate(xoff=0.5 * dx)
+    basin_node["geometry"] = basin_node["geometry"].translate(xoff=dx)
+    incr_node_id = max(basin_node.index) - min(basin_node.index) + 1
+    basin_node["manning_id"] = basin_node.index + incr_node_id
+
+    # create links
+    basin_node["link_sm_geometry"] = basin_node.apply(
+        lambda row: shapely.LineString((row["geometry"], row["manning_geometry"])), axis=1
+    )
+    basin_node["link_mf_geometry"] = basin_node.apply(
+        lambda row: shapely.LineString((row["manning_geometry"], row["flowing_geometry"])), axis=1
+    )
+
+    # create node table: ManningResistance
+    manning_node = basin_node[["manning_id", "manning_geometry"]].reset_index(drop=True)
+    manning_node = (
+        manning_node.rename(columns={"manning_id": "node_id", "manning_geometry": "geometry"})
+        .set_index("node_id")
+        .assign(node_type="ManningResistance", meta_node_id=manning_node.index)
+    )
+
+    # create static table: ManningResistance
+    manning_static = manning_node.reset_index(drop=False)[["node_id"]]
+    manning_static = manning_static.assign(
+        length=1000, manning_n=0.02, profile_width=2.0, profile_slope=3.0
+    )  # , meta_categorie='bergend')
+    # TODO: Assign `profile_width` based on representative widths of storing basins
+
+    # create links tables
+    sm_link = (
+        basin_node.reset_index(drop=False)[["node_id", "manning_id", "link_sm_geometry"]]
+        .rename(columns={"node_id": "from_node_id", "manning_id": "to_node_id", "link_sm_geometry": "geometry"})
+        .assign(
+            link_type="flow",
+            meta_from_node_type="Basin",
+            meta_to_node_type="ManningResistance",
+            meta_categorie="bergend",
+        )
+    )
+    mf_link = (
+        basin_node.reset_index(drop=False)[["manning_id", "meta_node_id", "link_mf_geometry"]]
+        .rename(columns={"manning_id": "from_node_id", "meta_node_id": "to_node_id", "link_mf_geometry": "geometry"})
+        .assign(
+            link_type="flow",
+            meta_from_node_type="ManningResistance",
+            meta_to_node_type="Basin",
+            meta_categorie="bergend",
+        )
+    )
+    link = pd.concat([sm_link, mf_link], axis=0, ignore_index=True)
+    incr_link_id = ribasim_model.link.df.index.max() + 1
+    link["link_id"] = link.index + incr_link_id
+    link.set_index("link_id", inplace=True)
+
+    # clean up basin node table ('bergend')
+    basin_node = basin_node[["node_type", "meta_node_id", "geometry"]]
+    basin_node["meta_node_id"] = basin_node.index
+
+    assert ribasim_model.node_table().df.index.is_unique, "Node IDs are not unique prior to updating of tables."
+    for table_name in ("static", "state", "area"):
+        tmp = getattr(ribasim_model.basin, table_name).df
+        assert tmp["node_id"].is_unique, f"Node IDs in basin.{table_name} not unique prior to updating of tables."
+    for table_name in ("static",):
+        tmp = getattr(ribasim_model.manning_resistance, table_name).df
+        assert tmp["node_id"].is_unique, (
+            f"Node IDs in manning_resistance.{table_name} not unique prior to updating of tables."
+        )
+
+    # concatenate all newly generated tables to Ribasim model
+    # > Basin-tables
+    ribasim_model.basin.node.df = pd.concat([ribasim_model.basin.node.df, basin_node])
+    ribasim_model.basin.static = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
+    ribasim_model.basin.state = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
+    ribasim_model.basin.profile = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
+    ribasim_model.basin.area = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
+    # > ManningResistance-tables
+    ribasim_model.manning_resistance.node.df = pd.concat([ribasim_model.manning_resistance.node.df, manning_node])
+    print(ribasim_model.manning_resistance.static.df)
+    ribasim_model.manning_resistance.static = pd.concat(
+        [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
+    )
+    print(ribasim_model.manning_resistance.static.df)
+    print(manning_static)
+    # ribasim_model.manning_resistance.static.df.to_csv(r'C:\Users\Hendrickx\Documents\TEMP\ribasim\mr_static.csv')
+    # > Link-table
+    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link])
+    assert len(ribasim_model.manning_resistance.node.df.index.unique()) == len(ribasim_model.manning_resistance.node.df)
+    assert len(ribasim_model.link.df.index.unique()) == len(ribasim_model.link.df)
+
+    assert ribasim_model.node_table().df.index.is_unique, "Node IDs are no longer unique after updating of tables."
+    for table_name in ("static", "state", "area"):
+        tmp = getattr(ribasim_model.basin, table_name).df
+        assert tmp["node_id"].is_unique, f"Node IDs in basin.{table_name} no longer unique after updating of tables."
+    for table_name in ("static",):
+        tmp = getattr(ribasim_model.manning_resistance, table_name).df
+        assert tmp["node_id"].is_unique, (
+            f"Node IDs in manning_resistance.{table_name} no longer unique after updating of tables."
+        )
+
+    ribasim_model._update_used_ids()
+
+    # return the updated Ribasim model
+    return ribasim_model
