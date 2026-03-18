@@ -377,8 +377,24 @@ class Model(ribasim.Model):
 
     def remove_node(self, node_id: int, remove_links: bool = False):
         """Remove node from model"""
-        self._remove_node_id(node_id)
+        assert self.node.df is not None
+        if node_id in self.node.df.index:
+            node_type = self.get_node_type(node_id)
+            # Remove from node table
+            self.node.df = self.node.df.drop(node_id)
 
+        if node_id in self.node._used_node_ids:
+            self.node._used_node_ids.node_ids.remove(node_id)
+
+        # remove from sub-tables (static, time, area, subgrid, etc)
+        sub = next((i for i in self._nodes() if i.__repr_name__() == node_type), None)
+        if sub is not None:
+            for table in sub._tables():
+                if table.df is not None and "node_id" in table.df.columns:
+                    table.df = table.df[table.df["node_id"] != node_id]
+                    if table.df.empty:
+                        table.df = None
+        # remove links
         if remove_links and (self.link.df is not None):
             for row in self.link.df[self.link.df.from_node_id == node_id].itertuples():
                 self.remove_link(
