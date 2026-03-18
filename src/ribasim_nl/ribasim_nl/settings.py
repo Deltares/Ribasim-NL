@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     ribasim_exe: Path = Path("ribasim")
     ribasim_nl_cloud_pass: str = ""
     ribasim_nl_data_dir: Path = Path("data")
+    overwrite_files_from_cloud: bool = True
 
     @classmethod
     def settings_customise_sources(
