@@ -229,7 +229,6 @@ model.update_node(node_id=615, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=470, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=1014, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=490, node_type="Outlet")  # wordt outlet, was manning
-
 model.update_node(node_id=649, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=476, node_type="Outlet")  # wordt outlet, was manning
 
