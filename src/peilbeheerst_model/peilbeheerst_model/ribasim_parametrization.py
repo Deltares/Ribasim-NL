@@ -2452,7 +2452,6 @@ def clean_tables(ribasim_model: ribasim.Model, waterschap: str):
 
     # add waterschap name, remove meta_node_id
     ribasim_model.basin.node.df["meta_waterbeheerder"] = waterschap
-    ribasim_model.basin.node.df = ribasim_model.basin.node.df.drop(columns="meta_node_id")
 
 
 def find_upstream_downstream_target_levels(ribasim_model: ribasim.Model, node: str) -> None:
