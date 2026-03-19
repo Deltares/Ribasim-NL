@@ -39,8 +39,9 @@ class OutletPumpScalingConfig:
     max_days: int = 5
     max_scaled_flow_rate: float = 50
     add_information_to_from_to_node_function_table: bool = True
-    situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
-    apply_temporary_debug_changes: bool = False
+    # FIXME add water_demand once water_drainage works properly
+    # situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
+    situations: list[str] = field(default_factory=lambda: ["water_drainage"])
     debug_outlet_max_flow_rate: float = 0.10
     rescale_flow_capacities: bool = True
 
@@ -183,6 +184,9 @@ def set_vertical_static_forcing(
     ribasim.Model
         The model with updated basin time forcing.
     """
+    # only use one timestamp to avoid merging conflicts
+    ribasim_model.basin.time.df = ribasim_model.basin.time.df.drop_duplicates(subset="node_id", keep="first")
+
     # percentage open water may differ. To reduce lines of code: only set drainage and infiltration fluxes, based on size of the basin
     if "meta_area" not in ribasim_model.basin.time.df.columns:
         ribasim_model.basin.area.df["meta_area"] = ribasim_model.basin.area.df.area
@@ -207,6 +211,13 @@ def set_vertical_static_forcing(
     ribasim_model.basin.time.df["precipitation"] = 0
     ribasim_model.basin.time.df["potential_evaporation"] = 0
     ribasim_model.basin.time.df["surface_runoff"] = 0.0
+
+    # set fluxes on the bergende basins to 0 to avoid double counting as the bergende basins have overlapping geometries as the doorgaande basins
+    node_ids_to_zero = ribasim_model.basin.state.df.loc[
+        ribasim_model.basin.state.df.meta_categorie == "bergend", "node_id"
+    ].to_numpy()
+    ribasim_model.basin.time.df.loc[ribasim_model.basin.time.df.node_id.isin(node_ids_to_zero), "drainage"] = 0
+    ribasim_model.basin.time.df.loc[ribasim_model.basin.time.df.node_id.isin(node_ids_to_zero), "infiltration"] = 0
 
     return ribasim_model
 
@@ -545,21 +556,10 @@ class _OutletPumpScaler:
             ribasim_model.pump.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
         ] = config.initial_guess_flow_rate_pump
 
-        # WEGHALEN #########################################################
-        if config.apply_temporary_debug_changes:
-            ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-            ribasim_model.pump.static.df["meta_known_flow_rate"] = True
-            ribasim_model.pump.static.df.loc[
-                ribasim_model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"
-            ] = False
-
-            # also temp
-            # ribasim_model.pump.static.df.max_flow_rate = 10
-            ribasim_model.outlet.static.df.max_flow_rate = config.debug_outlet_max_flow_rate
-
-            # if max_flow_rate is 0, change to 0.1
-            ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
-            ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
+        # if max_flow_rate is 0, change to 0.1
+        ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
+        ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
+        ribasim_model.outlet.static.df.max_flow_rate = config.debug_outlet_max_flow_rate
 
         ###########################
 
@@ -620,6 +620,14 @@ class _OutletPumpScaler:
                 ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_demand_situation
             ribasim_model.level_boundary.static.df = None
 
+            # if capacity has been scaled to a (rounded) value of 0, place back to 0.001
+            ribasim_model.outlet.static.df.loc[
+                ribasim_model.outlet.static.df.max_flow_rate < 0.001, "max_flow_rate"
+            ] = 0.001
+            ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate < 0.001, "max_flow_rate"] = (
+                0.001
+            )
+
             # loop through each iteration
             for iteration in range(max_iterations):
                 if printing:
@@ -644,6 +652,10 @@ class _OutletPumpScaler:
                     ribasim_model.pump.static.df.loc[
                         ~ribasim_model.pump.static.df["meta_known_flow_rate"], "max_flow_rate"
                     ] = initial_guess_flow_rate_pump
+
+                    # set flow rate equal to max flow rate
+                    ribasim_model.outlet.static.df.flow_rate = ribasim_model.outlet.static.df.max_flow_rate
+                    ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.max_flow_rate
 
                     # write model
                     if printing:
