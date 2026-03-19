@@ -602,12 +602,10 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         ribasim_model_path=ribasim_work_dir_model_toml,
         ribasim_model=ribasim_model,
         from_to_node_function_table=from_to_node_function_table,
-        apply_temporary_debug_changes=False,
         waterschap=waterschap,
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         max_iterations=20,
-        initial_guess_flow_rate_outlet=0.07,
     )
 )
 
