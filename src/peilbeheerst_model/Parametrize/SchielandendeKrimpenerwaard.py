@@ -8,6 +8,7 @@ import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
@@ -27,6 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -81,8 +83,8 @@ ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
 # define variables and model
 # basin area percentage
-regular_percentage = 10
-boezem_percentage = 90
+# regular_percentage = 10
+# boezem_percentage = 90
 unknown_streefpeil = (
     0.00012345  # we need a streefpeil to create the profiles, Q(h)-relations, and af- and aanslag peil for pumps
 )
@@ -351,7 +353,6 @@ ribasim_param.validate_manning_basins(ribasim_model)
 # )
 # TODO: Replace standard profile by determined profiles (and add storing basins where applicable)
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1e-3)
-print(ribasim_model.manning_resistance.static.df)
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -571,16 +572,14 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
-increase_flow_rate_pumps = [395]
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
-] *= 60
+# increase_flow_rate_pumps = [395]
+# ribasim_model.pump.static.df.loc[
+#     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
+# ] *= 60
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
-
-# TODO: Add scaling
 
 # set the max_flow_rate to the flow_rate
 ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
@@ -596,6 +595,21 @@ ribasim_model.manning_resistance.static.df.manning_n = 0.01
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
+
+# rescaling of outlets (and pumps)
+ribasim_model, from_to_node_function_table = scale_outlets_pumps(
+    OutletPumpScalingConfig(
+        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model=ribasim_model,
+        from_to_node_function_table=from_to_node_function_table,
+        apply_temporary_debug_changes=False,
+        waterschap=waterschap,
+        cloud=cloud,
+        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+        max_iterations=20,
+        initial_guess_flow_rate_outlet=0.07,
+    )
+)
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
