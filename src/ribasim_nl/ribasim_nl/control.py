@@ -1530,14 +1530,14 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
     return from_to_node_table
 
 
-def set_outlet_functions(
+def set_node_functions(
     from_to_table: gpd.GeoDataFrame,
     *,
     to_supply: tuple[int, ...] = (),
     to_flow_control: tuple[int, ...] = (),
     to_drain: tuple[int, ...] = (),
 ) -> gpd.GeoDataFrame:
-    """Set outlet function by node-ID.
+    """Set pump/outlet function by node-ID.
 
     :param from_to_table: table with from-to node data
     :param to_supply: node-IDs to be set as 'supply', defaults to ()
