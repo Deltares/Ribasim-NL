@@ -463,19 +463,21 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     flow_rate_updates = flow_rate_updates.rename(columns={last_new_flow_rate_column: "max_flow_rate"})
     flow_rate_updates = flow_rate_updates.dropna(subset=["max_flow_rate"])
     flow_rate_updates = flow_rate_updates.drop_duplicates(subset=["node_id"], keep="last")
-    flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"]
+    flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"].astype(float)
 
     # update the max_flow_rate in the ribasim_model for the pump and outlet nodes.
     pump_df = ribasim_model.pump.static.df.copy()
     pump_flow_rate_updates = pump_df["node_id"].map(flow_rate_updates)
     pump_update_mask = pump_flow_rate_updates.notna()
-    pump_df.loc[pump_update_mask, "max_flow_rate"] = pump_flow_rate_updates.loc[pump_update_mask].to_numpy()
+    print(f"{pump_flow_rate_updates.loc[pump_update_mask]=}")
+    pump_df.loc[pump_update_mask, "max_flow_rate"] = pump_flow_rate_updates.loc[pump_update_mask]
     ribasim_model.pump.static.df = pump_df
 
     outlet_df = ribasim_model.outlet.static.df.copy()
     outlet_flow_rate_updates = outlet_df["node_id"].map(flow_rate_updates)
     outlet_update_mask = outlet_flow_rate_updates.notna()
-    outlet_df.loc[outlet_update_mask, "max_flow_rate"] = outlet_flow_rate_updates.loc[outlet_update_mask].to_numpy()
+    print(f"{outlet_flow_rate_updates.loc[outlet_update_mask]=}")
+    outlet_df.loc[outlet_update_mask, "max_flow_rate"] = outlet_flow_rate_updates.loc[outlet_update_mask]
     ribasim_model.outlet.static.df = outlet_df
 
     return ribasim_model
@@ -532,6 +534,16 @@ class _OutletPumpScaler:
         original_level_boundary_static = ribasim_model.level_boundary.static.df.copy()
         original_level_boundary_time = ribasim_model.level_boundary.time.df.copy()
         original_basin_time = ribasim_model.basin.time.df.copy()
+
+        # FIXME: Setting critical(?) static-table columns
+        ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+        ribasim_model.pump.static.df["meta_known_flow_rate"] = True
+        ribasim_model.outlet.static.df.loc[
+            ribasim_model.outlet.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
+        ] = config.initial_guess_flow_rate_outlet
+        ribasim_model.pump.static.df.loc[
+            ribasim_model.pump.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
+        ] = config.initial_guess_flow_rate_pump
 
         # WEGHALEN #########################################################
         if config.apply_temporary_debug_changes:
