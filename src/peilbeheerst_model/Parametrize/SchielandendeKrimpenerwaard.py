@@ -1,7 +1,6 @@
 """Parameterisation of water board: Schieland en de Krimpenerwaard."""
 
 import datetime
-import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -79,10 +78,6 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
-
-# create work_dir/parameterized
-parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-os.makedirs(parameterized, exist_ok=True)
 
 # define variables and model
 # basin area percentage
