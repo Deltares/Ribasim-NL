@@ -67,7 +67,7 @@ class AssignOfflineBudgets:
             group = group.reindex(budgets_per_node_id.columns)
             for c in group.columns:
                 if pd.api.types.is_numeric_dtype(group[c]):
-                    group[c] = group[c].interpolate(method="pad")
+                    group[c] = group[c].ffill()
             basin_time.append(group.reset_index(drop=False))
         basin_time = pd.concat(basin_time, ignore_index=True)
 
