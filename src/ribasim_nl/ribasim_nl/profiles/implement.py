@@ -121,13 +121,27 @@ def single_profile_nodes(
 
 
 def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **kwargs) -> ribasim_nl.Model:
+    """Set basin profiles and add storing basins where applicable.
+
+    Based on the profile generation, trapezoidal profiles are set to the flowing basins. In case there are storing basin
+    profiles generated, a storing basin is added to the flowing basin via a ManningResistance-node.
+
+    :param ribasim_model: Ribasim model
+    :param water_authority: water authority
+    :param kwargs: optional arguments
+
+    :key cloud: the GoodCloud storage, defaults to CloudStorage()
+    :key dx: horizontal distance between flowing and storing basins, defaults to 10 [m]
+    :key dy: vertical distance between flowing and storing basins, defaults to 0 [m]
+    :key min_area: minimum are in profile table to be considered valid (removed otherwise), defaults to 1e-3 [m2]
+    """
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
     dx: float = kwargs.get("dx", 10)
+    dy: float = kwargs.get("dy", 0)
     min_area: float = kwargs.get("min_area", 1e-3)
 
-    ribasim_model._update_used_ids()
-
+    # get profile data
     tables = get_tables(water_authority, cloud=cloud)
     storing_ids, df_flowing, df_storing = single_profile_nodes(*tables, min_area=min_area)
 
@@ -165,8 +179,8 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
 
     # move storing basins' location and set Manning's node location
     basin_node["flowing_geometry"] = basin_node["geometry"].copy()
-    basin_node["manning_geometry"] = basin_node["geometry"].translate(xoff=0.5 * dx)
-    basin_node["geometry"] = basin_node["geometry"].translate(xoff=dx)
+    basin_node["manning_geometry"] = basin_node["geometry"].translate(xoff=0.5 * dx, yoff=0.5 * dy)
+    basin_node["geometry"] = basin_node["geometry"].translate(xoff=dx, yoff=dy)
     incr_node_id = max(basin_node.index) - min(basin_node.index) + 1
     basin_node["manning_id"] = basin_node.index + incr_node_id
 
@@ -188,9 +202,7 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
 
     # create static table: ManningResistance
     manning_static = manning_node.reset_index(drop=False)[["node_id"]]
-    manning_static = manning_static.assign(
-        length=1000, manning_n=0.02, profile_width=2.0, profile_slope=3.0
-    )  # , meta_categorie='bergend')
+    manning_static = manning_static.assign(length=1000, manning_n=0.02, profile_width=2.0, profile_slope=3.0)
     # TODO: Assign `profile_width` based on representative widths of storing basins
 
     # create links tables
@@ -223,16 +235,6 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     basin_node = basin_node[["node_type", "meta_node_id", "geometry"]]
     basin_node["meta_node_id"] = basin_node.index
 
-    assert ribasim_model.node_table().df.index.is_unique, "Node IDs are not unique prior to updating of tables."
-    for table_name in ("static", "state", "area"):
-        tmp = getattr(ribasim_model.basin, table_name).df
-        assert tmp["node_id"].is_unique, f"Node IDs in basin.{table_name} not unique prior to updating of tables."
-    for table_name in ("static",):
-        tmp = getattr(ribasim_model.manning_resistance, table_name).df
-        assert tmp["node_id"].is_unique, (
-            f"Node IDs in manning_resistance.{table_name} not unique prior to updating of tables."
-        )
-
     # concatenate all newly generated tables to Ribasim model
     # > Basin-tables
     ribasim_model.basin.node.df = pd.concat([ribasim_model.basin.node.df, basin_node])
@@ -242,29 +244,11 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     ribasim_model.basin.area = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
     # > ManningResistance-tables
     ribasim_model.manning_resistance.node.df = pd.concat([ribasim_model.manning_resistance.node.df, manning_node])
-    print(ribasim_model.manning_resistance.static.df)
     ribasim_model.manning_resistance.static = pd.concat(
         [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
     )
-    print(ribasim_model.manning_resistance.static.df)
-    print(manning_static)
-    # ribasim_model.manning_resistance.static.df.to_csv(r'C:\Users\Hendrickx\Documents\TEMP\ribasim\mr_static.csv')
     # > Link-table
     ribasim_model.link.df = pd.concat([ribasim_model.link.df, link])
-    assert len(ribasim_model.manning_resistance.node.df.index.unique()) == len(ribasim_model.manning_resistance.node.df)
-    assert len(ribasim_model.link.df.index.unique()) == len(ribasim_model.link.df)
-
-    assert ribasim_model.node_table().df.index.is_unique, "Node IDs are no longer unique after updating of tables."
-    for table_name in ("static", "state", "area"):
-        tmp = getattr(ribasim_model.basin, table_name).df
-        assert tmp["node_id"].is_unique, f"Node IDs in basin.{table_name} no longer unique after updating of tables."
-    for table_name in ("static",):
-        tmp = getattr(ribasim_model.manning_resistance, table_name).df
-        assert tmp["node_id"].is_unique, (
-            f"Node IDs in manning_resistance.{table_name} no longer unique after updating of tables."
-        )
-
-    ribasim_model._update_used_ids()
 
     # return the updated Ribasim model
     return ribasim_model
