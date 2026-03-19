@@ -17,7 +17,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
-    set_outlet_functions,
+    set_node_functions,
 )
 from ribasim_nl.profiles import implement
 from shapely import Point
@@ -454,7 +454,12 @@ to_flow_control = (
     373,  # basin die boezem voedt
     561,
 )
-set_outlet_functions(from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control)
+to_drain = (
+    364,  # labelled as "aanvoergemaal" but directed from polder to boezem
+)
+from_to_node_function_table = set_node_functions(
+    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+)
 
 outlet_copy = ribasim_model.outlet.static.df[
     [
