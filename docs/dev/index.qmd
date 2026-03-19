@@ -103,7 +103,13 @@ Here is an example for a filled in `.env` file:
 RIBASIM_NL_CLOUD_PASS='your_password_here'
 RIBASIM_NL_DATA_DIR='data'
 RIBASIM_HOME='bin/ribasim'
+OVERWRITE_FILES_FROM_CLOUD='true'
 ```
 
 These values will be applied using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
 If you prefer to set these environment variables in your OS or terminal that will also work.
+
+`OVERWRITE_FILES_FROM_CLOUD` is optional, and true by default.
+When using `cloud.synchronize` or `cloud.download_content`, this will determine if local files will be overwritten if the `overwrite` keyword argument is not explicitly passed.
+Whilst updating datasets locally, you can set this to `false` to ensure your modifications can be tested and will not be lost.
+After these edits are done, you can upload the new dataset, and set it back to `true`.
