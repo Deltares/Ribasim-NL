@@ -36,9 +36,10 @@ def add_check_basin_level(model: Model, check_column: str = "meta_code_waterbehe
         check_column (str): column to check not NoData
     """
     # read the node_table first as we suspect that is faster than doing it at every iter
-    node_df = model.node_table().df
+    node_df = model.node.df
 
     # apply check_basin_level function to all basin node_ids
-    model.basin.node.df.loc[:, "meta_check_basin_level"] = [
-        check_basin_level(i, model=model, node_df=node_df, check_column=check_column) for i in model.basin.node.df.index
+    basin_ids = model.basin.node.df.index
+    model.node.df.loc[basin_ids, "meta_check_basin_level"] = [
+        check_basin_level(i, model=model, node_df=node_df, check_column=check_column) for i in basin_ids
     ]

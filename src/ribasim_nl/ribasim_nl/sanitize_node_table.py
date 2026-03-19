@@ -2,7 +2,6 @@
 
 from pandas import Series
 
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.model import Model
 
 
@@ -15,29 +14,29 @@ def sanitize_node_table(
     """Clean all node-tables to their expected columns + (optionally) meta_columns."""
     node_columns = model.basin.node.columns() + meta_columns
 
-    # remove names and clean columns
-    for node_type in model.node_table().df.node_type.unique():
-        table = getattr(model, pascal_to_snake_case(node_type))
+    # update values per node_type directly on model.node.df
+    for node_type in model.node.df.node_type.unique():
+        mask = model.node.df["node_type"] == node_type
 
         # copy data from one column to the other (or overwrite with default)
         copy_columns = next((i["columns"] for i in copy_map if node_type in i["node_types"]), None)
         if copy_columns is not None:
             for from_col, to_col in copy_columns.items():
                 if to_col not in node_columns:  # if not in columns, we interpret to_col as new value for from_col
-                    table.node.df.loc[:, from_col] = to_col
+                    model.node.df.loc[mask, from_col] = to_col
                 else:
-                    table.node.df.loc[:, to_col] = table.node.df.loc[:, from_col]
+                    model.node.df.loc[mask, to_col] = model.node.df.loc[mask, from_col]
 
         # add name from code-column
         if (
-            ("meta_code_waterbeheerder" in table.node.df.columns)
+            ("meta_code_waterbeheerder" in model.node.df.columns)
             & (names is not None)
-            & ("name" not in copy_columns.values())
+            & ((copy_columns is None) | ("name" not in copy_columns.values()))
         ):
-            table.node.df.loc[:, "name"] = table.node.df["meta_code_waterbeheerder"].apply(
+            model.node.df.loc[mask, "name"] = model.node.df.loc[mask, "meta_code_waterbeheerder"].apply(
                 lambda x: names[x] if x in names.index.to_numpy() else ""
             )
 
-        # drop all columns not in node_columns
-        columns = [col for col in table.node.df.columns if col in node_columns]
-        table.node.df = table.node.df[columns]
+    # drop all columns not in node_columns
+    columns = [col for col in model.node.df.columns if (col in node_columns) or (col == "node_type")]
+    model.node.df = model.node.df[columns]

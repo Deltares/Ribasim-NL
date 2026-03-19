@@ -4,9 +4,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import ribasim
 from pyproj import Proj, Transformer
 from shapely.geometry import LineString, Point
+
+from ribasim_nl import Model
 
 # Mapping between feedback form and model names
 mapping = {
@@ -84,7 +85,7 @@ class RibasimFeedbackProcessor:
 
     @staticmethod
     def load_ribasim_model(ribasim_toml):
-        model = ribasim.Model(filepath=ribasim_toml)
+        model = Model.read(ribasim_toml)
         return model
 
     def get_current_max_nodeid(self):

@@ -2,7 +2,8 @@ import logging
 
 import geopandas as gpd
 import pandas as pd
-import ribasim
+
+from ribasim_nl import Model
 
 DEFAULT_PROFILE = {
     "area": [0.01, 1000.0],
@@ -56,7 +57,7 @@ def default_model(
     start_time: str,
     end_time: str,
     crs: int = "28992",
-) -> ribasim.Model:
+) -> Model:
     """Model with default settings.
 
     Parameters
@@ -102,10 +103,10 @@ def default_model(
 
     Returns
     -------
-    ribasim.Model
+    Model
         Ribasim model with default tables
     """
-    model = ribasim.Model(starttime=start_time, endtime=end_time, crs=crs)
+    model = Model(starttime=start_time, endtime=end_time, crs=crs)
 
     # check and drop duplicated node ides
     if node_df.node_id.duplicated().any():

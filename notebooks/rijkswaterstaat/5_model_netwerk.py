@@ -347,7 +347,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
             raise ValueError(f"node-type {node_type} not yet implemented")
 
         # toevoegen van de knoop aan het netwerk
-        node_table = getattr(model, pascal_to_snake_case(node_type))
+        node_table = model.get_component(node_type)
         node_table.add(node, data)
 
         # zoeken naar aangrenzende basins
@@ -373,7 +373,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
             link_geom = network.get_line(node_id, boundary_node_id)
             model.link.add(
                 node_table[node_id],
-                getattr(model, pascal_to_snake_case(boundary.node_type))[boundary_node_id],
+                model.get_component(boundary.node_type)[boundary_node_id],
                 geometry=link_geom,
             )
         else:
@@ -421,7 +421,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
     # ]
 
     # listen_node_id = (
-    #     model.node_table()
+    #     model.node
     #     .df.reset_index()
     #     .set_index("meta_meetlocatie_code")
     #     .at[verdeelsleutel_properties["Meetlocatiecode"], "node_id"]
@@ -541,7 +541,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
                 link_geom = network.get_line(node_id, boundary_node_id)
                 model.link.add(
                     node,
-                    getattr(model, pascal_to_snake_case(boundary.node_type))[boundary_node_id],
+                    model.get_component(boundary.node_type)[boundary_node_id],
                     geometry=link_geom,
                 )
             else:
@@ -683,7 +683,7 @@ for row in basin_poly_gdf.itertuples():
 
     model.basin.add(basin_node, data)
 
-    nodes_series = model.node_table().df["node_type"].apply(pascal_to_snake_case)
+    nodes_series = model.node.df["node_type"].apply(pascal_to_snake_case)
 
     # connect all nodes_from to basin
     for node_id in nodes_from:

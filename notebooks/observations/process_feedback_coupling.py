@@ -3,12 +3,11 @@ import os
 
 import geopandas as gpd
 import pandas as pd
-from ribasim import Model
 
 # Importeren van de update koppeltabel
 from update_coupling import convert_to_point, update_koppeltabel_with_feedback
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 # %%
 
