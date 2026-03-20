@@ -352,7 +352,7 @@ ribasim_param.validate_manning_basins(ribasim_model)
 #     depth_profile=2,
 # )
 # TODO: Replace standard profile by determined profiles (and add storing basins where applicable)
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1e-3)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
 if DYNAMIC_CONDITIONS:

@@ -39,9 +39,7 @@ class OutletPumpScalingConfig:
     max_days: int = 5
     max_scaled_flow_rate: float = 50
     add_information_to_from_to_node_function_table: bool = True
-    # FIXME add water_demand once water_drainage works properly
-    # situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
-    situations: list[str] = field(default_factory=lambda: ["water_drainage"])
+    situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
     debug_outlet_max_flow_rate: float = 0.10
     rescale_flow_capacities: bool = True
 
