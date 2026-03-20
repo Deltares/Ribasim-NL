@@ -6,7 +6,6 @@ import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
-from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -20,6 +19,7 @@ from ribasim_nl.control import (
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
 )
+from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -27,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -55,6 +55,7 @@ qlr_name = "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_20
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/afvoergebiedaanvoergebied.gpkg")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
+profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
 # cloud.synchronize(
 #     filepaths=[
@@ -65,6 +66,7 @@ meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 #         qlr_path,
 #         aanvoer_path,
 #         meteo_path,
+#         profiles_path,
 #     ]
 # )
 
@@ -264,20 +266,23 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
-# insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
-ribasim_param.insert_standard_profile(
-    ribasim_model,
-    unknown_streefpeil=unknown_streefpeil,
-    regular_percentage=regular_percentage,
-    boezem_percentage=boezem_percentage,
-    depth_profile=2,
-)
+# set basin profiles and add storing basins where applicable
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=100)
 
-add_storage_basins = AddStorageBasins(
-    ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[101]
-)  # exclude 101, which is a tiny extenstion of the boezem which causes convergence errors
-
-add_storage_basins.create_bergende_basins()
+# # insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
+# ribasim_param.insert_standard_profile(
+#     ribasim_model,
+#     unknown_streefpeil=unknown_streefpeil,
+#     regular_percentage=regular_percentage,
+#     boezem_percentage=boezem_percentage,
+#     depth_profile=2,
+# )
+#
+# add_storage_basins = AddStorageBasins(
+#     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[101]
+# )  # exclude 101, which is a tiny extenstion of the boezem which causes convergence errors
+#
+# add_storage_basins.create_bergende_basins()
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -524,7 +529,6 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         ribasim_model_path=ribasim_work_dir_model_toml,
         ribasim_model=ribasim_model,
         from_to_node_function_table=from_to_node_function_table,
-        apply_temporary_debug_changes=True,
         waterschap=waterschap,
         cloud=cloud,
         rescale_flow_capacities=True,
