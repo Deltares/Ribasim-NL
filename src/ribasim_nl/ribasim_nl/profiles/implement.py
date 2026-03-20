@@ -1,10 +1,64 @@
 """Implement profiles in model generation."""
 
+import logging
+
 import pandas as pd
 import shapely
 
 import ribasim_nl
 from ribasim_nl import CloudStorage
+
+LOG = logging.getLogger(__name__)
+
+
+def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Get profile tables
+
+    :param water_authority: water authority
+    :param cloud: the GoodCloud-storage, defaults to CloudStorage()
+
+    :type water_authority: str
+    :type cloud: CloudStorage, optional
+
+    :return: profile tables (flowing/'doorgaand' and storing/'bergend')
+    :rtype: tuple[pandas.DataFrame, pandas.DataFrame]
+
+    :raises FileNotFoundError: if profile *.csv-file(s) cannot be found
+    """
+    # verify existence of tables
+    wd = cloud.joinpath(water_authority, "verwerkt", "profielen")
+    fn_flowing = wd / "profielen_doorgaand.csv"
+    fn_storing = wd / "profielen_bergend.csv"
+    if not fn_flowing.exists() or not fn_storing.exists():
+        LOG.critical(f"{fn_flowing.exists()=}: {fn_flowing=}")
+        LOG.critical(f"{fn_storing.exists()=}: {fn_storing=}")
+        msg = "Profiles not (yet) preprocessed"
+        raise FileNotFoundError(msg)
+
+    # read profile data
+    df_flowing = pd.read_csv(wd / fn_flowing)
+    df_storing = pd.read_csv(wd / fn_storing)
+
+    # return profile tables
+    return df_flowing, df_storing
+
+
+def minimum_surface_area(table: pd.DataFrame, min_area: float) -> pd.DataFrame:
+    """Filter profiles based on a minimum surface area.
+
+    :param table: table with profiles
+    :param min_area: minimum surface area [m2]
+
+    :type table: pandas.DataFrame
+    :type min_area: float
+
+    :return: filtered table with profiles
+    :rtype: pandas.DataFrame
+    """
+    assert all(c in table.columns for c in ["node_id", "level", "area"])
+    surface_area = table.loc[table.groupby("node_id")["level"].idxmax(), ["node_id", "area"]]
+    valid_ids = surface_area.loc[surface_area["area"] > min_area, "node_id"]
+    return table.loc[table["node_id"].isin(valid_ids)]
 
 
 def profile_merging(
@@ -38,36 +92,6 @@ def profile_merging(
     return out
 
 
-def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Get profile tables
-
-    :param water_authority: water authority
-    :param cloud: the GoodCloud-storage, defaults to CloudStorage()
-
-    :type water_authority: str
-    :type cloud: CloudStorage, optional
-
-    :return: profile tables (flowing/'doorgaand' and storing/'bergend')
-    :rtype: tuple[pandas.DataFrame, pandas.DataFrame]
-
-    :raises FileNotFoundError: if profile *.csv-file(s) cannot be found
-    """
-    # verify existence of tables
-    wd = cloud.joinpath(water_authority, "verwerkt", "profielen")
-    fn_flowing = wd / "profielen_doorgaand.csv"
-    fn_storing = wd / "profielen_bergend.csv"
-    if not fn_flowing.exists() or not fn_storing.exists():
-        msg = "Profiles not (yet) preprocessed"
-        raise FileNotFoundError(msg)
-
-    # read profile data
-    df_flowing = pd.read_csv(wd / fn_flowing)
-    df_storing = pd.read_csv(wd / fn_storing)
-
-    # return profile tables
-    return df_flowing, df_storing
-
-
 def single_profile_nodes(
     flowing_table: pd.DataFrame, storing_table: pd.DataFrame, *, min_area: float = 1e-3
 ) -> tuple[list[int], pd.DataFrame, pd.DataFrame]:
@@ -89,9 +113,9 @@ def single_profile_nodes(
     :return: no-storing basin node-IDs ('doorgaand'-only) and modified profile tables
     :rtype: tuple[list[int], pandas.DataFrame, pandas.DataFrame]
     """
-    # removing dummy values
-    df_flowing = flowing_table[flowing_table["area"] > min_area]
-    df_storing = storing_table[storing_table["area"] > min_area]
+    # remove profiles with too small surface area
+    df_flowing = minimum_surface_area(flowing_table, min_area)
+    df_storing = minimum_surface_area(storing_table, min_area)
 
     # merge tables
     df = profile_merging(df_flowing, df_storing, suffixes=("_flowing", "_storing"))
@@ -167,7 +191,7 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy()
 
     # node ID incrementation
-    incr_node_id = ribasim_model.next_node_id - 1
+    incr_node_id = int(ribasim_model.next_node_id - 1)
     basin_node.index += incr_node_id
     basin_static["node_id"] += incr_node_id
     basin_state["node_id"] += incr_node_id
