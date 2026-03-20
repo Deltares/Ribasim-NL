@@ -157,8 +157,8 @@ stages:
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
       hash: md5
-      md5: 8dae8d7b11ed14452b4fbab77934587d.dir
-      size: 10055873
+      md5: 87146997f908ea97aed71612e90ed5cf.dir
+      size: 10080449
       nfiles: 2
   stichtse_rijnlanden:
     cmd:
@@ -176,8 +176,8 @@ stages:
     - path:
         data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
       hash: md5
-      md5: 07882393d7c4e450048d632ebda5926b.dir
-      size: 16810177
+      md5: dabfdf335ccbf0a6ff5ff67575a229cf.dir
+      size: 16826561
       nfiles: 2
   bathymetry:
     cmd: uv run python notebooks/rijkswaterstaat/1_bathymetrie.py
@@ -210,13 +210,13 @@ stages:
       nfiles: 4
     - path: notebooks/rijkswaterstaat
       hash: md5
-      md5: 8dc8b60b270003f6f46e48c1e7de456f.dir
-      size: 94693
+      md5: df8cb92b9f3880637cbd1ec65ec185bb.dir
+      size: 94889
       nfiles: 13
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 297f0ff04fce81e84762774ce06d6af7.dir
+      md5: e16c0af6c8d7aed28f8026c173d3049d.dir
       size: 42700958
       nfiles: 2
   rijn_en_ijssel:
@@ -234,7 +234,7 @@ stages:
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_full_control_model
       hash: md5
-      md5: 06f42fee8a099ed4e153904b4176d910.dir
+      md5: eb1efdf7dc51f5ed44dabe69750aaf1d.dir
       size: 4776085
       nfiles: 2
   vechtstromen:
@@ -246,14 +246,14 @@ stages:
     deps:
     - path: notebooks/vechtstromen
       hash: md5
-      md5: 9f7ba5910615f2f1bc91d2c212fd5a9a.dir
-      size: 81665
+      md5: 9a98d5ef0f9242318b02d4927d906cd2.dir
+      size: 81810
       nfiles: 4
     outs:
     - path: data/Vechtstromen/modellen/Vechtstromen_full_control_model
       hash: md5
-      md5: b750b915fede861ce2fb067af7c017b4.dir
-      size: 18948245
+      md5: b1014072fe35d3dc83159aac3cff912f.dir
+      size: 18985109
       nfiles: 2
   de_dommel:
     cmd:
@@ -263,14 +263,14 @@ stages:
     deps:
     - path: notebooks/de_dommel
       hash: md5
-      md5: c5bf2888e1346129e868110f9bd1b378.dir
-      size: 48362
+      md5: 0622ceb3eb19601bf36eeba3f8bf8f4b.dir
+      size: 48333
       nfiles: 7
     outs:
     - path: data/DeDommel/modellen/DeDommel_parameterized_model
       hash: md5
-      md5: c50559ef041c154ebfa3e6b6b91c4b49.dir
-      size: 19095701
+      md5: ea8050a7db549848041fb0931d96d260.dir
+      size: 19099797
       nfiles: 2
   brabantse_delta:
     cmd:
@@ -288,8 +288,8 @@ stages:
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_full_control_model
       hash: md5
-      md5: e08d1cb2cbedceadcff4bd49ba6f30dc.dir
-      size: 15659157
+      md5: ea6bb2fbecfa25461b6779197936ef2d.dir
+      size: 15675541
       nfiles: 2
   drents_overijsselse_delta:
     cmd:
@@ -300,15 +300,15 @@ stages:
     deps:
     - path: notebooks/drents_overijsselse_delta
       hash: md5
-      md5: 85022eb1f6f457951b6e46a4aad0ea4b.dir
-      size: 49479
+      md5: 38e252e68a82f6cabc9baccd0898459e.dir
+      size: 49674
       nfiles: 4
     outs:
     - path:
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_full_control_model
       hash: md5
-      md5: 89dc2a8b286918c13e9881ba7649acbb.dir
-      size: 7495829
+      md5: 599f1fb7c8aedc0c81974f948b57f23a.dir
+      size: 7540885
       nfiles: 2
   vallei_en_veluwe:
     cmd:
@@ -325,7 +325,7 @@ stages:
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_full_control_model
       hash: md5
-      md5: 70dc8b68eac0905189bf860217a56056.dir
+      md5: 14e94adb7de4d42504e69f87ee748a1f.dir
       size: 20095125
       nfiles: 2
   limburg:
@@ -344,8 +344,8 @@ stages:
     outs:
     - path: data/Limburg/modellen/Limburg_full_control_model
       hash: md5
-      md5: 139ae270d9ad3c0fd8c524079ac6417d.dir
-      size: 22667413
+      md5: 1a97add0ed63b969c002b2c4bc627c11.dir
+      size: 22683797
       nfiles: 2
   hunze_en_aas:
     cmd:
@@ -356,12 +356,12 @@ stages:
     deps:
     - path: notebooks/hunze_en_aas
       hash: md5
-      md5: 0b0a1a0ecb302e9a94723dae9e6a505e.dir
-      size: 36407
+      md5: 8ef2055b68626c5182d0075d0f5e4257.dir
+      size: 36538
       nfiles: 5
     outs:
     - path: data/HunzeenAas/modellen/HunzeenAas_full_control_model
       hash: md5
-      md5: b2a730d566fac15a65916ef792822ae6.dir
-      size: 5070997
+      md5: 05e94c83d2c7ee358bf5f1d88505c580.dir
+      size: 5103765
       nfiles: 2
