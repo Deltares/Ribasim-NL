@@ -8,6 +8,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
+write_budgets: bool = True
 
 
 def add_forcing(model, cloud, starttime, endtime):
@@ -102,6 +103,7 @@ for authority in authorities:
 
             # run model
             model.write(dst_toml_file)
-            budgets_df.to_feather(dst_toml_file.with_name("budgets.arrow"))
-            budgets_df.to_csv(dst_toml_file.with_name("budgets.csv.zip"), compression="zip")
+            if write_budgets:
+                budgets_df.to_feather(dst_toml_file.with_name("budgets.arrow"))
+                budgets_df.to_csv(dst_toml_file.with_name("budgets.csv.zip"), compression="zip")
             model.run()
