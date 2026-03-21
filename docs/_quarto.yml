@@ -29,6 +29,8 @@ website:
       contents:
         - watersystems/main.qmd
         - watersystems/aaenmaas.qmd
+        - watersystems/brabantsedelta.qmd
+        - watersystems/dommel.qmd
         - watersystems/noorderzijlvest.qmd
         - watersystems/stichtserijnlanden.qmd
 format:
