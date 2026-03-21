@@ -102,5 +102,6 @@ for authority in authorities:
 
             # run model
             model.write(dst_toml_file)
-            budgets_df.to_arrow(dst_toml_file.with_name("budgets.arrow"))
+            budgets_df.to_feather(dst_toml_file.with_name("budgets.arrow"))
+            budgets_df.to_csv(dst_toml_file.with_name("budgets.csv.zip"), compression="zip")
             model.run()

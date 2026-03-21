@@ -13,6 +13,7 @@ import pandas as pd
 import shapely
 import xarray as xr
 from ribasim import Model
+from tqdm import tqdm
 
 try:
     from ribasim_nl import CloudStorage
@@ -101,36 +102,60 @@ def budgets_from_dir(
     return ds
 
 
-def _sum_budgets_per_basin(budgets, basin_mask, nodata=-999):
-    """Summing budgets per basin"""
+def _crop_to_gdf(da, gdf):
+    xmin, ymin, xmax, ymax = gdf.total_bounds
+
+    dx = abs(float(da.x[1] - da.x[0]))
+    dy = abs(float(da.y[1] - da.y[0]))
+
+    xmin, ymin, xmax, ymax = xmin - dx, ymin - dy, xmax + dx, ymax + dy
+
+    return da.sel(
+        x=slice(xmin, xmax) if da.x[0] < da.x[-1] else slice(xmax, xmin),
+        y=slice(ymin, ymax) if da.y[0] < da.y[-1] else slice(ymax, ymin),
+    )
+
+
+def _compute_budgets_per_basin(budgets, basin_mask, nodata=-999):
+    """Faster version: process a full variable block at once."""
     print(f"∑ budgets {list(budgets.data_vars)} rasters to basins")
+
     if basin_mask.dims != ("x", "y"):
         basin_mask = basin_mask.transpose("x", "y")
 
     var_names = list(budgets.data_vars)
+    times = budgets.time.values
+    nt = len(times)
+    nv = len(var_names)
 
-    arr = budgets[var_names].to_array("variable").transpose("time", "variable", "x", "y").values
-    nt, nv, nx, ny = arr.shape
-
-    arr = arr.reshape(nt, nv, nx * ny)
-    mask = basin_mask.values.reshape(nx * ny)
-
+    mask = basin_mask.values.reshape(-1)
     valid = np.isfinite(mask) & (mask != nodata)
-    ids = mask[valid].astype(int)
-    arr = arr[:, :, valid]
 
+    ids = mask[valid].astype(np.int64)
     unique_ids, inv = np.unique(ids, return_inverse=True)
     nb = len(unique_ids)
 
-    result = np.zeros((nt, nb, nv), dtype=arr.dtype)
+    result = np.zeros((nt, nb, nv), dtype=np.float64)
 
-    for b in range(nb):
-        sel = inv == b
-        result[:, b, :] = arr[:, :, sel].sum(axis=2)
+    for v, var_name in enumerate(tqdm(var_names, desc="Variables")):
+        data = budgets[var_name]
 
-    index = pd.MultiIndex.from_product([unique_ids, budgets.time.values], names=["node_id", "time"])
+        if data.dims != ("time", "x", "y"):
+            data = data.transpose("time", "x", "y")
 
-    df = pd.DataFrame(result.transpose(1, 0, 2).reshape(nb * nt, nv), index=index, columns=var_names).sort_index()
+        arr = data.values.reshape(nt, -1)[:, valid]
+        arr = np.where(np.isfinite(arr), arr, 0.0)
+
+        for t in range(nt):
+            result[t, :, v] = np.bincount(inv, weights=arr[t], minlength=nb)
+
+    index = pd.MultiIndex.from_product([unique_ids, times], names=["node_id", "time"])
+
+    df = pd.DataFrame(
+        result.transpose(1, 0, 2).reshape(nb * nt, nv),
+        index=index,
+        columns=var_names,
+    ).sort_index()
 
     return df
 
@@ -190,7 +215,7 @@ class AssignOfflineBudgets:
             "bdgdrn_sys3",
             "bdgpssw",
         },
-        surface_runoff: set[str] = {"bdgqrun"},
+        surface_runoff_budgets: set[str] = {"bdgqrun"},
     ) -> tuple[Model, pd.DataFrame]:
         """Compute budgets for Ribasim model
 
@@ -231,18 +256,18 @@ class AssignOfflineBudgets:
             optional table to find basin_metacol if not in node-table, by default "state"
         basin_metacol : str, optional
             colomn to contain primary and secondary values, by default "meta_categorie"
-        primary_values: list[str]
-            list of values in basin_metacol that represent primary basins
-        secondary_values: list[str]
-            list of values in basin_metacol that represent secondary basins
-        primary_budgets : list[str], optional
-            List of budgets that are to be summed to primary drainage/infiltration,
+        primary_values: set[str]
+            set of values in basin_metacol that represent primary basins
+        secondary_values: set[str]
+            set of values in basin_metacol that represent secondary basins
+        primary_budgets : set[str], optional
+            set of budgets that are to be summed to primary drainage/infiltration,
              by default ["bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"]
-        secondary_budgets : list[str], optional
-            List of budgets that are to be summed to secondary drainage/infiltration,
+        secondary_budgets : set[str], optional
+            set of budgets that are to be summed to secondary drainage/infiltration,
              by default ["bdgriv_sys2", "bdgriv_sys3", "bdgriv_sys6", "bdgdrn_sys1", "bdgdrn_sys2", "bdgdrn_sys3", "bdgpssw"]
-        surface_runoff: list[str], optional
-            List of budgets that are to be summed to secondary surface_runoff
+        surface_runoff_budgets: set[str], optional
+            set of budgets that are to be summed to secondary surface_runoff
              by default ["bdgqrun"]
 
         Returns
@@ -256,7 +281,7 @@ class AssignOfflineBudgets:
 
         # Split into primary and secondary basin definition
         print("🪓 split basins into primary and secondary")
-        primary_basin_definition, secondary_basin_definition = self.split_basin_definitions(
+        primary_basin_definition, secondary_basin_definition = self._split_basin_definitions(
             model,
             basin_split=basin_split,
             basin_subtype=basin_subtype,
@@ -265,21 +290,37 @@ class AssignOfflineBudgets:
             secondary_values=secondary_values,
         )
 
-        # create masks
         print("▦ rasterize basins to masks")
-        array = budgets["bdgriv_sys1"].isel(time=0, drop=True)
         primary_basin_mask = imod.prepare.rasterize(
-            primary_basin_definition, column="node_id", like=array, fill=-999, dtype=np.int32
+            primary_basin_definition,
+            column="node_id",
+            like=_crop_to_gdf(budgets["bdgriv_sys1"].isel(time=0, drop=True), primary_basin_definition),
+            fill=-999,
+            dtype=np.int32,
         )
         secondary_basin_mask = imod.prepare.rasterize(
-            secondary_basin_definition, column="node_id", like=array, fill=-999, dtype=np.int32
+            secondary_basin_definition,
+            column="node_id",
+            like=_crop_to_gdf(budgets["bdgriv_sys1"].isel(time=0, drop=True), secondary_basin_definition),
+            fill=-999,
+            dtype=np.int32,
         )
 
         print("⚙️ compute budgets per basin")
-        # get a table for primary and secondary basins with budgets (columns) and node_id, time (index)
-        primary_budgets_df = _sum_budgets_per_basin(budgets[list(primary_budgets)], primary_basin_mask) / 86400
+        primary_budgets_df = (
+            _compute_budgets_per_basin(
+                _crop_to_gdf(budgets[list(primary_budgets)], primary_basin_definition),
+                primary_basin_mask,
+            )
+            / 86400
+        )
+
         secondary_budgets_df = (
-            _sum_budgets_per_basin(budgets[list(secondary_budgets | surface_runoff)], secondary_basin_mask) / 86400
+            _compute_budgets_per_basin(
+                _crop_to_gdf(budgets[list(secondary_budgets | surface_runoff_budgets)], secondary_basin_definition),
+                secondary_basin_mask,
+            )
+            / 86400
         )
 
         print("📈 add budgets to drainage/infiltration and surface_runoff columns")
@@ -294,7 +335,7 @@ class AssignOfflineBudgets:
         infiltration = summed_budgets.clip(
             lower=0
         )  # alles > 0 (infiltratie is in modflow, ontrekking uit ribasim, maar in ribasim positief teken)
-        surface_runoff = pd.Series(budgets_df[surface_runoff].sum(axis=1)).clip(
+        surface_runoff = pd.Series(budgets_df[list(surface_runoff_budgets)].sum(axis=1)).clip(
             lower=0
         )  # assume surface_runoff can't be <0 in RIBASIM
 
@@ -341,65 +382,14 @@ class AssignOfflineBudgets:
                 starttime=model.starttime,
                 endtime=model.endtime,
             )
-        elif self.zipped_budgets_path.is_file() & (self.zipped_budgets_path.suffix == ".zip"):
-            budgets = xr.open_zarr(str(self.zipped_budgets_path))
+        elif self.zipped_budgets_path.is_dir() & (self.zipped_budgets_path.suffix == ".zip"):
+            budgets = xr.open_zarr(str(self.zipped_budgets_path)).sel(time=slice(model.starttime, model.endtime))
         else:
             raise ValueError(
                 f"{self.zipped_budgets_path} does not seem to be a zarr store or modflow budgets directory so can't be opened"
             )
 
         return budgets, model
-
-    def _compute_budgets_per_node_id(
-        self,
-        budgets: xr.Dataset,
-        primary_basin_mask: xr.DataArray,
-        secondary_basin_mask: xr.DataArray,
-        primary_budgets: list[str],
-        secondary_budgets: list[str],
-    ) -> pd.DataFrame:
-        # sum primairy systems
-        primary_summed_budgets = budgets[primary_budgets[0]]
-        primary_summed_budgets = primary_summed_budgets.rename("primair")
-        for budget in primary_budgets[1:]:
-            primary_summed_budgets += budgets[budget]
-
-        # sum secondary systems
-        secondary_summed_budgets = budgets[secondary_budgets[0]]
-        secondary_summed_budgets = secondary_summed_budgets.rename("secondair")
-        for budget in secondary_budgets[1:]:
-            secondary_summed_budgets += budgets[budget]
-
-        # sum per system and node_id
-        primary_budgets_per_node_id = (
-            primary_summed_budgets.groupby(primary_basin_mask)
-            .sum(dim="stacked_y_x")
-            .to_dataframe()
-            .unstack(1)
-            .transpose()
-        )
-        primary_budgets_per_node_id.index = primary_budgets_per_node_id.index.droplevel(0)
-        primary_budgets_per_node_id = primary_budgets_per_node_id.loc[
-            primary_budgets_per_node_id.index != -999, :
-        ]  # remove non overlapping budgets
-
-        secundary_budgets_per_node_id = (
-            secondary_summed_budgets.groupby(secondary_basin_mask)
-            .sum(dim="stacked_y_x")
-            .to_dataframe()
-            .unstack(1)
-            .transpose()
-        )
-        secundary_budgets_per_node_id.index = secundary_budgets_per_node_id.index.droplevel(0)
-        secundary_budgets_per_node_id = secundary_budgets_per_node_id.loc[
-            secundary_budgets_per_node_id.index != -999, :
-        ]  # remove non overlapping budgets
-
-        # combine dataframe's based on node_id
-        budgets_per_node_id = pd.concat([primary_budgets_per_node_id, secundary_budgets_per_node_id])
-        budgets_per_node_id.index.name = "node_id"
-
-        return budgets_per_node_id
 
     def _transpose_basin_definition_polygons(
         self,
@@ -517,7 +507,7 @@ class AssignOfflineBudgets:
 
         return basin_definition_primair, basin_definition_secondair
 
-    def split_basin_definitions(
+    def _split_basin_definitions(
         self,
         ribasim_model: Model,
         basin_split: str = "area",
@@ -580,7 +570,8 @@ class AssignOfflineBudgets:
         basin_definition_primair_points = self._fill_basin_definition_from_points(
             basin_definition_undifined, nodes[nodes[basin_metacol].isin(primary_values)]
         )
-        basin_definition_primair = pd.concat([basin_definition_primair_polygon, basin_definition_primair_points])
+        if not basin_definition_primair_points.empty:
+            basin_definition_primair = pd.concat([basin_definition_primair_polygon, basin_definition_primair_points])
         basin_definition_primair = basin_definition_primair.reset_index(names="node_id")
         basin_definition_secondair = basin_definition_secondair.reset_index()
 
