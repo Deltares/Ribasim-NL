@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import pandas as pd
+import xarray as xr
 from ribasim import run_ribasim
 
 from ribasim_nl import CloudStorage, Model
@@ -642,7 +643,9 @@ class _OutletPumpScaler:
                 run_ribasim(toml_path=model.filepath)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
-                ribasim_water_levels = pd.read_feather(config.model.results_path / "basin.arrow")
+                ribasim_water_levels = (
+                    xr.open_dataset(config.model.results_path / "basin.nc").to_dataframe().reset_index()
+                )
                 ribasim_water_levels = ribasim_water_levels[["time", "node_id", "level"]]
                 ribasim_water_levels = ribasim_water_levels.merge(
                     basin_information[["meta_streefpeil"]], left_on="node_id", right_index=True, how="left"
