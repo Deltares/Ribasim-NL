@@ -349,7 +349,7 @@ def update_from_to_node_function_table_with_new_flow_rate(
 
 
 def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
-    """Store the final scaled flow rate as the largest latest demand/drainage value.
+    """Store the final scaled flow rate using only situations that are allowed to scale.
 
     Parameters
     ----------
@@ -383,9 +383,24 @@ def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
     # only define a final value if a demand situation has already been processed
     if len(demand_columns) > 0:
         latest_demand_column = demand_columns[-1]
-        from_to_node_function_table["scaled_flow_rate"] = from_to_node_function_table[
-            [latest_demand_column, latest_drainage_column]
+        demand_allowed = from_to_node_function_table["allowed_to_scale_water_demand"]
+        drainage_allowed = from_to_node_function_table["allowed_to_scale_water_drainage"]
+        both_allowed = demand_allowed & drainage_allowed
+        demand_only = demand_allowed & ~drainage_allowed
+        drainage_only = drainage_allowed & ~demand_allowed
+
+        # Start from the original capacity. Rows that are not allowed to scale in
+        # either situation keep their original value.
+        from_to_node_function_table["scaled_flow_rate"] = from_to_node_function_table["max_flow_rate"]
+        from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = from_to_node_function_table.loc[
+            both_allowed, [latest_demand_column, latest_drainage_column]
         ].max(axis=1)
+        from_to_node_function_table.loc[demand_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
+            demand_only, latest_demand_column
+        ]
+        from_to_node_function_table.loc[drainage_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
+            drainage_only, latest_drainage_column
+        ]
 
     return from_to_node_function_table
 
@@ -613,12 +628,32 @@ class _OutletPumpScaler:
 
         # determine which nodes are allowed to be scaled
         from_to_node_function_table["allowed_to_scale"] = True
+        from_to_node_function_table["allowed_to_scale_water_demand"] = True
+        from_to_node_function_table["allowed_to_scale_water_drainage"] = True
         from_to_node_function_table["max_drainage_value"] = None
         from_to_node_function_table.loc[
             from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale"
         ] = False
 
         from_to_node_function_table.loc[from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale"] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale_water_demand"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale_water_drainage"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale_water_demand"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale_water_drainage"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table.function.isin(["drain"]), "allowed_to_scale_water_demand"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table.function.isin(["supply"]), "allowed_to_scale_water_drainage"
+        ] = False
 
         # add max_flow_rate of pump and outlet nodes to from_to_node_function_table
         max_flow_rate_df = pd.concat(
