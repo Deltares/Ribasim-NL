@@ -28,11 +28,14 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+DYNAMIC_CONDITIONS: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
+
+mixed_conditions_design_P = 10
+mixed_conditions_design_E = 2
 
 # model settings
 waterschap = "Delfland"
@@ -447,6 +450,8 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         max_iterations=20,
+        design_precipitation_event=mixed_conditions_design_P,
+        design_potential_evaporation_event=mixed_conditions_design_E,
     )
 )
 

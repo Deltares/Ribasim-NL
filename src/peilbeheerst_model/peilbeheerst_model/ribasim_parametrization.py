@@ -240,31 +240,39 @@ def set_dynamic_forcing(ribasim_model: ribasim.Model, time: typing.Sequence[date
 
 
 def set_hypothetical_dynamic_forcing(
-    ribasim_model: ribasim.Model, start_time: datetime.datetime, end_time: datetime.datetime, value: float = 10
+    ribasim_model: ribasim.Model,
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
+    mixed_conditions_design_P: float,
+    mixed_conditions_design_E: float,
 ) -> None:
     """Set a basic hypothetical dynamic forcing.
 
-    The hypothetical forcing consists of a period of precipitation followed by a period of evaporation. These periods
-    are equally divided over the total model duration.
+    The hypothetical forcing consists of an initial precipitation period covering the
+    first third of the simulation, followed by a potential-evaporation period covering
+    the remaining two thirds.
 
     :param ribasim_model: ribasim model
     :param start_time: start time of simulation
     :param end_time: end time of simulation
-    :param value: value for precipitation and evaporation in mm per day, defaults to 10
+    :param mixed_conditions_design_P: precipitation rate during the first period in mm/day
+    :param mixed_conditions_design_E: potential evaporation rate during the later period in mm/day
 
     :type ribasim_model: ribasim.Model
     :type start_time: datetime.datetime
     :type end_time: datetime.datetime
-    :type value: float, optional
+    :type mixed_conditions_design_P: float
+    :type mixed_conditions_design_E: float
     """
     # define time-variables
     halftime = start_time + (end_time - start_time) // 3
     time = start_time, halftime, end_time
 
     # define forcing time-series
-    v = convert_mm_day_to_m_sec(value)
-    precipitation = v, 0, 0
-    evaporation = 0, v, v
+    v_P = convert_mm_day_to_m_sec(mixed_conditions_design_P)
+    v_E = convert_mm_day_to_m_sec(mixed_conditions_design_E)
+    precipitation = v_P, 0, 0
+    evaporation = 0, v_E, v_E
 
     # set forcing conditions
     forcing = {

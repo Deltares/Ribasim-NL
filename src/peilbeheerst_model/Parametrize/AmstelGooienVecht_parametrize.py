@@ -33,6 +33,9 @@ RESCALE_FLOW_CAPACITIES: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
+mixed_conditions_design_P = 10
+mixed_conditions_design_E = 2
+
 # model settings
 waterschap = "AmstelGooienVecht"
 base_model_versie = "2024_12_0"
@@ -303,12 +306,16 @@ if DYNAMIC_CONDITIONS:
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 1)
+    ribasim_param.set_hypothetical_dynamic_forcing(
+        ribasim_model, starttime, endtime, mixed_conditions_design_P, mixed_conditions_design_E
+    )
 
 else:
     forcing_dict = {
-        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
-        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
+        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else mixed_conditions_design_P),
+        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(
+            mixed_conditions_design_E if AANVOER_CONDITIONS else 0
+        ),
         "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
         "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
     }
@@ -521,8 +528,6 @@ ribasim_model.pump.static.df.loc[
     "meta_known_flow_capacities",
 ] = False
 
-# kan weg als er geschaald wordt
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 1.0
 # If RESCALE_FLOW_CAPACITIES: scale max_flow_rates of the connector nodes which have no predefined max_flow_rates. If not, load the from_to_node_function_table with the scaled max flow rates from GoodCloud.
 ribasim_model, from_to_node_function_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
@@ -532,7 +537,9 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         waterschap=waterschap,
         cloud=cloud,
         rescale_flow_capacities=True,
-        max_iterations=20,
+        max_iterations=15,
+        design_precipitation_event=mixed_conditions_design_P,
+        design_potential_evaporation_event=mixed_conditions_design_E,
     )
 )
 
