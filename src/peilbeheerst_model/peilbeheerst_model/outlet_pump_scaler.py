@@ -435,7 +435,7 @@ def cap_guessed_flow_rates_at_minimum_and_maximum(
     Returns
     -------
     pd.DataFrame
-        The updated table with guessed flow rates capped at the specified maximum.
+        The updated table with guessed flow rates capped at the specified bounds.
     """
     # retrieve the last column name starting with "new_max_flow_rates_"
     new_flow_rate_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
@@ -446,12 +446,16 @@ def cap_guessed_flow_rates_at_minimum_and_maximum(
 
     # cap the guessed flow rates at the defined minimum
     from_to_node_function_table.loc[
-        from_to_node_function_table[last_new_flow_rate_column] < min_scaled_flow_rate, last_new_flow_rate_column
+        from_to_node_function_table["allowed_to_scale"]
+        & (from_to_node_function_table[last_new_flow_rate_column] < min_scaled_flow_rate),
+        last_new_flow_rate_column,
     ] = min_scaled_flow_rate
 
     # cap the guessed flow rates at the defined maximum
     from_to_node_function_table.loc[
-        from_to_node_function_table[last_new_flow_rate_column] > max_scaled_flow_rate, last_new_flow_rate_column
+        from_to_node_function_table["allowed_to_scale"]
+        & (from_to_node_function_table[last_new_flow_rate_column] > max_scaled_flow_rate),
+        last_new_flow_rate_column,
     ] = max_scaled_flow_rate
 
     return from_to_node_function_table
@@ -630,12 +634,12 @@ class _OutletPumpScaler:
                 ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_demand_situation
             ribasim_model.level_boundary.static.df = None
 
-            # if capacity has been scaled to a (rounded) value of 0, place back to 0.001
+            # if capacity has a flow rate lower than 0, place back to 0.001
             ribasim_model.outlet.static.df.loc[
                 ribasim_model.outlet.static.df.max_flow_rate < 0.001, "max_flow_rate"
-            ] = 0.001
+            ] = min_scaled_flow_rate
             ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate < 0.001, "max_flow_rate"] = (
-                0.001
+                min_scaled_flow_rate
             )
 
             # loop through each iteration
@@ -757,8 +761,11 @@ class _OutletPumpScaler:
                     column_name_direction=column_name_direction,
                 )
 
-                # if lower values have been assigned for the water_demand situation, then overwrite the max_flow_rate with the value from water_drainage
-                from_to_node_function_table = overwrite_demand_values_with_drainage_values(from_to_node_function_table)
+                if situation == "water_drainage":
+                    # if lower values have been assigned for the water_demand situation, then overwrite the max_flow_rate with the value from water_drainage
+                    from_to_node_function_table = overwrite_demand_values_with_drainage_values(
+                        from_to_node_function_table
+                    )
 
                 # if there are nodes which are not allowed to be scaled, overwrite the guessed flow rates with the original max_flow_rate from the ribasim model
                 from_to_node_function_table = overwrite_guessed_flow_rates_if_not_allowed_to_scale(
