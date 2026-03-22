@@ -18,6 +18,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    set_node_functions,
 )
 from ribasim_nl.profiles import implement
 from shapely import Point
@@ -27,8 +28,8 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = True
+DYNAMIC_CONDITIONS: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -321,9 +322,6 @@ else:
     }
     ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
-# reset pump capacity for each pump
-ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
-
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
@@ -375,16 +373,45 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 # change function to inlaat
-to_inlaat = [338, 390, 417, 435, 450, 456, 518, 539, 541, 548, 632, 679, 710, 722, 738, 741, 774, 789, 861, 1014, 1018]
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_inlaat), "function"] = "supply"
+to_supply = [
+    338,
+    348,
+    390,
+    417,
+    425,
+    435,
+    450,
+    456,
+    489,
+    518,
+    539,
+    541,
+    548,
+    632,
+    679,
+    710,
+    722,
+    738,
+    741,
+    774,
+    789,
+    861,
+    1014,
+    1018,
+]
+# from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_inlaat), "function"] = "supply"
 
 # change function to flow_control
-to_flow_control = [290, 557, 762, 1013, 1033]
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_flow_control), "function"] = "flow_control"
+to_flow_control = [290, 417, 557, 762, 1013, 1032, 1033]
+# from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_flow_control), "function"] = "flow_control"
 
 # change function to drain
-to_drain = [256, 626]
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_drain), "function"] = "drain"
+to_drain = [256, 626, 863]
+# from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_drain), "function"] = "drain"
+
+from_to_node_function_table = set_node_functions(
+    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+)
 
 outlet_copy = ribasim_model.outlet.static.df[
     [
@@ -500,9 +527,6 @@ ribasim_model.basin.node.df.loc[20, "name"] = "Amstel"
 ribasim_model.basin.node.df.loc[85, "name"] = "Amstel"
 ribasim_model.basin.node.df.loc[86, "name"] = "Amstel"
 
-
-ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.flow_rate.fillna(value=25)
-ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.max_flow_rate.fillna(value=25)
 increase_flow_rate_pumps = [412, 146]
 
 # presumably wrong conversion of flow capacity in the data
@@ -522,10 +546,11 @@ if MIXED_CONDITIONS:
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
-ribasim_model.outlet.static.df.meta_known_flow_capacities = False
+ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df["meta_known_flow_rate"] = True
 ribasim_model.pump.static.df.loc[
     (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
-    "meta_known_flow_capacities",
+    "meta_known_flow_rate",
 ] = False
 
 # If RESCALE_FLOW_CAPACITIES: scale max_flow_rates of the connector nodes which have no predefined max_flow_rates. If not, load the from_to_node_function_table with the scaled max flow rates from GoodCloud.
@@ -536,7 +561,7 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         from_to_node_function_table=from_to_node_function_table,
         waterschap=waterschap,
         cloud=cloud,
-        rescale_flow_capacities=True,
+        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         max_iterations=15,
         design_precipitation_event=mixed_conditions_design_P,
         design_potential_evaporation_event=mixed_conditions_design_E,

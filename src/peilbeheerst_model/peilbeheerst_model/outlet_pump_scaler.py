@@ -27,7 +27,7 @@ class OutletPumpScalingConfig:
     waterschap: str
     cloud: CloudStorage
     max_iterations: int = 12
-    initial_guess_flow_rate_outlet: float = 0.1
+    initial_guess_flow_rate_outlet: float = 0.01
     initial_guess_flow_rate_pump: float = 10.0
     design_precipitation_event: float = 10
     design_potential_evaporation_event: float = 1.5

@@ -33,6 +33,9 @@ RESCALE_FLOW_CAPACITIES: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
+mixed_conditions_design_P = 10
+mixed_conditions_design_E = 2
+
 # model settings
 waterschap = "SchielandendeKrimpenerwaard"
 base_model_versie = "2024_12_1"
@@ -373,12 +376,15 @@ if DYNAMIC_CONDITIONS:
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 1)
-
+    ribasim_param.set_hypothetical_dynamic_forcing(
+        ribasim_model, starttime, endtime, mixed_conditions_design_P, mixed_conditions_design_E
+    )
 else:
     forcing_dict = {
-        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
-        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
+        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else mixed_conditions_design_P),
+        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(
+            mixed_conditions_design_E if AANVOER_CONDITIONS else 0
+        ),
         "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
         "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
     }
@@ -439,7 +445,7 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 # change outlet functions
-to_supply = (182, 183, 201, 356, 468, 489, 504, 516, 524, 527, 531, 534, 612, 691, 709, 711)
+to_supply = (201, 356, 434, 468, 479, 480, 489, 494, 504, 554, 516, 524, 527, 531, 534, 691, 709, 711)
 to_flow_control = (
     182,
     183,
@@ -449,6 +455,7 @@ to_flow_control = (
     358,
     373,  # basin die boezem voedt
     561,
+    612,
 )
 to_drain = (
     364,  # labelled as "aanvoergemaal" but directed from polder to boezem
@@ -596,6 +603,14 @@ if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
+# set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
+ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df["meta_known_flow_rate"] = True
+ribasim_model.pump.static.df.loc[
+    (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
+    "meta_known_flow_rate",
+] = False
+
 # rescaling of outlets (and pumps)
 ribasim_model, from_to_node_function_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
@@ -606,6 +621,8 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         max_iterations=20,
+        design_precipitation_event=mixed_conditions_design_P,
+        design_potential_evaporation_event=mixed_conditions_design_E,
     )
 )
 
