@@ -311,6 +311,8 @@ def update_from_to_node_function_table_with_new_flow_rate(
                 from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value * 2.0
             elif direction_value == "lower":
                 from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value / 2.0
+            elif direction_value == "equal":
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value
             continue
 
         if direction_value == "higher":
