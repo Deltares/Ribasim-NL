@@ -141,6 +141,8 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 model.outlet.static.df.max_flow_rate = 30
 model.outlet.static.df.flow_rate = 30
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
+# Schabbert
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 161, "flow_rate"] = 12
 
 
 model.update_node(node_id=586, node_type="Outlet")  # wordt outlet, was manning
@@ -231,6 +233,8 @@ model.update_node(node_id=1014, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=490, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=649, node_type="Outlet")  # wordt outlet, was manning
 model.update_node(node_id=476, node_type="Outlet")  # wordt outlet, was manning
+model.update_node(node_id=1028, node_type="Outlet")  # wordt outlet, was manning
+model.update_node(node_id=727, node_type="Outlet")  # wordt outlet, was manning
 
 
 # ligt benedenstrooms een stuw
@@ -260,6 +264,8 @@ model.merge_basins(basin_id=1663, to_basin_id=1722, are_connected=True)
 model.merge_basins(basin_id=1794, to_basin_id=1836, are_connected=True)
 model.merge_basins(basin_id=1455, to_basin_id=1276, are_connected=True)
 model.merge_basins(basin_id=1968, to_basin_id=1494, are_connected=True)
+model.merge_basins(basin_id=1615, to_basin_id=1331, are_connected=True)
+
 
 # Mierlo wordt aanvoer als afvoer gemaal
 model.update_node(node_id=92, node_type="Pump")  # wordt outlet, was outlet
@@ -406,9 +412,7 @@ level_supply_nodes = [
     527,
     531,
     640,
-    731,
     734,
-    737,
     753,
     850,
     985,
@@ -477,7 +481,7 @@ drain_nodes = [85, 92, 312, 353, 400]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [226, 280]
+supply_nodes = [226]
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [681, 774, 775, 776, 934, 1089, 974]
@@ -573,7 +577,7 @@ drain_nodes = [
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [186, 251, 278, 379, 731]
+supply_nodes = [186, 251, 278, 379]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1104,7 +1108,7 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [919, 920, 366, 452, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1016]
+drain_nodes = [81, 919, 920, 366, 452, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1016]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1334,7 +1338,7 @@ flow_control_nodes = [333, 701, 822, 917, 916]
 #
 
 
-supply_nodes = [369, 406, 2020, 2022, 527, 1502]
+supply_nodes = [2020, 2022, 527, 1502]
 #
 
 drain_nodes = [120, 210, 267, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 777, 748, 891, 971]

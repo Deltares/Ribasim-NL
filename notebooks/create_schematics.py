@@ -24,7 +24,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 MODEL_POST_FIX = "full_control_model"
-ARROW_LENGTH = {"StichtseRijnlanden": 800, "Noorderzijlvest": 1200, "AaenMaas": 1600}
+ARROW_LENGTH = {"StichtseRijnlanden": 800, "Noorderzijlvest": 1200, "AaenMaas": 1600, "Limburg": 1600}
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
