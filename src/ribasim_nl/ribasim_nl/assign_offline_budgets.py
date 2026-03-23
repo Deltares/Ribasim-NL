@@ -1,10 +1,6 @@
-# %%
-# original from https://github.com/Deltares/Ribasim-NL/blob/main/src/ribasim_nl/ribasim_nl/assign_offline_budgets.py
-# Modified read differend IMODFLOW models
-# Tested on GRAM Aa en Maas
+"""Assign offline MODFLOW-MetaSWAP budgets (LHM zarr or local IDF files) to Ribasim Basin nodes."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import geopandas as gpd
 import imod
@@ -12,16 +8,9 @@ import numpy as np
 import pandas as pd
 import shapely
 import xarray as xr
-from ribasim import Model
 from tqdm import tqdm
 
-try:
-    from ribasim_nl import CloudStorage
-except ImportError:
-    CloudStorage = None
-
-if TYPE_CHECKING:
-    from ribasim_nl import CloudStorage as _CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 
 def budgets_from_dir(
@@ -163,13 +152,14 @@ def _compute_budgets_per_basin(budgets, basin_mask, nodata=-999):
 class AssignOfflineBudgets:
     def __init__(
         self,
-        zipped_budgets_path: Path | str | None = "Basisgegevens/LHM/4.3/results/LHM_433_budget.zip",
+        zarr_budgets_path: Path | str | None = "Basisgegevens/LHM/4.3/results/LHM_433_budget.zip",
         modflow_budgets_path: Path | str | None = None,
         metaswap_budgets_path: Path | str | None = None,
     ):
-        """Assign offline budgets from  MODFLOW MetaSWAP budget files.
+        """Assign offline budgets from MODFLOW-MetaSWAP budget files.
 
-        These files are either supplied as LHM zipped budgets path in Zarr-format (default) that is stored in the Deltares Cloud Storage.
+        These files are either supplied as LHM budgets in a Zarr directory (default)
+        hosted on Deltares Cloud Storage.
 
         Alternatively, when local MODFLOW-MetaSWAP models are to be coupled, one can supply the modflow_budgets_path and metaswap_budgets_path containing IDF-files:
             - The expected file-pattern relative to modflow_budgets path is bdgdrn/bdgdrn_sys<system>_<yyyymmdd>_l<layer>.idf and bdgriv/bdgriv_sys<system>_<yyyymmdd>_l<layer>.idf
@@ -177,23 +167,23 @@ class AssignOfflineBudgets:
 
         Parameters
         ----------
-        zipped_budgets_path : Path | str | None, optional
-            Zip-file with zar-storage, by default "Basisgegevens/LHM/4.3/results/LHM_433_budget.zip"
+        zarr_budgets_path : Path | str | None, optional
+            Zarr store directory, by default "Basisgegevens/LHM/4.3/results/LHM_433_budget.zip"
         modflow_budgets_path : Path | str | None, optional
             MODFLOW budgets in IDF format, by default None
         metaswap_budgets_path : Path | str | None, optional
-            MetaSWAP budgets in IDF forma by default None
+            MetaSWAP budgets in IDF format, by default None
         """
-        self.cloud: _CloudStorage | None = None
+        self.cloud: CloudStorage | None = None
         # If you don't provide modflow_budgets_path and metaswap_budgets_path you will use LHM budgets from Ribasim-NL
         # In that case you'll need access to Deltares CloudStorage
         if (modflow_budgets_path is None) | (metaswap_budgets_path is None):
             self.cloud = CloudStorage()
-            self.zipped_budgets_path = self.cloud.joinpath(zipped_budgets_path)
+            self.zarr_budgets_path = self.cloud.joinpath(zarr_budgets_path)
             self.modflow_budgets_path = None
             self.metaswap_budgets_path = None
         else:
-            self.zipped_budgets_path = None
+            self.zarr_budgets_path = None
             self.modflow_budgets_path = Path(modflow_budgets_path)
             self.metaswap_budgets_path = Path(metaswap_budgets_path)
 
@@ -364,7 +354,7 @@ class AssignOfflineBudgets:
             Budgets and Ribasim model
         """
         # Synchronize files from cloud (LHM-case)
-        filepaths = [self.zipped_budgets_path]
+        filepaths = [self.zarr_budgets_path]
         if self.cloud is not None:
             if not isinstance(model, Model):
                 filepaths.append(Path(model))
@@ -374,19 +364,19 @@ class AssignOfflineBudgets:
         if not isinstance(model, Model):
             model = Model.read(model)
 
-        # Open the budget-file as zarr if zip-file
-        if self.zipped_budgets_path is None:
+        # Open budgets: local IDF files or Zarr store directory
+        if self.zarr_budgets_path is None:
             budgets = budgets_from_dir(
                 modflow_budgets_path=self.modflow_budgets_path,
                 metaswap_budgets_path=self.metaswap_budgets_path,
                 starttime=model.starttime,
                 endtime=model.endtime,
             )
-        elif self.zipped_budgets_path.is_dir() & (self.zipped_budgets_path.suffix == ".zip"):
-            budgets = xr.open_zarr(str(self.zipped_budgets_path)).sel(time=slice(model.starttime, model.endtime))
+        elif self.zarr_budgets_path.is_dir():
+            budgets = xr.open_zarr(str(self.zarr_budgets_path)).sel(time=slice(model.starttime, model.endtime))
         else:
             raise ValueError(
-                f"{self.zipped_budgets_path} does not seem to be a zarr store or modflow budgets directory so can't be opened"
+                f"{self.zarr_budgets_path} is not a directory; expected a Zarr store or provide modflow/metaswap budget paths"
             )
 
         return budgets, model
