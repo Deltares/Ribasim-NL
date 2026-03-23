@@ -6,10 +6,8 @@ import numpy as np
 import pandas as pd
 import shapely
 import xarray as xr
-from ribasim import Model
 
-from ribasim_nl import CloudStorage
-from ribasim_nl import Model as ModelNL
+from ribasim_nl import CloudStorage, Model
 
 
 class AssignOfflineBudgets:
@@ -22,11 +20,11 @@ class AssignOfflineBudgets:
 
     def compute_budgets(
         self,
-        model: ModelNL | Model | Path | str,
+        model: Model | Path | str,
         basin_split: str = "area",
         basin_subtype: str = "state",
         basin_metacol: str = "meta_categorie",
-    ) -> ModelNL | Model:
+    ) -> Model:
         # Synchronize LHM budget and model files
         budgets, model = self._sync_files(model)
 
@@ -69,7 +67,7 @@ class AssignOfflineBudgets:
             group = group.reindex(budgets_per_node_id.columns)
             for c in group.columns:
                 if pd.api.types.is_numeric_dtype(group[c]):
-                    group[c] = group[c].interpolate(method="pad")
+                    group[c] = group[c].ffill()
             basin_time.append(group.reset_index(drop=False))
         basin_time = pd.concat(basin_time, ignore_index=True)
 
@@ -85,16 +83,16 @@ class AssignOfflineBudgets:
 
     def _sync_files(
         self,
-        model: ModelNL | Model | Path | str,
-    ) -> tuple[xr.Dataset, ModelNL | Model]:
+        model: Model | Path | str,
+    ) -> tuple[xr.Dataset, Model]:
         # Synchronize LHM budget and model files
         filepaths = [self.lhm_budget_path]
-        if not (isinstance(model, ModelNL) or isinstance(model, Model)):
+        if not isinstance(model, Model):
             filepaths.append(Path(model))
         self.cloud.synchronize(filepaths=filepaths)
 
         # Read the ribasim model
-        if not (isinstance(model, ModelNL) or isinstance(model, Model)):
+        if not isinstance(model, Model):
             model = Model.read(model)
 
         # Open the LHM budget file
@@ -271,7 +269,7 @@ class AssignOfflineBudgets:
 
     def split_basin_definitions(
         self,
-        ribasim_model: Model | ModelNL,
+        ribasim_model: Model,
         basin_split: str = "area",
         basin_subtype: str = "state",
         basin_metacol: str = "meta_categorie",

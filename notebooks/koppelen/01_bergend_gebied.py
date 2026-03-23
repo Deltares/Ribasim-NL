@@ -105,7 +105,6 @@ for row in rws_model.basin.node.df[rws_model.basin.node.df.index.isin(basin_area
             min_level -= 0.1
         basin_profile = get_basin_profile(
             basin_polygon=basin_polygon,
-            polygon=polygon,
             max_level=max_level,
             min_level=min_level,
             lhm_raster_file=lhm_raster_file,

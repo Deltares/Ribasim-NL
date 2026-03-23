@@ -138,15 +138,12 @@ class CloudStorage:
         return Path(file_path).relative_to(self.data_dir)
 
     def joinurl(self, *args: str) -> str:
-        if args:
-            return f"{self.url}/{'/'.join(args)}"
-        else:
-            return self.url
+        return "/".join((self.url, *args))
 
     def joinpath(self, *args: str) -> Path:
         return self.data_dir.joinpath(*args)
 
-    def upload_file(self, file_path: Path) -> None:
+    def upload_file(self, file_path: str | Path) -> None:
         # get url
         url = self.file_url(file_path)
 
@@ -248,7 +245,7 @@ class CloudStorage:
                 auth=self.auth,
             )
 
-    def download_content(self, url: str, overwrite: bool = True) -> None:
+    def download_content(self, url: str, overwrite: bool = settings.overwrite_files_from_cloud) -> None:
         """Download content of a directory recursively."""
         # get all content (files and directories from url)
         content = self.content(url)
@@ -450,7 +447,7 @@ class CloudStorage:
 
         return ModelVersion(model, today.year, today.month, revision)
 
-    def synchronize(self, filepaths: list[Path], overwrite: bool = False) -> None:
+    def synchronize(self, filepaths: list[Path], overwrite: bool = settings.overwrite_files_from_cloud) -> None:
         for path in filepaths:
             path = Path(path)
             url = self.joinurl(*path.relative_to(self.data_dir).parts)

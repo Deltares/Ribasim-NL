@@ -1,0 +1,140 @@
+---
+title: "Scale max flow rates outlets and pumps based on design events"
+---
+
+Workflow for iteratively scaling outlet and pump capacities in a Ribasim model until basin water levels stay within an allowed deviation from the target level.
+The implementation lives in [`src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py).
+
+## Purpose
+
+This workflow is used after a Ribasim model has already been built and parameterized.
+It adjusts `max_flow_rate` for outlet and pump nodes whose discharge or supply capacity is unknown or still provisional.
+The script does this by repeatedly:
+
+1. running the model for a design situation,
+2. checking which basins deviate too much from `meta_streefpeil`, and
+3. increasing or decreasing connector capacities accordingly.
+
+## How to run
+
+This workflow is intended to be run after a water board model has already been built and parameterized:
+
+1. Build the Ribasim network for the water board.
+2. Prepare `from_to_node_function_table.csv`.
+   This table links connector nodes to upstream and downstream basins and indicates whether a connector functions in drainage or demand.
+3. Open and configure `src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py` from your ribasim model parametrize code.
+   Set the model path, results path, initial guesses, design events, exclusions, and iteration settings.
+4. Run `src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py` from your ribasim model parametrize code.
+   The script writes temporary scaled models, runs Ribasim repeatedly, reads results, and updates guessed outlet and pump capacities.
+
+## Inputs
+
+The script expects at least the following inputs to be available:
+
+- a Ribasim model
+- basin target levels in `model.basin.area.df["meta_streefpeil"]`,
+- connector metadata in pump and outlet tables, including `meta_known_flow_rate`,
+- a `from_to_node_function_table.csv` with at least:
+  - `node_id`
+  - `from_node_id`
+  - `to_node_id`
+  - a function classification used to distinguish drainage and demand,
+- a writable model path for the scaled model,
+- a results path from which basin results can be read after each Ribasim run.
+
+## Main steps
+
+### 1. Prepare the model
+
+The script first loads the model and stores the original state and forcing tables.
+It then derives initial basin water levels from `meta_streefpeil` using `set_initial_water_levels(...)`.
+For bergende basins without a direct target level, the script infers the level from the downstream doorgaande basin.
+
+### 2. Determine which connector nodes may be scaled
+
+Pump and outlet nodes are collected and merged into the `from_to_node_function_table`.
+A node is marked as not scalable when:
+
+- it is present in `node_id_exclusion_list`, or
+- `meta_known_flow_rate` is `True` (which should be set in the outlet/pump .static table).
+
+The current `max_flow_rate` values are then added to the table so each iteration has a baseline.
+
+### 3. Define the design situations
+
+The script runs two scenarios:
+
+- `water_drainage`
+- `water_demand`
+
+For each situation it adjusts:
+
+- level boundary water levels so water can flow under gravity,
+- basin drainage and infiltration forcing via `set_vertical_static_forcing(...)`,
+- initial outlet and pump capacities for unknown capacities.
+
+### 4. Run iterative scaling
+
+For each iteration and each situation, the script:
+
+1. writes the temporary Ribasim model,
+2. runs Ribasim with `run_ribasim(...)`,
+3. reads basin water levels from the results file,
+4. computes deviation from `meta_streefpeil`,
+5. determines whether each basin exceeded the allowed deviation for too many timesteps,
+6. translates that basin-level result into a connector scaling direction.
+
+The direction is stored per iteration as one of:
+
+- `higher`
+- `lower`
+- `equal`
+
+### 5. Update guessed flow rates
+
+New guesses are generated with `update_from_to_node_function_table_with_new_flow_rate(...)`.
+The script uses earlier iterations to decide the next guess:
+
+- first guess: double or halve the current value,
+- later guesses: move between previously tried values using a geometric mean,
+- unchanged nodes: keep the latest value.
+
+Additional safeguards are then applied:
+
+- `overwrite_demand_values_with_drainage_values(...)` prevents demand capacities from dropping below the highest drainage guess,
+- `overwrite_guessed_flow_rates_if_not_allowed_to_scale(...)` restores original values for protected nodes,
+- `cap_guessed_flow_rates_at_maximum(...)` enforces `max_scaled_flow_rate`.
+
+### 6. Write guessed capacities back into the model
+
+The latest guessed values are copied into:
+
+- `model.pump.static.df["max_flow_rate"]`
+- `model.outlet.static.df["max_flow_rate"]`
+
+using `update_max_flow_rates_in_model(...)`.
+
+### 7. Inspect warnings and diagnostics
+
+The workflow includes checks and warnings for:
+
+- missing `meta_known_flow_rate` columns,
+- missing target levels,
+- connector flow rates above a configured threshold,
+- iteration history in the `from_to_node_function_table`.
+
+## Important assumptions
+
+This workflow assumes:
+
+- `meta_streefpeil` is present and reliable,
+- the connector-node table correctly links basins to outlet and pump nodes,
+- design precipitation and evaporation events are representative for the scaling task,
+
+## Output
+
+The main outputs are:
+
+- an updated Ribasim model with revised outlet and pump `max_flow_rate` values,
+- an enriched `from_to_node_function_table` with iteration history,
+- optional diagnostic plots showing how guessed capacities changed over time.
