@@ -1,0 +1,82 @@
+# Limburg
+
+- Laatst bijgewerkt: 28-01-2026
+- Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+
+## Systeembeschrijving
+![Systeembeschrijving Brabantse Delta](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/Limburg.svg)
+
+
+Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.
+### Watersysteem 
+Via gemaal Katsberg (max 5.4m3/s) wordt water vanuit de Noordervaart aangevoerd naar het kanaal `van Deurne` geleid. Bij `Halte Verdeelwerk` wordt het beschikbare water verdeeld over het Peelkanaal en de Grenssloot 
+
+
+### Peelkanaal 
+
+**Afvoer:**
+- Via het `Afleidingskanaal` wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de `Maas`
+
+**Aanvoer:**
+- Via `Verdeelwerk De Halte` wordt een deel van het aangevoerde water naar het aanvoergebied  `Peelkanaal` geleid. 
+- Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied `Peelscheloop` `Bakelse AA` en `Maaskant-Oost`) 
+
+### Helenavaart
+
+**Afvoer:**
+- Via de Oostrumsche beek en de Groote Molenbeek naar de Maas
+
+**Aanvoer** 
+- De aanvoer via Katsberg, naar `gemaal Helenveen` en `Verdeelwerk de Halte`.
+
+### Beringe
+
+**Afvoer:**
+- Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de Maas
+- Rechtstreeks en via de `Roode Vaart`naar het `Hollandsch diep` 
+
+**Aanvoer** 
+- Via de Noordervaart kan water ingelaten worden via gemaal Beringe
+
+### Eendlossing/
+
+**Afvoer:**
+- Direct naar de Zuid-Willemsvaart 
+
+**Aanvoer** 
+- Via inlaat de Eendlossing vanaf de Zuid-Willemsvaart
+
+### Nederweert Hoverlossing
+**Afvoer:**
+- Naar de Zuid-Willemsvaart via Aa en Maas
+
+**Aanvoer** 
+- Via inlaat Nederweert Hoverlossing vanaf de `Zuid-Willemsvaart` 
+- Vanaf aanvoergebied `Nederweert Hoverlossing` wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)
+
+### Oude Graaf
+
+**Afvoer:**
+- Via de Sterkselsche Aa wordt het doorgevoerd naar waterschap de Dommel
+
+**Aanvoer:**
+- Via inlaten vanaf de `Zuid-Willemsvaart`
+
+### Tungelroysche beek
+
+**Afvoer:**
+-via de Neerbeek en de Tungelroysche beek naar de `Maas`
+
+**Aanvoer:**
+- Via inlaten vanaf de `Zuid-Willemsvaart`
+
+### Rogge
+- Via inlaten vanaf de `Zwartwaterlossing`
+
+
+## Capaciteiten
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+## Bronnen
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). 
+
+- [Documentatie Distributiemodel (Deel B, hoofdstuk 8)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
