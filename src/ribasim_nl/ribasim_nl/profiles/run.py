@@ -220,6 +220,8 @@ def main(
     # BGT-coupling
     hydro_objects = width.couple_bgt_to_hydro_objects(hydro_objects, bgt_data, min_overlap=bgt_buffer)
     hydro_objects = width.estimate_width(hydro_objects, bgt_data, drop_na=True)
+    if wd_intermediate_output is not None:
+        bgt.save_bgt_coupling(hydro_objects, bgt_data, wd_intermediate_output)
 
     # depth from hydrotopes
     hydrotope_map = ht.get_hydrotopes_map(cloud=cloud)
