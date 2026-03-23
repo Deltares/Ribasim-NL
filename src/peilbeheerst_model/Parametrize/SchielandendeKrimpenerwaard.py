@@ -442,10 +442,34 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 # change outlet functions
-to_supply = (182, 183, 201, 356, 468, 489, 504, 516, 524, 527, 531, 534, 612, 691, 709, 711)
-to_flow_control = (
+to_supply = (
     182,
     183,
+    196,
+    201,
+    356,
+    468,
+    480,
+    489,
+    504,
+    516,
+    524,
+    527,
+    531,
+    534,
+    612,
+    691,
+    703,
+    705,
+    709,
+    711,
+    479,
+    494,
+    554,
+)
+to_flow_control = (
+    # 182,
+    # 183,
     220,  # basin die boezem voedt
     341,  # basin die boezem voedt
     354,
