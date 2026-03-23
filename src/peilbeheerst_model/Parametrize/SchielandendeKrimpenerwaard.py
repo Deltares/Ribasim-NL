@@ -33,6 +33,9 @@ RESCALE_FLOW_CAPACITIES: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
+DESIGN_P_MIXED_CONDITIONS = 10
+DESIGN_E_MIXED_CONDITIONS = 2
+
 # model settings
 waterschap = "SchielandendeKrimpenerwaard"
 base_model_versie = "2024_12_1"
@@ -606,6 +609,8 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         max_iterations=20,
+        design_precipitation_event=DESIGN_P_MIXED_CONDITIONS,
+        design_potential_evaporation_event=DESIGN_E_MIXED_CONDITIONS,
     )
 )
 
