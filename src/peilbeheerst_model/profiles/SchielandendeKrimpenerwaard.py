@@ -21,6 +21,7 @@ def main(
     :param export_intermediate_output: export intermediate output for checking/debugging, defaults to False
 
     :type export_profile_tables: bool, optional
+    :type sync: bool, optional
     :type overwrite: bool, optional
     :type export_intermediate_output: bool, optional
     """
