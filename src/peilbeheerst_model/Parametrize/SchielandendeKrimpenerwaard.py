@@ -33,8 +33,8 @@ RESCALE_FLOW_CAPACITIES: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
-mixed_conditions_design_P = 10
-mixed_conditions_design_E = 2
+MIXED_CONDITIONS_DESIGN_P = 10
+MIXED_CONDITIONS_DESIGN_E = 2
 
 # model settings
 waterschap = "SchielandendeKrimpenerwaard"
@@ -377,13 +377,13 @@ if DYNAMIC_CONDITIONS:
 
 elif MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_forcing(
-        ribasim_model, starttime, endtime, mixed_conditions_design_P, mixed_conditions_design_E
+        ribasim_model, starttime, endtime, MIXED_CONDITIONS_DESIGN_P, MIXED_CONDITIONS_DESIGN_E
     )
 else:
     forcing_dict = {
-        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else mixed_conditions_design_P),
+        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else MIXED_CONDITIONS_DESIGN_P),
         "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(
-            mixed_conditions_design_E if AANVOER_CONDITIONS else 0
+            MIXED_CONDITIONS_DESIGN_E if AANVOER_CONDITIONS else 0
         ),
         "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
         "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
@@ -644,8 +644,8 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         max_iterations=20,
-        design_precipitation_event=mixed_conditions_design_P,
-        design_potential_evaporation_event=mixed_conditions_design_E,
+        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
     )
 )
 
