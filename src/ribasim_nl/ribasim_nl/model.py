@@ -1186,9 +1186,6 @@ class Model(ribasim.Model):
             )
 
     def _set_netcdf_input(self):
-        """Use "input" dir and avoid large databases by writing some tables to Arrow"""
+        """Avoid large databases by writing some tables to NetCDF"""
         if self.basin.time.df is not None:
-            self.basin.time.set_filepath(Path("basin_time.nc"))
-            # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
-            self.basin.model_fields_set.add("time")
-            self.model_fields_set.add("basin")
+            self.basin.time.filepath = Path("basin_time.nc")
