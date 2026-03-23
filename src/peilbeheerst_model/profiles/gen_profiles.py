@@ -9,14 +9,33 @@ from ribasim_nl import CloudStorage
 
 def main(
     water_authority: str,
-    fn_crossings: str,
+    fn_network: str,
     *,
     export_profile_tables: bool = True,
     sync: bool = True,
     overwrite: bool = False,
     export_intermediate_output: bool = False,
 ) -> None:
-    """Execute profile table generator"""
+    """Execute profile table generator.
+
+    This is the generalised profile-generator in which all common files, directories, etc. are coded to minimise
+    overlapping code.
+
+    :param water_authority: water authority
+    :param fn_network: filename with geospatial data of crossings and hydro-objects
+        File is considered to be located at '<GoodCloud>/<water_authority>/verwerkt/Crossings/<fn_network>
+    :param export_profile_tables: export generated profile tables, defaults to True
+    :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
+    :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
+    :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
+
+    :type water_authority: str
+    :type fn_network: str
+    :type export_profile_tables: bool, optional
+    :type sync: bool, optional
+    :type overwrite: bool, optional
+    :type export_intermediate_output: bool, optional
+    """
     # get files from the cloud
     cloud = CloudStorage()
     if sync:
@@ -28,9 +47,9 @@ def main(
     fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "database.gpkg")
     gdf_basins = gpd.read_file(fn_basins, layer="Basin / area")
     # > crossings & hydro-objects
-    _fn_crossings = cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_crossings)
-    gdf_crossings = gpd.read_file(_fn_crossings, layer="crossings_hydroobject_filtered")
-    gdf_hydro_objects = gpd.read_file(_fn_crossings, layer="hydroobject")
+    _fn_network = cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_network)
+    gdf_crossings = gpd.read_file(_fn_network, layer="crossings_hydroobject_filtered")
+    gdf_hydro_objects = gpd.read_file(_fn_network, layer="hydroobject")
     # > cross-sections
     fn_cross_sections = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
     gdf_cross_sections = gpd.read_file(fn_cross_sections)
