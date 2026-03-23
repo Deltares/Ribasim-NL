@@ -27,7 +27,7 @@ class OutletPumpScalingConfig:
     waterschap: str
     cloud: CloudStorage
     max_iterations: int = 12
-    initial_guess_flow_rate_outlet: float = 0.1
+    initial_guess_flow_rate_outlet: float = 0.01
     initial_guess_flow_rate_pump: float = 10.0
     design_precipitation_event: float = 10
     design_potential_evaporation_event: float = 1.5
@@ -38,6 +38,7 @@ class OutletPumpScalingConfig:
     max_deviation: float = 0.02
     max_days: int = 5
     max_scaled_flow_rate: float = 50
+    min_scaled_flow_rate: float = 0.001
     add_information_to_from_to_node_function_table: bool = True
     situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
     debug_outlet_max_flow_rate: float = 0.10
@@ -311,6 +312,8 @@ def update_from_to_node_function_table_with_new_flow_rate(
                 from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value * 2.0
             elif direction_value == "lower":
                 from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value / 2.0
+            elif direction_value == "equal":
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value
             continue
 
         if direction_value == "higher":
@@ -346,7 +349,7 @@ def update_from_to_node_function_table_with_new_flow_rate(
 
 
 def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
-    """Ensure demand guesses do not fall below the highest drainage guess.
+    """Store the final scaled flow rate using only situations that are allowed to scale.
 
     Parameters
     ----------
@@ -356,17 +359,19 @@ def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
     Returns
     -------
     pd.DataFrame
-        The updated table with demand values overwritten where needed.
+        The updated table with a final `scaled_flow_rate` column where possible.
     """
-    # determine all column names for drainage
+    # determine the latest column name for drainage
     drainage_columns = [
         c
         for c in from_to_node_function_table.columns
         if c.startswith("new_max_flow_rates_") and c.endswith("_water_drainage")
     ]
 
-    # determine highest drainage value for each row
-    from_to_node_function_table["max_drainage_value"] = from_to_node_function_table[drainage_columns].max(axis=1)
+    if len(drainage_columns) == 0:
+        return from_to_node_function_table
+
+    latest_drainage_column = drainage_columns[-1]
 
     # determine the latest column name for demand
     demand_columns = [
@@ -375,15 +380,27 @@ def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
         if c.startswith("new_max_flow_rates_") and c.endswith("_water_demand")
     ]
 
-    # only replace value if a demand situation has already been processed
+    # only define a final value if a demand situation has already been processed
     if len(demand_columns) > 0:
         latest_demand_column = demand_columns[-1]
+        demand_allowed = from_to_node_function_table["allowed_to_scale_water_demand"]
+        drainage_allowed = from_to_node_function_table["allowed_to_scale_water_drainage"]
+        both_allowed = demand_allowed & drainage_allowed
+        demand_only = demand_allowed & ~drainage_allowed
+        drainage_only = drainage_allowed & ~demand_allowed
 
-        # overwrite demand values with drainage values
-        from_to_node_function_table.loc[
-            from_to_node_function_table[latest_demand_column] < from_to_node_function_table["max_drainage_value"],
-            latest_demand_column,
-        ] = from_to_node_function_table["max_drainage_value"]
+        # Start from the original capacity. Rows that are not allowed to scale in
+        # either situation keep their original value.
+        from_to_node_function_table["scaled_flow_rate"] = from_to_node_function_table["max_flow_rate"]
+        from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = from_to_node_function_table.loc[
+            both_allowed, [latest_demand_column, latest_drainage_column]
+        ].max(axis=1)
+        from_to_node_function_table.loc[demand_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
+            demand_only, latest_demand_column
+        ]
+        from_to_node_function_table.loc[drainage_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
+            drainage_only, latest_drainage_column
+        ]
 
     return from_to_node_function_table
 
@@ -406,41 +423,58 @@ def overwrite_guessed_flow_rates_if_not_allowed_to_scale(from_to_node_function_t
     if len(new_flow_rate_columns) == 0:
         return from_to_node_function_table
 
-    last_new_flow_rate_column = new_flow_rate_columns[-1]
+    if "scaled_flow_rate" in from_to_node_function_table.columns:
+        flow_rate_column = "scaled_flow_rate"
+    else:
+        flow_rate_column = new_flow_rate_columns[-1]
 
     mask_false = from_to_node_function_table["allowed_to_scale"].eq(False)
-    from_to_node_function_table.loc[mask_false, last_new_flow_rate_column] = from_to_node_function_table[
-        "max_flow_rate"
-    ]
+    from_to_node_function_table.loc[mask_false, flow_rate_column] = from_to_node_function_table["max_flow_rate"]
 
     return from_to_node_function_table
 
 
-def cap_guessed_flow_rates_at_maximum(from_to_node_function_table, max_scaled_flow_rate):
-    """Cap guessed flow rates at a defined maximum to prevent unrealistic values.
+def cap_guessed_flow_rates_at_minimum_and_maximum(
+    from_to_node_function_table, min_scaled_flow_rate, max_scaled_flow_rate
+):
+    """Cap guessed flow rates between defined bounds to prevent unrealistic values.
 
     Parameters
     ----------
     from_to_node_function_table : pd.DataFrame
         Connector-node table with guessed flow-rate columns.
+    min_scaled_flow_rate : float
+        The minimum allowed flow rate in m3/s.
     max_scaled_flow_rate : float
         The maximum allowed flow rate in m3/s.
 
     Returns
     -------
     pd.DataFrame
-        The updated table with guessed flow rates capped at the specified maximum.
+        The updated table with guessed flow rates capped at the specified bounds.
     """
     # retrieve the last column name starting with "new_max_flow_rates_"
     new_flow_rate_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
     if len(new_flow_rate_columns) == 0:
         return from_to_node_function_table
 
-    last_new_flow_rate_column = new_flow_rate_columns[-1]
+    if "scaled_flow_rate" in from_to_node_function_table.columns:
+        flow_rate_column = "scaled_flow_rate"
+    else:
+        flow_rate_column = new_flow_rate_columns[-1]
+
+    # cap the guessed flow rates at the defined minimum
+    from_to_node_function_table.loc[
+        from_to_node_function_table["allowed_to_scale"]
+        & (from_to_node_function_table[flow_rate_column] < min_scaled_flow_rate),
+        flow_rate_column,
+    ] = min_scaled_flow_rate
 
     # cap the guessed flow rates at the defined maximum
     from_to_node_function_table.loc[
-        from_to_node_function_table[last_new_flow_rate_column] > max_scaled_flow_rate, last_new_flow_rate_column
+        from_to_node_function_table["allowed_to_scale"]
+        & (from_to_node_function_table[flow_rate_column] > max_scaled_flow_rate),
+        flow_rate_column,
     ] = max_scaled_flow_rate
 
     return from_to_node_function_table
@@ -461,15 +495,18 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     ribasim.Model
         The model with updated pump and outlet `max_flow_rate` values.
     """
-    # retrieve the last column name starting with "new_max_flow_rates_"
-    new_flow_rate_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
-    if len(new_flow_rate_columns) == 0:
-        return ribasim_model
-    last_new_flow_rate_column = new_flow_rate_columns[-1]
+    # prefer the final selected value when available, otherwise fall back to the latest iteration column
+    if "scaled_flow_rate" in from_to_node_function_table.columns:
+        flow_rate_column = "scaled_flow_rate"
+    else:
+        new_flow_rate_columns = [c for c in from_to_node_function_table.columns if c.startswith("new_max_flow_rates_")]
+        if len(new_flow_rate_columns) == 0:
+            return ribasim_model
+        flow_rate_column = new_flow_rate_columns[-1]
 
     # select only the relevant columns from from_to_node_function_table
-    flow_rate_updates = from_to_node_function_table[["node_id", last_new_flow_rate_column]]
-    flow_rate_updates = flow_rate_updates.rename(columns={last_new_flow_rate_column: "max_flow_rate"})
+    flow_rate_updates = from_to_node_function_table[["node_id", flow_rate_column]]
+    flow_rate_updates = flow_rate_updates.rename(columns={flow_rate_column: "max_flow_rate"})
     flow_rate_updates = flow_rate_updates.dropna(subset=["max_flow_rate"])
     flow_rate_updates = flow_rate_updates.drop_duplicates(subset=["node_id"], keep="last")
     flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"].astype(float)
@@ -478,14 +515,12 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     pump_df = ribasim_model.pump.static.df.copy()
     pump_flow_rate_updates = pump_df["node_id"].map(flow_rate_updates)
     pump_update_mask = pump_flow_rate_updates.notna()
-    print(f"{pump_flow_rate_updates.loc[pump_update_mask]=}")
     pump_df.loc[pump_update_mask, "max_flow_rate"] = pump_flow_rate_updates.loc[pump_update_mask]
     ribasim_model.pump.static.df = pump_df
 
     outlet_df = ribasim_model.outlet.static.df.copy()
     outlet_flow_rate_updates = outlet_df["node_id"].map(flow_rate_updates)
     outlet_update_mask = outlet_flow_rate_updates.notna()
-    print(f"{outlet_flow_rate_updates.loc[outlet_update_mask]=}")
     outlet_df.loc[outlet_update_mask, "max_flow_rate"] = outlet_flow_rate_updates.loc[outlet_update_mask]
     ribasim_model.outlet.static.df = outlet_df
 
@@ -545,14 +580,14 @@ class _OutletPumpScaler:
         original_basin_time = ribasim_model.basin.time.df.copy()
 
         # FIXME: Setting critical(?) static-table columns
-        ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-        ribasim_model.pump.static.df["meta_known_flow_rate"] = True
-        ribasim_model.outlet.static.df.loc[
-            ribasim_model.outlet.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
-        ] = config.initial_guess_flow_rate_outlet
-        ribasim_model.pump.static.df.loc[
-            ribasim_model.pump.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
-        ] = config.initial_guess_flow_rate_pump
+        # ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+        # ribasim_model.pump.static.df["meta_known_flow_rate"] = True
+        # ribasim_model.outlet.static.df.loc[
+        #     ribasim_model.outlet.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
+        # ] = config.initial_guess_flow_rate_outlet
+        # ribasim_model.pump.static.df.loc[
+        #     ribasim_model.pump.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
+        # ] = config.initial_guess_flow_rate_pump
 
         # if max_flow_rate is 0, change to 0.1
         ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
@@ -575,6 +610,7 @@ class _OutletPumpScaler:
         max_deviation = config.max_deviation
         max_days = config.max_days
         max_scaled_flow_rate = config.max_scaled_flow_rate
+        min_scaled_flow_rate = config.min_scaled_flow_rate
         add_information_to_from_to_node_function_table = config.add_information_to_from_to_node_function_table
 
         # Set initial conditions equal to the target levels
@@ -592,11 +628,32 @@ class _OutletPumpScaler:
 
         # determine which nodes are allowed to be scaled
         from_to_node_function_table["allowed_to_scale"] = True
+        from_to_node_function_table["allowed_to_scale_water_demand"] = True
+        from_to_node_function_table["allowed_to_scale_water_drainage"] = True
         from_to_node_function_table["max_drainage_value"] = None
         from_to_node_function_table.loc[
             from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale"
         ] = False
+
         from_to_node_function_table.loc[from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale"] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale_water_demand"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table["node_id"].isin(node_id_exclusion_list), "allowed_to_scale_water_drainage"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale_water_demand"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table["meta_known_flow_rate"], "allowed_to_scale_water_drainage"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table.function.isin(["drain"]), "allowed_to_scale_water_demand"
+        ] = False
+        from_to_node_function_table.loc[
+            from_to_node_function_table.function.isin(["supply"]), "allowed_to_scale_water_drainage"
+        ] = False
 
         # add max_flow_rate of pump and outlet nodes to from_to_node_function_table
         max_flow_rate_df = pd.concat(
@@ -618,12 +675,12 @@ class _OutletPumpScaler:
                 ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_demand_situation
             ribasim_model.level_boundary.static.df = None
 
-            # if capacity has been scaled to a (rounded) value of 0, place back to 0.001
+            # if capacity has a flow rate lower than 0, place back to 0.001
             ribasim_model.outlet.static.df.loc[
                 ribasim_model.outlet.static.df.max_flow_rate < 0.001, "max_flow_rate"
-            ] = 0.001
+            ] = min_scaled_flow_rate
             ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate < 0.001, "max_flow_rate"] = (
-                0.001
+                min_scaled_flow_rate
             )
 
             # loop through each iteration
@@ -745,8 +802,11 @@ class _OutletPumpScaler:
                     column_name_direction=column_name_direction,
                 )
 
-                # if lower values have been assigned for the water_demand situation, then overwrite the max_flow_rate with the value from water_drainage
-                from_to_node_function_table = overwrite_demand_values_with_drainage_values(from_to_node_function_table)
+                if situation == "water_drainage":
+                    # if lower values have been assigned for the water_demand situation, then overwrite the max_flow_rate with the value from water_drainage
+                    from_to_node_function_table = overwrite_demand_values_with_drainage_values(
+                        from_to_node_function_table
+                    )
 
                 # if there are nodes which are not allowed to be scaled, overwrite the guessed flow rates with the original max_flow_rate from the ribasim model
                 from_to_node_function_table = overwrite_guessed_flow_rates_if_not_allowed_to_scale(
@@ -754,8 +814,8 @@ class _OutletPumpScaler:
                 )
 
                 # cap the max_flow_rate at the defined maximum
-                from_to_node_function_table = cap_guessed_flow_rates_at_maximum(
-                    from_to_node_function_table, max_scaled_flow_rate
+                from_to_node_function_table = cap_guessed_flow_rates_at_minimum_and_maximum(
+                    from_to_node_function_table, min_scaled_flow_rate, max_scaled_flow_rate
                 )
 
                 # update the max_flow_rate in the ribasim_model based on the new flow rates in the from_to_node_function_table
