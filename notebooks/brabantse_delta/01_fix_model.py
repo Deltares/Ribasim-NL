@@ -120,6 +120,65 @@ link_ids = [2451, 2137, 2484, 2229]
 for link_id in link_ids:
     model.reverse_link(link_id=link_id)
 # %%
+
+# %%
+# remove unassigned basin area
+model.remove_unassigned_basin_area()
+
+# %% corrigeren knoop-topologie
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet")
+
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.link_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet")
+
+# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code)
+# by overlapping the Ribasim area file based on largest overlap
+# then assign Ribasim node-ID's to areas with the same area code.
+# Many nodata areas are removed by this method
+
+if os.path.exists(ribasim_areas_bewerkt_gpkg):
+    # Load precomputed result
+    combined_basin_areas_gdf = gpd.read_file(ribasim_areas_bewerkt_gpkg)
+else:
+    # Step 1: Clean geometries
+    ribasim_areas_gdf["geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
+
+    # Step 2: Overlay
+    combined_basin_areas_gdf = gpd.overlay(
+        ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
+    ).explode(index_parts=False)
+
+    # Step 3: Handle Z-coordinates and calculate area
+    combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
+
+    # Step 4: Find and assign node_id
+    non_null = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
+    largest = non_null.loc[non_null.groupby("code")["area"].idxmax(), ["code", "node_id"]]
+
+    combined_basin_areas_gdf = combined_basin_areas_gdf.merge(largest, on="code", how="left", suffixes=("", "_largest"))
+    combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
+        combined_basin_areas_gdf["node_id_largest"]
+    )
+    combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
+
+    # Step 5: Final processing
+    combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
+    combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
+    combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
+    combined_basin_areas_gdf.index.name = "fid"
+
+    # Save for future use
+    combined_basin_areas_gdf.to_file(ribasim_areas_bewerkt_gpkg, driver="GPKG")
+
+# Assign to model
+model.basin.area.df = combined_basin_areas_gdf
+
+# %%
 # fixes model
 # merge basins
 model.merge_basins(node_id=2101, to_node_id=2058, are_connected=True)
@@ -177,62 +236,6 @@ model.merge_basins(node_id=2002, to_node_id=2215, are_connected=True)
 model.merge_basins(node_id=2215, to_node_id=2248, are_connected=True)
 model.merge_basins(node_id=2247, to_node_id=1998, are_connected=True)
 model.remove_node(998, remove_links=True)
-# %%
-# remove unassigned basin area
-model.remove_unassigned_basin_area()
-
-# %% corrigeren knoop-topologie
-# ManningResistance bovenstrooms LevelBoundary naar Outlet
-for row in network_validator.link_incorrect_type_connectivity().itertuples():
-    model.update_node(row.from_node_id, "Outlet")
-
-# Inlaten van ManningResistance naar Outlet
-for row in network_validator.link_incorrect_type_connectivity(
-    from_node_type="LevelBoundary", to_node_type="ManningResistance"
-).itertuples():
-    model.update_node(row.to_node_id, "Outlet")
-
-# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code)
-# by overlapping the Ribasim area file based on largest overlap
-# then assign Ribasim node-ID's to areas with the same area code.
-# Many nodata areas are removed by this method
-
-if os.path.exists(ribasim_areas_bewerkt_gpkg):
-    # Load precomputed result
-    combined_basin_areas_gdf = gpd.read_file(ribasim_areas_bewerkt_gpkg)
-else:
-    # Step 1: Clean geometries
-    ribasim_areas_gdf["geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
-
-    # Step 2: Overlay
-    combined_basin_areas_gdf = gpd.overlay(
-        ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
-    ).explode(index_parts=False)
-
-    # Step 3: Handle Z-coordinates and calculate area
-    combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
-
-    # Step 4: Find and assign node_id
-    non_null = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
-    largest = non_null.loc[non_null.groupby("code")["area"].idxmax(), ["code", "node_id"]]
-
-    combined_basin_areas_gdf = combined_basin_areas_gdf.merge(largest, on="code", how="left", suffixes=("", "_largest"))
-    combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
-        combined_basin_areas_gdf["node_id_largest"]
-    )
-    combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
-
-    # Step 5: Final processing
-    combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
-    combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
-    combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
-    combined_basin_areas_gdf.index.name = "fid"
-
-    # Save for future use
-    combined_basin_areas_gdf.to_file(ribasim_areas_bewerkt_gpkg, driver="GPKG")
-
-# Assign to model
-model.basin.area.df = combined_basin_areas_gdf
 # %% Reset static tables
 
 # Reset static tables

@@ -39,6 +39,8 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1634, "meta_streefpeil"] 
 model.basin.area.df.loc[model.basin.area.df.node_id == 1584, "meta_streefpeil"] = 0.15
 model.basin.area.df.loc[model.basin.area.df.node_id == 1987, "meta_streefpeil"] = -0.5
 # %%
+
+
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")

@@ -41,6 +41,7 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
 # %%
 model.basin.area.df.loc[model.basin.area.df.node_id == 2418, "meta_streefpeil"] = 27.27
+model.basin.area.df.loc[model.basin.area.df.node_id == 1873, "meta_streefpeil"] = 27.6
 
 # %%
 # Write model
