@@ -286,62 +286,62 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level
 
 # %%
 # Toevoegen alle aanvoer-knopen
-model.outlet.node.df.at[246, "meta_code_waterbeheerder"] = "294EC"
-model.outlet.node.df.at[298, "meta_code_waterbeheerder"] = "WSL_Meij"
-model.outlet.node.df.at[968, "meta_code_waterbeheerder"] = "275JD"
-model.outlet.node.df.at[875, "meta_code_waterbeheerder"] = "287GB"
-model.outlet.node.df.at[397, "meta_code_waterbeheerder"] = "287DF"
-model.outlet.node.df.at[894, "meta_code_waterbeheerder"] = "275ZKS"
-model.outlet.node.df.at[367, "meta_code_waterbeheerder"] = "261LGD"
+model.node.df.at[246, "meta_code_waterbeheerder"] = "294EC"
+model.node.df.at[298, "meta_code_waterbeheerder"] = "WSL_Meij"
+model.node.df.at[968, "meta_code_waterbeheerder"] = "275JD"
+model.node.df.at[875, "meta_code_waterbeheerder"] = "287GB"
+model.node.df.at[397, "meta_code_waterbeheerder"] = "287DF"
+model.node.df.at[894, "meta_code_waterbeheerder"] = "275ZKS"
+model.node.df.at[367, "meta_code_waterbeheerder"] = "261LGD"
 
 # Bakelse Aa
-model.outlet.node.df.at[3095, "meta_code_waterbeheerder"] = "261CZA"
-model.outlet.node.df.at[601, "meta_code_waterbeheerder"] = "261JS"
-model.outlet.node.df.at[905, "meta_code_waterbeheerder"] = "261CQA"
-model.outlet.node.df.at[761, "meta_code_waterbeheerder"] = "261JN"
-model.outlet.node.df.at[156, "meta_code_waterbeheerder"] = "261JIA"
+model.node.df.at[3095, "meta_code_waterbeheerder"] = "261CZA"
+model.node.df.at[601, "meta_code_waterbeheerder"] = "261JS"
+model.node.df.at[905, "meta_code_waterbeheerder"] = "261CQA"
+model.node.df.at[761, "meta_code_waterbeheerder"] = "261JN"
+model.node.df.at[156, "meta_code_waterbeheerder"] = "261JIA"
 
 # Peelsche Loop
-model.outlet.node.df.at[358, "meta_code_waterbeheerder"] = "261N"
-model.outlet.node.df.at[535, "meta_code_waterbeheerder"] = "253V"
-model.outlet.node.df.at[3091, "meta_code_waterbeheerder"] = "251U"
-model.outlet.node.df.at[417, "meta_code_waterbeheerder"] = "253LG"
-model.outlet.node.df.at[829, "meta_code_waterbeheerder"] = "251LAA"
+model.node.df.at[358, "meta_code_waterbeheerder"] = "261N"
+model.node.df.at[535, "meta_code_waterbeheerder"] = "253V"
+model.node.df.at[3091, "meta_code_waterbeheerder"] = "251U"
+model.node.df.at[417, "meta_code_waterbeheerder"] = "253LG"
+model.node.df.at[829, "meta_code_waterbeheerder"] = "251LAA"
 
 
 # Maaskant-Oost
-model.outlet.node.df.at[203, "meta_code_waterbeheerder"] = "114P18"
-model.outlet.node.df.at[850, "meta_code_waterbeheerder"] = "114FF"
-model.outlet.node.df.at[144, "meta_code_waterbeheerder"] = "108TDE"
-model.outlet.node.df.at[2022, "meta_code_waterbeheerder"] = "WSL_VBMB"
-model.outlet.node.df.at[657, "meta_code_waterbeheerder"] = "114LAC"
-model.outlet.node.df.at[3089, "meta_code_waterbeheerder"] = "114WRD"
+model.node.df.at[203, "meta_code_waterbeheerder"] = "114P18"
+model.node.df.at[850, "meta_code_waterbeheerder"] = "114FF"
+model.node.df.at[144, "meta_code_waterbeheerder"] = "108TDE"
+model.node.df.at[2022, "meta_code_waterbeheerder"] = "WSL_VBMB"
+model.node.df.at[657, "meta_code_waterbeheerder"] = "114LAC"
+model.node.df.at[3089, "meta_code_waterbeheerder"] = "114WRD"
 
 # Maaskant-Midden
-model.outlet.node.df.at[160, "meta_code_waterbeheerder"] = "104MGT"
-model.outlet.node.df.at[392, "meta_code_waterbeheerder"] = "103BIB"
+model.node.df.at[160, "meta_code_waterbeheerder"] = "104MGT"
+model.node.df.at[392, "meta_code_waterbeheerder"] = "103BIB"
 
 # Mierlo
-model.pump.node.df.at[226, "meta_code_waterbeheerder"] = "234FL_1"
-model.outlet.node.df.at[340, "meta_code_waterbeheerder"] = "217L"
+model.node.df.at[226, "meta_code_waterbeheerder"] = "234FL_1"
+model.node.df.at[340, "meta_code_waterbeheerder"] = "217L"
 
 # Whkanaal
-model.outlet.node.df.at[314, "meta_code_waterbeheerder"] = "234CJ"
+model.node.df.at[314, "meta_code_waterbeheerder"] = "234CJ"
 
 # Z_W West
-# model.outlet.node.df.at[146, "meta_code_waterbeheerder"] = "217GDW" Stuw niet op juiste plaats
-model.outlet.node.df.at[211, "meta_code_waterbeheerder"] = "203KDZ"
+# model.node.df.at[146, "meta_code_waterbeheerder"] = "217GDW" Stuw niet op juiste plaats
+model.node.df.at[211, "meta_code_waterbeheerder"] = "203KDZ"
 
 # Helmond:
-model.pump.node.df.at[737, "meta_code_waterbeheerder"] = "201JVL"
+model.node.df.at[737, "meta_code_waterbeheerder"] = "201JVL"
 
 # Peelrijt Dommel
-model.outlet.node.df.at[3094, "meta_code_waterbeheerder"] = "280X"
+model.node.df.at[3094, "meta_code_waterbeheerder"] = "280X"
 
 # Hurkske Aa
-model.outlet.node.df.at[161, "meta_code_waterbeheerder"] = "257IA"
-model.outlet.node.df.at[93, "meta_code_waterbeheerder"] = "254BAA"
-model.outlet.node.df.at[191, "meta_code_waterbeheerder"] = "235VGZ"
+model.node.df.at[161, "meta_code_waterbeheerder"] = "257IA"
+model.node.df.at[93, "meta_code_waterbeheerder"] = "254BAA"
+model.node.df.at[191, "meta_code_waterbeheerder"] = "235VGZ"
 
 
 summer_col = "ZOMER_DROO"
@@ -429,9 +429,7 @@ supply_nodes_df = get_node_table_with_from_to_node_ids(model=model, node_ids=lev
 
 all_nodes = list(discharge_supply_nodes.keys()) + level_supply_nodes
 
-model.outlet.node.df[IS_SUPPLY_NODE_COLUMN] = model.outlet.node.df.index.isin(all_nodes)
-model.pump.node.df[IS_SUPPLY_NODE_COLUMN] = model.pump.node.df.index.isin(all_nodes)
-
+model.node.df[IS_SUPPLY_NODE_COLUMN] = model.node.df.index.isin(all_nodes)
 
 # %%
 # Toevoegen Mierlo
