@@ -1259,9 +1259,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node.df.node_type.unique():
-    table = model.get_component(node_type).node
-    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # %%
 model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"

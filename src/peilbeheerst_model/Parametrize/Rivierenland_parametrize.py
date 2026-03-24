@@ -331,9 +331,13 @@ for aanvoer_pump in aanvoer_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == aanvoer_pump, "meta_func_afvoer"] = 0
 
 # (re)set meta_node_id
-ribasim_model.level_boundary.node.df["meta_node_id"] = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df["meta_node_id"] = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df["meta_node_id"] = ribasim_model.pump.node.df.index
+ribasim_model.node.df.loc[ribasim_model.level_boundary.node.df.index, "meta_node_id"] = (
+    ribasim_model.level_boundary.node.df.index
+)
+ribasim_model.node.df.loc[ribasim_model.tabulated_rating_curve.node.df.index, "meta_node_id"] = (
+    ribasim_model.tabulated_rating_curve.node.df.index
+)
+ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ribasim_model.pump.node.df.index
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(

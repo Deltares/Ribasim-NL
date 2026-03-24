@@ -60,9 +60,9 @@ def read_results(filepath: Path) -> pd.DataFrame:
 
 def node_properties_to_table(table, node_properties, node_id):
     # update DataFrame
-    table_node_df = getattr(table, "node").df
+    node_df = table._parent.node.df
     for column, value in node_properties.items():
-        table_node_df.loc[node_id, [column]] = value
+        node_df.loc[node_id, [column]] = value
 
 
 class Results(BaseModel):
