@@ -265,6 +265,7 @@ model.merge_basins(basin_id=1794, to_basin_id=1836, are_connected=True)
 model.merge_basins(basin_id=1455, to_basin_id=1276, are_connected=True)
 model.merge_basins(basin_id=1968, to_basin_id=1494, are_connected=True)
 model.merge_basins(basin_id=1615, to_basin_id=1331, are_connected=True)
+model.merge_basins(basin_id=1911, to_basin_id=1331, are_connected=True)
 
 
 # Mierlo wordt aanvoer als afvoer gemaal
