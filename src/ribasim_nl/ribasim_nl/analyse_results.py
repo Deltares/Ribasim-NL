@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tqdm
+import xarray as xr
 from shapely import wkt
 
 from ribasim_nl import CloudStorage
@@ -82,7 +83,11 @@ def ReadOutputFile(model_folder, filetype) -> pd.DataFrame:
         raise ValueError(f"{filetype} not available. Choose on of the following: {possible_filetypes}")
 
     else:
-        data = pd.read_feather(os.path.join(model_folder, "results", filetype.lower() + ".arrow"))
+        data = (
+            xr.open_dataset(os.path.join(model_folder, "results", filetype.lower() + ".nc"))
+            .to_dataframe()
+            .reset_index()
+        )
 
         # The timing is not yet correct between the measurements and the flow results. Subtract 12 years from the flow data to fix this
         # data['time'] = data['time'] - pd.DateOffset(years=12) #TODO repair!

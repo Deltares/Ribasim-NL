@@ -59,7 +59,6 @@ for row in model.basin.node.df.itertuples():
             min_level -= 0.1
         basin_profile = get_basin_profile(
             basin_polygon=basin_polygon,
-            polygon=polygon,
             max_level=max_level,
             min_level=min_level,
             lhm_raster_file=lhm_raster_file,

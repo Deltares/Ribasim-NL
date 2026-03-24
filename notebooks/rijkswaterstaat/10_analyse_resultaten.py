@@ -2,9 +2,9 @@
 from datetime import timedelta
 
 import pandas as pd
-import ribasim
+import xarray as xr
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 CONFIG = {
@@ -21,7 +21,7 @@ CONFIG = {
 ribasim_model_dir = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient")
 plots_dir = ribasim_model_dir / "plots"
 ribasim_toml = ribasim_model_dir / "hws.toml"
-model = ribasim.Model.read(ribasim_toml)
+model = Model.read(ribasim_toml)
 
 start_time = model.starttime + timedelta(days=40)
 end_time = model.endtime
@@ -30,9 +30,9 @@ ribasim_model_dir
 
 plots_dir.mkdir(exist_ok=True)
 
-flow_df = pd.read_feather(ribasim_toml.parent / "results" / "flow.arrow").set_index("time")
+flow_df = xr.open_dataset(ribasim_toml.parent / "results" / "flow.nc").to_dataframe().reset_index().set_index("time")
 flow_df = flow_df[flow_df.index > start_time]
-basin_df = pd.read_feather(ribasim_toml.parent / "results" / "basin.arrow").set_index("time")
+basin_df = xr.open_dataset(ribasim_toml.parent / "results" / "basin.nc").to_dataframe().reset_index().set_index("time")
 basin_df = basin_df[basin_df.index > start_time]
 
 meting_df = pd.read_excel(

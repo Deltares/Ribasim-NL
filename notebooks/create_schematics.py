@@ -16,7 +16,6 @@ An example QGIS project can be found on the [CloudStorage](https://deltares.theg
 import geopandas as gpd
 import pandas as pd
 from ribasim_nl.aquo import waterbeheercode
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control import get_node_table_with_from_to_node_ids
 from shapely.geometry import LineString, MultiPolygon, Polygon, box
 
@@ -248,7 +247,7 @@ for authority in AUTHORITIES:
         if node_func != "geen":
             # get static data for next step
             node_type = connector_nodes_df.at[node_id, "node_type"]
-            static_df = getattr(model, pascal_to_snake_case(node_type)).static.df
+            static_df = model.get_component(node_type).static.df
             static_df = static_df[static_df.node_id == node_id]
             # get/set aanvoer
             if pd.isna(row["aanvoer [m3/s]"]):

@@ -45,6 +45,9 @@ venv/
 /notebooks/sturing/level_control
 /notebooks/sturing/level_control_and_flow_demand
 
+# Ribasim binary
+bin/
+
 # Data
 *.arrow
 *.gpkg
@@ -77,6 +80,7 @@ venv/
 *.txt
 *.gdb/
 *.pdf
+*.nc
 results/
 
 # Main scripts to run workflows per water authority

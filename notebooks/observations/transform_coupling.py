@@ -6,11 +6,10 @@ import geopandas as gdf
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from ribasim import Model
 from shapely import wkt
 from spatial_coupling import spatial_match
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 # %%
 ###################

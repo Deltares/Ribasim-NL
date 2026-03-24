@@ -92,7 +92,7 @@ For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/de
 
 The Ribasim-NL code downloads from and uploads to [cloud storage](/cloudstorage.qmd).
 The password to access the cloud storage, and local directory it interacts with, both need to be configured.
-To be able to run the Ribasim core, it needs to either find the `ribasim` executable in the Path, or you configure it.
+To be able to run the Ribasim core, point RIBASIM_HOME to a Ribasim-NL specific install, to avoid interaction with possible other Ribasim projects.
 
 In the root of the repository is a `.env.default` file that can serve as a template to copy to `.env`.
 The `.env` file is gitignored because it is different per developer, and to avoid leaking the password.
@@ -102,8 +102,14 @@ Here is an example for a filled in `.env` file:
 ```ini
 RIBASIM_NL_CLOUD_PASS='your_password_here'
 RIBASIM_NL_DATA_DIR='data'
-RIBASIM_EXE='C:/bin/ribasim/ribasim.exe'
+RIBASIM_HOME='bin/ribasim'
+OVERWRITE_FILES_FROM_CLOUD='true'
 ```
 
 These values will be applied using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
 If you prefer to set these environment variables in your OS or terminal that will also work.
+
+`OVERWRITE_FILES_FROM_CLOUD` is optional, and true by default.
+When using `cloud.synchronize` or `cloud.download_content`, this will determine if local files will be overwritten if the `overwrite` keyword argument is not explicitly passed.
+Whilst updating datasets locally, you can set this to `false` to ensure your modifications can be tested and will not be lost.
+After these edits are done, you can upload the new dataset, and set it back to `true`.
