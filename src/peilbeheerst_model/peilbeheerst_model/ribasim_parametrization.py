@@ -2189,7 +2189,9 @@ def add_continuous_control(ribasim_model: Model, **kwargs) -> None:
             )
 
     # add "meta_node_id"-column to continuous control nodes
-    ribasim_model.continuous_control.node.df["meta_node_id"] = ribasim_model.continuous_control.node.df.index
+    ribasim_model.node.df.loc[ribasim_model.continuous_control.node.df.index, "meta_node_id"] = (
+        ribasim_model.continuous_control.node.df.index
+    )
 
 
 def clean_tables(ribasim_model: Model, waterschap: str):
