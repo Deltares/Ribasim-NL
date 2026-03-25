@@ -1,7 +1,6 @@
 """Assign offline MODFLOW-MetaSWAP budgets (LHM zarr or local IDF files) to Ribasim Basin nodes."""
 
 from pathlib import Path
-from zipfile import is_zipfile
 
 import geopandas as gpd
 import imod
@@ -89,9 +88,11 @@ class AssignOfflineBudgets:
         zarr_budgets_path : Path | str
             Zarr store directory with MODFLOW-MetaSWAP budgets
         """
-        if not is_zipfile(self.zarr_budgets_path):
+        if not self.zarr_budgets_path.exists():
             raise FileNotFoundError(
                 f"You can't compute budgets if you don't have the zarr_budgets in a zip-file: {zarr_budgets_path}"
+                "Download a copy"
+                "Alternatively go to: https://github.com/Deltares/Ribasim-NL/blob/main/scripts/add_lhm_budgets/get_data_LHM_run.py to see how you can create one."
             )
 
     def compute_budgets(
