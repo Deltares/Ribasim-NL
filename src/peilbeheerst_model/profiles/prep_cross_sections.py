@@ -146,9 +146,12 @@ def points2lines_zzl(cloud: CloudStorage = CloudStorage(), *, epsg: int = 28992)
     fn = cloud.joinpath("Basisgegevens", "profielen", "ZZL", "Profielen_ZZL_DHYDRO.gpkg")
     lines_zof = gpd.read_file(fn, layer="DHYDRO_profielen_ZOF").set_crs(epsg=epsg)
     lines_nop = gpd.read_file(fn, layer="DHYDRO_profielen_NOP").set_crs(epsg=epsg)
-    out: gpd.GeoDataFrame = pd.concat([lines_zof, lines_nop], axis=0, ignore_index=True)
+    out = pd.concat([lines_zof, lines_nop], axis=0, ignore_index=True).explode().reset_index(drop=True)
     out["profiellijnid"] = out.index
     assert out["profiellijnid"].is_unique
+    out["geometry"] = out.apply(
+        lambda row: shapely.LineString([(x, y, row["LowestPt"]) for x, y, _ in row["geometry"].coords]), axis=1
+    )
     return out
 
 
