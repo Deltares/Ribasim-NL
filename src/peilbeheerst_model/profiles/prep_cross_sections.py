@@ -131,6 +131,27 @@ def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer:
     return out
 
 
+def points2lines_zzl(cloud: CloudStorage = CloudStorage(), *, epsg: int = 28992) -> gpd.GeoDataFrame:
+    """Get and process cross-sectional profiles for Zuiderzeeland.
+
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :param epsg: EPSG-code to set the CRS of the profiles to, defaults to 28992
+
+    :type cloud: CloudStorage, optional
+    :type epsg: int, optional
+
+    :return: cross-sectional profiles
+    :rtype: geopandas.GeoDataFrame
+    """
+    fn = cloud.joinpath("Basisgegevens", "profielen", "ZZL", "Profielen_ZZL_DHYDRO.gpkg")
+    lines_zof = gpd.read_file(fn, layer="DHYDRO_profielen_ZOF").set_crs(epsg=epsg)
+    lines_nop = gpd.read_file(fn, layer="DHYDRO_profielen_NOP").set_crs(epsg=epsg)
+    out: gpd.GeoDataFrame = pd.concat([lines_zof, lines_nop], axis=0, ignore_index=True)
+    out["profiellijnid"] = out.index
+    assert out["profiellijnid"].is_unique
+    return out
+
+
 def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0) -> gpd.GeoDataFrame:
     """Get cross-sectional profiles for a given water authority.
 
@@ -154,6 +175,8 @@ def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, 
             return points2lines_rivierenland(cloud=cloud)
         case "Scheldestromen":
             return points2lines_scheldestromen(cloud=cloud, buffer=buffer)
+        case "Zuiderzeeland":
+            return points2lines_zzl(cloud=cloud)
         case _:
             basins = get_basins(water_authority, cloud=cloud)
             return points2lines_general(basins, cloud=cloud, buffer=buffer)
