@@ -7,15 +7,21 @@ from ribasim_nl.profiles import run
 
 
 def main(
-    *, export_profile_tables: bool = True, overwrite: bool = False, export_intermediate_output: bool = False
+    *,
+    export_profile_tables: bool = True,
+    sync: bool = True,
+    overwrite: bool = False,
+    export_intermediate_output: bool = False,
 ) -> None:
     """Execute profile table generator for Zuiderzeeland.
 
     :param export_profile_tables: export profile tables as *.csv-files, defaults to True
+    :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
     :param overwrite: overwrite GoodCloud-data, defaults to False
     :param export_intermediate_output: export intermediate output for checking/debugging, defaults to False
 
     :type export_profile_tables: bool, optional
+    :type sync: bool, optional
     :type overwrite: bool, optional
     :type export_intermediate_output: bool, optional
     """
@@ -23,9 +29,10 @@ def main(
 
     # get files from the cloud
     cloud = CloudStorage()
-    cloud.download_verwerkt(water_authority, overwrite)
-    cloud.download_aangeleverd(water_authority, overwrite)
-    cloud.download_basisgegevens(["Hydrotypen"], overwrite)
+    if sync:
+        cloud.download_verwerkt(water_authority, overwrite)
+        cloud.download_aangeleverd(water_authority, overwrite)
+        cloud.download_basisgegevens(["Hydrotypen"], overwrite)
 
     # read files
     # > basins
@@ -79,4 +86,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main(export_profile_tables=True, export_intermediate_output=True)
+    main(sync=False, export_profile_tables=True, export_intermediate_output=True)
