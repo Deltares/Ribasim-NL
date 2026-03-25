@@ -1,6 +1,7 @@
 """Assign offline MODFLOW-MetaSWAP budgets (LHM zarr or local IDF files) to Ribasim Basin nodes."""
 
 from pathlib import Path
+from zipfile import is_zipfile
 
 import geopandas as gpd
 import imod
@@ -8,90 +9,16 @@ import numpy as np
 import pandas as pd
 import shapely
 import xarray as xr
+from ribasim import Model
 from tqdm import tqdm
 
-from ribasim_nl import CloudStorage, Model
 
+def _crop_to_gdf(da: xr.DataArray, gdf: gpd.GeoDataFrame):
+    """Crop a DataArray to a gdf.extent (total_bounds)
 
-def budgets_from_dir(
-    modflow_budgets_path: Path,
-    metaswap_budgets_path: Path,
-    starttime: pd.Timestamp | None = None,
-    endtime: pd.Timestamp | None = None,
-) -> xr.Dataset:
-    """Reading budgets from MODFLOW-MetaSWAP
+    Why? As LHM covers NL and we often compute budgets for 1 authority only.
 
-    Parameters
-    ----------
-    modflow_budgets_path : Path
-        Path to Modflow bdgriv and bdgdrn
-    metaswap_budgets_path : Path
-        Path to Metaswap bdgPssw and bdgQrun
-    starttime : pd.Timestamp | None, optional
-        starttime to slice data, by default None
-    endtime : pd.Timestamp | None, optional
-        endtime to slice data, by default None
-
-    Returns
-    -------
-    xr.Dataset
-        DataSet with budgets
     """
-    # time_slice, None if start_time/end_time are None
-    time_slice = (
-        slice(None)
-        if starttime is None and endtime is None
-        else slice(
-            pd.Timestamp(starttime) if starttime is not None else None,
-            pd.Timestamp(endtime) if endtime is not None else None,
-        )
-    )
-    print(f"reading MODFLOW budgets from: {modflow_budgets_path}")
-    print("reading riv-budgets for sys 1")
-    ar = (
-        imod.idf.open(modflow_budgets_path / "bdgriv/bdgriv_sys1_*_l*.IDF")
-        .sum(dim="layer")
-        .drop_vars(["dy", "dx"])
-        .sel(time=time_slice)
-    )
-
-    ar.name = "bdgriv_sys1"
-    ds = ar.to_dataset()
-
-    for isys in range(2, 7):
-        print(f"reading riv-budgets for sys {isys}")
-        try:
-            ds[f"bdgriv_sys{isys}"] = (
-                imod.idf.open(modflow_budgets_path / f"bdgriv/bdgriv_sys{isys}_*_l*.IDF")
-                .sum(dim="layer")
-                .drop_vars(["dy", "dx"])
-                .sel(time=time_slice)
-            )
-        except FileNotFoundError:
-            print("No budget-files for this layer")
-
-    for isys in range(1, 4):
-        print(f"reading drn-budgets for sys {isys}")
-        try:
-            ds[f"bdgdrn_sys{isys}"] = (
-                imod.idf.open(modflow_budgets_path / f"bdgdrn/bdgdrn_sys{isys}_*_l*.IDF")
-                .sum(dim="layer")
-                .drop_vars(["dy", "dx"])
-                .sel(time=time_slice)
-            )
-        except FileNotFoundError:
-            print("No budget-files for this layer")
-
-    print(f"reading MetaSWAP budgets from: {metaswap_budgets_path}")
-    bdgsw = imod.idf.open(metaswap_budgets_path / "bdgPssw/bdgPssw_*_l*.IDF").sum(dim="layer").drop_vars(["dy", "dx"])
-    bdgqr = imod.idf.open(metaswap_budgets_path / "bdgQrun/bdgQrun_*_l*.IDF").sum(dim="layer").drop_vars(["dy", "dx"])
-    ds["bdgpssw"] = bdgsw.resample(time="1D").bfill().sel(time=time_slice)
-    ds["bdgqrun"] = bdgqr.resample(time="1D").bfill().sel(time=time_slice)
-
-    return ds
-
-
-def _crop_to_gdf(da, gdf):
     xmin, ymin, xmax, ymax = gdf.total_bounds
 
     dx = abs(float(da.x[1] - da.x[0]))
@@ -105,8 +32,8 @@ def _crop_to_gdf(da, gdf):
     )
 
 
-def _compute_budgets_per_basin(budgets, basin_mask, nodata=-999):
-    """Faster version: process a full variable block at once."""
+def _compute_budgets_per_basin(budgets: xr.Dataset, basin_mask: xr.DataArray, nodata=-999):
+    """Sum all modflow budgets per basin_id over a basin_mask."""
     print(f"∑ budgets {list(budgets.data_vars)} rasters to basins")
 
     if basin_mask.dims != ("x", "y"):
@@ -152,40 +79,20 @@ def _compute_budgets_per_basin(budgets, basin_mask, nodata=-999):
 class AssignOfflineBudgets:
     def __init__(
         self,
-        zarr_budgets_path: Path | str | None = "Basisgegevens/LHM/4.3/results/LHM_433_budget.zip",
-        modflow_budgets_path: Path | str | None = None,
-        metaswap_budgets_path: Path | str | None = None,
+        zarr_budgets_path: Path | str,
     ):
+        self.zarr_budgets_path = Path(zarr_budgets_path)
         """Assign offline budgets from MODFLOW-MetaSWAP budget files.
-
-        These files are either supplied as LHM budgets in a Zarr directory (default)
-        hosted on Deltares Cloud Storage.
-
-        Alternatively, when local MODFLOW-MetaSWAP models are to be coupled, one can supply the modflow_budgets_path and metaswap_budgets_path containing IDF-files:
-            - The expected file-pattern relative to modflow_budgets path is bdgdrn/bdgdrn_sys<system>_<yyyymmdd>_l<layer>.idf and bdgriv/bdgriv_sys<system>_<yyyymmdd>_l<layer>.idf
-            - The expected file-pattern relative to metaswap_budgets_path is bdgpssw/bdgpssw_<yyyymmdd_l<layer>.idf and bdgqrun/bdgqrun_<yyyymmdd_l<layer>.idf
 
         Parameters
         ----------
-        zarr_budgets_path : Path | str | None, optional
-            Zarr store directory, by default "Basisgegevens/LHM/4.3/results/LHM_433_budget.zip"
-        modflow_budgets_path : Path | str | None, optional
-            MODFLOW budgets in IDF format, by default None
-        metaswap_budgets_path : Path | str | None, optional
-            MetaSWAP budgets in IDF format, by default None
+        zarr_budgets_path : Path | str
+            Zarr store directory with MODFLOW-MetaSWAP budgets
         """
-        self.cloud: CloudStorage | None = None
-        # If you don't provide modflow_budgets_path and metaswap_budgets_path you will use LHM budgets from Ribasim-NL
-        # In that case you'll need access to Deltares CloudStorage
-        if (modflow_budgets_path is None) | (metaswap_budgets_path is None):
-            self.cloud = CloudStorage()
-            self.zarr_budgets_path = self.cloud.joinpath(zarr_budgets_path)
-            self.modflow_budgets_path = None
-            self.metaswap_budgets_path = None
-        else:
-            self.zarr_budgets_path = None
-            self.modflow_budgets_path = Path(modflow_budgets_path)
-            self.metaswap_budgets_path = Path(metaswap_budgets_path)
+        if not is_zipfile(self.zarr_budgets_path):
+            raise FileNotFoundError(
+                f"You can't compute budgets if you don't have the zarr_budgets in a zip-file: {zarr_budgets_path}"
+            )
 
     def compute_budgets(
         self,
@@ -197,19 +104,20 @@ class AssignOfflineBudgets:
         secondary_values: set[str] = {"bergend"},
         primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"},
         secondary_budgets: set[str] = {
-            "bdgriv_sys2",
+            "bdgriv_sys2",  # TODO @gijsber, please verify as this was left-out in the code of the previous version (why?). I've added this as described in the docstring
             "bdgriv_sys3",
             "bdgriv_sys6",
             "bdgdrn_sys1",
             "bdgdrn_sys2",
             "bdgdrn_sys3",
-            "bdgpssw",
+            "bdgpsswm3",
         },
-        surface_runoff_budgets: set[str] = {"bdgqrun"},
+        surface_runoff_budgets: set[str] = {"bdgqrunm3"},
     ) -> tuple[Model, pd.DataFrame]:
-        """Compute budgets for Ribasim model
+        """Compute budgets for Ribasim model.
 
-        MODFLOW/MetaSWAP budgets for LHM are computed in the following scheme
+        MODFLOW/MetaSWAP budgets for LHM are computed in the following scheme and are expected in unit [m3/day]
+
         RIV-package
         sys1: primary system
         sys2: secondary system
@@ -220,21 +128,21 @@ class AssignOfflineBudgets:
 
         DRN-package
         sys1: tube drainage
-        sys2: ditch dranage
+        sys2: ditch drainage
         sys3: OLF
 
         MetaSWAP budgets
-        qrun: OLF via MetaSWAP
-        pssw: irrigation from surface water
-        TODO: evaluate if we need to add urban runoff
+        qrunm3: OLF via MetaSWAP
+        psswm3: irrigation from surface water
 
         For the Ribasim schematization we distinguish:
           - Primary system for all basins
           - Secondary system in basins other than the main river system
 
         For drainage an infiltration input based on LHM-output budgets, we distubute the LHM-systems in the following matter:
-         - Primary system   -> RIV-sys 1 + 4 + 5
-         - Secondary system -> RIV-sys 2 + 3 + 6, DRN-sys 1 + 2 + 3, qrun + pssw
+         - Primary system (drainage/infiltration) -> RIV-sys 1 + 4 + 5
+         - Secondary system (drainage/infiltration) -> RIV-sys 2 + 3 + 6, DRN-sys 1 + 2 + 3, psswm3
+         - Secondary system (surface_runoff) -> qrunm3
 
         Parameters
         ----------
@@ -247,18 +155,18 @@ class AssignOfflineBudgets:
         basin_metacol : str, optional
             colomn to contain primary and secondary values, by default "meta_categorie"
         primary_values: set[str]
-            set of values in basin_metacol that represent primary basins
+            set of values in basin_metacol that represent primary basins, default = {'hoofdwater', 'doorgaand`}
         secondary_values: set[str]
-            set of values in basin_metacol that represent secondary basins
+            set of values in basin_metacol that represent secondary basins, default = {`bergend`}
         primary_budgets : set[str], optional
             set of budgets that are to be summed to primary drainage/infiltration,
-             by default ["bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"]
+             by default {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
         secondary_budgets : set[str], optional
             set of budgets that are to be summed to secondary drainage/infiltration,
-             by default ["bdgriv_sys2", "bdgriv_sys3", "bdgriv_sys6", "bdgdrn_sys1", "bdgdrn_sys2", "bdgdrn_sys3", "bdgpssw"]
+             by default {"bdgriv_sys2", "bdgriv_sys3", "bdgriv_sys6", "bdgdrn_sys1", "bdgdrn_sys2", "bdgdrn_sys3", "bdgpsswm3"}
         surface_runoff_budgets: set[str], optional
             set of budgets that are to be summed to secondary surface_runoff
-             by default ["bdgqrun"]
+             by default {"bdgqrunm3"}
 
         Returns
         -------
@@ -266,8 +174,11 @@ class AssignOfflineBudgets:
             Model and with MODFLOW-MetaSWAP budgets per node_id and timestamp. These can be used for verification and/or to compute fraction tracer/concentrations
         """
         # Synchronize LHM budget and model files
-        print("📖 read and validate budgets")
-        budgets, model = self._sync_files(model)
+        print("📖 read and validate budgets and model")
+        budgets, model = self._sync_files(model)  # read model and budgets form zarr-store
+        self._validate_budgets(
+            budgets, primary_budgets, secondary_budgets, surface_runoff_budgets
+        )  # check if all data-variables are present
 
         # Split into primary and secondary basin definition
         print("🪓 split basins into primary and secondary")
@@ -353,50 +264,50 @@ class AssignOfflineBudgets:
         tuple[xr.Dataset, Model]
             Budgets and Ribasim model
         """
-        # Synchronize files from cloud (LHM-case)
-        filepaths = [self.zarr_budgets_path]
-        if self.cloud is not None:
-            if not isinstance(model, Model):
-                filepaths.append(Path(model))
-            self.cloud.synchronize(filepaths=filepaths)
-
         # Read the ribasim model if needed
         if not isinstance(model, Model):
             model = Model.read(model)
 
-        # Open budgets: local IDF files or Zarr store directory
-        if self.zarr_budgets_path is None:
-            budgets = budgets_from_dir(
-                modflow_budgets_path=self.modflow_budgets_path,
-                metaswap_budgets_path=self.metaswap_budgets_path,
-                starttime=model.starttime,
-                endtime=model.endtime,
-            )
-        elif self.zarr_budgets_path.is_dir():
+        try:
             budgets = xr.open_zarr(str(self.zarr_budgets_path)).sel(time=slice(model.starttime, model.endtime))
-        else:
-            raise ValueError(
-                f"{self.zarr_budgets_path} is not a directory; expected a Zarr store or provide modflow/metaswap budget paths"
+        except Exception as e:
+            print("ERROR: you have to process your budgets to a zarr-storage first!")
+            print(
+                "GoTo: https://github.com/Deltares/Ribasim-NL/blob/main/scripts/add_lhm_budgets/get_data_LHM_run.py to see how you can create one."
             )
+            raise (e)
 
         return budgets, model
+
+    def _validate_budgets(self, budgets, primary_budgets, secondary_budgets, surface_runoff_budgets):
+        """Validate if all budgets are available as data vars in budgets-file"""
+        expected = primary_budgets | secondary_budgets | surface_runoff_budgets
+        missing = expected - set(budgets.data_vars)
+
+        if missing:
+            raise ValueError(
+                f"budgets {missing} not supplied in budgets-file. Please check {self.zarr_budgets_path} with your values for `primary_budgets`, `secondary_budgets` and `surface_runoff_budgets`"
+            )
 
     def _transpose_basin_definition_polygons(
         self,
         basin_definition_in: gpd.GeoDataFrame,
         basin_definition_out: gpd.GeoDataFrame,
     ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-        """
-        Retruns basin_difinition_out with index of basin_definition_in that intersect the basin_definition_out polygons
+        """Returns basin_definition_out with the index of basin_definition_in for polygons that intersect.
 
-        Args:
-            basin_definition_in (gpd.GeoDataFrame): Basin definition with (multi) polygons
-            basin_definition_out (gpd.GeoDataFrame): Basin definition with (multi) polygons
+        Parameters
+        ----------
+        basin_definition_in : gpd.GeoDataFrame
+            Basin definition with (multi)polygons.
+        basin_definition_out : gpd.GeoDataFrame
+            Basin definition with (multi)polygons.
 
         Returns
         -------
-            tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: Basin definition with new index, Basin definition with
-            polygons without any intersection
+        tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]
+            - Basin definition with updated index based on intersections.
+            - Basin definition containing polygons without any intersection.
         """
         tree = shapely.STRtree(basin_definition_out["geometry"])
         index_in, index_out = tree.query(basin_definition_in.representative_point(), predicate="intersects")
@@ -413,15 +324,19 @@ class AssignOfflineBudgets:
         nodes: gpd.GeoDataFrame,
     ) -> gpd.GeoDataFrame:
         """
-        Retuns basin_definition filled with index of basins within polygon definition
+        Returns basin_definition with indices of basins located within each polygon.
 
-        Args:
-            basin_definition (gpd.GeoDataFrame): Basin definition with (multi) polygons
-            nodes (gpd.GeoDataFrame): Ribasim Basin nodes
+        Parameters
+        ----------
+        basin_definition : gpd.GeoDataFrame
+            Basin definition with (multi)polygons.
+        nodes : gpd.GeoDataFrame
+            Ribasim basin nodes.
 
         Returns
         -------
-            gpd.GeoDataFrame: basin_definition with index from underlying Ribasim Basins
+        gpd.GeoDataFrame
+            basin_definition with indices derived from the underlying Ribasim basins.
         """
         tree = shapely.STRtree(basin_definition["geometry"])
         (
@@ -527,12 +442,15 @@ class AssignOfflineBudgets:
             primary and secondary basins
         """
         # optionally get basin_metacol from other basin_subtype
-        if "meta_categorie" in ribasim_model.basin.node.df.columns:
-            nodes = ribasim_model.basin.node.df[["meta_categorie", "geometry"]].copy().reset_index(drop=False)
+        if basin_metacol in ribasim_model.basin.node.df.columns:
+            nodes = ribasim_model.basin.node.df[[basin_metacol, "geometry"]].copy().reset_index(drop=False)
         else:
-            nodes = ribasim_model.basin.node.df[["geometry"]].copy()
-
             df_cat = getattr(ribasim_model.basin, basin_subtype).df.copy()
+            if basin_metacol in df_cat:
+                raise ValueError(
+                    f"category column {basin_metacol} not in basin.node or basin.{basin_subtype} tables. Provide column or another `basin_subtype` value"
+                )
+            nodes = ribasim_model.basin.node.df[["geometry"]].copy()
             if "node_id" in df_cat.columns:
                 df_cat = df_cat[["node_id", basin_metacol]].set_index("node_id")
             else:
@@ -540,6 +458,8 @@ class AssignOfflineBudgets:
                 df_cat = df_cat[[basin_metacol]]
 
             nodes = nodes.join(df_cat, how="left").reset_index(drop=False)
+
+        self._validate_meta_basin_column(nodes, basin_metacol, expected_values=primary_values | secondary_values)
 
         # split based on meta_label in Ribasim model definition
         basin_definition = getattr(ribasim_model.basin, basin_split).df.copy()
@@ -566,3 +486,16 @@ class AssignOfflineBudgets:
         basin_definition_secondair = basin_definition_secondair.reset_index()
 
         return basin_definition_primair, basin_definition_secondair
+
+    def _validate_meta_basin_column(self, df: pd.DataFrame, basin_metacol: str, expected_values: set):
+        """Validate if all values as expected are present in basin_metacol"""
+        exception = ""
+        if df[basin_metacol].notna().all():
+            exception += " contains missings;"
+
+        unexpected = [i for i in df[basin_metacol].unique() if i not in expected_values]
+        if unexpected:
+            exception += f" contains unexpeced values {unexpected}, check `primary_values` and `secondary_values` input"
+
+        if exception:
+            raise ValueError(f"{basin_metacol} {exception}")
