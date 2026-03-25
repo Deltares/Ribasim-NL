@@ -1,4 +1,4 @@
-"""Setting profile depth based on width-hydrotopes or measurements."""
+"""Set representative profile depth based on width-hydrotopes or measurements."""
 
 import logging
 
