@@ -183,22 +183,30 @@ def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, 
 
 
 def export_to_cloud(
-    water_authority: str, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0, overwrite: bool = False
+    water_authority: str,
+    cloud: CloudStorage = CloudStorage(),
+    *,
+    buffer: float = 0,
+    sync: bool = True,
+    overwrite: bool = False,
 ) -> None:
     """Export cross-sectional profiles to the GoodCloud.
 
     :param water_authority: name of water authority
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
     :param buffer: buffer-argument as used by some implementations, defaults to 0
-    :param overwrite: overwrite data from the GoodCloud, defaults to False
+    :param sync: sync data with the GoodCloud ('Basisgegevens/profielen'), defaults to True
+    :param overwrite: overwrite data from the GoodCloud ('Basisgegevens/profielen'), defaults to False
 
     :type water_authority: str
     :type cloud: CloudStorage, optional
     :type buffer: float, optional
+    :type sync: bool, optional
     :type overwrite: bool, optional
     """
     # sync cloud: Basisgegevens - profielen
-    cloud.download_basisgegevens(["profielen"], overwrite=overwrite)
+    if sync:
+        cloud.download_basisgegevens(["profielen"], overwrite=overwrite)
 
     # working directories
     folders = water_authority, "verwerkt", "profielen", "intermediate"
