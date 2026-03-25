@@ -245,6 +245,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--buffer", "-b", type=float, default=0.05, help="Optional argument: Buffer when coupling points to lines"
     )
+    parser.add_argument(
+        "--sync",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="sync the GoodCloud ('Basisgegevens/profielen')",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="overwrite the GoodCloud ('Basisgegevens/profielen')",
+    )
     parser.add_argument("--log", "-l", type=str, default="WARNING", help="Optional argument: Log-level.")
 
     # parse arguments
@@ -252,4 +264,4 @@ if __name__ == "__main__":
 
     # execute preprocessing
     logging.basicConfig(level=args.log.upper())
-    export_to_cloud(args.water_authority, buffer=args.buffer)
+    export_to_cloud(args.water_authority, buffer=args.buffer, sync=args.sync, overwrite=args.overwrite)
