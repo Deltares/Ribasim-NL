@@ -33,10 +33,11 @@ import seaborn as sns
 # ------------------------ Import local module ----------------------------------
 from ER_GAF_fractions_func import compute_overlap_df
 
+from ribasim_nl import CloudStorage
+
 current_dir = Path(__file__).resolve().parent
 print(f"Current directory: {current_dir}")
 print("Check if working directory is the script directory.")
-
 
 # -------------------------------Conversions------------------------------------
 
@@ -46,18 +47,22 @@ conv_ton2g = 10**6
 
 
 # -------------------------------Directories------------------------------------
-model_name = "modellen/lhm_coupled_2025_9_0"
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "modellen/lhm_coupled_2025_9_0"
-basin_path = model_path / "input/database.gpkg"
-inputdir = (
-    "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
-)
+cloud = CloudStorage()
 
-emissies_buiten_ER_path = "Emissies_per_jaar_buiten_ER.csv"
-ER_export_path = "ER_DataExport-2024-01-29-142759.xlsx"
-OE_bedrijven_path = "OverigeEmissies_bedrijven__2024_01_24.csv"
+model_name = "lhm_coupled_2025_9_0"
+model_path = cloud.joinpath("Rijkswaterstaat", "modellen", model_name)
+toml_path = cloud.joinpath(model_path, "lhm.toml")
+cloud.synchronize(filepaths=[model_path], overwrite=False)
+basin_path = cloud.joinpath(model_path, "input/database.gpkg")
 
-gaf_path = "P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp"
+er_path = cloud.joinpath("Basisgegevens/Delwaq/aangeleverd/Emissieregistratie")
+emissies_buiten_ER_path = cloud.joinpath(er_path, "Emissies_per_jaar_buiten_ER.csv")
+ER_export_path = cloud.joinpath(er_path, "ER_DataExport-2024-01-29-142759.xlsx")
+OE_bedrijven_path = cloud.joinpath(er_path, "OverigeEmissies_bedrijven__2024_01_24.csv")
+gaf_path = cloud.joinpath(er_path, "gaf_90.shp")
+
+cloud.synchronize(filepaths=[er_path], overwrite=False)
+
 
 # -------------------------------Settings---------------------------------------
 d = {}
@@ -213,11 +218,13 @@ print("coupling GAF-emissions to LHM basin nodes completed")
 
 # process fractions based on basin type, only splitting up doorgaand and bergend
 koppeling["fractie"] = koppeling.apply(
-    lambda row: row["fractie"] * frac_doorgaand
-    if row["meta_categorie"] == "doorgaand"
-    else row["fractie"] * frac_bergend
-    if row["meta_categorie"] == "bergend"
-    else row["fractie"],
+    lambda row: (
+        row["fractie"] * frac_doorgaand
+        if row["meta_categorie"] == "doorgaand"
+        else row["fractie"] * frac_bergend
+        if row["meta_categorie"] == "bergend"
+        else row["fractie"]
+    ),
     axis=1,
 )
 
@@ -241,21 +248,17 @@ print(f"Percentage of GAF-units with sum of fractions exceeding 1 by more than 5
 # $ eventueel kunnen de fracties per GAF met de emissies per GAF worden vermenigvuldigd om te checken of het matched met wat er uit dit script komt rollen als totale emissies
 
 # Manual file to fill in Deltares ER yearly loads #$ not using this rn
-Emissies_per_jaar_buiten_ER = pd.read_csv(
-    os.path.join(inputdir, emissies_buiten_ER_path), delimiter=";", encoding="latin1"
-)
+Emissies_per_jaar_buiten_ER = pd.read_csv(emissies_buiten_ER_path, delimiter=";", encoding="latin1")
 
 # Direct download from the ER website at GAF90 level #$ MAKE SEARCH FOR MOST RECENT DATE INSTEAD OF MANUALLY WRITING
 ER_data_EMK_GAF90 = pd.read_excel(
-    os.path.join(inputdir, ER_export_path),
+    ER_export_path,
     sheet_name="Emissies",
     usecols=["Stofcode", "Stof", "Code_gebied", "Sector", "Subsector", "Emissieoorzaak", "Jaar", "Emissie"],
 )
 
 # Manual file to import bedrijven without coastal waters #$ also not rn
-OverigeEmissies_bedrijven__2024_01_24 = pd.read_csv(
-    os.path.join(inputdir, OE_bedrijven_path), delimiter=";", encoding="latin1"
-)
+OverigeEmissies_bedrijven__2024_01_24 = pd.read_csv(OE_bedrijven_path, delimiter=";", encoding="latin1")
 
 # -------------------------------Overige emissies ER----------------------------
 
@@ -734,6 +737,7 @@ ER_df_wide["OOP"] = ER_df_wide["P"] * 0.1
 # ---------------------------------Export B6_loads.inc ---------------------------------------
 
 output_path = model_path / "delwaq"
+output_path.mkdir(parents=True, exist_ok=True)
 
 
 def write_inc_file(df, output_path):
@@ -768,9 +772,24 @@ def write_inc_file(df, output_path):
         print(f"B6_loads.inc written to {output_path / 'B6_loads.inc'}")
 
 
+ER_df_wide.to_parquet(output_path / "ER.pq", index=False)
 write_inc_file(ER_df_wide, output_path)
 
 ER_df_wide["Year"]
+# %%
 
+ER_df_wide["time"] = pd.to_datetime(ER_df_wide.Year, format="%Y")
+ER_df_wide.rename(columns={"NodeId": "node_id"}, inplace=True)
+
+loads_df = ER_df_wide.melt(
+    id_vars=["node_id", "time"],
+    value_vars=["NO3", "NH4", "OON", "PO4", "AAP", "OOP"],
+    var_name="substance",
+    value_name="load",
+)
+
+# Once a new LHM/release is made
+# model = Model.read(toml_path)
+# model.basin.loads = loads_df
 
 # %%
