@@ -46,6 +46,8 @@ def main(
     # > basins
     fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "database.gpkg")
     gdf_basins = gpd.read_file(fn_basins, layer="Basin / area")
+    # FIXME: Circular usage of basin-data
+    gdf_basins = gdf_basins[gdf_basins["node_id"] == gdf_basins["meta_node_id"]]
     # > crossings & hydro-objects
     _fn_network = cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_network)
     gdf_crossings = gpd.read_file(_fn_network, layer="crossings_hydroobject_filtered")
