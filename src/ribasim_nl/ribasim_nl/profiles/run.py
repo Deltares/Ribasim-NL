@@ -169,11 +169,12 @@ def main(
 
     # collectors
     main_route_idx: set[int] = set()
-    point_collector = []
-    line_collector = []
+    point_collector: list[shapely.Point] = []
+    line_collector: list[shapely.LineString] = []
+    error_collector: list[int] = []
 
     # find main routes per basin
-    for basin in basins.geometry.values:
+    for node_id, basin in zip(basins["node_id"].values, basins.geometry.values):
         # data selections
         subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
         subset_crossings = path_finder.select_crossings(
@@ -182,7 +183,8 @@ def main(
 
         # create network-graph
         if len(subset_hydro_objects) == 0:
-            LOG.warning(f"No hydro-objects found in {basin=}")
+            error_collector.append(int(node_id))
+            LOG.warning(f"No hydro-objects found for Basin #{node_id}")
             continue
         graph = path_finder.generate_graph(subset_hydro_objects)
 
@@ -199,6 +201,10 @@ def main(
             points, lines = momepy.nx_to_gdf(graph)
             point_collector.append(points)
             line_collector.append(lines)
+
+    # overview of erroneous basins
+    if error_collector:
+        LOG.critical(f"No hydro-objects found for the following basins ({len(error_collector)}): {error_collector}")
 
     # concatenate basin-groups of point- and line-data
     if wd_intermediate_output is not None:
