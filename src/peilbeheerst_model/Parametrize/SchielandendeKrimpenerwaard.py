@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -355,7 +355,7 @@ ribasim_param.validate_manning_basins(ribasim_model)
 #     depth_profile=2,
 # )
 # TODO: Replace standard profile by determined profiles (and add storing basins where applicable)
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -650,7 +650,7 @@ if RESCALE_FLOW_CAPACITIES:
             waterschap=waterschap,
             cloud=cloud,
             rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-            max_iterations=20,
+            max_iterations=12,
             design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
             design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
         )

@@ -527,7 +527,7 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     return ribasim_model
 
 
-def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
+def upload_from_to_node_function_table(from_to_node_function_table, waterschap, upload_to_cloud=True):
     """Write the scaled connector table locally and upload the CSV to GoodCloud.
 
     Parameters
@@ -544,9 +544,9 @@ def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
         waterschap, "verwerkt", "Parametrisatie_data", "from_to_node_function_table_scaled_max_flow_rates.csv"
     )
     from_to_node_function_table.to_csv(from_to_node_function_table_path)
-    cloud.upload_file(from_to_node_function_table_path)
-
-    print("from_to_node_function_table with estimated flow rates saved to the GoodCloud.")
+    if upload_to_cloud:
+        cloud.upload_file(from_to_node_function_table_path)
+        print("from_to_node_function_table with estimated flow rates saved to the GoodCloud.")
 
 
 class _OutletPumpScaler:
@@ -827,6 +827,11 @@ class _OutletPumpScaler:
 
                 # store model
                 ribasim_model.write(config.ribasim_model_path)
+
+                # write from_to_node_table locally (push to cloud after everything has run)
+                upload_from_to_node_function_table(
+                    from_to_node_function_table, config.waterschap, upload_to_cloud=False
+                )
 
         # replace the original meteo, initial water levels and boundary levels in the ribasim model
         ribasim_model.basin.time.df = original_meteo
