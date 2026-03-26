@@ -209,9 +209,9 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460,
 ribasim_model.link.add(ribasim_model.pump[460], ribasim_model.basin[10])
 
 # (re)set 'meta_node_id'-values
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
