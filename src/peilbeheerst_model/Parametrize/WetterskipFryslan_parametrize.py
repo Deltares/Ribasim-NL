@@ -8,9 +8,9 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
@@ -19,6 +19,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    set_node_functions,
 )
 from shapely import Point
 
@@ -27,10 +28,14 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
+RESCALE_FLOW_CAPACITIES = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
+
+MIXED_CONDITIONS_DESIGN_P = 10
+MIXED_CONDITIONS_DESIGN_E = 2
 
 # model settings
 waterschap = "WetterskipFryslan"
@@ -53,16 +58,18 @@ qlr_name = "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_20
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/aanvoer.gpkg")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
+profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
 cloud.synchronize(
     filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        meteo_path,
+        # ribasim_base_model_dir,
+        # FeedbackFormulier_path,
+        # ws_grenzen_path,
+        # RWS_grenzen_path,
+        # qlr_path,
+        # aanvoer_path,
+        # meteo_path,
+        profiles_path,
     ]
 )
 
@@ -466,8 +473,10 @@ ribasim_param.insert_standard_profile(
 add_storage_basins = AddStorageBasins(
     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
 )
-
 add_storage_basins.create_bergende_basins()
+
+# implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)
+
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -488,19 +497,19 @@ if DYNAMIC_CONDITIONS:
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
-    ribasim_param.set_hypothetical_dynamic_forcing(ribasim_model, starttime, endtime, 1)
-
+    ribasim_param.set_hypothetical_dynamic_forcing(
+        ribasim_model, starttime, endtime, MIXED_CONDITIONS_DESIGN_P, MIXED_CONDITIONS_DESIGN_E
+    )
 else:
     forcing_dict = {
-        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else 10),
-        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(10 if AANVOER_CONDITIONS else 0),
+        "precipitation": ribasim_param.convert_mm_day_to_m_sec(0 if AANVOER_CONDITIONS else MIXED_CONDITIONS_DESIGN_P),
+        "potential_evaporation": ribasim_param.convert_mm_day_to_m_sec(
+            MIXED_CONDITIONS_DESIGN_E if AANVOER_CONDITIONS else 0
+        ),
         "drainage": ribasim_param.convert_mm_day_to_m_sec(0),
         "infiltration": ribasim_param.convert_mm_day_to_m_sec(0),
     }
     ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
-
-# reset pump capacity for each pump
-ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
@@ -563,14 +572,13 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 # manually change the function of some nodes based upon model inspection
-to_inlaat_nodes = [1596, 3411, 3882, 3880, 2773, 2783, 3882, 3884, 3023, 3411, 3888, 2398, 1647, 1747]
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_inlaat_nodes), "function"] = "supply"
+to_supply = [1596, 3411, 3882, 3880, 2773, 2783, 3882, 3884, 3023, 3411, 3888, 2398, 1647, 1747]
+to_flow_control = [3068]
+to_drain = [3494]
 
-to_doorlaat_nodes = [3068]
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_doorlaat_nodes), "function"] = "flow_control"
-
-to_uitlaat_nodes = [3494]
-from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_uitlaat_nodes), "function"] = "drain"
+from_to_node_function_table = set_node_functions(
+    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+)
 
 # retain meta data of the outlets and pumps
 outlet_copy = ribasim_model.outlet.static.df[
@@ -601,12 +609,12 @@ pump_copy = ribasim_model.pump.static.df[
 # update node_ids
 ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
 
-# Add flushing data
-flush = Flushing(ribasim_model)
-_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
-for row in df_demand[df_demand.demand_type == "flow"].itertuples():
-    from_to_node_function_table.at[row.nid, "function"] = "flushing"
-    from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
+# # Add flushing data
+# flush = Flushing(ribasim_model)
+# _, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
+# for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+#     from_to_node_function_table.at[row.nid, "function"] = "flushing"
+#     from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
 
 add_controllers_to_connector_nodes(
     model=ribasim_model,
@@ -649,10 +657,6 @@ ribasim_model.pump.static.df = (
     ribasim_model.pump.static.df.set_index("node_id").combine_first(pump_copy.set_index("node_id")).reset_index()
 )
 
-# if flow_rate is 0, set to 20
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20
-ribasim_model.outlet.static.df.max_flow_rate = ribasim_model.outlet.static.df.flow_rate.copy()
-
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
     authority=waterschap,
@@ -687,6 +691,29 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
+
+# set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
+ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df["meta_known_flow_rate"] = True
+ribasim_model.pump.static.df.loc[
+    (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
+    "meta_known_flow_rate",
+] = False
+
+# rescaling of outlets (and pumps)
+ribasim_model, from_to_node_function_table = scale_outlets_pumps(
+    OutletPumpScalingConfig(
+        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model=ribasim_model,
+        from_to_node_function_table=from_to_node_function_table,
+        waterschap=waterschap,
+        cloud=cloud,
+        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+        max_iterations=20,
+        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+    )
+)
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
