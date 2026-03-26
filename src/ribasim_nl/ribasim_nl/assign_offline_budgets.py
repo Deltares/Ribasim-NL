@@ -233,13 +233,13 @@ class AssignOfflineBudgets:
         summed_budgets = pd.Series(budgets_df[list(primary_budgets | secondary_budgets)].sum(axis=1))
         drainage = summed_budgets.clip(
             upper=0
-        ).abs()  # all <0 is drainage. Take absolute its a positive term in RIBASIM
+        ).abs()  # all <0 is drainage. Take absolute its a positive term in Ribasim
         infiltration = summed_budgets.clip(
             lower=0
         )  # alles > 0 (infiltratie is in modflow, ontrekking uit ribasim, maar in ribasim positief teken)
         surface_runoff = pd.Series(budgets_df[list(surface_runoff_budgets)].sum(axis=1)).clip(
             lower=0
-        )  # assume surface_runoff can't be <0 in RIBASIM
+        )  # assume surface_runoff can't be <0 in Ribasim
 
         # update basin drainage and infiltration
         idx = pd.MultiIndex.from_frame(model.basin.time.df[["node_id", "time"]])

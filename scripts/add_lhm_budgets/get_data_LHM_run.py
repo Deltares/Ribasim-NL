@@ -10,7 +10,6 @@ import zarr
 # - metaswap resultaten (automatisch) fillen op de juiste tijdstap
 # - dxy automatisch bepalen op basis van modflow-rooster
 # - distance automatisch bepalen op basis van modflow-rooster (t.b.v. flexibele toepassing)
-# - zarr store met compressie (wel alle budgets!) zoals besproken met @visr
 
 # INPUT
 time_slice = slice(pd.Timestamp("2013-01-01"), pd.Timestamp("2022-12-31"))  # time slice
