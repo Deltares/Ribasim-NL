@@ -1,4 +1,10 @@
-"""Generation of profiles table for Zuiderzeeland."""
+"""
+Generation of profiles table for Zuiderzeeland.
+
+The generation of profiles for Zuiderzeeland cannot be executed with the generalised approach as defined in
+`src.peilberheest.profiles.gen_profiles.main()`. The `main()`-function below does have a lot in common with this
+function, but contains subtle yet crucial differences.
+"""
 
 import geopandas as gpd
 import pandas as pd
