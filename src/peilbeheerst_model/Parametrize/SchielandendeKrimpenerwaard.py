@@ -27,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -593,7 +593,7 @@ assign_metadata.add_meta_to_pumps(
         "meta_name": {"node": ["name"]},
         "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
     },
-    max_distance=100,
+    max_distance=10,
     factor_flowrate=1 / 60,  # m3/min -> m3/s
 )
 assign_metadata.add_meta_to_basins(
@@ -601,6 +601,12 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+
+df_pumps = ribasim_model.pump.static.df.copy()
+same = df_pumps["flow_rate"] == df_pumps["max_flow_rate"]
+print(df_pumps[~same])
+print(df_pumps[df_pumps["node_id"] == 750])
+
 
 # increase_flow_rate_pumps = [395]
 # ribasim_model.pump.static.df.loc[
@@ -635,19 +641,22 @@ ribasim_model.pump.static.df.loc[
 ] = False
 
 # rescaling of outlets (and pumps)
-ribasim_model, from_to_node_function_table = scale_outlets_pumps(
-    OutletPumpScalingConfig(
-        ribasim_model_path=ribasim_work_dir_model_toml,
-        ribasim_model=ribasim_model,
-        from_to_node_function_table=from_to_node_function_table,
-        waterschap=waterschap,
-        cloud=cloud,
-        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        max_iterations=20,
-        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+if RESCALE_FLOW_CAPACITIES:
+    ribasim_model, from_to_node_function_table = scale_outlets_pumps(
+        OutletPumpScalingConfig(
+            ribasim_model_path=ribasim_work_dir_model_toml,
+            ribasim_model=ribasim_model,
+            from_to_node_function_table=from_to_node_function_table,
+            waterschap=waterschap,
+            cloud=cloud,
+            rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+            max_iterations=20,
+            design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+            design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+        )
     )
-)
+else:
+    print(f"No scaling of outlets/pumps: {RESCALE_FLOW_CAPACITIES=}")
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
