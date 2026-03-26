@@ -80,6 +80,7 @@ def main(
             fn_table = wd_table / f"profielen_{name}.csv"
             table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
             table.to_csv(fn_table, index=False)
+            print(f"File saved: {fn_table}")
 
         # upload profile files
         cloud.upload_content(wd_table, overwrite=True)
