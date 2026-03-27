@@ -2,7 +2,6 @@
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
-from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon
 
@@ -47,17 +46,10 @@ model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
 # %% Fixes
 
-model.update_node(node_id=968, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=754, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=705, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=709, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=710, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=923, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=753, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=649, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=766, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=926, node_type="Outlet")  # wordt outlet, was manning
+outlet_ids = [968, 754, 705, 709, 710, 923, 753, 649, 766, 926]
 
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="Outlet")
 
 # %%
 # Toevoegen Soniuswijk
@@ -190,10 +182,10 @@ node_functions_df = add_controllers_to_supply_area(
 
 flow_control_nodes = [203]
 
-supply_nodes = []
+supply_nodes = [405, 417, 1912]
 
 
-drain_nodes = [926]
+drain_nodes = [210, 926]
 
 
 # Flushing nodes
@@ -213,7 +205,7 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 
 # %% Junctionfy(!)
-model = junctionify(model)
+# model = junctionify(model)
 
 # Model run
 
@@ -225,17 +217,32 @@ model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # %% Verdeelwerk bij Eindhoven 10% afvgevoerd via Beatrixkanaal (max 20m3/s) en 90% via Dieze
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 293, "flow_rate"] = 200
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "flow_rate"] = 20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "max_flow_rate"] = 20
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 379, "max_flow_rate"] = 0
-
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 293, "min_upstream_level"] = 16.2
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_level"] = 16.2
-# %% max flow_rate op inlaten op 0.1 m3/s
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1912, "max_flow_rate"] = 0.5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 417, "max_flow_rate"] = 0.5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 405, "max_flow_rate"] = 0.5
+
+# flow rates WATAK Olen en Sonse Heide
+flow_updates = {
+    417: 0.6,  # Olen
+    405: 0.16,  # Sonse Heide
+    1912: 0.5,  # Bocholt naar Herentals, max aanvoer??, niet in WATAK
+}
+
+mask = model.outlet.static.df.node_id.isin(flow_updates.keys()) & (model.outlet.static.df["control_state"] == "aanvoer")
+
+model.outlet.static.df.loc[mask, "max_flow_rate"] = model.outlet.static.df.loc[mask, "node_id"].map(flow_updates)
+
+# flow rates WATAK Olen en Sonse Heide
+flow_updates = {
+    121: 110,  # Vughterstuw
+    210: 20,  # Blaatthem
+    293: 200,  # Verdeelwerk
+}
+
+mask = model.outlet.static.df.node_id.isin(flow_updates.keys()) & (model.outlet.static.df["control_state"] == "afvoer")
+
+model.outlet.static.df.loc[mask, "max_flow_rate"] = model.outlet.static.df.loc[mask, "node_id"].map(flow_updates)
+
 
 # %%
 

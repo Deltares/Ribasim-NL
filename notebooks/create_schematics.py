@@ -24,13 +24,13 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 MODEL_POST_FIX = "full_control_model"
-ARROW_LENGTH = {"StichtseRijnlanden": 800, "Noorderzijlvest": 1200, "AaenMaas": 1600, "Limburg": 1600}
+ARROW_LENGTH = {"StichtseRijnlanden": 800, "Noorderzijlvest": 1200, "AaenMaas": 1600, "Limburg": 1400, "DeDommel": 1400}
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["Limburg"]
+AUTHORITIES = ["DeDommel"]
 ADD_TOP10_NL = {
     "DeDommel": [
         "Maas",
@@ -188,7 +188,6 @@ ADD_TOP10_NL = {
         "Hertogswetering",
         "Defensie- of Peelkanaal",
         "Peelkanaal",
-        "Dommel",
         "Lateraalkanaal Linne - Buggenum",
         "Boschmolenplas",
         "De Lange Vlieter",

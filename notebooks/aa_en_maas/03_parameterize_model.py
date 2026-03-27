@@ -69,10 +69,6 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 # Fix afvoer
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "flow_rate"] = 0.0
 
-# %%
-model.basin.area.df.loc[model.basin.area.df.node_id == 1190, "meta_streefpeil"] = 13.90
-model.basin.area.df.loc[model.basin.area.df.node_id == 2011, "meta_streefpeil"] = 21.93
-model.basin.area.df.loc[model.basin.area.df.node_id == 1341, "meta_streefpeil"] = 14.82
 
 # %%
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index

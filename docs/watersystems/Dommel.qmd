@@ -5,8 +5,8 @@
 - Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
 
 ## Systeembeschrijving
-![Systeembeschrijving De Dommel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/De Dommel.svg)
-![Systeembeschrijving De Dommel](d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\De Dommel\verwerkt\sturing\NZV.svg)
+<!--[Systeembeschrijving De Dommel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/De Dommel.svg)-->
+![Systeembeschrijving De Dommel](d:\Projecten\D2306.LHM_RIBASIM\02.brongegevens\DeDommel\verwerkt\sturing\dommel.svg)
 
 Het beheersgebied is vrij afwaterend en bestaat uit meerdere beken en hun stroomgebieden. Een onderverdeling van het gebied in zeer gedetailleerde stroomgebieden is niet nodig voor Ribasim.
 
@@ -23,39 +23,20 @@ Er kan water worden ingelaten bij inlaat Olen (wateraanvoergebied Sint Oedenrode
 m3/s naar Sint Oedenrode. 
 
 ### Inlaat Bocholt
-
+Vanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaar Bocholt.
 
 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
-| naam                    | code     |   node_id | functie                |   aanvoer [m3/s] |   afvoer [m3/s] |
-|:------------------------|:---------|----------:|:-----------------------|-----------------:|----------------:|
-| Abelstok                | KGM156   |       147 | uitlaat                |            0     |           10    |
-| Allartsooginlaat        | INL201   |       698 | inlaat                 |           20     |            0    |
-| De Drie Delfzijlen      | KGM046   |        67 | uitlaat                |            0     |           25    |
-| De Waterwolf            | KGM001   |        29 | doorlaat               |           75     |           75    |
-| Dokkumer Nieuwezijlen   |          |      1755 | uitlaat                |            0     |            0    |
-| Drie-Provinciëninlaat   | INL202   |       699 | inlaat                 |           20     |            0    |
-| Frieschepaleninlaat     | INL077   |       687 | inlaat                 |           20     |            0    |
-| Gaarkeukeninlaat        |          |      1741 | inlaat                 |           24     |            0    |
-| Gemaal Dokwerd          |          |      1753 | inlaat                 |           20     |            0    |
-| Gemaal de Dongeradielen |          |      1748 | uitlaat                |            0     |            0    |
-| H.D. Louwes             | KGM002   |        30 | uitlaat                |            0     |           16.7  |
-| Heidenheeminlaat        | INL055   |      1743 | inlaat                 |            0.072 |            0    |
-| Herculesstuw            | KST0169  |       412 | uitlaat (doorspoeling) |            0.2   |           10.2  |
-| Huis ter Heide-inlaat   | INL114   |      1742 | inlaat                 |            0.105 |            0    |
-| Jonkersbruginlaat       | INL095   |      1739 | inlaat                 |            0.032 |            0    |
-| Leek                    | KGM009   |        36 | inlaat                 |            1.17  |            0    |
-| Meerweg                 |          |      1758 | inlaat                 |            0.021 |            0    |
-| Nieuwe Robbengat        | KGM016   |        42 | uitlaat                |            0     |            4.33 |
-| Noordpolderzijl         | KGM014   |        40 | uitlaat                |            0     |            4    |
-| Oostersluis             | KGM148   |       142 | inlaat                 |            2.5   |            0    |
-| R.J. Cleveringsluizen   | KSL011   |       724 | uitlaat                |            0     |          668    |
-| Schaphalsterzijl        | KGM155_i |       146 | inlaat                 |            2.5   |            0    |
-| Spijksterpompen         | KGM015   |        41 | uitlaat (doorspoeling) |            0.4   |           12.9  |
-| Stad en Lande           | KGM003_i |        32 | inlaat                 |            1.5   |            0    |
-| Ter Aardinlaat          | INL001   |      1751 | inlaat                 |            0.043 |            0    |
+| naam                                  | code       |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
+|:--------------------------------------|:-----------|----------:|:----------|-----------------:|----------------:|
+| Inlaat Olen                           | DSH0023156 |       417 | inlaat    |             0.6  |               0 |
+| Inlaat Soniuswijk                     | DO28-st1   |       405 | inlaat    |             0.16 |               0 |
+| Inlaat kanaal Bocholt naar Heerentals |            |      1912 | inlaat    |             0.5  |               0 |
+| Stuw Blaarthem                        | DL62-st1   |       210 | uitlaat   |             0    |              20 |
+| Stuw Verdeelwerk                      | DL1-st5    |       293 | uitlaat   |             0    |             200 |
+| Vughterstuw                           | DO1-st3    |       121 | uitlaat   |             0    |             110 |
 
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:

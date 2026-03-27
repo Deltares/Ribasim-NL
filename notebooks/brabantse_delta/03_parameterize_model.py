@@ -31,16 +31,6 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 
 # %%
-
-model.basin.area.df.loc[model.basin.area.df.node_id == 342, "meta_streefpeil"] = 4.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "meta_streefpeil"] = 0.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1909, "meta_streefpeil"] = 0.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1634, "meta_streefpeil"] = 1.2  # Basin Turfvaart meetpunt
-model.basin.area.df.loc[model.basin.area.df.node_id == 1584, "meta_streefpeil"] = 0.15
-model.basin.area.df.loc[model.basin.area.df.node_id == 1987, "meta_streefpeil"] = -0.5
-# %%
-
-
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
@@ -78,7 +68,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 536, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 217, "min_upstream_level"] = 1.2  # Turfvaart meetpunt
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 4.1
 model.pump.static.df.loc[model.pump.static.df.node_id == 972, "min_upstream_level"] = 0.55  # Roode Vaart Afvoergemaal
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 36, "level"] = -3
 
 # Voor outlets flow_updates
 flow_updates = {

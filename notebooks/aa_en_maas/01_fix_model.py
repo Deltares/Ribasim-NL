@@ -473,12 +473,152 @@ for row in remove_nodes_df.itertuples():
 
 
 # %% merge nodes
-model.merge_basins(basin_id=1321, to_basin_id=1411, are_connected=True)
-model.merge_basins(basin_id=1562, to_basin_id=1411, are_connected=True)
-model.merge_basins(basin_id=1155, to_basin_id=1514, are_connected=True)
-model.merge_basins(basin_id=1565, to_basin_id=1618, are_connected=True)
-model.merge_basins(basin_id=2006, to_basin_id=1618, are_connected=True)
-model.merge_basins(basin_id=1366, to_basin_id=1249, are_connected=True)
+
+# Manning worden outlets tpv stuw/duiker
+outlet_ids = [
+    586,
+    479,
+    531,
+    510,
+    475,
+    681,
+    1006,
+    1005,
+    551,
+    488,
+    1115,
+    566,
+    686,
+    469,
+    569,
+    533,
+    526,
+    632,
+    1018,
+    723,
+    722,
+    570,
+    697,
+    708,
+    640,
+    521,
+    1063,
+    452,
+    1054,
+    625,
+    1056,
+    694,
+    524,
+    425,
+    693,
+    442,
+    538,
+    702,
+    710,
+    622,
+    680,
+    584,
+    487,
+    1062,
+    506,
+    541,
+    527,
+    577,
+    1050,
+    582,
+    1051,
+    599,
+    597,
+    597,
+    597,
+    597,
+    807,
+    628,
+    721,
+    573,
+    1073,
+    621,
+    534,
+    496,
+    555,
+    559,
+    718,
+    481,
+    691,
+    1046,
+    438,
+    430,
+    717,
+    1058,
+    698,
+    571,
+    1001,
+    701,
+    494,
+    509,
+    594,
+    1016,
+    615,
+    470,
+    1014,
+    490,
+    649,
+    476,
+    1028,
+    727,
+]
+
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# ligt benedenstrooms een stuw
+model.update_node(node_id=1077, node_type="Outlet")  # wordt outlet, was manning
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1077, "min_upstream_level"] = 4.48499
+
+model.redirect_link(link_id=1147, from_node_id=1219, to_node_id=172)
+model.reverse_link(link_id=734)
+model.reverse_link(link_id=1582)
+
+
+merge_pairs = [
+    (1321, 1411),
+    (1562, 1411),
+    (1155, 1514),
+    (1565, 1618),
+    (2006, 1618),
+    (1366, 1249),
+    (1437, 1861),
+    (1303, 1360),
+    (1707, 1346),
+    (1162, 1457),
+    (1468, 1277),
+    (1355, 1517),
+    (1344, 1626),
+    (1428, 1589),
+    (1668, 1710),
+    (1292, 1484),
+    (1966, 1580),
+    (1281, 1642),
+    (1642, 1510),
+    (1571, 1332),
+    (1332, 1582),
+    (1208, 1279),
+    (1279, 1582),
+    (1663, 1722),
+    (1794, 1836),
+    (1455, 1276),
+    (1968, 1494),
+    (1615, 1331),
+    (1911, 1331),
+]
+
+for basin_id, to_basin_id in merge_pairs:
+    model.merge_basins(
+        basin_id=basin_id,
+        to_basin_id=to_basin_id,
+        are_connected=True,
+    )
+
 
 # %% Connect basins:
 actions = [

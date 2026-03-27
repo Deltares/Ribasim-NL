@@ -32,7 +32,7 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 745: Sluis Engelen, alles via Crevecoeur
-EXCLUDE_NODES = {}
+EXCLUDE_NODES = {247, 584, 745, 955, 956, 960, 980, 680}
 
 
 def add_discharge_supply_nodes(
@@ -141,131 +141,10 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 model.outlet.static.df.max_flow_rate = 30
 model.outlet.static.df.flow_rate = 30
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
+
+# fixes
 # Schabbert
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 161, "flow_rate"] = 12
-
-
-model.update_node(node_id=586, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=479, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=531, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=510, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=475, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=681, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1006, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1005, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=551, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=488, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1115, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=566, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=686, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=469, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=569, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=533, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=526, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=632, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1018, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=723, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=722, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=570, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=697, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=708, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=640, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=521, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1063, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=452, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1054, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=625, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1056, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=694, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=524, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=425, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=693, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=442, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=538, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=702, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=710, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=622, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=680, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=584, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=487, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1062, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=506, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=541, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=527, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=577, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1050, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=582, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1051, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=599, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=597, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=597, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=597, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=597, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=807, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=628, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=721, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=573, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1073, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=621, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=534, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=496, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=555, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=559, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=718, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=481, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=691, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1046, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=438, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=430, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=717, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1058, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=698, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=571, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1001, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=701, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=494, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=509, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=594, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1016, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=615, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=470, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1014, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=490, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=649, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=476, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=1028, node_type="Outlet")  # wordt outlet, was manning
-model.update_node(node_id=727, node_type="Outlet")  # wordt outlet, was manning
-
-
-# ligt benedenstrooms een stuw
-model.update_node(node_id=1077, node_type="Outlet")  # wordt outlet, was manning
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1077, "min_upstream_level"] = 4.48499
-
-model.redirect_link(link_id=1147, from_node_id=1219, to_node_id=172)
-
-model.merge_basins(basin_id=1437, to_basin_id=1861, are_connected=True)
-model.merge_basins(basin_id=1303, to_basin_id=1360, are_connected=True)
-model.merge_basins(basin_id=1707, to_basin_id=1346, are_connected=True)
-model.merge_basins(basin_id=1162, to_basin_id=1457, are_connected=True)
-model.merge_basins(basin_id=1468, to_basin_id=1277, are_connected=True)
-model.merge_basins(basin_id=1355, to_basin_id=1517, are_connected=True)
-model.merge_basins(basin_id=1344, to_basin_id=1626, are_connected=True)
-model.merge_basins(basin_id=1428, to_basin_id=1589, are_connected=True)
-model.merge_basins(basin_id=1668, to_basin_id=1710, are_connected=True)
-model.merge_basins(basin_id=1292, to_basin_id=1484, are_connected=True)
-model.merge_basins(basin_id=1966, to_basin_id=1580, are_connected=True)
-model.merge_basins(basin_id=1281, to_basin_id=1642, are_connected=True)
-model.merge_basins(basin_id=1642, to_basin_id=1510, are_connected=True)
-model.merge_basins(basin_id=1571, to_basin_id=1332, are_connected=True)
-model.merge_basins(basin_id=1332, to_basin_id=1582, are_connected=True)
-model.merge_basins(basin_id=1208, to_basin_id=1279, are_connected=True)
-model.merge_basins(basin_id=1279, to_basin_id=1582, are_connected=True)
-model.merge_basins(basin_id=1663, to_basin_id=1722, are_connected=True)
-model.merge_basins(basin_id=1794, to_basin_id=1836, are_connected=True)
-model.merge_basins(basin_id=1455, to_basin_id=1276, are_connected=True)
-model.merge_basins(basin_id=1968, to_basin_id=1494, are_connected=True)
-model.merge_basins(basin_id=1615, to_basin_id=1331, are_connected=True)
-model.merge_basins(basin_id=1911, to_basin_id=1331, are_connected=True)
 
 
 # Mierlo wordt aanvoer als afvoer gemaal
@@ -286,64 +165,57 @@ model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
 
 # %%
-# Toevoegen alle aanvoer-knopen
-model.node.df.at[246, "meta_code_waterbeheerder"] = "294EC"
-model.node.df.at[298, "meta_code_waterbeheerder"] = "WSL_Meij"
-model.node.df.at[968, "meta_code_waterbeheerder"] = "275JD"
-model.node.df.at[875, "meta_code_waterbeheerder"] = "287GB"
-model.node.df.at[397, "meta_code_waterbeheerder"] = "287DF"
-model.node.df.at[894, "meta_code_waterbeheerder"] = "275ZKS"
-model.node.df.at[367, "meta_code_waterbeheerder"] = "261LGD"
+# Toevoegen alle aanvoer-knopen met flow_demand
+meta_codes = {
+    # algemeen
+    246: "294EC",
+    298: "WSL_Meij",
+    968: "275JD",
+    875: "287GB",
+    397: "287DF",
+    894: "275ZKS",
+    367: "261LGD",
+    # Bakelse Aa
+    3095: "261CZA",
+    601: "261JS",
+    905: "261CQA",
+    761: "261JN",
+    156: "261JIA",
+    # Peelsche Loop
+    358: "261N",
+    535: "253V",
+    3091: "251U",
+    417: "253LG",
+    829: "251LAA",
+    # Maaskant-Oost
+    203: "114P18",
+    850: "114FF",
+    144: "108TDE",
+    2022: "WSL_VBMB",
+    657: "114LAC",
+    3089: "114WRD",
+    # Maaskant-Midden
+    160: "104MGT",
+    392: "103BIB",
+    # Mierlo
+    226: "234FL_1",
+    340: "217L",
+    # Whkanaal
+    314: "234CJ",
+    # Z_W West
+    211: "203KDZ",
+    # Helmond
+    737: "201JVL",
+    # Peelrijt Dommel
+    3094: "280X",
+    # Hurkske Aa
+    161: "257IA",
+    93: "254BAA",
+    191: "235VGZ",
+}
 
-# Bakelse Aa
-model.node.df.at[3095, "meta_code_waterbeheerder"] = "261CZA"
-model.node.df.at[601, "meta_code_waterbeheerder"] = "261JS"
-model.node.df.at[905, "meta_code_waterbeheerder"] = "261CQA"
-model.node.df.at[761, "meta_code_waterbeheerder"] = "261JN"
-model.node.df.at[156, "meta_code_waterbeheerder"] = "261JIA"
-
-# Peelsche Loop
-model.node.df.at[358, "meta_code_waterbeheerder"] = "261N"
-model.node.df.at[535, "meta_code_waterbeheerder"] = "253V"
-model.node.df.at[3091, "meta_code_waterbeheerder"] = "251U"
-model.node.df.at[417, "meta_code_waterbeheerder"] = "253LG"
-model.node.df.at[829, "meta_code_waterbeheerder"] = "251LAA"
-
-
-# Maaskant-Oost
-model.node.df.at[203, "meta_code_waterbeheerder"] = "114P18"
-model.node.df.at[850, "meta_code_waterbeheerder"] = "114FF"
-model.node.df.at[144, "meta_code_waterbeheerder"] = "108TDE"
-model.node.df.at[2022, "meta_code_waterbeheerder"] = "WSL_VBMB"
-model.node.df.at[657, "meta_code_waterbeheerder"] = "114LAC"
-model.node.df.at[3089, "meta_code_waterbeheerder"] = "114WRD"
-
-# Maaskant-Midden
-model.node.df.at[160, "meta_code_waterbeheerder"] = "104MGT"
-model.node.df.at[392, "meta_code_waterbeheerder"] = "103BIB"
-
-# Mierlo
-model.node.df.at[226, "meta_code_waterbeheerder"] = "234FL_1"
-model.node.df.at[340, "meta_code_waterbeheerder"] = "217L"
-
-# Whkanaal
-model.node.df.at[314, "meta_code_waterbeheerder"] = "234CJ"
-
-# Z_W West
-# model.node.df.at[146, "meta_code_waterbeheerder"] = "217GDW" Stuw niet op juiste plaats
-model.node.df.at[211, "meta_code_waterbeheerder"] = "203KDZ"
-
-# Helmond:
-model.node.df.at[737, "meta_code_waterbeheerder"] = "201JVL"
-
-# Peelrijt Dommel
-model.node.df.at[3094, "meta_code_waterbeheerder"] = "280X"
-
-# Hurkske Aa
-model.node.df.at[161, "meta_code_waterbeheerder"] = "257IA"
-model.node.df.at[93, "meta_code_waterbeheerder"] = "254BAA"
-model.node.df.at[191, "meta_code_waterbeheerder"] = "235VGZ"
-
+for node_id, code in meta_codes.items():
+    model.node.df.at[node_id, "meta_code_waterbeheerder"] = code
 
 summer_col = "ZOMER_DROO"
 winter_col = "WINTER"
@@ -386,6 +258,7 @@ discharge_supply_df.to_file(cloud.joinpath(r"AaenMaas\verwerkt\sturing\aanvoerpu
 # add level supply nodes, no flow-demand-node, but discrete control on downstream basin level
 level_supply_nodes = [
     80,
+    99,
     149,
     160,
     161,
@@ -418,7 +291,6 @@ level_supply_nodes = [
     850,
     985,
     1054,
-    1067,
     2020,
 ]
 
@@ -476,14 +348,14 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [85, 92, 312, 353, 400]
+drain_nodes = [85, 92, 312, 353, 400, 1089]
 
 # handmatig opgegeven supply nodes (inlaten)
 
 supply_nodes = [226]
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [681, 774, 775, 776, 934, 1089, 974]
+flow_control_nodes = [681, 774, 775, 776, 934, 974]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -567,11 +439,8 @@ drain_nodes = [
     419,
     621,
     804,
-    955,
-    956,
     628,
     818,
-    980,
 ]
 
 # handmatig opgegeven supply nodes (inlaten)
@@ -835,14 +704,14 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [843, 960, 318]
+drain_nodes = [122, 843, 318]
 
 # handmatig opgegeven supply nodes (inlaten)
 
 supply_nodes = [227]
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [122, 154, 158, 177, 338, 538, 584, 622, 710, 826, 828, 909, 954]
+flow_control_nodes = [154, 158, 177, 338, 538, 622, 710, 826, 828, 909, 954]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -1189,11 +1058,11 @@ drain_nodes = [370, 430, 459, 96, 221, 923, 924, 2017]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [734, 1067]
+supply_nodes = [734]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [722, 723, 1070]
+flow_control_nodes = [722, 723, 1067, 1070]
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -1337,7 +1206,7 @@ flow_control_nodes = [333, 701, 822, 917, 916]
 #
 
 
-supply_nodes = [2020, 2022, 527, 1502]
+supply_nodes = [2020, 2022, 527, 1502, 3086]
 #
 
 drain_nodes = [120, 210, 267, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 777, 748, 891, 971]
@@ -1368,14 +1237,30 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 2018, "max_flow_rat
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 220, "flow_rate"] = 0
 
 # Procentuele Verdeling Peelsche Loop uitlaten naar aanvoergebied Leygraaf opgelegd door flow_rate
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 220, "flow_rate"] = 25
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 680, "flow_rate"] = 50
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "flow_rate"] = 25
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 956, "flow_rate"] = 20
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "flow_rate"] = 5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "flow_rate"] = 16.67
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "flow_rate"] = 5
 
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 680, "max_flow_rate"] = 50
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "max_flow_rate"] = 25
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 956, "max_flow_rate"] = 20
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "max_flow_rate"] = 5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "max_flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "max_flow_rate"] = 16.67
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "max_flow_rate"] = 5
 
-# Fixes: Pump wordt overschreven door outlet bij demand!
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 680, "min_upstream_level"] = 18.97
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "min_upstream_level"] = 17.75
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 956, "min_upstream_level"] = 17.75
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "min_upstream_level"] = 17.75
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "min_upstream_level"] = 18.2
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "min_upstream_level"] = 18.97
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "min_upstream_level"] = 11.85
+
 
 # Gemaal Veluwe
 model.update_node(node_id=100, node_type="Pump")  # wordt pump was outlet
@@ -1395,7 +1280,43 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 124, "min_upstream_leve
 # Gemaal Mierlo
 model.update_node(node_id=226, node_type="Pump")  # wordt pump, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 226, "flow_rate"] = 0
-model.pump.static.df.loc[model.pump.static.df.node_id == 226, "min_upstream_level"] = 14
+model.pump.static.df.loc[model.pump.static.df.node_id == 226, "min_upstream_level"] = 14.3
+
+# Alle inlaten met demand_nodes moeten min_upstream_level van streefpeil hebben zodat ze in afvoerstand staan (+0.04m)
+#
+outlet_ids = [
+    259,
+    298,
+    3818,
+    283,
+    390,
+    894,
+    335,
+    367,
+    3089,
+    3090,
+    3095,
+    601,
+    156,
+    358,
+    535,
+    996,
+    3091,
+    657,
+    2022,
+    935,
+    997,
+    226,
+    3094,
+    2025,
+    340,
+]
+mask = model.outlet.static.df["node_id"].isin(outlet_ids)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.04
+
+boundary_ids = [9, 13, 39, 38, 53, 1958, 1568, 3085, 33, 32, 31, 59, 54, 44, 42, 64, 63]
+mask = model.level_boundary.static.df["node_id"].isin(boundary_ids)
+model.level_boundary.static.df.loc[mask, "level"] = model.level_boundary.static.df.loc[mask, "level"] + 0.04
 
 # %% Junctionfy(!)
 model = junctionify(model)
@@ -1411,7 +1332,6 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 
 
 # %%
-
 
 # hoofd run met verdamping
 model.starttime

@@ -86,51 +86,6 @@ profiles_df.set_index("profiel_id", inplace=True)
 # add streefpeilen
 add_streefpeil(model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="ZOMERPEIL", code="CODE")
 
-# Forceer basin streefpeil
-static_data.reset_data_frame(node_type="Basin")
-static_data.basin.loc[static_data.basin["node_id"] == 1273, "streefpeil"] = 6.4
-static_data.basin.loc[static_data.basin["node_id"] == 1849, "streefpeil"] = 30.75
-static_data.basin.loc[static_data.basin["node_id"] == 1496, "streefpeil"] = 4.2
-static_data.basin.loc[static_data.basin["node_id"] == 2006, "streefpeil"] = 11.66
-static_data.basin.loc[static_data.basin["node_id"] == 1550, "streefpeil"] = 21.93
-static_data.basin.loc[static_data.basin["node_id"] == 2011, "streefpeil"] = 22
-static_data.basin.loc[static_data.basin["node_id"] == 1689, "streefpeil"] = 15
-static_data.basin.loc[static_data.basin["node_id"] == 1406, "streefpeil"] = 7.3
-static_data.basin.loc[static_data.basin["node_id"] == 1149, "streefpeil"] = 6.95
-static_data.basin.loc[static_data.basin["node_id"] == 1465, "streefpeil"] = 6.95
-static_data.basin.loc[static_data.basin["node_id"] == 1517, "streefpeil"] = 13
-
-# Drongelens kanaal en Dieze op streefpeil 2.2m (WATAK)
-static_data.basin.loc[static_data.basin["node_id"] == 1275, "streefpeil"] = 2.2
-static_data.basin.loc[static_data.basin["node_id"] == 1743, "streefpeil"] = 2.2
-static_data.basin.loc[static_data.basin["node_id"] == 1879, "streefpeil"] = 2.2
-static_data.basin.loc[static_data.basin["node_id"] == 1801, "streefpeil"] = 2.2
-static_data.basin.loc[static_data.basin["node_id"] == 1950, "streefpeil"] = 2.2
-static_data.basin.loc[static_data.basin["node_id"] == 1394, "streefpeil"] = 2.2
-static_data.basin.loc[static_data.basin["node_id"] == 2016, "streefpeil"] = 2.2
-static_data.basin.loc[static_data.basin["node_id"] == 1627, "streefpeil"] = 2.2
-
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1273, "meta_streefpeil"] = 6.4
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1849, "meta_streefpeil"] = 30.75
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1496, "meta_streefpeil"] = 4.2
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 2006, "meta_streefpeil"] = 11.66
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1550, "meta_streefpeil"] = 21.93
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1689, "meta_streefpeil"] = 15
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1406, "meta_streefpeil"] = 7.3
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1149, "meta_streefpeil"] = 6.95
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1465, "meta_streefpeil"] = 6.95
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1517, "meta_streefpeil"] = 13
-
-# Drongelens kanaal en Dieze op streefpeil 2.2m (WATAK)
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1275, "meta_streefpeil"] = 2.2
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1743, "meta_streefpeil"] = 2.2
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1879, "meta_streefpeil"] = 2.2
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1801, "meta_streefpeil"] = 2.2
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1950, "meta_streefpeil"] = 2.2
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1394, "meta_streefpeil"] = 2.2
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 2016, "meta_streefpeil"] = 2.2
-model.basin.area.df.loc[model.basin.area.df["node_id"] == 1627, "meta_streefpeil"] = 2.2
-
 # %%
 # OUTLET
 
@@ -246,6 +201,35 @@ profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), nam
 static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+
+# handmatige correcties
+forced_levels = {
+    1273: 6.4,
+    1849: 30.75,
+    1496: 4.2,
+    2006: 11.66,
+    1550: 21.93,
+    2011: 21.93,
+    1689: 15,
+    1406: 7.3,
+    1149: 6.95,
+    1465: 6.95,
+    1517: 13,
+    1190: 13.90,
+    1341: 14.82,
+    1922: 15,
+    1275: 2.2,  ## Drongelens kanaal en Dieze op streefpeil 2.2m (WATAK)
+    1743: 2.2,
+    1879: 2.2,
+    1801: 2.2,
+    1950: 2.2,
+    1394: 2.2,
+    2016: 2.2,
+    1627: 2.2,
+}
+
+mask = static_data.basin["node_id"].isin(forced_levels.keys())
+static_data.basin.loc[mask, "streefpeil"] = static_data.basin.loc[mask, "node_id"].map(forced_levels)
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
