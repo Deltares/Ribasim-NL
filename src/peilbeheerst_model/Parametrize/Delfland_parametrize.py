@@ -312,7 +312,7 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 # manual adjustments to control settings
-from_doorlaat_to_inlaat = [167, 371, 239, 223, 306, 525, 377, 150, 224]
+from_doorlaat_to_inlaat = [167, 371, 239, 223, 306, 525, 377, 150, 224, 468, 163, 201, 475]
 
 from_to_node_function_table.loc[from_to_node_function_table.index.isin(from_doorlaat_to_inlaat), "function"] = "supply"
 
