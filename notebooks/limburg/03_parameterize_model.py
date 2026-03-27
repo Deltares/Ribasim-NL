@@ -39,7 +39,12 @@ mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
+# %% fixes
+model.basin.area.df.loc[model.basin.area.df.node_id == 2418, "meta_streefpeil"] = 27.27
+model.basin.area.df.loc[model.basin.area.df.node_id == 1873, "meta_streefpeil"] = 27.6
 
+
+# %%
 # Write model
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")

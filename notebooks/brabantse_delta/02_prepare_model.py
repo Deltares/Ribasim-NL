@@ -331,6 +331,14 @@ static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+# Handmatige fixes
+model.basin.area.df.loc[model.basin.area.df.node_id == 342, "streefpeil"] = 4.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1989, "streefpeil"] = 0.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1909, "streefpeil"] = 0.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1634, "streefpeil"] = 1.2  # Basin Turfvaart meetpunt
+model.basin.area.df.loc[model.basin.area.df.node_id == 1584, "streefpeil"] = 0.15
+model.basin.area.df.loc[model.basin.area.df.node_id == 1987, "streefpeil"] = -0.5
+
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]

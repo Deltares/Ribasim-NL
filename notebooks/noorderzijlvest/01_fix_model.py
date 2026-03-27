@@ -433,11 +433,11 @@ model.update_node(node_id=1017, node_type="Outlet")
 model.update_node(node_id=1753, node_type="Pump", node_properties={"name": "Gemaal Dorkwerd"})
 
 # inlaten gelijk gezet aan WAM portaal: https://wamportaal.noorderzijlvest.nl/wam
-model.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]
-model.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
-model.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
-model.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
-
+model.outlet.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]
+model.outlet.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
+model.outlet.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
+model.outlet.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
+model.outlet.node.df.loc[728, ["name"]] = ["Sluis Lammerburen"]
 
 #  %% write model
 model.use_validation = True

@@ -2,7 +2,7 @@
 import logging
 
 import pandas as pd
-from networkx import NetworkXNoPath, shortest_path
+from networkx import NetworkXNoPath, NodeNotFound, shortest_path
 from shapely.geometry import LineString
 from tqdm import tqdm
 
@@ -29,7 +29,7 @@ def get_link_geometry(network, source, target, forbidden_nodes):
     subgraph = network.graph_undirected.subgraph(allowed_nodes)
     try:
         path = shortest_path(subgraph, source=source, target=target, weight="length")
-    except NetworkXNoPath:
+    except (NetworkXNoPath, NodeNotFound):
         return straight_line
 
     geometry = network.path_to_line(path)

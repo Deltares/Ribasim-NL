@@ -1,4 +1,5 @@
 # %%
+import inspect
 
 import geopandas as gpd
 import numpy as np
@@ -144,6 +145,7 @@ for link_id in [131, 398, 407, 495, 513, 515, 894]:
 # Corrigeren netwerk bij Spuisluis Crèvecoeur
 model.remove_node(411, remove_links=True)
 model.remove_node(4, remove_links=True)
+
 model.redirect_link(link_id=2018, to_node_id=1950)
 
 outlet_node = model.outlet.add(
@@ -208,7 +210,9 @@ model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[66])
 
 # EINDE ISSUES
-
+##fixes:
+for node_id in [213, 364, 415, 439, 467, 501, 587, 602, 634, 664, 682, 683, 684, 809, 811, 1053]:
+    model.remove_node(node_id, remove_links=True)
 
 # %%
 # corrigeren knoop-topologie
@@ -466,6 +470,185 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
 # %% remove_nodes
 for row in remove_nodes_df.itertuples():
     model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
+
+
+# %% merge nodes
+
+# Manning worden outlets tpv stuw/duiker
+outlet_ids = [
+    586,
+    479,
+    531,
+    510,
+    475,
+    681,
+    1006,
+    1005,
+    551,
+    488,
+    1115,
+    566,
+    686,
+    469,
+    569,
+    533,
+    526,
+    632,
+    1018,
+    723,
+    722,
+    570,
+    697,
+    708,
+    640,
+    521,
+    1063,
+    452,
+    1054,
+    625,
+    1056,
+    694,
+    524,
+    425,
+    693,
+    442,
+    538,
+    702,
+    710,
+    622,
+    680,
+    584,
+    487,
+    1062,
+    506,
+    541,
+    527,
+    577,
+    1050,
+    582,
+    1051,
+    599,
+    597,
+    597,
+    597,
+    597,
+    807,
+    628,
+    721,
+    573,
+    1073,
+    621,
+    534,
+    496,
+    555,
+    559,
+    718,
+    481,
+    691,
+    1046,
+    438,
+    430,
+    717,
+    1058,
+    698,
+    571,
+    1001,
+    701,
+    494,
+    509,
+    594,
+    1016,
+    615,
+    470,
+    1014,
+    490,
+    649,
+    476,
+    1028,
+    727,
+]
+
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# ligt benedenstrooms een stuw
+model.update_node(node_id=1077, node_type="Outlet")  # wordt outlet, was manning
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1077, "min_upstream_level"] = 4.48499
+
+model.redirect_link(link_id=1147, from_node_id=1219, to_node_id=172)
+model.reverse_link(link_id=734)
+model.reverse_link(link_id=1582)
+
+
+merge_pairs = [
+    (1321, 1411),
+    (1562, 1411),
+    (1155, 1514),
+    (1565, 1618),
+    (2006, 1618),
+    (1366, 1249),
+    (1437, 1861),
+    (1303, 1360),
+    (1707, 1346),
+    (1162, 1457),
+    (1468, 1277),
+    (1355, 1517),
+    (1344, 1626),
+    (1428, 1589),
+    (1668, 1710),
+    (1292, 1484),
+    (1966, 1580),
+    (1281, 1642),
+    (1642, 1510),
+    (1571, 1332),
+    (1332, 1582),
+    (1208, 1279),
+    (1279, 1582),
+    (1663, 1722),
+    (1794, 1836),
+    (1455, 1276),
+    (1968, 1494),
+    (1615, 1331),
+    (1911, 1331),
+]
+
+for basin_id, to_basin_id in merge_pairs:
+    model.merge_basins(
+        basin_id=basin_id,
+        to_basin_id=to_basin_id,
+        are_connected=True,
+    )
+
+
+# %% Connect basins:
+actions = [
+    "add_basin",
+    "update_node",
+    "connect_basins",
+]
+
+available_layers = gpd.list_layers(model_edits_gpkg).name.to_list()
+actions = [a for a in actions if a in available_layers]
+
+for action in actions:
+    method = getattr(model, action)
+    keywords = inspect.getfullargspec(method).args
+
+    df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
+
+    # als er een volgorde-kolom is: respecteer die
+    if "order" in df.columns:
+        df.sort_values("order", inplace=True)
+
+    for row in df.itertuples():
+        # alleen kwargs die daadwerkelijk in de method signature zitten
+        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+
+        # GeoPandas zet lege waarden vaak als NaN; filter die eruit
+        kwargs = {k: v for k, v in kwargs.items() if pd.notna(v)}
+
+        method(**kwargs)
+
 
 # %% corrigeren knoop-topologie
 outlet_data = outlet.Static(flow_rate=[100])

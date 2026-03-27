@@ -12,6 +12,6 @@
             "notebook.source.organizeImports": "explicit"
         }
     },
-    "python-envs.pythonProjects": [],
-    "autoDocstring.docstringFormat": "numpy"
+    "autoDocstring.docstringFormat": "numpy",
+    "python-envs.defaultEnvManager": "ms-python.python:venv"
 }
