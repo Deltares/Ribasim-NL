@@ -24,8 +24,8 @@ dependencies = [
     "netcdf4>=1.7.2",
     "networkx>=3.5",
     "openpyxl>=3.1.5",
-    "pandas-stubs>=2.3.2.250926",
-    "pandas>=2.3.3",
+    "pandas-stubs>=3",
+    "pandas>=3",
     "peilbeheerst_model",
     "pip>=25.2",
     "plotly>=6.3.1",
@@ -56,7 +56,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-# ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "pandas3", subdirectory = "python/ribasim" }
 # ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 bokeh_helpers = { workspace = true }
 hydamo = { workspace = true }
