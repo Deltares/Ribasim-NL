@@ -89,7 +89,7 @@ class Model(ribasim.Model):
         from ribasim_nl.parametrization.parameterize import Parameterize
 
         self._parameterize = Parameterize(model=self)
-        self._set_netcdf_input()
+        self._impose_settings()
 
     def parameterize(self, **kwargs):
         self._parameterize.run(**kwargs)
@@ -1185,7 +1185,14 @@ class Model(ribasim.Model):
                 f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[['link_id', 'from_node_id', 'to_node_id']].to_dict(orient='index').values())}"
             )
 
-    def _set_netcdf_input(self):
-        """Avoid large databases by writing some tables to NetCDF"""
+    def _impose_settings(self):
+        """Impose custom settings that we want to apply to each Ribasim-NL model."""
+        # "input" is the default, but we read models with the old default ".",
+        # causing it to stay there unless we change it here.
+        self.input_dir = Path("input")
+        # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")
+        # Our large models benefit from specialization, default to using it
+        if "specialize" not in self.solver.model_fields_set:
+            self.solver.specialize = True
