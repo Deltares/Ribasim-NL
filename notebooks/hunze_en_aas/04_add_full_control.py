@@ -63,8 +63,8 @@ check_basin_level.add_check_basin_level(model=model)
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = 100
-model.pump.static.df.flow_rate = 100
+model.outlet.static.df.flow_rate = 100.0
+model.pump.static.df.flow_rate = 100.0
 model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.max_flow_rate
 model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
 

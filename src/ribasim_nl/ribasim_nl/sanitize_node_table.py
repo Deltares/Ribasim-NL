@@ -33,8 +33,8 @@ def sanitize_node_table(
             & (names is not None)
             & ((copy_columns is None) | ("name" not in copy_columns.values()))
         ):
-            model.node.df.loc[mask, "name"] = model.node.df.loc[mask, "meta_code_waterbeheerder"].apply(
-                lambda x: names[x] if x in names.index.to_numpy() else ""
+            model.node.df.loc[mask, "name"] = model.node.df.loc[mask, "meta_code_waterbeheerder"].map(
+                lambda x: str(names[x]) if x in names.index.to_numpy() else ""
             )
 
     # drop all columns not in node_columns

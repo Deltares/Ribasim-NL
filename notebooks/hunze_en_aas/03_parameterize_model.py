@@ -33,7 +33,7 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 # %% Flow rates are replaced to max_flow_rate, otherwise it affects the flow ratio
 model.outlet.static.df.max_flow_rate = model.outlet.static.df.flow_rate
-model.outlet.static.df.flow_rate = 100
+model.outlet.static.df.flow_rate = 100.0
 # %% Fixes
 # Alle inlaten en duikers op max cap zetten zodat er weinig lekker zijn, omdat er nog geen sturing is op benedensroomse waterstand
 node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KIN")].index.to_numpy()
