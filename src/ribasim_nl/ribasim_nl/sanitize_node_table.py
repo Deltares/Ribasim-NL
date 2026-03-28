@@ -1,5 +1,6 @@
 # function for sanitizing the node_table of Sweco build models
 
+import pandas as pd
 from pandas import Series
 
 from ribasim_nl.model import Model
@@ -33,9 +34,13 @@ def sanitize_node_table(
             & (names is not None)
             & ((copy_columns is None) | ("name" not in copy_columns.values()))
         ):
-            model.node.df.loc[mask, "name"] = model.node.df.loc[mask, "meta_code_waterbeheerder"].map(
-                lambda x: str(names[x]) if x in names.index.to_numpy() else ""
-            )
+            codes = model.node.df.loc[mask, "meta_code_waterbeheerder"]
+            # look up each code in the names Series, drop codes with no match or NaN values
+            resolved = codes.map(names).dropna()
+            # filter out non-scalar results (duplicate codes returning a Series)
+            resolved = resolved[resolved.apply(pd.api.types.is_scalar)].astype(str)
+            # fill unmatched codes with ""
+            model.node.df.loc[mask, "name"] = resolved.reindex(codes.index, fill_value="")
 
     # drop all columns not in node_columns
     columns = [col for col in model.node.df.columns if (col in node_columns) or (col == "node_type")]
