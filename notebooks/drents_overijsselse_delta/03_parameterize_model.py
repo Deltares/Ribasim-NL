@@ -72,10 +72,10 @@ model.update_node(node_id=1401, node_type="Outlet")
 model.reverse_link(link_id=894)
 model.reverse_link(link_id=1983)
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "min_upstream_level"] = -2.6
-model.pump.static.df.loc[model.pump.static.df.node_id == 600, "min_upstream_level"] = 4
-model.pump.static.df.loc[model.pump.static.df.node_id == 601, "min_upstream_level"] = 4
+model.pump.static.df.loc[model.pump.static.df.node_id == 600, "min_upstream_level"] = 4.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 601, "min_upstream_level"] = 4.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 602, "min_upstream_level"] = 2.65
-model.pump.static.df.loc[model.pump.static.df.node_id == 1095, "min_upstream_level"] = 0
+model.pump.static.df.loc[model.pump.static.df.node_id == 1095, "min_upstream_level"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1257, "flow_rate"] = 0.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 2594, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "flow_rate"] = 0.0
@@ -85,8 +85,8 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1143, "meta_categor
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "meta_categorie"] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "meta_categorie"] = "Inlaat"
-model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1
-model.pump.static.df.loc[model.pump.static.df.node_id == 385, "flow_rate"] = 1
+model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 385, "flow_rate"] = 1.0
 model.merge_basins(basin_id=1763, to_basin_id=1764, are_connected=False)
 model.merge_basins(basin_id=2474, to_basin_id=2185, are_connected=False)
 model.merge_basins(basin_id=2011, to_basin_id=2008, are_connected=True)

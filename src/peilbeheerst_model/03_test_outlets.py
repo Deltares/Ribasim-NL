@@ -116,8 +116,8 @@ example1_characteristics["endtime"] = "2024-01-03 00:00:00"
 example1_characteristics["saveat"] = 60
 
 # boezem settings (LevelBoundary)
-example1_characteristics["boezem1_level"] = 3
-example1_characteristics["boezem2_level"] = 3
+example1_characteristics["boezem1_level"] = 3.0
+example1_characteristics["boezem2_level"] = 3.0
 
 # peilgebied settings (Basins)
 example1_characteristics["basin1_profile_area"] = [0.01, 10000.0]
