@@ -40,7 +40,7 @@ node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.st
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 0.1
 
 node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KDU")].index.to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 1.0
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 183, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1220, "flow_rate"] = 0.0
@@ -50,17 +50,17 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 62, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 570, "min_upstream_level"] = -1.27
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 815, "min_upstream_level"] = -1.27
 
-model.pump.static.df.loc[model.pump.static.df.node_id == 27, "max_flow_rate"] = 5
-model.pump.static.df.loc[model.pump.static.df.node_id == 64, "max_flow_rate"] = 1
-model.pump.static.df.loc[model.pump.static.df.node_id == 71, "max_flow_rate"] = 5
-model.pump.static.df.loc[model.pump.static.df.node_id == 82, "max_flow_rate"] = 2
-model.pump.static.df.loc[model.pump.static.df.node_id == 114, "max_flow_rate"] = 1
-model.pump.static.df.loc[model.pump.static.df.node_id == 123, "max_flow_rate"] = 5
-model.pump.static.df.loc[model.pump.static.df.node_id == 29, "max_flow_rate"] = 1
-model.pump.static.df.loc[model.pump.static.df.node_id == 68, "max_flow_rate"] = 1
-model.pump.static.df.loc[model.pump.static.df.node_id == 58, "max_flow_rate"] = 5
-model.pump.static.df.loc[model.pump.static.df.node_id == 59, "max_flow_rate"] = 5
-model.pump.static.df.loc[model.pump.static.df.node_id == 133, "max_flow_rate"] = 3
+model.pump.static.df.loc[model.pump.static.df.node_id == 27, "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 64, "max_flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 71, "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 82, "max_flow_rate"] = 2.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 114, "max_flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 123, "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 29, "max_flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 68, "max_flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 58, "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 59, "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 133, "max_flow_rate"] = 3.0
 
 # %%
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index

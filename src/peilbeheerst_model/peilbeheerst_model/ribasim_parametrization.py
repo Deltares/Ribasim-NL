@@ -401,12 +401,12 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
 
     # Also supplement the TRC.static table. Create dummy Q(h)-relations
     TRC_LB1 = nodes_FlowBoundary[["meta_node_id"]].copy()
-    TRC_LB1.loc[:, "level"] = 0
-    TRC_LB1.loc[:, "flow_rate"] = 0
+    TRC_LB1.loc[:, "level"] = 0.0
+    TRC_LB1.loc[:, "flow_rate"] = 0.0
 
     TRC_LB2 = nodes_FlowBoundary[["meta_node_id"]].copy()
-    TRC_LB2.loc[:, "level"] = 1
-    TRC_LB2.loc[:, "flow_rate"] = 1
+    TRC_LB2.loc[:, "level"] = 1.0
+    TRC_LB2.loc[:, "flow_rate"] = 1.0
 
     TRC_LB = pd.concat([TRC_LB1, TRC_LB2])
     TRC_LB = TRC_LB.sort_values(by=["node_id", "level"]).reset_index(drop=True)
@@ -523,7 +523,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     # fill the tables for the outlet
     outlet = pd.DataFrame(columns=["node_id", "control_state", "flow_rate", "min_flow_rate", "max_flow_rate"])
     outlet["node_id"] = TRC_naar_OL
-    outlet["max_flow_rate"] = 25
+    outlet["max_flow_rate"] = 25.0
 
     # find the min_crest_level
     # to do so, find the target levels of the (boezem) connected basins. This has to be done by looking within the links
@@ -550,7 +550,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
         get_outlet_geometries[["meta_node_id", "geometry"]], left_on="node_id", right_on="meta_node_id"
     )
     outlet["node_type"] = "Outlet"
-    outlet["flow_rate"] = 0  # default setting
+    outlet["flow_rate"] = 0.0  # default setting
     outlet["meta_categorie"] = "Inlaat"
 
     outlet_node = outlet[["node_id", "meta_node_id", "node_type", "geometry"]]
@@ -666,7 +666,7 @@ def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, 
     # zero flow rate on target level
     Qh_table0 = target_level[["to_node_id", "level"]]
     Qh_table0 = Qh_table0.rename(columns={"to_node_id": "node_id"})
-    Qh_table0["flow_rate"] = 0
+    Qh_table0["flow_rate"] = 0.0
 
     # pre defined flow rate on target level + level increase
     Qh_table1 = Qh_table0.copy()
@@ -754,7 +754,7 @@ def create_sufficient_Qh_relation_points(ribasim_model):
         ribasim_model.tabulated_rating_curve.static.df["node_id"].isin(unique_node_ids)
     ]
     one_flow = zero_flow.copy()
-    zero_flow.flow_rate = 0  # set flow rate to 0 if on target level
+    zero_flow.flow_rate = 0.0  # set flow rate to 0 if on target level
     one_flow.level += 1  # set level 1 meter higher where it discharges 1 m3/s
 
     # remove old Qh points

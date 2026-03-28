@@ -264,7 +264,7 @@ assign_metadata.add_meta_to_basins(
 
 # according data flow_rate of 0
 zero_flow_pumps = [1436, 1282, 1472]
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25.0
 
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [793, 754, 987, 354, 463, 1179, 496, 781]

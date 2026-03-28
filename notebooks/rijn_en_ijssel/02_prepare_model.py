@@ -113,7 +113,7 @@ levels = (
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 
-static_data.outlet.loc[static_data.outlet.node_id == 119, "min_upstream_level"] = 10  # here profiles are messed-up
+static_data.outlet.loc[static_data.outlet.node_id == 119, "min_upstream_level"] = 10.0  # here profiles are messed-up
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 

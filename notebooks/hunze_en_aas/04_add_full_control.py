@@ -151,8 +151,8 @@ model.pump.static.df["max_downstream_level"] = model.pump.static.df["max_downstr
 
 
 # Dokwerd, sluis ten onrechte op 10m3/s gezet
-model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20
-model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20
+model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 152, "max_flow_rate"] = 0.1
 model.pump.static.df.loc[model.pump.static.df.node_id == 152, "flow_rate"] = 0.1
 

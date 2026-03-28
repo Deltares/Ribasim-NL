@@ -1034,7 +1034,7 @@ class RibasimNetwork:
 
         pump_static = pd.DataFrame()
         pump_static["node_id"] = pump_nodes["node_id"]
-        pump_static["flow_rate"] = 0
+        pump_static["flow_rate"] = 0.0
         pump_static["min_flow_rate"] = np.nan
         pump_static["max_flow_rate"] = np.nan
         pump_static["control_state"] = np.nan
@@ -1067,7 +1067,7 @@ class RibasimNetwork:
 
         level_boundary_static = pd.DataFrame()
         level_boundary_static["node_id"] = level_boundary_nodes["node_id"]
-        level_boundary_static["level"] = 0
+        level_boundary_static["level"] = 0.0
 
         # comply to Ribasim 2024.11
         level_boundary_node["meta_node_id"] = level_boundary_node["node_id"].copy().astype(int)
@@ -1097,7 +1097,7 @@ class RibasimNetwork:
 
         flow_boundary_static = pd.DataFrame()
         flow_boundary_static["node_id"] = flow_boundary_nodes["node_id"]
-        flow_boundary_static["flow_rate"] = 0
+        flow_boundary_static["flow_rate"] = 0.0
 
         # comply to Ribasim 2024.11
         flow_boundary_node["meta_node_id"] = flow_boundary_node["node_id"].copy().astype(int)

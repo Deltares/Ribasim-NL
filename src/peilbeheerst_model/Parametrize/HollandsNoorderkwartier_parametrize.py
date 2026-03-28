@@ -330,7 +330,7 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin([8
 
 # according data flow_rate of 0
 zero_flow_pumps = [1293, 677]
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25.0
 
 increase_flow_rate_pumps = [1183, 827, 1108, 300, 735, 1010, 611, 1042, 392, 424, 626, 1144, 895, 536, 1048, 1132]
 ribasim_model.pump.static.df.loc[
