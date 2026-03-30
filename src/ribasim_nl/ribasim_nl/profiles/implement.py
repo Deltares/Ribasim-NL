@@ -174,7 +174,7 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     _basin_profile = ribasim_model.basin.profile.df.copy()
     ribasim_model.basin.node.df = _basin_node.assign(meta_node_id=_basin_node.index)
     _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
-    ribasim_model.basin.profile = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(
+    ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(
         _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
     )[_basin_profile.columns]
     del _basin_node, _basin_profile
@@ -277,4 +277,4 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     ribasim_model.link.df = pd.concat([ribasim_model.link.df, link])
 
     # return the updated Ribasim model
-    return ribasim_model._update_used_ids()
+    return ribasim_model
