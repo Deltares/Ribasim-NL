@@ -21,6 +21,7 @@ from ribasim_nl.control import (
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
 )
+from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -237,7 +238,7 @@ add_storage_basins = AddStorageBasins(
 )
 add_storage_basins.create_bergende_basins()
 
-# implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=100)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=100)
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -420,6 +421,9 @@ ribasim_model.pump.static.df.loc[
 # set the flow_rate to the max_flow_rate
 ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
 
+ribasim_model.pump.static.df = ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 559, "max_flow_rate"
+] = 1.5  # guess, ask Delfland
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
 ribasim_model.outlet.static.df.meta_known_flow_capacities = False
 ribasim_model.pump.static.df.loc[
