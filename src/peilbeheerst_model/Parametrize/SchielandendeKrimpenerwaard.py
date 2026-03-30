@@ -33,7 +33,7 @@ RESCALE_FLOW_CAPACITIES: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
-MIXED_CONDITIONS_DESIGN_P = 10
+MIXED_CONDITIONS_DESIGN_P = 12
 MIXED_CONDITIONS_DESIGN_E = 2
 
 # model settings
@@ -601,12 +601,6 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
-
-df_pumps = ribasim_model.pump.static.df.copy()
-same = df_pumps["flow_rate"] == df_pumps["max_flow_rate"]
-print(df_pumps[~same])
-print(df_pumps[df_pumps["node_id"] == 750])
-
 
 # increase_flow_rate_pumps = [395]
 # ribasim_model.pump.static.df.loc[
