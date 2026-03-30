@@ -1,3 +1,5 @@
+"""Set representative profile depth based on width-hydrotopes or measurements."""
+
 import logging
 
 import geopandas as gpd

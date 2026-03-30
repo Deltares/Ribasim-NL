@@ -131,6 +131,30 @@ def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer:
     return out
 
 
+def points2lines_zzl(cloud: CloudStorage = CloudStorage(), *, epsg: int = 28992) -> gpd.GeoDataFrame:
+    """Get and process cross-sectional profiles for Zuiderzeeland.
+
+    :param cloud: the GoodCloud-connection, defaults to CloudStorage()
+    :param epsg: EPSG-code to set the CRS of the profiles to, defaults to 28992
+
+    :type cloud: CloudStorage, optional
+    :type epsg: int, optional
+
+    :return: cross-sectional profiles
+    :rtype: geopandas.GeoDataFrame
+    """
+    fn = cloud.joinpath("Basisgegevens", "profielen", "ZZL", "Profielen_ZZL_DHYDRO.gpkg")
+    lines_zof = gpd.read_file(fn, layer="DHYDRO_profielen_ZOF").set_crs(epsg=epsg)
+    lines_nop = gpd.read_file(fn, layer="DHYDRO_profielen_NOP").set_crs(epsg=epsg)
+    out = pd.concat([lines_zof, lines_nop], axis=0, ignore_index=True).explode().reset_index(drop=True)
+    out["profiellijnid"] = out.index
+    assert out["profiellijnid"].is_unique
+    out["geometry"] = out.apply(
+        lambda row: shapely.LineString([(x, y, row["LowestPt"]) for x, y, _ in row["geometry"].coords]), axis=1
+    )
+    return out
+
+
 def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0) -> gpd.GeoDataFrame:
     """Get cross-sectional profiles for a given water authority.
 
@@ -154,28 +178,38 @@ def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, 
             return points2lines_rivierenland(cloud=cloud)
         case "Scheldestromen":
             return points2lines_scheldestromen(cloud=cloud, buffer=buffer)
+        case "Zuiderzeeland":
+            return points2lines_zzl(cloud=cloud)
         case _:
             basins = get_basins(water_authority, cloud=cloud)
             return points2lines_general(basins, cloud=cloud, buffer=buffer)
 
 
 def export_to_cloud(
-    water_authority: str, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0, overwrite: bool = False
+    water_authority: str,
+    cloud: CloudStorage = CloudStorage(),
+    *,
+    buffer: float = 0,
+    sync: bool = True,
+    overwrite: bool = False,
 ) -> None:
     """Export cross-sectional profiles to the GoodCloud.
 
     :param water_authority: name of water authority
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
     :param buffer: buffer-argument as used by some implementations, defaults to 0
-    :param overwrite: overwrite data from the GoodCloud, defaults to False
+    :param sync: sync data with the GoodCloud ('Basisgegevens/profielen'), defaults to True
+    :param overwrite: overwrite data from the GoodCloud ('Basisgegevens/profielen'), defaults to False
 
     :type water_authority: str
     :type cloud: CloudStorage, optional
     :type buffer: float, optional
+    :type sync: bool, optional
     :type overwrite: bool, optional
     """
     # sync cloud: Basisgegevens - profielen
-    cloud.download_basisgegevens(["profielen"], overwrite=overwrite)
+    if sync:
+        cloud.download_basisgegevens(["profielen"], overwrite=overwrite)
 
     # working directories
     folders = water_authority, "verwerkt", "profielen", "intermediate"
@@ -214,6 +248,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--buffer", "-b", type=float, default=0.05, help="Optional argument: Buffer when coupling points to lines"
     )
+    parser.add_argument(
+        "--sync",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="sync the GoodCloud ('Basisgegevens/profielen')",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="overwrite the GoodCloud ('Basisgegevens/profielen')",
+    )
     parser.add_argument("--log", "-l", type=str, default="WARNING", help="Optional argument: Log-level.")
 
     # parse arguments
@@ -221,4 +267,4 @@ if __name__ == "__main__":
 
     # execute preprocessing
     logging.basicConfig(level=args.log.upper())
-    export_to_cloud(args.water_authority, buffer=args.buffer)
+    export_to_cloud(args.water_authority, buffer=args.buffer, sync=args.sync, overwrite=args.overwrite)
