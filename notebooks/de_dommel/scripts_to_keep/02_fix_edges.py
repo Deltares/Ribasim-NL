@@ -20,7 +20,7 @@ else:
     network.to_file(network_gpkg)
 # %% links follow HydroObjects
 model.reset_link_geometry()
-node_df = model.node_table().df
+node_df = model.node.df
 data = []
 for row in model.link.df.itertuples():
     try:

@@ -1,7 +1,6 @@
 import pandas as pd
-from ribasim import Model
 
-from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.model import Model
 from ribasim_nl.reset_index import reset_index
 
 
@@ -11,14 +10,14 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
     Parameters
     ----------
     models : list[Model]
-        List with ribasim.Model
+        List with Model instances
     keep_original_index: bool
         Boolean for keeping original index. If not indices will be reset to avoid duplicate indices
 
     Returns
     -------
     Model
-        concatenated ribasim.Model
+        concatenated Model
     """
     # models will be concatenated to first model.
     if not keep_original_index:
@@ -30,7 +29,7 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
     for merge_model in models[1:]:
         if not keep_original_index:
             # reset index of mergemodel, node_start is max node_id
-            node_start = model.node_table().df.index.max() + 1
+            node_start = model.node.df.index.max() + 1
             merge_model = reset_index(merge_model, node_start)
 
         # concat links
@@ -39,11 +38,9 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
         model.link.df = link_df
 
         # merge tables
-        for node_type in set(model.node_table().df.node_type.unique()).union(
-            merge_model.node_table().df.node_type.unique()
-        ):
-            model_node = getattr(model, pascal_to_snake_case(node_type))
-            merge_model_node = getattr(merge_model, pascal_to_snake_case(node_type))
+        for node_type in set(model.node.df.node_type.unique()).union(merge_model.node.df.node_type.unique()):
+            model_node = model.get_component(node_type)
+            merge_model_node = merge_model.get_component(node_type)
             for attr in model_node.model_fields.keys():
                 model_node_table = getattr(model_node, attr)
                 model_df = model_node_table.df
