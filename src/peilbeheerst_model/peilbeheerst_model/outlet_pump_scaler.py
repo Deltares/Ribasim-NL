@@ -1,3 +1,5 @@
+"""Iteratively scale pump and outlet max_flow_rate values for design precipitation and evaporation events."""
+
 from __future__ import annotations
 
 import pathlib
@@ -41,6 +43,7 @@ class OutletPumpScalingConfig:
     min_scaled_flow_rate: float = 0.001
     add_information_to_from_to_node_function_table: bool = True
     situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
+    apply_temporary_debug_changes: bool = False
     debug_outlet_max_flow_rate: float = 0.10
     rescale_flow_capacities: bool = True
 

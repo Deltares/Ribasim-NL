@@ -8,9 +8,9 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-import ribasim
+import xarray as xr
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 # connect to the cloud and synchronize
 cloud = CloudStorage()
@@ -24,18 +24,18 @@ cloud.synchronize(filepaths=[lhm_path])
 # The 2025 LHM models have inactive nodes that cannot be automatically migrated.
 # Read files directly if an error occurs.
 try:
-    lhm = ribasim.Model.read(lhm_model_path)
+    lhm = Model.read(lhm_model_path)
     lhm_basin_area_df = lhm.basin.area.df.copy()
     lhm_basin_time_df = lhm.basin.time.df.copy()
     lhm_links_df = lhm.links.df.copy()
 except Exception:
     lhm_basin_area_path = Path(lhm_path) / "input" / "database.gpkg"
     lhm_basin_time_path = Path(lhm_path) / "input" / "basin_time.arrow"
-    lhm_links_path = Path(lhm_path) / "results" / "flow.arrow"
+    lhm_links_path = Path(lhm_path) / "results" / "flow.nc"
 
     lhm_basin_area_df = gpd.read_file(lhm_basin_area_path, layer="basin / area")
     lhm_basin_time_df = pd.read_feather(lhm_basin_time_path)
-    lhm_links_df = pd.read_feather(lhm_links_path)
+    lhm_links_df = xr.open_dataset(lhm_links_path).to_dataframe().reset_index()
 
 # add the surface area to the time series dataframe
 lhm_basin_area_df["meta_area"] = lhm_basin_area_df["geometry"].area.astype(float)
