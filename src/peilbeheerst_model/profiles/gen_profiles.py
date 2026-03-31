@@ -44,7 +44,9 @@ def main(
 
     # read files
     # > basins
-    fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "database.gpkg")
+    fn_basins = cloud.joinpath(
+        water_authority, "verwerkt/Work_dir", f"{water_authority}_parameterized", "input/database.gpkg"
+    )
     gdf_basins = gpd.read_file(fn_basins, layer="Basin / area")
     # FIXME: Circular usage of basin-data
     gdf_basins = gdf_basins[gdf_basins["node_id"] == gdf_basins["meta_node_id"]]
