@@ -584,17 +584,17 @@ class Flushing:
         return model, df_flushing
 
     @staticmethod
-    def update_function_table(df_demand: pd.DataFrame, function_table: pd.DataFrame) -> pd.DataFrame:
+    def update_function_table(df_demand: pd.DataFrame, function_table: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         """Assign flushing-data to from-to node function table.
 
         :param df_demand: flushing demand information
         :param function_table: from-to node function table
 
         :type df_demand: pandas.DataFrame
-        :type function_table: pandas.DataFrame
+        :type function_table: geopandas.GeoDataFrame
 
         :return: updated from-to node function table
-        :rtype: pandas.DataFrame
+        :rtype: geopandas.GeoDataFrame
         """
         # locate flushing nodes
         i = (df_demand["demand_type"] == "flow").index
