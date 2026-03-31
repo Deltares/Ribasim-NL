@@ -559,6 +559,8 @@ class Model(ribasim.Model):
             kwargs.pop("name")
         else:
             name = ""
+        if pd.isna(name):
+            name = ""
 
         node_properties = {k if k.startswith("meta_") else f"meta_{k}": v for k, v in kwargs.items()}
 
@@ -569,7 +571,7 @@ class Model(ribasim.Model):
         self.basin.add(Node(node_id=node_id, geometry=geometry, name=name, **node_properties), tables=tables)
 
     def connect_basins(self, from_basin_id, to_basin_id, node_type, geometry, tables=None, name="", **kwargs):
-        if name is None:
+        if pd.isna(name):
             name = ""
         self.add_and_connect_node(
             from_basin_id=from_basin_id,
@@ -584,7 +586,7 @@ class Model(ribasim.Model):
     def add_and_connect_node(
         self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, use_add_api: bool = True, **kwargs
     ):
-        if name is None:
+        if pd.isna(name):
             name = ""
 
         # define node properties
@@ -651,6 +653,8 @@ class Model(ribasim.Model):
             name = kwargs["name"]
             kwargs.pop("name")
         else:
+            name = ""
+        if pd.isna(name):
             name = ""
 
         node_properties = {k if k.startswith("meta_") else f"meta_{k}": v for k, v in kwargs.items()}
