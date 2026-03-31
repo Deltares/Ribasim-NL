@@ -512,10 +512,6 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-# update node_ids
-# ribasim_model = ribasim_model._update_used_ids()
-ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
-
 # TODO: Add flushing
 # Add flushing data
 # flush = Flushing(ribasim_model)
@@ -662,11 +658,6 @@ assign = AssignAuthorities(
     custom_nodes=None,
 )
 ribasim_model = assign.assign_authorities()
-
-
-# Add flushing data
-# flush = Flushing(ribasim_model)
-# flush.add_flushing()
 
 # set numerical settings
 # write model output
