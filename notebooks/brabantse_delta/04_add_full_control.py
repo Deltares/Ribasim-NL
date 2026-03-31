@@ -146,7 +146,9 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 884, "min_upstream_
 model.level_boundary.static.df.loc[
     model.level_boundary.static.df.node_id == 41, "level"
 ] = -1  # Inlaat Oosth Wilhelminakanaal
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 41, "level"] = -1  # Inlaat RWZI Dongemond
+model.level_boundary.static.df.loc[
+    model.level_boundary.static.df.node_id == 41, "level"
+] = -1.0  # Inlaat RWZI Dongemond
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")

@@ -345,7 +345,7 @@ flow_rate = pd.Series(
 )
 flow_rate.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=flow_rate)
-static_data.outlet.loc[static_data.outlet.flow_rate.isna(), "flow_rate"] = 20
+static_data.outlet.loc[static_data.outlet.flow_rate.isna(), "flow_rate"] = 20.0
 # %%
 
 model.basin.area.df.set_index("node_id", inplace=True)

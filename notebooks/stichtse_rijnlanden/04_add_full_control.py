@@ -482,9 +482,9 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # EXCLUDE NODES op 0 m3/s zetten
 mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES)
-model.outlet.static.df.loc[mask, "flow_rate"] = 0
-model.outlet.static.df.loc[mask, "min_flow_rate"] = 0
-model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
+model.outlet.static.df.loc[mask, "flow_rate"] = 0.0
+model.outlet.static.df.loc[mask, "min_flow_rate"] = 0.0
+model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.0
 
 
 # %% add all remaining inlets/outlets

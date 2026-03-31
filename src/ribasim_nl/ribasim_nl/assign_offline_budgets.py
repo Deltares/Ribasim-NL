@@ -1,5 +1,6 @@
 """Assign offline MODFLOW-MetaSWAP budgets (LHM zarr or local IDF files) to Ribasim Basin nodes."""
 
+import warnings
 from pathlib import Path
 
 import geopandas as gpd
@@ -84,8 +85,8 @@ class AssignOfflineBudgets:
 
         Parameters
         ----------
-        zarr_budgets_path : Path | str | DataStore
-            Zarr store directory with MODFLOW-MetaSWAP budgets
+        budgets : Path | str | xr.Dataset
+            Zarr store directory with MODFLOW-MetaSWAP budgets, or an xarray Dataset
         """
         if not isinstance(budgets, xr.Dataset):
             budgets = Path(budgets)
@@ -275,7 +276,7 @@ class AssignOfflineBudgets:
             budgets = self.budgets
         else:
             try:
-                budgets = xr.open_zarr(str(self.zarr_budgets_path)).sel(time=slice(model.starttime, model.endtime))
+                budgets = xr.open_zarr(str(self.budgets)).sel(time=slice(model.starttime, model.endtime))
             except Exception as e:
                 print("ERROR: you have to process your budgets to a zarr-storage first!")
                 print(
@@ -291,9 +292,15 @@ class AssignOfflineBudgets:
         missing = expected - set(budgets.data_vars)
 
         if missing:
-            raise ValueError(
-                f"budgets {missing} not supplied in budgets-file. Please check {self.zarr_budgets_path} with your values for `primary_budgets`, `secondary_budgets` and `surface_runoff_budgets`"
+            # TODO: turn back into a ValueError once LHM_433_budget.zip contains all expected variables
+            # see https://github.com/Deltares/Ribasim-NL/issues/510
+            warnings.warn(
+                f"budgets {missing} not supplied in budgets-file. Please check {self.budgets} with your values for `primary_budgets`, `secondary_budgets` and `surface_runoff_budgets`. Missing budgets will be skipped.",
+                stacklevel=2,
             )
+            primary_budgets -= missing
+            secondary_budgets -= missing
+            surface_runoff_budgets -= missing
 
     def _transpose_basin_definition_polygons(
         self,
@@ -452,7 +459,7 @@ class AssignOfflineBudgets:
             nodes = ribasim_model.basin.node.df[[basin_metacol, "geometry"]].copy().reset_index(drop=False)
         else:
             df_cat = getattr(ribasim_model.basin, basin_subtype).df.copy()
-            if basin_metacol in df_cat:
+            if basin_metacol not in df_cat:
                 raise ValueError(
                     f"category column {basin_metacol} not in basin.node or basin.{basin_subtype} tables. Provide column or another `basin_subtype` value"
                 )

@@ -284,7 +284,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -312,7 +313,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -364,8 +365,8 @@ assign_metadata.add_meta_to_basins(
 )
 
 # @TODO: properly retrieve unkown pumping capacities based on upstream surface area
-ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.flow_rate.fillna(value=25)
-ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.max_flow_rate.fillna(value=25)
+ribasim_model.pump.static.df["flow_rate"] = ribasim_model.pump.static.df["flow_rate"].fillna(value=25)
+ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["max_flow_rate"].fillna(value=25)
 increase_flow_rate_pumps = [412, 146]
 
 # presumably wrong conversion of flow capacity in the data
@@ -373,8 +374,8 @@ for pump_id in increase_flow_rate_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_id, "flow_rate"] *= 60
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 100
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 100.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formating of the tables
 # only retain node_id's which are present in the .node table

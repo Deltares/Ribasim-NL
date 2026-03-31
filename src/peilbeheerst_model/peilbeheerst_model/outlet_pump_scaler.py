@@ -462,13 +462,13 @@ def update_max_flow_rates_in_model(model: Model, from_to_node_function_table: pd
 
     # update the max_flow_rate in the model for the pump and outlet nodes.
     pump_df = model.pump.static.df.copy()
-    pump_flow_rate_updates = pump_df["node_id"].map(flow_rate_updates)
+    pump_flow_rate_updates = pump_df["node_id"].map(flow_rate_updates).astype(float)
     pump_update_mask = pump_flow_rate_updates.notna()
     pump_df.loc[pump_update_mask, "max_flow_rate"] = pump_flow_rate_updates.loc[pump_update_mask].to_numpy()
     model.pump.static.df = pump_df
 
     outlet_df = model.outlet.static.df.copy()
-    outlet_flow_rate_updates = outlet_df["node_id"].map(flow_rate_updates)
+    outlet_flow_rate_updates = outlet_df["node_id"].map(flow_rate_updates).astype(float)
     outlet_update_mask = outlet_flow_rate_updates.notna()
     outlet_df.loc[outlet_update_mask, "max_flow_rate"] = outlet_flow_rate_updates.loc[outlet_update_mask].to_numpy()
     model.outlet.static.df = outlet_df
@@ -535,8 +535,8 @@ class _OutletPumpScaler:
             model.pump.static.df.loc[model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"] = False
 
             # also temp
-            # model.pump.static.df.max_flow_rate = 10
-            model.outlet.static.df.max_flow_rate = config.debug_outlet_max_flow_rate
+            # model.pump.static.df["max_flow_rate"] = 10
+            model.outlet.static.df["max_flow_rate"] = config.debug_outlet_max_flow_rate
 
             # if max_flow_rate is 0, change to 0.1
             model.pump.static.df.loc[model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
@@ -735,8 +735,8 @@ class _OutletPumpScaler:
                 model = update_max_flow_rates_in_model(model, from_to_node_function_table)
 
                 # set flow rate equal to max flow rate
-                model.outlet.static.df.flow_rate = model.outlet.static.df.max_flow_rate
-                model.pump.static.df.flow_rate = model.pump.static.df.max_flow_rate
+                model.outlet.static.df["flow_rate"] = model.outlet.static.df["max_flow_rate"]
+                model.pump.static.df["flow_rate"] = model.pump.static.df["max_flow_rate"]
 
                 # store model
                 model.write(model.filepath)

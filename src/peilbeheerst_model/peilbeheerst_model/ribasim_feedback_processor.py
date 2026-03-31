@@ -159,10 +159,9 @@ class RibasimFeedbackProcessor:
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
                         if hasattr(sub_value, "df") and sub_value.df is not None:
-                            if not sub_value.df.empty:
-                                if sub_key == "static":
-                                    filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
-                                    sub_value.df = filtered_df
+                            if not sub_value.df.empty and "node_id" in sub_value.df.columns:
+                                filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                                sub_value.df = filtered_df
 
             # Remove the Links
             rows_to_remove = self.model.link.df[
@@ -312,11 +311,9 @@ class RibasimFeedbackProcessor:
                                 logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
                                 continue
 
-                        if "geometry" in sub_value.df:
-                            if sub_key == "static":
-                                geometry_old = sub_value.df[sub_value.df["node_id"] == node_id].geometry.iloc[0]
-                                filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
-                                sub_value.df = filtered_df
+                        if "node_id" in sub_value.df.columns:
+                            filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                            sub_value.df = filtered_df
 
             new_node_type_name = row["Nieuw Node Type"]
             key = mapping.get(new_node_type_name, None)
@@ -473,6 +470,7 @@ class RibasimFeedbackProcessor:
             ] = df_TL.Streefpeil.astype(float).to_numpy()
 
             # update streefpeilen in the .area table
+            self.model.basin.area.df["meta_streefpeil"] = self.model.basin.area.df["meta_streefpeil"].astype(object)
             self.model.basin.area.df.loc[
                 self.model.basin.area.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "meta_streefpeil"
             ] = df_TL.Streefpeil.astype(float).to_numpy()
