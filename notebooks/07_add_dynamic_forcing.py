@@ -8,6 +8,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
+write_budgets: bool = True
 
 
 def add_forcing(model, cloud, starttime, endtime):
@@ -23,11 +24,12 @@ def add_forcing(model, cloud, starttime, endtime):
 
     # Add dynamic groundwater
     offline_budgets = AssignOfflineBudgets()
-    offline_budgets.compute_budgets(model)
+    _, budgets_df = offline_budgets.compute_budgets(model)
+    return budgets_df
 
 
 FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+SELECTION: list[str] = ["AaenMaas"]
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -97,8 +99,11 @@ for authority in authorities:
             model.basin.state.df["meta_categorie"] = series.to_numpy()
 
             # add forcing
-            add_forcing(model, cloud, starttime, endtime)
+            budgets_df = add_forcing(model, cloud, starttime, endtime)
 
             # run model
             model.write(dst_toml_file)
+            if write_budgets:
+                budgets_df.to_feather(dst_toml_file.with_name("budgets.arrow"))
+                budgets_df.to_csv(dst_toml_file.with_name("budgets.csv.zip"), compression="zip")
             model.run()

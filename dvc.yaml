@@ -70,6 +70,7 @@ stages:
       - notebooks/aa_en_maas
     outs:
       - data/AaenMaas/modellen/AaenMaas_full_control_model
+    frozen: true
   noorderzijlvest:
     cmd:
       - uv run python notebooks/noorderzijlvest/01_fix_model.py
