@@ -582,3 +582,26 @@ class Flushing:
         df_flushing = gpd.read_file(self.lhm_flushing_path, layer=self.flushing_layer)
 
         return model, df_flushing
+
+    @staticmethod
+    def update_function_table(df_demand: pd.DataFrame, function_table: pd.DataFrame) -> pd.DataFrame:
+        """Assign flushing-data to from-to node function table.
+
+        :param df_demand: flushing demand information
+        :param function_table: from-to node function table
+
+        :type df_demand: pandas.DataFrame
+        :type function_table: pandas.DataFrame
+
+        :return: updated from-to node function table
+        :rtype: pandas.DataFrame
+        """
+        # locate flushing nodes
+        i = (df_demand["demand_type"] == "flow").index
+
+        # update function table
+        function_table.loc[function_table.index.isin(i), "function"] = "flushing"
+        function_table.loc[function_table.index.isin(i), "demand_flow_rate"] = df_demand.loc[i, "demand"]
+
+        # return updated function table
+        return function_table
