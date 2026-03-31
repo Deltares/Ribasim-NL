@@ -4048,7 +4048,7 @@ wheels = [
 [[package]]
 name = "ribasim"
 version = "2026.1.0rc2"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&branch=read-only-node-table#6f191036c3f45cb5324edddfa48e8df0cbf02bae" }
 dependencies = [
     { name = "datacompy" },
     { name = "geopandas" },
@@ -4065,10 +4065,6 @@ dependencies = [
     { name = "tomli" },
     { name = "tomli-w" },
     { name = "xarray" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/98/54/a80a03b6bf19dd051c648779d4e221ffaba10bdea0707182beafcb86c52b/ribasim-2026.1.0rc2.tar.gz", hash = "sha256:d2a49b44ddc77005df60dc6ddd4f73fe18a20030b592ece65279cf932c9d7823", size = 1856045, upload-time = "2026-03-06T13:14:46.863Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/f1/cda7ebfa5ed7519b3725e0679555859e190ff7b5eb6677745330f6a1ffce/ribasim-2026.1.0rc2-py3-none-any.whl", hash = "sha256:b04593c38b56abe5798d42f17be06dc161398306ba0826a7e338dede3054de47", size = 123976, upload-time = "2026-03-06T13:14:45.167Z" },
 ]
 
 [[package]]
@@ -4097,7 +4093,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "pydantic" },
-    { name = "ribasim" },
+    { name = "ribasim", git = "https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&branch=read-only-node-table" },
     { name = "shapely" },
     { name = "xarray" },
     { name = "xugrid" },
@@ -4215,7 +4211,7 @@ requires-dist = [
     { name = "quartodoc", specifier = ">=0.11.1" },
     { name = "rasterstats", specifier = ">=0.20.0" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "ribasim", specifier = "==2026.1.0rc2" },
+    { name = "ribasim", git = "https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&branch=read-only-node-table" },
     { name = "ribasim-nl", editable = "src/ribasim_nl" },
     { name = "ruff", specifier = ">=0.14.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
