@@ -1,0 +1,111 @@
+# Limburg
+
+- Laatst bijgewerkt: 27-03-2026
+- Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+
+## Systeembeschrijving
+<!-- ![Systeembeschrijving Brabantse Delta](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/Limburg.svg) -->
+![Systeembeschrijving Aa en Maas](d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Limburg\verwerkt\sturing\Limburg.svg)
+
+Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.
+
+### Watersysteem 
+
+Via gemaal `Katsberg` wordt water((max 5.4m3/s)) vanuit de `Noordervaart` aangevoerd naar het kanaal `van Deurne`. In de winter max 0.1m3/s voor doorspoeling om kwaliteitsredenen. Bij `Halte Verdeelwerk` wordt het beschikbare water verdeeld over het `Peelkanaal` en de `Grenssloot` 50/50 verdeeld. 
+
+
+### Peelkanaal 
+
+**Afvoer:**
+- Via het `Afleidingskanaal` wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de `Maas`
+
+**Aanvoer:**
+- Via `Verdeelwerk De Halte` wordt een deel van het aangevoerde water naar het aanvoergebied  `Peelkanaal` geleid. 
+- Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied `Peelscheloop` `Bakelse AA` en `Maaskant-Oost`) 
+
+### Helenavaart
+
+**Afvoer:**
+- Via de Oostrumsche beek en de Groote Molenbeek naar de Maas
+
+**Aanvoer** 
+- De aanvoer via Katsberg, naar `gemaal Helenveen` en een inlaat naar aanvoergebied `Helenaveen` en `Verdeelwerk de Halte`.
+
+### Beringe
+
+**Afvoer:**
+- Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de `Maas`
+
+**Aanvoer** 
+- Via de `Noordervaart` kan water ingelaten worden via `gemaal Beringe`
+
+### Eendlossing/
+
+**Afvoer:**
+- Direct naar de `Zuid-Willemsvaart`
+
+**Aanvoer** 
+- Via inlaat de `Eendlossing` vanaf de `Zuid-Willemsvaart`
+
+### Nederweert Hoverlossing
+
+**Afvoer:**
+- Naar de `Zuid-Willemsvaart` via Aa en Maas
+
+**Aanvoer** 
+- Via inlaat Nederweert Hoverlossing vanaf de `Zuid-Willemsvaart` 
+- Vanaf aanvoergebied `Nederweert Hoverlossing` wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)
+
+### Oude Graaf
+
+**Afvoer:**
+- Via de `uitlaat Sterkselsche Aa` wordt het doorgevoerd naar waterschap de Dommel
+
+**Aanvoer:**
+- Via inlaten vanaf de `Zuid-Willemsvaart`
+
+### Tungelroysche beek
+
+**Afvoer:**
+-via de Neerbeek en de Tungelroysche beek naar de `Maas`
+
+**Aanvoer:**
+- Via inlaten vanaf de `Zuid-Willemsvaart`
+
+### Rogge
+- Via inlaten vanaf de `Zwartwaterlossing`
+
+
+## Capaciteiten
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+
+| naam                       | code       |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
+|:---------------------------|:-----------|----------:|:----------|-----------------:|----------------:|
+| Achterste Moost            | D_25958    |       410 | inlaat    |            0.02  |               0 |
+| Eendlossing                | S_97698    |       772 | inlaat    |            0.02  |               0 |
+| Gemaal Beringe             | G_27621    |       583 | inlaat    |            0.65  |               0 |
+| Gemaal Helenaveen          | G_27616    |       590 | inlaat    |            0.35  |               0 |
+| Houtstraatlossing          | D_14965    |       351 | inlaat    |            0.05  |               0 |
+| Hushoverbeek               | D_281344   |      2502 | inlaat    |            0.05  |               0 |
+| Inlaat Evertsoord          | S_97322    |       604 | inlaat    |            0.35  |               0 |
+| Inlaat Groote Moost        | S_98847    |       236 | inlaat    |            0.09  |               0 |
+| Inlaat Hulsenlossing       |            |      1223 | inlaat    |            0.03  |               0 |
+| Inlaat Rietbeek            | S_98409    |       599 | inlaat    |            0.12  |               0 |
+| Inlaat Weteringbeek        | S_98009    |       731 | inlaat    |            0.125 |               0 |
+| Kampershoek                |            |      2503 | inlaat    |            0.05  |               0 |
+| Katsberg                   | S_282001   |       238 | doorlaat  |            4.7   |               0 |
+| Klein Leukerbeek           | W_153168_0 |      1119 | inlaat    |            0.08  |               0 |
+| Nederweerter Hovenlossing  | D_23657    |       534 | inlaat    |            0.02  |               0 |
+| Nederweerter Riet          | D_25545    |       464 | inlaat    |            0.05  |               0 |
+| Oude Graaf                 |            |      1136 | inlaat    |            0.05  |               0 |
+| Roeven                     | S_97840    |      2501 | inlaat    |            0.01  |               0 |
+| Snepheiderbeek             | D_23544    |       411 | inlaat    |            0.05  |               0 |
+| Uitlaat Sterkselsch kanaal | S_97873    |       748 | uitlaat   |            0     |              20 |
+| Verdeelwerk de Halte       | S_97735    |       773 | inlaat    |            4.7   |               0 |
+| Waatskampoplossing         | S_97872    |       598 | inlaat    |            0.01  |               0 |
+| Zwartwaterlossing          | D_294341   |       230 | inlaat    |            0.05  |               0 |
+
+## Bronnen
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). 
+
+- [Documentatie Distributiemodel (Deel B, hoofdstuk 8)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)

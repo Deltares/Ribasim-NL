@@ -32,6 +32,9 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # %%
+model.basin.area.df.loc[model.basin.area.df.node_id == 1132, "meta_streefpeil"] = 3.45
+
+# %%
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 add_check_basin_level(model=model)
