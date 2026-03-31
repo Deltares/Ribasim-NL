@@ -510,7 +510,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -2.3456, 10, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -648,7 +648,7 @@ ribasim_model.pump.static.df = (
 
 # if flow_rate is 0, set to 20
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20.0
-ribasim_model.outlet.static.df.max_flow_rate = ribasim_model.outlet.static.df.flow_rate.copy()
+ribasim_model.outlet.static.df["max_flow_rate"] = ribasim_model.outlet.static.df["flow_rate"].copy()
 
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(

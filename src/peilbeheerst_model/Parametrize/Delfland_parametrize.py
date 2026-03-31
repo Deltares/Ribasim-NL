@@ -275,7 +275,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -358,8 +358,12 @@ add_controllers_to_connector_nodes(
 )
 
 # add the meta_data to the pump and outlet tables again
-ribasim_model.outlet.static.df = ribasim_model.outlet.static.df.merge(outlet_copy, on="node_id", how="left")
-ribasim_model.pump.static.df = ribasim_model.pump.static.df.merge(pump_copy, on="node_id", how="left")
+ribasim_model.outlet.static.df = (
+    ribasim_model.outlet.static.df.set_index("node_id").combine_first(outlet_copy.set_index("node_id")).reset_index()
+)
+ribasim_model.pump.static.df = (
+    ribasim_model.pump.static.df.set_index("node_id").combine_first(pump_copy.set_index("node_id")).reset_index()
+)
 
 # wateraanvoer node to other waterboard. Set max downstream level to a low value to prevent unwanted control actions
 ribasim_model.outlet.static.df.loc[
@@ -394,10 +398,10 @@ ribasim_model.pump.static.df.loc[
 ] *= 60
 
 # set the flow_rate to the max_flow_rate
-ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
+ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
-ribasim_model.outlet.static.df.meta_known_flow_capacities = False
+ribasim_model.outlet.static.df["meta_known_flow_capacities"] = False
 ribasim_model.pump.static.df.loc[
     (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
     "meta_known_flow_capacities",
@@ -409,8 +413,8 @@ mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_re
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 100
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 100.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formating of the tables
 # only retain node_id's which are present in the .node table

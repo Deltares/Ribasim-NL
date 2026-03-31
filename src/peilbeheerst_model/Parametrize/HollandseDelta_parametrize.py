@@ -662,7 +662,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -0.42, 1.24, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -676,11 +676,11 @@ ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waters
 ribasim_param.add_continuous_control(ribasim_model, dy=-50, exclude_outlets=(1265, 1371))
 
 # manually change the flow rates
-ribasim_model.pump.static.df.flow_rate = 2.5
-ribasim_model.pump.static.df.max_flow_rate = 2.5
+ribasim_model.pump.static.df["flow_rate"] = 2.5
+ribasim_model.pump.static.df["max_flow_rate"] = 2.5
 
-ribasim_model.outlet.static.df.flow_rate = 2.5
-ribasim_model.outlet.static.df.max_flow_rate = 2.5
+ribasim_model.outlet.static.df["flow_rate"] = 2.5
+ribasim_model.outlet.static.df["max_flow_rate"] = 2.5
 
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
@@ -709,8 +709,8 @@ mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_re
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 100
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 100.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formating of the tables
 # only retain node_id's which are present in the .node table

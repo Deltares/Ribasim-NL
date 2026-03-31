@@ -535,8 +535,8 @@ class _OutletPumpScaler:
             model.pump.static.df.loc[model.pump.static.df.max_flow_rate == 10 / 60, "meta_known_flow_rate"] = False
 
             # also temp
-            # model.pump.static.df.max_flow_rate = 10
-            model.outlet.static.df.max_flow_rate = config.debug_outlet_max_flow_rate
+            # model.pump.static.df["max_flow_rate"] = 10
+            model.outlet.static.df["max_flow_rate"] = config.debug_outlet_max_flow_rate
 
             # if max_flow_rate is 0, change to 0.1
             model.pump.static.df.loc[model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
@@ -735,8 +735,8 @@ class _OutletPumpScaler:
                 model = update_max_flow_rates_in_model(model, from_to_node_function_table)
 
                 # set flow rate equal to max flow rate
-                model.outlet.static.df.flow_rate = model.outlet.static.df.max_flow_rate
-                model.pump.static.df.flow_rate = model.pump.static.df.max_flow_rate
+                model.outlet.static.df["flow_rate"] = model.outlet.static.df["max_flow_rate"]
+                model.pump.static.df["flow_rate"] = model.pump.static.df["max_flow_rate"]
 
                 # store model
                 model.write(model.filepath)
