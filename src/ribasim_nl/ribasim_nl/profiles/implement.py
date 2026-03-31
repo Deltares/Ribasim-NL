@@ -262,19 +262,23 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     basin_node["meta_node_id"] = basin_node.index
 
     # concatenate all newly generated tables to Ribasim model
+    # > Node-table
+    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)
+    # > Link-table
+    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)
     # > Basin-tables
-    ribasim_model.basin.node.df = pd.concat([ribasim_model.basin.node.df, basin_node])
-    ribasim_model.basin.static = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
-    ribasim_model.basin.state = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
-    ribasim_model.basin.profile = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
-    ribasim_model.basin.area = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
+    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
+    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
+    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
+    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
     # > ManningResistance-tables
-    ribasim_model.manning_resistance.node.df = pd.concat([ribasim_model.manning_resistance.node.df, manning_node])
-    ribasim_model.manning_resistance.static = pd.concat(
+    ribasim_model.manning_resistance.static.df = pd.concat(
         [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
     )
-    # > Link-table
-    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link])
+
+    # update model IDs
+    _ = ribasim_model.node._update_used_ids
+    _ = ribasim_model.link._update_used_ids
 
     # return the updated Ribasim model
     return ribasim_model
