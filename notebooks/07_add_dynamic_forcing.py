@@ -23,7 +23,8 @@ def add_forcing(model, cloud, starttime, endtime):
     model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     _, budgets_df = offline_budgets.compute_budgets(model)
     return budgets_df
 

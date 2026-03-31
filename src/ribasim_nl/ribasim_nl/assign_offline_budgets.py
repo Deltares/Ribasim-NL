@@ -84,8 +84,8 @@ class AssignOfflineBudgets:
 
         Parameters
         ----------
-        zarr_budgets_path : Path | str | DataStore
-            Zarr store directory with MODFLOW-MetaSWAP budgets
+        budgets : Path | str | xr.Dataset
+            Zarr store directory with MODFLOW-MetaSWAP budgets, or an xarray Dataset
         """
         if not isinstance(budgets, xr.Dataset):
             budgets = Path(budgets)
@@ -275,7 +275,7 @@ class AssignOfflineBudgets:
             budgets = self.budgets
         else:
             try:
-                budgets = xr.open_zarr(str(self.zarr_budgets_path)).sel(time=slice(model.starttime, model.endtime))
+                budgets = xr.open_zarr(str(self.budgets)).sel(time=slice(model.starttime, model.endtime))
             except Exception as e:
                 print("ERROR: you have to process your budgets to a zarr-storage first!")
                 print(
@@ -292,7 +292,7 @@ class AssignOfflineBudgets:
 
         if missing:
             raise ValueError(
-                f"budgets {missing} not supplied in budgets-file. Please check {self.zarr_budgets_path} with your values for `primary_budgets`, `secondary_budgets` and `surface_runoff_budgets`"
+                f"budgets {missing} not supplied in budgets-file. Please check {self.budgets} with your values for `primary_budgets`, `secondary_budgets` and `surface_runoff_budgets`"
             )
 
     def _transpose_basin_definition_polygons(
