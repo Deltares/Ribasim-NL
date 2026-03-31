@@ -1,5 +1,6 @@
 """Assign offline MODFLOW-MetaSWAP budgets (LHM zarr or local IDF files) to Ribasim Basin nodes."""
 
+import warnings
 from pathlib import Path
 
 import geopandas as gpd
@@ -291,9 +292,15 @@ class AssignOfflineBudgets:
         missing = expected - set(budgets.data_vars)
 
         if missing:
-            raise ValueError(
-                f"budgets {missing} not supplied in budgets-file. Please check {self.budgets} with your values for `primary_budgets`, `secondary_budgets` and `surface_runoff_budgets`"
+            # TODO: turn back into a ValueError once LHM_433_budget.zip contains all expected variables
+            # see https://github.com/Deltares/Ribasim-NL/issues/510
+            warnings.warn(
+                f"budgets {missing} not supplied in budgets-file. Please check {self.budgets} with your values for `primary_budgets`, `secondary_budgets` and `surface_runoff_budgets`. Missing budgets will be skipped.",
+                stacklevel=2,
             )
+            primary_budgets -= missing
+            secondary_budgets -= missing
+            surface_runoff_budgets -= missing
 
     def _transpose_basin_definition_polygons(
         self,

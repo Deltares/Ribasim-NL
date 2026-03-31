@@ -8,7 +8,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
-write_budgets: bool = True
+write_budgets: bool = False
 
 
 def add_forcing(model, cloud, starttime, endtime):
