@@ -28,13 +28,13 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
-mixed_conditions_design_P = 10
+mixed_conditions_design_P = 12
 mixed_conditions_design_E = 2
 
 # model settings
@@ -373,7 +373,7 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 # change function to inlaat
-to_supply = [
+to_supply = (
     338,
     348,
     390,
@@ -398,17 +398,9 @@ to_supply = [
     861,
     1014,
     1018,
-]
-# from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_inlaat), "function"] = "supply"
-
-# change function to flow_control
-to_flow_control = [290, 417, 557, 762, 1013, 1032, 1033]
-# from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_flow_control), "function"] = "flow_control"
-
-# change function to drain
-to_drain = [256, 626, 863]
-# from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_drain), "function"] = "drain"
-
+)
+to_flow_control = (290, 417, 557, 762, 1013, 1032, 1033)
+to_drain = (256, 626, 863)
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
 )
@@ -437,10 +429,6 @@ pump_copy = ribasim_model.pump.static.df[
         "meta_to_level",
     ]
 ].copy()
-
-# update node_ids
-# ribasim_model = ribasim_model._update_used_ids()
-ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
 
 add_controllers_to_connector_nodes(
     model=ribasim_model,
