@@ -172,27 +172,27 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     storing_ids, df_flowing, df_storing = single_profile_nodes(*tables, min_area=min_area)
 
     # modify existing basins ('doorgaand')
-    _basin_node = ribasim_model.basin.node.df.copy()
+    ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
     _basin_profile = ribasim_model.basin.profile.df.copy()
-    ribasim_model.basin.node.df = _basin_node.assign(meta_node_id=_basin_node.index)
     _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
     ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(
         _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
     )[_basin_profile.columns]
-    del _basin_node, _basin_profile
+    del _basin_profile
 
     # duplicate all basin-tables
-    basin_node = ribasim_model.basin.node.df.copy()
-    basin_static = ribasim_model.basin.static.df.copy()
-    basin_state = ribasim_model.basin.state.df.copy()
-    basin_area = ribasim_model.basin.area.df.copy()
-    basin_profile = df_storing.copy()
+    basin_node = ribasim_model.basin.node.df
+    basin_static = ribasim_model.basin.static.df
+    basin_state = ribasim_model.basin.state.df
+    basin_area = ribasim_model.basin.area.df
+    basin_profile = df_storing.copy(deep=True)
 
     # ID-selection: add storing basins
-    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy()
-    basin_static = basin_static[basin_static["node_id"].isin(storing_ids)].copy()
-    basin_state = basin_state[basin_state["node_id"].isin(storing_ids)].copy()
-    basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy()
+    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy(deep=True)
+    basin_static = basin_static[basin_static["node_id"].isin(storing_ids)].copy(deep=True)
+    basin_state = basin_state[basin_state["node_id"].isin(storing_ids)].copy(deep=True)
+    basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy(deep=True)
+    assert all(basin_profile["node_id"].isin(storing_ids)), "Storing profiles should only contain storing node IDs"
 
     # node ID incrementation
     incr_node_id = int(ribasim_model.next_node_id - 1)
