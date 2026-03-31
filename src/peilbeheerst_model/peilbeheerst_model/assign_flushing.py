@@ -103,7 +103,7 @@ class Flushing:
         df_basin = gpd.GeoDataFrame(df_basin, crs=model.basin.area.df.crs)
 
         # Reset the internal graph to ensure we have the most up-to-date version
-        model.reset_graph
+        _ = model.reset_graph
 
         # Find matching basins for each flushing geometry
         df_demand = {
