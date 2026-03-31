@@ -459,7 +459,7 @@ class AssignOfflineBudgets:
             nodes = ribasim_model.basin.node.df[[basin_metacol, "geometry"]].copy().reset_index(drop=False)
         else:
             df_cat = getattr(ribasim_model.basin, basin_subtype).df.copy()
-            if basin_metacol in df_cat:
+            if basin_metacol not in df_cat:
                 raise ValueError(
                     f"category column {basin_metacol} not in basin.node or basin.{basin_subtype} tables. Provide column or another `basin_subtype` value"
                 )
