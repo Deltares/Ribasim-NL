@@ -106,9 +106,11 @@ def single_profile_nodes(
 
     :param flowing_table: table of flowing profiles ('doorgaand')
     :param storing_table: table of storing profiles ('bergend')
+    :param min_area: minimum area for profile to be considered valid [m2], defaults to 1e-3
 
     :type flowing_table: pandas.DataFrame
     :type storing_table: pandas.DataFrame
+    :type min_area: float, optional
 
     :return: no-storing basin node-IDs ('doorgaand'-only) and modified profile tables
     :rtype: tuple[list[int], pandas.DataFrame, pandas.DataFrame]
