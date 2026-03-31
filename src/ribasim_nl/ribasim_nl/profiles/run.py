@@ -33,6 +33,7 @@ def main(
     :key cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
+    :key filter_basins: filter basins on 'doorgaand' (i.e., excl. 'bergend'), defaults to True
     :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None
         Required if no `HydrotopeTable` is provided (i.e., `hydrotope_table=None`)
     :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to False
@@ -74,6 +75,7 @@ def main(
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
     debug: bool = kwargs.get("debug", False)
     epsg: int = kwargs.get("epsg", 28992)
+    filter_basins: bool = kwargs.get("filter_basins", True)
     # > hydrotopes
     fn_hydrotopes: pathlib.Path | str | None = kwargs.get("fn_hydrotopes")
     # > generation of depth profile lines
@@ -137,6 +139,10 @@ def main(
         case _:
             msg = f"There should be 3 or 4 GeoDataFrames provided; {len(data)} given."
             raise ValueError(msg)
+
+    # filter basins
+    if filter_basins:
+        basins = basins[basins["node_id"] == basins["meta_node_id"]]
 
     # creating depth profile-lines
     if create_depth_profile_lines and cross_sections is not None:
