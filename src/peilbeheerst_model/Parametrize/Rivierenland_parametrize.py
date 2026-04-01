@@ -7,11 +7,10 @@ import warnings
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import shapely
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim import Node
+from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -29,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -444,8 +443,6 @@ LEVEL_DIFFERENCE_THRESHOLD = 0.04
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
-# FIXME: Node-ID 987 pops up from the above function, but should not.
-from_to_node_table = from_to_node_table[from_to_node_table.index != 987]
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
@@ -503,19 +500,14 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-flush = Flushing(
-    ribasim_model,
-    lhm_flushing_path="Rivierenland/aangeleverd/Na_levering/Doorspoeling.gpkg",
-    flushing_layer="aanvoergebieden",
-    flushing_id="UniekID",
-)
-_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
-from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
-# _i = (df_demand["demand_type"] == "flow").index
-# from_to_node_function_table.loc[from_to_node_function_table.index.isin(_i), "function"] = "flushing"
-# from_to_node_function_table.loc[from_to_node_function_table.index.isin(_i), "demand_flow_rate"] = df_demand.loc[
-#     _i, "demand"
-# ]
+# flush = Flushing(
+#     ribasim_model,
+#     lhm_flushing_path="Rivierenland/aangeleverd/Na_levering/Doorspoeling.gpkg",
+#     flushing_layer="aanvoergebieden",
+#     flushing_id="UniekID",
+# )
+# _, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
+# from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
 
 add_controllers_to_connector_nodes(
     ribasim_model, from_to_node_function_table, LEVEL_DIFFERENCE_THRESHOLD, drain_capacity=20
@@ -629,7 +621,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_other=False, suffix="init")
+cli.run_ribasim(ribasim_work_dir_model_toml)
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
