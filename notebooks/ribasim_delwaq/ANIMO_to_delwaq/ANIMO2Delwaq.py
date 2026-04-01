@@ -15,11 +15,14 @@ Notes
 
 import os
 import re
-from pathlib import Path
+import shutil
 
 import pandas as pd
 
+from ribasim_nl import CloudStorage
+
 # %% User input
+cloud = CloudStorage()
 
 # model
 model_name = "lhm_coupled_2025_9_0"
@@ -27,17 +30,24 @@ model_name = "lhm_coupled_2025_9_0"
 # In mode 1, total-n and total-p loads are distributed over inorganic and organic fractions as used for LWKM water quality simulations.
 # In mode 2, total-n and total-p loads are attributed to tracers ANIMO_N and ANIMO_P to track nitrogen and phosphorous loads from agriculture and nature in Delwaq
 wq_mode = 2
-# data input directory
-input_dir = "p:/11210327-lwkm2/00_scripts/Fatima/MethodeB/outputs/2017_per_quarter/csv/"
 # output directory name
 output_folder = "delwaq_wqmode2"
+
+model_path = cloud.joinpath("Rijkswaterstaat", "modellen", model_name)
+toml_path = cloud.joinpath(model_path, "lhm.toml")
+cloud.synchronize(filepaths=[model_path], overwrite=False)
+
+animo_dir = cloud.joinpath("Basisgegevens/Delwaq/verwerkt/data/Animo/")
+input_zip = cloud.joinpath(animo_dir, "csv.zip")
+cloud.synchronize(filepaths=[input_zip], overwrite=False)
+shutil.unpack_archive(input_zip, animo_dir)
+input_dir = cloud.joinpath(animo_dir, "csv")
 
 # %% Set model and output directories
 
 # model directory
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "modellen" / model_name
-# output directory
 output_path = model_path / output_folder
+output_path.mkdir(exist_ok=True)
 
 # %% Conversions
 
