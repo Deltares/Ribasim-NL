@@ -13,6 +13,8 @@ SVG images can created based on the watersysteem.gpkg using QGIS.
 An example QGIS project can be found on the [CloudStorage](https://deltares.thegood.cloud/f/238548) (limited access)
 """  # noqa: D301
 
+import math
+
 import geopandas as gpd
 import pandas as pd
 from ribasim_nl.aquo import waterbeheercode
@@ -266,6 +268,17 @@ def generate_mask_box(polygon: Polygon, offsets: dict["str", int]) -> Polygon:
     return box(xmin, ymin, xmax, ymax)
 
 
+def create_flow_arrow(line: LineString, arrow_length: float) -> LineString:
+    coords = list(line.coords)
+
+    x0, y0 = coords[0]
+    x1, y1 = coords[1]
+    dx, dy = x0 - x1, y0 - y1
+    norm = math.hypot(dx, dy)
+    start = (x0 + arrow_length * dx / norm, y0 + arrow_length * dy / norm)
+    return LineString((start, coords[0]))
+
+
 for authority in AUTHORITIES:
     print(authority)
     # files we read
@@ -314,6 +327,7 @@ for authority in AUTHORITIES:
     control_links_df = model.link.df[model.link.df.link_type == "control"]
     flow_links_df = model.link.df[model.link.df.link_type == "flow"]
 
+    # structures voor kunstwerken
     structures_src_df = gpd.read_file(kunstwerken_gpkg, fid_as_index=True)
     structures_src_df.rename(columns={"name": "naam", "meta_code_waterbeheerder": "code"}, inplace=True)
     if "functie" not in structures_src_df.columns:
@@ -334,6 +348,7 @@ for authority in AUTHORITIES:
     if "afvoer [m3/s]" not in structures_src_df.columns:
         structures_src_df["afvoer [m3/s]"] = pd.Series(dtype=float)
 
+    # pijltjes voor kunsterken
     arrows = []
     for fid, row in structures_src_df.iterrows():
         arrow_length = ARROW_LENGTH.get(authority, 1000)
@@ -409,13 +424,24 @@ for authority in AUTHORITIES:
     if len(arrows) > 0:
         gpd.GeoDataFrame(arrows, crs=structures_src_df.crs).to_file(system_gpkg, layer="richting")
 
-    # FIX: mask ook echt gebruiken
-    mask = structures_src_df.add_label & ~structures_src_df.naam.isna() & (structures_src_df.functie != "geen")
+    flow_boundaries_df = model.flow_boundary.node.df
+    flow_arrows = []
+    if not flow_boundaries_df.empty:
+        for row in flow_boundaries_df.itertuples():
+            node_id = row.Index
+            geom_from = model.link.df.set_index("from_node_id").at[node_id, "geometry"]
+            geometry = create_flow_arrow(line=geom_from, arrow_length=arrow_length)
+            flow_arrows += [{"naam": row.name, "geometry": geometry}]
+        flow_arrows_df = gpd.GeoDataFrame(flow_arrows, crs=structures_src_df.crs).to_file(
+            system_gpkg, layer="buitenlandse_aanvoer"
+        )
 
+    mask = structures_src_df.add_label & ~structures_src_df.naam.isna() & (structures_src_df.functie != "geen")
     table_md.write_text(
         structures_src_df[mask][["naam", "code", "node_id", "functie", "aanvoer [m3/s]", "afvoer [m3/s]"]]
         .sort_values(by=["naam"])
         .to_markdown(index=False)
     )
+
 
 # %%
