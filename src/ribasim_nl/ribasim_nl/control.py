@@ -1488,6 +1488,7 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
         "Inlaat buitenwater peilgebied, aanvoer afvoer gemaal",
         "Inlaat buitenwater boezem, aanvoer afvoer gemaal",
         "Boezem boezem, aanvoer afvoer gemaal",
+        "Regulier gemaal",
     ]
 
     # select all drain categories from identify_node_metacatgory
