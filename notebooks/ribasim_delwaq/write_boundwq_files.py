@@ -44,21 +44,7 @@ cloud.synchronize(
 
 # %% Hard coded parameter settings
 make_plots = False
-
-# NO3_Ntot_fractie = 0.8
-# NH4_Ntot_fractie = 0.1
-# OON_Ntot_fractie = 0.1
-
-# NH4_Nkj_fractie = 0.8
-# OON_Nkj_fractie = 0.2
-
-# PO4_Ptot_fractie = 0.5
-# AAP_Ptot_fractie = 0.4
-# OOP_Ptot_fractie = 0.1
-
-# AAP_notPO4_fractie = 0.75
-# OOP_notPO4_fractie = 0.25
-
+interpolate_data = False
 
 NO3_Ntot_fractie = 0.8
 NH4_Ntot_fractie = 0.1
@@ -79,7 +65,6 @@ parameters_Zinfo = ["NKj", "NO3", "NOx", "sNO3NO2", "Ntot", "PO4", "Ptot"]
 
 
 # %% Laad het gewenste Ribasim model in
-
 model_spec = {
     "authority": "Rijkswaterstaat",
     "model": "lhm_coupled",
@@ -87,6 +72,30 @@ model_spec = {
 }
 
 
+# %% Log hard coded parameters
+hardcoded_settings = {
+    "Create plots": make_plots,
+    "Interpolate/extrapolate the input data": interpolate_data,
+    "NO3_Ntot_fractie": NO3_Ntot_fractie,
+    "NH4_Ntot_fractie": NH4_Ntot_fractie,
+    "OON_Ntot_fractie": OON_Ntot_fractie,
+    "NH4_Nkj_fractie": NH4_Nkj_fractie,
+    "OON_Nkj_fractie": OON_Nkj_fractie,
+    "PO4_Ptot_fractie": PO4_Ptot_fractie,
+    "AAP_Ptot_fractie": AAP_Ptot_fractie,
+    "OOP_Ptot_fractie": OOP_Ptot_fractie,
+    "AAP_notPO4_fractie": AAP_notPO4_fractie,
+    "OOP_notPO4_fractie": OOP_notPO4_fractie,
+    "Included parameters buitenlandse aanvoer": parameters_IM,
+    "Included parameters RWZIs": parameters_Zinfo,
+}
+
+logging.warning(
+    "Hard coded parameter settings in use:\n" + "\n".join(f"  {k} = {v}" for k, v in hardcoded_settings.items())
+)
+
+
+# %%
 def load_model_from_spec(model_spec):
     """Locate and load a model TOML file based on a specified model version."""
     logging.info(
@@ -140,7 +149,6 @@ else:
 
 # %% Meetlocaties IM-metingen inladen en linken aan de modeldata
 def load_geojson(meetlocaties_path):
-    # try:
     with open(meetlocaties_path, encoding="utf-8") as geojson_file:
         geojson_data = json.load(geojson_file)
     logging.info(f"IM meetlocaties ingeladen: {meetlocaties_path}")
@@ -228,7 +236,7 @@ logging.info("Excel bestand met IM-metingen ingeladen.")
 
 # %%
 def filter_grenspunt_locations(sheets_dict, grenspunt_meetobject_codes) -> dict:
-    """Filters the nodes which have cross-boundary inflows"""
+    """Filters de nodes met buitenlandse aanvoeren"""
     return {
         sheet_name: df[df["Meetobject.code"].isin(grenspunt_meetobject_codes)] for sheet_name, df in sheets_dict.items()
     }
@@ -314,7 +322,7 @@ def process_zinfo_data(zinfo_file_path: str) -> pd.DataFrame:
 
     Returns
     -------
-        pd.DataFrame: Processed DataFrame with zinfo data .
+        pd.DataFrame: Processed DataFrame with zinfo data.
     """
     df = read_zinfo_data(zinfo_file_path)
     combined_df = filter_zinfo_data(df)
@@ -502,134 +510,157 @@ def process_measurement_data(
 
 
 # Converteer de IM-data voor buitenlandse aanvoeren
-dict_choosen_method_IM, dict_delwaq_input_IM = process_measurement_data(df_IM_metingen, locations_IM, parameters_IM)
+dict_choosen_method_IM, dict_delwaq_input_IM_v0 = process_measurement_data(df_IM_metingen, locations_IM, parameters_IM)
 
 # Converteer de Z-info data voor RWZIs
-dict_choosen_method_Zinfo, dict_delwaq_input_Zinfo = process_measurement_data(
+dict_choosen_method_Zinfo, dict_delwaq_input_Zinfo_v0 = process_measurement_data(
     df_Zinfo, locations_zinfo, parameters_Zinfo
 )
 
 # Log the parameters
-parameter_delwaq_input_IM = next(iter(dict_delwaq_input_IM.values())).columns[2:]
-parameter_delwaq_input_Zinfo = next(iter(dict_delwaq_input_Zinfo.values())).columns[2:]
+parameter_delwaq_input_IM = next(iter(dict_delwaq_input_IM_v0.values())).columns[2:]
+parameter_delwaq_input_Zinfo = next(iter(dict_delwaq_input_Zinfo_v0.values())).columns[2:]
 
 logging.info(
-    f"Delwaq input parameters uit IM-metingen (buitenlandse aanvoeren): \n {list(parameter_delwaq_input_IM[:])} \n voor {len(dict_delwaq_input_IM.keys())} locaties"
+    f"Delwaq input parameters uit IM-metingen (buitenlandse aanvoeren): \n {list(parameter_delwaq_input_IM[:])} \n voor {len(dict_delwaq_input_IM_v0.keys())} locaties"
 )
 logging.info(
-    f"Delwaq input parameters uit Z-Info (rwzis): \n {list(parameter_delwaq_input_Zinfo[:])} \n voor {len(dict_delwaq_input_Zinfo.keys())} locaties"
+    f"Delwaq input parameters uit Z-Info (rwzis): \n {list(parameter_delwaq_input_Zinfo[:])} \n voor {len(dict_delwaq_input_Zinfo_v0.keys())} locaties"
 )
 
 
-# %% Schijf de boundarywq.dat files weg
-def write_boundwq_file(
-    boundwq_file: str, dict_delwaq_input: dict[str, pd.DataFrame], parameter_delwaq_input: list[str]
-) -> None:
+# %%
+def interpolate_dict(dict_delwaq_input: dict) -> dict:
     """
-    Writes BOUNDWQ.DAT file for Delwaq simulations using the measurement data analyzed above.
+    Reindexes each DataFrame in the dictionary to daily timesteps and
 
-    Depending on the source of the data (IM or Z-info), appropriate node ID mappings are used.
+    linearly interpolates between measurements.
+    Keeps the original Begindatum and Begintijd columns.
 
     Args:
-        boundwq_file (str): Path to output BOUNDWQ.DAT file.
-        dict_delwaq_input (dict[str, pd.DataFrame]): Dictionary mapping locations to
-            DataFrames containing Delwaq-ready measurement data.
-        parameter_delwaq_input (list[str]): List of parameter codes to include in the output.
+        dict_delwaq_input: Dictionary mapping location codes to wide-format DataFrames.
 
     Returns
     -------
-        None
+        Dictionary with same keys and same column structure but daily interpolated DataFrames.
     """
-    # gebruik mapping tabellen om de juiste node_ids van Ribasim te vinden
-    use_node_id_im = dict_delwaq_input is dict_delwaq_input_IM
-    use_node_id_zinfo = dict_delwaq_input is dict_delwaq_input_Zinfo
-    locations = []
-    if use_node_id_im:
-        loc_to_node = dict(
-            zip(
-                grenspunt_meetobject_df["Meetobject.code"],
-                grenspunt_meetobject_df["node_id"],
-            )
-        )
-        loc_to_ribasim = dict(
-            zip(
-                grenspunt_meetobject_df["Meetobject.code"],
-                grenspunt_meetobject_df["ribasim_id"],
-            )
-        )
+    dict_delwaq_input_interpolated = {}
 
-    if use_node_id_zinfo:
-        # Mapping from df_rwzi_mapping_table: meta_rwzi_codeist -> node_id
-        loc_to_node_zinfo = dict(
-            zip(
-                df_rwzi_mapping_table["meta_rwzi_codeist"],
-                df_rwzi_mapping_table["node_id"],
-            )
-        )
-        # Mapping from meta_rwzi_codeist -> name
-        loc_to_name_zinfo = dict(
-            zip(
-                df_rwzi_mapping_table["meta_rwzi_codeist"],
-                df_rwzi_mapping_table["name"],
-            )
+    for loc, df in dict_delwaq_input.items():
+        df = df.copy()
+
+        # Temporarily create datetime index for interpolation
+        df["time"] = pd.to_datetime(df["Begindatum"].astype(str) + " " + df["Begintijd"].astype(str))
+        df = df.set_index("time").drop(columns=["Begindatum", "Begintijd"])
+
+        # Reindex to daily timesteps and linearly interpolate
+        daily_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq="D")
+        df = (
+            df.reindex(df.index.union(daily_index))
+            .replace(-999, np.nan)
+            .interpolate(method="time")
+            .fillna(df.replace(-999, np.nan).mean())  # fill boundaries with column mean
+            .reindex(df.index)
+            .fillna(-999)  # TODO: check if -999 is the correct nan value
         )
 
-    with open(boundwq_file, "w") as boundwq:
+        # Restore original Begindatum and Begintijd columns
+        df["Begindatum"] = df.index.date
+        df["Begintijd"] = df.index.strftime("%H:%M:%S")
+        df = df.reset_index(drop=True)[["Begindatum", "Begintijd", *df.columns[:-2]]]
 
-        def write_data(dict_delwaq_input, parameter_delwaq_input):
-            for loc in dict_delwaq_input.keys():
-                if use_node_id_im:
-                    node_id = loc_to_node.get(loc, loc)
-                    ribasim_id = loc_to_ribasim.get(loc, "NA")
-                elif use_node_id_zinfo:
-                    node_id = loc_to_node_zinfo.get(loc, loc)
-                    ribasim_id = loc_to_name_zinfo.get(loc, "NA")
-                else:
-                    node_id = loc
-                    ribasim_id = "NA"
+        dict_delwaq_input_interpolated[loc] = df
 
-                boundwq.write(f"ITEM 'FlowBound_{node_id}'; {loc} {ribasim_id}\nABSOLUTE TIME\nCONCENTRATION\n")
-
-                for param in parameter_delwaq_input:
-                    boundwq.write(f" '{param}'\n")
-
-                boundwq.write(
-                    "LINEAR DATA\t\t\t\t" + "".join(f"'{param}'".ljust(12) for param in parameter_delwaq_input) + "\n"
-                )
-                for _, row in dict_delwaq_input[loc].fillna(-999).iterrows():
-                    begindatum_formatted = str(row["Begindatum"]).replace("-", "/") + "-" + row["Begintijd"]
-                    values = "".join(
-                        f"{int(row[param]) if row[param] == -999 else round(row[param], 6):<12}"
-                        for param in parameter_delwaq_input
-                    )
-                    boundwq.write(f"'{begindatum_formatted}'    {values}\n")
-
-                boundwq.write("\n")
-                # logging.info(f"Data of {loc} written to BOUNDWQ.DAT file")
-                locations.append(loc)
-
-        write_data(dict_delwaq_input, parameter_delwaq_input)
-    logging.info(f"{len(locations)} tijdseries weggeschreven")
+    return dict_delwaq_input_interpolated
 
 
-boundwq_file_zinfo = cloud.joinpath(boundwq_path, "BOUNDWQ_rwzi.DAT")
-boundwq_file_im = cloud.joinpath(boundwq_path, "BOUNDWQ_ba.DAT")
+# Interpoleer beide datasets
+# dict_delwaq_input_IM_interpolated = interpolate_dict(dict_delwaq_input_IM_v0)
+# dict_delwaq_input_Zinfo_interpolated = interpolate_dict(dict_delwaq_input_Zinfo_v0)
 
-write_boundwq_file(boundwq_file_zinfo, dict_delwaq_input_Zinfo, parameter_delwaq_input_Zinfo)
-logging.info(f"BOUNDWQ_rwzi.DAT file saved in {boundwq_file_zinfo}")
+# %% chose for interpolated or non interpolated dataset
+if interpolate_data:
+    dict_delwaq_input_IM = interpolate_dict(dict_delwaq_input_IM_v0)
+    # TODO: do we want to extrapolate the RWZI data as well, or do we assume that when data is missing, there was no RWZI in place?
+    dict_delwaq_input_Zinfo = interpolate_dict(dict_delwaq_input_Zinfo_v0)
+else:
+    dict_delwaq_input_IM = dict_delwaq_input_IM_v0
+    dict_delwaq_input_Zinfo = dict_delwaq_input_Zinfo_v0
 
-write_boundwq_file(boundwq_file_im, dict_delwaq_input_IM, parameter_delwaq_input_IM)
-logging.info(f"BOUNDWQ_ba.DAT file saved in {boundwq_file_im}")
+# %% Sla de geinterpoleerde dataset op voor check in het model
+with pd.ExcelWriter(cloud.joinpath(boundwq_path, "delwaq_input_IM.xlsx")) as writer:
+    for name, df in dict_delwaq_input_IM.items():
+        df.to_excel(writer, sheet_name=name, index=False)
 
-if upload_results:
-    cloud.upload_file(boundwq_file_im)
-    cloud.upload_file(boundwq_file_zinfo)
+with pd.ExcelWriter(cloud.joinpath(boundwq_path, "delwaq_input_Zinfo.xlsx")) as writer:
+    for name, df in dict_delwaq_input_Zinfo.items():
+        df.to_excel(writer, sheet_name=name, index=False)
 
+# %% Convert dataset from wide to long format Buitenlanse Aanvoer
+loc_to_node = dict(
+    zip(
+        grenspunt_meetobject_df["Meetobject.code"],
+        grenspunt_meetobject_df["node_id"],
+    )
+)
+
+# Combine all dataframes, adding 'meta_Name' column for waterboard code (to quickly check them later)
+combined_df = pd.concat([df.assign(meta_Name=name) for name, df in dict_delwaq_input_IM.items()], ignore_index=True)
+
+# Combine Begindatum and Begintijd into a single datetime column
+combined_df["time"] = pd.to_datetime(combined_df["Begindatum"].astype(str) + " " + combined_df["Begintijd"].astype(str))
+
+combined_df = combined_df.drop(columns=["Begindatum", "Begintijd"])
+
+# Wide to long format
+df_long_delwaq_input_IM = combined_df.melt(
+    id_vars=["time", "meta_Name"],
+    value_vars=parameter_delwaq_input_IM,
+    var_name="substance",
+    value_name="concentration",
+)
+
+# Add node_id column by mapping meta_Name (waterboard code) to node_id
+df_long_delwaq_input_IM["node_id"] = df_long_delwaq_input_IM["meta_Name"].map(loc_to_node).astype("Int32")
+
+# Set column order and types
+df_long_delwaq_input_IM = df_long_delwaq_input_IM[["node_id", "time", "substance", "concentration"]].astype(
+    {"substance": "string", "concentration": "Float64"}
+)
+
+# %% Long Dataframe RWZI data
+loc_to_node_zinfo = dict(
+    zip(
+        df_rwzi_mapping_table["meta_rwzi_codeist"],
+        df_rwzi_mapping_table["node_id"],
+    )
+)
+
+# Combine all dataframes, adding 'meta_Name' column for waterboard code
+combined_df = pd.concat([df.assign(meta_Name=name) for name, df in dict_delwaq_input_Zinfo.items()], ignore_index=True)
+
+# Combine Begindatum and Begintijd into a single datetime column
+combined_df["time"] = pd.to_datetime(combined_df["Begindatum"].astype(str) + " " + combined_df["Begintijd"].astype(str))
+combined_df = combined_df.drop(columns=["Begindatum", "Begintijd"])
+
+# Wide to long format
+df_long_delwaq_input_Zinfo = combined_df.melt(
+    id_vars=["time", "meta_Name"],
+    value_vars=parameter_delwaq_input_Zinfo,
+    var_name="substance",
+    value_name="concentration",
+)
+
+# Add node_id column by mapping meta_Name (waterboard code) to node_id
+df_long_delwaq_input_Zinfo["node_id"] = df_long_delwaq_input_Zinfo["meta_Name"].map(loc_to_node_zinfo).astype("Int32")
+
+# Set column order and types
+df_long_delwaq_input_Zinfo = df_long_delwaq_input_Zinfo[["node_id", "time", "substance", "concentration"]].astype(
+    {"substance": "string", "concentration": "Float64"}
+)
 
 # %% Keuze voor parameter methode IM metingen
-"""
-The rest of the code consists of analyzing how often certain methods are chosen to determine a parameter.
-"""
+# The rest of the code consists of analyzing how often certain methods are chosen to determine a parameter.
 
 
 if make_plots:
@@ -952,3 +983,5 @@ if make_plots:
     if upload_results:
         cloud.upload_file(file_path)
     plt.show()
+
+# %%
