@@ -39,7 +39,7 @@ Via gemaal `Katsberg` wordt water((max 5.4m3/s)) vanuit de `Noordervaart` aangev
 **Aanvoer** 
 - Via de `Noordervaart` kan water ingelaten worden via `gemaal Beringe`
 
-### Eendlossing/
+### Eendlossing
 
 **Afvoer:**
 - Direct naar de `Zuid-Willemsvaart`

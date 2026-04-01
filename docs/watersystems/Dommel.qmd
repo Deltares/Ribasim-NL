@@ -35,11 +35,11 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 | Inlaat kanaal Bocholt naar Heerentals |            |      1912 | inlaat    |             0.5  |               0 |
 | Stuw Blaarthem                        | DL62-st1   |       210 | uitlaat   |             0    |              20 |
 | Stuw Verdeelwerk                      | DL1-st5    |       293 | uitlaat   |             0    |             200 |
-| Vughterstuw                           | DO1-st3    |       121 | uitlaat   |             0    |             110 |
+| Vughterstuw                           | DO1-st3    |       121 | uitlaat   |             0    |             200 |
 
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
-- [Documentatie Distributiemodel (Deel C, hoofdstuk 26)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
-- [Sweco - systeemschets](bronnen/De Dommel/sweco_systeemschets.png)
+- [Documentatie Distributiemodel (Deel E, pagina 39-1)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
+- [Waterakkoord: 2022-06-27_waterakkoord]
 - [De Dommel - beschrijving wateraanvoer en doorspoeling](bronnen/De Dommel/wateraanvoer_en_doorspoeling_input_voor_ribasim_lhm_model_De Dommel.pdf)

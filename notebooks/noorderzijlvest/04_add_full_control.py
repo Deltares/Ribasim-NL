@@ -101,7 +101,8 @@ for node_type in CONTROL_NODE_TYPES:
 #     model=model,
 #     polygon=polygon,
 #     control_node_types=CONTROL_NODE_TYPES,
-#     ignore_intersecting_links=ignore_intersecting_links,
+
+
 # )
 # ```
 # 2. bepalen functie van alle knopen (drain, supply, flow_control and flushing)

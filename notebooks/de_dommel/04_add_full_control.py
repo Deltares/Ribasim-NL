@@ -52,9 +52,9 @@ for node_id in dict.fromkeys(outlet_ids):
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # %%
-# Toevoegen Soniuswijk
+# Toevoegen Son en Breugel
 
-polygon = aanvoergebieden_df.loc[["Soniuswijk"], "geometry"].union_all()
+polygon = aanvoergebieden_df.loc[["Son en Breugel"], "geometry"].union_all()
 
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
@@ -225,7 +225,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_
 flow_updates = {
     417: 0.6,  # Olen
     405: 0.16,  # Sonse Heide
-    1912: 0.5,  # Bocholt naar Herentals, max aanvoer??, niet in WATAK
+    1912: 0.25,  # Bocholt naar Herentals, max aanvoer??, niet in WATAK
 }
 
 mask = model.outlet.static.df.node_id.isin(flow_updates.keys()) & (model.outlet.static.df["control_state"] == "aanvoer")
@@ -234,7 +234,7 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = model.outlet.static.df.loc[m
 
 # flow rates WATAK Olen en Sonse Heide
 flow_updates = {
-    121: 110,  # Vughterstuw
+    121: 200,  # Vughterstuw
     210: 20,  # Blaatthem
     293: 200,  # Verdeelwerk
 }
