@@ -137,14 +137,14 @@ def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = T
         if col not in model.pump.static.df.columns:
             model.pump.static.df[col] = 0
     if "meta_aanvoer" not in model.outlet.static.df.columns:
-        model.outlet.static.df["meta_aanvoer"] = 0
+        model.outlet.static.df["meta_aanvoer"] = False
     if supply and ("meta_aanvoer" not in model.basin.area.df.columns):
         model.basin.area.df["meta_aanvoer"] = False
 
     # update values
     if supply:
         model.pump.static.df.loc[model.pump.static.df.node_id.isin(nodes_df.index.values), "meta_func_aanvoer"] = 1
-        model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(nodes_df.index.values), "meta_aanvoer"] = 1
+        model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(nodes_df.index.values), "meta_aanvoer"] = True
 
         ds_node_ids = nodes_df.to_node_id.values
         model.basin.area.df.loc[model.basin.area.df.node_id.isin(ds_node_ids), "meta_aanvoer"] = True

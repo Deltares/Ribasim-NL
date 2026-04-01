@@ -35,13 +35,13 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 # %%
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, ["meta_categorie"]] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 704, "min_upstream_level"] = 10.5
-model.pump.static.df.loc[model.pump.static.df.node_id == 672, "max_flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "max_flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 947, "max_flow_rate"] = 2
+model.pump.static.df.loc[model.pump.static.df.node_id == 672, "max_flow_rate"] = 1.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "max_flow_rate"] = 1.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 947, "max_flow_rate"] = 2.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "max_flow_rate"] = 0.5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 532, "max_flow_rate"] = 2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1060, "max_flow_rate"] = 2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 44, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 532, "max_flow_rate"] = 2.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1060, "max_flow_rate"] = 2.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 44, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "max_flow_rate"] = 0.5
 
 # %%

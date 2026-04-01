@@ -113,7 +113,7 @@ levels = (
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 
-static_data.outlet.loc[static_data.outlet.node_id == 119, "min_upstream_level"] = 10  # here profiles are messed-up
+static_data.outlet.loc[static_data.outlet.node_id == 119, "min_upstream_level"] = 10.0  # here profiles are messed-up
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 
@@ -151,17 +151,15 @@ ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 
-# Combineer Basin, Outlet én Pump data
-ds_levels = pd.concat([static_data.basin, static_data.outlet, static_data.pump], ignore_index=True).set_index(
-    "node_id"
-)["min_upstream_level"]
+ds_levels = (
+    pd.concat([static_data.basin, static_data.outlet, static_data.pump], ignore_index=True)
+    .set_index("node_id")["min_upstream_level"]
+    .dropna()
+    .groupby(level=0)
+    .min()
+)
 
-ds_levels.dropna(inplace=True)
-
-ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
-ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
-levels = ds_node_ids.apply(lambda x: ds_levels[x])
-streefpeil = levels.groupby(levels.index).min()
+streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
