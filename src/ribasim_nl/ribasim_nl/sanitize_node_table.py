@@ -35,8 +35,10 @@ def sanitize_node_table(
             & ((copy_columns is None) | ("name" not in copy_columns.values()))
         ):
             codes = model.node.df.loc[mask, "meta_code_waterbeheerder"]
+            # deduplicate names index to avoid InvalidIndexError in pandas 3
+            unique_names = names[~names.index.duplicated(keep="first")]
             # look up each code in the names Series, drop codes with no match or NaN values
-            resolved = codes.map(names).dropna()
+            resolved = codes.map(unique_names).dropna()
             # filter out non-scalar results (duplicate codes returning a Series)
             resolved = resolved[resolved.apply(pd.api.types.is_scalar)].astype(str)
             # fill unmatched codes with ""
