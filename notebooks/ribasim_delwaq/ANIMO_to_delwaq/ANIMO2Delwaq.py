@@ -11,6 +11,8 @@ Notes
 - Output consists of a 1.) *.inc file per Delwaq segment / Ribasim basin node containing the loads N and P for that specific segment / ribasim basin; 2.) another include file called include_listing.inc which contains a reference to all other include files. In your Delwaq input (*.inp file) it is sufficient to refer to the include_listing.inc which then refers to the files with loads per segment/basin. The user only needs to ensure that files are stored in the right location.
 """
 
+# TODO: add the grid to basin conversion (Gijs)
+
 # %% Import necessary libraries
 
 import os
