@@ -15,6 +15,15 @@ from ribasim_nl.profiles import hydrotopes as ht
 LOG = logging.getLogger(__name__)
 
 
+def target_level_polygons(
+    fn: pathlib.Path, *, layer_polygons: str = "peilgebied", layer_levels: str = "streefpeil"
+) -> gpd.GeoDataFrame:
+    polygons = gpd.read_file(fn, layer=layer_polygons)
+    levels = gpd.read_file(fn, layer=layer_levels)
+    out = polygons.assign(meta_streefpeil=polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"]))
+    return out
+
+
 def main(
     *data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = None, **kwargs
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -78,6 +87,8 @@ def main(
     filter_basins: bool = kwargs.get("filter_basins", True)
     # > hydrotopes
     fn_hydrotopes: pathlib.Path | str | None = kwargs.get("fn_hydrotopes")
+    # > target levels
+    target_levels: gpd.GeoDataFrame = kwargs.get("target_levels", data[0])
     # > generation of depth profile lines
     create_depth_profile_lines: bool = kwargs.get("create_depth_profile_lines", False)
     kw_make_depth_profile: dict[str, str] = kwargs.get("kw_make_depth_profile", {})
@@ -241,6 +252,7 @@ def main(
 
     # depth from measurements
     if cross_sections is not None:
+        cross_sections = depth.normalise_measured_cross_sections(cross_sections, target_levels)
         hydro_objects = depth.depth_from_measurements(hydro_objects, cross_sections)
     if wd_intermediate_output is not None:
         hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")
