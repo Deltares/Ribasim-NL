@@ -2,7 +2,7 @@ import numbers
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from bokeh.models import Slider
+from bokeh.models import Slider  # type: ignore[attr-defined]
 
 from bokeh_helpers.widgets.shared_functions import get_formatter, round_seconds
 
@@ -14,7 +14,7 @@ class DatetimeSlider:
     value: datetime | int
     step: datetime | int
     format: str = "%Y-%m-%d %H:%M:%S"
-    kwargs: dict = field(default_factory=dict)
+    kwargs: dict[str, object] = field(default_factory=dict)
     widget: Slider | None = None
 
     def __post_init__(self):

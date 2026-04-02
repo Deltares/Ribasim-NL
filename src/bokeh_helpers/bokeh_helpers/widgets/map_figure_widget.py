@@ -86,7 +86,7 @@ class MapFigure:
     bounds: tuple[float, float, float, float]
     locations_source: ColumnDataSource | None = None
     lines_source: ColumnDataSource | None = None
-    tile_sources: list = field(default_factory=list)
+    tile_sources: list[object] = field(default_factory=list)
     background: Literal["luchtfoto", "topografie"] = "topografie"
     figure_settings: dict[str, str] = field(default_factory=lambda: FIGURE_SETTINGS)
     map_figure_widget: figure | None = None
