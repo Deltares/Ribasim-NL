@@ -32,3 +32,5 @@ jobs:
         run: uv run mypy --ignore-missing-imports src/hydamo
       - name: Run mypy on ribasim_nl
         run: uv run mypy --ignore-missing-imports src/ribasim_nl
+      - name: Run mypy on peilbeheerst_model
+        run: uv run mypy --ignore-missing-imports src/peilbeheerst_model
