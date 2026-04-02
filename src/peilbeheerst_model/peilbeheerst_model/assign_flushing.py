@@ -7,7 +7,7 @@ import pandas as pd
 import shapely
 from networkx import DiGraph, simple_cycles
 from ribasim import Node
-from ribasim.geometry.link import NodeData
+from ribasim.input_base import NodeData
 from ribasim.nodes import flow_demand, level_demand
 from shapely.geometry import MultiPolygon, Point, Polygon
 
