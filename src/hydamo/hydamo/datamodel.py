@@ -102,7 +102,7 @@ def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
-class ExtendedGeoDataFrame(gpd.GeoDataFrame):
+class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore[misc]
     """A GeoPandas GeoDataFrame with extended properties and methods."""
 
     _metadata: ClassVar = [
@@ -286,7 +286,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         """
         geometry.find_nearest_branch(branches=branches, geometries=self, method=snap_method, maxdist=maxdist)
 
-    def copy(self, deep: bool = True):  # type: ignore[misc]
+    def copy(self, deep: bool = True):
         """
         Make a copy of this ExtendedGeoDataFrame object's indices and data.
 
