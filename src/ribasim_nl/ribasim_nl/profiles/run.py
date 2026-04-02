@@ -18,6 +18,19 @@ LOG = logging.getLogger(__name__)
 def target_level_polygons(
     fn: pathlib.Path, *, layer_polygons: str = "peilgebied", layer_levels: str = "streefpeil"
 ) -> gpd.GeoDataFrame:
+    """Get polygons with target levels from source-data.
+
+    :param fn: filename
+    :param layer_polygons: layer-name with polygon data
+    :param layer_levels: layer-name with target level data
+
+    :type fn: str
+    :type layer_polygons: str, optional
+    :type layer_levels: str, optional
+
+    :return: polygons with target levels
+    :rtype: geopandas.GeoDataFrame
+    """
     polygons = gpd.read_file(fn, layer=layer_polygons)
     levels = gpd.read_file(fn, layer=layer_levels)
     out = polygons.assign(meta_streefpeil=polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"]))
