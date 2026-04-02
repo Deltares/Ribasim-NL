@@ -67,6 +67,7 @@ def run(
     )
 
     with proc:
+        assert proc.stdout is not None
         was_simulating = False
         computation_time = None
         term_width = shutil.get_terminal_size((80, 20)).columns

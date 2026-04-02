@@ -25,12 +25,12 @@ def _parse_to_local(int_val: int, prefix_code: int):
     return int(str_val[len(str(prefix_code)) :])
 
 
-def ParseList(val: int, prefix_code: int | None) -> list[int] | int:
+def ParseList(val: str, prefix_code: int | None) -> list[int] | int:
     """The function `ParseList` checks if a given string represents a list and returns the list or the original value accordingly.
 
     Parameters
     ----------
-    val: int
+    val: str
         The `ParseList` function takes a single parameter `val`, which is expected to be a string. The
     function checks if the string starts and ends with square brackets `[ ]`, indicating a list-like
     structure. If the string meets these conditions, it attempts to parse the string using
@@ -158,7 +158,7 @@ def get_unique(items):
     return seen
 
 
-def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
+def ApplySpecificOperation(data: pd.DataFrame, link: list[int] | int, spec_op: str):
     """
     The function `ApplySpecificOperation`  performs specific operations on the input data.
 
@@ -192,7 +192,7 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
         case "optellen":
             # Tel de links bij elkaar op wanneer de specifieke bewerking hierom vraagt
             subset_links = data[data["link_id"].isin(link)]
-            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum()
+            subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()  # type: ignore[assignment]
 
         case "negatief_maken":
             # Maak de meetreeks negatief
@@ -202,7 +202,7 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
         case "optellen_en_negatief_maken":
             # Tel op en maak de reeks negatief
             subset_links = data[data["link_id"].isin(link)]
-            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()
+            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()  # type: ignore[assignment]
             subset_output["flow_rate"] = subset_output["flow_rate"] * -1
 
         case _ if pd.isna(spec_op):
@@ -306,8 +306,8 @@ def CompareOutputMeasurements(
 
     measurements = LoadMeasurements(meas_folder)
 
-    results_measurements = {}
-    results_measurements_decade = {}
+    results_measurements: dict[str, dict[str, list[object]]] = {}
+    results_measurements_decade: dict[str, dict[str, list[object]]] = {}
     # Get the unique link ids
     unique_links = get_unique(koppeltabel["link_id_parsed"])
 
@@ -539,7 +539,7 @@ def ConvertToDecade(combined_df_results):
     return result
 
 
-def LoadMeasurements(meas_folder) -> dict:
+def LoadMeasurements(meas_folder) -> dict[str, pd.DataFrame]:
     """The function `LoadMeasurements` reads measurement files from a specified folder, parses date columns, and returns a dictionary of measurements.
 
     Parameters

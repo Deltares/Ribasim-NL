@@ -22,7 +22,7 @@ def create_static_df(
     Args:
         model (Model): Ribasim model
         node_type (Literal["Pump", "Outlet"]): Either "Pump" or "Outlet".
-        static_data_xlsx (Path): Excel spreadsheet with node_types
+        static_data_xlsx (Path | None): Excel spreadsheet with node_types. Defaults to None.
 
     Returns
     -------
@@ -88,7 +88,7 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
             # fill nan with flow_rate_mm_day if provided
 
             if not pd.isna(row.flow_rate_mm_per_day):
-                unit_conversion = row.flow_rate_mm_per_day / 1000 / 86400
+                unit_conversion = float(row.flow_rate_mm_per_day) / 1000 / 86400  # type: ignore[arg-type]
                 if row.function == "outlet":
                     flow_rate = np.array(
                         [
@@ -119,8 +119,8 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
         sub_mask = static_df[mask]["min_upstream_level"].isna()
         if sub_mask.any():
             # calculate upstream levels
-            upstream_level_offset = row.upstream_level_offset
-            upstream_levels = upstream_target_levels(model=model, node_ids=static_df[mask][sub_mask].node_id)
+            upstream_level_offset = float(row.upstream_level_offset)  # type: ignore[arg-type]
+            upstream_levels = upstream_target_levels(model=model, node_ids=static_df[mask][sub_mask].node_id.tolist())
 
             # assign upstream levels to static_df
             static_df.set_index("node_id", inplace=True)
@@ -131,8 +131,10 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
         sub_mask = static_df[mask]["max_downstream_level"].isna()
         if sub_mask.any():
             # calculate downstream_levels
-            downstream_level_offset = row.downstream_level_offset
-            downstream_levels = downstream_target_levels(model=model, node_ids=static_df[mask][sub_mask].node_id)
+            downstream_level_offset = float(row.downstream_level_offset)  # type: ignore[arg-type]
+            downstream_levels = downstream_target_levels(
+                model=model, node_ids=static_df[mask][sub_mask].node_id.tolist()
+            )
 
             # assign upstream levels to static_df
             static_df.set_index("node_id", inplace=True)
@@ -158,6 +160,7 @@ def update_pump_outlet_static(
         code_column=code_column,
     )
     # fill with defaults
+    assert static_data_xlsx is not None
     static_df = defaults_to_static_df(model=model, static_df=static_df, static_data_xlsx=static_data_xlsx)
     # sanitize df and update model
     static_df.drop(columns=["meta_code_waterbeheerder"], inplace=True)

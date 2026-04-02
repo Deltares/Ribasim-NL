@@ -13,8 +13,8 @@ from ribasim import Model
 from tqdm import tqdm
 
 
-def _crop_to_gdf(da: xr.DataArray, gdf: gpd.GeoDataFrame):
-    """Crop a DataArray to a gdf.extent (total_bounds)
+def _crop_to_gdf(da: "xr.DataArray | xr.Dataset", gdf: gpd.GeoDataFrame):
+    """Crop a DataArray or Dataset to a gdf.extent (total_bounds)
 
     Why? As LHM covers NL and we often compute budgets for 1 authority only.
 
@@ -245,10 +245,11 @@ class AssignOfflineBudgets:
         )  # assume surface_runoff can't be <0 in RIBASIM. And negative budgets in MODFLOW-MetaSWAP are positive terms in Ribasim
 
         # update basin drainage and infiltration
+        assert model.basin.time.df is not None
         idx = pd.MultiIndex.from_frame(model.basin.time.df[["node_id", "time"]])
-        model.basin.time.df["drainage"] = idx.map(drainage)
-        model.basin.time.df["infiltration"] = idx.map(infiltration)
-        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)
+        model.basin.time.df["drainage"] = idx.map(drainage)  # type: ignore[arg-type]
+        model.basin.time.df["infiltration"] = idx.map(infiltration)  # type: ignore[arg-type]
+        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)  # type: ignore[arg-type]
 
         return model, budgets_df
 
@@ -455,6 +456,8 @@ class AssignOfflineBudgets:
             primary and secondary basins
         """
         # optionally get basin_metacol from other basin_subtype
+        assert ribasim_model.basin.node is not None
+        assert ribasim_model.basin.node.df is not None
         if basin_metacol in ribasim_model.basin.node.df.columns:
             nodes = ribasim_model.basin.node.df[[basin_metacol, "geometry"]].copy().reset_index(drop=False)
         else:
@@ -500,7 +503,7 @@ class AssignOfflineBudgets:
 
         return basin_definition_primair, basin_definition_secondair
 
-    def _validate_meta_basin_column(self, df: pd.DataFrame, basin_metacol: str, expected_values: set):
+    def _validate_meta_basin_column(self, df: pd.DataFrame, basin_metacol: str, expected_values: set[str]):
         """Validate if all values as expected are present in basin_metacol"""
         exception = ""
         if df[basin_metacol].isna().any():

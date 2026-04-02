@@ -38,6 +38,8 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
         model.link.df = link_df
 
         # merge tables
+        assert model.node.df is not None
+        assert merge_model.node.df is not None
         for node_type in set(model.node.df.node_type.unique()).union(merge_model.node.df.node_type.unique()):
             model_node = model.get_component(node_type)
             merge_model_node = merge_model.get_component(node_type)
