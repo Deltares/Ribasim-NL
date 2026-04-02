@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -106,7 +107,7 @@ class Flushing:
         model.reset_graph
 
         # Find matching basins for each flushing geometry
-        df_demand = {
+        df_demand: dict[str, list[Any]] = {
             "nid": [],
             "demand_type": [],
             "demand": [],
@@ -225,9 +226,9 @@ class Flushing:
                 if self.create_nodes and target_type == "Pump":
                     subpart.static.df.loc[subpart.static.df.node_id == target_nid, "min_upstream_level"] = pd.NA
 
-        df_demand = pd.DataFrame(df_demand)
+        df_demand_df = pd.DataFrame(df_demand)
 
-        return model, df_demand
+        return model, df_demand_df
 
     def add_flushing_demand(
         self,
@@ -408,7 +409,7 @@ class Flushing:
 
                 node_lookup[nid] = (nid_type, bool_afvoer)
 
-        dfd = {
+        dfd: dict[str, list[Any]] = {
             "basin": [],
             "path_id": [],
             "downstream_index": [],
@@ -434,9 +435,9 @@ class Flushing:
                 dfd["node_type"].append(nid_type)
                 dfd["afvoer"].append(bool_afvoer)
                 is_added[(basin_nid, nid)] = True
-        dfd = pd.DataFrame(dfd)
+        dfd_df = pd.DataFrame(dfd)
 
-        return dfd
+        return dfd_df
 
     def _all_downstream_paths(
         self,
@@ -464,7 +465,7 @@ class Flushing:
             List of paths, where each path is a list of node IDs
         """
         # Initialize the return variable
-        end_paths = []
+        end_paths: list[list[int]] = []
 
         # Precompute nodes that intersect with limit_geom
         if limit_geom is not None:
@@ -525,7 +526,7 @@ class Flushing:
         df[self.flushing_col] = df[self.flushing_col].round().astype(int)
 
         # First step: dissolve by flushing_col and id if these are equal
-        df = df.dissolve(by=[self.flushing_id, self.flushing_col])
+        df = df.dissolve(by=[self.flushing_id, self.flushing_col])  # type: ignore[operator]
         df = df.reset_index()
 
         # Second step: iteratively merge overlapping geometries with the
@@ -533,12 +534,13 @@ class Flushing:
         new_rows = []
         for _, group in df.groupby(self.flushing_col):
             group["geometry"] = group.buffer(0.1)
-            visited = []
+            visited: list[Any] = []
             for cur_idx, row in group.iterrows():
                 if cur_idx in visited:
                     continue
                 subgroup = group[~group.index.isin(visited)].copy()
-                idxs, midxs = [], [cur_idx]
+                idxs: list[Any] = []
+                midxs: list[Any] = [cur_idx]
                 while len(midxs) > len(idxs):
                     idxs = midxs
                     midxs = subgroup.sindex.query(subgroup.loc[idxs].union_all(), predicate="intersects")

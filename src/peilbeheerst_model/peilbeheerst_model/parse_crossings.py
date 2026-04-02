@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import pathlib
+from typing import Any
 
 import fiona
 import geopandas as gpd
@@ -151,20 +152,20 @@ class ParseCrossings:
                 raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
 
         # KRW
-        krw_path = os.path.join(base_path, krw_path)  # add the base path
+        krw_path = os.path.join(base_path, str(krw_path))  # add the base path
         self.krw_path = krw_path
         self.krw_column_id = krw_column_id
         self.krw_column_name = krw_column_name
         self.krw_min_overlap = krw_min_overlap
 
         # Output path
-        output_path = os.path.join(base_path, output_path)  # add the base path
+        output_path = os.path.join(base_path, str(output_path))  # add the base path
         self.output_path = output_path
 
         # logger settings
         logger_name = f"{__name__.split('.')[0]}_{pathlib.Path(gpkg_path).stem}"
         self.log = logging.getLogger(logger_name)
-        handlers = [logging.NullHandler()]
+        handlers: list[logging.Handler] = [logging.NullHandler()]
         if show_log:
             handlers.append(logging.StreamHandler())
         if logfile is not None:
@@ -232,7 +233,7 @@ class ParseCrossings:
         df_endpoints = df_endpoints.explode(index_parts=True)
 
         # Find lines which end exactly on a border.
-        extend_idx = {}
+        extend_idx: dict[tuple[float, float], tuple[list[Any], Any]] = {}
         for row_endpoint in tqdm.tqdm(
             df_endpoints.itertuples(),
             total=len(df_endpoints),
@@ -468,7 +469,7 @@ class ParseCrossings:
             if not self.df_gpkg[lyr].globalid.is_unique:
                 raise ValueError(f"The globalid of '{lyr}' contains duplicates")
 
-        dfc = {
+        dfc: dict[str, list[object]] = {
             layer: [],
             "crossing_type": [],
             "peilgebieden": [],
@@ -488,7 +489,7 @@ class ParseCrossings:
         df_linesingle, df_endpoints = self._extend_linestrings(df_linesingle, df_peil_boundary)
 
         # Find crossings of the lines with the peilgebieden.
-        crossings = {}
+        crossings: dict[tuple[str | None, str | None, float, float], Any] = {}
         for row_line in tqdm.tqdm(
             df_linesingle.itertuples(),
             total=len(df_linesingle),
@@ -599,9 +600,9 @@ class ParseCrossings:
     def write_crossings(
         self,
         df_hydro: gpd.GeoDataFrame,
-        filterlayer: str | None,
-        df_filter: gpd.GeoDataFrame | None,
-        df_hydro_filter: gpd.GeoDataFrame | None,
+        filterlayer: str | None = None,
+        df_filter: gpd.GeoDataFrame | None = None,
+        df_hydro_filter: gpd.GeoDataFrame | None = None,
     ) -> None:
         output_path = pathlib.Path(self.output_path)
         if not output_path.parent.exists():
@@ -787,7 +788,7 @@ class ParseCrossings:
         df_endpoints: gpd.GeoDataFrame,
         df_linesingle: gpd.GeoDataFrame,
         df_peilgebied: gpd.GeoDataFrame,
-    ) -> tuple[LineString, str]:
+    ) -> tuple[LineString, str] | tuple[None, None]:
         """_summary_
 
         Parameters
@@ -894,12 +895,12 @@ class ParseCrossings:
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
     def _add_potential_crossing(
         self,
-        crossings: dict,
+        crossings: dict[tuple[str | None, str | None, float, float], Any],
         df_endpoints: gpd.GeoDataFrame,
         df_linesingle: gpd.GeoDataFrame,
         crossing_points: gpd.GeoDataFrame,
         df_peilgebied: gpd.GeoDataFrame,
-    ) -> dict[tuple[str | None, str | None, float, float], Point]:
+    ) -> dict[tuple[str | None, str | None, float, float], Any]:
         """_summary_
 
         Parameters
@@ -996,7 +997,7 @@ class ParseCrossings:
         df_endpoints: gpd.GeoDataFrame,
         df_peilgebieden: gpd.GeoDataFrame,
         reduce: bool = True,
-    ) -> tuple[gpd.GeoDataFrame, dict]:
+    ) -> tuple[gpd.GeoDataFrame, dict[int, Any]]:
         """_summary_
 
         Parameters
@@ -1656,7 +1657,7 @@ class ParseCrossings:
         df_sub_structures = df_structures.copy()
         df_struct = df_structures.set_index("globalid")
         while len(df_sub_structures) > 0:
-            orphaned_structures = []
+            orphaned_structures: list[tuple[Any, Any]] = []
             for structure in tqdm.tqdm(
                 df_sub_structures.itertuples(),
                 total=len(df_sub_structures),
@@ -1688,7 +1689,7 @@ class ParseCrossings:
         df_endpoints: gpd.GeoDataFrame,
         n_recurse=1,
         filter_type: str | None = None,
-    ) -> tuple[npt.NDArray, npt.NDArray]:
+    ) -> tuple["npt.NDArray[np.intp]", "npt.NDArray[np.intp]"]:
         """_summary_
 
         Parameters
@@ -1753,7 +1754,7 @@ class ParseCrossings:
         return idx, idx_conn
 
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
-    def _find_line_ends(self, geom: MultiLineString | LineString) -> list:
+    def _find_line_ends(self, geom: MultiLineString | LineString) -> list[Point]:
         """_summary_
 
         Parameters
@@ -1796,7 +1797,7 @@ class ParseCrossings:
     def _assign_structure(
         self,
         dfs: gpd.GeoDataFrame,
-        orphaned_structures: list,
+        orphaned_structures: list[tuple[Any, Any]],
         df_filter: gpd.GeoDataFrame,
         df_linesingle: gpd.GeoDataFrame,
         df_endpoints: gpd.GeoDataFrame,
@@ -1805,7 +1806,7 @@ class ParseCrossings:
         structure_id: str,
         structurelayer: str,
         with_ends: bool,
-    ) -> tuple[gpd.GeoDataFrame, list]:
+    ) -> tuple[gpd.GeoDataFrame, list[tuple[Any, Any]]]:
         """_summary_
 
         Parameters
@@ -1934,7 +1935,7 @@ class ParseCrossings:
         df_filter = dfs[dfs[filter_col]].copy()
 
         # Find previously assigned structures that are now unassigned.
-        orphaned_structures = []
+        orphaned_structures: list[tuple[Any, Any]] = []
         for structure_id, group in dfs.groupby(structurelayer, sort=False):
             if not group[filter_col].any():
                 for sid in structure_id.split(self.list_sep):
@@ -2144,7 +2145,7 @@ class ParseCrossings:
                 dfs.loc[group.index, new_use_col] = False
                 lbl_choice = group.distance(peilgebieden.geometry.at[pto]).idxmin()
                 if "stuw" in dfs_filter.columns:
-                    struct_str = self._make_structure_string(dfs.stuw.loc[group.index])
+                    struct_str: str | None = self._make_structure_string(dfs.stuw.loc[group.index])
                     if struct_str == "":
                         struct_str = None
                     dfs.at[lbl_choice, "stuw"] = struct_str
@@ -2259,7 +2260,7 @@ class ParseCrossings:
                     dfs.loc[group.index, new_use_col] = False
                     lbl_choice = group.index[0]
                     if "stuw" in dfs_filter.columns:
-                        struct_str = self._make_structure_string(dfs.stuw.loc[group.index])
+                        struct_str: str | None = self._make_structure_string(dfs.stuw.loc[group.index])
                         if struct_str == "":
                             struct_str = None
                         dfs.at[lbl_choice, "stuw"] = struct_str

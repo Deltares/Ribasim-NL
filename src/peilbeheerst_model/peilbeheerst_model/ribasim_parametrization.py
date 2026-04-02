@@ -10,6 +10,7 @@ import sys
 import typing
 import warnings
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -156,7 +157,13 @@ def convert_mm_day_to_m_sec(mm_per_day: float) -> float:
     return meters_per_second
 
 
-def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forcing_dict: dict, ribasim_model: object):
+def set_static_forcing(
+    timesteps: int,
+    timestep_size: str,
+    start_time: str | datetime.datetime,
+    forcing_dict: dict[str, Any],
+    ribasim_model: Model,
+):
     """Generate static forcing data for a Ribasim-NL model
 
     Generate static forcing data for a Ribasim-NL model simulation, assigning
@@ -206,7 +213,9 @@ def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forc
     ribasim_model.endtime = time_range[-1].to_pydatetime()
 
 
-def set_dynamic_forcing(ribasim_model: Model, time: typing.Sequence[datetime.datetime], forcing: dict) -> None:
+def set_dynamic_forcing(
+    ribasim_model: Model, time: typing.Sequence[datetime.datetime], forcing: dict[str, Any]
+) -> None:
     """Set dynamic forcing conditions.
 
     :param ribasim_model: ribasim model
@@ -227,7 +236,9 @@ def set_dynamic_forcing(ribasim_model: Model, time: typing.Sequence[datetime.dat
 
     # set forcing conditions
     basins_ids = ribasim_model.basin.node.df[["meta_node_id"]].to_numpy(dtype=int)
-    basin_time = pd.DataFrame({"node_id": np.repeat(basins_ids, len(time)), "time": np.tile(time, len(basins_ids))})
+    basin_time = pd.DataFrame(
+        {"node_id": np.repeat(basins_ids, len(time)), "time": np.tile(list(time), len(basins_ids))}
+    )
     for k, v in forcing.items():
         if isinstance(v, float | int):
             basin_time[k] = v
@@ -300,8 +311,8 @@ def set_dynamic_level_boundaries(
     lb_time = pd.DataFrame(
         {
             "node_id": np.repeat(lb_ids, len(time)),
-            "time": np.tile(time, len(lb_ids)),
-            "level": np.tile(levels, len(lb_ids)),
+            "time": np.tile(list(time), len(lb_ids)),
+            "level": np.tile(list(levels), len(lb_ids)),
         }
     )
 
@@ -338,8 +349,8 @@ def set_hypothetical_dynamic_level_boundaries(
         end_summer = datetime.datetime(start_time.year, 10, 1)
         end_summer_1 = end_summer + datetime.timedelta(days=1)
 
-        time = start_time, end_winter, end_winter_1, end_summer, end_summer_1, end_time
-        level = low, low, high, high, low, low
+        time: tuple[datetime.datetime, ...] = start_time, end_winter, end_winter_1, end_summer, end_summer_1, end_time
+        level: tuple[float, ...] = low, low, high, high, low, low
 
     else:
         halftime = start_time + (end_time - start_time) // 3
@@ -1307,7 +1318,7 @@ def identify_node_meta_categorie(ribasim_model: Model, **kwargs):
 def set_aanvoer_flags(
     ribasim_model: str | Model,
     aanvoer_regions: str | gpd.GeoDataFrame,
-    processor: RibasimFeedbackProcessor = None,
+    processor: RibasimFeedbackProcessor | None = None,
     **kwargs,
 ) -> Model:
     """
@@ -1343,19 +1354,22 @@ def set_aanvoer_flags(
 
     # optional arguments
     aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
-    basin_aanvoer_on: tuple = kwargs.get("basin_aanvoer_on", ())
-    basin_aanvoer_off: tuple = kwargs.get("basin_aanvoer_off", ())
-    outlet_aanvoer_on: tuple = kwargs.get("outlet_aanvoer_on", ())
-    outlet_aanvoer_off: tuple = kwargs.get("outlet_aanvoer_off", ())
+    basin_aanvoer_on: tuple[int, ...] | set[object] = kwargs.get("basin_aanvoer_on", ())
+    basin_aanvoer_off: tuple[int, ...] | set[object] = kwargs.get("basin_aanvoer_off", ())
+    outlet_aanvoer_on: tuple[int, ...] | set[object] = kwargs.get("outlet_aanvoer_on", ())
+    outlet_aanvoer_off: tuple[int, ...] | set[object] = kwargs.get("outlet_aanvoer_off", ())
     overruling_enabled: bool = kwargs.get("overruling_enabled", True)
-    load_geometry_kw: dict = kwargs.get("load_geometry_kw", {})
+    load_geometry_kw: dict[str, object] = kwargs.get("load_geometry_kw", {})
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
         logging.info("Aanvoer-flagging skipped.")
+        assert not isinstance(ribasim_model, str)
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
         return ribasim_model
+
+    assert not isinstance(ribasim_model, str)
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
@@ -1368,10 +1382,10 @@ def set_aanvoer_flags(
 
     # include 'aanvoer'-settings from feedback form
     if processor is not None:
-        basin_aanvoer_on = set(basin_aanvoer_on) | set(processor.basin_aanvoer_on)
-        basin_aanvoer_off = set(basin_aanvoer_off) | set(processor.basin_aanvoer_off)
-        outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processor.outlet_aanvoer_on)
-        outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processor.outlet_aanvoer_off)
+        basin_aanvoer_on = set(basin_aanvoer_on) | set(processor.basin_aanvoer_on or ())
+        basin_aanvoer_off = set(basin_aanvoer_off) | set(processor.basin_aanvoer_off or ())
+        outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processor.outlet_aanvoer_on or ())
+        outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processor.outlet_aanvoer_off or ())
 
     # label basins as 'aanvoergebied'
     sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)
@@ -1481,7 +1495,9 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
         pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
 
     # raise warning if there are np.nan in the columns
-    def check_for_nans_in_columns(df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list | None = None) -> None:
+    def check_for_nans_in_columns(
+        df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list[str] | None = None
+    ) -> None:
         columns_to_check = columns_to_check or ["min_upstream_level", "max_downstream_level", "flow_rate"]
         assert outlet_or_pump in ("outlet", "pump")
 
@@ -2048,7 +2064,7 @@ def add_continuous_control_node(
     dy: float = kwargs.get("dy", 0)
     capacity: float = kwargs.get("capacity", 20)
     control_variable: str = kwargs.get("control_variable", "flow_rate")
-    listen_targets: list[float] = kwargs.get("listen_targets")
+    listen_targets: list[float] | None = kwargs.get("listen_targets")
     listen_variable: str = kwargs.get("listen_variable", "level")
     node_id_raiser: int = kwargs.get("node_id_raiser", 10000)
     numerical_tolerance: float = kwargs.get("numerical_tolerance", 0.01)

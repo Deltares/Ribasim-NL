@@ -29,10 +29,10 @@ mapping = {
 
 
 class RibasimFeedbackProcessor:
-    _basin_aanvoer_on: tuple = None
-    _basin_aanvoer_off: tuple = None
-    _outlet_aanvoer_on: tuple = None
-    _outlet_aanvoer_off: tuple = None
+    _basin_aanvoer_on: tuple[int, ...] | None = None
+    _basin_aanvoer_off: tuple[int, ...] | None = None
+    _outlet_aanvoer_on: tuple[int, ...] | None = None
+    _outlet_aanvoer_off: tuple[int, ...] | None = None
 
     def __init__(
         self,
@@ -543,10 +543,15 @@ class RibasimFeedbackProcessor:
         else:
             df.dropna(axis=0, inplace=True)
             if len(df) == 0:
-                aanvoer_ids = afvoer_ids = []
+                aanvoer_ids: list[int] = []
+                afvoer_ids: list[int] = []
             else:
-                aanvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Basin ID"].to_numpy(dtype=int)
-                afvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Basin ID"].to_numpy(dtype=int)
+                aanvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Basin ID"].to_numpy(dtype=int).tolist()
+                )
+                afvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Basin ID"].to_numpy(dtype=int).tolist()
+                )
 
             self._basin_aanvoer_on = tuple(aanvoer_ids)
             self._basin_aanvoer_off = tuple(afvoer_ids)
@@ -569,13 +574,18 @@ class RibasimFeedbackProcessor:
         else:
             df.dropna(axis=0, inplace=True)
             if len(df) == 0:
-                aanvoer_ids = afvoer_ids = []
+                aanvoer_ids: list[int] = []
+                afvoer_ids: list[int] = []
             else:
-                aanvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Outlet node_id"].to_numpy(
-                    dtype=int
+                aanvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Outlet node_id"]
+                    .to_numpy(dtype=int)
+                    .tolist()
                 )
-                afvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Outlet node_id"].to_numpy(
-                    dtype=int
+                afvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Outlet node_id"]
+                    .to_numpy(dtype=int)
+                    .tolist()
                 )
 
             self._outlet_aanvoer_on = tuple(aanvoer_ids)
@@ -587,7 +597,7 @@ class RibasimFeedbackProcessor:
             )
 
     @property
-    def basin_aanvoer_on(self) -> tuple:
+    def basin_aanvoer_on(self) -> tuple[int, ...] | None:
         """Basin 'aanvoer'-flagging: True
 
         :return: basin-IDs
@@ -599,7 +609,7 @@ class RibasimFeedbackProcessor:
         return self._basin_aanvoer_on
 
     @property
-    def basin_aanvoer_off(self) -> tuple:
+    def basin_aanvoer_off(self) -> tuple[int, ...] | None:
         """Basin 'aanvoer'-flagging: False
 
         :return: basin-IDs
@@ -611,7 +621,7 @@ class RibasimFeedbackProcessor:
         return self._basin_aanvoer_off
 
     @property
-    def outlet_aanvoer_on(self) -> tuple:
+    def outlet_aanvoer_on(self) -> tuple[int, ...] | None:
         """Oulet 'aanvoer'-flagging: True
 
         :return: outlet-IDs
@@ -623,7 +633,7 @@ class RibasimFeedbackProcessor:
         return self._outlet_aanvoer_on
 
     @property
-    def outlet_aanvoer_off(self) -> tuple:
+    def outlet_aanvoer_off(self) -> tuple[int, ...] | None:
         """Outlet 'aanvoer'-flagging: False
 
         :return: outlet-IDs

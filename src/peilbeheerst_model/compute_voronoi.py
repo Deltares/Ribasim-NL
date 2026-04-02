@@ -1,3 +1,5 @@
+from typing import Any
+
 import centerline.geometry
 import geopandas as gpd
 import networkx as nx
@@ -44,7 +46,7 @@ df["merged_poly_id"] = merged_poly_ids
 df_center = []
 for idx, row in tqdm.tqdm(df_merged.iterrows(), total=len(df_merged)):
     geom = row.geometry
-    interp_dist = 10
+    interp_dist: float = 10
     if geom.area < 1000:
         interp_dist = 1
     if geom.area < 100:
@@ -98,7 +100,7 @@ for poly_id, poly_group in tqdm.tqdm(
 
 df_center_single_boundary_points.loc[np.hstack(idxs), "node_id"] = np.hstack(node_ids)
 df_center_single_boundary_points.loc[np.hstack(idxs), "connectivity"] = np.hstack(connectivity)
-idxs, node_ids, connectivity = None, None, None
+idxs, node_ids, connectivity = None, None, None  # type: ignore[assignment]
 
 assert not pd.isna(df_center_single_boundary_points.node_id).any()
 assert not pd.isna(df_center_single_boundary_points.connectivity).any()
@@ -188,7 +190,7 @@ df_center_single_boundary_points
 
 
 link_lengths = dict(zip(df_center_single.index.get_level_values("link_id"), df_center_single.length))
-shortest_paths = {"poly_id": [], "start_node": [], "end_node": [], "geometry": []}
+shortest_paths: dict[str, list[Any]] = {"poly_id": [], "start_node": [], "end_node": [], "geometry": []}
 for poly_id, row in tqdm.tqdm(df_merged.iterrows(), total=len(df_merged)):
     merged_poly = row.geometry
 
@@ -242,13 +244,13 @@ for poly_id, row in tqdm.tqdm(df_merged.iterrows(), total=len(df_merged)):
             pass
 
 df_startcrossings = df_crossings[~pd.isna(df_crossings.start_node)].copy()
-shortest_paths = gpd.GeoDataFrame(shortest_paths, geometry="geometry", crs=df_crossings.crs)
+gdf_shortest_paths = gpd.GeoDataFrame(shortest_paths, geometry="geometry", crs=df_crossings.crs)
 
 
 df_merged.to_file("test_voronoi.gpkg", layer="merged_poly")
 df_center_single.to_file("test_voronoi.gpkg", layer="links")
 df_center_single_boundary_points.to_file("test_voronoi.gpkg", layer="nodes")
-shortest_paths.to_file("test_voronoi.gpkg", layer="shortest_paths")
+gdf_shortest_paths.to_file("test_voronoi.gpkg", layer="shortest_paths")
 df_startcrossings.to_file("test_voronoi.gpkg", layer="start_crossings")
 
 
