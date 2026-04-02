@@ -1589,9 +1589,10 @@ def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Mod
     duplicates = df_link[df_link["count"] > 0]
 
     # remove duplicate control nodes
-    LOG.warning(f"Duplicate control nodes found ({len(duplicates)})")
-    for control_node_id in duplicates["from_node_id"].values:
-        ribasim_model.remove_node(control_node_id, remove_links=True)
+    if not duplicates.empty:
+        LOG.warning(f"Duplicate control nodes found ({len(duplicates)})")
+        for control_node_id in duplicates["from_node_id"].values:
+            ribasim_model.remove_node(control_node_id, remove_links=True)
 
     # return update Ribasim model
     return ribasim_model
