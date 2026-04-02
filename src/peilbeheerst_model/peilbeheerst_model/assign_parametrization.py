@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -37,7 +38,7 @@ class AssignMetaData:
     def get_paramfile_from_cloud(
         self,
         layer: str,
-    ) -> tuple[pd.DataFrame, float, float]:
+    ) -> gpd.GeoDataFrame:
         # Load the paramfile
         self.cloud.synchronize(filepaths=[self.param_file])
         df_object = gpd.read_file(self.param_file, layer=layer)
@@ -145,7 +146,7 @@ class AssignMetaData:
         restore_cols = self._add_unassigned_columns("pump", mapper)
 
         # Add matching unassigned pumps to the ribasim model
-        visited = {}
+        visited: dict[int, Any] = {}
         for row in self.model.pump.node.df.itertuples():
             # A pump can already be assigned because there is logic in place
             # that checks for multiple overlapping ribasim pumps.

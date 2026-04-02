@@ -289,7 +289,7 @@ ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[77])
 
 # set 'aanvoer'-function on
-pump_ids = 989, 1000, 1001
+pump_ids: tuple[int, ...] = 989, 1000, 1001
 for i in pump_ids:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_aanvoer"] = 1
 

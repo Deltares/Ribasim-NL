@@ -1,3 +1,5 @@
+from typing import Any
+
 from outlets import case1, case2
 
 # # Case 1
@@ -107,7 +109,7 @@ case2_example4.create_model()
 # # Thrashbin
 
 
-example1_characteristics = {}
+example1_characteristics: dict[str, Any] = {}
 
 
 # solver
