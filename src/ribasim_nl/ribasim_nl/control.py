@@ -1571,13 +1571,27 @@ def set_node_functions(
 
 
 def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Model:
+    """Remove duplicate control nodes.
+
+    Duplicate control nodes may arise causing the model to err. Duplicate control nodes are DiscreteControl-nodes that
+    'control' the same Outlet- or Pump-node.
+
+    :param ribasim_model: Ribasim model
+    :type ribasim_model: ribasim_nl.Model
+
+    :return: Ribasim model
+    :rtype: ribasim_nl.Model
+    """
+    # get duplicate control nodes
     df_link = ribasim_model.link.df[ribasim_model.link.df["link_type"] == "control"].assign(
         count=lambda df: df.groupby("to_node_id").cumcount()
     )
     duplicates = df_link[df_link["count"] > 0]
 
+    # remove duplicate control nodes
     LOG.warning(f"Duplicate control nodes found ({len(duplicates)})")
     for control_node_id in duplicates["from_node_id"].values:
         ribasim_model.remove_node(control_node_id, remove_links=True)
 
+    # return update Ribasim model
     return ribasim_model
