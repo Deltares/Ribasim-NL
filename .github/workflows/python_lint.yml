@@ -34,3 +34,5 @@ jobs:
         run: uv run mypy --ignore-missing-imports src/ribasim_nl
       - name: Run mypy on peilbeheerst_model
         run: uv run mypy --ignore-missing-imports src/peilbeheerst_model
+      - name: Run mypy on bokeh_helpers
+        run: uv run mypy --ignore-missing-imports src/bokeh_helpers
