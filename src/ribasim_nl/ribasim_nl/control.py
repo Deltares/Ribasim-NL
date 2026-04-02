@@ -9,6 +9,7 @@ from ribasim import Node, nodes
 from ribasim.nodes import discrete_control, flow_demand
 from shapely.geometry import Point, Polygon
 
+import ribasim_nl
 from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
@@ -1567,3 +1568,16 @@ def set_node_functions(
 
     # return modified from-to table
     return from_to_table
+
+
+def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Model:
+    df_link = ribasim_model.link.df[ribasim_model.link.df["link_type"] == "control"].assign(
+        count=lambda df: df.groupby("to_node_id").cumcount()
+    )
+    duplicates = df_link[df_link["count"] > 0]
+
+    LOG.warning(f"Duplicate control nodes found ({len(duplicates)})")
+    for control_node_id in duplicates["from_node_id"].values:
+        ribasim_model.remove_node(control_node_id, remove_links=True)
+
+    return ribasim_model
