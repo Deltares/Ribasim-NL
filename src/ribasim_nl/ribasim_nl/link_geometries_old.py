@@ -37,6 +37,7 @@ def link_geometry_from_hydroobject(
     """
     geometry = None
 
+    assert model.node.df is not None
     from_point = drop_z(model.node.df.at[from_node_id, "geometry"])
     to_point = drop_z(model.node.df.at[to_node_id, "geometry"])
     straight_line_distance = from_point.distance(to_point)

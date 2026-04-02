@@ -15,7 +15,9 @@ def _get_basin_average_forcing(
     static_df["precipitation"] = static_df["precipitation"].astype(float)
     static_df["potential_evaporation"] = static_df["potential_evaporation"].astype(float)
 
+    assert model.basin.area.df is not None
     area = model.basin.area.df.dissolve("node_id").geometry.area
+    assert model.basin.profile.df is not None
     max_profile_area = model.basin.profile.df.set_index("node_id")["area"].groupby("node_id").max()
     multi_factor = (area / max_profile_area).astype(float) * 0.001 / 86400
 
@@ -50,11 +52,12 @@ def update_basin_static(
 
 def update_basin_profile(
     model: Model,
-    percentages_map: dict = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2},
+    percentages_map: dict[str, int] = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2},
     default_percentage: int = 10,
-    profile_depth=3,
+    profile_depth: int = 3,
 ):
     # read profile from basin-table
+    assert model.basin.area.df is not None
     profile = model.basin.area.df.copy()
 
     # determine the profile area, which is also used for the profile
@@ -64,6 +67,8 @@ def update_basin_profile(
 
     # get open-water percentages per category
     profile["percentage"] = default_percentage
+    assert model.basin.node is not None
+    assert model.basin.node.df is not None
     for category, percentage in percentages_map.items():
         node_ids = model.basin.node.df.loc[model.basin.node.df.meta_categorie == category].index.to_numpy()
         profile.loc[profile.node_id.isin(node_ids), "percentage"] = percentage
@@ -96,7 +101,7 @@ def update_basin_state(model: Model):
     Args:
         model (Model): Ribasim Model
     """
-    model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
+    model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]  # type: ignore[union-attr, assignment]
 
 
 def add_basin_time_synthetic(
@@ -115,7 +120,7 @@ def add_basin_time_synthetic(
     import numpy as np
 
     time_df = pd.DataFrame(
-        {"node_id": np.repeat(static_df.node_id, len(time)), "time": np.tile(time, len(static_df.node_id))}
+        {"node_id": np.repeat(static_df.node_id, len(time)), "time": np.tile(list(time), len(static_df.node_id))}
     ).set_index("node_id")
 
     for column in ["precipitation", "potential_evaporation", "drainage", "infiltration"]:
@@ -126,6 +131,6 @@ def add_basin_time_synthetic(
     time_df.loc[time_df["time"] == end_time, "potential_evaporation"] = static_df["potential_evaporation"].to_numpy()
 
     model.basin.static.df = None
-    model.basin.time.df = time_df.reset_index()
+    model.basin.time.df = time_df.reset_index()  # type: ignore[assignment]
     model.starttime = start_time
     model.endtime = end_time

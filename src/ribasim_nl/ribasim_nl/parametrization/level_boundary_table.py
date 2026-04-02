@@ -17,7 +17,7 @@ def update_level_boundary_static(
 
     Args:
         model (Model): Ribasim model
-        static_data_xlsx (Path): Excel spreadsheet with node_types
+        static_data_xlsx (Path | None): Excel spreadsheet with node_types. Defaults to None.
         code_column: (str) column in node_table corresponding with code column in static_data_xlsx
 
     Returns
@@ -52,6 +52,7 @@ def update_level_boundary_static(
 
     # make sure inlets/outlets work
     mask = static_df.level.isna()
+    assert model.basin.area.df is not None
     if mask.any():
         for row in static_df[mask].itertuples():
             node_id = row.node_id
@@ -65,4 +66,4 @@ def update_level_boundary_static(
                 level = model.basin.area.df.set_index("node_id").loc[ds_basins]["meta_streefpeil"].min()
             static_df.loc[row.Index, "level"] = level
 
-    model.level_boundary.static.df = static_df
+    model.level_boundary.static.df = static_df  # type: ignore[assignment]

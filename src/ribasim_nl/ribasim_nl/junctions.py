@@ -82,8 +82,9 @@ def find_common_linestring(
 
     # Create common linestrings and mapping
     common_linestrings = []
-    linestring_mapping = [None] * len(linestrings)
+    linestring_mapping: list[int | None] = [None] * len(linestrings)
     stripped_linestrings = list(linestrings).copy()
+    linestrings_list = list(linestrings)
 
     reverse_groups = defaultdict(list)
     for idx, gid in groups.items():
@@ -92,19 +93,19 @@ def find_common_linestring(
     for i, (gid, indices) in enumerate(reverse_groups.items()):
         length = lengths[gid]
         if converging:
-            common_coords = list(linestrings.iloc[indices[0]].coords)[-length:]
+            common_coords = list(linestrings_list[indices[0]].coords)[-length:]
         else:
-            common_coords = list(linestrings.iloc[indices[0]].coords)[:length]
+            common_coords = list(linestrings_list[indices[0]].coords)[:length]
         common_linestrings.append(shapely.LineString(common_coords))
         for idx in indices:
             linestring_mapping[idx] = i
             if converging:
                 stripped_linestrings[idx] = shapely.LineString(
-                    list(linestrings.iloc[idx].coords)[: -length + 1]
+                    list(linestrings_list[idx].coords)[: -length + 1]
                 )  # Keep last point for connectivity
             else:
                 stripped_linestrings[idx] = shapely.LineString(
-                    list(linestrings.iloc[idx].coords)[length - 1 :]
+                    list(linestrings_list[idx].coords)[length - 1 :]
                 )  # Keep first point for connectivity
 
     return common_linestrings, linestring_mapping, stripped_linestrings
