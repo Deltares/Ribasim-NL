@@ -4075,6 +4075,9 @@ dependencies = [
     { name = "tomli" },
     { name = "tomli-w" },
     { name = "tqdm" },
+    { name = "types-pycurl" },
+    { name = "types-python-dateutil" },
+    { name = "types-pyyaml" },
     { name = "types-requests" },
     { name = "xlwings" },
     { name = "xugrid" },
@@ -4127,6 +4130,9 @@ requires-dist = [
     { name = "tomli", specifier = ">=2.2.1" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "types-pycurl", specifier = ">=7.45.7.20260316" },
+    { name = "types-python-dateutil", specifier = ">=2.9.0.20260402" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20250915" },
     { name = "types-requests", specifier = ">=2.32.4.20250913" },
     { name = "xlwings", specifier = ">=0.33.15" },
     { name = "xugrid", specifier = ">=0.14.2" },
@@ -4745,6 +4751,33 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f5/24/cb09efec5cc954f7f9b930bf8279447d24618bb6758d4f6adf2574c41780/typer-0.24.1.tar.gz", hash = "sha256:e39b4732d65fbdcde189ae76cf7cd48aeae72919dea1fdfc16593be016256b45", size = 118613, upload-time = "2026-02-21T16:54:40.609Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/91/48db081e7a63bb37284f9fbcefda7c44c277b18b0e13fbc36ea2335b71e6/typer-0.24.1-py3-none-any.whl", hash = "sha256:112c1f0ce578bfb4cab9ffdabc68f031416ebcc216536611ba21f04e9aa84c9e", size = 56085, upload-time = "2026-02-21T16:54:41.616Z" },
+]
+
+[[package]]
+name = "types-pycurl"
+version = "7.45.7.20260316"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/4f/f4cfd737a7fa2e89de3d53666aba3761f4b1af6d3aea45925f43dd2a332f/types_pycurl-7.45.7.20260316.tar.gz", hash = "sha256:8fd62f733ada1ffd0188858e226687a3162b9ad2075e04139f2193dd63243b0f", size = 14583, upload-time = "2026-03-16T04:28:52.281Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b9/04/029270294787e916c2cb6c1fdfe49c91e79832f9a47fb1335772e0251a7e/types_pycurl-7.45.7.20260316-py3-none-any.whl", hash = "sha256:b61496299d27bd14f40ace610e5d7b0d40342386ad255d896e03e377f596b533", size = 13181, upload-time = "2026-03-16T04:28:51.512Z" },
+]
+
+[[package]]
+name = "types-python-dateutil"
+version = "2.9.0.20260402"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a7/30/c5d9efbff5422b20c9551dc5af237d1ab0c3d33729a9b3239a876ca47dd4/types_python_dateutil-2.9.0.20260402.tar.gz", hash = "sha256:a980142b9966713acb382c467e35c5cc4208a2f91b10b8d785a0ae6765df6c0b", size = 16941, upload-time = "2026-04-02T04:18:35.834Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e6/d7/fe753bf8329c8c3c1addcba1d2bf716c33898216757abb24f8b80f82d040/types_python_dateutil-2.9.0.20260402-py3-none-any.whl", hash = "sha256:7827e6a9c93587cc18e766944254d1351a2396262e4abe1510cbbd7601c5e01f", size = 18436, upload-time = "2026-04-02T04:18:34.806Z" },
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.20250915"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/69/3c51b36d04da19b92f9e815be12753125bd8bc247ba0470a982e6979e71c/types_pyyaml-6.0.12.20250915.tar.gz", hash = "sha256:0f8b54a528c303f0e6f7165687dd33fafa81c807fcac23f632b63aa624ced1d3", size = 17522, upload-time = "2025-09-15T03:01:00.728Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bd/e0/1eed384f02555dde685fff1a1ac805c1c7dcb6dd019c916fe659b1c1f9ec/types_pyyaml-6.0.12.20250915-py3-none-any.whl", hash = "sha256:e7d4d9e064e89a3b3cae120b4990cd370874d2bf12fa5f46c97018dd5d3c9ab6", size = 20338, upload-time = "2025-09-15T03:00:59.218Z" },
 ]
 
 [[package]]
