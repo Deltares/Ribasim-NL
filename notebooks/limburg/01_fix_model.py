@@ -99,7 +99,7 @@ for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (926
 for node_id in [276, 2003, 990, 2395, 989]:
     model.remove_node(node_id, remove_links=True)
 
-basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]))
+basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]), tables=basin_data)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[2099, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
