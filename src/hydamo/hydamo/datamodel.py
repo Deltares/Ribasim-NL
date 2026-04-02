@@ -102,10 +102,8 @@ def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
-class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
+class ExtendedGeoDataFrame(gpd.GeoDataFrame):
     """A GeoPandas GeoDataFrame with extended properties and methods."""
-
-    # ignores subclassing Any: https://github.com/geopandas/geopandas/discussions/2750
 
     _metadata: ClassVar = [
         "validation_schema",
@@ -288,7 +286,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore
         """
         geometry.find_nearest_branch(branches=branches, geometries=self, method=snap_method, maxdist=maxdist)
 
-    def copy(self, deep: bool = True):
+    def copy(self, deep: bool = True):  # type: ignore[override]
         """
         Make a copy of this ExtendedGeoDataFrame object's indices and data.
 
