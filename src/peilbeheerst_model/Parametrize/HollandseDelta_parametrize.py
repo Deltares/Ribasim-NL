@@ -707,26 +707,37 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 to_drain = (
+    1347,
     1378,
     1535,
     1611,
     1700,
     1800,
     1833,
+    1895,
+    1956,
+    2034,
     2055,
+    2206,
     2386,
+    2532,
 )
 to_flow_control = (
+    846,
     1004,
     1066,
     1098,
     1168,
     1184,
     1193,
+    1297,
     1354,
     1422,
+    1577,
+    1706,
     1757,
     1758,
+    1860,
     1876,
     2007,
     2419,
@@ -759,6 +770,7 @@ to_supply = (
     2466,
     2499,
     2507,
+    2572,
     2738,
     2750,
 )
@@ -850,6 +862,8 @@ assign_metadata.add_meta_to_basins(
     mapper={"meta_name": {"node": ["name"]}},
     min_overlap=0.95,
 )
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["flow_rate"] == 0, "flow_rate"] = None
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["max_flow_rate"] == 0, "max_flow_rate"] = None
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
