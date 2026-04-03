@@ -8,7 +8,7 @@
 <!--[Systeembeschrijving De Dommel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/De Dommel.svg)-->
 ![Systeembeschrijving De Dommel](d:\Projecten\D2306.LHM_RIBASIM\02.brongegevens\DeDommel\verwerkt\sturing\dommel.svg)
 
-Het beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. de ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.
+Het beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.
 
 ### Vughterstuw
 Via de Vughterstuw wordt water van de `Dommel` afgevoerd naar `de Dieze`, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de `Vughterstuw` deels om ‘s-Hertogenbosch heen geleid worden door het `Drongelens kanaal`, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.
