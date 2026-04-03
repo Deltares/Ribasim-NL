@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -708,9 +708,13 @@ from_to_node_function_table["demand"] = None
 
 to_drain = (
     1378,
+    1535,
     1611,
+    1700,
+    1800,
     1833,
     2055,
+    2386,
 )
 to_flow_control = (
     1004,
@@ -724,7 +728,6 @@ to_flow_control = (
     1757,
     1758,
     1876,
-    2001,
     2007,
     2419,
     2552,
@@ -733,9 +736,11 @@ to_flow_control = (
 to_supply = (
     830,
     839,
+    998,
     1091,
     1120,
     1154,
+    1281,
     1311,
     1407,
     1490,
@@ -744,12 +749,17 @@ to_supply = (
     1723,
     1840,
     1936,
+    2001,
+    2006,
+    2109,
     2170,
     2203,
     2367,
     2411,
+    2466,
     2499,
     2507,
+    2738,
     2750,
 )
 from_to_node_function_table = set_node_functions(
