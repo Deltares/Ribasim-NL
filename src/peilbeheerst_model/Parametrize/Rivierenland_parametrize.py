@@ -448,6 +448,7 @@ from_to_node_function_table["demand"] = None
 
 to_drain = (
     522,
+    664,
     723,
     814,
     833,
@@ -457,6 +458,7 @@ to_flow_control = (
     384,
     386,
     388,
+    574,
     625,
     879,
 )
@@ -468,6 +470,8 @@ to_supply = (
     575,
     840,
     886,
+    990,
+    999,
     1002,
 )
 from_to_node_function_table = set_node_functions(
