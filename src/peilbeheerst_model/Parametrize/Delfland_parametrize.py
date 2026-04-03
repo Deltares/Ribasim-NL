@@ -6,7 +6,6 @@ import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
-from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
@@ -226,19 +225,19 @@ ribasim_param.validate_basin_area(ribasim_model)
 ribasim_param.validate_manning_basins(ribasim_model)
 
 # insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
-ribasim_param.insert_standard_profile(
-    ribasim_model,
-    unknown_streefpeil=unknown_streefpeil,
-    regular_percentage=regular_percentage,
-    boezem_percentage=boezem_percentage,
-    depth_profile=2,
-)
-add_storage_basins = AddStorageBasins(
-    ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
-)
-add_storage_basins.create_bergende_basins()
+# ribasim_param.insert_standard_profile(
+#     ribasim_model,
+#     unknown_streefpeil=unknown_streefpeil,
+#     regular_percentage=regular_percentage,
+#     boezem_percentage=boezem_percentage,
+#     depth_profile=2,
+# )
+# add_storage_basins = AddStorageBasins(
+#     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
+# )
+# add_storage_basins.create_bergende_basins()
 
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=100)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)  # , min_area=100
 
 # set forcing
 if DYNAMIC_CONDITIONS:
