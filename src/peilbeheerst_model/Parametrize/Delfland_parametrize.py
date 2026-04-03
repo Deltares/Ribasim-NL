@@ -7,7 +7,6 @@ import warnings
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
@@ -345,10 +344,10 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-# Add flushing data
-flush = Flushing(ribasim_model)
-_, df_demand = flush.add_flushing()
-from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
+# # Add flushing data
+# flush = Flushing(ribasim_model)
+# _, df_demand = flush.add_flushing()
+# from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
 
 add_controllers_to_connector_nodes(
     model=ribasim_model,
