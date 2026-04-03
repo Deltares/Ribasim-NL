@@ -14,7 +14,7 @@ Het beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebi
 Via de Vughterstuw wordt water van de `Dommel` afgevoerd naar `de Dieze`, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de `Vughterstuw` deels om ‘s-Hertogenbosch heen geleid worden door het `Drongelens kanaal`, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.
 
 ### Stuw Verdeelwerk / stuw Blaarthem: Beatrixkanaal-Dommel
-Bij Eindhoven staat `Stuw Verdeelwerk`. Een deel van het water van de `Dommel` gaat bij deze stuw naar het `Beatrixkanaal`. Dit gebeurt via `Stuw Blaarthem`. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de `Dommel` stroomt. (93% bij afvoeren <10m3/s en 85% bij afvoeren > 10m3/s).
+Bij Eindhoven staat `Stuw Verdeelwerk`. Een deel van het water van de `Dommel` gaat bij deze stuw naar het `Beatrixkanaal`. Hier wordt gestuwd met `Stuw Blaarthem`. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de `Dommel` stroomt. (93% bij afvoeren <10m3/s en 85% bij afvoeren > 10m3/s).
 
 De maximaal toegestane afvoer op het `Beatrixkanaal` is 20 m3/s en is vastgelegd in het waterakkoord. Het `Beatrixkanaal` staat in open verbinding met het `Wilhelminakanaal`.
 
@@ -23,7 +23,6 @@ Er kan water worden ingelaten bij `inlaat Olen` en bij `inlaat Son en Breugel`. 
 
 ### Inlaat Bocholt
 Vanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar `inlaat Beekloop`.
-
 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
@@ -40,6 +39,6 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
-- [Documentatie Distributiemodel (Deel E, pagina 39-1)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
+- [Documentatie Distributiemodel (Deel E, pagina 39-1)](https://deltares.thegood.cloud/s/PkBnmGs8wzwTZXD)
 - [Waterakkoord: 2022-06-27_waterakkoord]
 - [De Dommel - beschrijving wateraanvoer en doorspoeling](bronnen/De Dommel/wateraanvoer_en_doorspoeling_input_voor_ribasim_lhm_model_De Dommel.pdf)
