@@ -77,7 +77,7 @@ profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 # )
 
 # # refresh only the feedback form from cloud (instead of all "verwerkt" files)
-# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
