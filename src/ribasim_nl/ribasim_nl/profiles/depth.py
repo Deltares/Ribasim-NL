@@ -5,6 +5,7 @@ import logging
 import geopandas as gpd
 import numpy as np
 import shapely
+import shapely.affinity
 
 from ribasim_nl.profiles import hydrotopes as ht
 
@@ -120,6 +121,29 @@ def depth_from_hydrotopes(
 
     # return updated hydro-objects
     return hydro_objects
+
+
+def normalise_measured_cross_sections(
+    cross_sections: gpd.GeoDataFrame, target_levels: gpd.GeoDataFrame, *, col_target_level: str = "meta_streefpeil"
+) -> gpd.GeoDataFrame:
+    """Normalise cross-sections z-coordinates to the target level within which they lay.
+
+    :param cross_sections: measured cross-sectional profiles
+    :param target_levels: regional target levels
+    :param col_target_level: column-name with target level data in `target_levels`, defaults to "meta_streefpeil"
+
+    :type cross_sections: geopandas.GeoDataFrame
+    :type target_levels: geopandas.GeoDataFrame
+    :type col_target_level: str, optional
+
+    :return: measured cross-sectional profiles with normalised z-coordinates
+    :rtype: geopandas.GeoDataFrame
+    """
+    out = cross_sections.sjoin(target_levels[[col_target_level, "geometry"]], how="left", predicate="within")
+    out["geometry"] = out.apply(
+        lambda row: shapely.affinity.translate(row.geometry, zoff=-row[col_target_level]), axis=1
+    )
+    return out
 
 
 def depth_from_measurements(
