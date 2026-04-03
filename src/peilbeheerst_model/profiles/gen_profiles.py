@@ -50,10 +50,11 @@ def main(
     gdf_basins = gpd.read_file(fn_basins, layer="Basin / area")
     # FIXME: Circular usage of basin-data
     gdf_basins = gdf_basins[gdf_basins["node_id"] == gdf_basins["meta_node_id"]]
-    # > crossings & hydro-objects
+    # > crossings, hydro-objects & target levels
     _fn_network = cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_network)
     gdf_crossings = gpd.read_file(_fn_network, layer="crossings_hydroobject_filtered")
     gdf_hydro_objects = gpd.read_file(_fn_network, layer="hydroobject")
+    gdf_target_levels = run.target_level_polygons(_fn_network)
     # > cross-sections
     fn_cross_sections = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
     gdf_cross_sections = gpd.read_file(fn_cross_sections)
@@ -67,6 +68,7 @@ def main(
         gdf_crossings,
         gdf_hydro_objects,
         gdf_cross_sections,
+        target_levels=gdf_target_levels,
         cloud=cloud,
         fn_bgt=fn_bgt,
         fn_hydrotopes=fn_hydrotopes,
