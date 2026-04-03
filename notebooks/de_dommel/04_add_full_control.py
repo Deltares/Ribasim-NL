@@ -136,9 +136,9 @@ node_functions_df = add_controllers_to_supply_area(
 )
 
 # %%
-# Toevoegen Bocholt
+# Toevoegen Beekloop
 
-polygon = aanvoergebieden_df.loc[["Bocholt"], "geometry"].union_all()
+polygon = aanvoergebieden_df.loc[["Beekloop"], "geometry"].union_all()
 
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)

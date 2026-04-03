@@ -8,34 +8,34 @@
 <!--[Systeembeschrijving De Dommel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/De Dommel.svg)-->
 ![Systeembeschrijving De Dommel](d:\Projecten\D2306.LHM_RIBASIM\02.brongegevens\DeDommel\verwerkt\sturing\dommel.svg)
 
-Het beheersgebied is vrij afwaterend en bestaat uit meerdere beken en hun stroomgebieden. Een onderverdeling van het gebied in zeer gedetailleerde stroomgebieden is niet nodig voor Ribasim.
+Het beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De aanvoergebieden die zijn ingetekend geven aan waar het water in theorie kan komen. 
 
 ### Vughterstuw
-Via de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ‘s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis. 
+Via de Vughterstuw wordt water van de `Dommel` afgevoerd naar `de Dieze`, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de `Vughterstuw` deels om ‘s-Hertogenbosch heen geleid worden door het `Drongelens kanaal`, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis. 
 
 ### Stuw Verdeelwerk / stuw Blaarthem: Beatrixkanaal-Dommel
-Bij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Dit gebeurt via Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren <10m3/s en 85% bij afvoeren > 10m3/s). 
+Bij Eindhoven staat `Stuw Verdeelwerk`. Een deel van het water van de `Dommel` gaat bij deze stuw naar het `Beatrixkanaal`. Dit gebeurt via `Stuw Blaarthem`. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de `Dommel` stroomt. (93% bij afvoeren <10m3/s en 85% bij afvoeren > 10m3/s). 
 
-De maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.
+De maximaal toegestane afvoer op het `Beatrixkanaal` is 20 m3/s en is vastgelegd in het waterakkoord. Het `Beatrixkanaal` staat in open verbinding met het `Wilhelminakanaal`.
 
-### Inlaat Soniuswijk en Olen
-Er kan water worden ingelaten bij inlaat Olen (wateraanvoergebied Sint Oedenrode) en bij Soniuswijk. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Soniuswijk is 0.16 m3/s en 0.6 m3/s naar Sint Oedenrode. 
+### Inlaat Son en Breugel en Olen
+Er kan water worden ingelaten bij `inlaat Olen` en bij `inlaat Son en Breugel`. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar `Son en Breugel` is 0.16 m3/s en 0.6 m3/s naar `Olen`. 
 
 ### Inlaat Bocholt
-Vanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaar Bocholt.
+Vanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar `inlaat Beekloop`.
 
 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
-| naam                                  | code       |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
-|:--------------------------------------|:-----------|----------:|:----------|-----------------:|----------------:|
-| Inlaat Olen                           | DSH0023156 |       417 | inlaat    |             0.6  |               0 |
-| Inlaat Soniuswijk                     | DO28-st1   |       405 | inlaat    |             0.16 |               0 |
-| Inlaat kanaal Bocholt naar Heerentals |            |      1912 | inlaat    |             0.5  |               0 |
-| Stuw Blaarthem                        | DL62-st1   |       210 | uitlaat   |             0    |              20 |
-| Stuw Verdeelwerk                      | DL1-st5    |       293 | uitlaat   |             0    |             200 |
-| Vughterstuw                           | DO1-st3    |       121 | uitlaat   |             0    |             200 |
+| naam                  | code       |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
+|:----------------------|:-----------|----------:|:----------|-----------------:|----------------:|
+| Inlaat Beekloop       |            |      1912 | inlaat    |             0.25 |               0 |
+| Inlaat Olen           | DSH0023156 |       417 | inlaat    |             0.6  |               0 |
+| Inlaat Son en Breugel | DO28-st1   |       405 | inlaat    |             0.16 |               0 |
+| Stuw Blaarthem        | DL62-st1   |       210 | uitlaat   |             0    |              20 |
+| Stuw Verdeelwerk      | DL1-st5    |       293 | uitlaat   |             0    |             200 |
+| Vughterstuw           | DO1-st3    |       121 | uitlaat   |             0    |             200 |
 
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
