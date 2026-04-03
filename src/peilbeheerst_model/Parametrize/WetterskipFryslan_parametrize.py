@@ -8,7 +8,6 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
@@ -416,6 +415,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[57], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+to_afvoer_node_id = tabulated_rating_curve_node.node_id
 
 # Uitlaat toevoegen at validation location
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -578,7 +578,7 @@ from_to_node_function_table["demand"] = None
 # manually change the function of some nodes based upon model inspection
 to_supply = [1596, 2812, 3411, 3882, 3880, 2773, 2783, 3882, 3884, 3023, 3411, 3888, 2398, 1647, 1747]
 to_flow_control = [3068]
-to_drain = [3494]
+to_drain = [3494, to_afvoer_node_id]
 
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -613,18 +613,18 @@ pump_copy = ribasim_model.pump.static.df[
 # update node_ids
 ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
 
-# Add flushing data
-flush = Flushing(
-    ribasim_model,
-    lhm_flushing_path="WetterskipFryslan/aangeleverd/Na_levering/WetterskipFryslan_doorspoeling.gpkg",
-    flushing_layer="WetterskipFryslan_doorspoeling",
-    flushing_id="flushing_id",
-    flushing_col="doorsp_mmj",
-)
-_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
-for row in df_demand[df_demand.demand_type == "flow"].itertuples():
-    from_to_node_function_table.at[row.nid, "function"] = "flushing"
-    from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
+# # Add flushing data
+# flush = Flushing(
+#     ribasim_model,
+#     lhm_flushing_path="WetterskipFryslan/aangeleverd/Na_levering/WetterskipFryslan_doorspoeling.gpkg",
+#     flushing_layer="WetterskipFryslan_doorspoeling",
+#     flushing_id="flushing_id",
+#     flushing_col="doorsp_mmj",
+# )
+# _, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
+# for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+#     from_to_node_function_table.at[row.nid, "function"] = "flushing"
+#     from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
 
 add_controllers_to_connector_nodes(
     model=ribasim_model,
