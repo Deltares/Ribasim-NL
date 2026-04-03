@@ -138,6 +138,7 @@ ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
 ribasim_model.merge_basins(node_id=63, to_node_id=97, are_connected=True)
 ribasim_model.merge_basins(node_id=131, to_node_id=119, are_connected=True)
 ribasim_model.merge_basins(node_id=212, to_node_id=210, are_connected=True)
+ribasim_model.merge_basins(node_id=33, to_node_id=1, are_connected=True)
 
 # (too) small basins connected via a Manning-node --> merge basins
 ribasim_model.merge_basins(node_id=226, to_node_id=1, are_connected=True)
@@ -187,7 +188,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(136538, 422962)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(136574, 422965)), [pump.Static(flow_rate=[6])])
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == pump_node.node_id, "meta_func_aanvoer"] = 1
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(ribasim_model.basin[154], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 afvoer_pumps.append(pump_node.node_id)
@@ -197,7 +198,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(198612, 434208)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(198568, 434184)), [pump.Static(flow_rate=[6])])
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[115])
 
@@ -212,13 +213,13 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(ribasim_model.basin[237], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
-# add gemaal and LB at downstream Linge (Hardinxveld)
-pump_node = ribasim_model.pump.add(Node(geometry=Point(118539.25, 425972.46)), [pump.Static(flow_rate=[20])])
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(118530.65, 425964)), [level_boundary.Static(level=[default_level])]
-)
-ribasim_model.link.add(ribasim_model.basin[1], pump_node)
-ribasim_model.link.add(pump_node, level_boundary_node)
+# # add gemaal and LB at downstream Linge (Hardinxveld)
+# pump_node = ribasim_model.pump.add(Node(geometry=Point(118539.25, 425972.46)), [pump.Static(flow_rate=[20])])
+# level_boundary_node = ribasim_model.level_boundary.add(
+#     Node(geometry=Point(118530.65, 425964)), [level_boundary.Static(level=[default_level])]
+# )
+# ribasim_model.link.add(ribasim_model.basin[1], pump_node)
+# ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add gemaal and LB at downstream Linge (Hardinxveld)
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -266,7 +267,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(153091, 440460)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(153091, 440360)), [pump.Static(flow_rate=[20])])
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == pump_node.node_id, "meta_func_aanvoer"] = 1
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[91])
 
@@ -275,8 +276,8 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(174629, 440132)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(174630, 440132)), [pump.Static(flow_rate=[20])])
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[94])
 
@@ -294,21 +295,21 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(164450, 441800)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(164412, 441741)), [pump.Static(flow_rate=[20])])
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[77])
 
 # set 'aanvoer'-function on
 pump_ids = 989, 1000, 1001
 for i in pump_ids:
-    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_aanvoer"] = 1
+    ribasim_param.change_pump_func(ribasim_model, i, "aanvoer", 1)
 
 # force 'afvoergemalen'
 pump_ids = 272, 280
 for i in pump_ids:
-    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_afvoer"] = 1
-    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_aanvoer"] = 0
+    ribasim_param.change_pump_func(ribasim_model, i, "afvoer", 1)
+    ribasim_param.change_pump_func(ribasim_model, i, "aanvoer", 0)
 
 # TODO: Temporary fixes
 ribasim_model.remove_node(788, True)
