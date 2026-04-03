@@ -1,7 +1,7 @@
 # Aa en Maas
 
 - Laatst bijgewerkt: 25-02-2026
-- Laatste modelversie: [in aanbouw](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
+- [Laatste modelversie](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
 
 ## Systeembeschrijving
 <!-- ![Systeembeschrijving Aa en Maas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/aaenmaas.svg) -->
@@ -15,7 +15,7 @@
 - De `Aa` en de `Dommel` lozen normaal via `spuisluis Crèvecoeur` (max 160 m3/s) naar de Maas onder vrij verval.
 - Bij hoge waterstand van de Maas (4.95m NAP), sluit `spuisluis Crèvecoeur` en kan het via de `Bovenlandse Sluis/Drongelens Kanaal`  water worden afgevoerd, omdat de Maaswaterstand daar lager is.
 - Via de `Vughterstuw` (kritiek nveau 4.90m) wordt de afvoer van de `Dommel` gestuurd om het systeem rond Den Bosch te ontlasten. Wanneer de `Vughterstuw`  een kritieke waterstand van 4.90m NAP bereikt, worden bergingsgebieden ingezet.
-- Bij Poeldonk wordt nu het water dat vanuit rivier de Aa op de Zuid_willemsvaart komt, weer terugstroomt naar het watersysteem van rivier de Aa. Dit gaat binnenkort via spuiwerk bij sluis 0 in de Zuid WIllemsvaart via de Bovenlandse sluis naar de Maas. 
+- Bij Poeldonk wordt nu het water dat vanuit rivier de Aa op de Zuid_willemsvaart komt, weer terugstroomt naar het watersysteem van rivier de Aa. Dit gaat binnenkort via spuiwerk bij sluis 0 in de Zuid WIllemsvaart via de Bovenlandse sluis naar de Maas.
 
 **Wateraanvoer:**
 
@@ -46,7 +46,7 @@
 
 **Wateraanvoer:**
 
-- Vanuit het `Defensiekanaal/Peelkanaal` 
+- Vanuit het `Defensiekanaal/Peelkanaal`
 - Via het `Afleidingskanaal` naar het zuidoosten (oa Smakt)
 - Interne verdeling via de `Raam`, `Oploosche Molenbeek` en overige watergangen binnen het gebied.
 
@@ -64,7 +64,7 @@
 ## Hurkske/Aa
 
 **Afvoer:**
-- Via de Aa wordt water afgevoerd naar `spuisluis Crèvecoeur` 
+- Via de Aa wordt water afgevoerd naar `spuisluis Crèvecoeur`
 
 **Wateraanvoer:**
 -Via Inlaat `257IA` wordt water vanuit de `Zuid-Willemsvaart` naar de `Aa` aangevoerd onder vrij verval
@@ -72,8 +72,8 @@
 
 ## Z-W West (Zuid-Willemsvaart West)
 **Afvoer:**
-- Via verschillende uitlaten wordt water afgevoerd naar de Zuid-Willemsvaart en de Aa 
-- Via gemaal `Dungense Loop` naar de Aa 
+- Via verschillende uitlaten wordt water afgevoerd naar de Zuid-Willemsvaart en de Aa
+- Via gemaal `Dungense Loop` naar de Aa
 
 **Wateraanvoer:**
 -Hoofdzakelijk via inlaat `257IA` bij Boerdonk water vanuit de Zuid-Willemsvaart water aangevoerd
@@ -82,16 +82,16 @@
 ## Wilhelminakanaal
 
 **Wateraanvoer:**
-- Via `inlaat Wilhelminakanaal Lieshout` wordt water aangevoerd. De maximale capiciteit is 1.42m3/s. 
+- Via `inlaat Wilhelminakanaal Lieshout` wordt water aangevoerd. De maximale capiciteit is 1.42m3/s.
 
 ## Helmond
-Bij Helmond loopt de Aa over een lengte van circa 6 kilometer samen met de Zuid-Willemsvaart. 
-Rijkswaterstaat en het waterschap hebben de afspraak dat het water wat vanuit de Aa geloosd 
+Bij Helmond loopt de Aa over een lengte van circa 6 kilometer samen met de Zuid-Willemsvaart.
+Rijkswaterstaat en het waterschap hebben de afspraak dat het water wat vanuit de Aa geloosd
 wordt op de Zuid-Willemsvaart benedenstrooms terugkomt op de Aa.
 
 **Waterafvoer:**
 -Vanuit Waterschap De Dommel stroomt in het westen van het beheersgebied 1.5 m3/s op de Klein. Dit water wordt via de Aa en Zuid-Willemmsvaart bij Helmond geloosd op het Wilhelminakanaal en weer afgevoerd naar de Dommel.
-- Bij Vossenbeemd stroomt de Nieuwe Aa onder vrij verval op de Zuid-Willemsvaart 
+- Bij Vossenbeemd stroomt de Nieuwe Aa onder vrij verval op de Zuid-Willemsvaart
 - Via De Bakelse Aa mondt uit in Zuid-Willemsvaart.
 
 **Wateraanvoer:**
@@ -100,14 +100,14 @@ wordt op de Zuid-Willemsvaart benedenstrooms terugkomt op de Aa.
 
 ## Mierlo
 **Waterafvoer:**
-- Gemaal Mierlo kan water lozen op het Eindhovenschkanaal. Dat vervolgens afvoert naar de Zuid-Willemsvaart. 
+- Gemaal Mierlo kan water lozen op het Eindhovenschkanaal. Dat vervolgens afvoert naar de Zuid-Willemsvaart.
 - Gemaal Wilhelminakanaal kan water lozen vanaf de Goorloop op het Wilhelminakanaal. met 1.8 m3/s
 **Wateraanvoer:**
 
 
 ## Someren
 
-## Waterafvoer: 
+## Waterafvoer:
 Het gebied water watert af op de Aa.
 
 ## Wateraanvoer:
