@@ -4,9 +4,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import ribasim
 from pyproj import Proj, Transformer
 from shapely.geometry import LineString, Point
+
+from ribasim_nl import Model
 
 # Mapping between feedback form and model names
 mapping = {
@@ -84,7 +85,7 @@ class RibasimFeedbackProcessor:
 
     @staticmethod
     def load_ribasim_model(ribasim_toml):
-        model = ribasim.Model(filepath=ribasim_toml)
+        model = Model.read(ribasim_toml)
         return model
 
     def get_current_max_nodeid(self):
@@ -152,13 +153,13 @@ class RibasimFeedbackProcessor:
 
             # Remove the Node
             if value is not None:
+                # Remove from global node table
+                self.model.node.df = self.model.node.df[self.model.node.df.index != node_id]
+                # Remove from type-specific tables
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
                         if hasattr(sub_value, "df") and sub_value.df is not None:
                             if not sub_value.df.empty:
-                                if sub_key == "node":
-                                    filtered_df = sub_value.df[sub_value.df.index != node_id]
-                                    sub_value.df = filtered_df
                                 if sub_key == "static":
                                     filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
                                     sub_value.df = filtered_df
@@ -188,6 +189,22 @@ class RibasimFeedbackProcessor:
 
             # Add the Node
             if value is not None:
+                # Add to global node table
+                node_type_name = row["Node Type.1"]
+                x_coord = row["Coordinaat X"]
+                y_coord = row["Coordinaat Y"]
+                df_node = self.model.node.df
+                template_row = df_node.iloc[-1:].copy()
+                template_row.index = pd.Index([node_id], name="node_id")
+                template_row["node_type"] = node_type_name
+                template_row["geometry"] = [Point(x_coord, y_coord)]
+                for col in template_row.columns:
+                    if col.startswith("meta_"):
+                        template_row[col] = np.nan
+                template_row["meta_node_id"] = node_id
+                self.model.node.df = pd.concat([df_node, template_row])
+
+                # Add to type-specific tables
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
                         if sub_key == "time" or sub_key == "subgrid":
@@ -196,28 +213,6 @@ class RibasimFeedbackProcessor:
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
                                 logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
                                 continue
-
-                            if sub_key == "node":
-                                sub_value = getattr(value, sub_key, None)
-                                df_value = sub_value.df.copy()
-                                last_row = df_value.iloc[-1].copy()
-
-                                last_row.name = node_id
-                                if "geometry" in last_row:
-                                    x_coord = row["Coordinaat X"]
-                                    y_coord = row["Coordinaat Y"]
-                                    last_row["geometry"] = Point(x_coord, y_coord)
-
-                                for col in last_row.index:
-                                    if col.startswith("meta_"):
-                                        last_row[col] = np.nan
-
-                                new_row_df = pd.DataFrame([last_row])
-                                new_row_df["meta_node_id"] = node_id
-
-                                df_value = pd.concat([df_value, new_row_df], ignore_index=False)
-                                df_value.index.name = "node_id"
-                                sub_value.df = df_value.copy()
 
                             if sub_key == "static":
                                 sub_value = getattr(value, sub_key, None)
@@ -302,6 +297,12 @@ class RibasimFeedbackProcessor:
 
             # Get old geometry and remove Node
             if value is not None:
+                # Get geometry from and remove from global node table
+                node_row = self.model.node.df[self.model.node.df.index == node_id]
+                if not node_row.empty and "geometry" in node_row.columns:
+                    geometry_old = node_row.geometry.iloc[0]
+                self.model.node.df = self.model.node.df[self.model.node.df.index != node_id]
+                # Remove from type-specific tables
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
                         if sub_key == "time" or sub_key == "subgrid":
@@ -312,21 +313,29 @@ class RibasimFeedbackProcessor:
                                 continue
 
                         if "geometry" in sub_value.df:
-                            if sub_key == "node":
-                                geometry_old = sub_value.df[sub_value.df.index == node_id].geometry.iloc[0]
-                                filtered_df = sub_value.df[sub_value.df.index != node_id]
-                                sub_value.df = filtered_df
-
                             if sub_key == "static":
                                 geometry_old = sub_value.df[sub_value.df["node_id"] == node_id].geometry.iloc[0]
                                 filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
                                 sub_value.df = filtered_df
 
-            key = row["Nieuw Node Type"]
-            key = mapping.get(key, None)
+            new_node_type_name = row["Nieuw Node Type"]
+            key = mapping.get(new_node_type_name, None)
             value = getattr(self.model, key, None)
 
             if value is not None:
+                # Add to global node table with new type
+                df_node = self.model.node.df
+                template_row = df_node.iloc[-1:].copy()
+                template_row.index = pd.Index([node_id], name="node_id")
+                template_row["node_type"] = new_node_type_name
+                template_row["geometry"] = [geometry_old if "geometry_old" in locals() else None]
+                for col in template_row.columns:
+                    if col.startswith("meta_"):
+                        template_row[col] = np.nan
+                template_row["meta_node_id"] = node_id
+                self.model.node.df = pd.concat([df_node, template_row])
+
+                # Add to type-specific tables
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
                         if sub_key == "time" or sub_key == "subgrid":
@@ -335,26 +344,6 @@ class RibasimFeedbackProcessor:
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
                                 logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
                                 continue
-
-                            if sub_key == "node":
-                                sub_value = getattr(value, sub_key, None)
-                                df_value = sub_value.df.copy()
-                                last_row = df_value.iloc[-1].copy()
-
-                                last_row.name = node_id
-                                if "geometry" in last_row:
-                                    last_row["geometry"] = geometry_old if "geometry_old" in locals() else None
-
-                                for col in last_row.index:
-                                    if col.startswith("meta_"):
-                                        last_row[col] = np.nan
-
-                                new_row_df = pd.DataFrame([last_row])
-                                new_row_df["meta_node_id"] = node_id
-
-                                df_value = pd.concat([df_value, new_row_df], ignore_index=False)
-                                df_value.index.name = "node_id"
-                                sub_value.df = df_value.copy()
 
                             if sub_key == "static":
                                 sub_value = getattr(value, sub_key, None)

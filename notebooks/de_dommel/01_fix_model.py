@@ -6,7 +6,6 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely.geometry import Point, Polygon
@@ -115,12 +114,12 @@ for row in network_validator.node_internal_basin().itertuples():
     if row.Index not in model.basin.area.df.node_id.to_numpy():  # remove or change to level-boundary
         link_select_df = model.link.df[model.link.df.to_node_id == row.Index]
         if len(link_select_df) == 1:
-            if model.node_table().df.at[link_select_df.iloc[0]["from_node_id"], "node_type"] == "FlowBoundary":
+            if model.node.df.at[link_select_df.iloc[0]["from_node_id"], "node_type"] == "FlowBoundary":
                 model.remove_node(row.Index)
                 model.remove_node(link_select_df.iloc[0]["from_node_id"])
                 model.link.df.drop(index=link_select_df.index[0], inplace=True)
 
-df = model.node_table().df[model.node_table().df.node_type == "Basin"]
+df = model.node.df[model.node.df.node_type == "Basin"]
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291876800
 boundary_node = Node(node_id=28, geometry=model.flow_boundary[28].geometry)
@@ -296,9 +295,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node_table().df.node_type.unique():
-    table = getattr(model, pascal_to_snake_case(node_type)).node
-    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(layers=["sluis", "gemaal", "stuw", "duiker"], authority=authority)
@@ -308,27 +305,27 @@ names = df["naam"]
 
 
 # set meta_gestuwd in basins
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
 # set stuwen als gestuwd
 
-model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"] == "stuw", "meta_gestuwd"] = True
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & (model.node.df["meta_object_type"] == "stuw"),
+    "meta_gestuwd",
+] = True
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
-node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index.intersection(upstream_node_ids)
+model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 
 
 sanitize_node_table(
@@ -354,7 +351,7 @@ model.link.add(level_boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1609])
 
 # label flow-boundaries to buitenlandse-aanvoer
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")

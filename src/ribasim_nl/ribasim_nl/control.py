@@ -32,7 +32,7 @@ class MissingTable(Exception):
 
 def _read_node_table(model: Model) -> gpd.GeoDataFrame:
     """Read node_table model from model."""
-    df = model.node_table().df
+    df = model.node.df
     if df is None:
         raise MissingTable(table="Node table")
     return df
@@ -665,10 +665,7 @@ def add_controllers_to_drain_nodes(
         # update static table
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
-            getattr(model, pascal_to_snake_case(node_type))
-            .static.df.set_index("node_id")
-            .loc[[node_id], "flow_rate"]
-            .max()
+            model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -774,10 +771,7 @@ def add_controllers_to_supply_nodes(
         node_type = connector_node.node_type
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
-            getattr(model, pascal_to_snake_case(node_type))
-            .static.df.set_index("node_id")
-            .loc[[node_id], "flow_rate"]
-            .max()
+            model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -888,10 +882,7 @@ def add_controllers_to_flow_control_nodes(
         # update static table
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
-            getattr(model, pascal_to_snake_case(node_type))
-            .static.df.set_index("node_id")
-            .loc[[node_id], "flow_rate"]
-            .max()
+            model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -1012,10 +1003,7 @@ def add_controllers_and_demand_to_flushing_nodes(
         # update static table
         control_state = ["aanvoer", "afvoer"]
         original_max_flow_rate = (
-            getattr(model, pascal_to_snake_case(node_type))
-            .static.df.set_index("node_id")
-            .loc[[node_id], "flow_rate"]
-            .max()
+            model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -1154,7 +1142,8 @@ def add_controllers_to_connector_nodes(
         If True, flushing will be applied in summer season (April - October) only.
     """
     # make sure add-api will not duplicate node-ids
-    model._update_used_ids()
+    model.node._update_used_ids()
+    model.link._update_used_ids()
 
     # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
@@ -1341,7 +1330,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Offset voor supply controls.
     """
     # make sure add-api will not duplicate node-ids
-    model._update_used_ids()
+    model.node._update_used_ids()
+    model.link._update_used_ids()
 
     # --- defaults veilig maken (nooit [] als default-arg) ---
     exclude_nodes = exclude_nodes or []

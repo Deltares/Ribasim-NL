@@ -33,7 +33,7 @@ RESCALE_FLOW_CAPACITIES: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
-MIXED_CONDITIONS_DESIGN_P = 10
+MIXED_CONDITIONS_DESIGN_P = 12
 MIXED_CONDITIONS_DESIGN_E = 2
 
 # model settings
@@ -119,7 +119,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model.read(ribasim_work_dir_model_toml)
     ribasim_model.set_crs("EPSG:28992")
 
 # model specific tweaks
@@ -336,9 +336,9 @@ ribasim_model.link.add(ribasim_model.basin[97], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -512,10 +512,6 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-# update node_ids
-# ribasim_model = ribasim_model._update_used_ids()
-ribasim_model._used_node_ids.max_node_id = ribasim_model.node_table().df.index.max()
-
 # TODO: Add flushing
 # Add flushing data
 # flush = Flushing(ribasim_model)
@@ -602,12 +598,6 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
-df_pumps = ribasim_model.pump.static.df.copy()
-same = df_pumps["flow_rate"] == df_pumps["max_flow_rate"]
-print(df_pumps[~same])
-print(df_pumps[df_pumps["node_id"] == 750])
-
-
 # increase_flow_rate_pumps = [395]
 # ribasim_model.pump.static.df.loc[
 #     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
@@ -668,11 +658,6 @@ assign = AssignAuthorities(
     custom_nodes=None,
 )
 ribasim_model = assign.assign_authorities()
-
-
-# Add flushing data
-# flush = Flushing(ribasim_model)
-# flush.add_flushing()
 
 # set numerical settings
 # write model output

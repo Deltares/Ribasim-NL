@@ -170,7 +170,7 @@ def depth_from_measurements(
     # update depth estimate
     temp["depth"] = temp["index_xs"].apply(representative_depth)
     temp.dropna(subset="depth", inplace=True)
-    hydro_objects.update(temp)
+    hydro_objects.update(temp[temp["depth"] > 0])
 
     # add cross-section coupling
     hydro_objects["index_xs"] = temp["index_xs"]
