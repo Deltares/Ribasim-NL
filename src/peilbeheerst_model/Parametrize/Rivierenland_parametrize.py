@@ -1,7 +1,6 @@
 """Parameterisation of water board: Rivierenland."""
 
 import datetime
-import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -28,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -83,9 +82,9 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
-# create work_dir/parameterized
-parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-os.makedirs(parameterized, exist_ok=True)
+# # create work_dir/parameterized
+# parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
+# os.makedirs(parameterized, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -550,7 +549,7 @@ assign_metadata.add_meta_to_pumps(
         "meta_name": {"node": ["name"]},
         "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
     },
-    max_distance=100,
+    max_distance=10,
     factor_flowrate=1 / 60,  # m3/min -> m3/s
 )
 assign_metadata.add_meta_to_basins(
@@ -589,7 +588,7 @@ ribasim_model.pump.static.df.loc[
 #         waterschap=waterschap,
 #         cloud=cloud,
 #         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-#         max_iterations=12,
+#         max_iterations=2,
 #         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
 #         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
 #     )
