@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/iterative/dvc
-    rev: 3.66.1
+    rev: 3.67.1
     hooks:
       - id: dvc-pre-commit
         additional_dependencies:
@@ -36,7 +36,7 @@ repos:
         exclude: .teamcity
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.4
+    rev: v0.15.9
     hooks:
       - id: ruff-check
         types_or: [python, pyi, jupyter]
