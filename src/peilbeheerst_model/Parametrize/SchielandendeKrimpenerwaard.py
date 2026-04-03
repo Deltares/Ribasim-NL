@@ -33,8 +33,8 @@ RESCALE_FLOW_CAPACITIES: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
-MIXED_CONDITIONS_DESIGN_P = 12
-MIXED_CONDITIONS_DESIGN_E = 2
+MIXED_CONDITIONS_DESIGN_P = 18
+MIXED_CONDITIONS_DESIGN_E = 5
 
 # model settings
 waterschap = "SchielandendeKrimpenerwaard"
@@ -452,24 +452,25 @@ to_supply = (
     201,
     356,
     468,
+    476,
+    479,
     480,
     489,
+    494,
     504,
     516,
     524,
     527,
     531,
     534,
-    612,
+    554,
     669,
     691,
-    703,
+    702,
+    704,
     705,
     709,
     711,
-    479,
-    494,
-    554,
 )
 to_flow_control = (
     # 182,
@@ -480,9 +481,11 @@ to_flow_control = (
     358,
     373,  # basin die boezem voedt
     561,
+    703,
 )
 to_drain = (
     364,  # labelled as "aanvoergemaal" but directed from polder to boezem
+    612,
 )
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
