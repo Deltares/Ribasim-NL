@@ -427,6 +427,9 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(ribasim_model.basin[57], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
+# move node for improved representation
+ribasim_model.move_node(geometry=Point(220029, 561890), node_id=1608)
+
 # embed inlaat information
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
