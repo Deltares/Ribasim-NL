@@ -415,7 +415,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[57], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-to_afvoer_node_id = tabulated_rating_curve_node.node_id
+to_afvoer_node_id1 = tabulated_rating_curve_node.node_id
 
 # Uitlaat toevoegen at validation location
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -427,6 +427,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[57], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+to_afvoer_node_id2 = tabulated_rating_curve_node.node_id
 
 # move node for improved representation
 ribasim_model.move_node(geometry=Point(220029, 561890), node_id=1608)
@@ -578,7 +579,7 @@ from_to_node_function_table["demand"] = None
 # manually change the function of some nodes based upon model inspection
 to_supply = [1596, 2812, 3411, 3882, 3880, 2773, 2783, 3882, 3884, 3023, 3411, 3888, 2398, 1647, 1747]
 to_flow_control = [3068]
-to_drain = [3494, to_afvoer_node_id]
+to_drain = [3494, to_afvoer_node_id1, to_afvoer_node_id2]
 
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -694,6 +695,16 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2700, "
 # there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
 
+# increase aanslagpeil for Woudagemaal
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 2436, "min_upstream_level"
+] = -0.48  # 5 cm higher than streefpeil
+ribasim_model.discrete_control.condition.df.loc[
+    ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_high"
+] = -0.48
+ribasim_model.discrete_control.condition.df.loc[
+    ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_low"
+] = -0.48
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
