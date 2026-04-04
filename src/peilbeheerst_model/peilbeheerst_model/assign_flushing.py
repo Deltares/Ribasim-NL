@@ -596,12 +596,11 @@ class Flushing:
         :return: updated from-to node function table
         :rtype: geopandas.GeoDataFrame
         """
-        # locate flushing nodes
-        i = (df_demand["demand_type"] == "flow").index
+        flow_rows = df_demand[df_demand["demand_type"] == "flow"]
 
-        # update function table
-        function_table.loc[function_table.index.isin(i), "function"] = "flushing"
-        function_table.loc[function_table.index.isin(i), "demand_flow_rate"] = df_demand.loc[i, "demand"]
+        for row in flow_rows.itertuples():
+            function_table.at[row.nid, "function"] = "flushing"
+            function_table.at[row.nid, "demand_flow_rate"] = row.demand
 
         # return updated function table
         return function_table
