@@ -1352,10 +1352,10 @@ def set_aanvoer_flags(
     :param processor: Ribasim feedback processor object, defaults to None
 
     :key aanvoer_enabled: 'aanvoer'-settings are enabled, defaults to True
-    :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to None
-    :key basin_aanvoer_off: basin node-IDs to manually set 'aanvoer' to False, defaults to None
-    :key outlet_aanvoer_on: outlet node-IDs to manually set 'aanvoer' to True, defaults to None
-    :key outlet_aanvoer_off: outlet node-IDs to manually set 'aanvoer' to False, defaults to None
+    :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to ()
+    :key basin_aanvoer_off: basin node-IDs to manually set 'aanvoer' to False, defaults to ()
+    :key outlet_aanvoer_on: outlet node-IDs to manually set 'aanvoer' to True, defaults to ()
+    :key outlet_aanvoer_off: outlet node-IDs to manually set 'aanvoer' to False, defaults to ()
     :key overruling_enabled: in case a basin can be supplied directly from the 'hoofdwatersysteem', other supply-routes
         are "overruled", i.e., removed, defaults to True
 
@@ -1363,10 +1363,10 @@ def set_aanvoer_flags(
     :type aanvoer_regions: str, geopandas.GeoDataFrame
     :type processor: RibasimFeedbackProcessor, optional
     :type aanvoer_enabled: bool, optional
-    :type basin_aanvoer_on: tuple, optional
-    :type basin_aanvoer_off: tuple, optional
-    :type outlet_aanvoer_on: tuple, optional
-    :type outlet_aanvoer_off: tuple, optional
+    :type basin_aanvoer_on: tuple[int] | set[int], optional
+    :type basin_aanvoer_off: tuple[int] | set[int], optional
+    :type outlet_aanvoer_on: tuple[int] | set[int], optional
+    :type outlet_aanvoer_off: tuple[int] | set[int], optional
     :type overruling_enabled: bool, optional
     """
     # manual 'aanvoer'-flagging
@@ -1377,10 +1377,10 @@ def set_aanvoer_flags(
 
     # optional arguments
     aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
-    basin_aanvoer_on: tuple = kwargs.get("basin_aanvoer_on", ())
-    basin_aanvoer_off: tuple = kwargs.get("basin_aanvoer_off", ())
-    outlet_aanvoer_on: tuple = kwargs.get("outlet_aanvoer_on", ())
-    outlet_aanvoer_off: tuple = kwargs.get("outlet_aanvoer_off", ())
+    basin_aanvoer_on: tuple[int] | set[int] = kwargs.get("basin_aanvoer_on", set())
+    basin_aanvoer_off: tuple[int] | set[int] = kwargs.get("basin_aanvoer_off", set())
+    outlet_aanvoer_on: tuple[int] | set[int] = kwargs.get("outlet_aanvoer_on", set())
+    outlet_aanvoer_off: tuple[int] | set[int] = kwargs.get("outlet_aanvoer_off", set())
     overruling_enabled: bool = kwargs.get("overruling_enabled", True)
     load_geometry_kw: dict = kwargs.get("load_geometry_kw", {})
 
@@ -1429,7 +1429,7 @@ def set_aanvoer_flags(
 
     # reset ribasim model
     ribasim_model = so.model
-    return
+    return ribasim_model
 
 
 def load_model_settings(file_path):
