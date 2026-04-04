@@ -7,6 +7,7 @@ import warnings
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
@@ -165,6 +166,19 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[59])
+
+
+# add outlet and LB (Zeesluis)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(133355, 482943)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(133336, 482556)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[59])
+zeesluis_node_id = tabulated_rating_curve_node.node_id
 
 # add outlet to Gooimeer
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -396,6 +410,7 @@ to_supply = (
     774,
     789,
     861,
+    1012,
     1014,
     1018,
 )
@@ -437,6 +452,23 @@ add_controllers_to_connector_nodes(
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
+
+# Add flushing data
+flush = Flushing(
+    ribasim_model,
+    lhm_flushing_path="AmstelGooienVecht/aangeleverd/Na_levering/AmstelGooienVecht_doorspoeling.gpkg",
+    flushing_layer="AmstelGooienVecht_flushing",
+    flushing_id="flushing_id",
+    flushing_col="doorsp_mmj",
+)
+
+_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
+for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+    from_to_node_function_table.at[row.nid, "function"] = "flushing"
+    from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
+
+# add increased flushing at the location of Zeesluis
+from_to_node_function_table.loc[from_to_node_function_table.index == zeesluis_node_id, "demand"] = 5  # 5 m3/s
 
 # replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
 outlet_columns_to_add_back = [
@@ -521,6 +553,9 @@ increase_flow_rate_pumps = [412, 146]
 # presumably wrong conversion of flow capacity in the data
 for pump_id in increase_flow_rate_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_id, "flow_rate"] *= 60
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 475, "flow_rate"] = (
+    0.60  # increase flow_rate of specific pump
+)
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df.length = 100
