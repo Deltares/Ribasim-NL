@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
+DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -329,6 +329,8 @@ ribasim_model.merge_basins(node_id=997, to_node_id=861)  # samenvoegen voor wate
 ribasim_model.merge_basins(node_id=979, to_node_id=16)  # samenvoegen voor wateraanvoer
 
 ribasim_model.merge_basins(node_id=182, to_node_id=16)  # part of the boezem
+ribasim_model.merge_basins(node_id=426, to_node_id=17)  # part of the boezem
+ribasim_model.merge_basins(node_id=585, to_node_id=592)  #
 
 inlaat_pump = []  # pumps
 inlaat_structures = []  # weirs / outlets
@@ -392,6 +394,13 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(153456, 543428)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.link.add(ribasim_model.basin[6], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
+
+# add gemaal at Mieden Tjonger, Oost
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(209035, 555696), name="Midden Tjonger Oost, De"), [pump.Static(flow_rate=[0.2])]
+)
+ribasim_model.link.add(ribasim_model.basin[962], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[85])
 
 # Inlaat toevoegen at validation location
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -577,9 +586,40 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 # manually change the function of some nodes based upon model inspection
-to_supply = [1596, 2812, 3411, 3882, 3880, 2773, 2783, 3882, 3884, 3023, 3411, 3888, 2398, 1647, 1747]
-to_flow_control = [3068]
-to_drain = [3494, to_afvoer_node_id1, to_afvoer_node_id2]
+to_supply = [
+    1312,
+    1347,
+    1512,
+    1596,
+    1647,
+    1747,
+    2128,
+    2398,
+    2434,
+    2445,
+    2616,
+    2624,
+    2670,
+    2773,
+    2783,
+    2812,
+    2857,
+    2982,
+    3023,
+    3150,
+    3188,
+    3228,
+    3272,
+    3376,
+    3411,
+    3760,
+    3880,
+    3882,
+    3884,
+    3888,
+]
+to_flow_control = [2452, 3064, 3065, 3068]
+to_drain = [2147, 2751, 2944, 3041, 3494, 3568, 3709, 3892, to_afvoer_node_id1, to_afvoer_node_id2]
 
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -690,6 +730,7 @@ assign_metadata.add_meta_to_basins(
 )
 
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2700, "max_flow_rate"] = 172 / 60
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3891, "max_flow_rate"] = 7340 / 60
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -721,6 +762,11 @@ ribasim_model.pump.static.df.loc[
     "meta_known_flow_rate",
 ] = False
 
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "meta_known_flow_rate"] = (
+    False  # unknown capacity, set temp value
+)
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "flow_rate"] = 0.1
+
 # rescaling of outlets (and pumps)
 ribasim_model, from_to_node_function_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
@@ -735,6 +781,11 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
     )
 )
+
+# depending on the state, a different flow_rate is set. Set max value to the max_flow_rate when exceeding the max_flow_rate
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df.flow_rate > ribasim_model.outlet.static.df.max_flow_rate, "flow_rate"
+] = ribasim_model.outlet.static.df.max_flow_rate
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
