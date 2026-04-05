@@ -57,7 +57,7 @@ def minimum_surface_area(table: pd.DataFrame, min_area: float) -> pd.DataFrame:
     """
     assert all(c in table.columns for c in ["node_id", "level", "area"])
     surface_area = table.loc[table.groupby("node_id")["level"].idxmax(), ["node_id", "area"]]
-    valid_ids = surface_area.loc[surface_area["area"] > min_area, "node_id"]
+    valid_ids = surface_area.loc[surface_area["area"] > min_area, "node_id"].values
     return table.loc[table["node_id"].isin(valid_ids)]
 
 
@@ -106,9 +106,11 @@ def single_profile_nodes(
 
     :param flowing_table: table of flowing profiles ('doorgaand')
     :param storing_table: table of storing profiles ('bergend')
+    :param min_area: minimum area for profile to be considered valid [m2], defaults to 1e-3
 
     :type flowing_table: pandas.DataFrame
     :type storing_table: pandas.DataFrame
+    :type min_area: float, optional
 
     :return: no-storing basin node-IDs ('doorgaand'-only) and modified profile tables
     :rtype: tuple[list[int], pandas.DataFrame, pandas.DataFrame]
@@ -170,25 +172,27 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     storing_ids, df_flowing, df_storing = single_profile_nodes(*tables, min_area=min_area)
 
     # modify existing basins ('doorgaand')
-    _basin_node = ribasim_model.basin.node.df.copy()
+    ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
     _basin_profile = ribasim_model.basin.profile.df.copy()
-    ribasim_model.basin.node.df = _basin_node.assign(meta_node_id=_basin_node.index)
     _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
-    ribasim_model.basin.profile = _profiles.combine_first(_basin_profile)[_basin_profile.columns]
-    del _basin_node, _basin_profile
+    ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(
+        _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
+    )[_basin_profile.columns]
+    del _basin_profile
 
     # duplicate all basin-tables
-    basin_node = ribasim_model.basin.node.df.copy()
-    basin_static = ribasim_model.basin.static.df.copy()
-    basin_state = ribasim_model.basin.state.df.copy()
-    basin_area = ribasim_model.basin.area.df.copy()
-    basin_profile = df_storing.copy()
+    basin_node = ribasim_model.basin.node.df
+    basin_static = ribasim_model.basin.static.df
+    basin_state = ribasim_model.basin.state.df
+    basin_area = ribasim_model.basin.area.df
+    basin_profile = df_storing.copy(deep=True)
 
     # ID-selection: add storing basins
-    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy()
-    basin_static = basin_static[basin_static["node_id"].isin(storing_ids)].copy()
-    basin_state = basin_state[basin_state["node_id"].isin(storing_ids)].copy()
-    basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy()
+    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy(deep=True)
+    basin_static = basin_static[basin_static["node_id"].isin(storing_ids)].copy(deep=True)
+    basin_state = basin_state[basin_state["node_id"].isin(storing_ids)].copy(deep=True)
+    basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy(deep=True)
+    assert all(basin_profile["node_id"].isin(storing_ids)), "Storing profiles should only contain storing node IDs"
 
     # node ID incrementation
     incr_node_id = int(ribasim_model.next_node_id - 1)
@@ -260,19 +264,23 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     basin_node["meta_node_id"] = basin_node.index
 
     # concatenate all newly generated tables to Ribasim model
+    # > Node-table
+    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)
+    # > Link-table
+    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)
     # > Basin-tables
-    ribasim_model.basin.node.df = pd.concat([ribasim_model.basin.node.df, basin_node])
-    ribasim_model.basin.static = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
-    ribasim_model.basin.state = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
-    ribasim_model.basin.profile = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
-    ribasim_model.basin.area = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
+    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
+    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
+    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
+    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
     # > ManningResistance-tables
-    ribasim_model.manning_resistance.node.df = pd.concat([ribasim_model.manning_resistance.node.df, manning_node])
-    ribasim_model.manning_resistance.static = pd.concat(
+    ribasim_model.manning_resistance.static.df = pd.concat(
         [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
     )
-    # > Link-table
-    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link])
+
+    # update model IDs
+    _ = ribasim_model.node._update_used_ids
+    _ = ribasim_model.link._update_used_ids
 
     # return the updated Ribasim model
     return ribasim_model

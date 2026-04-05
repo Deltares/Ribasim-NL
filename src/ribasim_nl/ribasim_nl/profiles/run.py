@@ -15,6 +15,28 @@ from ribasim_nl.profiles import hydrotopes as ht
 LOG = logging.getLogger(__name__)
 
 
+def target_level_polygons(
+    fn: pathlib.Path, *, layer_polygons: str = "peilgebied", layer_levels: str = "streefpeil"
+) -> gpd.GeoDataFrame:
+    """Get polygons with target levels from source-data.
+
+    :param fn: filename
+    :param layer_polygons: layer-name with polygon data
+    :param layer_levels: layer-name with target level data
+
+    :type fn: str
+    :type layer_polygons: str, optional
+    :type layer_levels: str, optional
+
+    :return: polygons with target levels
+    :rtype: geopandas.GeoDataFrame
+    """
+    polygons = gpd.read_file(fn, layer=layer_polygons)
+    levels = gpd.read_file(fn, layer=layer_levels)
+    out = polygons.assign(meta_streefpeil=polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"]))
+    return out
+
+
 def main(
     *data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = None, **kwargs
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -33,6 +55,7 @@ def main(
     :key cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
+    :key filter_basins: filter basins on 'doorgaand' (i.e., excl. 'bergend'), defaults to True
     :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None
         Required if no `HydrotopeTable` is provided (i.e., `hydrotope_table=None`)
     :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to False
@@ -74,8 +97,11 @@ def main(
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
     debug: bool = kwargs.get("debug", False)
     epsg: int = kwargs.get("epsg", 28992)
+    filter_basins: bool = kwargs.get("filter_basins", True)
     # > hydrotopes
     fn_hydrotopes: pathlib.Path | str | None = kwargs.get("fn_hydrotopes")
+    # > target levels
+    target_levels: gpd.GeoDataFrame = kwargs.get("target_levels", data[0])
     # > generation of depth profile lines
     create_depth_profile_lines: bool = kwargs.get("create_depth_profile_lines", False)
     kw_make_depth_profile: dict[str, str] = kwargs.get("kw_make_depth_profile", {})
@@ -138,6 +164,10 @@ def main(
             msg = f"There should be 3 or 4 GeoDataFrames provided; {len(data)} given."
             raise ValueError(msg)
 
+    # filter basins
+    if filter_basins:
+        basins = basins[basins["node_id"] == basins["meta_node_id"]]
+
     # creating depth profile-lines
     if create_depth_profile_lines and cross_sections is not None:
         cross_sections = depth.make_depth_profiles(cross_sections, **kw_make_depth_profile)
@@ -169,11 +199,12 @@ def main(
 
     # collectors
     main_route_idx: set[int] = set()
-    point_collector = []
-    line_collector = []
+    point_collector: list[shapely.Point] = []
+    line_collector: list[shapely.LineString] = []
+    error_collector: list[int] = []
 
     # find main routes per basin
-    for basin in basins.geometry.values:
+    for node_id, basin in zip(basins["node_id"].values, basins.geometry.values):
         # data selections
         subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
         subset_crossings = path_finder.select_crossings(
@@ -182,7 +213,8 @@ def main(
 
         # create network-graph
         if len(subset_hydro_objects) == 0:
-            LOG.warning(f"No hydro-objects found in {basin=}")
+            error_collector.append(int(node_id))
+            LOG.warning(f"No hydro-objects found for Basin #{node_id}")
             continue
         graph = path_finder.generate_graph(subset_hydro_objects)
 
@@ -199,6 +231,10 @@ def main(
             points, lines = momepy.nx_to_gdf(graph)
             point_collector.append(points)
             line_collector.append(lines)
+
+    # overview of erroneous basins
+    if error_collector:
+        LOG.critical(f"No hydro-objects found for the following basins ({len(error_collector)}): {error_collector}")
 
     # concatenate basin-groups of point- and line-data
     if wd_intermediate_output is not None:
@@ -229,6 +265,7 @@ def main(
 
     # depth from measurements
     if cross_sections is not None:
+        cross_sections = depth.normalise_measured_cross_sections(cross_sections, target_levels)
         hydro_objects = depth.depth_from_measurements(hydro_objects, cross_sections)
     if wd_intermediate_output is not None:
         hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")

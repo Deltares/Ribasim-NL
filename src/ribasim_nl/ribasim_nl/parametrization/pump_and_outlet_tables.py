@@ -5,7 +5,6 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.conversions import round_to_significant_digits
 from ribasim_nl.parametrization.empty_table import empty_table_df
@@ -162,4 +161,4 @@ def update_pump_outlet_static(
     static_df = defaults_to_static_df(model=model, static_df=static_df, static_data_xlsx=static_data_xlsx)
     # sanitize df and update model
     static_df.drop(columns=["meta_code_waterbeheerder"], inplace=True)
-    getattr(model, pascal_to_snake_case(node_type)).static.df = static_df
+    model.get_component(node_type).static.df = static_df

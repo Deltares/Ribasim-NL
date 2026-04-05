@@ -1,9 +1,14 @@
+"""Iteratively scale pump and outlet max_flow_rate values for design precipitation and evaporation events."""
+
 from __future__ import annotations
 
+import logging
 import pathlib
+import warnings
 from dataclasses import dataclass, field
 
 import pandas as pd
+import xarray as xr
 from ribasim import run_ribasim
 
 from ribasim_nl import CloudStorage, Model
@@ -11,6 +16,8 @@ from ribasim_nl import CloudStorage, Model
 pd.set_option("display.max_columns", None)
 
 __all__ = ["OutletPumpScalingConfig", "scale_outlets_pumps"]
+
+LOG = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,13 +48,57 @@ class OutletPumpScalingConfig:
     min_scaled_flow_rate: float = 0.001
     add_information_to_from_to_node_function_table: bool = True
     situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
+    apply_temporary_debug_changes: bool = False
     debug_outlet_max_flow_rate: float = 0.10
     rescale_flow_capacities: bool = True
 
     @property
     def results_path(self) -> pathlib.Path:
         """Return the expected Ribasim basin-results file for the model run."""
-        return pathlib.Path(self.ribasim_model_path).parent / "results" / "basin.arrow"
+        try:
+            file = pathlib.Path(self.ribasim_model_path).parent / "results" / "basin.nc"
+        except FileNotFoundError:
+            file = pathlib.Path(self.ribasim_model_path).parent / "results" / "basin.arrow"
+            warnings.warn(
+                "Scaling of outlets and pumps based on *.arrow-file will be deprecated. "
+                "Please switch to new Ribasim version (v2026.1.0-rc2 or higher).",
+                UserWarning,
+                stacklevel=2,
+            )
+        return file
+
+
+def read_output_data(file: pathlib.Path, columns: list[str] | None = None) -> pd.DataFrame:
+    """Read (selection of) intermediate output data.
+
+    Selection of output data is defined by the `columns`-argument (optional).
+
+    :param file: filename of output data (absolute path)
+    :param columns: selection of columns to keep, defaults to None
+        If `columns=None`, all columns are kept.
+
+    :type file: pathlib.Path
+    :type columns: list[str] | None, optional
+
+    :return: (selection of) output data
+    :rtype: pandas.DataFrame
+
+    :raises NotImplementedError: if file-type is not supported
+    """
+    # read output data
+    match file.name:
+        case "basin.nc":
+            df = xr.open_dataset(file).to_dataframe().reset_index(drop=False)
+        case "basin.arrow":
+            df = pd.read_feather(file)
+        case _:
+            msg = f"File(-type) not supported: {file.name=}"
+            raise NotImplementedError(msg)
+
+    # return (selection of) output data
+    if columns is not None:
+        return df[columns]
+    return df
 
 
 def set_initial_water_levels(ribasim_model):
@@ -268,7 +319,7 @@ def update_from_to_node_function_table_with_new_flow_rate(
     pd.DataFrame
         The input table with one additional guessed flow-rate column.
     """
-    column_name_new_flow_rate = "new_max_flow_rates_" + str(iteration) + "_" + situation
+    column_name_new_flow_rate = f"new_max_flow_rates_{iteration}_{situation}"
 
     # Find all historical new_max_flow_rates columns for this situation
     history_prefix = "new_max_flow_rates_"
@@ -527,7 +578,7 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     return ribasim_model
 
 
-def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
+def upload_from_to_node_function_table(from_to_node_function_table, waterschap, upload_to_cloud=True):
     """Write the scaled connector table locally and upload the CSV to GoodCloud.
 
     Parameters
@@ -544,9 +595,9 @@ def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
         waterschap, "verwerkt", "Parametrisatie_data", "from_to_node_function_table_scaled_max_flow_rates.csv"
     )
     from_to_node_function_table.to_csv(from_to_node_function_table_path)
-    cloud.upload_file(from_to_node_function_table_path)
-
-    print("from_to_node_function_table with estimated flow rates saved to the GoodCloud.")
+    if upload_to_cloud:
+        cloud.upload_file(from_to_node_function_table_path)
+        print("from_to_node_function_table with estimated flow rates saved to the GoodCloud.")
 
 
 class _OutletPumpScaler:
@@ -715,7 +766,10 @@ class _OutletPumpScaler:
                     # write model
                     if printing:
                         print(
-                            "Writing updated Ribasim model with: \n - (temporarily) changed initial water levels \n - (temporarily) changed vertical fluxes \n - initial guessed flow rates."
+                            "Writing updated Ribasim model with:"
+                            "\n - (temporarily) changed initial water levels"
+                            "\n - (temporarily) changed vertical fluxes"
+                            "\n - initial guessed flow rates."
                         )
                     ribasim_model.write(config.ribasim_model_path)
                     first_iteration = (
@@ -729,15 +783,15 @@ class _OutletPumpScaler:
                 run_ribasim(toml_path=config.ribasim_model_path)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
-                ribasim_water_levels = pd.read_feather(results_path)
-                ribasim_water_levels = ribasim_water_levels[["time", "node_id", "level"]]
+                # ribasim_water_levels = pd.read_feather(results_path)
+                ribasim_water_levels = read_output_data(results_path, ["time", "node_id", "level"])
                 ribasim_water_levels = ribasim_water_levels.merge(
                     basin_information[["meta_streefpeil"]], left_on="node_id", right_index=True, how="left"
                 )
 
                 ### basin analysis ###
                 # determine which basins exceed the maximum allowed deviation and duration from the streefpeil
-                column_name_iteration = "exceeds_deviation_duration_iteration_" + str(iteration) + "_" + situation
+                column_name_iteration = f"exceeds_deviation_duration_iteration_{iteration}_{situation}"
                 ribasim_water_levels["deviation"] = (
                     ribasim_water_levels["level"] - ribasim_water_levels["meta_streefpeil"]
                 )
@@ -758,7 +812,7 @@ class _OutletPumpScaler:
                 )
 
                 # determine which basins needs to be scaled higher or lower based on the exceeds_deviation_duration_iteration
-                column_name_direction = "scale_direction_iteration_" + str(iteration) + "_" + situation
+                column_name_direction = f"scale_direction_iteration_{iteration}_{situation}"
                 basin_exceedance[column_name_direction] = None
                 basin_exceedance.loc[basin_exceedance[column_name_iteration] > max_days, column_name_direction] = (
                     "higher"  # if the deviation is exceeded for more than max_days, the flow rate should be scaled higher
@@ -827,6 +881,11 @@ class _OutletPumpScaler:
 
                 # store model
                 ribasim_model.write(config.ribasim_model_path)
+
+                # write from_to_node_table locally (push to cloud after everything has run)
+                upload_from_to_node_function_table(
+                    from_to_node_function_table, config.waterschap, upload_to_cloud=False
+                )
 
         # replace the original meteo, initial water levels and boundary levels in the ribasim model
         ribasim_model.basin.time.df = original_meteo

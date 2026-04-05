@@ -73,7 +73,8 @@ class AssignAuthorities:
             print(temp_node_id.loc[temp_node_id["meta_couple_authority"].isna()])
             print("Warning! Not all LevelBoundary nodes were assigned to an authority.")
 
-        ribasim_model.level_boundary.node.df = temp_node_id.set_index("node_id")
+        lb_ids = ribasim_model.level_boundary.node.df.index
+        ribasim_model.node.df = pd.concat([ribasim_model.node.df.drop(lb_ids), temp_node_id.set_index("node_id")])
         return ribasim_model
 
     def retrieve_geodataframe(self):
@@ -169,5 +170,6 @@ class AssignAuthorities:
             .merge(right=joined[["node_id", "meta_couple_authority"]], on="node_id", how="left")
             .set_index("node_id")
         )
-        ribasim_model.level_boundary.node.df = LB_node
+        lb_ids = ribasim_model.level_boundary.node.df.index
+        ribasim_model.node.df = pd.concat([ribasim_model.node.df.drop(lb_ids), LB_node])
         return ribasim_model

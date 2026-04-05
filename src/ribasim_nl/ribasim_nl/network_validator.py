@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
 import geopandas as gpd
-from ribasim import Model
+
+from ribasim_nl.model import Model
 
 
 def within_distance(row, gdf, tolerance=1.0) -> bool:
@@ -44,7 +45,7 @@ class NetworkValidator:
 
     Parameters
     ----------
-    model: ribasim.Model
+    model: Model
         Ribasim model
     tolerance: float (default=1)
         Tolerance to use for snapping. Should be in the units of the model.crs
@@ -56,7 +57,7 @@ class NetworkValidator:
 
     @property
     def node_df(self):
-        return self.model.node_table().df
+        return self.model.node.df
 
     @property
     def link_df(self):

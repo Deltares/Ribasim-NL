@@ -13,26 +13,27 @@ import typing
 
 import geopandas as gpd
 import pandas as pd
-import ribasim
 from mypy.types_utils import AnyType
 
+from ribasim_nl import Model
 
-def _load_model(model: str | ribasim.Model) -> ribasim.Model:
+
+def _load_model(model: str | Model) -> Model:
     """Load Ribasim model.
 
     :param model: file/path to Ribasim model
     :type model: str
 
     :return: Ribasim model
-    :rtype: ribasim.model.Model
+    :rtype: ribasim_nl.Model
     """
-    if isinstance(model, ribasim.Model):
+    if isinstance(model, Model):
         return model
 
     if not model.endswith(".toml"):
         model += f"{os.sep}ribasim.toml"
 
-    return ribasim.Model(filepath=model)
+    return Model.read(model)
 
 
 # TODO: Add the `special_load_geometry()`-function as a built-in feature via `kwargs`?
@@ -74,7 +75,7 @@ def _load_geometry(geometry: str | gpd.GeoDataFrame, **kwargs) -> gpd.GeoDataFra
 class SupplyBasin:
     """Labelling of Ribasim's basin nodes as 'aanvoergebieden' based on geometry data."""
 
-    def __init__(self, model: str | ribasim.Model, geometry: str | gpd.GeoDataFrame, **kwargs):
+    def __init__(self, model: str | Model, geometry: str | gpd.GeoDataFrame, **kwargs):
         """Initiate object.
 
         :param model: Ribasim model, or file/path to a Ribasim model
@@ -82,7 +83,7 @@ class SupplyBasin:
         :param kwargs: optional arguments, potentially required to load/read geometry data
             see `._load_geometry()`
 
-        :type model: str, ribasim.Model
+        :type model: str, Model
         :type geometry: str, geopandas.GeoDataFrame
         :type kwargs: optional
         """
@@ -127,7 +128,7 @@ class SupplyBasin:
         return basin_areas
 
     @property
-    def model(self) -> ribasim.Model:
+    def model(self) -> Model:
         """Ribasim model."""
         return self._model
 
@@ -232,11 +233,11 @@ class SupplyWork(abc.ABC):
 
     _node_type: str
 
-    def __init__(self, model: str | ribasim.Model):
+    def __init__(self, model: str | Model):
         """Initiate object.
 
         :param model: Ribasim model, or file/path to a Ribasim model
-        :type model: str, ribasim.Model
+        :type model: str, Model
         """
         self._model = self._load_model(model)
 
@@ -250,14 +251,14 @@ class SupplyWork(abc.ABC):
         """
         return self.exec(**kwargs)  # type: ignore
 
-    def _load_model(self, model: str | ribasim.Model) -> ribasim.Model:
+    def _load_model(self, model: str | Model) -> Model:
         """Load and check Ribasim model.
 
         :param model: file/path to Ribasim model
         :type model: str
 
         :return: Ribasim model
-        :rtype: ribasim.model.Model
+        :rtype: ribasim_nl.Model
         """
         _model = _load_model(model)
 
@@ -271,7 +272,7 @@ class SupplyWork(abc.ABC):
         return _model
 
     @property
-    def model(self) -> ribasim.Model:
+    def model(self) -> Model:
         """Ribasim model."""
         return self._model
 

@@ -3,24 +3,22 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from ribasim import Model
 
-from ribasim_nl import CloudStorage
-from ribasim_nl import Model as ModelNL
+from ribasim_nl import CloudStorage, Model
 
 
 class AssignMetaData:
     def __init__(
         self,
         authority: str,
-        model_name: ModelNL | Model | Path | str,
+        model_name: Model | Path | str,
         param_name: str,
     ):
         # Initialize cloudstorage
         self.cloud = CloudStorage()
 
         # Model
-        if isinstance(model_name, Model) or isinstance(model_name, ModelNL):
+        if isinstance(model_name, Model):
             self.model_dir = model_name.filepath.parent
             self.model = model_name
         else:
@@ -64,11 +62,18 @@ class AssignMetaData:
         rtype = getattr(self.model, ribasim_type)
         for colmap in mapper.values():
             for ribasim_attr, ribasim_cols in colmap.items():
-                df_ribasim = getattr(rtype, ribasim_attr).df
+                if ribasim_attr == "node":
+                    # Use global node table
+                    df_ribasim = self.model.node.df
+                    type_name = type(rtype).__name__
+                    type_mask = df_ribasim["node_type"] == type_name
+                else:
+                    df_ribasim = getattr(rtype, ribasim_attr).df
+                    type_mask = pd.Series(True, index=df_ribasim.index)
                 for col in ribasim_cols:
-                    if col in df_ribasim.columns and self._series_assigned(df_ribasim[col]):
-                        restore_mapper[(ribasim_type, ribasim_attr, col)] = df_ribasim[col].copy()
-                        df_ribasim[col] = pd.NA
+                    if col in df_ribasim.columns and self._series_assigned(df_ribasim.loc[type_mask, col]):
+                        restore_mapper[(ribasim_type, ribasim_attr, col)] = df_ribasim.loc[type_mask, col].copy()
+                        df_ribasim.loc[type_mask, col] = pd.NA
                     elif col not in df_ribasim.columns:
                         df_ribasim[col] = pd.NA
 
@@ -77,9 +82,15 @@ class AssignMetaData:
     def _restore_org_vals(self, restore_mapper: dict[tuple[str, str, str], pd.Series]) -> None:
         # Restore original values for those that are still N
         for (ribasim_type, ribasim_attr, col), org_vals in restore_mapper.items():
-            df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
-            mrows = self._na_or_empty(df_ribasim[col])
-            df_ribasim.loc[mrows, col] = org_vals.loc[mrows]
+            if ribasim_attr == "node":
+                # Use global node table
+                df_ribasim = self.model.node.df
+                mrows = self._na_or_empty(df_ribasim.loc[org_vals.index, col])
+                df_ribasim.loc[org_vals.index[mrows], col] = org_vals[mrows]
+            else:
+                df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
+                mrows = self._na_or_empty(df_ribasim[col])
+                df_ribasim.loc[mrows, col] = org_vals.loc[mrows]
 
     def _get_matching_rows(
         self,
@@ -87,10 +98,12 @@ class AssignMetaData:
         ribasim_attr: str,
         node_id: list[int],
     ) -> tuple[pd.DataFrame, np.ndarray]:
-        df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
         if ribasim_attr == "node":
+            # Use global node table
+            df_ribasim = self.model.node.df
             matching_rows = df_ribasim.index.isin(node_id)
         else:
+            df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
             matching_rows = df_ribasim.node_id.isin(node_id).to_numpy()
 
         return df_ribasim, matching_rows
