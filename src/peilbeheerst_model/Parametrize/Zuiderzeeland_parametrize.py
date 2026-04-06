@@ -749,6 +749,36 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 719, "max_flow_rate"] = (
+    1  # unknown capacity, 1 m3/s based on expert judgement
+)
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 856, "max_flow_rate"] = 50  # Wortman
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 852, "max_flow_rate"] = (
+    770 * 2 / 60
+)  # Blocq van Kuffeler, Lage Vaart
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 854, "max_flow_rate"] = (
+    935 * 2 / 60
+)  # Blocq van Kuffeler, Hoge Vaart
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 787, "max_flow_rate"] = (
+    500 * 2 / 60
+)  # Colijn, Lage Vaart
+
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 788, "max_flow_rate"] = (
+    580 / 60
+)  # Colijn, Hoge Vaart
+
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 823, "max_flow_rate"] = 580 * 2 / 60  # Lovink
+
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 814, "max_flow_rate"] = (
+    800 * 3 / 60
+)  # Vissering
+
+
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 834, "max_flow_rate"] = 620 * 2 / 60  # Smeenge
+
+
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 815, "max_flow_rate"] = 720 * 3 / 60  # Buma
+
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
