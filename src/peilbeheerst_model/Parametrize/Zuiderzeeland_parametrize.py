@@ -9,6 +9,7 @@ from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
@@ -25,10 +26,14 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
+DYNAMIC_CONDITIONS: bool = True
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
+
+MIXED_CONDITIONS_DESIGN_P = 12
+MIXED_CONDITIONS_DESIGN_E = 4
 
 # model settings
 waterschap = "Zuiderzeeland"
@@ -51,18 +56,20 @@ qlr_name = "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_20
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/peilgebieden.gpkg")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
+profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-# cloud.synchronize(
-#     filepaths=[
-#         ribasim_base_model_dir,
-#         FeedbackFormulier_path,
-#         ws_grenzen_path,
-#         RWS_grenzen_path,
-#         qlr_path,
-#         aanvoer_path,
-#         meteo_path,
-#     ]
-# )
+cloud.synchronize(
+    filepaths=[
+        #         ribasim_base_model_dir,
+        #         FeedbackFormulier_path,
+        #         ws_grenzen_path,
+        #         RWS_grenzen_path,
+        #         qlr_path,
+        #         aanvoer_path,
+        #         meteo_path,
+        profiles_path
+    ]
+)
 
 # refresh only the feedback form from cloud
 cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -545,6 +552,8 @@ add_storage_basins = AddStorageBasins(
 
 add_storage_basins.create_bergende_basins()
 
+# implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
+
 # set forcing
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo
@@ -750,6 +759,33 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
+
+# set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
+ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df["meta_known_flow_rate"] = True
+ribasim_model.pump.static.df.loc[
+    (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
+    "meta_known_flow_rate",
+] = False
+
+# rescaling of outlets (and pumps)
+if RESCALE_FLOW_CAPACITIES:
+    ribasim_model, from_to_node_function_table = scale_outlets_pumps(
+        OutletPumpScalingConfig(
+            ribasim_model_path=ribasim_work_dir_model_toml,
+            ribasim_model=ribasim_model,
+            from_to_node_function_table=from_to_node_function_table,
+            waterschap=waterschap,
+            cloud=cloud,
+            rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+            max_iterations=12,
+            design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+            design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+        )
+    )
+else:
+    print(f"No scaling of outlets/pumps: {RESCALE_FLOW_CAPACITIES=}")
+
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
