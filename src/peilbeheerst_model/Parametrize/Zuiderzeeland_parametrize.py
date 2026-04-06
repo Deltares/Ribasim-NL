@@ -10,17 +10,17 @@ from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim import Node
+from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    set_node_functions,
 )
 from shapely import Point
 
-from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
@@ -462,6 +462,8 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[73])
 
+ribasim_model.remove_node(485, remove_links=True)
+
 # [from_node, to_node, x_coordinate, y_coordinate]
 farmer_pumps = [
     [16, 222, 163266, 487745],
@@ -607,30 +609,17 @@ for node in inlaat_structures:
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
-# prepare 'aanvoergebieden'
-if AANVOER_CONDITIONS:
-    aanvoergebieden = supply.special_load_geometry(
-        f_geometry=str(aanvoer_path), method="extract", layer="peilbesluitgebied", key="statusobject", value="3"
-    )
-else:
-    aanvoergebieden = None
-
 #####
 
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-ribasim_param.set_aanvoer_flags(
-    ribasim_model,
-    aanvoergebieden,
-    processor,
-    basin_aanvoer_off=104,
-    aanvoer_enabled=AANVOER_CONDITIONS,
-)
-# Apply outlet meta_aanvoer labelling and overrule non-hoofdwater routes when direct hoofdwater supply exists.
-supply.SupplyOutlet(ribasim_model).exec(overruling_enabled=True)
-
+ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
+
+# Apply outlet meta_aanvoer labelling and overrule non-hoofdwater routes when direct hoofdwater supply exists.
+# supply.SupplyOutlet(ribasim_model).exec(overruling_enabled=True)
+
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
@@ -641,9 +630,12 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
-# from_to_node_function_table = set_node_functions(
-#     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
-# )
+to_supply = [493, 659, 664, 672]
+to_flow_control = []
+to_drain = []
+from_to_node_function_table = set_node_functions(
+    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+)
 
 outlet_copy = ribasim_model.outlet.static.df[
     [
@@ -766,9 +758,6 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
-        821: "WetterskipFryslan",
-        823: "WetterskipFryslan",
-        2889: "WetterskipFryslan",
         820: "Rijkswaterstaat",
         834: "Rijkswaterstaat",
         857: "Rijkswaterstaat",
@@ -788,7 +777,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_other=False, suffix="init")
+cli.run_ribasim(ribasim_work_dir_model_toml)
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
