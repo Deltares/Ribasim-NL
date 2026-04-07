@@ -1,7 +1,7 @@
 
 # Noorderzijlvest
 
-- Laatst bijgewerkt: 28-01-2026
+- Laatst bijgewerkt: 07-04-2026
 - [Laatste modelversie](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
 
 ## Systeembeschrijving
@@ -77,6 +77,5 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
-- [Documentatie Distributiemodel (Deel C, hoofdstuk 26)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
-- [Sweco - systeemschets](bronnen/noorderzijlvest/sweco_systeemschets.png)
+- Documentatie Distributiemodel (Deel C, hoofdstuk 26)
 - [Noorderzijlvest - beschrijving wateraanvoer en doorspoeling](bronnen/noorderzijlvest/wateraanvoer_en_doorspoeling_input_voor_ribasim_lhm_model_noorderzijlvest.pdf)
