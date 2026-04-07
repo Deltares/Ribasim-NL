@@ -5,7 +5,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/4ozjqW39eJakmao)
 
 ## Systeembeschrijving
-[Systeembeschrijving De Dommel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/dommel.svg)
+[Systeembeschrijving De Dommel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/dommel.svg)
 
 Het beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.
 
