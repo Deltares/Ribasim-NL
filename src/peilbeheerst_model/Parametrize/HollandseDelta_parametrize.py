@@ -23,12 +23,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry
-
-# explode node point-locations so they will not overlap, making visual inspections easier; exploding of points might
-# cause "unconnected" nodes to appear, as they move away from their link-connection
-EXPLODE_NODE_POINTS: bool = True
-EXPLODE_NODE_DISTANCE: float = 10
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -925,9 +920,6 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
-
-if EXPLODE_NODE_POINTS:
-    ribasim_model.node.df = geometry.explode_nearby_points(ribasim_model.node.df.copy(), EXPLODE_NODE_DISTANCE)
 
 # set numerical settings
 # write model output
