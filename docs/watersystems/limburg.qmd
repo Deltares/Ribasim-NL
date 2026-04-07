@@ -4,13 +4,13 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/MW2kiQMyXwFM4xw)
 
 ## Systeembeschrijving
-[Systeembeschrijving Brabantse Delta](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/limburg.svg)
+![Systeembeschrijving Limburg](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/limburg.svg)
 
 Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.
 
 ### Watersysteem
 
-Via gemaal `Katsberg` wordt water((max 5.4m3/s)) vanuit de `Noordervaart` aangevoerd naar het kanaal `van Deurne`.Water wordt ingelaten voor WPM en Aa en Maas in de verdeling 50-50%.
+Via gemaal `Katsberg` wordt water (max 5.4m3/s) vanuit de `Noordervaart` aangevoerd naar het kanaal `van Deurne`.Water wordt ingelaten voor WPM en Aa en Maas in de verdeling 50-50%.
 
 Een tijdelijke verlaging van aanvoer in de winter is afhankelijk van de natuurlijke afvoer van de Helenavaart die snel reageert op neerslag en die afvoert middels Grenssloot het gebied in. In de winter max 0.1m3/s voor doorspoeling om kwaliteitsredenen. Bij `Halte Verdeelwerk` wordt het beschikbare water verdeeld over het `Peelkanaal` en de `Grenssloot` verdeeld. Middels een automatische klepstuw (Gre 6 en TMX De Halte), wordt hier het aanvoerwater van de Katsberg doorgezet naar de Grenssloot. Stuw is zowel peil als debiet gestuurd  Het peil mag nooit lager dan 30.80 vanwege inklappen veenwanden en nooit hoger dan 31.21 vanwege overstromingsgevaar bovenstrooms.
 In de zomer wordt gestuurd op een peil van 31.12m+NAP. In de winter sturing op 31.19m+NAP (om de veenkades zo nat mogelijk te houden ter voorkoming van inklinking).
@@ -72,7 +72,7 @@ De Helenavaart takt aan op Kanaal van Deurne via stuw Hel 1 (automatische stuw).
 ### Tungelroysche beek
 
 **Afvoer:**
--via de Neerbeek en de Tungelroysche beek naar de `Maas`
+- via de Neerbeek en de Tungelroysche beek naar de `Maas`
 
 **Aanvoer:**
 - Via inlaten vanaf de `Zuid-Willemsvaart`
@@ -111,6 +111,6 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 | Zwartwaterlossing          | D_294341   |       230 | inlaat    |            0.05  |               0 |
 
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html).
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd).
 
 - Documentatie Distributiemodel (Deel D, hoofdstuk 8)

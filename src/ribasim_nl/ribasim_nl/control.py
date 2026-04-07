@@ -356,7 +356,7 @@ def add_control_functions_to_connector_nodes(
     drain_nodes: list[int],
     supply_nodes: list[int],
     flow_control_nodes: list[int],
-    flushing_nodes: dict[int, float | dict[Literal["summer", "winter"], float]],
+    flushing_nodes: dict[int, float | dict[str, float]],
     is_supply_node_column: str = "meta_supply_node",
 ) -> gpd.GeoDataFrame:
     """Add control functions `drain`, `supply`, `flusing` or `flow_control` to nodes
@@ -1107,7 +1107,7 @@ def add_controllers_and_demand_to_flushing_nodes(
 
         if demand_flow_rate_summer != demand_flow_rate_winter:
             demand_node_name = f"{demand_name_prefix} {demand_flow_str} [m3/s]"
-            demand_tables = [
+            demand_tables: list[flow_demand.Time | flow_demand.Static] = [
                 flow_demand.Time(
                     time=time,
                     demand=[
@@ -1234,7 +1234,7 @@ def add_controllers_to_supply_area(
     polygon: Polygon,
     ignore_intersecting_links: list[int],
     drain_nodes: list[int],
-    flushing_nodes: dict[int, float | dict[Literal["summer", "winter"], float]],
+    flushing_nodes: dict[int, float | dict[str, float]],
     supply_nodes: list[int],
     level_difference_threshold: float,
     flow_control_nodes: list[int] | None = None,

@@ -4,7 +4,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
 
 ## Systeembeschrijving
-[Systeembeschrijving Stichtse Rijnlanden](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/stichtserijnlanden.svg)
+![Systeembeschrijving Stichtse Rijnlanden](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/stichtserijnlanden.svg)
 
 Hieronder zijn de gebieden beschreven uit het bovenstaande figuur.
 

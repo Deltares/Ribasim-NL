@@ -4,13 +4,13 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/KHieyrrZZdcBBHo)
 
 ## Systeembeschrijving
-[Systeembeschrijving Brabantse Delta](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/brabantsedelta.svg)
+![Systeembeschrijving Brabantse Delta](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/brabantsedelta.svg)
 
 Hieronder is de sturing van het Mark-Vliet systeem en de aanvoergebieden beschreven uit bovenstaande figuur.
 
 ### Wateraanvoer vanuit Rijkswateren bij droogte in het Mark-Vliet systeem
 De Mark, Dintel, Mark-Vlietkanaal, de Roosendaalsche en Steenbergsche Vliet en het Markkanaal
-staan in open verbinding met elkaar. Bij droogte wordt vindt in eerste instantie plaats vanuit het Volkerak. Wanneer dit niet genoeg is kan via de Markduiker water aangevoerd worden.
+staan in open verbinding met elkaar. Bij droogte vindt aanvoer in eerste instantie plaats vanuit het Volkerak. Wanneer dit niet genoeg is kan via de Markduiker water aangevoerd worden.
 
 ### Marksluis
 De Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op de Mark dan op de Amertak kunnen de extra deuren worden gesloten om instroom van hoogwater richting het kanaal te voorkomen. De sluis fungeert dan tevens als waterkering.
@@ -18,7 +18,7 @@ De Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op 
 ### Donge, Sprangsloot, Westplas en Paterheide
 
 **Afvoer:**
-- Via de `Slagen pomp` en `gemaal Keizersveer` wordt het water afgevoerd naaer de `Bergsche Maas`
+- Via de `Slagen pomp` en `gemaal Keizersveer` wordt het water afgevoerd naar de `Bergsche Maas`
 - In noordoosten watert een klein gebied Gansoijen (noordoosten) via een sifon onder het Afwateringskanaal 's-Hertogenosch-Drongelen door via het (Aa en Maas) afgevoerd naar de Bergsche Maas. Bij Waalwijk watert nog een klein gebied via gemaal Bloemendaal op het Drongelenskanaal (mondt uit in de Bergsche Maas).
 - Ten zuiden van het Wilhelminakanaal watert het via aflaatkunstwerk af op het Wilhelminakanaal. Het overige deel van het water wordt via een sifon (Tichelrijt) onder het Wilhelminakanaal geleid en watert af via gemaal Keizersveer op de Bergsche Maas.
 
@@ -57,7 +57,7 @@ De Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op 
 ### Steenbergen
 
 **Afvoer:**
--Vindt plaats vanaf de `Steenbergsche Vliet` via de `scheepvaartsluis`  naar de `Krammer`
+- Vindt plaats vanaf de `Steenbergsche Vliet` via de `scheepvaartsluis`  naar de `Krammer`
 
 **Aanvoer:**
 - Vindt plaats vanaf de `Steenbergsche Vliet`.
@@ -65,7 +65,7 @@ De Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op 
 ### Slikken
 
 **Afvoer:**
--Vindt plaats via een gemaal direct op het `Schelde Rijn-kanaal`
+- Vindt plaats via een gemaal direct op het `Schelde Rijn-kanaal`
 
 **Aanvoer:**
 - Vindt plaats via een inlaat vanaf het `Zoommeer`.
@@ -82,6 +82,6 @@ De Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html).
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd).
 
 - Documentatie Distributiemodel (Deel D)
