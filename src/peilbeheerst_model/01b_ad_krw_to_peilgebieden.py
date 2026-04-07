@@ -1,4 +1,5 @@
 import pathlib
+from typing import Any
 
 import geopandas as gpd
 import pandas as pd
@@ -6,7 +7,7 @@ from IPython.core.display import HTML
 
 from peilbeheerst_model import ParseCrossings, waterschap_data
 
-print_df = {}
+print_df: dict[str, list[Any]] = {}
 for waterschap, waterschap_struct in waterschap_data.items():
     for funcname, func_args in waterschap_struct.items():
         if funcname not in print_df:
@@ -24,7 +25,7 @@ for waterschap, waterschap_struct in waterschap_data.items():
     crossing_settings = waterschap_struct["find_crossings_with_peilgebieden"]
     init_settings = waterschap_struct["init"]
 
-    gpkg = pathlib.Path(init_settings["output_path"])
+    gpkg = pathlib.Path(str(init_settings["output_path"]))
     if not gpkg.exists():
         raise ValueError(gpkg)
 
@@ -34,10 +35,10 @@ for waterschap, waterschap_struct in waterschap_data.items():
 
     df_peilgebieden = ParseCrossings.add_krw_to_peilgebieden(
         df_peilgebieden,
-        init_settings["krw_path"],
-        init_settings["krw_column_id"],
-        init_settings["krw_column_name"],
-        init_settings["krw_min_overlap"],
+        str(init_settings["krw_path"]),
+        str(init_settings["krw_column_id"]),
+        str(init_settings["krw_column_name"]),
+        float(init_settings["krw_min_overlap"]),  # type: ignore[arg-type]
         ",",
     )
 

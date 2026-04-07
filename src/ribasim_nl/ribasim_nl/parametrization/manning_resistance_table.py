@@ -31,6 +31,7 @@ def update_manning_resistance_static(
     static_df = empty_table_df(model=model, node_type="ManningResistance", table_type="Static")
 
     # length from length links
+    assert model.link.df is not None
     length = [
         round_to_precision(
             model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)].length.sum(),
@@ -55,7 +56,7 @@ def update_manning_resistance_static(
     # manning_n
     static_df.loc[:, "manning_n"] = manning_n
 
-    model.manning_resistance.static.df = static_df
+    model.manning_resistance.static.df = static_df  # type: ignore[assignment]
 
 
 def calculate_flow_rate(
@@ -105,12 +106,14 @@ def manning_flow_rate(model: Model, manning_node_id: int, at_timestamp: Timestam
     ds_basin_node_id = model.downstream_node_id(manning_node_id)
 
     # get slope
+    assert model.manning_resistance.static.df is not None
     df = model.basin_results.df.loc[at_timestamp].set_index("node_id")
     delta_h = df.at[us_basin_node_id, "level"] - df.at[ds_basin_node_id, "level"]
     slope = abs(delta_h / model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "length"])
 
     # get depth as in https://github.com/Deltares/Ribasim/blob/1773acf71857ab05390a60626fbf96dd4ccae740/core/src/solve.jl#L529-L532
     water_level = (df.at[us_basin_node_id, "level"] + df.at[ds_basin_node_id, "level"]) / 2
+    assert model.basin.profile.df is not None
     bottom_level = (
         model.basin.profile.df.set_index("node_id").loc[us_basin_node_id, "level"].min()
         + model.basin.profile.df.set_index("node_id").loc[ds_basin_node_id, "level"].min()
@@ -119,9 +122,15 @@ def manning_flow_rate(model: Model, manning_node_id: int, at_timestamp: Timestam
 
     q = calculate_flow_rate(
         depth=depth,
-        profile_width=model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_width"],
-        profile_slope=model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_slope"],
-        manning_n=model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "manning_n"],
+        profile_width=float(
+            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_width"]  # type: ignore[arg-type]
+        ),
+        profile_slope=float(
+            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_slope"]  # type: ignore[arg-type]
+        ),
+        manning_n=float(
+            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "manning_n"]  # type: ignore[arg-type]
+        ),
         slope=slope,
     )
 

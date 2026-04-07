@@ -59,8 +59,8 @@ def find_codes(
     administration_category: str | None = None,
     to_dict: bool = True,
 ) -> dict[str, list[dict[str, str]]] | DataFrame:
-    codes = {}
     """Find codes associated with an organization"""
+    codes: dict[str, list[dict[str, str]]] | list[dict[str, str]] = {}
     codes_df = get_codes_df()
 
     # filter on administration_category
@@ -82,11 +82,11 @@ def find_codes(
         df = codes_df.loc[codes_df.name.apply(lambda x: organization.lower() in x.lower())]
     if to_dict:
         if isinstance(df, DataFrame):
-            codes = df.to_dict(orient="records")
+            codes = df.to_dict(orient="records")  # type: ignore[assignment]
         else:
-            codes = df.to_dict()
+            codes = df.to_dict()  # type: ignore[assignment]
 
-    return codes
+    return codes  # type: ignore[return-value]
 
 
 def code_from_geometry(geometry: Point) -> str:

@@ -308,9 +308,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node.df.node_type.unique():
-    table = model.get_component(node_type).node
-    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(layers=["sluis", "gemaal", "stuw", "duiker"], authority=authority)

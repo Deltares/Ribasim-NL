@@ -96,6 +96,7 @@ def _target_level(
             raise ValueError(msg)
     else:
         if node_type == "Basin":
+            assert model.basin.area.df is not None
             if node_id not in model.basin.area.df["node_id"].values:  # node_id missing in Basin.Area table
                 if allow_missing:
                     return None
@@ -134,18 +135,21 @@ def _target_level(
 
 def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = True, drain: bool = True):
     """Update meta-info for masking Basins and Connnector nodes."""
+    assert model.pump.static.df is not None
+    assert model.outlet.static.df is not None
+    assert model.basin.area.df is not None
     for col in ["meta_func_aanvoer", "meta_func_afvoer"]:
         if col not in model.pump.static.df.columns:
             model.pump.static.df[col] = 0
     if "meta_aanvoer" not in model.outlet.static.df.columns:
-        model.outlet.static.df["meta_aanvoer"] = 0
+        model.outlet.static.df["meta_aanvoer"] = False
     if supply and ("meta_aanvoer" not in model.basin.area.df.columns):
         model.basin.area.df["meta_aanvoer"] = False
 
     # update values
     if supply:
         model.pump.static.df.loc[model.pump.static.df.node_id.isin(nodes_df.index.values), "meta_func_aanvoer"] = 1
-        model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(nodes_df.index.values), "meta_aanvoer"] = 1
+        model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(nodes_df.index.values), "meta_aanvoer"] = True
 
         ds_node_ids = nodes_df.to_node_id.values
         model.basin.area.df.loc[model.basin.area.df.node_id.isin(ds_node_ids), "meta_aanvoer"] = True
@@ -191,14 +195,16 @@ def validate_nodes_on_reversed_direction(
         )
 
 
-def discrete_control_tables_single_basin(listen_node_id: int, control_state: list[str, str], threshold: float) -> list:
+def discrete_control_tables_single_basin(
+    listen_node_id: int, control_state: list[str], threshold: float
+) -> list[object]:
     """Create discrete_control tables for a single-basin (upstream or downstream) control-node: drain and supply.
 
     Parameters
     ----------
     listen_node_id : int
         listen_node_id voor discrete_control.Variable
-    control_state : list[str, str]
+    control_state : list[str]
         control_state voor discrete_control.Logic
     threshold : float
         Threshold for discrete_control.Condition
@@ -226,7 +232,7 @@ def discrete_control_tables_single_basin(listen_node_id: int, control_state: lis
 
 
 def add_and_connect_discrete_control_node(
-    model: Model, node_id: int, offset: float, angle: int, tables: list, **kwargs
+    model: Model, node_id: int, offset: float, angle: int, tables: list[object], **kwargs
 ):
     """Add and connect a DiscreteControl Node to an existing node.
 
@@ -247,7 +253,8 @@ def add_and_connect_discrete_control_node(
     """
     connector_node = model.get_node(node_id)
     control_node = model.discrete_control.add(
-        _offset_new_node(connector_node, offset=offset, angle=angle, **kwargs), tables
+        _offset_new_node(connector_node, offset=offset, angle=angle, **kwargs),
+        tables,  # type: ignore[arg-type]
     )
     model.link.add(control_node, connector_node)
 
@@ -813,6 +820,7 @@ def add_controllers_to_supply_nodes(
         )
 
         # add control_node
+        assert ds_target_level is not None
         tables = discrete_control_tables_single_basin(
             listen_node_id=ds_node_id, control_state=control_state, threshold=ds_target_level
         )
@@ -897,6 +905,7 @@ def add_controllers_to_flow_control_nodes(
             target_level_column=target_level_column,
             allow_missing=False,
         )
+        assert us_target_level is not None
         min_upstream_level = [us_target_level + us_target_level_offset_supply, us_target_level]
 
         print(
@@ -924,6 +933,7 @@ def add_controllers_to_flow_control_nodes(
         )
 
         # add control_node
+        assert ds_target_level is not None
         thresholds = [us_target_level, us_target_level + us_threshold_offset, -ds_target_level]
         tables = [
             discrete_control.Variable(
@@ -1029,6 +1039,7 @@ def add_controllers_and_demand_to_flushing_nodes(
             node_types=node_types,
             allow_missing=False,
         )
+        assert us_target_level is not None
         min_upstream_level = [us_target_level + us_target_level_offset_supply, us_target_level]
 
         # Print so we can see what happens
@@ -1177,8 +1188,8 @@ def add_controllers_to_connector_nodes(
         This is usefull if you want to add a different type of supply-node later. Default is True
     """
     # make sure add-api will not duplicate node-ids
-    model.node._update_used_ids()
-    model.link._update_used_ids()
+    model.node._update_used_ids()  # type: ignore[operator]
+    model.link._update_used_ids()  # type: ignore[operator]
 
     # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
@@ -1366,8 +1377,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Offset voor supply controls.
     """
     # make sure add-api will not duplicate node-ids
-    model.node._update_used_ids()
-    model.link._update_used_ids()
+    model.node._update_used_ids()  # type: ignore[operator]
+    model.link._update_used_ids()  # type: ignore[operator]
 
     # --- defaults veilig maken (nooit [] als default-arg) ---
     exclude_nodes = exclude_nodes or []

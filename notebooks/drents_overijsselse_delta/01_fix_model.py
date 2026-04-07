@@ -172,7 +172,9 @@ model.remove_node(27, remove_links=True)
 model.remove_node(1556, remove_links=True)
 model.remove_links([945, 2537, 2536])
 
-boundary_node = model.level_boundary.add(Node(geometry=hydroobject_gdf.at[7778, "geometry"].boundary.geoms[0]))
+boundary_node = model.level_boundary.add(
+    Node(geometry=hydroobject_gdf.at[7778, "geometry"].boundary.geoms[0]), tables=[level_data]
+)
 
 model.link.add(model.pump[642], boundary_node)
 model.update_node(1202, "Outlet", data=[outlet_data])

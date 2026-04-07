@@ -30,5 +30,9 @@ jobs:
         run: uv run pre-commit run --all-files
       - name: Run mypy on hydamo
         run: uv run mypy --ignore-missing-imports src/hydamo
-      - name: Run mypy on ribasim_nl/profiles
-        run: uv run mypy --ignore-missing-imports src/ribasim_nl/ribasim_nl/profiles
+      - name: Run mypy on ribasim_nl
+        run: uv run mypy --ignore-missing-imports src/ribasim_nl
+      - name: Run mypy on peilbeheerst_model
+        run: uv run mypy --ignore-missing-imports src/peilbeheerst_model
+      - name: Run mypy on bokeh_helpers
+        run: uv run mypy --ignore-missing-imports src/bokeh_helpers

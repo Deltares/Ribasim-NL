@@ -34,6 +34,10 @@ def add_from_to_nodes_and_levels(model: Model, node_types=["outlet", "pump"]):
         )
 
         for relative_side in ["from", "to"]:
+            assert model.basin.area.df is not None
+            assert model.basin.node is not None
+            assert model.basin.node.df is not None
+            assert model.level_boundary.static.df is not None
             meta_properties_df[f"meta_{relative_side}_level"] = [
                 model.basin.area.df.set_index("node_id").at[i, "meta_streefpeil"]
                 if i in model.basin.node.df.index

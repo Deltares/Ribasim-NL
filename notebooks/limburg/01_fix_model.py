@@ -99,7 +99,7 @@ for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (926
 for node_id in [276, 2003, 990, 2395, 989]:
     model.remove_node(node_id, remove_links=True)
 
-basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]))
+basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]), tables=basin_data)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[2099, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
@@ -484,9 +484,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node.df.node_type.unique():
-    table = model.get_component(node_type).node
-    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = pd.concat(

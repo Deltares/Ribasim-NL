@@ -75,6 +75,7 @@ bin/
 *.lyr
 *.msg
 *.cst
+*.zip
 *.txt
 *.gdb/
 *.pdf

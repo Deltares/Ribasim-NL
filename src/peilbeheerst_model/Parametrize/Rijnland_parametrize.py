@@ -124,9 +124,9 @@ for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
 
 # (re)set 'meta_node_id'-values
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # model specific tweaks
 # merge basins
@@ -145,9 +145,9 @@ ribasim_model.link.add(pump_node, ribasim_model.basin[27])
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
 
 # (re)set 'meta_node_id'-values
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -192,7 +192,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -220,7 +221,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -2, 2, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -264,7 +265,7 @@ assign_metadata.add_meta_to_basins(
 
 # according data flow_rate of 0
 zero_flow_pumps = [1436, 1282, 1472]
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25.0
 
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [793, 754, 987, 354, 463, 1179, 496, 781]
@@ -273,7 +274,7 @@ ribasim_model.pump.static.df.loc[
 ] *= 60
 
 # set the flow_rate to the max_flow_rate
-ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
+ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -281,8 +282,8 @@ mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_re
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 10
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 10.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table

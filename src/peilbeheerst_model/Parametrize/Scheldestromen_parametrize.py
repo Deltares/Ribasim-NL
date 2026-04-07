@@ -144,9 +144,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(74504, 382443)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.tabulated_rating_curve.node.df.loc[tabulated_rating_curve_node.node_id, "meta_node_id"] = (
-    tabulated_rating_curve_node.node_id
-)
+ribasim_model.node.df.loc[tabulated_rating_curve_node.node_id, "meta_node_id"] = tabulated_rating_curve_node.node_id
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[133])
 
@@ -185,9 +183,9 @@ inlaat_structures.extend([491, 547, 334, 554])
 inlaat_structures.append(309)
 
 # (re) set 'meta_node_id'
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
@@ -217,7 +215,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -244,16 +243,16 @@ if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
         ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
     )
-    ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2
-    ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2
+    ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2.0
+    ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2.0
     ribasim_model.level_boundary.time.df.loc[
         (ribasim_model.level_boundary.time.df.node_id == 635) & (ribasim_model.level_boundary.time.df.level == -0.4),
         "level",
     ] = 0.4  # change value of a single LB during summer time
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
-    ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2
-    ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2
+    ribasim_model.level_boundary.static.df["level"] = default_level
+    ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2.0
+    ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2.0
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -304,8 +303,8 @@ mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_re
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 10
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 10.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table

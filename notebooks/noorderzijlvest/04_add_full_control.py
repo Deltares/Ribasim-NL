@@ -67,7 +67,7 @@ for node_type in CONTROL_NODE_TYPES:
     node_ids = node_df[node_df[IS_SUPPLY_NODE_COLUMN]].index.values
     static_df = model.get_component(node_type).static.df
     mask = static_df.node_id.isin(node_ids) & (static_df.flow_rate == 0 | static_df.flow_rate.isna())
-    static_df.loc[mask, "flow_rate"] = 20
+    static_df.loc[mask, "flow_rate"] = 20.0
 
 # %% [markdown]
 # # Aanpak sturing per aanvoergebied
@@ -253,9 +253,9 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # EXCLUDE NODES op 0 m3/s zetten
 mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES)
-model.outlet.static.df.loc[mask, "flow_rate"] = 0
-model.outlet.static.df.loc[mask, "min_flow_rate"] = 0
-model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
+model.outlet.static.df.loc[mask, "flow_rate"] = 0.0
+model.outlet.static.df.loc[mask, "min_flow_rate"] = 0.0
+model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.0
 
 # %%
 # Gaarkeuken: PID control
@@ -363,7 +363,7 @@ ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_
 model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1.0
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.1)

@@ -293,7 +293,7 @@ def get_basin_profile(
                 df = pd.concat(dfs, ignore_index=True)
                 # we round levels to 2 decimals so areas get summed
                 df["level"] = df["level"].round(2)
-                ah_df = df.groupby("level", as_index=False)["area"].sum().sort_values("level").reset_index(drop=True)
+                ah_df = df.groupby("level", as_index=False)["area"].sum().sort_values(by="level").reset_index(drop=True)  # type: ignore[call-overload]
                 ah_df["area"] = ah_df["area"].cumsum().round(1)
                 ah_df["comment"] = pd.Series(dtype=str)
 

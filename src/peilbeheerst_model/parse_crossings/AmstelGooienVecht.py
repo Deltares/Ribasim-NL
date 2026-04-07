@@ -1,5 +1,7 @@
 # %%
 
+from typing import Any
+
 from peilbeheerst_model import ParseCrossings, waterschap_data
 from ribasim_nl import CloudStorage
 
@@ -14,8 +16,8 @@ cloud.download_basisgegevens()
 
 # %%
 
-crossing_settings = waterschap_struct["find_crossings_with_peilgebieden"]
-init_settings = waterschap_struct["init"]
+crossing_settings: dict[str, Any] = waterschap_struct["find_crossings_with_peilgebieden"]
+init_settings: dict[str, Any] = waterschap_struct["init"]
 
 init_settings["gpkg_path"] = verwerkt_dir / "postprocessed.gpkg"
 init_settings["krw_path"] = cloud.joinpath("Basisgegevens/KRW/KRW_lichamen_per_waterschap.gpkg")

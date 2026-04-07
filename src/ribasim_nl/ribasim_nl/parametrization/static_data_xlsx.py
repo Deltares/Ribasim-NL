@@ -71,10 +71,10 @@ defaults = {
 
 
 class StaticData(BaseModel):
-    xlsx_path: os.PathLike
+    xlsx_path: os.PathLike[str]
     model: Model
-    default_dict: dict = defaults
-    description_list: list = description
+    default_dict: dict[str, dict[str, object]] = defaults
+    description_list: list[dict[str, str]] = description
     outlet: pd.DataFrame | None = None
     pump: pd.DataFrame | None = None
     basin: pd.DataFrame | None = None
