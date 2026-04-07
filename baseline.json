@@ -10957,18 +10957,6 @@
       "severity": "error"
     },
     {
-      "line": 39,
-      "column": 12,
-      "stop_line": 39,
-      "stop_column": 19,
-      "path": "src\\ribasim_nl\\ribasim_nl\\geoseries.py",
-      "code": -2,
-      "name": "not-callable",
-      "description": "Expected a callable, got `Module[scipy.spatial.cKDTree]`",
-      "concise_description": "Expected a callable, got `Module[scipy.spatial.cKDTree]`",
-      "severity": "error"
-    },
-    {
       "line": 57,
       "column": 20,
       "stop_line": 57,
