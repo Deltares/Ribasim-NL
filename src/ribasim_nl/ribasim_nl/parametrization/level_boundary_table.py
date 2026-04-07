@@ -63,7 +63,7 @@ def update_level_boundary_static(
                 ds_basins = model.get_downstream_basins(node_id, stop_at_node_type="Basin").node_id.to_list()
                 if len(ds_basins) == 0:
                     raise ValueError(f"node_id {node_id} does not have an upstream or downstream basin")
-                level = model.basin.area.df.set_index("node_id").loc[ds_basins]["meta_streefpeil"].min()
+                level = model.basin.area.df.set_index("node_id").loc[ds_basins]["meta_streefpeil"].max()
             static_df.loc[row.Index, "level"] = level
 
     model.level_boundary.static.df = static_df  # type: ignore[assignment]

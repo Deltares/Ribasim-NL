@@ -1,11 +1,138 @@
 # Aa en Maas
 
-- Laatst bijgewerkt: 28-01-2026
-- Laatste modelversie: [in aanbouw](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
+- Laatst bijgewerkt: 07-04-2026
+- [Laatste modelversie](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
 
 ## Systeembeschrijving
-![Systeembeschrijving Aa en Maas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/aaenmaas.svg)
+![Systeembeschrijving Aa en Maas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/aaenmaas.svg)
 
+### Maaskant-West
+
+**Afvoer:**
+
+- De `Aa` en de `Dommel` lozen normaal via `spuisluis Crèvecoeur` (max 160 m3/s) naar de Maas onder vrij verval.
+- Bij hoge waterstand van de Maas (4.95m NAP), sluit `spuisluis Crèvecoeur` en kan het via de `Bovenlandse Sluis/Drongelens Kanaal`  water worden afgevoerd, omdat de Maaswaterstand daar lager is.
+- Via de `Vughterstuw` (kritiek nveau 4.90m) wordt de afvoer van de `Dommel` gestuurd om het systeem rond Den Bosch te ontlasten. Wanneer de `Vughterstuw`  een kritieke waterstand van 4.90m NAP bereikt, worden bergingsgebieden ingezet.
+- Bij Poeldonk wordt nu het water dat vanuit rivier de Aa op de Zuid_willemsvaart komt, weer terugstroomt naar het watersysteem van rivier de Aa. Dit gaat binnenkort via spuiwerk bij sluis 0 in de Zuid WIllemsvaart via de Bovenlandse sluis naar de Maas.
+
+**Wateraanvoer:**
+
+- Via de `Vughterstuw` wordt water ingelaten vanuit de Dommel en via `Inlaat Bossche sloot` en `inlaat Loonse Vaart` in de polders gebracht.
+
+## Maaskant-Midden
+
+**Afvoer:**
+
+- Via `gemaal Gewande` naar de `Bergsche Maas` (max. 31,5 m³/s). Grootste deel van het jaar onder vrij verval.
+- Rosmalense Aa loost via uitlaat: 201EPD naar Maximakanaal
+
+**Wateraanvoer:**
+
+- Vanuit de `Maas` via `inlaat Grave` (max. 0,3 m³/s).
+- Vanuit de `Maas` via `inlaat Teeffelen`.
+- Vanuit het `Maximakanaal` via `inlaat gemaal Empel 2`.
+- Interne verdeling via de `Hertogswetering` en `Groote Wetering / Nieuwe Vliet`.
+
+
+## Maaskant-Oost
+
+**Afvoer:**
+
+- Via `gemaal Van Sasse` naar de `Maas` (stuwpand Lith).
+- Onder vrij verval naar de Maas (oa `Stuw Waranda`)
+- Via het stelsel van de `Raam` en aansluitende watergangen richting de Maas.
+
+**Wateraanvoer:**
+
+- Vanuit het `Defensiekanaal/Peelkanaal`
+- Via het `Afleidingskanaal` naar het zuidoosten (oa Smakt)
+- Interne verdeling via de `Raam`, `Oploosche Molenbeek` en overige watergangen binnen het gebied.
+
+
+## Leijgraaf
+
+**Afvoer:**
+- Via de Leijgraaf wordt water naar de `Aa` afgevoerd.
+
+**Wateraanvoer:**
+- Via `gemaal Veluwe`, dat water uit de `Aa` opmaalt naar de `Leijgraaf`.
+- Kwel vanuit het grondwater vanaf het Hurkske zorgt voor extra aanvoer naar de `Leijgraaf`
+- Via allerlei inlaten vanaf de Aa kan nog extra water worden aangevoerd in het gebied.
+
+## Hurkske/Aa
+
+**Afvoer:**
+- Via de Aa wordt water afgevoerd naar `spuisluis Crèvecoeur`
+
+**Wateraanvoer:**
+-Via Inlaat `257IA` wordt water vanuit de `Zuid-Willemsvaart` naar de `Aa` aangevoerd onder vrij verval
+-Via kwel uit grondwater vindt ook wateraanvoer plaats in dit gebied
+
+## Z-W West (Zuid-Willemsvaart West)
+**Afvoer:**
+- Via verschillende uitlaten wordt water afgevoerd naar de Zuid-Willemsvaart en de Aa
+- Via gemaal `Dungense Loop` naar de Aa
+
+**Wateraanvoer:**
+-Hoofdzakelijk via inlaat `257IA` bij Boerdonk water vanuit de Zuid-Willemsvaart water aangevoerd
+-En via inlaat duiker `203KDZ` bij Heeswijk-Dinter water vanuit de Zuid-Willemsvaart water aangevoerd
+
+## Wilhelminakanaal
+
+**Wateraanvoer:**
+- Via `inlaat Wilhelminakanaal Lieshout` wordt water aangevoerd. De maximale capiciteit is 1.42m3/s.
+
+## Helmond
+Bij Helmond loopt de Aa over een lengte van circa 6 kilometer samen met de Zuid-Willemsvaart.
+Rijkswaterstaat en het waterschap hebben de afspraak dat het water wat vanuit de Aa geloosd
+wordt op de Zuid-Willemsvaart benedenstrooms terugkomt op de Aa.
+
+**Waterafvoer:**
+-Vanuit Waterschap De Dommel stroomt in het westen van het beheersgebied 1.5 m3/s op de Klein. Dit water wordt via de Aa en Zuid-Willemmsvaart bij Helmond geloosd op het Wilhelminakanaal en weer afgevoerd naar de Dommel.
+- Bij Vossenbeemd stroomt de Nieuwe Aa onder vrij verval op de Zuid-Willemsvaart
+- Via De Bakelse Aa mondt uit in Zuid-Willemsvaart.
+
+**Wateraanvoer:**
+- Via aflaatwerk Schabbert wordt max 8m3/s water afgelaten totdat het benedenstroomse peil NAP+13.70 m bedraagt. Als deze waterhoogte wordt bereikt, voert Rijkswaterstaat extra water af via de Zuid-Willemsvaart, met een maximale capaciteit van 18 m3/s. Dit water wordt bij Poeldonk weer afgelaten naar de Aa. Bij hogere waterstanden gaat het Rijk in overleg met het waterschap over wat te doen.
+-aflaatwerk RWZI Helemond stroomt het water naar rivier de Aa
+
+## Mierlo
+**Waterafvoer:**
+- Gemaal Mierlo kan water lozen op het Eindhovenschkanaal. Dat vervolgens afvoert naar de Zuid-Willemsvaart.
+- Gemaal Wilhelminakanaal kan water lozen vanaf de Goorloop op het Wilhelminakanaal. met 1.8 m3/s
+**Wateraanvoer:**
+
+
+## Someren
+
+## Waterafvoer:
+Het gebied water watert af op de Aa.
+
+## Wateraanvoer:
+Vanuit waterschap Limburg kan via de kivietsloop water worden aangevoerd.
+
+## Neerkant
+Bij de `Noordervaart` wordt maximaal 5.4m3/s aangevoerd. Door kanaal van Deurne wordt maximaal 3.1m3/s aangevoerd en het overige deel 2.3m3/s gaat naar de `Helenavaart`
+
+## Wateraanvoer:
+- Via kanaal van Deurne wordt water ingelaten.
+## Waterafvoer:
+- Gebied watert af op de Aa.
+
+## Bakelse Aa
+
+## Wateraanvoer:
+- Via verschillende inlaten wordt vanaf kanaal van Deurne en vanaf `Defensie- of Peelkanaal` water ingelaten.
+## Waterafvoer:
+- De `Bakelse Aa` watert direct af op de `Zuid-Willemsvaart`
+
+## Peelsche Loop
+- Via verschilleden inlaten wordt vanaf `Defensie- of Peelkanaal` water ingelaten.
+## Wateraanvoer:
+- Via kanaal van Deurne wordt water ingelaten.
+
+## Waterafvoer:
+- Gebied watert af op de Aa.
 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
@@ -13,4 +140,4 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
-- [Documentatie Distributiemodel (Deel D, hoofdstuk 29 en 30)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
+- Documentatie Distributiemodel (Deel D, hoofdstuk 29 en 30)

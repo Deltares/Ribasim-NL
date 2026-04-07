@@ -264,6 +264,19 @@ for idx, geometry in enumerate(geoseries):
             .buffer(-0.1)
         )
         model.basin.area.df.loc[model.basin.area.df.node_id == assigned_basin_id, "geometry"] = geometry
+
+# %% Verplaats boundary ruimtelijk van Vugtherstuw (afvoerpijl juiste richting in schematics, cosmetisch!)
+
+new_geom = Point(148523.8, 410424.6)
+model.level_boundary.node.df.at[28, "geometry"] = new_geom
+model.node.df.at[9, "geometry"] = new_geom
+
+model.remove_link(from_node_id=627, to_node_id=9, remove_disconnected_nodes=False)
+model.remove_link(from_node_id=121, to_node_id=9, remove_disconnected_nodes=False)
+model.link.add(model.outlet[627], model.level_boundary[9])
+model.link.add(model.outlet[121], model.level_boundary[9])
+
+
 # %% fix_basin_area
 
 
