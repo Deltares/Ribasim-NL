@@ -161,6 +161,20 @@
     "text": "Environment variables\nThe Ribasim-NL code downloads from and uploads to cloud storage. The password to access the cloud storage, and local directory it interacts with, both need to be configured. To be able to run the Ribasim core, point RIBASIM_HOME to a Ribasim-NL specific install, to avoid interaction with possible other Ribasim projects.\nIn the root of the repository is a .env.default file that can serve as a template to copy to .env. The .env file is gitignored because it is different per developer, and to avoid leaking the password.\nHere is an example for a filled in .env file:\nRIBASIM_NL_CLOUD_PASS='your_password_here'\nRIBASIM_NL_DATA_DIR='data'\nRIBASIM_HOME='bin/ribasim'\nOVERWRITE_FILES_FROM_CLOUD='true'\nThese values will be applied using pydantic-settings. If you prefer to set these environment variables in your OS or terminal that will also work.\nOVERWRITE_FILES_FROM_CLOUD is optional, and true by default. When using cloud.synchronize or cloud.download_content, this will determine if local files will be overwritten if the overwrite keyword argument is not explicitly passed. Whilst updating datasets locally, you can set this to false to ensure your modifications can be tested and will not be lost. After these edits are done, you can upload the new dataset, and set it back to true."
   },
   {
+    "objectID": "dev/index.html#running-pyrefly",
+    "href": "dev/index.html#running-pyrefly",
+    "title": "Contributing",
+    "section": "Running Pyrefly",
+    "text": "Running Pyrefly\nTo check for type errors, run:\nuv run pyrefly check\nThis is also run in CI via the pyrefly job in .github/workflows/python_lint.yml."
+  },
+  {
+    "objectID": "dev/index.html#baseline-file",
+    "href": "dev/index.html#baseline-file",
+    "title": "Contributing",
+    "section": "Baseline file",
+    "text": "Baseline file\nExisting type errors are stored in a baseline.json file. Pyrefly’s baseline feature suppresses these known errors and only reports new errors. This way, pyrefly check passes cleanly without requiring ignore comments on every line.\nThe baseline is configured in pyproject.toml:\n[tool.pyrefly]\nbaseline = \"baseline.json\"\n\nUpdating the baseline\nAfter fixing existing type errors, regenerate the baseline to remove the fixed entries:\nuv run pyrefly check --update-baseline\nIf you introduce code that triggers new errors (e.g. from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command. Prefer fixing the error or adding a targeted # pyrefly: ignore[error-code] comment when possible.\n\n\nSuppressing individual errors\nFor specific lines where the type checker is wrong, use a targeted ignore comment:\nx = some_expression  # pyrefly: ignore[error-code]\nFor lines that would exceed 120 characters with the comment appended, place the comment on the line above:\n# pyrefly: ignore[error-code]\nx = some_very_long_expression_that_would_be_too_long_with_an_inline_comment"
+  },
+  {
     "objectID": "watersystems/limburg.html",
     "href": "watersystems/limburg.html",
     "title": "Limburg",

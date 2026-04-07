@@ -180,6 +180,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#co-development-with-ribasim" id="toc-co-development-with-ribasim" class="nav-link" data-scroll-target="#co-development-with-ribasim">Co-development with Ribasim</a></li>
   <li><a href="#sec-environment-variables" id="toc-sec-environment-variables" class="nav-link" data-scroll-target="#sec-environment-variables">Environment variables</a></li>
   </ul></li>
+  <li><a href="#type-checking" id="toc-type-checking" class="nav-link" data-scroll-target="#type-checking">Type checking</a>
+  <ul class="collapse">
+  <li><a href="#running-pyrefly" id="toc-running-pyrefly" class="nav-link" data-scroll-target="#running-pyrefly">Running Pyrefly</a></li>
+  <li><a href="#baseline-file" id="toc-baseline-file" class="nav-link" data-scroll-target="#baseline-file">Baseline file</a>
+  <ul class="collapse">
+  <li><a href="#updating-the-baseline" id="toc-updating-the-baseline" class="nav-link" data-scroll-target="#updating-the-baseline">Updating the baseline</a></li>
+  <li><a href="#suppressing-individual-errors" id="toc-suppressing-individual-errors" class="nav-link" data-scroll-target="#suppressing-individual-errors">Suppressing individual errors</a></li>
+  </ul></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -257,8 +266,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="dt">OVERWRITE_FILES_FROM_CLOUD</span><span class="ot">=</span><span class="st">'true'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>These values will be applied using <a href="https://docs.pydantic.dev/latest/concepts/pydantic_settings/">pydantic-settings</a>. If you prefer to set these environment variables in your OS or terminal that will also work.</p>
 <p><code>OVERWRITE_FILES_FROM_CLOUD</code> is optional, and true by default. When using <code>cloud.synchronize</code> or <code>cloud.download_content</code>, this will determine if local files will be overwritten if the <code>overwrite</code> keyword argument is not explicitly passed. Whilst updating datasets locally, you can set this to <code>false</code> to ensure your modifications can be tested and will not be lost. After these edits are done, you can upload the new dataset, and set it back to <code>true</code>.</p>
+</section>
+</section>
+<section id="type-checking" class="level1">
+<h1>Type checking</h1>
+<p>We use <a href="https://pyrefly.org/">Pyrefly</a> for static type checking. Pyrefly is configured in the <code>[tool.pyrefly]</code> section of <code>pyproject.toml</code>.</p>
+<section id="running-pyrefly" class="level2">
+<h2 class="anchored" data-anchor-id="running-pyrefly">Running Pyrefly</h2>
+<p>To check for type errors, run:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run pyrefly check</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This is also run in CI via the <code>pyrefly</code> job in <code>.github/workflows/python_lint.yml</code>.</p>
+</section>
+<section id="baseline-file" class="level2">
+<h2 class="anchored" data-anchor-id="baseline-file">Baseline file</h2>
+<p>Existing type errors are stored in a <code>baseline.json</code> file. Pyrefly’s <a href="https://pyrefly.org/en/docs/error-suppressions/#baseline-files-experimental">baseline feature</a> suppresses these known errors and only reports <em>new</em> errors. This way, <code>pyrefly check</code> passes cleanly without requiring ignore comments on every line.</p>
+<p>The baseline is configured in <code>pyproject.toml</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.pyrefly]</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="dt">baseline</span> <span class="op">=</span> <span class="st">"baseline.json"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="updating-the-baseline" class="level3">
+<h3 class="anchored" data-anchor-id="updating-the-baseline">Updating the baseline</h3>
+<p>After fixing existing type errors, regenerate the baseline to remove the fixed entries:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run pyrefly check <span class="at">--update-baseline</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>If you introduce code that triggers new errors (e.g.&nbsp;from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command. Prefer fixing the error or adding a targeted <code># pyrefly: ignore[error-code]</code> comment when possible.</p>
+</section>
+<section id="suppressing-individual-errors" class="level3">
+<h3 class="anchored" data-anchor-id="suppressing-individual-errors">Suppressing individual errors</h3>
+<p>For specific lines where the type checker is wrong, use a targeted ignore comment:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_expression  <span class="co"># pyrefly: ignore[error-code]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For lines that would exceed 120 characters with the comment appended, place the comment on the line above:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pyrefly: ignore[error-code]</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_very_long_expression_that_would_be_too_long_with_an_inline_comment</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
+</section>
 </section>
 </section>
 
