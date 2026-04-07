@@ -592,7 +592,7 @@ class Network:
         if len(geometries) > 1:
             idx = geometries.length.sort_values(ascending=False).index[0]
             geometry = geometries.loc[idx].geometry
-        elif len(geometries) == 1:
+        else:
             geometry = geometries.iloc[0].geometry
 
         # invert geometry

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from bokeh.models import Slider
 
+# pyrefly: ignore[missing-import]
 from bokeh_helpers.widgets.shared_functions import get_formatter, round_seconds
 
 

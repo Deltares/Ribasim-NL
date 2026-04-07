@@ -357,10 +357,11 @@ def CompareOutputMeasurements(
             if meetlocaties_link.iloc[0]["Aan/Af"] == "Aanvoer":
                 dagmetingen = measurements["aanvoer_dag"]
                 # decademetingen = measurements['aanvoer_decade']
-            if (meetlocaties_link.iloc[0]["Aan/Af"] == "Afvoer") or (meetlocaties_link.iloc[0]["Aan/Af"] == "Aan&Af"):
+            elif (meetlocaties_link.iloc[0]["Aan/Af"] == "Afvoer") or (meetlocaties_link.iloc[0]["Aan/Af"] == "Aan&Af"):
                 dagmetingen = measurements["afvoer_dag"]
                 # decademetingen = measurements['afvoer_decade']
-
+            else:
+                raise ValueError(f"Unexpected 'Aan/Af' value: {meetlocaties_link.iloc[0]['Aan/Af']}")
         existing_measurements = [col for col in meetlocaties_link["MeetreeksC"] if col in dagmetingen.columns]
         missing_measurements = [col for col in meetlocaties_link["MeetreeksC"] if col not in dagmetingen.columns]
         if len(missing_measurements) > 0:

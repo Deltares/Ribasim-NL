@@ -4044,6 +4044,7 @@ dependencies = [
     { name = "tomli-w" },
     { name = "tqdm" },
     { name = "types-geopandas" },
+    { name = "types-networkx" },
     { name = "types-pycurl" },
     { name = "types-python-dateutil" },
     { name = "types-pyyaml" },
@@ -4100,6 +4101,7 @@ requires-dist = [
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "types-geopandas", specifier = ">=1.1.3.20260402" },
+    { name = "types-networkx", specifier = ">=3.6.1.20260402" },
     { name = "types-pycurl", specifier = ">=7.45.7.20260316" },
     { name = "types-python-dateutil", specifier = ">=2.9.0.20260402" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20250915" },
@@ -4734,6 +4736,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/53/68/5da80ff0bed00f833c1a89b3d0e4e3e4496dab4895b30dcf1c93680d3105/types_geopandas-1.1.3.20260402.tar.gz", hash = "sha256:0e3be3036eeea790e426b90f5ef540b367bb54d57823bf335d4eb70915c28087", size = 23632, upload-time = "2026-04-02T04:22:50.451Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/b6/f88191edabbc0539f41735a0c14a8f40b5cfef0bb7953f23537cb96a4668/types_geopandas-1.1.3.20260402-py3-none-any.whl", hash = "sha256:0641d722646eeef64edc9275549fef842d7e932457adbdd61bcd93320d7d6837", size = 31758, upload-time = "2026-04-02T04:22:49.387Z" },
+]
+
+[[package]]
+name = "types-networkx"
+version = "3.6.1.20260402"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/76/0f/5520afe8510f497a2149a0bd66400796de09e503b30d6a47a055cbae918c/types_networkx-3.6.1.20260402.tar.gz", hash = "sha256:0134981a60c6725949ddaa9fc0d3b0bbaa553f0f81e43f15e282be1b75d2db00", size = 73790, upload-time = "2026-04-02T04:20:07.538Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/60/57fe0ebec42315a70f34920c325a803f4c069f33025043f45ac4a4266faf/types_networkx-3.6.1.20260402-py3-none-any.whl", hash = "sha256:2ea0075288632bf777e877b3c2a0d1d6991844a08a0b4a72d23c513436d64038", size = 162536, upload-time = "2026-04-02T04:20:06.375Z" },
 ]
 
 [[package]]

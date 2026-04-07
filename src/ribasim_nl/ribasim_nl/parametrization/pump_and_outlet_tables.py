@@ -109,6 +109,8 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
                         ],
                         dtype=float,
                     )
+                else:
+                    raise ValueError(f"Unknown function '{row.function}' for flow_rate_mm_per_day")
                 static_df.loc[indices, "flow_rate"] = flow_rate
             elif not pd.isna(row.flow_rate):
                 static_df.loc[indices, "flow_rate"] = row.flow_rate

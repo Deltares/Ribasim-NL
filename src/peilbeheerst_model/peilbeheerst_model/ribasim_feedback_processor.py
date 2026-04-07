@@ -325,6 +325,7 @@ class RibasimFeedbackProcessor:
                 template_row = df_node.iloc[-1:].copy()
                 template_row.index = pd.Index([node_id], name="node_id")
                 template_row["node_type"] = new_node_type_name
+                # pyrefly: ignore[unbound-name]
                 template_row["geometry"] = [geometry_old if "geometry_old" in locals() else None]
                 for col in template_row.columns:
                     if col.startswith("meta_"):
