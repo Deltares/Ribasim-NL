@@ -28,5 +28,8 @@ jobs:
         run: uv sync --locked
       - name: Run pre-commit
         run: uv run pre-commit run --all-files
+      - name: Fix baseline paths for Linux
+        if: runner.os == 'Linux'
+        run: sed -i 's|\\\\|/|g' baseline.json
       - name: Run type checker
         run: uv run pyrefly check
