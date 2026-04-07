@@ -577,7 +577,7 @@ ribasim_model = ribasim_param.remove_non_free_flowing_outlets(
     printing=True,
 )
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.04
+LEVEL_DIFFERENCE_THRESHOLD = 0.02
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 # create a table with from and to node ids, and the function of the node (supply, flow_control, drain)
