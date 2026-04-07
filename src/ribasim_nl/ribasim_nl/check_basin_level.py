@@ -28,7 +28,7 @@ def check_basin_level(
     return any((not pd.isna(node_df.at[i, check_column])) for i in ds_node_ids)
 
 
-def add_check_basin_level(model: Model, check_column: str = "meta_code_waterbeheerder"):
+def add_check_basin_level(model: Model, check_column: str = "meta_code_waterbeheerder") -> None:
     """Add a column "meta_check_basin_level" to the model basin-table
 
     Args:

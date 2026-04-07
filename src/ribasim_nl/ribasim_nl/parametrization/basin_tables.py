@@ -10,7 +10,7 @@ from ribasim_nl.parametrization.empty_table import empty_table_df
 
 def _get_basin_average_forcing(
     model: Model, precipitation_mm_per_day: float | None = None, evaporation_mm_per_day: float | None = None
-):
+) -> pd.DataFrame:
     static_df = empty_table_df(model, node_type="Basin", table_type="Static", fill_value=0)
     static_df["precipitation"] = static_df["precipitation"].astype(float)
     static_df["potential_evaporation"] = static_df["potential_evaporation"].astype(float)
@@ -33,7 +33,7 @@ def _get_basin_average_forcing(
 # %%
 def update_basin_static(
     model: Model, precipitation_mm_per_day: float | None = None, evaporation_mm_per_day: float | None = None
-):
+) -> None:
     """Add precipitation and/or evaporation to the model.basin.static table from basin.area
 
     Args:
@@ -55,7 +55,7 @@ def update_basin_profile(
     percentages_map: dict[str, int] = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2},
     default_percentage: int = 10,
     profile_depth: int = 3,
-):
+) -> None:
     # read profile from basin-table
     assert model.basin.area.df is not None
     profile = model.basin.area.df.copy()
@@ -95,13 +95,14 @@ def update_basin_profile(
     model.basin.profile.df = profile_df
 
 
-def update_basin_state(model: Model):
+def update_basin_state(model: Model) -> None:
     """Update basin state by max profile-level
 
     Args:
         model (Model): Ribasim Model
     """
-    model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]  # type: ignore[union-attr, assignment]
+    # pyrefly: ignore[missing-attribute]
+    model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
 
 
 def add_basin_time_synthetic(
@@ -110,7 +111,7 @@ def add_basin_time_synthetic(
     evaporation_mm_per_day: float,
     start_time: datetime,
     end_time: datetime,
-):
+) -> None:
     # define time-variables
     half_time = start_time + (end_time - start_time) // 2
     time = start_time, half_time, end_time
@@ -131,6 +132,6 @@ def add_basin_time_synthetic(
     time_df.loc[time_df["time"] == end_time, "potential_evaporation"] = static_df["potential_evaporation"].to_numpy()
 
     model.basin.static.df = None
-    model.basin.time.df = time_df.reset_index()  # type: ignore[assignment]
+    model.basin.time.df = time_df.reset_index()  # pyrefly: ignore[bad-assignment]
     model.starttime = start_time
     model.endtime = end_time

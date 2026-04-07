@@ -196,7 +196,8 @@ pgv_diff.plot()
 # streefpeilen_PG_a.to_file('afwijking.shp')
 
 
-peilgebied = burn_in_peilgebieden(base_layer=streefpeilen_PG_v, overlay_layer=streefpeilen_PG_a, plot=True)  # type: ignore[name-defined]
+# pyrefly: ignore[unknown-name]
+peilgebied = burn_in_peilgebieden(base_layer=streefpeilen_PG_v, overlay_layer=streefpeilen_PG_a, plot=True)
 
 
 streefpeil = gpd.GeoDataFrame()

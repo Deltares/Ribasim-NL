@@ -40,7 +40,7 @@ def get_link_geometry(network, source, target, forbidden_nodes):
 
 def fix_link_geometries(
     model: Model, network: Network, max_straight_line_ratio: float = 5, node_ids: list[int] | None = None
-):
+) -> None:
     """Fix model.link.geometry column by finding routes over network
 
     Args:

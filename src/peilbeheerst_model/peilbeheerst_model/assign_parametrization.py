@@ -14,7 +14,7 @@ class AssignMetaData:
         authority: str,
         model_name: Model | Path | str,
         param_name: str,
-    ):
+    ) -> None:
         # Initialize cloudstorage
         self.cloud = CloudStorage()
 

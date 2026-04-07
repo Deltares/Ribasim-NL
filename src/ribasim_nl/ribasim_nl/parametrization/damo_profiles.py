@@ -19,7 +19,7 @@ class DAMOProfiles(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def model_post_init(self, __context):
+    def model_post_init(self, __context) -> None:
         if self.network is None:
             self.network = Network(lines_gdf=self.model.link.df)
 
@@ -113,7 +113,7 @@ class DAMOProfiles(BaseModel):
         default_profile_slope: float = 0.5,
         min_profile_width: float = 1,
         min_profile_depth: float = 0.5,
-    ):
+    ) -> gpd.GeoDataFrame:
         data = []
         for profiel_id, df in tqdm(self.profile_point_df.groupby("profiellijnid"), desc="process_profiles"):
             if elevation_col is None:

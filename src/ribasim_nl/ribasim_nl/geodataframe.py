@@ -103,6 +103,7 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
         ## if there are no polygon-candidates, something is wrong
         if poly_select_gdf.empty:
             print(f"no intersect for {line}. Please make sure it is extended outside the basin on two sides")
+            continue
         else:
             ## we create new features
             data = []
@@ -263,6 +264,7 @@ def basins_to_points(
         Points within basin on network
     """
     data = []
+    select_links = None
     if network is not None:
         links_gdf = network.links
 
@@ -281,6 +283,7 @@ def basins_to_points(
         # get links within basin_polygon
         if network is not None:
             # we prefer to find selected links within mask
+            links_select_gdf = gpd.GeoDataFrame()
             if mask is not None:
                 masked_basin_polygon = basin_polygon.intersection(mask)
                 links_select_gdf = select_links(masked_basin_polygon)

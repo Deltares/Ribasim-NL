@@ -40,7 +40,7 @@ def parse_computation_time(line: str) -> timedelta | None:
 def run(
     toml_path: Path,
     ribasim_home: str | Path | None = settings.ribasim_home,
-):
+) -> RunSpecs:
     """To run a Ribasim model
 
     Args:

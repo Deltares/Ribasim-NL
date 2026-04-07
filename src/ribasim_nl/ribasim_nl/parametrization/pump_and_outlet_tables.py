@@ -88,7 +88,7 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
             # fill nan with flow_rate_mm_day if provided
 
             if not pd.isna(row.flow_rate_mm_per_day):
-                unit_conversion = float(row.flow_rate_mm_per_day) / 1000 / 86400  # type: ignore[arg-type]
+                unit_conversion = float(row.flow_rate_mm_per_day) / 1000 / 86400  # pyrefly: ignore[bad-argument-type]
                 if row.function == "outlet":
                     flow_rate = np.array(
                         [
@@ -109,6 +109,8 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
                         ],
                         dtype=float,
                     )
+                else:
+                    raise ValueError(f"Unknown function '{row.function}' for flow_rate_mm_per_day")
                 static_df.loc[indices, "flow_rate"] = flow_rate
             elif not pd.isna(row.flow_rate):
                 static_df.loc[indices, "flow_rate"] = row.flow_rate
@@ -119,7 +121,7 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
         sub_mask = static_df[mask]["min_upstream_level"].isna()
         if sub_mask.any():
             # calculate upstream levels
-            upstream_level_offset = float(row.upstream_level_offset)  # type: ignore[arg-type]
+            upstream_level_offset = float(row.upstream_level_offset)  # pyrefly: ignore[bad-argument-type]
             upstream_levels = upstream_target_levels(model=model, node_ids=static_df[mask][sub_mask].node_id.tolist())
 
             # assign upstream levels to static_df
@@ -131,7 +133,7 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
         sub_mask = static_df[mask]["max_downstream_level"].isna()
         if sub_mask.any():
             # calculate downstream_levels
-            downstream_level_offset = float(row.downstream_level_offset)  # type: ignore[arg-type]
+            downstream_level_offset = float(row.downstream_level_offset)  # pyrefly: ignore[bad-argument-type]
             downstream_levels = downstream_target_levels(
                 model=model, node_ids=static_df[mask][sub_mask].node_id.tolist()
             )
@@ -151,7 +153,7 @@ def update_pump_outlet_static(
     node_type: Literal["Pump", "Outlet"],
     static_data_xlsx: Path | None = None,
     code_column: str = "meta_code_waterbeheerder",
-):
+) -> None:
     # init static_table with static_data_xlsx
     static_df = create_static_df(
         model=model,

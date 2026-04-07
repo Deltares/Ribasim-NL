@@ -100,7 +100,7 @@ for poly_id, poly_group in tqdm.tqdm(
 
 df_center_single_boundary_points.loc[np.hstack(idxs), "node_id"] = np.hstack(node_ids)
 df_center_single_boundary_points.loc[np.hstack(idxs), "connectivity"] = np.hstack(connectivity)
-idxs, node_ids, connectivity = None, None, None  # type: ignore[assignment]
+idxs, node_ids, connectivity = None, None, None  # pyrefly: ignore[bad-assignment]
 
 assert not pd.isna(df_center_single_boundary_points.node_id).any()
 assert not pd.isna(df_center_single_boundary_points.connectivity).any()

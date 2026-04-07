@@ -16,7 +16,7 @@ from ribasim_nl import CloudStorage
 from ribasim_nl.aquo import waterbeheercode
 
 
-def _parse_to_local(int_val: int, prefix_code: int):
+def _parse_to_local(int_val: int, prefix_code: int) -> int:
     """The function `parse_to_local` removes a specified prefix code from an integer value."""
     str_val = str(int_val)
     if not str_val.startswith(f"{prefix_code}"):
@@ -95,7 +95,7 @@ def ReadOutputFile(model_folder, filetype) -> pd.DataFrame:
         return data
 
 
-def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = None):
+def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = None) -> pd.DataFrame:
     """The function `LaadKoppeltabel` reads an Excel file, parses lists in the 'link_id' column, and converts the 'geometry' column to a geometry object.
 
     Parameters
@@ -143,7 +143,7 @@ def LaadSpecifiekeBewerking(loc_specifics) -> pd.DataFrame:
     Returns
     -------
     The function `LaadSpecifiekeBewerking` is returning the data read from an Excel file
-    located at the path specified by the `loc_specifics` parameter as a pandas DataFrame
+    located at the path specified by the `loc_specifics` parameter as a pandas pd.DataFrame
     """
     specifics = pd.read_excel(loc_specifics, header=0)
 
@@ -158,14 +158,14 @@ def get_unique(items):
     return seen
 
 
-def ApplySpecificOperation(data: pd.DataFrame, link: list[int] | int, spec_op: str):
+def ApplySpecificOperation(data: pd.DataFrame, link: list[int] | int, spec_op: str) -> pd.DataFrame:
     """
     The function `ApplySpecificOperation`  performs specific operations on the input data.
 
     Parameters
     ----------
     data : pd.DataFrame
-        The function `ApplySpecificOperation` takes in a pandas DataFrame `data`, a list of link IDs
+        The function `ApplySpecificOperation` takes in a pandas pd.DataFrame `data`, a list of link IDs
     `link`, and a specific operation `spec_op` to be applied on the data. The function then performs
     different operations based on the value of `spec_op`.
     link : list | int
@@ -192,7 +192,8 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list[int] | int, spec_op: s
         case "optellen":
             # Tel de links bij elkaar op wanneer de specifieke bewerking hierom vraagt
             subset_links = data[data["link_id"].isin(link)]
-            subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()  # type: ignore[assignment]
+            # pyrefly: ignore[bad-assignment]
+            subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()
 
         case "negatief_maken":
             # Maak de meetreeks negatief
@@ -202,7 +203,8 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list[int] | int, spec_op: s
         case "optellen_en_negatief_maken":
             # Tel op en maak de reeks negatief
             subset_links = data[data["link_id"].isin(link)]
-            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()  # type: ignore[assignment]
+            # pyrefly: ignore[bad-assignment]
+            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()
             subset_output["flow_rate"] = subset_output["flow_rate"] * -1
 
         case _ if pd.isna(spec_op):
@@ -235,7 +237,7 @@ def AddCumulative(data, decade=False):
     Parameters
     ----------
     data
-        The `data` parameter is a DataFrame containing the measurement data (column 'sum') and model data (column 'flow_rate')
+        The `data` parameter is a pd.DataFrame containing the measurement data (column 'sum') and model data (column 'flow_rate')
     decade, optional
         The `decade` parameter is a boolean parameter that determines whether the data should be treated as decadal data. If `decade` is set to `True`, the function will
     multiply the cumulative values by 10 to represent decadal data.
@@ -355,10 +357,11 @@ def CompareOutputMeasurements(
             if meetlocaties_link.iloc[0]["Aan/Af"] == "Aanvoer":
                 dagmetingen = measurements["aanvoer_dag"]
                 # decademetingen = measurements['aanvoer_decade']
-            if (meetlocaties_link.iloc[0]["Aan/Af"] == "Afvoer") or (meetlocaties_link.iloc[0]["Aan/Af"] == "Aan&Af"):
+            elif (meetlocaties_link.iloc[0]["Aan/Af"] == "Afvoer") or (meetlocaties_link.iloc[0]["Aan/Af"] == "Aan&Af"):
                 dagmetingen = measurements["afvoer_dag"]
                 # decademetingen = measurements['afvoer_decade']
-
+            else:
+                raise ValueError(f"Unexpected 'Aan/Af' value: {meetlocaties_link.iloc[0]['Aan/Af']}")
         existing_measurements = [col for col in meetlocaties_link["MeetreeksC"] if col in dagmetingen.columns]
         missing_measurements = [col for col in meetlocaties_link["MeetreeksC"] if col not in dagmetingen.columns]
         if len(missing_measurements) > 0:
@@ -500,7 +503,7 @@ def CompareOutputMeasurements(
 
 
 def ConvertToDecade(combined_df_results):
-    def get_decade(ts):
+    def get_decade(ts) -> int:
         day = ts.day
         if day <= 10:
             return 1
@@ -524,7 +527,7 @@ def ConvertToDecade(combined_df_results):
     )
 
     # Optional: combine into a proper timestamp (e.g. midpoint of the decade)
-    def build_decade_date(row):
+    def build_decade_date(row) -> pd.Timestamp:
         day = {1: 1, 2: 11, 3: 21}[row["decade"]]
         return pd.Timestamp(year=int(row["year"]), month=int(row["month"]), day=day)
 
@@ -578,13 +581,13 @@ def LoadMeasurements(meas_folder) -> dict[str, pd.DataFrame]:
     return measurements
 
 
-def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_folder):
-    """Plots data from a DataFrame, adds statistical information, and saves the plot as an image in a specified folder.
+def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_folder) -> None:
+    """Plots data from a pd.DataFrame, adds statistical information, and saves the plot as an image in a specified folder.
 
     Parameters
     ----------
     combined_df
-        `combined_df` is a DataFrame containing data to be plotted.
+        `combined_df` is a pd.DataFrame containing data to be plotted.
     stats
         The `stats` parameter in the `PlotAndSave` function contains statistical information such as
     NSE (Nash-Sutcliffe Efficiency), RMSE (Root Mean Square Error), and MAE (Mean Absolute Error)
@@ -674,7 +677,7 @@ def GetStatisticsComparison(combined_df):
     ----------
     combined_df
         The function takes `combined_df` as input, which contains columns for the target values and model output values for a particular task. The target values are
-    stored in the last column of the DataFrame, and the model output values are stored in a column named 'flow_rate'
+    stored in the last column of the pd.DataFrame, and the model output values are stored in a column named 'flow_rate'
 
     Returns
     -------

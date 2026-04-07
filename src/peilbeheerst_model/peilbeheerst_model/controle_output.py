@@ -43,7 +43,7 @@ class Control:
     ds_link: xr.Dataset | None = None
     model: Model | None = None
 
-    def __init__(self, qlr_path=None, work_dir=None, ribasim_toml=None):
+    def __init__(self, qlr_path=None, work_dir=None, ribasim_toml=None) -> None:
         if (work_dir is None) and (ribasim_toml is None):
             raise ValueError("provide either work_dir or ribasim_toml")
         else:
@@ -310,7 +310,7 @@ class Control:
         return control_dict
 
     @model_loaded
-    def store_data(self, data, output_path):
+    def store_data(self, data, output_path) -> None:
         """Store the control_dict"""
         for key in data.keys():
             data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG", mode="w")
@@ -325,7 +325,7 @@ class Control:
 
         return
 
-    def run_all(self):
+    def run_all(self) -> dict[str, object]:
         control_dict = self.read_model_output()
         control_dict = self.initial_final_level(control_dict)
         control_dict = self.min_max_level(control_dict)
@@ -342,7 +342,7 @@ class Control:
 
         return control_dict
 
-    def run_afvoer(self):
+    def run_afvoer(self) -> dict[str, object]:
         control_dict = self.read_model_output()
         control_dict = self.initial_final_level(control_dict)
         control_dict = self.min_max_level(control_dict)
@@ -387,10 +387,10 @@ class Control:
         # collect analysed data in GeoDataFrame
         gdf_min_basin_level = min_basin_level.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        ).set_geometry("geometry")  # type: ignore[operator]
+        ).set_geometry("geometry")
         gdf_max_basin_level = max_basin_level.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        ).set_geometry("geometry")  # type: ignore[operator]
+        ).set_geometry("geometry")
         control_dict.update(
             {
                 "min_basin_level": gdf_min_basin_level,
@@ -444,12 +444,14 @@ class Control:
 
         # water level differences
         min_difference_level = (
-            (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])  # type: ignore[attr-defined]
+            # pyrefly: ignore[missing-attribute]
+            (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
         )
         max_difference_level = (
-            (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])  # type: ignore[attr-defined]
+            # pyrefly: ignore[missing-attribute]
+            (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
         )

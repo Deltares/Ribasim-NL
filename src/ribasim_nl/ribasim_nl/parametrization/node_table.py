@@ -42,6 +42,7 @@ def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"],
             function = row.function
             static_data.loc[static_data["categorie"] == category, "meta_function"] = function
 
-        model.node.df.loc[static_data.index, "meta_function"] = static_data["meta_function"]  # type: ignore[union-attr]
+        # pyrefly: ignore[missing-attribute]
+        model.node.df.loc[static_data.index, "meta_function"] = static_data["meta_function"]
 
     return model
