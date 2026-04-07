@@ -5,8 +5,6 @@
 
 ## Systeembeschrijving
 <!-- ![Systeembeschrijving Aa en Maas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/aaenmaas.svg) -->
-![Systeembeschrijving Aa en Maas](d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\AaenMaas\verwerkt\sturing\aaenmaas.svg)
-
 
 ### Maaskant-West
 
