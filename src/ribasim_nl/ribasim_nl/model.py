@@ -404,7 +404,7 @@ class Model(ribasim.Model):
 
         # remove from sub-tables (static, time, area, subgrid, etc)
         sub = (
-            next((i for i in self._nodes() if i.__repr_name__() == node_type), None)  # type: ignore[misc]
+            next((i for i in self._nodes() if i.__repr_name__() == node_type), None)  # pyrefly: ignore
             if node_type is not None
             else None
         )
@@ -554,7 +554,8 @@ class Model(ribasim.Model):
             # revert geometry
             self.link.df.loc[link_id, ["geometry"]] = link_data["geometry"].reverse()
 
-    def remove_link(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):  # type: ignore[override]
+    # pyrefly: ignore[bad-override]
+    def remove_link(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
         """Remove an link and disconnected nodes"""
         if self.link.df is not None:
             # get original link-data

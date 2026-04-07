@@ -102,7 +102,7 @@ def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
-class ExtendedGeoDataFrame(gpd.GeoDataFrame):  # type: ignore[misc]
+class ExtendedGeoDataFrame(gpd.GeoDataFrame):
     """A GeoPandas GeoDataFrame with extended properties and methods."""
 
     _metadata: ClassVar = [

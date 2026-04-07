@@ -22,8 +22,8 @@ def sanitize_node_table(
 
         # copy data from one column to the other (or overwrite with default)
         copy_columns: dict[str, str] | None = next(
-            (i["columns"] for i in copy_map if node_type in i["node_types"]),  # type: ignore[operator]
-            None,  # type: ignore[assignment]
+            (i["columns"] for i in copy_map if node_type in i["node_types"]),
+            None,
         )
         if copy_columns is not None:
             for from_col, to_col in copy_columns.items():

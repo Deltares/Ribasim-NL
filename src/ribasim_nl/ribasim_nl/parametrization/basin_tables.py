@@ -101,7 +101,8 @@ def update_basin_state(model: Model):
     Args:
         model (Model): Ribasim Model
     """
-    model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]  # type: ignore[union-attr, assignment]
+    # pyrefly: ignore[missing-attribute]
+    model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
 
 
 def add_basin_time_synthetic(
@@ -131,6 +132,6 @@ def add_basin_time_synthetic(
     time_df.loc[time_df["time"] == end_time, "potential_evaporation"] = static_df["potential_evaporation"].to_numpy()
 
     model.basin.static.df = None
-    model.basin.time.df = time_df.reset_index()  # type: ignore[assignment]
+    model.basin.time.df = time_df.reset_index()  # pyrefly: ignore[bad-assignment]
     model.starttime = start_time
     model.endtime = end_time

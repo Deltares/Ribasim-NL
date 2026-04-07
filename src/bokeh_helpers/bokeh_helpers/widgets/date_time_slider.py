@@ -2,7 +2,7 @@ import numbers
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from bokeh.models import Slider  # type: ignore[attr-defined]
+from bokeh.models import Slider
 
 from bokeh_helpers.widgets.shared_functions import get_formatter, round_seconds
 

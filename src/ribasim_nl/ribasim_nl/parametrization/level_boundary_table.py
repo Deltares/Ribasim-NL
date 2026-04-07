@@ -66,4 +66,4 @@ def update_level_boundary_static(
                 level = model.basin.area.df.set_index("node_id").loc[ds_basins]["meta_streefpeil"].max()
             static_df.loc[row.Index, "level"] = level
 
-    model.level_boundary.static.df = static_df  # type: ignore[assignment]
+    model.level_boundary.static.df = static_df  # pyrefly: ignore[bad-assignment]

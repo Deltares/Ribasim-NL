@@ -247,9 +247,9 @@ class AssignOfflineBudgets:
         # update basin drainage and infiltration
         assert model.basin.time.df is not None
         idx = pd.MultiIndex.from_frame(model.basin.time.df[["node_id", "time"]])
-        model.basin.time.df["drainage"] = idx.map(drainage)  # type: ignore[arg-type]
-        model.basin.time.df["infiltration"] = idx.map(infiltration)  # type: ignore[arg-type]
-        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)  # type: ignore[arg-type]
+        model.basin.time.df["drainage"] = idx.map(drainage)  # pyrefly: ignore[bad-argument-type]
+        model.basin.time.df["infiltration"] = idx.map(infiltration)  # pyrefly: ignore[bad-argument-type]
+        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)  # pyrefly: ignore[bad-argument-type]
 
         return model, budgets_df
 

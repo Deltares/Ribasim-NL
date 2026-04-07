@@ -192,7 +192,8 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list[int] | int, spec_op: s
         case "optellen":
             # Tel de links bij elkaar op wanneer de specifieke bewerking hierom vraagt
             subset_links = data[data["link_id"].isin(link)]
-            subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()  # type: ignore[assignment]
+            # pyrefly: ignore[bad-assignment]
+            subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()
 
         case "negatief_maken":
             # Maak de meetreeks negatief
@@ -202,7 +203,8 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list[int] | int, spec_op: s
         case "optellen_en_negatief_maken":
             # Tel op en maak de reeks negatief
             subset_links = data[data["link_id"].isin(link)]
-            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()  # type: ignore[assignment]
+            # pyrefly: ignore[bad-assignment]
+            subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()
             subset_output["flow_rate"] = subset_output["flow_rate"] * -1
 
         case _ if pd.isna(spec_op):

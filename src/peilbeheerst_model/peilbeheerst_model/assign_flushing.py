@@ -526,7 +526,7 @@ class Flushing:
         df[self.flushing_col] = df[self.flushing_col].round().astype(int)
 
         # First step: dissolve by flushing_col and id if these are equal
-        df = df.dissolve(by=[self.flushing_id, self.flushing_col])  # type: ignore[operator]
+        df = df.dissolve(by=[self.flushing_id, self.flushing_col])
         df = df.reset_index()
 
         # Second step: iteratively merge overlapping geometries with the

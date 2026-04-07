@@ -279,13 +279,14 @@ def update_from_to_node_function_table_with_new_flow_rate(
         for col in history_columns:
             val = from_to_node_function_table.at[row_idx, col]
             if pd.notna(val):
-                row_history.append(float(val))  # type: ignore[arg-type]
+                row_history.append(float(val))  # pyrefly: ignore[bad-argument-type]
 
         # No history yet: fall back to current max_flow_rate if present
         if len(row_history) == 0:
             base_value = from_to_node_function_table.at[row_idx, "max_flow_rate"]
             if pd.notna(base_value):
-                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = float(base_value)  # type: ignore[arg-type]
+                # pyrefly: ignore[bad-argument-type]
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = float(base_value)
             continue
 
         latest_value = row_history[-1]
@@ -458,7 +459,7 @@ def update_max_flow_rates_in_model(model: Model, from_to_node_function_table: pd
     flow_rate_updates = flow_rate_updates.rename(columns={last_new_flow_rate_column: "max_flow_rate"})
     flow_rate_updates = flow_rate_updates.dropna(subset=["max_flow_rate"])
     flow_rate_updates = flow_rate_updates.drop_duplicates(subset=["node_id"], keep="last")
-    flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"]  # type: ignore[assignment]
+    flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"]
 
     # update the max_flow_rate in the model for the pump and outlet nodes.
     pump_df = model.pump.static.df.copy()

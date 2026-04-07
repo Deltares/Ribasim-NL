@@ -155,7 +155,8 @@ class SetDynamicForcing:
             means[node_id]["evp"] = averaged_ET_ms.tolist()
 
         # Convert into the right DataFrame format to add to the model
-        full_time_df = self._combine_meteo_into_df(means, startdate_dt, enddate_dt)  # type: ignore[arg-type]
+        # pyrefly: ignore[bad-argument-type]
+        full_time_df = self._combine_meteo_into_df(means, startdate_dt, enddate_dt)
         print("Converted the meteo data to a pd.DataFrame")
         return full_time_df
 
@@ -198,8 +199,8 @@ class SetDynamicForcing:
                 meteo_means["drainage"] = 0
                 meteo_means["infiltration"] = 0
                 final_time_df = meteo_means.copy()
-            model.basin.time.df = final_time_df  # type: ignore[assignment]
-            model.basin.time.df.fillna(0, inplace=True)  # type: ignore[union-attr]
+            model.basin.time.df = final_time_df  # pyrefly: ignore[bad-assignment]
+            model.basin.time.df.fillna(0, inplace=True)  # pyrefly: ignore[missing-attribute]
         else:
             current_df = model.basin.time.df
             current_df["conv_time"] = pd.to_datetime(current_df["time"])
@@ -229,7 +230,7 @@ class SetDynamicForcing:
         model.basin.static.df = None
 
         # Set the start and end date of the model
-        model.starttime = self.startdate  # type: ignore[assignment]
-        model.endtime = self.enddate  # type: ignore[assignment]
+        model.starttime = self.startdate  # pyrefly: ignore[bad-assignment]
+        model.endtime = self.enddate  # pyrefly: ignore[bad-assignment]
         print("Dynamic meteo added to model")
         return model

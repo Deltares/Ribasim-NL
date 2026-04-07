@@ -387,10 +387,10 @@ class Control:
         # collect analysed data in GeoDataFrame
         gdf_min_basin_level = min_basin_level.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        ).set_geometry("geometry")  # type: ignore[operator]
+        ).set_geometry("geometry")
         gdf_max_basin_level = max_basin_level.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        ).set_geometry("geometry")  # type: ignore[operator]
+        ).set_geometry("geometry")
         control_dict.update(
             {
                 "min_basin_level": gdf_min_basin_level,
@@ -444,12 +444,14 @@ class Control:
 
         # water level differences
         min_difference_level = (
-            (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])  # type: ignore[attr-defined]
+            # pyrefly: ignore[missing-attribute]
+            (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
         )
         max_difference_level = (
-            (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])  # type: ignore[attr-defined]
+            # pyrefly: ignore[missing-attribute]
+            (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
         )

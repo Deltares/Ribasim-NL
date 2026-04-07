@@ -254,7 +254,7 @@ def add_and_connect_discrete_control_node(
     connector_node = model.get_node(node_id)
     control_node = model.discrete_control.add(
         _offset_new_node(connector_node, offset=offset, angle=angle, **kwargs),
-        tables,  # type: ignore[arg-type]
+        tables,  # pyrefly: ignore[bad-argument-type]
     )
     model.link.add(control_node, connector_node)
 
@@ -1188,8 +1188,8 @@ def add_controllers_to_connector_nodes(
         This is usefull if you want to add a different type of supply-node later. Default is True
     """
     # make sure add-api will not duplicate node-ids
-    model.node._update_used_ids()  # type: ignore[operator]
-    model.link._update_used_ids()  # type: ignore[operator]
+    model.node._update_used_ids()
+    model.link._update_used_ids()
 
     # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
@@ -1377,8 +1377,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Offset voor supply controls.
     """
     # make sure add-api will not duplicate node-ids
-    model.node._update_used_ids()  # type: ignore[operator]
-    model.link._update_used_ids()  # type: ignore[operator]
+    model.node._update_used_ids()
+    model.link._update_used_ids()
 
     # --- defaults veilig maken (nooit [] als default-arg) ---
     exclude_nodes = exclude_nodes or []
