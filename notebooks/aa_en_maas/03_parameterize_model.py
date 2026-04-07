@@ -28,7 +28,7 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg, qlr_path])
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
 
 # %%
 # read

@@ -37,7 +37,6 @@ cloud.synchronize(
     filepaths=[
         peilgebieden_path,
         stuwen_shp,
-        profiles_gpkg,
         aam_data_gpkg,
         waterschap_grenzen,
         rws_waterschap_grenzen,

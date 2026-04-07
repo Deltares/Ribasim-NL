@@ -491,12 +491,12 @@ class Network:
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
             # add links
             self.graph.remove_edge(node_from, node_to)
-            split_result = split_line(link_geometry, node_geometry)
-            if isinstance(split_result, LineString):
+            split_result = split_line(link_geometry, node_geometry, as_multilinestring=False)
+            if len(split_result) == 1:
                 if self.verbose:
                     logger.warning(f"Splitting link: {link_id} resulted in a single LineString)")
                 return None
-            us_geometry, ds_geometry = split_result.geoms
+            us_geometry, ds_geometry = split_result
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
