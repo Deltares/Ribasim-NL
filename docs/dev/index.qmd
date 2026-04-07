@@ -113,3 +113,57 @@ If you prefer to set these environment variables in your OS or terminal that wil
 When using `cloud.synchronize` or `cloud.download_content`, this will determine if local files will be overwritten if the `overwrite` keyword argument is not explicitly passed.
 Whilst updating datasets locally, you can set this to `false` to ensure your modifications can be tested and will not be lost.
 After these edits are done, you can upload the new dataset, and set it back to `true`.
+
+# Type checking
+
+We use [Pyrefly](https://pyrefly.org/) for static type checking.
+Pyrefly is configured in the `[tool.pyrefly]` section of `pyproject.toml`.
+
+## Running Pyrefly
+
+To check for type errors, run:
+
+```sh
+uv run pyrefly check
+```
+
+This is also run in CI via the `pyrefly` job in `.github/workflows/python_lint.yml`.
+
+## Baseline file
+
+Existing type errors are stored in a `baseline.json` file.
+Pyrefly's [baseline feature](https://pyrefly.org/en/docs/error-suppressions/#baseline-files-experimental) suppresses these known errors and only reports *new* errors.
+This way, `pyrefly check` passes cleanly without requiring ignore comments on every line.
+
+The baseline is configured in `pyproject.toml`:
+
+```toml
+[tool.pyrefly]
+baseline = "baseline.json"
+```
+
+### Updating the baseline
+
+After fixing existing type errors, regenerate the baseline to remove the fixed entries:
+
+```sh
+uv run pyrefly check --update-baseline
+```
+
+If you introduce code that triggers new errors (e.g. from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command.
+Prefer fixing the error or adding a targeted `# pyrefly: ignore[error-code]` comment when possible.
+
+### Suppressing individual errors
+
+For specific lines where the type checker is wrong, use a targeted ignore comment:
+
+```python
+x = some_expression  # pyrefly: ignore[error-code]
+```
+
+For lines that would exceed 120 characters with the comment appended, place the comment on the line above:
+
+```python
+# pyrefly: ignore[error-code]
+x = some_very_long_expression_that_would_be_too_long_with_an_inline_comment
+```

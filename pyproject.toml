@@ -103,6 +103,7 @@ fixable = ["ALL"]
 convention = "numpy"
 
 [tool.pyrefly]
+baseline = "baseline.json"
 project-includes = [
     "src/bokeh_helpers/bokeh_helpers",
     "src/hydamo/hydamo",
