@@ -23,7 +23,12 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry
+
+# explode node point-locations so they will not overlap, making visual inspections easier; exploding of points might
+# cause "unconnected" nodes to appear, as they move away from their link-connection
+EXPLODE_NODE_POINTS: bool = True
+EXPLODE_NODE_DISTANCE: float = 10
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -72,8 +77,8 @@ profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 #     ]
 # )
 
-# # refresh only the feedback form from cloud
-# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+# refresh only the feedback form from cloud
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -920,6 +925,9 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
+
+if EXPLODE_NODE_POINTS:
+    ribasim_model.node.df = geometry.explode_nearby_points(ribasim_model.node.df.copy(), EXPLODE_NODE_DISTANCE)
 
 # set numerical settings
 # write model output
