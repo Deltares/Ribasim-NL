@@ -40,6 +40,7 @@ if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
 
 MIXED_CONDITIONS_DESIGN_P = 12
 MIXED_CONDITIONS_DESIGN_E = 2
+LEVEL_DIFFERENCE_THRESHOLD = 0.04
 
 # model settings
 waterschap = "HollandseDelta"
@@ -704,7 +705,6 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # # update meta_categorie ("Regulier gemaal" not accepted)
 # ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df['node_id'].isin((1176, 1381, 2055)), 'meta_categorie'] = "Afvoer gemaal peilgebied peilgebied"
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.04
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
