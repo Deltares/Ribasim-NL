@@ -128,7 +128,7 @@ aanvoerpunten_shp = cloud.joinpath(
     r"AaenMaas\verwerkt\1_ontvangen_data\wateraanvoer_27-2-2026\wateraanvoersysteem_WAM.shp"
 )
 
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
+cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, aanvoerpunten_shp])
 
 # %%
 # Read data

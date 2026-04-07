@@ -125,10 +125,11 @@ stages:
       - uv run python notebooks/de_dommel/01_fix_model.py
       - uv run python notebooks/de_dommel/02_prepare_model.py
       - uv run python notebooks/de_dommel/03_parameterize_model.py
+      - uv run python notebooks/de_dommel/04_add_full_control.py
     deps:
       - notebooks/de_dommel
     outs:
-      - data/DeDommel/modellen/DeDommel_parameterized_model
+      - data/DeDommel/modellen/DeDommel_full_control_model
   vallei_en_veluwe:
     cmd:
       - uv run python notebooks/vallei_en_veluwe/01_fix_model.py
