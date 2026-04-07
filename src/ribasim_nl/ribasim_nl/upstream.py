@@ -4,7 +4,9 @@ from collections import deque
 import networkx as nx
 
 
-def upstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_inlet: bool = False, stop_at_node_type: str | None = None):
+def upstream_nodes(
+    graph: nx.DiGraph, node_id: int, stop_at_inlet: bool = False, stop_at_node_type: str | None = None
+) -> set[int]:
     """Efficiently find all upstream nodes in a directed graph starting from a given node,
     stopping traversal at nodes stopping at the next inlet.
 

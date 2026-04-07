@@ -10,7 +10,7 @@ def sanitize_node_table(
     meta_columns: list[str] = [],
     copy_map: list[dict[str, object]] = [],
     names: "pd.Series[str] | None" = None,
-):
+) -> None:
     """Clean all node-tables to their expected columns + (optionally) meta_columns."""
     assert model.basin.node is not None
     node_columns = model.basin.node.columns() + meta_columns

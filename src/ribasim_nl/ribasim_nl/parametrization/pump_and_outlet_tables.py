@@ -153,7 +153,7 @@ def update_pump_outlet_static(
     node_type: Literal["Pump", "Outlet"],
     static_data_xlsx: Path | None = None,
     code_column: str = "meta_code_waterbeheerder",
-):
+) -> None:
     # init static_table with static_data_xlsx
     static_df = create_static_df(
         model=model,

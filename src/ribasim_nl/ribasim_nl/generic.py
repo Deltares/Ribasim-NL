@@ -3,7 +3,7 @@
 from typing import get_type_hints
 
 
-def _validate_inputs(function, **kwargs):
+def _validate_inputs(function, **kwargs) -> None:
     """Check if all inputs are of the correct type"""
     hints = get_type_hints(function)
 

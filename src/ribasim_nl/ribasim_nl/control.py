@@ -18,14 +18,14 @@ from ribasim_nl.downstream import downstream_nodes
 class InvalidTable(Exception):
     """Basin.Area table is invalid."""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
 
 
 class MissingTable(Exception):
     """Table is missing."""
 
-    def __init__(self, table: str):
+    def __init__(self, table: str) -> None:
         super().__init__(f"{table} table is missing!")
 
 
@@ -133,7 +133,7 @@ def _target_level(
         return target_level
 
 
-def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = True, drain: bool = True):
+def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = True, drain: bool = True) -> None:
     """Update meta-info for masking Basins and Connnector nodes."""
     assert model.pump.static.df is not None
     assert model.outlet.static.df is not None
@@ -160,7 +160,7 @@ def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = T
 
 def validate_nodes_on_reversed_direction(
     nodes_df: gpd.GeoDataFrame, node_function: Literal["flushing", "drain", "supply", "flow_control"] = "drain"
-):
+) -> None:
     """Check if nodes_df has connector-nodes has nodes in reversed-direction
 
     Parameters
@@ -233,7 +233,7 @@ def discrete_control_tables_single_basin(
 
 def add_and_connect_discrete_control_node(
     model: Model, node_id: int, offset: float, angle: int, tables: list[object], **kwargs
-):
+) -> None:
     """Add and connect a DiscreteControl Node to an existing node.
 
     Parameters
@@ -636,7 +636,7 @@ def add_controllers_to_drain_nodes(
     max_flow_capacity: float = 100,
     name: str = "uitlaat",
     update_meta_info: bool = True,
-):
+) -> None:
     """Add control nodes to connector nodes draining a system/supply-area
 
     Control-nodes draining a system only maintain upstream water-levels and reduce to 0 m3/s if control-state is aanvoer
@@ -736,7 +736,7 @@ def add_controllers_to_supply_nodes(
     control_node_angle: int = 90,
     name: str = "inlaat",
     update_meta_info: bool = True,
-):
+) -> None:
     """Add control nodes to connector nodes supplying a system/supply-area
 
     Parameters
@@ -848,7 +848,7 @@ def add_controllers_to_flow_control_nodes(
     control_node_angle: int = 90,
     name: str = "doorlaat",
     update_meta_info: bool = True,
-):
+) -> None:
     """Add control nodes to connector nodes controlling flows and water-levels in a system/supply-area
 
     Parameters
@@ -978,7 +978,7 @@ def add_controllers_and_demand_to_flushing_nodes(
     demand_node_angle: int = 45,
     name: str = "uitlaat",
     demand_name_prefix: str = "doorspoeling",
-):
+) -> None:
     """Add control nodes to connector nodes draining a system/supply-area having a certain flow-demand (flushing_nodes)
 
     Parameters
@@ -1151,7 +1151,7 @@ def add_controllers_to_connector_nodes(
     target_level_column: str = "meta_streefpeil",
     drain_capacity: float = 100,
     add_supply_nodes: bool = True,
-):
+) -> None:
     """Add controllers to connector nodes per function
 
     The `function` column in `node_functions_df` can have 4 values with Dutch explanations:
@@ -1343,7 +1343,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     us_target_level_offset_supply: float = -0.04,
     level_difference_threshold: float | None = None,
-):
+) -> None:
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
 

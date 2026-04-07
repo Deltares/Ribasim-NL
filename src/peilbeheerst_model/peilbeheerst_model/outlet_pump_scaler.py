@@ -477,7 +477,7 @@ def update_max_flow_rates_in_model(model: Model, from_to_node_function_table: pd
     return model
 
 
-def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
+def upload_from_to_node_function_table(from_to_node_function_table, waterschap) -> None:
     """Write the scaled connector table locally and upload the CSV to GoodCloud.
 
     Parameters
@@ -502,7 +502,7 @@ def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
 class _OutletPumpScaler:
     """Execute the iterative outlet and pump scaling workflow for one model."""
 
-    def __init__(self, config: OutletPumpScalingConfig):
+    def __init__(self, config: OutletPumpScalingConfig) -> None:
         """Store the scaler configuration for a single run."""
         self.config = config
 
@@ -763,7 +763,7 @@ class _OutletPumpScaler:
         return model, from_to_node_function_table
 
 
-def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig):
+def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig) -> pd.DataFrame:
     """Download and load a previously saved scaled connector table from GoodCloud.
 
     Parameters

@@ -7,7 +7,7 @@ def update_flow_boundary_static(
     code_column: str = "meta_code_waterbeheerder",
     meta_values: dict[str, str] = {"meta_categorie": "buitenlandse aanvoer"},
     default_values: dict[str, object] = {"flow_rate": 0.0},
-):
+) -> None:
     """Update FlowBoundary table
 
     Args:

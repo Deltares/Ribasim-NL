@@ -18,7 +18,7 @@ class DatetimeSlider:
     kwargs: dict[str, object] = field(default_factory=dict)
     widget: Slider | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # validate values
         if self.start >= self.end:
             raise ValueError(f"{self.start} >= {self.end}")
@@ -59,14 +59,14 @@ class DatetimeSlider:
         )
 
     @property
-    def value_as_datetime(self):
+    def value_as_datetime(self) -> datetime | float | object:
         if isinstance(self.widget.value, numbers.Number):
             return datetime.fromtimestamp(self.widget.value / 1000)
         else:
             return self.widget.value
 
     @property
-    def steps(self):
+    def steps(self) -> list[int]:
         step = int(self.widget.step)
         start = int(self.widget.start)
         stop = int(self.widget.end + step)

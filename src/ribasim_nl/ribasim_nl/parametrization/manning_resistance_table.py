@@ -14,7 +14,7 @@ def update_manning_resistance_static(
     profile_slope: float = 1,
     profile_width: float = 25,
     manning_n: float = 0.04,
-):
+) -> None:
     """Generate a default manning-table.
 
     Args:

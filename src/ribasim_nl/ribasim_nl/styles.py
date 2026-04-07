@@ -83,7 +83,7 @@ def read_style(style_path: Path) -> str:
     return style_txt
 
 
-def add_styles_to_geopackage(gpkg_path: Path):
+def add_styles_to_geopackage(gpkg_path: Path) -> None:
     """
     Add styles to a HyDAMO GeoPackage
 

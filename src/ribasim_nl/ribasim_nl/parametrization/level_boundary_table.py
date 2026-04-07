@@ -12,7 +12,7 @@ def update_level_boundary_static(
     model: Model,
     static_data_xlsx: Path | None = None,
     code_column: str = "meta_code_waterbeheerder",
-):
+) -> None:
     """Update LevelBoundary table
 
     Args:

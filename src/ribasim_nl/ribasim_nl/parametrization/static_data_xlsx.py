@@ -81,17 +81,17 @@ class StaticData(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.xlsx_path = Path(self.xlsx_path)
 
     @property
-    def defaults(self):
+    def defaults(self) -> pd.DataFrame:
         df = pd.DataFrame.from_dict(self.default_dict, orient="index")
         df.index.name = "categorie"
         return df
 
     @property
-    def description(self):
+    def description(self) -> pd.DataFrame:
         df = pd.DataFrame(self.description_list)
         df.sort_values(by=["sheet", "kolom"], inplace=True)
         return df[["sheet", "kolom", "beschrijving"]]
@@ -146,7 +146,7 @@ class StaticData(BaseModel):
         setattr(self, pascal_to_snake_case(node_type), df)  # pyrefly: ignore[unbound-name]
         return getattr(self, pascal_to_snake_case(node_type))
 
-    def add_series(self, node_type, series, fill_na: bool = False):
+    def add_series(self, node_type, series, fill_na: bool = False) -> None:
         col = series.index.name
 
         # get dataframe
@@ -163,7 +163,7 @@ class StaticData(BaseModel):
             mask = mask & df[series.name].isna()
         df.loc[mask, series.name] = series[df[mask][col]].to_numpy()
 
-    def write(self):
+    def write(self) -> None:
         # remove exel if exists
         if self.xlsx_path.exists():
             self.xlsx_path.unlink()

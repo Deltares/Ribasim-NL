@@ -26,7 +26,7 @@ def possibly_intersecting(dataframebounds, geometry, buffer=0):
     return idx
 
 
-def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
+def find_nearest_branch(branches, geometries, method="overall", maxdist=5) -> None:
     """
     Determine nearest branch for each geometry.
 

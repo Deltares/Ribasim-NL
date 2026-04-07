@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import pathlib
+from collections.abc import Hashable
 from typing import Any
 
 import fiona
@@ -655,7 +656,7 @@ class ParseCrossings:
         return type_areas, str_areas
 
     @pydantic.validate_call(config={"strict": True})
-    def _get_layer_as_singleparts(self, layername: str, id_as_index: bool = False):
+    def _get_layer_as_singleparts(self, layername: str, id_as_index: bool = False) -> gpd.GeoDataFrame:
         """_summary_
 
         Parameters
@@ -1417,7 +1418,7 @@ class ParseCrossings:
         df_peilgebieden: gpd.GeoDataFrame,
         filterlayer: str,
         write_debug=None,
-    ):
+    ) -> tuple[Hashable, pd.DataFrame | gpd.GeoDataFrame]:
         """_summary_
 
         Parameters
