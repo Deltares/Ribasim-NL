@@ -1,9 +1,9 @@
 {
   "errors": [
     {
-      "line": 24,
+      "line": 23,
       "column": 12,
-      "stop_line": 24,
+      "stop_line": 23,
       "stop_column": 34,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -13,9 +13,9 @@
       "severity": "error"
     },
     {
-      "line": 24,
+      "line": 23,
       "column": 12,
-      "stop_line": 24,
+      "stop_line": 23,
       "stop_column": 34,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -25,9 +25,9 @@
       "severity": "error"
     },
     {
-      "line": 27,
+      "line": 26,
       "column": 12,
-      "stop_line": 27,
+      "stop_line": 26,
       "stop_column": 35,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -37,9 +37,9 @@
       "severity": "error"
     },
     {
-      "line": 27,
+      "line": 26,
       "column": 12,
-      "stop_line": 27,
+      "stop_line": 26,
       "stop_column": 35,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -49,9 +49,9 @@
       "severity": "error"
     },
     {
-      "line": 30,
+      "line": 29,
       "column": 12,
-      "stop_line": 30,
+      "stop_line": 29,
       "stop_column": 33,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -61,9 +61,9 @@
       "severity": "error"
     },
     {
-      "line": 30,
+      "line": 29,
       "column": 12,
-      "stop_line": 30,
+      "stop_line": 29,
       "stop_column": 33,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -73,9 +73,9 @@
       "severity": "error"
     },
     {
-      "line": 59,
+      "line": 58,
       "column": 13,
-      "stop_line": 59,
+      "stop_line": 58,
       "stop_column": 26,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -85,9 +85,9 @@
       "severity": "error"
     },
     {
-      "line": 64,
+      "line": 63,
       "column": 23,
-      "stop_line": 64,
+      "stop_line": 63,
       "stop_column": 40,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -97,9 +97,9 @@
       "severity": "error"
     },
     {
-      "line": 65,
+      "line": 64,
       "column": 43,
-      "stop_line": 65,
+      "stop_line": 64,
       "stop_column": 67,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -109,9 +109,9 @@
       "severity": "error"
     },
     {
-      "line": 71,
+      "line": 70,
       "column": 20,
-      "stop_line": 71,
+      "stop_line": 70,
       "stop_column": 36,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -121,9 +121,9 @@
       "severity": "error"
     },
     {
-      "line": 72,
+      "line": 71,
       "column": 21,
-      "stop_line": 72,
+      "stop_line": 71,
       "stop_column": 38,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -133,9 +133,9 @@
       "severity": "error"
     },
     {
-      "line": 73,
+      "line": 72,
       "column": 20,
-      "stop_line": 73,
+      "stop_line": 72,
       "stop_column": 35,
       "path": "src\\bokeh_helpers\\bokeh_helpers\\widgets\\date_time_slider.py",
       "code": -2,
@@ -217,69 +217,9 @@
       "severity": "error"
     },
     {
-      "line": 80,
-      "column": 40,
-      "stop_line": 80,
-      "stop_column": 52,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_authorities.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 88,
-      "column": 34,
-      "stop_line": 88,
-      "stop_column": 46,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_authorities.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 88,
-      "column": 48,
-      "stop_line": 88,
-      "stop_column": 60,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_authorities.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 119,
-      "column": 59,
-      "stop_line": 119,
-      "stop_column": 71,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_authorities.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 138,
-      "column": 62,
-      "stop_line": 138,
-      "stop_column": 74,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_authorities.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 62,
+      "line": 61,
       "column": 54,
-      "stop_line": 62,
+      "stop_line": 61,
       "stop_column": 71,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -289,9 +229,9 @@
       "severity": "error"
     },
     {
-      "line": 92,
+      "line": 91,
       "column": 21,
-      "stop_line": 92,
+      "stop_line": 91,
       "stop_column": 61,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -301,9 +241,9 @@
       "severity": "error"
     },
     {
-      "line": 93,
+      "line": 92,
       "column": 28,
-      "stop_line": 93,
+      "stop_line": 92,
       "stop_column": 55,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -313,9 +253,9 @@
       "severity": "error"
     },
     {
-      "line": 96,
+      "line": 95,
       "column": 26,
-      "stop_line": 96,
+      "stop_line": 95,
       "stop_column": 51,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -325,9 +265,9 @@
       "severity": "error"
     },
     {
-      "line": 101,
+      "line": 100,
       "column": 20,
-      "stop_line": 101,
+      "stop_line": 100,
       "stop_column": 39,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -337,9 +277,9 @@
       "severity": "error"
     },
     {
-      "line": 102,
+      "line": 101,
       "column": 13,
-      "stop_line": 102,
+      "stop_line": 101,
       "stop_column": 42,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -349,9 +289,9 @@
       "severity": "error"
     },
     {
-      "line": 105,
+      "line": 104,
       "column": 51,
-      "stop_line": 105,
+      "stop_line": 104,
       "stop_column": 74,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -361,9 +301,9 @@
       "severity": "error"
     },
     {
-      "line": 122,
+      "line": 121,
       "column": 64,
-      "stop_line": 122,
+      "stop_line": 121,
       "stop_column": 111,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -373,9 +313,9 @@
       "severity": "error"
     },
     {
-      "line": 125,
+      "line": 124,
       "column": 74,
-      "stop_line": 125,
+      "stop_line": 124,
       "stop_column": 100,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -385,9 +325,9 @@
       "severity": "error"
     },
     {
-      "line": 136,
+      "line": 135,
       "column": 39,
-      "stop_line": 136,
+      "stop_line": 135,
       "stop_column": 67,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -397,9 +337,9 @@
       "severity": "error"
     },
     {
-      "line": 139,
+      "line": 138,
       "column": 64,
-      "stop_line": 139,
+      "stop_line": 138,
       "stop_column": 75,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -409,9 +349,9 @@
       "severity": "error"
     },
     {
-      "line": 139,
+      "line": 138,
       "column": 114,
-      "stop_line": 139,
+      "stop_line": 138,
       "stop_column": 118,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -421,9 +361,9 @@
       "severity": "error"
     },
     {
-      "line": 183,
+      "line": 182,
       "column": 66,
-      "stop_line": 183,
+      "stop_line": 182,
       "stop_column": 92,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -433,9 +373,9 @@
       "severity": "error"
     },
     {
-      "line": 188,
+      "line": 187,
       "column": 32,
-      "stop_line": 188,
+      "stop_line": 187,
       "stop_column": 93,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -445,9 +385,9 @@
       "severity": "error"
     },
     {
-      "line": 188,
+      "line": 187,
       "column": 52,
-      "stop_line": 188,
+      "stop_line": 187,
       "stop_column": 79,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -457,9 +397,9 @@
       "severity": "error"
     },
     {
-      "line": 190,
+      "line": 189,
       "column": 70,
-      "stop_line": 190,
+      "stop_line": 189,
       "stop_column": 79,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -469,9 +409,9 @@
       "severity": "error"
     },
     {
-      "line": 210,
+      "line": 209,
       "column": 47,
-      "stop_line": 210,
+      "stop_line": 209,
       "stop_column": 58,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -481,9 +421,9 @@
       "severity": "error"
     },
     {
-      "line": 267,
+      "line": 266,
       "column": 22,
-      "stop_line": 267,
+      "stop_line": 266,
       "stop_column": 46,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -493,9 +433,9 @@
       "severity": "error"
     },
     {
-      "line": 270,
+      "line": 269,
       "column": 17,
-      "stop_line": 270,
+      "stop_line": 269,
       "stop_column": 36,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -505,9 +445,9 @@
       "severity": "error"
     },
     {
-      "line": 312,
+      "line": 311,
       "column": 22,
-      "stop_line": 312,
+      "stop_line": 311,
       "stop_column": 46,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -517,9 +457,9 @@
       "severity": "error"
     },
     {
-      "line": 315,
+      "line": 314,
       "column": 17,
-      "stop_line": 315,
+      "stop_line": 314,
       "stop_column": 36,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -529,9 +469,9 @@
       "severity": "error"
     },
     {
-      "line": 370,
+      "line": 369,
       "column": 52,
-      "stop_line": 370,
+      "stop_line": 369,
       "stop_column": 60,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -541,9 +481,9 @@
       "severity": "error"
     },
     {
-      "line": 375,
+      "line": 374,
       "column": 28,
-      "stop_line": 375,
+      "stop_line": 374,
       "stop_column": 79,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -553,9 +493,9 @@
       "severity": "error"
     },
     {
-      "line": 375,
+      "line": 374,
       "column": 42,
-      "stop_line": 375,
+      "stop_line": 374,
       "stop_column": 65,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -565,9 +505,9 @@
       "severity": "error"
     },
     {
-      "line": 530,
+      "line": 529,
       "column": 14,
-      "stop_line": 530,
+      "stop_line": 529,
       "stop_column": 25,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -577,9 +517,9 @@
       "severity": "error"
     },
     {
-      "line": 576,
+      "line": 575,
       "column": 35,
-      "stop_line": 576,
+      "stop_line": 575,
       "stop_column": 45,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -589,9 +529,9 @@
       "severity": "error"
     },
     {
-      "line": 582,
+      "line": 581,
       "column": 32,
-      "stop_line": 582,
+      "stop_line": 581,
       "stop_column": 42,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -601,9 +541,9 @@
       "severity": "error"
     },
     {
-      "line": 587,
+      "line": 586,
       "column": 16,
-      "stop_line": 587,
+      "stop_line": 586,
       "stop_column": 34,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\assign_flushing.py",
       "code": -2,
@@ -1273,9 +1213,9 @@
       "severity": "error"
     },
     {
-      "line": 364,
+      "line": 363,
       "column": 41,
-      "stop_line": 364,
+      "stop_line": 363,
       "stop_column": 111,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1285,9 +1225,9 @@
       "severity": "error"
     },
     {
-      "line": 518,
+      "line": 517,
       "column": 13,
-      "stop_line": 518,
+      "stop_line": 517,
       "stop_column": 34,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1297,9 +1237,9 @@
       "severity": "error"
     },
     {
-      "line": 537,
+      "line": 536,
       "column": 53,
-      "stop_line": 539,
+      "stop_line": 538,
       "stop_column": 14,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1309,9 +1249,9 @@
       "severity": "error"
     },
     {
-      "line": 561,
+      "line": 560,
       "column": 13,
-      "stop_line": 561,
+      "stop_line": 560,
       "stop_column": 33,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1321,9 +1261,9 @@
       "severity": "error"
     },
     {
-      "line": 580,
+      "line": 579,
       "column": 51,
-      "stop_line": 580,
+      "stop_line": 579,
       "stop_column": 121,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1333,9 +1273,9 @@
       "severity": "error"
     },
     {
-      "line": 716,
+      "line": 715,
       "column": 13,
-      "stop_line": 716,
+      "stop_line": 715,
       "stop_column": 33,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1345,9 +1285,9 @@
       "severity": "error"
     },
     {
-      "line": 716,
+      "line": 715,
       "column": 34,
-      "stop_line": 716,
+      "stop_line": 715,
       "stop_column": 55,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1357,9 +1297,9 @@
       "severity": "error"
     },
     {
-      "line": 718,
+      "line": 717,
       "column": 13,
-      "stop_line": 718,
+      "stop_line": 717,
       "stop_column": 33,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1369,9 +1309,9 @@
       "severity": "error"
     },
     {
-      "line": 722,
+      "line": 721,
       "column": 34,
-      "stop_line": 722,
+      "stop_line": 721,
       "stop_column": 59,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1381,33 +1321,9 @@
       "severity": "error"
     },
     {
-      "line": 871,
-      "column": 23,
-      "stop_line": 871,
-      "stop_column": 35,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 905,
-      "column": 86,
-      "stop_line": 905,
-      "stop_column": 98,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 960,
+      "line": 959,
       "column": 62,
-      "stop_line": 962,
+      "stop_line": 961,
       "stop_column": 10,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1417,9 +1333,9 @@
       "severity": "error"
     },
     {
-      "line": 1117,
+      "line": 1116,
       "column": 29,
-      "stop_line": 1117,
+      "stop_line": 1116,
       "stop_column": 53,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1429,9 +1345,9 @@
       "severity": "error"
     },
     {
-      "line": 1185,
+      "line": 1184,
       "column": 18,
-      "stop_line": 1185,
+      "stop_line": 1184,
       "stop_column": 32,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1441,9 +1357,9 @@
       "severity": "error"
     },
     {
-      "line": 1213,
+      "line": 1212,
       "column": 28,
-      "stop_line": 1213,
+      "stop_line": 1212,
       "stop_column": 51,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1453,9 +1369,9 @@
       "severity": "error"
     },
     {
-      "line": 1225,
+      "line": 1224,
       "column": 23,
-      "stop_line": 1225,
+      "stop_line": 1224,
       "stop_column": 41,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1465,9 +1381,9 @@
       "severity": "error"
     },
     {
-      "line": 1298,
+      "line": 1297,
       "column": 21,
-      "stop_line": 1298,
+      "stop_line": 1297,
       "stop_column": 36,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1477,21 +1393,9 @@
       "severity": "error"
     },
     {
-      "line": 1318,
-      "column": 73,
-      "stop_line": 1318,
-      "stop_column": 85,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 1826,
+      "line": 1825,
       "column": 20,
-      "stop_line": 1826,
+      "stop_line": 1825,
       "stop_column": 29,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1501,9 +1405,9 @@
       "severity": "error"
     },
     {
-      "line": 1827,
+      "line": 1826,
       "column": 13,
-      "stop_line": 1827,
+      "stop_line": 1826,
       "stop_column": 27,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\crossings_to_ribasim.py",
       "code": -2,
@@ -1522,18 +1426,6 @@
       "name": "no-matching-overload",
       "description": "No matching overload found for function `geopandas.io.file._read_file` called with arguments: (Unknown, layer=Any, engine=str | Unknown)\n  Possible overloads:\n  (filename: PathLike[str] | SupportsRead[Any] | str, bbox: GeoDataFrame | GeoSeries | Geometry | Sequence[float] | ndarray[tuple[Any, ...], dtype[floating]] | None = None, mask: GeoDataFrame | GeoSeries | Geometry | dict[str, Any] | None = None, columns: ExtensionArray | Index | SequenceNotStr[Any] | Series | ndarray | range | None = None, rows: int | slice[Any, Any, Any] | None = None, engine: Literal['fiona', 'pyogrio'] | None = None, *, ignore_geometry: Literal[False] = False, layer: int | str | None = None, encoding: str | None = None, **kwargs: Unknown) -> GeoDataFrame [closest match]\n  (filename: PathLike[str] | SupportsRead[Any] | str, bbox: GeoDataFrame | GeoSeries | Geometry | Sequence[float] | ndarray[tuple[Any, ...], dtype[floating]] | None = None, mask: GeoDataFrame | GeoSeries | Geometry | dict[str, Any] | None = None, columns: ExtensionArray | Index | SequenceNotStr[Any] | Series | ndarray | range | None = None, rows: int | slice[Any, Any, Any] | None = None, engine: Literal['fiona', 'pyogrio'] | None = None, *, ignore_geometry: Literal[True], layer: int | str | None = None, encoding: str | None = None, **kwargs: Unknown) -> DataFrame",
       "concise_description": "No matching overload found for function `geopandas.io.file._read_file` called with arguments: (Unknown, layer=Any, engine=str | Unknown)",
-      "severity": "error"
-    },
-    {
-      "line": 82,
-      "column": 73,
-      "stop_line": 82,
-      "stop_column": 85,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\general_functions.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
       "severity": "error"
     },
     {
@@ -2749,6 +2641,18 @@
       "severity": "error"
     },
     {
+      "line": 588,
+      "column": 44,
+      "stop_line": 588,
+      "stop_column": 47,
+      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\parse_crossings.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `DataFrame | GeoDataFrame` is not assignable to parameter `dfc` with type `GeoDataFrame` in function `ParseCrossings._correct_structures`",
+      "concise_description": "Argument `DataFrame | GeoDataFrame` is not assignable to parameter `dfc` with type `GeoDataFrame` in function `ParseCrossings._correct_structures`",
+      "severity": "error"
+    },
+    {
       "line": 598,
       "column": 20,
       "stop_line": 598,
@@ -2770,18 +2674,6 @@
       "name": "bad-argument-type",
       "description": "Argument `Timedelta | Timestamp | bool | bytes | complex | complexfloating | date | datetime | datetime64 | float | floating | int | integer | str | timedelta | timedelta64` is not assignable to parameter `object` with type `int` in function `list.append`",
       "concise_description": "Argument `Timedelta | Timestamp | bool | bytes | complex | complexfloating | date | datetime | datetime64 | float | floating | int | integer | str | timedelta | timedelta64` is not assignable to parameter `object` with type `int` in function `list.append`",
-      "severity": "error"
-    },
-    {
-      "line": 659,
-      "column": 87,
-      "stop_line": 659,
-      "stop_column": 99,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\parse_crossings.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
       "severity": "error"
     },
     {
@@ -5401,18 +5293,6 @@
       "severity": "error"
     },
     {
-      "line": 1421,
-      "column": 41,
-      "stop_line": 1421,
-      "stop_column": 53,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\parse_crossings.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
       "line": 1467,
       "column": 13,
       "stop_line": 1467,
@@ -5773,9 +5653,9 @@
       "severity": "error"
     },
     {
-      "line": 121,
+      "line": 120,
       "column": 49,
-      "stop_line": 121,
+      "stop_line": 120,
       "stop_column": 58,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5785,9 +5665,9 @@
       "severity": "error"
     },
     {
-      "line": 134,
+      "line": 133,
       "column": 70,
-      "stop_line": 134,
+      "stop_line": 133,
       "stop_column": 81,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5797,9 +5677,9 @@
       "severity": "error"
     },
     {
-      "line": 158,
+      "line": 157,
       "column": 38,
-      "stop_line": 158,
+      "stop_line": 157,
       "stop_column": 93,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5809,9 +5689,9 @@
       "severity": "error"
     },
     {
-      "line": 158,
+      "line": 157,
       "column": 57,
-      "stop_line": 158,
+      "stop_line": 157,
       "stop_column": 81,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5821,9 +5701,9 @@
       "severity": "error"
     },
     {
-      "line": 168,
+      "line": 167,
       "column": 30,
-      "stop_line": 170,
+      "stop_line": 169,
       "stop_column": 14,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5833,9 +5713,9 @@
       "severity": "error"
     },
     {
-      "line": 169,
+      "line": 168,
       "column": 18,
-      "stop_line": 169,
+      "stop_line": 168,
       "stop_column": 52,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5845,9 +5725,9 @@
       "severity": "error"
     },
     {
-      "line": 169,
+      "line": 168,
       "column": 68,
-      "stop_line": 169,
+      "stop_line": 168,
       "stop_column": 100,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5857,9 +5737,9 @@
       "severity": "error"
     },
     {
-      "line": 171,
+      "line": 170,
       "column": 34,
-      "stop_line": 171,
+      "stop_line": 170,
       "stop_column": 57,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5869,9 +5749,9 @@
       "severity": "error"
     },
     {
-      "line": 188,
+      "line": 187,
       "column": 28,
-      "stop_line": 188,
+      "stop_line": 187,
       "stop_column": 51,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5881,9 +5761,9 @@
       "severity": "error"
     },
     {
-      "line": 197,
+      "line": 196,
       "column": 32,
-      "stop_line": 197,
+      "stop_line": 196,
       "stop_column": 44,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5893,9 +5773,9 @@
       "severity": "error"
     },
     {
-      "line": 205,
+      "line": 204,
       "column": 38,
-      "stop_line": 205,
+      "stop_line": 204,
       "stop_column": 72,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5905,9 +5785,9 @@
       "severity": "error"
     },
     {
-      "line": 219,
+      "line": 218,
       "column": 51,
-      "stop_line": 219,
+      "stop_line": 218,
       "stop_column": 63,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5917,9 +5797,9 @@
       "severity": "error"
     },
     {
-      "line": 242,
+      "line": 241,
       "column": 33,
-      "stop_line": 242,
+      "stop_line": 241,
       "stop_column": 45,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5929,9 +5809,9 @@
       "severity": "error"
     },
     {
-      "line": 246,
+      "line": 245,
       "column": 32,
-      "stop_line": 246,
+      "stop_line": 245,
       "stop_column": 71,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5941,9 +5821,9 @@
       "severity": "error"
     },
     {
-      "line": 250,
+      "line": 249,
       "column": 47,
-      "stop_line": 250,
+      "stop_line": 249,
       "stop_column": 58,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5953,9 +5833,9 @@
       "severity": "error"
     },
     {
-      "line": 251,
+      "line": 250,
       "column": 34,
-      "stop_line": 251,
+      "stop_line": 250,
       "stop_column": 95,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -5965,15 +5845,27 @@
       "severity": "error"
     },
     {
-      "line": 259,
+      "line": 258,
       "column": 39,
-      "stop_line": 259,
+      "stop_line": 258,
       "stop_column": 62,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
       "name": "no-matching-overload",
       "description": "No matching overload found for function `getattr` called with arguments: (Model, str | None, None)\n  Possible overloads:\n  (o: object, name: str, /) -> Any\n  (o: object, name: str, default: None, /) -> Any | None [closest match]\n  (o: object, name: str, default: bool, /) -> bool | Any\n  (o: object, name: str, default: list[Any], /) -> list[Any] | Any\n  (o: object, name: str, default: dict[Any, Any], /) -> dict[Any, Any] | Any\n  (o: object, name: str, default: _T, /) -> _T | Any",
       "concise_description": "No matching overload found for function `getattr` called with arguments: (Model, str | None, None)",
+      "severity": "error"
+    },
+    {
+      "line": 261,
+      "column": 43,
+      "stop_line": 261,
+      "stop_column": 54,
+      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
+      "code": -2,
+      "name": "bad-typed-dict-key",
+      "description": "Invalid key for TypedDict `<anonymous>`, got `Series`",
+      "concise_description": "Invalid key for TypedDict `<anonymous>`, got `Series`",
       "severity": "error"
     },
     {
@@ -5990,14 +5882,14 @@
     },
     {
       "line": 263,
-      "column": 43,
+      "column": 30,
       "stop_line": 263,
-      "stop_column": 54,
+      "stop_column": 91,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
-      "name": "bad-typed-dict-key",
-      "description": "Invalid key for TypedDict `<anonymous>`, got `Series`",
-      "concise_description": "Invalid key for TypedDict `<anonymous>`, got `Series`",
+      "name": "unsupported-operation",
+      "description": "`None` is not subscriptable",
+      "concise_description": "`None` is not subscriptable",
       "severity": "error"
     },
     {
@@ -6013,21 +5905,9 @@
       "severity": "error"
     },
     {
-      "line": 265,
-      "column": 30,
-      "stop_line": 265,
-      "stop_column": 91,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
-      "code": -2,
-      "name": "unsupported-operation",
-      "description": "`None` is not subscriptable",
-      "concise_description": "`None` is not subscriptable",
-      "severity": "error"
-    },
-    {
-      "line": 292,
+      "line": 291,
       "column": 27,
-      "stop_line": 292,
+      "stop_line": 291,
       "stop_column": 30,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6037,9 +5917,9 @@
       "severity": "error"
     },
     {
-      "line": 301,
+      "line": 300,
       "column": 28,
-      "stop_line": 301,
+      "stop_line": 300,
       "stop_column": 83,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6049,9 +5929,9 @@
       "severity": "error"
     },
     {
-      "line": 301,
+      "line": 300,
       "column": 47,
-      "stop_line": 301,
+      "stop_line": 300,
       "stop_column": 71,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6061,9 +5941,9 @@
       "severity": "error"
     },
     {
-      "line": 304,
+      "line": 303,
       "column": 38,
-      "stop_line": 304,
+      "stop_line": 303,
       "stop_column": 93,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6073,9 +5953,9 @@
       "severity": "error"
     },
     {
-      "line": 304,
+      "line": 303,
       "column": 57,
-      "stop_line": 304,
+      "stop_line": 303,
       "stop_column": 81,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6085,9 +5965,9 @@
       "severity": "error"
     },
     {
-      "line": 321,
+      "line": 320,
       "column": 28,
-      "stop_line": 321,
+      "stop_line": 320,
       "stop_column": 51,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6097,9 +5977,9 @@
       "severity": "error"
     },
     {
-      "line": 326,
+      "line": 325,
       "column": 32,
-      "stop_line": 326,
+      "stop_line": 325,
       "stop_column": 44,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6109,9 +5989,9 @@
       "severity": "error"
     },
     {
-      "line": 335,
+      "line": 334,
       "column": 38,
-      "stop_line": 335,
+      "stop_line": 334,
       "stop_column": 72,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6121,9 +6001,9 @@
       "severity": "error"
     },
     {
-      "line": 349,
+      "line": 348,
       "column": 51,
-      "stop_line": 349,
+      "stop_line": 348,
       "stop_column": 63,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6133,9 +6013,9 @@
       "severity": "error"
     },
     {
-      "line": 370,
+      "line": 369,
       "column": 33,
-      "stop_line": 370,
+      "stop_line": 369,
       "stop_column": 45,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6145,9 +6025,9 @@
       "severity": "error"
     },
     {
-      "line": 373,
+      "line": 372,
       "column": 30,
-      "stop_line": 375,
+      "stop_line": 374,
       "stop_column": 14,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6157,9 +6037,9 @@
       "severity": "error"
     },
     {
-      "line": 374,
+      "line": 373,
       "column": 18,
-      "stop_line": 374,
+      "stop_line": 373,
       "stop_column": 52,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6169,9 +6049,9 @@
       "severity": "error"
     },
     {
-      "line": 374,
+      "line": 373,
       "column": 68,
-      "stop_line": 374,
+      "stop_line": 373,
       "stop_column": 100,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6181,9 +6061,9 @@
       "severity": "error"
     },
     {
-      "line": 380,
+      "line": 379,
       "column": 21,
-      "stop_line": 380,
+      "stop_line": 379,
       "stop_column": 42,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6193,9 +6073,9 @@
       "severity": "error"
     },
     {
-      "line": 384,
+      "line": 383,
       "column": 21,
-      "stop_line": 384,
+      "stop_line": 383,
       "stop_column": 42,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6205,9 +6085,9 @@
       "severity": "error"
     },
     {
-      "line": 400,
+      "line": 399,
       "column": 26,
-      "stop_line": 402,
+      "stop_line": 401,
       "stop_column": 14,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6217,9 +6097,9 @@
       "severity": "error"
     },
     {
-      "line": 401,
+      "line": 400,
       "column": 18,
-      "stop_line": 401,
+      "stop_line": 400,
       "stop_column": 52,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6229,10 +6109,22 @@
       "severity": "error"
     },
     {
-      "line": 401,
+      "line": 400,
       "column": 67,
-      "stop_line": 401,
+      "stop_line": 400,
       "stop_column": 99,
+      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
+      "code": -2,
+      "name": "unsupported-operation",
+      "description": "`None` is not subscriptable",
+      "concise_description": "`None` is not subscriptable",
+      "severity": "error"
+    },
+    {
+      "line": 402,
+      "column": 26,
+      "stop_line": 404,
+      "stop_column": 14,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
       "name": "unsupported-operation",
@@ -6242,20 +6134,8 @@
     },
     {
       "line": 403,
-      "column": 26,
-      "stop_line": 405,
-      "stop_column": 14,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
-      "code": -2,
-      "name": "unsupported-operation",
-      "description": "`None` is not subscriptable",
-      "concise_description": "`None` is not subscriptable",
-      "severity": "error"
-    },
-    {
-      "line": 404,
       "column": 18,
-      "stop_line": 404,
+      "stop_line": 403,
       "stop_column": 52,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6265,9 +6145,9 @@
       "severity": "error"
     },
     {
-      "line": 404,
+      "line": 403,
       "column": 67,
-      "stop_line": 404,
+      "stop_line": 403,
       "stop_column": 99,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6277,9 +6157,9 @@
       "severity": "error"
     },
     {
-      "line": 414,
+      "line": 413,
       "column": 13,
-      "stop_line": 414,
+      "stop_line": 413,
       "stop_column": 35,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6289,9 +6169,9 @@
       "severity": "error"
     },
     {
-      "line": 414,
+      "line": 413,
       "column": 84,
-      "stop_line": 414,
+      "stop_line": 413,
       "stop_column": 106,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6301,9 +6181,9 @@
       "severity": "error"
     },
     {
-      "line": 419,
+      "line": 418,
       "column": 24,
-      "stop_line": 419,
+      "stop_line": 418,
       "stop_column": 46,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6313,9 +6193,9 @@
       "severity": "error"
     },
     {
-      "line": 422,
+      "line": 421,
       "column": 17,
-      "stop_line": 422,
+      "stop_line": 421,
       "stop_column": 38,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6325,9 +6205,9 @@
       "severity": "error"
     },
     {
-      "line": 464,
+      "line": 463,
       "column": 31,
-      "stop_line": 464,
+      "stop_line": 463,
       "stop_column": 55,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6337,9 +6217,9 @@
       "severity": "error"
     },
     {
-      "line": 470,
+      "line": 469,
       "column": 13,
-      "stop_line": 470,
+      "stop_line": 469,
       "stop_column": 42,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6349,9 +6229,9 @@
       "severity": "error"
     },
     {
-      "line": 471,
+      "line": 470,
       "column": 17,
-      "stop_line": 471,
+      "stop_line": 470,
       "stop_column": 50,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6361,9 +6241,9 @@
       "severity": "error"
     },
     {
-      "line": 475,
+      "line": 474,
       "column": 13,
-      "stop_line": 475,
+      "stop_line": 474,
       "stop_column": 56,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6373,9 +6253,9 @@
       "severity": "error"
     },
     {
-      "line": 475,
+      "line": 474,
       "column": 59,
-      "stop_line": 475,
+      "stop_line": 474,
       "stop_column": 102,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6385,9 +6265,9 @@
       "severity": "error"
     },
     {
-      "line": 476,
+      "line": 475,
       "column": 13,
-      "stop_line": 476,
+      "stop_line": 475,
       "stop_column": 41,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6397,9 +6277,9 @@
       "severity": "error"
     },
     {
-      "line": 477,
+      "line": 476,
       "column": 17,
-      "stop_line": 477,
+      "stop_line": 476,
       "stop_column": 49,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6409,9 +6289,9 @@
       "severity": "error"
     },
     {
-      "line": 490,
+      "line": 489,
       "column": 30,
-      "stop_line": 490,
+      "stop_line": 489,
       "stop_column": 53,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6421,9 +6301,9 @@
       "severity": "error"
     },
     {
-      "line": 519,
+      "line": 518,
       "column": 17,
-      "stop_line": 519,
+      "stop_line": 518,
       "stop_column": 46,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -6433,9 +6313,9 @@
       "severity": "error"
     },
     {
-      "line": 520,
+      "line": 519,
       "column": 21,
-      "stop_line": 520,
+      "stop_line": 519,
       "stop_column": 57,
       "path": "src\\peilbeheerst_model\\peilbeheerst_model\\ribasim_feedback_processor.py",
       "code": -2,
@@ -9361,18 +9241,6 @@
       "severity": "error"
     },
     {
-      "line": 25,
-      "column": 49,
-      "stop_line": 25,
-      "stop_column": 61,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\shortest_path.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
       "line": 46,
       "column": 37,
       "stop_line": 46,
@@ -9382,30 +9250,6 @@
       "name": "missing-attribute",
       "description": "Object of class `LineString` has no attribute `geoms`",
       "concise_description": "Object of class `LineString` has no attribute `geoms`",
-      "severity": "error"
-    },
-    {
-      "line": 65,
-      "column": 53,
-      "stop_line": 65,
-      "stop_column": 65,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\shortest_path.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
-      "severity": "error"
-    },
-    {
-      "line": 104,
-      "column": 43,
-      "stop_line": 104,
-      "stop_column": 55,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\shortest_path.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
       "severity": "error"
     },
     {
@@ -9454,18 +9298,6 @@
       "name": "missing-attribute",
       "description": "Object of class `Graph` has no attribute `get_link_data`",
       "concise_description": "Object of class `Graph` has no attribute `get_link_data`",
-      "severity": "error"
-    },
-    {
-      "line": 412,
-      "column": 45,
-      "stop_line": 412,
-      "stop_column": 57,
-      "path": "src\\peilbeheerst_model\\peilbeheerst_model\\shortest_path.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
       "severity": "error"
     },
     {
@@ -11245,9 +11077,9 @@
       "severity": "error"
     },
     {
-      "line": 101,
+      "line": 100,
       "column": 9,
-      "stop_line": 101,
+      "stop_line": 100,
       "stop_column": 31,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11257,9 +11089,9 @@
       "severity": "error"
     },
     {
-      "line": 106,
+      "line": 105,
       "column": 24,
-      "stop_line": 106,
+      "stop_line": 105,
       "stop_column": 44,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11269,9 +11101,9 @@
       "severity": "error"
     },
     {
-      "line": 113,
+      "line": 112,
       "column": 24,
-      "stop_line": 113,
+      "stop_line": 112,
       "stop_column": 44,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11281,9 +11113,9 @@
       "severity": "error"
     },
     {
-      "line": 120,
+      "line": 119,
       "column": 24,
-      "stop_line": 120,
+      "stop_line": 119,
       "stop_column": 44,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11293,9 +11125,9 @@
       "severity": "error"
     },
     {
-      "line": 127,
+      "line": 126,
       "column": 24,
-      "stop_line": 127,
+      "stop_line": 126,
       "stop_column": 44,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11305,9 +11137,9 @@
       "severity": "error"
     },
     {
-      "line": 132,
+      "line": 131,
       "column": 16,
-      "stop_line": 132,
+      "stop_line": 131,
       "stop_column": 45,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11317,9 +11149,9 @@
       "severity": "error"
     },
     {
-      "line": 135,
+      "line": 134,
       "column": 16,
-      "stop_line": 135,
+      "stop_line": 134,
       "stop_column": 54,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11329,9 +11161,9 @@
       "severity": "error"
     },
     {
-      "line": 143,
+      "line": 142,
       "column": 75,
-      "stop_line": 143,
+      "stop_line": 142,
       "stop_column": 102,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11341,9 +11173,9 @@
       "severity": "error"
     },
     {
-      "line": 159,
+      "line": 158,
       "column": 73,
-      "stop_line": 159,
+      "stop_line": 158,
       "stop_column": 100,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11353,9 +11185,9 @@
       "severity": "error"
     },
     {
-      "line": 174,
+      "line": 173,
       "column": 20,
-      "stop_line": 174,
+      "stop_line": 173,
       "stop_column": 64,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11365,9 +11197,9 @@
       "severity": "error"
     },
     {
-      "line": 179,
+      "line": 178,
       "column": 29,
-      "stop_line": 179,
+      "stop_line": 178,
       "stop_column": 46,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11377,9 +11209,9 @@
       "severity": "error"
     },
     {
-      "line": 198,
+      "line": 197,
       "column": 16,
-      "stop_line": 198,
+      "stop_line": 197,
       "stop_column": 34,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11389,9 +11221,9 @@
       "severity": "error"
     },
     {
-      "line": 215,
+      "line": 214,
       "column": 20,
-      "stop_line": 215,
+      "stop_line": 214,
       "stop_column": 33,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11401,9 +11233,9 @@
       "severity": "error"
     },
     {
-      "line": 233,
+      "line": 232,
       "column": 31,
-      "stop_line": 233,
+      "stop_line": 232,
       "stop_column": 33,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11413,9 +11245,9 @@
       "severity": "error"
     },
     {
-      "line": 245,
+      "line": 244,
       "column": 35,
-      "stop_line": 245,
+      "stop_line": 244,
       "stop_column": 53,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11425,9 +11257,9 @@
       "severity": "error"
     },
     {
-      "line": 249,
+      "line": 248,
       "column": 35,
-      "stop_line": 249,
+      "stop_line": 248,
       "stop_column": 53,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11437,9 +11269,9 @@
       "severity": "error"
     },
     {
-      "line": 258,
+      "line": 257,
       "column": 19,
-      "stop_line": 258,
+      "stop_line": 257,
       "stop_column": 29,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11449,9 +11281,9 @@
       "severity": "error"
     },
     {
-      "line": 266,
+      "line": 265,
       "column": 19,
-      "stop_line": 266,
+      "stop_line": 265,
       "stop_column": 29,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11461,9 +11293,9 @@
       "severity": "error"
     },
     {
-      "line": 293,
+      "line": 292,
       "column": 16,
-      "stop_line": 293,
+      "stop_line": 292,
       "stop_column": 41,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11473,9 +11305,9 @@
       "severity": "error"
     },
     {
-      "line": 293,
+      "line": 292,
       "column": 47,
-      "stop_line": 293,
+      "stop_line": 292,
       "stop_column": 68,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11485,9 +11317,9 @@
       "severity": "error"
     },
     {
-      "line": 293,
+      "line": 292,
       "column": 72,
-      "stop_line": 293,
+      "stop_line": 292,
       "stop_column": 95,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11497,9 +11329,9 @@
       "severity": "error"
     },
     {
-      "line": 294,
+      "line": 293,
       "column": 16,
-      "stop_line": 294,
+      "stop_line": 293,
       "stop_column": 34,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11509,9 +11341,9 @@
       "severity": "error"
     },
     {
-      "line": 299,
+      "line": 298,
       "column": 16,
-      "stop_line": 299,
+      "stop_line": 298,
       "stop_column": 41,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11521,9 +11353,9 @@
       "severity": "error"
     },
     {
-      "line": 299,
+      "line": 298,
       "column": 70,
-      "stop_line": 299,
+      "stop_line": 298,
       "stop_column": 93,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11533,9 +11365,9 @@
       "severity": "error"
     },
     {
-      "line": 300,
+      "line": 299,
       "column": 13,
-      "stop_line": 300,
+      "stop_line": 299,
       "stop_column": 36,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11545,9 +11377,9 @@
       "severity": "error"
     },
     {
-      "line": 302,
+      "line": 301,
       "column": 16,
-      "stop_line": 302,
+      "stop_line": 301,
       "stop_column": 34,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11557,9 +11389,9 @@
       "severity": "error"
     },
     {
-      "line": 433,
+      "line": 432,
       "column": 34,
-      "stop_line": 433,
+      "stop_line": 432,
       "stop_column": 50,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11569,9 +11401,9 @@
       "severity": "error"
     },
     {
-      "line": 433,
+      "line": 432,
       "column": 63,
-      "stop_line": 433,
+      "stop_line": 432,
       "stop_column": 77,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11581,9 +11413,9 @@
       "severity": "error"
     },
     {
-      "line": 437,
+      "line": 436,
       "column": 34,
-      "stop_line": 437,
+      "stop_line": 436,
       "stop_column": 50,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11593,9 +11425,9 @@
       "severity": "error"
     },
     {
-      "line": 437,
+      "line": 436,
       "column": 63,
-      "stop_line": 437,
+      "stop_line": 436,
       "stop_column": 77,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11605,9 +11437,9 @@
       "severity": "error"
     },
     {
-      "line": 447,
+      "line": 446,
       "column": 52,
-      "stop_line": 447,
+      "stop_line": 446,
       "stop_column": 70,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11617,9 +11449,9 @@
       "severity": "error"
     },
     {
-      "line": 557,
+      "line": 556,
       "column": 34,
-      "stop_line": 557,
+      "stop_line": 556,
       "stop_column": 66,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11629,9 +11461,9 @@
       "severity": "error"
     },
     {
-      "line": 668,
+      "line": 667,
       "column": 19,
-      "stop_line": 668,
+      "stop_line": 667,
       "stop_column": 37,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11641,9 +11473,9 @@
       "severity": "error"
     },
     {
-      "line": 709,
+      "line": 708,
       "column": 25,
-      "stop_line": 709,
+      "stop_line": 708,
       "stop_column": 47,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11653,9 +11485,9 @@
       "severity": "error"
     },
     {
-      "line": 718,
+      "line": 717,
       "column": 24,
-      "stop_line": 720,
+      "stop_line": 719,
       "stop_column": 10,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11665,9 +11497,9 @@
       "severity": "error"
     },
     {
-      "line": 719,
+      "line": 718,
       "column": 14,
-      "stop_line": 719,
+      "stop_line": 718,
       "stop_column": 39,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11677,9 +11509,9 @@
       "severity": "error"
     },
     {
-      "line": 719,
+      "line": 718,
       "column": 55,
-      "stop_line": 719,
+      "stop_line": 718,
       "stop_column": 78,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11689,9 +11521,9 @@
       "severity": "error"
     },
     {
-      "line": 732,
+      "line": 731,
       "column": 16,
-      "stop_line": 732,
+      "stop_line": 731,
       "stop_column": 43,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11701,9 +11533,9 @@
       "severity": "error"
     },
     {
-      "line": 772,
+      "line": 771,
       "column": 41,
-      "stop_line": 772,
+      "stop_line": 771,
       "stop_column": 51,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11713,9 +11545,9 @@
       "severity": "error"
     },
     {
-      "line": 783,
+      "line": 782,
       "column": 30,
-      "stop_line": 783,
+      "stop_line": 782,
       "stop_column": 70,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11725,9 +11557,9 @@
       "severity": "error"
     },
     {
-      "line": 789,
+      "line": 788,
       "column": 9,
-      "stop_line": 789,
+      "stop_line": 788,
       "stop_column": 48,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11737,9 +11569,9 @@
       "severity": "error"
     },
     {
-      "line": 798,
+      "line": 797,
       "column": 16,
-      "stop_line": 798,
+      "stop_line": 797,
       "stop_column": 39,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11749,9 +11581,9 @@
       "severity": "error"
     },
     {
-      "line": 801,
+      "line": 800,
       "column": 33,
-      "stop_line": 801,
+      "stop_line": 800,
       "stop_column": 51,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11761,9 +11593,9 @@
       "severity": "error"
     },
     {
-      "line": 805,
+      "line": 804,
       "column": 16,
-      "stop_line": 805,
+      "stop_line": 804,
       "stop_column": 39,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11773,9 +11605,9 @@
       "severity": "error"
     },
     {
-      "line": 806,
+      "line": 805,
       "column": 14,
-      "stop_line": 806,
+      "stop_line": 805,
       "stop_column": 32,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11785,9 +11617,9 @@
       "severity": "error"
     },
     {
-      "line": 831,
+      "line": 830,
       "column": 27,
-      "stop_line": 831,
+      "stop_line": 830,
       "stop_column": 40,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11797,9 +11629,9 @@
       "severity": "error"
     },
     {
-      "line": 848,
+      "line": 847,
       "column": 81,
-      "stop_line": 848,
+      "stop_line": 847,
       "stop_column": 93,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11809,9 +11641,9 @@
       "severity": "error"
     },
     {
-      "line": 851,
+      "line": 850,
       "column": 81,
-      "stop_line": 851,
+      "stop_line": 850,
       "stop_column": 93,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11821,9 +11653,9 @@
       "severity": "error"
     },
     {
-      "line": 854,
+      "line": 853,
       "column": 87,
-      "stop_line": 854,
+      "stop_line": 853,
       "stop_column": 99,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11833,9 +11665,9 @@
       "severity": "error"
     },
     {
-      "line": 880,
+      "line": 879,
       "column": 32,
-      "stop_line": 880,
+      "stop_line": 879,
       "stop_column": 74,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11845,9 +11677,9 @@
       "severity": "error"
     },
     {
-      "line": 880,
+      "line": 879,
       "column": 76,
-      "stop_line": 880,
+      "stop_line": 879,
       "stop_column": 118,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11857,9 +11689,9 @@
       "severity": "error"
     },
     {
-      "line": 881,
+      "line": 880,
       "column": 30,
-      "stop_line": 881,
+      "stop_line": 880,
       "stop_column": 70,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11869,9 +11701,9 @@
       "severity": "error"
     },
     {
-      "line": 881,
+      "line": 880,
       "column": 72,
-      "stop_line": 881,
+      "stop_line": 880,
       "stop_column": 112,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11881,9 +11713,9 @@
       "severity": "error"
     },
     {
-      "line": 883,
+      "line": 882,
       "column": 13,
-      "stop_line": 883,
+      "stop_line": 882,
       "stop_column": 54,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11893,9 +11725,9 @@
       "severity": "error"
     },
     {
-      "line": 938,
+      "line": 937,
       "column": 25,
-      "stop_line": 938,
+      "stop_line": 937,
       "stop_column": 51,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11905,9 +11737,9 @@
       "severity": "error"
     },
     {
-      "line": 980,
+      "line": 979,
       "column": 13,
-      "stop_line": 980,
+      "stop_line": 979,
       "stop_column": 71,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11917,9 +11749,9 @@
       "severity": "error"
     },
     {
-      "line": 1007,
+      "line": 1006,
       "column": 14,
-      "stop_line": 1007,
+      "stop_line": 1006,
       "stop_column": 98,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11929,9 +11761,9 @@
       "severity": "error"
     },
     {
-      "line": 1007,
+      "line": 1006,
       "column": 34,
-      "stop_line": 1007,
+      "stop_line": 1006,
       "stop_column": 58,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11941,9 +11773,9 @@
       "severity": "error"
     },
     {
-      "line": 1008,
+      "line": 1007,
       "column": 12,
-      "stop_line": 1008,
+      "stop_line": 1007,
       "stop_column": 38,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11953,9 +11785,9 @@
       "severity": "error"
     },
     {
-      "line": 1014,
+      "line": 1013,
       "column": 14,
-      "stop_line": 1014,
+      "stop_line": 1013,
       "stop_column": 40,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11965,9 +11797,9 @@
       "severity": "error"
     },
     {
-      "line": 1025,
+      "line": 1024,
       "column": 30,
-      "stop_line": 1025,
+      "stop_line": 1024,
       "stop_column": 55,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11977,9 +11809,9 @@
       "severity": "error"
     },
     {
-      "line": 1065,
+      "line": 1064,
       "column": 34,
-      "stop_line": 1065,
+      "stop_line": 1064,
       "stop_column": 41,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -11989,9 +11821,9 @@
       "severity": "error"
     },
     {
-      "line": 1098,
+      "line": 1097,
       "column": 28,
-      "stop_line": 1098,
+      "stop_line": 1097,
       "stop_column": 38,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12001,9 +11833,9 @@
       "severity": "error"
     },
     {
-      "line": 1104,
+      "line": 1103,
       "column": 21,
-      "stop_line": 1104,
+      "stop_line": 1103,
       "stop_column": 79,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12013,9 +11845,9 @@
       "severity": "error"
     },
     {
-      "line": 1147,
+      "line": 1146,
       "column": 9,
-      "stop_line": 1147,
+      "stop_line": 1146,
       "stop_column": 50,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12025,9 +11857,9 @@
       "severity": "error"
     },
     {
-      "line": 1147,
+      "line": 1146,
       "column": 59,
-      "stop_line": 1147,
+      "stop_line": 1146,
       "stop_column": 64,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12037,9 +11869,9 @@
       "severity": "error"
     },
     {
-      "line": 1147,
+      "line": 1146,
       "column": 66,
-      "stop_line": 1147,
+      "stop_line": 1146,
       "stop_column": 71,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12049,9 +11881,9 @@
       "severity": "error"
     },
     {
-      "line": 1249,
+      "line": 1248,
       "column": 32,
-      "stop_line": 1249,
+      "stop_line": 1248,
       "stop_column": 50,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12061,9 +11893,9 @@
       "severity": "error"
     },
     {
-      "line": 1249,
+      "line": 1248,
       "column": 52,
-      "stop_line": 1249,
+      "stop_line": 1248,
       "stop_column": 68,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12073,9 +11905,9 @@
       "severity": "error"
     },
     {
-      "line": 1249,
+      "line": 1248,
       "column": 82,
-      "stop_line": 1249,
+      "stop_line": 1248,
       "stop_column": 100,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12085,9 +11917,9 @@
       "severity": "error"
     },
     {
-      "line": 1249,
+      "line": 1248,
       "column": 102,
-      "stop_line": 1249,
+      "stop_line": 1248,
       "stop_column": 118,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12097,9 +11929,9 @@
       "severity": "error"
     },
     {
-      "line": 1251,
+      "line": 1250,
       "column": 19,
-      "stop_line": 1251,
+      "stop_line": 1250,
       "stop_column": 27,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12109,9 +11941,9 @@
       "severity": "error"
     },
     {
-      "line": 1257,
+      "line": 1256,
       "column": 71,
-      "stop_line": 1257,
+      "stop_line": 1256,
       "stop_column": 91,
       "path": "src\\ribasim_nl\\ribasim_nl\\model.py",
       "code": -2,
@@ -12662,14 +12494,14 @@
     },
     {
       "line": 494,
-      "column": 39,
+      "column": 38,
       "stop_line": 494,
-      "stop_column": 52,
+      "stop_column": 94,
       "path": "src\\ribasim_nl\\ribasim_nl\\network.py",
       "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `Timedelta | Timestamp | bool | bytes | complex | complexfloating | date | datetime | datetime64 | float | floating | int | integer | str | timedelta | timedelta64` is not assignable to parameter `line` with type `LineString` in function `ribasim_nl.geometry.split_line`",
-      "concise_description": "Argument `Timedelta | Timestamp | bool | bytes | complex | complexfloating | date | datetime | datetime64 | float | floating | int | integer | str | timedelta | timedelta64` is not assignable to parameter `line` with type `LineString` in function `ribasim_nl.geometry.split_line`",
+      "name": "no-matching-overload",
+      "description": "No matching overload found for function `ribasim_nl.geometry.split_line` called with arguments: (Timedelta | Timestamp | bool | bytes | complex | complexfloating | date | datetime | datetime64 | float | floating | int | integer | str | timedelta | timedelta64, Unknown, as_multilinestring=Literal[False])\n  Possible overloads:\n  (line: LineString, point: Point, *deprecated: Any, *, tolerance: float = 0.1, as_multilinestring: None) -> LineString | MultiLineString\n  (line: LineString, point: Point, *deprecated: Any, *, tolerance: float = 0.1, as_multilinestring: Literal[True] = True) -> LineString | MultiLineString\n  (line: LineString, point: Point, *deprecated: Any, *, tolerance: float = 0.1, as_multilinestring: Literal[False]) -> tuple[LineString, ...] [closest match]",
+      "concise_description": "No matching overload found for function `ribasim_nl.geometry.split_line` called with arguments: (Timedelta | Timestamp | bool | bytes | complex | complexfloating | date | datetime | datetime64 | float | floating | int | integer | str | timedelta | timedelta64, Unknown, as_multilinestring=Literal[False])",
       "severity": "error"
     },
     {
@@ -13270,18 +13102,6 @@
       "name": "missing-attribute",
       "description": "Object of class `NoneType` has no attribute `to_node_id`",
       "concise_description": "Object of class `NoneType` has no attribute `to_node_id`",
-      "severity": "error"
-    },
-    {
-      "line": 116,
-      "column": 10,
-      "stop_line": 116,
-      "stop_column": 22,
-      "path": "src\\ribasim_nl\\ribasim_nl\\parametrization\\damo_profiles.py",
-      "code": -2,
-      "name": "unknown-name",
-      "description": "Could not find name `GeoDataFrame`",
-      "concise_description": "Could not find name `GeoDataFrame`",
       "severity": "error"
     },
     {
@@ -19849,9 +19669,9 @@
       "severity": "error"
     },
     {
-      "line": 48,
+      "line": 47,
       "column": 84,
-      "stop_line": 48,
+      "stop_line": 47,
       "stop_column": 90,
       "path": "src\\ribasim_nl\\ribasim_nl\\set_forcing.py",
       "code": -2,
