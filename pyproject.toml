@@ -61,7 +61,8 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "pyrefly", subdirectory = "python/ribasim" }
+# ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "4e54066b93e7fd5de54fabdbe273a5b1f54227b6", subdirectory = "python/ribasim" }
 # ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 bokeh_helpers = { workspace = true }
 hydamo = { workspace = true }
