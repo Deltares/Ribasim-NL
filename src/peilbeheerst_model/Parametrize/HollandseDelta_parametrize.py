@@ -366,6 +366,9 @@ ribasim_model.merge_basins(node_id=639, to_node_id=656)
 ribasim_model.merge_basins(node_id=554, to_node_id=15)
 ribasim_model.merge_basins(node_id=466, to_node_id=34)
 ribasim_model.merge_basins(node_id=195, to_node_id=535)
+ribasim_model.merge_basins(node_id=392, to_node_id=780)
+ribasim_model.merge_basins(node_id=579, to_node_id=176)
+ribasim_model.merge_basins(node_id=772, to_node_id=31)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -728,23 +731,32 @@ to_drain = (
     2532,
 )
 to_flow_control = (
+    840,
+    841,
     846,
     1004,
+    1058,
     1066,
     1098,
     1168,
     1184,
     1193,
     1297,
+    1300,
+    1311,
     1354,
+    1407,
     1422,
     1577,
+    1688,
     1706,
     1757,
     1758,
     1860,
     1876,
     2007,
+    2107,
+    2411,
     2419,
     2552,
     2581,
@@ -757,12 +769,11 @@ to_supply = (
     1120,
     1154,
     1281,
-    1311,
-    1407,
     1451,
     1490,
     1513,
     1540,
+    1595,
     1723,
     1840,
     1936,
@@ -774,9 +785,9 @@ to_supply = (
     2256,
     2367,
     2371,
-    2411,
     2458,
     2466,
+    2494,
     2499,
     2507,
     2572,
