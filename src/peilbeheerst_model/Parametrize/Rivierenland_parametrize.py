@@ -439,7 +439,7 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.04
+LEVEL_DIFFERENCE_THRESHOLD = 0.02
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
@@ -447,19 +447,25 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 to_drain = (
+    303,
     522,
     664,
+    668,
     723,
     814,
     833,
+    840,
 )
 to_flow_control = (
     245,
+    270,
     384,
     386,
     388,
+    468,
     574,
     625,
+    856,
     879,
 )
 to_supply = (
@@ -468,7 +474,6 @@ to_supply = (
     557,
     566,
     575,
-    840,
     886,
     990,
     999,
@@ -554,7 +559,7 @@ assign_metadata.add_meta_to_pumps(
         "meta_name": {"node": ["name"]},
         "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
     },
-    max_distance=10,
+    max_distance=25,
     factor_flowrate=1 / 60,  # m3/min -> m3/s
 )
 assign_metadata.add_meta_to_basins(
