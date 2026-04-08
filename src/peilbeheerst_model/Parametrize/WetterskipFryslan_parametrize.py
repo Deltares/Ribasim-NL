@@ -29,7 +29,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -450,6 +450,8 @@ to_afvoer_node_id2 = tabulated_rating_curve_node.node_id
 
 # move node for improved representation
 ribasim_model.move_node(geometry=Point(220029, 561890), node_id=1608)
+ribasim_model.move_node(geometry=Point(216800, 585120), node_id=2773)
+ribasim_model.move_node(geometry=Point(216818, 585123), node_id=3809)
 
 # embed inlaat information
 for n in inlaat_pump:
