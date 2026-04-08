@@ -19,10 +19,11 @@ from ribasim_nl.model import Model
 
 # %%
 # set path of Ribasim model
-model_name = "lhm_coupled_2025_9_0"
+model_name = "hws_2025_10_1"
+toml_name = "hws.toml"
 
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / model_name
-toml_path = model_path / "lhm.toml"
+model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "Rijkswaterstaat" / "modellen" / model_name
+toml_path = model_path / toml_name
 assert toml_path.is_file()
 
 # %%
@@ -35,7 +36,7 @@ Pseudo-code of envisioned workflow to set up a delwaq simulation automatically
 # which substances to include (e.g. only N and P or also OON, AAP, OOP)
 # which emission sources to include (ER, ANIMO, RWZI, BA)
 # LHM model version (name)
-# reuse existing WQ input (parquet files) or generate new ones from raw data (necessary for new LHM version)
+# reuse existing WQ input (parquet files) or generate (write) new ones from raw data (necessary for new LHM version)
 
 # specify postprocessing preferences:
     # aggregation to WFD waterbodies

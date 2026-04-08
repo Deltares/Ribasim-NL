@@ -29,9 +29,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from ER_GAF_fractions_func import compute_overlap_df
 
 # ------------------------ Import local module ----------------------------------
-from ER_GAF_fractions_func import compute_overlap_df
+from ribasim_nl.model import Model
 
 from ribasim_nl import CloudStorage
 
@@ -49,9 +50,10 @@ conv_ton2g = 10**6
 # -------------------------------Directories------------------------------------
 cloud = CloudStorage()
 
-model_name = "lhm_coupled_2025_9_0"
+model_name = "hws_2025_10_1"
+toml_name = "hws.toml"
 model_path = cloud.joinpath("Rijkswaterstaat", "modellen", model_name)
-toml_path = cloud.joinpath(model_path, "lhm.toml")
+toml_path = cloud.joinpath(model_path, toml_name)
 cloud.synchronize(filepaths=[model_path], overwrite=False)
 basin_path = cloud.joinpath(model_path, "input/database.gpkg")
 
@@ -210,13 +212,18 @@ def barplot_N_P(file, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, 
 
 # -------------------------------Import data------------------------------------
 
-
-koppeling = compute_overlap_df(gaf_path, basin_path)
+# coupling based on GAF and basin polygons
+koppeling = compute_overlap_df(gaf_path, basin_path, hws=True)  # ONLY TRUE WHEN USING HWS MODEL, FALSE FOR THE FULL LHM
 koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
+# sort by nodeID
+koppeling.sort_values(by="NodeId")
+
 
 print("coupling GAF-emissions to LHM basin nodes completed")
 
 # process fractions based on basin type, only splitting up doorgaand and bergend
+# there is also the category "hoofdwater" (within waterboards), but these do not have a duplicate node in the same location
+# the actual HWS does not not have a meta_categorie
 koppeling["fractie"] = koppeling.apply(
     lambda row: (
         row["fractie"] * frac_doorgaand
@@ -788,8 +795,20 @@ loads_df = ER_df_wide.melt(
     value_name="load",
 )
 
-# Once a new LHM/release is made
-# model = Model.read(toml_path)
-# model.basin.loads = loads_df
+# %%
+# Once a new LHM/release is made: add to ribasim datastructure
+
+# read model
+model = Model.read(toml_path)
+
+# add mass loads to model
+model.basin.mass_load = loads_df
+
+# save model with added mass loads
+model.write(toml_path)
+
+# re-read saved model
+model = Model.read(toml_path)
+
 
 # %%
