@@ -7,6 +7,8 @@
 #
 
 
+from typing import Any
+
 import geopandas as gpd
 import numpy as np
 from peilbeheerst_model.general_functions import *
@@ -93,7 +95,7 @@ print(f"Number of overlapping shapes with filter: {len(overlap_ids)}")
 
 # Add occurence to geodataframe
 peilgebieden_cat = []
-ids = []
+ids: list[Any] = []
 
 for index, row in delfland["peilgebied"].iterrows():
     if row.code.startswith("BZM") or row.HWS_BZM:

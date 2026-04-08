@@ -10,7 +10,7 @@ def downstream_nodes(
     stop_at_outlet: bool = False,
     stop_at_node_type: str | None = None,
     stop_at_node_ids: list[int] = [],
-):
+) -> set[int]:
     """Efficiently find all downstream nodes in a directed graph starting from a given node,
     stopping traversal at nodes stopping at the next outlet.
 

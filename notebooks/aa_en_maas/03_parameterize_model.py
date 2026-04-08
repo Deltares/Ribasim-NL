@@ -6,6 +6,13 @@ from peilbeheerst_model.controle_output import Control
 from ribasim import run_ribasim
 from ribasim_nl.check_basin_level import add_check_basin_level
 
+# voeg deze imports toe
+from ribasim_nl.parametrization.basin_tables import (
+    update_basin_profile,
+    update_basin_state,
+    update_basin_static,
+)
+
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
@@ -21,28 +28,58 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg, qlr_path])
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
 
 # %%
-
 # read
 model = Model.read(ribasim_toml)
 start_time = time.time()
 
 # %%
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
+model.parameterize(
+    static_data_xlsx=static_data_xlsx,
+    evaporation_mm_per_day=1,
+    profiles_gpkg=profiles_gpkg,
+)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
+
+# %%
+# overschrijf basin-profiel met jouw open-waterpercentages
+update_basin_profile(
+    model=model,
+    percentages_map={"hoofdwater": 10, "doorgaand": 5, "bergend": 2},
+    default_percentage=10,
+    profile_depth=3,
+)
+
+# update state op basis van nieuw profiel
+update_basin_state(model)
+
+# update forcing opnieuw, zodat nieuwe profile-area ook wordt meegenomen
+update_basin_static(
+    model=model,
+    precipitation_mm_per_day=0,
+    evaporation_mm_per_day=1,  # pas aan naar jouw waarde
+)
+
+# %%
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
+
 # Fix afvoer
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "flow_rate"] = 0.0
 
-# %%
 
+# %%
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+
+# %%
+# optionele checks
+print(model.basin.profile.df.groupby("node_id")["area"].max().head())
+print(model.basin.static.df[["node_id", "precipitation", "potential_evaporation"]].head())
 
 # Write model
 add_check_basin_level(model=model)
@@ -50,11 +87,10 @@ ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized
 model.write(ribasim_toml)
 
 # %%
-
 # run model
 run_ribasim(ribasim_toml)
 
-# # %%
+# %%
 controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
 indicators = controle_output.run_afvoer()
 # %%

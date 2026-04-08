@@ -7,7 +7,7 @@ import pandas as pd
 from ribasim_nl.model import Model
 
 
-def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target_level: str, code: str):
+def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target_level: str, code: str) -> None:
     # Check if the layername is provided and the peilgebieden_path is a GPKG file
     if layername is None:
         layername = gpd.list_layers(peilgebieden_path).at[0, "name"]
@@ -21,6 +21,7 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
     peilgebieden = peilgebieden[(peilgebieden[target_level] != 0) & (peilgebieden[target_level] < 100)]
 
     # Ensure required columns exist in the dataframe
+    assert model.basin.area.df is not None
     if "meta_code_waterbeheerder" not in model.basin.area.df.columns:
         model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
@@ -35,6 +36,7 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
         node_id = basin_row.node_id
         basin_geometry = basin_row.geometry
 
+        assert model.node.df is not None
         downstream_nodes = model.node.df.loc[model.downstream_node_id(node_id=node_id)]
 
         buffer_100m_gdf = gpd.GeoDataFrame(

@@ -86,3 +86,4 @@ results/
 
 # Main scripts to run workflows per water authority
 notebooks/*/main.py
+ribasim.env

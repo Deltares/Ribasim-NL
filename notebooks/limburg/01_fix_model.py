@@ -99,7 +99,7 @@ for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (926
 for node_id in [276, 2003, 990, 2395, 989]:
     model.remove_node(node_id, remove_links=True)
 
-basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]))
+basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]), tables=basin_data)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[2099, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
@@ -302,6 +302,126 @@ selection_df = basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].not
 for row in basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].notna()].itertuples():
     if row.change_node_type:
         model.update_node(node_id=row.node_id, node_type=row.change_node_type)
+# %% extrad fixes
+outlet_ids = [
+    456,
+    577,
+    1194,
+    905,
+    906,
+    1155,
+    1186,
+    852,
+    1056,
+    839,
+    1055,
+    1054,
+    842,
+    855,
+    857,
+    856,
+    1134,
+    936,
+    1133,
+    1057,
+    933,
+    899,
+    1139,
+    1140,
+    1141,
+    897,
+    898,
+    901,
+    902,
+    1138,
+    1195,
+    1207,
+    1107,
+    845,
+    1157,
+    1104,
+    1052,
+    823,
+    1154,
+    826,
+    1145,
+    829,
+    828,
+    830,
+    1053,
+    1204,
+    932,
+    834,
+    832,
+    1120,
+    1201,
+    1203,
+    1146,
+    817,
+    821,
+    1165,
+    217,
+    1166,
+    813,
+    818,
+    825,
+    1213,
+    1217,
+    1216,
+    1066,
+    1102,
+    1143,
+    1158,
+    1159,
+    1205,
+    1206,
+    1208,
+    1209,
+    1210,
+    1211,
+    1214,
+    1215,
+    805,
+    806,
+    819,
+    820,
+    827,
+    1243,
+    1244,
+    1179,
+    904,
+    1193,
+]
+
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+merge_pairs = [
+    (2334, 1763),
+    (2461, 2070),
+    (2070, 2360),
+    (1885, 2360),
+    (2205, 2144),
+    (1387, 1941),
+    (1983, 2053),
+    (2181, 1582),
+    (1575, 1809),
+    (1481, 2316),
+    (1972, 1697),
+    (2163, 1658),
+]
+
+for basin_id, to_basin_id in merge_pairs:
+    model.merge_basins(
+        basin_id=basin_id,
+        to_basin_id=to_basin_id,
+        are_connected=True,
+    )
+
+model.remove_node(1314, remove_links=True)
+model.remove_node(611, remove_links=True)
+model.remove_node(1118, remove_links=True)
+model.remove_node(1173, remove_links=True)
 
 # %% remove nodes
 

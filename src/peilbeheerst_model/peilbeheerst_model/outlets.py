@@ -22,7 +22,7 @@ class case1:
     after which the water is pumped through a Pump node to the boezem again.
     """
 
-    def __init__(self, case_example_name):
+    def __init__(self, case_example_name) -> None:
         """Initialize the class. Convert the forcing from mm/day to m/s."""
         case_example_path = os.path.join("../../../../Outlet_tests/json", case_example_name + ".json")
 
@@ -44,7 +44,7 @@ class case1:
             self.characteristics["precipitation"] / 1000 / 3600 / 24
         )  # convert from mm/day to m/s
 
-    def create_empty_model(self):
+    def create_empty_model(self) -> Model:
         """Create an empty Ribasim model."""
         model = Model(
             starttime=self.characteristics["starttime"],
@@ -227,7 +227,7 @@ class case1:
 
         return model
 
-    def store_model(self, model):
+    def store_model(self, model) -> None:
         """Plot and store the model."""
         # apply the settings for the solver
         model.solver.saveat = self.characteristics["saveat"]
@@ -253,7 +253,7 @@ class case1:
             )
         )
 
-    def run_model(self, model):
+    def run_model(self, model) -> None:
         """Run the created Ribasim model."""
         if self.characteristics["show_progress"]:
             # show progress of the Ribasim model
@@ -285,7 +285,7 @@ class case1:
                 stderr=subprocess.DEVNULL,
             )
 
-    def show_results(self, model):
+    def show_results(self, model) -> None:
         """Load and plot some results."""
         if self.characteristics["show_results"]:
             # load in the data
@@ -336,7 +336,7 @@ class case2:
     In this case, a third peilgebied is added with logical flow direction from and to the boezem and other peilgebieden.
     """
 
-    def __init__(self, case_example_name, model):
+    def __init__(self, case_example_name, model) -> None:
         """Initialize the class. Convert the forcing from mm/day to m/s."""
         case_example_path = os.path.join("../../../../Outlet_tests/json", case_example_name + ".json")
 
@@ -516,7 +516,7 @@ class case2:
 
         return model
 
-    def store_model(self, model):
+    def store_model(self, model) -> None:
         """Plot and store the model."""
         # apply the settings for the solver
         model.solver.saveat = self.characteristics["saveat"]
@@ -542,7 +542,7 @@ class case2:
             )
         )
 
-    def run_model(self, model):
+    def run_model(self, model) -> None:
         """Run the created Ribasim model."""
         if self.characteristics["show_progress"]:
             # show progress of the Ribasim model
@@ -574,7 +574,7 @@ class case2:
                 stderr=subprocess.DEVNULL,
             )
 
-    def show_results(self, model):
+    def show_results(self, model) -> None:
         """Load and plot some results."""
         if self.characteristics["show_results"]:
             # load in the data

@@ -22,7 +22,7 @@ from ribasim_nl import geometry
 # 3. explode nodes functions
 
 
-def split_lines_at_intersections(gdf_object):
+def split_lines_at_intersections(gdf_object) -> gpd.GeoDataFrame:
     split_lines = []
     gdf_object.drop(columns=["geometry"])  # Preserve non-geometry attributes
 
@@ -62,12 +62,12 @@ def split_lines_at_intersections(gdf_object):
     return result_gdf
 
 
-def component_to_gdf(component, node_geometries):
+def component_to_gdf(component, node_geometries) -> gpd.GeoDataFrame:
     geometries = [node_geometries[node] for node in component]
     return gpd.GeoDataFrame(geometry=geometries, index=list(component))
 
 
-def connect_components(graph, node1, node2, node_geometries):
+def connect_components(graph, node1, node2, node_geometries) -> None:
     geom1 = node_geometries[node1]
     geom2 = node_geometries[node2]
     new_link_geom = LineString([geom1.coords[0], geom2.coords[0]])
@@ -101,7 +101,7 @@ def cut_linestring_at_interval(line, interval):
     return [LineString([points[i], points[i + 1]]) for i in range(num_segments)]
 
 
-def explode_linestrings(gdf, interval):
+def explode_linestrings(gdf, interval) -> gpd.GeoDataFrame:
     """Explode LineStrings in a GeoDataFrame into smaller segments based on a distance interval."""
     segments = []
     for _, row in gdf.iterrows():
@@ -409,7 +409,7 @@ def shortest_path(waterschap, DATA, gdf_cross, gdf_rhws):
     return gdf_crossings_out
 
 
-def shortest_path_waterschap(waterschap):
+def shortest_path_waterschap(waterschap) -> gpd.GeoDataFrame:
     # Load Data
     # Define crossings file path
     data_path_str = waterschap_data[waterschap]["init"]["output_path"]

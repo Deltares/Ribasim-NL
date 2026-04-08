@@ -279,12 +279,13 @@ def update_from_to_node_function_table_with_new_flow_rate(
         for col in history_columns:
             val = from_to_node_function_table.at[row_idx, col]
             if pd.notna(val):
-                row_history.append(float(val))
+                row_history.append(float(val))  # pyrefly: ignore[bad-argument-type]
 
         # No history yet: fall back to current max_flow_rate if present
         if len(row_history) == 0:
             base_value = from_to_node_function_table.at[row_idx, "max_flow_rate"]
             if pd.notna(base_value):
+                # pyrefly: ignore[bad-argument-type]
                 from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = float(base_value)
             continue
 
@@ -476,7 +477,7 @@ def update_max_flow_rates_in_model(model: Model, from_to_node_function_table: pd
     return model
 
 
-def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
+def upload_from_to_node_function_table(from_to_node_function_table, waterschap) -> None:
     """Write the scaled connector table locally and upload the CSV to GoodCloud.
 
     Parameters
@@ -501,7 +502,7 @@ def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
 class _OutletPumpScaler:
     """Execute the iterative outlet and pump scaling workflow for one model."""
 
-    def __init__(self, config: OutletPumpScalingConfig):
+    def __init__(self, config: OutletPumpScalingConfig) -> None:
         """Store the scaler configuration for a single run."""
         self.config = config
 
@@ -762,7 +763,7 @@ class _OutletPumpScaler:
         return model, from_to_node_function_table
 
 
-def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig):
+def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig) -> pd.DataFrame:
     """Download and load a previously saved scaled connector table from GoodCloud.
 
     Parameters

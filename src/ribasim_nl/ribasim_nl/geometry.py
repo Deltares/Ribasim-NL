@@ -42,7 +42,7 @@ def basin_to_point(basin_polygon: Polygon | MultiPolygon, tolerance: None | floa
     return point
 
 
-def sort_basins(basin_polygons: MultiPolygon | list[Polygon]) -> MultiPolygon | list:
+def sort_basins(basin_polygons: MultiPolygon | list[Polygon]) -> MultiPolygon | list[Polygon]:
     """Sort basins in a MultiPolygon or list of Polygons on .area in ascending order (small to large).
 
     Parameters
@@ -52,21 +52,16 @@ def sort_basins(basin_polygons: MultiPolygon | list[Polygon]) -> MultiPolygon | 
 
     Returns
     -------
-    MultiPolygon | list
+    MultiPolygon | list[Polygon]
         MultiPolygon with sorted polygons
     """
-    is_multipolygon = isinstance(basin_polygons, MultiPolygon)
 
     # sorting function
     def basin_sorter(polygon):
         return polygon.area
 
-    # make list from basin_polygons
-    if is_multipolygon:
-        basin_polygons = list(basin_polygons.geoms)
-
-    if is_multipolygon:
-        return MultiPolygon(sorted(basin_polygons, key=basin_sorter))
+    if isinstance(basin_polygons, MultiPolygon):
+        return MultiPolygon(sorted(basin_polygons.geoms, key=basin_sorter))
     else:
         return sorted(basin_polygons, key=basin_sorter)
 
@@ -108,7 +103,7 @@ def split_basin(basin_polygon: Polygon, line: LineString) -> MultiPolygon:
     return MultiPolygon(sort_basins(keep_polys))
 
 
-def split_basin_multi_polygon(basin_polygon: MultiPolygon, line: LineString):
+def split_basin_multi_polygon(basin_polygon: MultiPolygon, line: LineString) -> tuple[MultiPolygon, MultiPolygon]:
     line_centre = line.interpolate(0.5, normalized=True)
 
     # get the polygon to cut

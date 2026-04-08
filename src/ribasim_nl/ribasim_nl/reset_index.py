@@ -4,13 +4,15 @@ import pandas as pd
 from ribasim_nl.model import Model
 
 
-def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder"):
+def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder") -> Model:
     """Reindex all model-nodes to a new node_index series"""
     # re-number from_node_id and to_node_id
+    assert model.link.df is not None
     model.link.df.loc[:, ["from_node_id"]] = model.link.df["from_node_id"].apply(lambda x: node_index[x])
     model.link.df.loc[:, ["to_node_id"]] = model.link.df["to_node_id"].apply(lambda x: node_index[x])
 
     # renumber all node-tables (node, static, area, ...)
+    assert model.node.df is not None
     for node_type in model.node.df.node_type.unique():
         ribasim_node = model.get_component(node_type)
         for attr in ribasim_node.model_fields.keys():
@@ -36,7 +38,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
 
 def prefix_index(
     model: Model, prefix_id: int, max_digits: int = 4, original_index_postfix: str | None = "waterbeheerder"
-):
+) -> Model:
     """Reindex node-tables and links with a prefix and a max number of digits
 
     Args:
@@ -53,6 +55,7 @@ def prefix_index(
     ------
         ValueError: If any node_id exceeds the max_digits limit
     """
+    assert model.node.df is not None
     node_ids = model.node.df.index
 
     # Check if any node_id exceeds max_digits
@@ -72,6 +75,7 @@ def prefix_index(
     model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
     # create an link_index and reindex links
+    assert model.link.df is not None
     link_ids = model.link.df.index
 
     # Check if any link_id exceeds max_digits
@@ -95,7 +99,9 @@ def prefix_index(
     return model
 
 
-def reset_index(model: Model, node_start=1, link_start=1, original_index_postfix: str | None = "waterbeheerder"):
+def reset_index(
+    model: Model, node_start=1, link_start=1, original_index_postfix: str | None = "waterbeheerder"
+) -> Model:
     """Reset a model index to a given node_start and link_start number. Will result in sub-sequent node_ids and link_ids from node_start and link_start.
 
     Args:
@@ -109,6 +115,8 @@ def reset_index(model: Model, node_start=1, link_start=1, original_index_postfix
         Model: reindexed model
     """
     # only reset nodes if we have to
+    assert model.node.df is not None
+    assert model.link.df is not None
     node_ids = model.node.df.index
     node_id_min = node_ids.min()
     node_id_max = node_ids.max()
@@ -119,6 +127,7 @@ def reset_index(model: Model, node_start=1, link_start=1, original_index_postfix
         model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
         # only reset nodes if we have to
+        assert model.link.df is not None
         link_ids = model.link.df.index
         link_id_min = link_ids.min()
         link_id_max = link_ids.max()
