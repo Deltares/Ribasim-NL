@@ -290,7 +290,7 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
-to_drain = ()
+to_drain = (316,)
 to_flow_control = ()
 to_supply = (
     252,
