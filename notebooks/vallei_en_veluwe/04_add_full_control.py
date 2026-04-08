@@ -9,7 +9,7 @@ from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
 # execute model run
-MODEL_EXEC: bool = False
+MODEL_EXEC: bool = True
 
 # model settings
 AUTHORITY: str = "ValleienVeluwe"
@@ -20,17 +20,13 @@ MODEL_ID: str = "2025_5_0"
 cloud = CloudStorage()
 
 # collect relevant data from the GoodCloud
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+ribasim_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/1_ontvangen_data/Na_levering_202401/wateraanvoer/Inlaatgebieden.shp")
 
 
-cloud.synchronize(
-    filepaths=[
-        aanvoer_path,
-    ]
-)
+cloud.synchronize(filepaths=[aanvoer_path, qlr_path])
 
 # read model
 model = Model.read(ribasim_toml)
@@ -86,14 +82,14 @@ model.outlet.static.df.loc[non_control_mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[non_control_mask, "max_downstream_level"] = pd.NA
 # %%
 # Fixes aanvoer
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 407, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 407, "max_flow_rate"] = 1.0
 
 # Grebbesluis: flow_rate: 2.85m3/s
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 288, "max_flow_rate"] = 2.5
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 378, "max_flow_rate"] = 5.9
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 580, "min_upstream_level"] = 1.55
 model.basin.area.df.loc[model.basin.area.df.node_id == 786, "meta_streefpeil"] = 1.55
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 44, "level"] = 999
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 44, "level"] = 999.0
 
 # set upstream level boundaries at 999 meters
 # boundary_node_ids = [i for i in model.level_boundary.node.df.index if not model.upstream_node_id(i) is not None]
@@ -106,17 +102,17 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 1283, "max_downstream_l
 # model.pump.static.df.loc[model.pump.static.df.node_id == 1283, "max_downstream_level"] = -0.9
 
 # manning_node, wrong basin (anders lek)
-model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == 646, "active"] = False
+model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == 646, "manning_n"] = 100.0
 
 # Duikers naast hoofdwaterloop inactive (anders lek)
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 588, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 588, "flow_rate"] = 0.0
 
 # Schele Duiker (HKV, 2009)
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 400, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 400, "max_flow_rate"] = 1.0
 
 # Inlaatduiker Arkersluis
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 112, "max_flow_rate"] = 1
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 37, "level"] = 999
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 112, "max_flow_rate"] = 1.0
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 37, "level"] = 999.0
 
 # Gemaal Meentweg toevoegen
 model.pump.static.df.loc[model.pump.static.df.node_id == 1284, "max_flow_rate"] = 0.17
@@ -127,17 +123,17 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 1284, "min_upstream_lev
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 599, "max_downstream_level"] = -0.99
 
 # Inlaat Malesuis toevoegen
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "flow_rate"] = 5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "flow_rate"] = 5.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "max_downstream_level"] = -0.44
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "min_upstream_level"] = pd.NA
 
 # Inlaatduiker bij levelboundary
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 169, "min_upstream_level"] = -0.35
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 169, "max_flow_rate"] = 1
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 38, "level"] = 999
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 169, "max_flow_rate"] = 1.0
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 38, "level"] = 999.0
 
 # Gemaal Oostsingel toevoegen
-model.pump.static.df.loc[model.pump.static.df.node_id == 1285, "max_flow_rate"] = 1
+model.pump.static.df.loc[model.pump.static.df.node_id == 1285, "max_flow_rate"] = 1.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 1285, "max_downstream_level"] = -0.9
 model.pump.static.df.loc[model.pump.static.df.node_id == 1285, "min_upstream_level"] = -1.01
 
@@ -145,18 +141,18 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 1285, "min_upstream_lev
 model.pump.static.df.loc[model.pump.static.df.node_id == 1285, "max_downstream_level"] = -0.9
 
 # Inactive, basin niet ok, lek
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 495, "active"] = False
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 389, "active"] = False
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 495, "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 389, "flow_rate"] = 0.0
 
 # Afvoergemaal Nijkerk en Hertog Reijnout no downstream_waterlevel
 model.pump.static.df.loc[model.pump.static.df.node_id == 267, "max_downstream_level"] = pd.NA
 model.pump.static.df.loc[model.pump.static.df.node_id == 244, "max_downstream_level"] = pd.NA
 
 # Laakse Duiker
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 479, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 479, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 479, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 479, "max_downstream_level"] = -0.2
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 39, "level"] = 999
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 39, "level"] = 999.0
 
 # Kooisluis
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 272, "min_upstream_level"] = -0.21
@@ -179,29 +175,29 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 563, "max_downstrea
 model.pump.static.df.loc[model.pump.static.df.node_id == 468, "max_downstream_level"] = pd.NA
 
 # Inlaat de Wenden
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1, "level"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1288, "max_flow_rate"] = 1
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1, "level"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1288, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1288, "max_downstream_level"] = -0.3
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1288, "min_upstream_level"] = pd.NA
 
 # Update nieuw duikers (voorheen Manning)
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 681, "max_flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 681, "min_upstream_level"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 701, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 681, "max_flow_rate"] = 1.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 681, "min_upstream_level"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 701, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 701, "min_upstream_level"] = 1.4
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 747, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 747, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 747, "min_upstream_level"] = 1.4
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 339, "min_upstream_level"] = -0.81
 
 # Havensluis Elburg
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1106, "level"] = 999
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1106, "level"] = 999.0
 model.reverse_direction_at_node(477)
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 477, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 477, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 477, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 477, "max_downstream_level"] = 0.19
 
 # some customs
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 478, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 478, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 478, "min_upstream_level"] = -0.05
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 279, "min_upstream_level"] = -0.51
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 319, "min_upstream_level"] = -0.51
@@ -217,7 +213,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "meta_name"] =
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "max_downstream_level"] = -0.5
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "min_upstream_level"] = pd.NA
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 2, "level"] = -0.05
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "max_flow_rate"] = 1.0
 
 # Stuw Vlieterweg
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 1298, "min_upstream_level"] = 3.45
@@ -231,7 +227,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1301, "min_upstream
 
 # Stuw Vloeddijk
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 556, "min_upstream_level"] = 2.99
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1289, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1289, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1289, "min_upstream_level"] = 2.99
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 446, "min_upstream_level"] = 2.99
 
@@ -254,7 +250,7 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 1294, "max_downstream_l
 model.pump.static.df.loc[model.pump.static.df.node_id == 232, "min_upstream_level"] = -0.11
 
 # Inlaat Goorpomp
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 4, "level"] = 999
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 4, "level"] = 999.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_flow_rate"] = 0.1
 
 # Gemaal Veluwe verkeerd min_upstream_level
@@ -280,14 +276,14 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1295, "max_downstre
 
 # Stuw Hierdense beek
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 1297, "min_upstream_level"] = 6.55
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1297, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1297, "max_flow_rate"] = 1.0
 
 # Inlaat Mr Baron van der Feltz
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "max_flow_rate"] = 5
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 58, "level"] = 999
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "max_flow_rate"] = 5.0
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 58, "level"] = 999.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "max_downstream_level"] = 3.01
 model.pump.static.df.loc[model.pump.static.df.node_id == 240, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "min_upstream_level"] = 3
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1287, "min_upstream_level"] = 3.0
 
 # Fixes afvoer:
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 312, "min_upstream_level"] = 2.85
@@ -295,8 +291,8 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 369, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 446, "min_upstream_level"] = 2.85
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 576, "min_upstream_level"] = 2.85
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 555, "min_upstream_level"] = 1.7
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 74, "max_flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 289, "min_upstream_level"] = 12
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 74, "max_flow_rate"] = 1.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 289, "min_upstream_level"] = 12.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 169, "min_upstream_level"] = -0.75
 
 # %%
@@ -324,11 +320,7 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    # TODO: Different ways of executing the model; choose the one that suits you best:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
-    # exit_code = model.run()
-
-    # assert exit_code == 0
+    result = model.run()
 
     """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
     successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the

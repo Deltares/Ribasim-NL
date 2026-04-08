@@ -48,9 +48,7 @@ lines_gdf = gpd.read_file(
     fid_as_index=True,
 )
 
-points = (
-    model.node_table().df[model.node_table().df.node_type.isin(["TabulatedRatingCurve", "Outlet", "Pump"])].geometry
-)
+points = model.node.df[model.node.df.node_type.isin(["TabulatedRatingCurve", "Outlet", "Pump"])].geometry
 
 for row in lines_gdf.itertuples():
     line = row.geometry
@@ -90,9 +88,7 @@ pump_data = pump.Static(flow_rate=[10])
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
 # 76 links bij opgeheven nodes verwijderen
-mask = model.link.df.to_node_id.isin(model.node_table().df.index) & model.link.df.from_node_id.isin(
-    model.node_table().df.index
-)
+mask = model.link.df.to_node_id.isin(model.node.df.index) & model.link.df.from_node_id.isin(model.node.df.index)
 missing_links_df = model.link.df[~mask]
 
 model.link.df = model.link.df[~model.link.df.index.isin(missing_links_df.index)]
@@ -161,9 +157,31 @@ for action in [
         method(**kwargs)
 
 
+model.merge_basins(basin_id=1231, to_basin_id=1280)
+model.merge_basins(basin_id=1179, to_basin_id=1184)
+model.merge_basins(basin_id=1184, to_basin_id=1280)
+model.merge_basins(basin_id=1034, to_basin_id=1280)
+model.merge_basins(basin_id=1279, to_basin_id=1182)
+model.merge_basins(basin_id=1181, to_basin_id=1182)
+model.merge_basins(basin_id=1408, to_basin_id=1182)
+model.merge_basins(basin_id=1028, to_basin_id=1378)
+model.merge_basins(basin_id=1373, to_basin_id=1378)
+model.merge_basins(basin_id=1032, to_basin_id=1182)
+
+# # Van Starkenborghkanaal mergen Manning knopen weg!
+model.merge_basins(basin_id=1223, to_basin_id=1307)
+model.merge_basins(basin_id=1307, to_basin_id=1244)
+model.merge_basins(basin_id=1244, to_basin_id=1186)
+model.merge_basins(basin_id=1292, to_basin_id=1186)
+model.merge_basins(basin_id=1088, to_basin_id=1186)
+
+model.merge_basins(basin_id=1144, to_basin_id=1124)
+model.merge_basins(basin_id=1077, to_basin_id=1124)
+
+
 # %% assign Basin / Area using KWKuit
 
-node_df = model.node_table().df
+node_df = model.node.df
 
 
 # we find Basin area if we kan find KWKuit in the model
@@ -304,7 +322,7 @@ model.remove_unassigned_basin_area()
 # %% TabulatedRatingCurve to Outlet
 
 # TabulatedRatingCurve to Outlet
-for row in model.node_table().df[model.node_table().df.node_type == "TabulatedRatingCurve"].itertuples():
+for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].itertuples():
     node_id = row.Index
     model.update_node(node_id=node_id, node_type="Outlet")
 
@@ -313,6 +331,7 @@ df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
 df.set_index("code", inplace=True)
 names = df["naam"]
 names.loc["KSL011"] = "R.J. Cleveringensluizen"
+
 
 sanitize_node_table(
     model,
@@ -324,15 +343,12 @@ sanitize_node_table(
     names=names,
 )
 
-# %% set meta_gestuwd. Omdat er geen duikers in dit model zitten mogen alle outlets en pumps op True
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = True
-model.pump.node.df["meta_gestuwd"] = True
+# Gemalen, inlaten, stuwen, etc krijgen meta_code_waterbeheerder, wanneer de naam nog steeds niet gevonden is
+pump_mask = (model.node.df["node_type"] == "Pump") & (model.node.df.name == "")
+model.node.df.loc[pump_mask, "name"] = model.node.df.loc[pump_mask, "meta_code_waterbeheerder"]
 
-# en dan de basis bovenstrooms van deze objecten
-upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+outlet_mask = (model.node.df["node_type"] == "Outlet") & (model.node.df.name == "")
+model.node.df.loc[outlet_mask, "name"] = model.node.df.loc[outlet_mask, "meta_code_waterbeheerder"]
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
 for row in model.flow_boundary.node.df.itertuples():
@@ -403,14 +419,25 @@ model.remove_node(node_id=1750, remove_links=True)
 model.remove_node(node_id=13, remove_links=True)
 
 # voeg inlaat Meerweg toe (n.a.v communicatie met Vincent)
-boundary_node = model.level_boundary.add(Node(geometry=Point(234937, 575821)))
-outlet_node = model.outlet.add(Node(name="Meerweg", geometry=Point(234893, 575872)))
+boundary_node = model.level_boundary.add(Node(geometry=Point(234937, 575821)), [level_data])
+outlet_node = model.outlet.add(Node(name="Meerweg", geometry=Point(234893, 575872)), [outlet_data])
 model.link.add(boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1192])
 
 # %% Create junctions
 model = junctionify(model)
 
+# manning_resistances die inlaten of uitlaten horen te zijn
+model.update_node(node_id=943, node_type="Outlet")
+model.update_node(node_id=1017, node_type="Outlet")
+model.update_node(node_id=1753, node_type="Pump", node_properties={"name": "Gemaal Dorkwerd"})
+
+# inlaten gelijk gezet aan WAM portaal: https://wamportaal.noorderzijlvest.nl/wam
+model.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]
+model.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
+model.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
+model.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
+model.node.df.loc[728, ["name"]] = ["Sluis Lammerburen"]
 
 #  %% write model
 model.use_validation = True

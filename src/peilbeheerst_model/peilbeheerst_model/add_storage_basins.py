@@ -3,7 +3,9 @@ from shapely.geometry import LineString
 
 
 class AddStorageBasins:
-    def __init__(self, ribasim_model, exclude_hoofdwater, additional_basins_to_exclude, distance_bergende_basin=10):
+    def __init__(
+        self, ribasim_model, exclude_hoofdwater, additional_basins_to_exclude, distance_bergende_basin=10
+    ) -> None:
         self.ribasim_model = ribasim_model
         self.exclude_hoofdwater = exclude_hoofdwater
         self.additional_basins_to_exclude = additional_basins_to_exclude
@@ -13,7 +15,7 @@ class AddStorageBasins:
     # retrieve the ids of the doorgaande basins, exlude the basins_to_exclude
     # copy the .node, .static, .state, .profile table
 
-    def create_bergende_basins(self):
+    def create_bergende_basins(self) -> None:
         doorgaande_basin_ids = self.ribasim_model.basin.state.df.copy()
 
         # exclude (possibly) hoofdwater basins, as the majority of the area is meant for doorgaand water
@@ -77,7 +79,7 @@ class AddStorageBasins:
         )  # retrieve new max node id for the manning node
 
         # create links from the nodes
-        def create_linestring(row, from_col, to_col):
+        def create_linestring(row, from_col, to_col) -> LineString:
             return LineString([row[from_col], row[to_col]])
 
         bergende_node["geometry_link_bergend_to_MR"] = bergende_node.apply(
@@ -143,7 +145,7 @@ class AddStorageBasins:
         bergende_node["meta_node_id"] = bergende_node.index.copy()
 
         # concat all the new tables to the existing model
-        self.ribasim_model.basin.node.df = pd.concat([self.ribasim_model.basin.node.df, bergende_node])
+        self.ribasim_model.node.df = pd.concat([self.ribasim_model.node.df, bergende_node])
         self.ribasim_model.basin.static = pd.concat([self.ribasim_model.basin.static.df, bergende_static]).reset_index(
             drop=True
         )
@@ -157,9 +159,7 @@ class AddStorageBasins:
             drop=True
         )
 
-        self.ribasim_model.manning_resistance.node.df = pd.concat(
-            [self.ribasim_model.manning_resistance.node.df, manning_node]
-        )
+        self.ribasim_model.node.df = pd.concat([self.ribasim_model.node.df, manning_node])
         self.ribasim_model.manning_resistance.static = pd.concat(
             [self.ribasim_model.manning_resistance.static.df, manning_static]
         ).reset_index(drop=True)

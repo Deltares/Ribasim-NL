@@ -16,11 +16,10 @@ import numpy as np
 import pandas as pd
 import shapely
 import tqdm.auto as tqdm
-from shapely.geometry import LineString, MultiLineString, Point
-from shapely.ops import split
+from shapely.geometry import LineString, Point
 from shapely.wkt import dumps
 
-from ribasim_nl import CloudStorage, settings
+from ribasim_nl import CloudStorage, geometry, settings
 
 cloud = CloudStorage()
 # ### Load Data
@@ -53,18 +52,6 @@ gdf_cross = (
 # 3. explode nodes functions
 
 
-def split_line_at_point(line, point):
-    buff = point.buffer(1e-4)  # Small buffer around the point
-    split_result = split(line, buff)
-    if len(split_result.geoms) in [2, 3]:
-        # Assume first and last segments are the result, ignore tiny middle segment if exists
-        result = MultiLineString([split_result.geoms[0], split_result.geoms[-1]])
-    else:
-        # Return the original line as a MultiLineString for consistency if no split occurred
-        result = MultiLineString([line])
-    return result
-
-
 def split_lines_at_intersections(gdf_object):
     split_lines = []
     gdf_object.drop(columns=["geometry"])  # Preserve non-geometry attributes
@@ -83,7 +70,7 @@ def split_lines_at_intersections(gdf_object):
                 if isinstance(intersection, Point):
                     # Split the current line at the intersection point
                     try:
-                        split_result = split_line_at_point(row.geometry, intersection)
+                        split_result = geometry.split_line(row.geometry, intersection, tolerance=1e-4)
                         for geom in split_result.geoms:
                             new_row = row.copy()
                             new_row.geometry = geom
@@ -204,7 +191,7 @@ def connect_linestrings_within_distance(gdf, max_distance=4):
 
 # # Shortest Path
 
-gdf_crossings_out = []
+gdf_crossings_out: list[gpd.GeoDataFrame] = []
 gdf_rhws = gdf_rhws.reset_index(drop=True)
 
 # Loop RHWS polygons

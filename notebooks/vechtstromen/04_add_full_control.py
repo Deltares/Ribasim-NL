@@ -8,7 +8,7 @@ from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
 # execute model run
-MODEL_EXEC: bool = False
+MODEL_EXEC: bool = True
 
 # model settings
 AUTHORITY: str = "Vechtstromen"
@@ -19,13 +19,14 @@ MODEL_ID: str = "2025_7_0"
 cloud = CloudStorage()
 
 # collect relevant data from the GoodCloud
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+ribasim_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/1_ontvangen_data/aanvulling feb 24/Wateraanvoergebieden.shp")
 
 cloud.synchronize(
     filepaths=[
+        qlr_path,
         aanvoer_path,
     ]
 )
@@ -52,10 +53,10 @@ check_basin_level.add_check_basin_level(model=model)
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = 100
-model.pump.static.df.flow_rate = 100
-model.outlet.static.df.max_flow_rate = 100
-model.pump.static.df.max_flow_rate = 100
+model.outlet.static.df.flow_rate = 100.0
+model.pump.static.df.flow_rate = 100.0
+model.outlet.static.df.max_flow_rate = 100.0
+model.pump.static.df.max_flow_rate = 100.0
 
 
 # %% bovenstroomse outlets op 10m3/s zetten en boundary afvoer pumps/outlets
@@ -141,13 +142,13 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.1
 # %% fixes:
 
 # model.outlet.static.df.loc[model.outlet.static.df.node_id == 508, "max_downstream_level"] = 3.98
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 971, "max_flow_rate"] = 100
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 971, "max_flow_rate"] = 100.0
 # remove vistrap Hancate
 model.remove_node(305, remove_links=True)
 # Sluis Koning Willem Allexander
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 40, "max_flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 40, "max_flow_rate"] = 0.0
 # Geen flow anders veel te veel door Manning knoop
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 26, "min_upstream_level"] = 12
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 26, "min_upstream_level"] = 12.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 52, "max_downstream_level"] = 9.15
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1269, "max_downstream_level"] = 9.15
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1269, "min_upstream_level"] = 9.15
@@ -163,6 +164,6 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    ribasim_parametrization.tqdm_subprocess(["ribasim", ribasim_toml], print_other=False, suffix="init")
+    result = model.run()
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     indicators = controle_output.run_all()

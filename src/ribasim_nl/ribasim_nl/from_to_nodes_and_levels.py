@@ -3,14 +3,14 @@ import pandas as pd
 from ribasim_nl import Model
 
 
-def add_from_to_nodes_and_levels(model: Model, node_types=["outlet", "pump"]):
+def add_from_to_nodes_and_levels(model: Model, node_types=["outlet", "pump"]) -> None:
     """Add from and to nodes and levels
 
     Args:
         model (Model): ribasim-nl Model
     """
 
-    def get_upstream_node_id(node_id):
+    def get_upstream_node_id(node_id) -> int | None:
         us_node_ids = model._upstream_nodes(node_id, stop_at_node_type="Basin")
         us_node_id = next((i for i in us_node_ids if model.get_node_type(i) == "Basin"), None)
         if us_node_id is None:
@@ -18,7 +18,7 @@ def add_from_to_nodes_and_levels(model: Model, node_types=["outlet", "pump"]):
             us_node_id = next((i for i in us_node_ids if model.get_node_type(i) == "LevelBoundary"), None)
         return us_node_id
 
-    def get_downstream_node_id(node_id):
+    def get_downstream_node_id(node_id) -> int | None:
         us_node_ids = model._downstream_nodes(node_id, stop_at_node_type="Basin")
         us_node_id = next((i for i in us_node_ids if model.get_node_type(i) == "Basin"), None)
         if us_node_id is None:
@@ -34,6 +34,10 @@ def add_from_to_nodes_and_levels(model: Model, node_types=["outlet", "pump"]):
         )
 
         for relative_side in ["from", "to"]:
+            assert model.basin.area.df is not None
+            assert model.basin.node is not None
+            assert model.basin.node.df is not None
+            assert model.level_boundary.static.df is not None
             meta_properties_df[f"meta_{relative_side}_level"] = [
                 model.basin.area.df.set_index("node_id").at[i, "meta_streefpeil"]
                 if i in model.basin.node.df.index

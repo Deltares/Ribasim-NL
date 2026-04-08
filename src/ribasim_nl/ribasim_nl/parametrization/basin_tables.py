@@ -10,12 +10,14 @@ from ribasim_nl.parametrization.empty_table import empty_table_df
 
 def _get_basin_average_forcing(
     model: Model, precipitation_mm_per_day: float | None = None, evaporation_mm_per_day: float | None = None
-):
+) -> pd.DataFrame:
     static_df = empty_table_df(model, node_type="Basin", table_type="Static", fill_value=0)
     static_df["precipitation"] = static_df["precipitation"].astype(float)
     static_df["potential_evaporation"] = static_df["potential_evaporation"].astype(float)
 
+    assert model.basin.area.df is not None
     area = model.basin.area.df.dissolve("node_id").geometry.area
+    assert model.basin.profile.df is not None
     max_profile_area = model.basin.profile.df.set_index("node_id")["area"].groupby("node_id").max()
     multi_factor = (area / max_profile_area).astype(float) * 0.001 / 86400
 
@@ -31,7 +33,7 @@ def _get_basin_average_forcing(
 # %%
 def update_basin_static(
     model: Model, precipitation_mm_per_day: float | None = None, evaporation_mm_per_day: float | None = None
-):
+) -> None:
     """Add precipitation and/or evaporation to the model.basin.static table from basin.area
 
     Args:
@@ -50,11 +52,12 @@ def update_basin_static(
 
 def update_basin_profile(
     model: Model,
-    percentages_map: dict = {"hoofdwater": 90, "doorgaand": 10, "bergend": 3},
+    percentages_map: dict[str, int] = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2},
     default_percentage: int = 10,
-    profile_depth=3,
-):
+    profile_depth: int = 3,
+) -> None:
     # read profile from basin-table
+    assert model.basin.area.df is not None
     profile = model.basin.area.df.copy()
 
     # determine the profile area, which is also used for the profile
@@ -64,9 +67,12 @@ def update_basin_profile(
 
     # get open-water percentages per category
     profile["percentage"] = default_percentage
+    assert model.basin.node is not None
+    assert model.basin.node.df is not None
     for category, percentage in percentages_map.items():
         node_ids = model.basin.node.df.loc[model.basin.node.df.meta_categorie == category].index.to_numpy()
         profile.loc[profile.node_id.isin(node_ids), "percentage"] = percentage
+        print(percentage)
 
     # calculate area at invert from percentage
     profile["area"] = profile["geometry"].area * profile["percentage"] / 100
@@ -89,12 +95,13 @@ def update_basin_profile(
     model.basin.profile.df = profile_df
 
 
-def update_basin_state(model: Model):
+def update_basin_state(model: Model) -> None:
     """Update basin state by max profile-level
 
     Args:
         model (Model): Ribasim Model
     """
+    # pyrefly: ignore[missing-attribute]
     model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
 
 
@@ -104,7 +111,7 @@ def add_basin_time_synthetic(
     evaporation_mm_per_day: float,
     start_time: datetime,
     end_time: datetime,
-):
+) -> None:
     # define time-variables
     half_time = start_time + (end_time - start_time) // 2
     time = start_time, half_time, end_time
@@ -114,7 +121,7 @@ def add_basin_time_synthetic(
     import numpy as np
 
     time_df = pd.DataFrame(
-        {"node_id": np.repeat(static_df.node_id, len(time)), "time": np.tile(time, len(static_df.node_id))}
+        {"node_id": np.repeat(static_df.node_id, len(time)), "time": np.tile(list(time), len(static_df.node_id))}
     ).set_index("node_id")
 
     for column in ["precipitation", "potential_evaporation", "drainage", "infiltration"]:
@@ -125,6 +132,6 @@ def add_basin_time_synthetic(
     time_df.loc[time_df["time"] == end_time, "potential_evaporation"] = static_df["potential_evaporation"].to_numpy()
 
     model.basin.static.df = None
-    model.basin.time.df = time_df.reset_index()
+    model.basin.time.df = time_df.reset_index()  # pyrefly: ignore[bad-assignment]
     model.starttime = start_time
     model.endtime = end_time

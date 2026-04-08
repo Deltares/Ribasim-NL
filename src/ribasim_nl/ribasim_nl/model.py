@@ -1,5 +1,6 @@
 # %%
 import warnings
+from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar, Literal
 
@@ -7,25 +8,25 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import pandas as pd
+import ribasim
 import shapely
+import xarray as xr
+from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel
-from ribasim import Model, Node
+from ribasim import Node
+from ribasim.geometry.area import BasinAreaSchema
+from ribasim.geometry.node import NodeSchema
+from ribasim.input_base import NodeData
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
 from ribasim.utils import _concat
-
-try:
-    from ribasim.validation import flow_link_neighbor_amount as link_amount
-except ImportError:
-    from ribasim.validation import flow_link_neighbor_amount as link_amount
-
+from ribasim.validation import link_neighbor_amount as link_amount
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import split_basin
-from ribasim_nl.parametrization.parameterize import Parameterize
-from ribasim_nl.run_model import parse_computation_time, run
+from ribasim_nl.run_model import RunSpecs, parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
 
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -55,18 +56,18 @@ class default_tables:
 DEFAULT_TABLES = default_tables()
 
 
-def read_arrow(filepath: Path) -> pd.DataFrame:
-    df = pd.read_feather(filepath)
+def read_results(filepath: Path) -> pd.DataFrame:
+    df = xr.open_dataset(filepath).to_dataframe().reset_index()
     if "time" in df.columns:
         df.set_index("time", inplace=True)
     return df
 
 
-def node_properties_to_table(table, node_properties, node_id):
-    # update DataFrame
-    table_node_df = getattr(table, "node").df
+def node_properties_to_table(table, node_properties, node_id) -> None:
+    # update pd.DataFrame
+    node_df = table._parent.node.df
     for column, value in node_properties.items():
-        table_node_df.loc[node_id, [column]] = value
+        node_df.loc[node_id, [column]] = value
 
 
 class Results(BaseModel):
@@ -76,51 +77,53 @@ class Results(BaseModel):
     @property
     def df(self) -> pd.DataFrame:
         if self._df is None:
-            self._basin_df = read_arrow(self.filepath)
-        return self._basin_df
+            self._df = read_results(self.filepath)
+        return self._df
 
 
-class Model(Model):
+class Model(ribasim.Model):
     _basin_results: Results | None = None
     _basin_outstate: Results | None = None
     _flow_results: Results | None = None
     _link_results: Results | None = None
     _graph: nx.Graph | None = None
-    _parameterize: Parameterize | None = None
+    _parameterize: object | None = None
 
-    def __init__(self, **data):
+    def __init__(self, **data) -> None:
         super().__init__(**data)
-        self._parameterize = Parameterize(model=self)
-        self._set_arrow_input()
+        from ribasim_nl.parametrization.parameterize import Parameterize
 
-    def parameterize(self, **kwargs):
+        self._parameterize = Parameterize(model=self)
+        self._impose_settings()
+
+    def parameterize(self, **kwargs) -> None:
         self._parameterize.run(**kwargs)
 
     @property
-    def basin_results(self):
+    def basin_results(self) -> Results:
         if self._basin_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "basin.arrow").absolute().resolve()
+            filepath = self.filepath.parent.joinpath(self.results_dir, "basin.nc").absolute().resolve()
             self._basin_results = Results(filepath=filepath)
         return self._basin_results
 
     @property
-    def link_results(self):
+    def link_results(self) -> Results:
         if self._link_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.arrow").absolute().resolve()
+            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.nc").absolute().resolve()
             self._link_results = Results(filepath=filepath)
         return self._link_results
 
     @property
-    def flow_results(self):
+    def flow_results(self) -> Results:
         if self._flow_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.arrow").absolute().resolve()
+            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.nc").absolute().resolve()
             self._flow_results = Results(filepath=filepath)
         return self._flow_results
 
     @property
-    def basin_outstate(self):
+    def basin_outstate(self) -> Results:
         if self._basin_outstate is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "basin_state.arrow").absolute().resolve()
+            filepath = self.filepath.parent.joinpath(self.results_dir, "basin_state.nc").absolute().resolve()
             self._basin_outstate = Results(filepath=filepath)
         return self._basin_outstate
 
@@ -172,7 +175,7 @@ class Model(Model):
                 target="to_node_id",
                 create_using=nx.DiGraph,
             )
-            node_table_df = self.node_table().df.copy()
+            node_table_df = self.node.df.copy()
             if "meta_function" not in node_table_df.columns:
                 node_table_df.loc[:, "meta_function"] = ""
             node_attributes = node_table_df.rename(columns={"meta_function": "function"})[
@@ -191,10 +194,10 @@ class Model(Model):
 
     @property
     def next_node_id(self):
-        return self.node_table().df.index.max() + 1
+        return self.node.df.index.max() + 1
 
     @property
-    def computation_time(self):
+    def computation_time(self) -> timedelta | None:
         """Get computation time of last run as timedelta"""
         ribasim_log = self.results_path / "ribasim.log"
         if not ribasim_log.exists():
@@ -206,11 +209,11 @@ class Model(Model):
                     if computation_time is not None:
                         return computation_time
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> RunSpecs:
         """Run your Ribasim model"""
         return run(self.filepath, **kwargs)
 
-    def update_state(self, time_stamp: pd.Timestamp | None = None):
+    def update_state(self, time_stamp: pd.Timestamp | None = None) -> None:
         """Update basin.state with results or final basin_state (outstate)
 
         Args:
@@ -247,32 +250,40 @@ class Model(Model):
         return valid_state
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
-    def _upstream_nodes(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None):
+    def _upstream_nodes(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None) -> set[int]:
         # get upstream nodes
         #     return list(nx.traversal.bfs_tree(self.graph, node_id, reverse=True))
         return upstream_nodes(
             graph=self.graph, node_id=node_id, stop_at_inlet=stop_at_inlet, stop_at_node_type=stop_at_node_type
         )
 
-    def _downstream_nodes(self, node_id, stop_at_outlet: bool = False, stop_at_node_type: str | None = None):
+    def _downstream_nodes(
+        self, node_id, stop_at_outlet: bool = False, stop_at_node_type: str | None = None
+    ) -> set[int]:
         # get downstream nodes
         return downstream_nodes(
             graph=self.graph, node_id=node_id, stop_at_outlet=stop_at_outlet, stop_at_node_type=stop_at_node_type
         )
         # return list(nx.traversal.bfs_tree(self.graph, node_id))
 
-    def get_upstream_basins(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None):
+    def get_upstream_basins(
+        self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None
+    ) -> GeoDataFrame[BasinAreaSchema]:
         # get upstream basin area
         upstream_node_ids = self._upstream_nodes(
             node_id, stop_at_inlet=stop_at_inlet, stop_at_node_type=stop_at_node_type
         )
+        assert self.basin.area.df is not None
         return self.basin.area.df[self.basin.area.df.node_id.isin(upstream_node_ids)]
 
-    def get_downstream_basins(self, node_id, stop_at_outlet: bool = False, stop_at_node_type: str | None = None):
+    def get_downstream_basins(
+        self, node_id, stop_at_outlet: bool = False, stop_at_node_type: str | None = None
+    ) -> GeoDataFrame[BasinAreaSchema]:
         # get upstream basin area
         downstream_node_ids = self._downstream_nodes(
             node_id, stop_at_outlet=stop_at_outlet, stop_at_node_type=stop_at_node_type
         )
+        assert self.basin.area.df is not None
         return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
 
     def get_upstream_links(self, node_id, **kwargs):
@@ -292,7 +303,8 @@ class Model(Model):
     def find_node_id(self, ds_node_id=None, us_node_id=None, **kwargs) -> int:
         """Find a node_id by it's properties"""
         # get node table
-        df = self.node_table().df
+        assert self.node.df is not None
+        df = self.node.df
 
         # filter node ids by properties
         for column, value in kwargs.items():
@@ -300,6 +312,7 @@ class Model(Model):
 
         # filter node ids by us and ds node
         if (ds_node_id is not None) or (us_node_id is not None):
+            assert self.link.df is not None
             link_df = self.link.df
             if ds_node_id is not None:
                 df = df[df.index.isin(link_df[link_df.to_node_id == ds_node_id].from_node_id)]
@@ -322,71 +335,97 @@ class Model(Model):
             return node_ids[0]
 
     @property
-    def unassigned_basin_area(self):
+    def unassigned_basin_area(self) -> GeoDataFrame[BasinAreaSchema]:
         """Get unassigned basin area"""
+        assert self.basin.area.df is not None
+        assert self.basin.node is not None
+        assert self.basin.node.df is not None
         return self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.index)]
 
     @property
-    def basin_node_without_area(self):
+    def basin_node_without_area(self) -> GeoDataFrame[NodeSchema]:
         """Get basin node without area"""
+        assert self.basin.node is not None
+        assert self.basin.node.df is not None
+        assert self.basin.area.df is not None
         return self.basin.node.df[~self.basin.node.df.index.isin(self.basin.area.df.node_id)]
 
-    def upstream_node_id(self, node_id: int):
+    def upstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get upstream node_id(s)"""
+        assert self.link.df is not None
         _df = self.link.df.set_index("to_node_id")
+        _df = _df[_df.link_type == link_type]
         if node_id in _df.index:
             return _df.loc[node_id].from_node_id
 
-    def upstream_profile(self, node_id: int):
+    def upstream_profile(self, node_id: int) -> pd.DataFrame | GeoDataFrame:
         """Get upstream basin-profile"""
         upstream_node_id = self.upstream_node_id(node_id)
 
-        node_type = self.node_table().df.loc[upstream_node_id].node_type
+        assert self.node.df is not None
+        node_type = self.node.df.loc[upstream_node_id].node_type
         if node_type != "Basin":
             raise ValueError(f"Upstream node_type is not a Basin, but {node_type}")
         else:
             return self.basin.profile[upstream_node_id]
 
-    def downstream_node_id(self, node_id: int):
+    def downstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get downstream node_id(s)"""
+        assert self.link.df is not None
         _df = self.link.df.set_index("from_node_id")
+        _df = _df[_df.link_type == link_type]
         if node_id in _df.index:
             return _df.loc[node_id].to_node_id
 
-    def downstream_profile(self, node_id: int):
+    def downstream_profile(self, node_id: int) -> pd.DataFrame | GeoDataFrame:
         """Get upstream basin-profile"""
         downstream_node_id = self.downstream_node_id(node_id)
 
-        node_type = self.node_table().df.loc[downstream_node_id].node_type
+        assert self.node.df is not None
+        node_type = self.node.df.loc[downstream_node_id].node_type
         if node_type != "Basin":
             raise ValueError(f"Upstream node_type is not a Basin, but {node_type}")
         else:
             return self.basin.profile[downstream_node_id]
 
     def get_node_type(self, node_id: int):
-        return self.node_table().df.at[node_id, "node_type"]
+        assert self.node.df is not None
+        return self.node.df.at[node_id, "node_type"]
+
+    def get_component(self, node_type: str):
+        """Return model component for a given node_type string (e.g. 'Outlet' → model.outlet)"""
+        return getattr(self, pascal_to_snake_case(node_type))
 
     def get_node(self, node_id: int):
         """Return model-node by node_id"""
         node_type = self.get_node_type(node_id)
-        return getattr(self, pascal_to_snake_case(node_type))[node_id]
+        return self.get_component(node_type)[node_id]
 
-    def remove_node(self, node_id: int, remove_links: bool = False):
+    def remove_node(self, node_id: int, remove_links: bool = False) -> None:
         """Remove node from model"""
-        node_type = self.get_node_type(node_id)
+        assert self.node.df is not None
+        node_type = None
+        if node_id in self.node.df.index:
+            node_type = self.get_node_type(node_id)
+            # Remove from node table
+            self.node.df = self.node.df.drop(node_id)
 
-        # read existing table
-        table = getattr(self, pascal_to_snake_case(node_type))
+        if node_id in self.node._used_node_ids:
+            self.node._used_node_ids.node_ids.remove(node_id)
 
-        # remove node from all tables
-        for attr in table.model_fields.keys():
-            df = getattr(table, attr).df
-            if df is not None:
-                if "node_id" in df.columns:
-                    getattr(table, attr).df = df[df.node_id != node_id]
-                else:
-                    getattr(table, attr).df = df[df.index != node_id]
-
+        # remove from sub-tables (static, time, area, subgrid, etc)
+        sub = (
+            next((i for i in self._nodes() if i.__repr_name__() == node_type), None)  # pyrefly: ignore
+            if node_type is not None
+            else None
+        )
+        if sub is not None:
+            for table in sub._tables():
+                if table.df is not None and "node_id" in table.df.columns:
+                    table.df = table.df[table.df["node_id"] != node_id]
+                    if table.df.empty:
+                        table.df = None
+        # remove links
         if remove_links and (self.link.df is not None):
             for row in self.link.df[self.link.df.from_node_id == node_id].itertuples():
                 self.remove_link(
@@ -397,12 +436,11 @@ class Model(Model):
                     from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
                 )
 
-        # remove from used node-ids so we can add it again in the same table
-        if node_id in table._parent._used_node_ids:
-            table._parent._used_node_ids.node_ids.remove(node_id)
-
-    def update_node(self, node_id, node_type, data: list | None = None, node_properties: dict = {}):
-        existing_node_type = self.node_table().df.at[node_id, "node_type"]
+    def update_node(
+        self, node_id, node_type, data: list[object] | None = None, node_properties: dict[str, object] = {}
+    ) -> None:
+        assert self.node.df is not None
+        existing_node_type = self.node.df.at[node_id, "node_type"]
 
         # read existing table
         table = getattr(self, pascal_to_snake_case(existing_node_type))
@@ -422,8 +460,11 @@ class Model(Model):
                     getattr(table, attr).df = df[df.index != node_id]
 
         # remove from used node-ids so we can add it again in the same table
-        if node_id in table._parent._used_node_ids:
-            table._parent._used_node_ids.node_ids.remove(node_id)
+        if node_id in table._parent.node._used_node_ids:
+            table._parent.node._used_node_ids.node_ids.remove(node_id)
+
+        # remove from global node table before re-adding to avoid duplicate index
+        self.node.df = self.node.df[self.node.df.index != node_id]
 
         # add to table
         table = getattr(self, pascal_to_snake_case(node_type))
@@ -441,13 +482,13 @@ class Model(Model):
 
     def add_control_node(
         self,
-        to_node_id: int | list,
+        to_node_id: int | list[int],
         data,
         ctrl_type: Literal["DiscreteControl", "PidControl"] = "DiscreteControl",
         node_geom: Point | None = None,
         node_offset: int = 100,
-        node_properties: dict = {},
-    ):
+        node_properties: dict[str, object] = {},
+    ) -> None:
         """Add a control_node to the network
 
         Parameters
@@ -474,6 +515,7 @@ class Model(Model):
             if isinstance(to_node_id, list):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
             else:
+                assert self.link.df is not None
                 linestring = self.link.df[self.link.df["to_node_id"] == to_node_id].iloc[0].geometry
                 lo = linestring.parallel_offset(node_offset, "left")
                 if lo.geom_type == "MultiLineString":
@@ -493,6 +535,8 @@ class Model(Model):
         node_properties_to_table(table, node_properties, node_id)
 
         # add links
+        if isinstance(to_node_id, int):
+            to_node_id = [to_node_id]
         for _to_node_id in to_node_id:
             self.link.add(table[node_id], self.get_node(_to_node_id))
 
@@ -501,7 +545,7 @@ class Model(Model):
         from_node_id: int | None = None,
         to_node_id: int | None = None,
         link_id: int | None = None,
-    ):
+    ) -> None:
         """Reverse a link"""
         if self.link.df is not None:
             if link_id is None:
@@ -521,7 +565,8 @@ class Model(Model):
             # revert geometry
             self.link.df.loc[link_id, ["geometry"]] = link_data["geometry"].reverse()
 
-    def remove_link(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True):
+    # pyrefly: ignore[bad-override]
+    def remove_link(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True) -> None:
         """Remove an link and disconnected nodes"""
         if self.link.df is not None:
             # get original link-data
@@ -538,16 +583,18 @@ class Model(Model):
                     if node_id not in self.link.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
                         self.remove_node(node_id)
 
-    def remove_links(self, link_ids: list[int]):
+    def remove_links(self, link_ids: list[int]) -> None:
         if self.link.df is not None:
             self.link.df = self.link.df[~self.link.df.index.isin(link_ids)]
 
-    def add_basin(self, node_id, geometry, tables=None, **kwargs):
+    def add_basin(self, node_id, geometry, tables=None, **kwargs) -> None:
         # define node properties
         if "name" in kwargs.keys():
             name = kwargs["name"]
             kwargs.pop("name")
         else:
+            name = ""
+        if pd.isna(name):
             name = ""
 
         node_properties = {k if k.startswith("meta_") else f"meta_{k}": v for k, v in kwargs.items()}
@@ -558,8 +605,8 @@ class Model(Model):
 
         self.basin.add(Node(node_id=node_id, geometry=geometry, name=name, **node_properties), tables=tables)
 
-    def connect_basins(self, from_basin_id, to_basin_id, node_type, geometry, tables=None, name="", **kwargs):
-        if name is None:
+    def connect_basins(self, from_basin_id, to_basin_id, node_type, geometry, tables=None, name="", **kwargs) -> None:
+        if pd.isna(name):
             name = ""
         self.add_and_connect_node(
             from_basin_id=from_basin_id,
@@ -573,8 +620,8 @@ class Model(Model):
 
     def add_and_connect_node(
         self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, use_add_api: bool = True, **kwargs
-    ):
-        if name is None:
+    ) -> None:
+        if pd.isna(name):
             name = ""
 
         # define node properties
@@ -602,7 +649,7 @@ class Model(Model):
             else:
                 self.add_link(from_node, to_node)
 
-    def add_link(self, from_node, to_node, link_type="flow", name="", **kwargs):
+    def add_link(self, from_node, to_node, link_type="flow", name="", **kwargs) -> None:
         """Alternative method to add links to the model.
 
         model.link.add() sometimes raises AttributeError: `Flags`object has no attribute `_allows_duplicate_labels`
@@ -635,12 +682,14 @@ class Model(Model):
         self.link._used_link_ids.add(link_id)
         self.link._used_link_ids.max_node_id = self.link.df.index.max()
 
-    def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs):
+    def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs) -> None:
         # define node properties
         if "name" in kwargs.keys():
             name = kwargs["name"]
             kwargs.pop("name")
         else:
+            name = ""
+        if pd.isna(name):
             name = ""
 
         node_properties = {k if k.startswith("meta_") else f"meta_{k}": v for k, v in kwargs.items()}
@@ -664,7 +713,7 @@ class Model(Model):
         boundary_node = self.level_boundary.add(Node(geometry=geometry), tables=DEFAULT_TABLES.level_boundary)
         self.link.add(node, boundary_node)
 
-    def reverse_direction_at_node(self, node_id):
+    def reverse_direction_at_node(self, node_id) -> None:
         for link_id in self.link.df[
             (self.link.df.from_node_id == node_id) | (self.link.df.to_node_id == node_id)
         ].index:
@@ -685,7 +734,10 @@ class Model(Model):
             raise ValueError("Not any basin area equals input geometry")
         return mask
 
-    def update_basin_area(self, node_id: int, geometry: Polygon | MultiPolygon, basin_area_fid: int | None = None):
+    def update_basin_area(
+        self, node_id: int, geometry: Polygon | MultiPolygon, basin_area_fid: int | None = None
+    ) -> None:
+        assert self.basin.area.df is not None
         if pd.isna(basin_area_fid):
             mask = self.select_basin_area(geometry)
         else:
@@ -693,8 +745,13 @@ class Model(Model):
 
         self.basin.area.df.loc[mask, ["node_id"]] = node_id
 
-    def add_basin_area(self, geometry: MultiPolygon, node_id: int | None = None, meta_streefpeil: float | None = None):
+    def add_basin_area(
+        self, geometry: MultiPolygon, node_id: int | None = None, meta_streefpeil: float | None = None
+    ) -> None:
         # if node_id is None, get an available node_id
+        assert self.basin.node is not None
+        assert self.basin.node.df is not None
+        assert self.basin.area.df is not None
         if pd.isna(node_id):
             basin_df = self.basin.node.df[self.basin.node.df.within(geometry)]
             if basin_df.empty:
@@ -724,14 +781,11 @@ class Model(Model):
         area_df.index += self.basin.area.df.index.max() + 1
         self.basin.area.df = pd.concat([self.basin.area.df, area_df])
 
-    def move_node(self, node_id: int, geometry: Point):
-        node_type = self.node_table().df.at[node_id, "node_type"]
-
-        # read existing table
-        table = getattr(self, pascal_to_snake_case(node_type))
-
+    def move_node(self, node_id: int, geometry: Point) -> None:
         # update geometry
-        table.node.df.loc[node_id, ["geometry"]] = geometry
+        assert self.node.df is not None
+        assert self.link.df is not None
+        self.node.df.loc[node_id, ["geometry"]] = geometry
 
         # reset all links
         link_ids = self.link.df[
@@ -739,7 +793,7 @@ class Model(Model):
         ].index.to_list()
         self.reset_link_geometry(link_ids=link_ids)
 
-    def report_basin_area(self):
+    def report_basin_area(self) -> None:
         gpkg = self.filepath.with_name("basin_node_area_errors.gpkg")
         self.unassigned_basin_area.to_file(gpkg, layer="unassigned_basin_area")
 
@@ -752,7 +806,7 @@ class Model(Model):
         df.to_file(gpkg)
         return df
 
-    def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None):
+    def find_closest_basin(self, geometry: BaseGeometry, max_distance: float | None) -> NodeData:
         """Find the closest basin_node."""
         # only works when basin area are defined
         if self.basin.area.df is None:
@@ -775,13 +829,14 @@ class Model(Model):
 
         return self.basin[basin_node_id]
 
-    def fix_unassigned_basin_area(self, method: str = "within", distance: float = 100):
+    def fix_unassigned_basin_area(self, method: str = "within", distance: float = 100) -> None:
         """Assign a Basin node_id to a Basin / Area if the Area doesn't contain a basin node_id.
 
         Args:
             method (str): method to find basin node_id; `within` or `closest`. First start with `within`. Default is `within`
             distance (float, optional): for method closest, the distance to find an unassigned basin node_id. Defaults to 100.
         """
+        assert self.basin.node is not None
         if self.basin.node.df is not None:
             if self.basin.area.df is not None:
                 basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.index)]
@@ -798,7 +853,7 @@ class Model(Model):
                             basin_df = self.basin.node.df[self.basin.node.df.distance(row.geometry) < distance]
 
                     else:
-                        ValueError(f"Supported methods are 'within' or 'closest', got '{method}'.")
+                        raise ValueError(f"Supported methods are 'within' or 'closest', got '{method}'.")
 
                     # check if basin_nodes within area are not yet assigned an area
                     basin_df = basin_df[~basin_df.index.isin(self.basin.area.df.node_id)]
@@ -811,8 +866,10 @@ class Model(Model):
         else:
             raise ValueError("Assign a Basin Node to your model first")
 
-    def reset_link_geometry(self, link_ids: list | None = None):
-        node_df = self.node_table().df
+    def reset_link_geometry(self, link_ids: list[int] | None = None) -> None:
+        assert self.node.df is not None
+        assert self.link.df is not None
+        node_df = self.node.df
         if link_ids is not None:
             df = self.link.df[self.link.df.index.isin(link_ids)]
         else:
@@ -825,13 +882,17 @@ class Model(Model):
             self.link.df.loc[row.Index, ["geometry"]] = geometry
 
     @property
-    def link_from_node_type(self):
-        node_df = self.node_table().df
+    def link_from_node_type(self) -> pd.Series:
+        assert self.node.df is not None
+        assert self.link.df is not None
+        node_df = self.node.df
         return self.link.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
     @property
-    def link_to_node_type(self):
-        node_df = self.node_table().df
+    def link_to_node_type(self) -> pd.Series:
+        assert self.node.df is not None
+        assert self.link.df is not None
+        node_df = self.node.df
         return self.link.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
 
     def split_basin(
@@ -840,7 +901,7 @@ class Model(Model):
         basin_id: int | None = None,
         geometry: LineString | None = None,
         assign_unique_node: bool = True,
-    ):
+    ) -> None:
         if geometry is None:
             if line is None:
                 raise ValueError("geometry cannot be None")
@@ -908,6 +969,8 @@ class Model(Model):
 
             # we override node_id to a unique basin-node within area if that is specified
             if assign_unique_node:
+                assert self.basin.node is not None
+                assert self.basin.node.df is not None
                 if self.basin.node.df.geometry.within(poly).any():
                     node_ids = self.basin.node.df[self.basin.node.df.geometry.within(poly)].index.to_list()
                     if node_ids[0] not in self.basin.area.df.node_id.to_numpy():
@@ -918,7 +981,7 @@ class Model(Model):
         if self.basin.area.df.crs is None:
             self.basin.area.df.crs = self.crs
 
-    def redirect_link(self, link_id: int, from_node_id: int | None = None, to_node_id: int | None = None):
+    def redirect_link(self, link_id: int, from_node_id: int | None = None, to_node_id: int | None = None) -> None:
         if self.link.df is not None:
             if from_node_id is not None:
                 self.link.df.loc[link_id, ["from_node_id"]] = from_node_id
@@ -927,19 +990,26 @@ class Model(Model):
 
         self.reset_link_geometry(link_ids=[link_id])
 
-    def deactivate_node(self, node_id: int):
+    def deactivate_node(self, node_id: int) -> None:
+        """Deactivate a node by setting its flow_rate to 0.0 or manning_n to 100.0, if possible."""
         node_type = self.get_node_type(node_id)
         df = getattr(self, pascal_to_snake_case(node_type)).static.df
-        df.loc[df.node_id == node_id, ["active"]] = False
 
-    def remove_unassigned_basin_area(self):
+        if "flow_rate" in df.columns:
+            df.loc[df.node_id == node_id, ["flow_rate"]] = 0.0
+        elif "manning_n" in df.columns:
+            df.loc[df.node_id == node_id, ["manning_n"]] = 100.0
+        else:
+            raise ValueError(f"Cannot deactivate node of type {node_type}: no 'flow_rate' or 'manning_n' column found")
+
+    def remove_unassigned_basin_area(self) -> None:
         df = self.basin.area.df[~self.basin.area.df.index.isin(self.unassigned_basin_area.index)]
         if self.basin.area.df.node_id.duplicated().any():
             df = df.dissolve(by="node_id").reset_index()
             df.index.name = "fid"
         self.basin.area.df = df
 
-    def explode_basin_area(self, remove_z=True):
+    def explode_basin_area(self, remove_z=True) -> None:
         df = self.basin.area.df.explode().reset_index(drop=True)
         df.index.name = "fid"
         self.basin.area.df = df
@@ -949,7 +1019,7 @@ class Model(Model):
                 shapely.force_2d(self.basin.area.df.geometry.array), crs=self.basin.area.df.crs
             )
 
-    def remove_basin_area(self, geometry):
+    def remove_basin_area(self, geometry) -> None:
         mask = self.select_basin_area(geometry)
         self.basin.area.df = self.basin.area.df[~mask]
 
@@ -960,7 +1030,7 @@ class Model(Model):
         to_node_id: int | None = None,
         to_basin_id: int | None = None,
         are_connected=True,
-    ):
+    ) -> None:
         if basin_id is not None:
             warnings.warn("basin_id is deprecated, use node_id instead", DeprecationWarning)
             node_id = basin_id
@@ -969,9 +1039,14 @@ class Model(Model):
             warnings.warn("to_basin_id is deprecated, use to_node_id instead", DeprecationWarning)
             to_node_id = to_basin_id
 
+        assert self.basin.node is not None
+        assert self.basin.node.df is not None
         if node_id not in self.basin.node.df.index:
             raise ValueError(f"{node_id} is not a basin")
-        to_node_type = self.node_table().df.at[to_node_id, "node_type"]
+        assert self.node.df is not None
+        assert self.link.df is not None
+        assert self.basin.area.df is not None
+        to_node_type = self.node.df.at[to_node_id, "node_type"]
         if to_node_type not in ["Basin", "FlowBoundary", "LevelBoundary"]:
             raise ValueError(
                 f'{to_node_id} not of valid type: {to_node_type} not in ["Basin", "FlowBoundary", "LevelBoundary"]'
@@ -1038,12 +1113,22 @@ class Model(Model):
             self.update_node(to_node_id, "LevelBoundary", data=[level_boundary.Static(level=[0.0])])
 
         # finally we remove the basin
+        assert node_id is not None
         self.remove_node(node_id)
 
-    def merge_outlets(self, outlet_a_id: int | None = None, outlet_b_id: int | None = None):
+    def merge_outlets(
+        self, outlet_a_id: int | None = None, outlet_b_id: int | None = None
+    ) -> GeoDataFrame[NodeSchema] | pd.Series:
         """Merge outlet_b into outlet_a. Outlet a is considered upstream, and b donwstream."""
+        assert outlet_a_id is not None
+        assert outlet_b_id is not None
         assert self.get_node_type(outlet_a_id) == "Outlet" and self.get_node_type(outlet_b_id) == "Outlet"
 
+        assert self.outlet.node is not None
+        assert self.outlet.node.df is not None
+        assert self.node.df is not None
+        assert self.link.df is not None
+        assert self.outlet.static.df is not None
         outlet_a = self.outlet.node.df.loc[outlet_a_id]
         outlet_b = self.outlet.node.df.loc[outlet_b_id]
 
@@ -1058,7 +1143,7 @@ class Model(Model):
         # Merge geometry
         avg_x = (outlet_a.geometry.x + outlet_b.geometry.x) / 2
         avg_y = (outlet_a.geometry.y + outlet_b.geometry.y) / 2
-        self.outlet.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)
+        self.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)
 
         # Merge attributes
         self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_a_id, "max_downstream_level"] = (
@@ -1072,15 +1157,17 @@ class Model(Model):
         return outlet_a
 
     def invalid_topology_at_node(self, link_type: str = "flow") -> gpd.GeoDataFrame:
+        assert self.link.df is not None
+        assert self.node.df is not None
         df_graph = self.link.df
-        df_node = self.node_table().df
+        df_node = self.node.df
         # Join df_link with df_node to get to_node_type
         df_graph = df_graph.join(df_node[["node_type"]], on="from_node_id", how="left", rsuffix="_from")
         df_graph = df_graph.rename(columns={"node_type": "from_node_type"})
 
         df_graph = df_graph.join(df_node[["node_type"]], on="to_node_id", how="left", rsuffix="_to")
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
-        df_node = self.node_table().df
+        df_node = self.node.df
 
         """Check if the neighbor amount of the two nodes connected by the given link meet the minimum requirements."""
         errors = []
@@ -1089,9 +1176,7 @@ class Model(Model):
         df_graph = df_graph.loc[df_graph["link_type"] == link_type]
 
         # count occurrence of "from_node" which reflects the number of outneighbors
-        from_node_count = (
-            df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")  # type: ignore
-        )
+        from_node_count = df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")
 
         # append from_node_count column to from_node_id and from_node_type
         from_node_info = (
@@ -1107,21 +1192,20 @@ class Model(Model):
         # loop over all the "from_node" and check if they have enough outneighbor
         for _, row in from_node_info.iterrows():
             # from node's outneighbor
-            if row["from_node_count"] < link_amount[row["from_node_type"]][2]:
+            min_outneighbors = link_amount[link_type][row["from_node_type"]][2]
+            if row["from_node_count"] < min_outneighbors:
                 node_id = row["from_node_id"]
                 errors += [
                     {
                         "geometry": df_node.at[node_id, "geometry"],
                         "node_id": node_id,
                         "node_type": df_node.at[node_id, "node_type"],
-                        "exception": f"must have at least {link_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})",
+                        "exception": f"must have at least {min_outneighbors} outneighbor(s) (got {row['from_node_count']})",
                     }
                 ]
 
         # count occurrence of "to_node" which reflects the number of inneighbors
-        to_node_count = (
-            df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")  # type: ignore
-        )
+        to_node_count = df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")
 
         # append to_node_count column to result
         to_node_info = (
@@ -1134,14 +1218,15 @@ class Model(Model):
 
         # loop over all the "to_node" and check if they have enough inneighbor
         for _, row in to_node_info.iterrows():
-            if row["to_node_count"] < link_amount[row["to_node_type"]][0]:
+            min_inneighbors = link_amount[link_type][row["to_node_type"]][0]
+            if row["to_node_count"] < min_inneighbors:
                 node_id = row["to_node_id"]
                 errors += [
                     {
                         "geometry": df_node.at[node_id, "geometry"],
                         "node_id": node_id,
                         "node_type": df_node.at[node_id, "node_type"],
-                        "exception": f"must have at least {link_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})",
+                        "exception": f"must have at least {min_inneighbors} inneighbor(s) (got {row['to_node_count']})",
                     }
                 ]
 
@@ -1152,7 +1237,7 @@ class Model(Model):
                 [], columns=["node_id", "node_type", "exception"], geometry=gpd.GeoSeries(crs=self.crs)
             ).set_index("node_id")
 
-    def validate_link_source_destination(self):
+    def validate_link_source_destination(self) -> None:
         """Check if links exist with reversed source-destination"""
         # remove function when this is available: https://github.com/Deltares/Ribasim/issues/2140
         df = self.link.df
@@ -1171,11 +1256,14 @@ class Model(Model):
                 f"Links found with reversed source-destination: {list(df[duplicated_links].reset_index()[['link_id', 'from_node_id', 'to_node_id']].to_dict(orient='index').values())}"
             )
 
-    def _set_arrow_input(self):
-        """Use "input" dir and avoid large databases by writing some tables to Arrow"""
+    def _impose_settings(self) -> None:
+        """Impose custom settings that we want to apply to each Ribasim-NL model."""
+        # "input" is the default, but we read models with the old default ".",
+        # causing it to stay there unless we change it here.
         self.input_dir = Path("input")
+        # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
-            self.basin.time.set_filepath(Path("basin_time.arrow"))
-            # Need to set parent fields to get it in the TOML: https://github.com/Deltares/Ribasim/issues/2039
-            self.basin.model_fields_set.add("time")
-            self.model_fields_set.add("basin")
+            self.basin.time.filepath = Path("basin_time.nc")
+        # Our large models benefit from specialization, default to using it
+        if "specialize" not in self.solver.model_fields_set:
+            self.solver.specialize = True

@@ -13,7 +13,8 @@ ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")
 model = Model.read(ribasim_toml)
 
 debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/debieten_Rijn_Maas_2023_2024.xlsx")
-cloud.synchronize([debieten_xlsx])
+iwp_debieten_xlsx = cloud.joinpath("Basisgegevens/Metingen/RWsOS-IWP_debieten_juni2023_juni2024.xlsx")
+cloud.synchronize([debieten_xlsx, iwp_debieten_xlsx])
 df = pd.read_excel(
     debieten_xlsx,
     skiprows=3,
@@ -46,7 +47,7 @@ eijsden_series.name = "flow_rate"
 
 # %% Monsin series
 df = pd.read_excel(
-    cloud.joinpath("Basisgegevens/metingen/RWsOS-IWP_debieten_2023_2024.xlsx"),
+    iwp_debieten_xlsx,
     sheet_name="Maas",
     skiprows=5,
     index_col=0,

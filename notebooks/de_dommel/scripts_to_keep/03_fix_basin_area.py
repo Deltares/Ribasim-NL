@@ -46,7 +46,7 @@ for row in basin_df.itertuples():
         area_df = selected_areas[selected_areas.contains(row.geometry)]
         if not area_df.empty:
             name = area_df.iloc[0].NAAM
-        model.basin.node.df.loc[row.Index, ["name"]] = name
+        model.node.df.loc[row.Index, ["name"]] = name
         # assign name to links if defined
         model.link.df.loc[links_mask, ["name"]] = name
 

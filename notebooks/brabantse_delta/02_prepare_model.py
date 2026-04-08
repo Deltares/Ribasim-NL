@@ -18,7 +18,8 @@ short_name = "wbd"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
@@ -32,7 +33,8 @@ sturing_xlsx = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/sturing_gemalen_stuwen_22-5-2022/sturingGemalenStuwen_v2.xlsx"
 )
 
-cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_path, damo_profiles_gpkg, sturing_xlsx])
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -294,15 +296,15 @@ ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 
-ds_levels = pd.concat([static_data.basin, static_data.outlet, static_data.pump], ignore_index=True).set_index(
-    "node_id"
-)["min_upstream_level"]
-ds_levels.dropna(inplace=True)
-ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
-ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
+ds_levels = (
+    pd.concat([static_data.basin, static_data.outlet, static_data.pump], ignore_index=True)
+    .set_index("node_id")["min_upstream_level"]
+    .dropna()
+    .groupby(level=0)
+    .min()
+)
 
-levels = ds_node_ids.apply(lambda x: ds_levels[x])
-streefpeil = levels.groupby(levels.index).min()
+streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
@@ -329,9 +331,18 @@ static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
+
+# Handmatige fixes
+streefpeil[1989] = 0.1
+streefpeil[1909] = 0.1
+streefpeil[1634] = 1.2  # Basin Turfvaart meetpunt
+streefpeil[1584] = 0.15
+streefpeil[1987] = -0.5
+
 model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
 profiellijnid = static_data.basin.set_index("node_id")["profielid"]
 model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid

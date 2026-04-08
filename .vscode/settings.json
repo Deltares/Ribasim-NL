@@ -12,5 +12,7 @@
             "notebook.source.organizeImports": "explicit"
         }
     },
-    "python-envs.pythonProjects": []
+    "python.analysis.typeCheckingMode": "off",
+    "python-envs.pythonProjects": [],
+    "autoDocstring.docstringFormat": "numpy"
 }

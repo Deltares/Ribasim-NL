@@ -1,9 +1,8 @@
 # %%
 import logging
 
-import geopandas as gpd
 import pandas as pd
-from networkx import NetworkXNoPath, node_disjoint_paths, shortest_path
+from networkx import NetworkXNoPath, NodeNotFound, shortest_path
 from shapely.geometry import LineString
 from tqdm import tqdm
 
@@ -24,34 +23,24 @@ def accept_length(geometry, point1, point2, max_straight_line_ratio: float = 5):
 
 
 def get_link_geometry(network, source, target, forbidden_nodes):
+    straight_line = LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
+    # Use a subgraph view excluding forbidden nodes (O(1) creation, no copy)
+    allowed_nodes = set(network.graph_undirected.nodes) - set(forbidden_nodes)
+    subgraph = network.graph_undirected.subgraph(allowed_nodes)
     try:
-        all_paths = node_disjoint_paths(network.graph_undirected, s=source, t=target)
-        all_paths = [i for i in all_paths if not any(_node_id in forbidden_nodes for _node_id in i)]
-    except NetworkXNoPath:
-        return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
+        path = shortest_path(subgraph, source=source, target=target, weight="length")
+    except (NetworkXNoPath, NodeNotFound):
+        return straight_line
 
-    if len(all_paths) == 0:
-        path = shortest_path(network.graph_undirected, source=source, target=target)
-        if any(_node_id in forbidden_nodes for _node_id in path):
-            return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
-        else:
-            return network.path_to_line(path)
-    else:
-        if len(all_paths) == 1:
-            geometry = network.path_to_line(all_paths[0])
-        else:
-            geometries = gpd.GeoSeries([network.path_to_line(i) for i in all_paths])
-            geometry = geometries[geometries.length.idxmin()]
-
+    geometry = network.path_to_line(path)
     if geometry.length > 0:
         return geometry
-    else:
-        return LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
+    return straight_line
 
 
 def fix_link_geometries(
-    model: Model, network: Network, max_straight_line_ratio: float = 5, node_ids: list | None = None
-):
+    model: Model, network: Network, max_straight_line_ratio: float = 5, node_ids: list[int] | None = None
+) -> None:
     """Fix model.link.geometry column by finding routes over network
 
     Args:
@@ -61,7 +50,9 @@ def fix_link_geometries(
          If the new line is `max_straight_line_ratio` times longer than straight line distance we don't accept the geometry.
          Defaults to 5.
     """
-    node_df = model.node_table().df
+    assert model.node.df is not None
+    assert model.link.df is not None
+    node_df = model.node.df
     if node_ids is None:
         node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index
     for node_id in tqdm(node_ids, desc="fix line geometries"):

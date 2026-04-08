@@ -60,8 +60,8 @@ cloud.synchronize(
     ]
 )
 
-# download the Feedback Formulieren, overwrite the old ones
-cloud.download_verwerkt(authority=waterschap, overwrite=True)
+# refresh only the feedback form from cloud
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -110,7 +110,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model.read(ribasim_work_dir_model_toml)
     ribasim_model.set_crs("EPSG:28992")
 
 # model specific tweaks
@@ -298,9 +298,9 @@ ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[97])
 
 # (re)set 'meta_node_id'-values
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -336,7 +336,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -364,7 +365,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -0.75, 0.75, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -421,15 +422,15 @@ ribasim_model.pump.static.df.loc[
 ] *= 60
 
 # set the max_flow_rate to the flow_rate
-ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
+ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 10
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 10.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table

@@ -1,24 +1,23 @@
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
 from networkx import DiGraph, simple_cycles
-from ribasim import Model, Node
-from ribasim.geometry.link import NodeData
+from ribasim import Node
+from ribasim.input_base import NodeData
 from ribasim.nodes import flow_demand, level_demand
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from shapely.geometry import MultiPolygon, Point, Polygon
 
-from ribasim_nl import CloudStorage
-from ribasim_nl import Model as ModelNL
+from ribasim_nl import CloudStorage, Model
 
 
 class Flushing:
     def __init__(
         self,
-        model: ModelNL | Model | Path | str,
+        model: Model | Path | str,
         lhm_flushing_path: Path | str = "Basisgegevens/LHM/lsw_flushing.gpkg",
         flushing_layer: str = "lsw_flushing_lhm43",
         flushing_id: str = "LSWNR",
@@ -27,13 +26,14 @@ class Flushing:
         significant_overlap: float = 0.5,
         convert_to_m3s: float = 1 / (1000 * 365 * 24 * 3600),
         dissolve_by_val: bool = True,
+        create_nodes: bool = False,
         debug_output: bool = False,
-    ):
+    ) -> None:
         """Initialize the Flushing class for adding flushing information to a Ribasim model.
 
         Parameters
         ----------
-        model : ModelNL | Model | Path | str
+        model : Model | Path | str
             The Ribasim model to add flushing to, or a path to the model
         lhm_flushing_path : Path | str, optional
             Path to the flushing geopackage, by default "Basisgegevens/LHM/lsw_flushing.gpkg"
@@ -51,6 +51,8 @@ class Flushing:
             Conversion factor to convert flushing_col to m3/s, by default 1 / (1000 * 365 * 24 * 3600)
         dissolve_by_val: bool, optional
             Dissolve geospatially by the integer value of 'flushing_col', by default True
+        create_nodes: bool, optional
+            Create demand nodes, by default False
         debug_output: bool, optional
             Print debug node - basin choices, by default True
         """
@@ -64,16 +66,15 @@ class Flushing:
         self.significant_overlap = significant_overlap
         self.convert_to_m3s = convert_to_m3s
         self.dissolve_by_val = dissolve_by_val
+        self.create_nodes = create_nodes
         self.debug_output = debug_output
 
-    def add_flushing(
-        self,
-    ) -> ModelNL | Model:
+    def add_flushing(self, df_function: pd.DataFrame | None = None) -> tuple[Model, pd.DataFrame]:
         """Add flushing information to the Ribasim model.
 
         Returns
         -------
-        ModelNL | Model
+        Model
             The updated Ribasim model with flushing information added
         """
         # Synchronize flushing data and model files
@@ -87,21 +88,32 @@ class Flushing:
             df_flushing_subset = self._dissolve_flushing_data(df_flushing_subset)
 
         # Get handles to relevant tables
-        all_nodes = model.node_table().df[["node_type", "geometry"]].copy()
-        df_outlet_static = model.outlet.static.df.set_index("node_id").copy()
-        df_pump_static = model.pump.static.df.set_index("node_id").copy()
+        all_nodes = model.node.df[["node_type", "geometry"]].copy()
+        df_outlet_static = model.outlet.static.df.copy()
+        # df_outlet_static = df_outlet_static[df_outlet_static.control_state == "afvoer"]
+        df_outlet_static = df_outlet_static.set_index("node_id")
+        df_pump_static = model.pump.static.df.copy()
+        # df_pump_static = df_pump_static[df_pump_static.control_state == "afvoer"]
+        df_pump_static = df_pump_static.set_index("node_id")
 
         # Get an extended basin table with no 'bergend' basins
-        df_basin = model.basin.node.df[["meta_categorie"]].join(
+        df_basin = model.basin.node.df[["meta_node_id"]].join(
             model.basin.area.df.set_index("node_id")[["meta_aanvoer", "geometry"]]
         )
-        df_basin = df_basin[df_basin.meta_categorie != "bergend"]
+        df_basin = df_basin[df_basin.index == df_basin.meta_node_id]
         df_basin = gpd.GeoDataFrame(df_basin, crs=model.basin.area.df.crs)
 
         # Reset the internal graph to ensure we have the most up-to-date version
         model.reset_graph
 
         # Find matching basins for each flushing geometry
+        df_demand: dict[str, list[Any]] = {
+            "nid": [],
+            "demand_type": [],
+            "demand": [],
+            f"meta_{self.flushing_id}": [],
+            "meta_basin_nid": [],
+        }
         for flushing_row in df_flushing_subset.itertuples():
             flush_id = getattr(flushing_row, self.flushing_id)
             flush_val = getattr(flushing_row, self.flushing_col)
@@ -128,13 +140,15 @@ class Flushing:
             # Make a DataFrame of the allowed nodes (node type) present in the
             # paths found. For downstream nodes, we want all pumps that are
             # designated as 'afvoer'.
-            dfd = self._find_downstream_nodes(model, downstream_paths, all_nodes, df_outlet_static, df_pump_static)
+            dfd = self._find_downstream_nodes(
+                model, downstream_paths, all_nodes, df_outlet_static, df_pump_static, df_function
+            )
             dfd = dfd[dfd.afvoer].copy()
 
             # No allowed downstream nodes found at all, log warning and continue
             if len(dfd) == 0:
                 basin_nids = basin_matches.node_id.tolist()
-                print(f"WARNING: Polygon {flush_id=} with basin node_id's={basin_nids} has no valid upstream nodes")
+                print(f"WARNING: Polygon {flush_id=} with basin node_id's={basin_nids} has no valid downstream nodes")
                 continue
 
             # Determine the contribution of each matching basin
@@ -149,7 +163,7 @@ class Flushing:
                 max_cover = basin_matches.rel_area_flush.sum() * 100
                 current_cover = df_flush.rel_area_flush.sum() * 100
                 print(
-                    f"WARNING: Polygon {flush_id=} missing upstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}, {current_cover=:.1f}%, {max_cover=:.1f}%"
+                    f"WARNING: Polygon {flush_id=} missing downstream nodes for basins: {basins_mis}. Covered basins: {basins_cov}, {current_cover=:.1f}%, {max_cover=:.1f}%"
                 )
 
             if self.debug_output:
@@ -169,9 +183,15 @@ class Flushing:
                 demand = demand * self.convert_to_m3s
                 dfd.loc[group.index, "flow_demand"] += demand / len(group.path_id.unique())
 
-                # add level demands to each basin to indicate streefpeil
+                # Add level demands to each basin to indicate streefpeil
                 demand = float(model.basin.area.df[model.basin.area.df.node_id == basin_nid].meta_streefpeil.iat[0])
-                model = self.add_level_demand(model, model.basin[basin_nid], demand)
+                if self.create_nodes:
+                    model = self.add_level_demand(model, model.basin[basin_nid], demand)
+                df_demand["nid"].append(basin_nid)
+                df_demand["demand_type"].append("level")
+                df_demand["demand"].append(demand)
+                df_demand[f"meta_{self.flushing_id}"].append(None)
+                df_demand["meta_basin_nid"].append(None)
 
             # Add flow demand as ribasim nodes to the selected nodes. In case
             # multiple basins are connected to the same node, sum individual
@@ -186,7 +206,7 @@ class Flushing:
                     continue
 
                 # Select the target node
-                subpart = getattr(model, pascal_to_snake_case(target_type))
+                subpart = model.get_component(target_type)
                 target_node = subpart[target_nid]
 
                 # Create and link the flow_demand
@@ -194,26 +214,34 @@ class Flushing:
                     f"meta_{self.flushing_id}": flush_id,
                     "meta_basin_nid": ",".join(map(str, group_basins)),
                 }
-                model = self.add_flushing_demand(model, target_node, demand, metadata=metadata)
+                if self.create_nodes:
+                    model = self.add_flushing_demand(model, target_node, demand, metadata=metadata)
+                df_demand["nid"].append(target_nid)
+                df_demand["demand_type"].append("flow")
+                df_demand["demand"].append(demand)
+                df_demand[f"meta_{self.flushing_id}"].append(metadata[f"meta_{self.flushing_id}"])
+                df_demand["meta_basin_nid"].append(metadata["meta_basin_nid"])
 
                 # Release min_upstream_level
-                if target_type == "Pump":
+                if self.create_nodes and target_type == "Pump":
                     subpart.static.df.loc[subpart.static.df.node_id == target_nid, "min_upstream_level"] = pd.NA
 
-        return model
+        df_demand_df = pd.DataFrame(df_demand)
+
+        return model, df_demand_df
 
     def add_flushing_demand(
         self,
-        model: ModelNL | Model,
+        model: Model,
         target_node: NodeData,
         demand: float,
         metadata: dict[str, str] | None,
-    ):
+    ) -> Model:
         """Add a flushing demand node to the model and connect it to a target node.
 
         Parameters
         ----------
-        model : ModelNL | Model
+        model : Model
             The model to add the flushing demand to
         target_node : NodeData
             The node to connect the flushing demand to
@@ -227,7 +255,7 @@ class Flushing:
         None
 
         """
-        df_static = getattr(getattr(model, pascal_to_snake_case(target_node.node_type)), "static").df
+        df_static = model.get_component(target_node.node_type).static.df
         max_flow_rate = df_static.set_index("node_id").loc[target_node.node_id, ["flow_rate", "max_flow_rate"]].max()
         if max_flow_rate < demand:
             print(f"WARNING: {target_node} has {max_flow_rate=:.2e}m3/s, setting a greater {demand=:.2e}m3/s")
@@ -238,7 +266,7 @@ class Flushing:
         uniq_times = model.basin.time.df.time.unique()
         new_flow_demand = model.flow_demand.add(
             Node(
-                model.node_table().df.index.max() + 1,
+                model.node.df.index.max() + 1,
                 Point(
                     target_node.geometry.x + self.flushing_geom_offset,
                     target_node.geometry.y,
@@ -260,15 +288,15 @@ class Flushing:
 
     def add_level_demand(
         self,
-        model: ModelNL | Model,
+        model: Model,
         target_node: NodeData,
         demand: float,
-    ):
+    ) -> Model:
         """Add a level demand node to the model and connect it to a target node.
 
         Parameters
         ----------
-        model : ModelNL | Model
+        model : Model
             The model to add the level demand to
         target_node : NodeData
             The node to connect the level demand to
@@ -283,7 +311,7 @@ class Flushing:
         uniq_times = model.basin.time.df.time.unique()
         new_level_demand = model.level_demand.add(
             Node(
-                model.node_table().df.index.max() + 1,
+                model.node.df.index.max() + 1,
                 Point(
                     target_node.geometry.x + self.flushing_geom_offset,
                     target_node.geometry.y,
@@ -305,13 +333,14 @@ class Flushing:
 
     def _find_downstream_nodes(
         self,
-        model: ModelNL | Model,
+        model: Model,
         paths: list[list[int]],
         all_nodes: gpd.GeoDataFrame,
         df_outlet_static: pd.DataFrame,
         df_pump_static: pd.DataFrame,
+        df_function: pd.DataFrame | None,
     ) -> pd.DataFrame:
-        """Find upstream nodes that can be used for flushing.
+        """Find downstream nodes that can be used for flushing.
 
         Parameters
         ----------
@@ -327,7 +356,7 @@ class Flushing:
         Returns
         -------
         pd.DataFrame
-            DataFrame containing upstream nodes and their properties
+            DataFrame containing downstream nodes and their properties
         """
         # Find unique nodes over all paths
         uniq_nodes = np.unique(np.concatenate(paths))
@@ -346,8 +375,9 @@ class Flushing:
         df_control_links = df_control_links.set_index("to_node_id")
         node_lookup = {}
         for nid in uniq_nodes:
+            # Only pumps for now
             nid_type = all_nodes.node_type.at[nid]
-            if nid_type in ["Pump"]:  # ignore outlet for now
+            if nid_type in ["Pump"]:
                 if nid in df_control_links.index:
                     # This node has incoming control links, check if a
                     # FlowDemand node is present already
@@ -362,13 +392,24 @@ class Flushing:
                 if not allowed:
                     continue
 
-                # Only pumps for now
-                if all_nodes.node_type.at[nid] == "Pump":
-                    bool_afvoer = bool(df_pump_static.at[nid, "meta_func_afvoer"])
-                    bool_afvoer = bool_afvoer or bool(df_pump_static.at[nid, "meta_func_circulair"])
+                if df_function is None:
+                    # Determine allowed nodes based on metadata
+                    if all_nodes.node_type.at[nid] == "Pump":
+                        bool_afvoer = bool(df_pump_static.at[nid, "meta_func_afvoer"])
+                        bool_afvoer = bool_afvoer or bool(df_pump_static.at[nid, "meta_func_circulatie"])
+                    else:
+                        # future fail-safe: in case we expand beyond pumps, we need to code this
+                        raise NotImplementedError(
+                            f"Unsupported flushing node_type={all_nodes.node_type.at[nid]} (metadata not yet implemented)"
+                        )
+                else:
+                    # Determine allowed nodes based on df_function
+                    # node_type is already checked at start of loop
+                    bool_afvoer = bool((nid in df_function.index) and (df_function.at[nid, "function"] == "drain"))
+
                 node_lookup[nid] = (nid_type, bool_afvoer)
 
-        dfd = {
+        dfd: dict[str, list[Any]] = {
             "basin": [],
             "path_id": [],
             "downstream_index": [],
@@ -381,7 +422,7 @@ class Flushing:
             basin_nid = path[0]
 
             for i, nid in enumerate(path):
-                # We don't need duplicate upstream node_id's originating from
+                # We don't need duplicate downstream node_id's originating from
                 # the same basin or non-applicable nodes
                 if nid not in node_lookup or (basin_nid, nid) in is_added:
                     continue
@@ -394,9 +435,9 @@ class Flushing:
                 dfd["node_type"].append(nid_type)
                 dfd["afvoer"].append(bool_afvoer)
                 is_added[(basin_nid, nid)] = True
-        dfd = pd.DataFrame(dfd)
+        dfd_df = pd.DataFrame(dfd)
 
-        return dfd
+        return dfd_df
 
     def _all_downstream_paths(
         self,
@@ -424,7 +465,7 @@ class Flushing:
             List of paths, where each path is a list of node IDs
         """
         # Initialize the return variable
-        end_paths = []
+        end_paths: list[list[int]] = []
 
         # Precompute nodes that intersect with limit_geom
         if limit_geom is not None:
@@ -449,8 +490,8 @@ class Flushing:
         end_paths: list[list[int]],
         valid_nodes: set[int],
         successors: dict[int, set[int]],
-    ):
-        """Perform depth-first search to find upstream paths.
+    ) -> None:
+        """Perform depth-first search to find downstream paths.
 
         Parameters
         ----------
@@ -493,12 +534,13 @@ class Flushing:
         new_rows = []
         for _, group in df.groupby(self.flushing_col):
             group["geometry"] = group.buffer(0.1)
-            visited = []
+            visited: list[Any] = []
             for cur_idx, row in group.iterrows():
                 if cur_idx in visited:
                     continue
                 subgroup = group[~group.index.isin(visited)].copy()
-                idxs, midxs = [], [cur_idx]
+                idxs: list[Any] = []
+                midxs: list[Any] = [cur_idx]
                 while len(midxs) > len(idxs):
                     idxs = midxs
                     midxs = subgroup.sindex.query(subgroup.loc[idxs].union_all(), predicate="intersects")
@@ -515,17 +557,17 @@ class Flushing:
 
     def _sync_files(
         self,
-    ) -> tuple[ModelNL | Model, gpd.GeoDataFrame]:
+    ) -> tuple[Model, gpd.GeoDataFrame]:
         """Synchronize and load required files.
 
         Returns
         -------
-        tuple[ModelNL | Model, gpd.GeoDataFrame]
+        tuple[Model, gpd.GeoDataFrame]
             Tuple containing:
             - The loaded Ribasim model
             - GeoDataFrame with flushing data
         """
-        is_model = isinstance(self.model, ModelNL) or isinstance(self.model, Model)
+        is_model = isinstance(self.model, Model)
 
         # Synchronize flushing data and model files
         filepaths = [self.lhm_flushing_path]
@@ -536,7 +578,7 @@ class Flushing:
         # Read the ribasim model
         model = self.model
         if not is_model:
-            model = ModelNL.read(self.model)
+            model = Model.read(self.model)
 
         # Open the flushing data
         df_flushing = gpd.read_file(self.lhm_flushing_path, layer=self.flushing_layer)

@@ -6,7 +6,6 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.geometry import drop_z
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -18,7 +17,7 @@ cloud = CloudStorage()
 
 authority = "BrabantseDelta"
 short_name = "wbd"
-run_model = False
+run_model = True
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
@@ -113,6 +112,13 @@ for action in gpd.list_layers(model_edits_gpkg).name:
         # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
         method(**kwargs)
+# %%
+# Toeveoegen Inlaten vanuit Volkerak door omkeren links:
+# Omkeren links
+link_ids = [2451, 2137, 2484, 2229]
+for link_id in link_ids:
+    model.reverse_link(link_id=link_id)
+# %%
 
 # %%
 # remove unassigned basin area
@@ -170,6 +176,65 @@ else:
 
 # Assign to model
 model.basin.area.df = combined_basin_areas_gdf
+
+# %%
+# fixes model
+# merge basins
+model.merge_basins(node_id=2101, to_node_id=2058, are_connected=True)
+model.merge_basins(node_id=1885, to_node_id=2114, are_connected=True)
+model.merge_basins(node_id=2239, to_node_id=1617, are_connected=True)
+model.merge_basins(node_id=1850, to_node_id=2022, are_connected=True)
+model.merge_basins(node_id=2271, to_node_id=1766, are_connected=True)
+model.merge_basins(node_id=2048, to_node_id=1412, are_connected=True)
+model.merge_basins(node_id=2300, to_node_id=2198, are_connected=True)
+model.merge_basins(node_id=2001, to_node_id=2273, are_connected=True)
+model.merge_basins(node_id=1441, to_node_id=1799, are_connected=True)
+model.merge_basins(node_id=2282, to_node_id=2120, are_connected=True)
+model.merge_basins(node_id=2120, to_node_id=1928, are_connected=True)
+model.merge_basins(node_id=1928, to_node_id=1581, are_connected=True)
+model.merge_basins(node_id=1946, to_node_id=1581, are_connected=True)
+model.merge_basins(node_id=2218, to_node_id=2311, are_connected=True)
+model.merge_basins(node_id=2022, to_node_id=2311, are_connected=True)
+model.merge_basins(node_id=1452, to_node_id=2114, are_connected=True)
+model.merge_basins(node_id=2306, to_node_id=2281, are_connected=True)
+model.merge_basins(node_id=2281, to_node_id=2176, are_connected=True)
+model.merge_basins(node_id=2143, to_node_id=1617, are_connected=True)
+model.merge_basins(node_id=2286, to_node_id=2295, are_connected=True)
+model.merge_basins(node_id=2294, to_node_id=2275, are_connected=True)
+model.merge_basins(node_id=1475, to_node_id=1689, are_connected=True)
+model.merge_basins(node_id=1574, to_node_id=2276, are_connected=True)
+model.merge_basins(node_id=2276, to_node_id=1854, are_connected=True)
+model.merge_basins(node_id=1854, to_node_id=2293, are_connected=True)
+model.merge_basins(node_id=2293, to_node_id=1858, are_connected=True)
+model.merge_basins(node_id=1939, to_node_id=1445, are_connected=True)
+model.merge_basins(node_id=1403, to_node_id=1611, are_connected=True)
+model.merge_basins(node_id=1957, to_node_id=1856, are_connected=True)
+model.merge_basins(node_id=1856, to_node_id=2289, are_connected=True)
+model.merge_basins(node_id=1573, to_node_id=1720, are_connected=True)
+model.merge_basins(node_id=1412, to_node_id=1563, are_connected=True)
+model.merge_basins(node_id=1858, to_node_id=1689, are_connected=True)
+model.merge_basins(node_id=1563, to_node_id=2280, are_connected=True)
+model.merge_basins(node_id=2280, to_node_id=1802, are_connected=True)
+model.merge_basins(node_id=1740, to_node_id=2047, are_connected=True)
+model.merge_basins(node_id=2253, to_node_id=2114, are_connected=True)
+model.merge_basins(node_id=1708, to_node_id=2129, are_connected=True)
+model.merge_basins(node_id=1878, to_node_id=2214, are_connected=True)
+model.merge_basins(node_id=2250, to_node_id=1428, are_connected=True)
+model.merge_basins(node_id=1812, to_node_id=1870, are_connected=True)
+model.merge_basins(node_id=1622, to_node_id=1780, are_connected=True)
+model.merge_basins(node_id=1780, to_node_id=1694, are_connected=True)
+model.merge_basins(node_id=1616, to_node_id=1909, are_connected=True)
+model.merge_basins(node_id=2302, to_node_id=1808, are_connected=True)
+model.merge_basins(node_id=1568, to_node_id=1909, are_connected=True)
+model.merge_basins(node_id=1611, to_node_id=1543, are_connected=True)
+model.merge_basins(node_id=1543, to_node_id=2289, are_connected=True)
+model.merge_basins(node_id=2208, to_node_id=2242, are_connected=True)
+model.merge_basins(node_id=2028, to_node_id=2242, are_connected=True)
+model.merge_basins(node_id=2201, to_node_id=1820, are_connected=True)
+model.merge_basins(node_id=2002, to_node_id=2215, are_connected=True)
+model.merge_basins(node_id=2215, to_node_id=2248, are_connected=True)
+model.merge_basins(node_id=2247, to_node_id=1998, are_connected=True)
+model.remove_node(998, remove_links=True)
 # %% Reset static tables
 
 # Reset static tables
@@ -186,9 +251,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node_table().df.node_type.unique():
-    table = getattr(model, pascal_to_snake_case(node_type)).node
-    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(layers=["sluis", "gemaal", "stuw"], authority=authority)
@@ -207,35 +270,32 @@ sanitize_node_table(
 )
 
 # label flow-boundaries to buitenlandse-aanvoer
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 
 # %%
 
 # init gestuwd voor basins, pumps en outlets
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
 #
-node_ids = (
-    model.node_table()
-    .df[
-        model.node_table().df["meta_code_waterbeheerder"].str.startswith("KST")
-        | model.node_table().df["meta_code_waterbeheerder"].str.startswith("GEM_")
-    ]
-    .index
-)
+node_ids = model.node.df[
+    model.node.df["meta_code_waterbeheerder"].str.startswith("KST")
+    | model.node.df["meta_code_waterbeheerder"].str.startswith("GEM_")
+].index
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_ids]
 
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
+model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
 
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
+    "meta_gestuwd",
+] = True
 
 
 #  %% write model

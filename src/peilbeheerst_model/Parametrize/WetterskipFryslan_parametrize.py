@@ -14,6 +14,11 @@ from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcess
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.control import (
+    add_controllers_to_connector_nodes,
+    add_function_to_peilbeheerst_node_table,
+    get_node_table_with_from_to_node_ids,
+)
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -60,8 +65,8 @@ cloud.synchronize(
     ]
 )
 
-# download the feedback forms, overwrite the old ones
-cloud.download_verwerkt(authority=waterschap, overwrite=True)
+# refresh only the feedback form from cloud
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -110,7 +115,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model.read(ribasim_work_dir_model_toml)
     ribasim_model.set_crs("EPSG:28992")
 
 # Uitlaat toevoegen at Ter Schelling
@@ -145,6 +150,9 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[1021], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+
+# remove node which causes error in feedback form
+ribasim_model.remove_node(2004, True)
 
 # numerical stability
 ribasim_model.merge_basins(node_id=388, to_node_id=238)  # 569 m2
@@ -435,15 +443,15 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 # change high initial states to 0
-ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0
+ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0.0
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == 9.999, "meta_streefpeil"] = str(
     unknown_streefpeil
 )
 
 # (re)set 'meta_node_id'-values
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
 ribasim_param.insert_standard_profile(
@@ -473,7 +481,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -501,7 +510,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -2.3456, 10, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -521,7 +530,6 @@ else:
     aanvoergebieden = None
 
 # add control, based on the meta_categorie
-ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(
@@ -531,9 +539,116 @@ ribasim_param.set_aanvoer_flags(
     outlet_aanvoer_on=tuple(inlaat_structures),
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
-# ribasim_param.add_discrete_control(ribasim_model, waterschap, default_level)
-ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap, aanvoer_upstream_offset=0.04)
-ribasim_param.add_continuous_control(ribasim_model, dy=-50, node_id_raiser=50000)
+ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
+
+# ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
+# ribasim_param.add_continuous_control(ribasim_model, dy=-50)
+
+# remove non-free flowing outlets (which flow against gravity) based on the difference in streefpeil and the threshold
+ribasim_model = ribasim_param.remove_non_free_flowing_outlets(
+    ribasim_model=ribasim_model,
+    to_exclude=[2183, 1394, 3302, 2625, 2910, 3497, 2209, 2547, 2705, 1123, 2398, 1037, 2209],
+    threshold=0.02,
+    printing=True,
+)
+
+LEVEL_DIFFERENCE_THRESHOLD = 0.04
+ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
+
+# create a table with from and to node ids, and the function of the node (supply, flow_control, drain)
+from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
+from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
+from_to_node_function_table["demand"] = None
+
+# manually change the function of some nodes based upon model inspection
+to_inlaat_nodes = [1596, 3411, 3882, 3880, 2773, 2783, 3882, 3884, 3023, 3411, 3888, 2398, 1647, 1747]
+from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_inlaat_nodes), "function"] = "supply"
+
+to_doorlaat_nodes = [3068]
+from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_doorlaat_nodes), "function"] = "flow_control"
+
+to_uitlaat_nodes = [3494]
+from_to_node_function_table.loc[from_to_node_function_table.index.isin(to_uitlaat_nodes), "function"] = "drain"
+
+# retain meta data of the outlets and pumps
+outlet_copy = ribasim_model.outlet.static.df[
+    [
+        "node_id",
+        "meta_categorie",
+        "meta_from_node_id",
+        "meta_to_node_id",
+        "meta_from_level",
+        "meta_to_level",
+        "meta_aanvoer",
+    ]
+].copy()
+pump_copy = ribasim_model.pump.static.df[
+    [
+        "node_id",
+        "meta_categorie",
+        "meta_func_afvoer",
+        "meta_func_aanvoer",
+        "meta_func_circulatie",
+        "meta_from_node_id",
+        "meta_to_node_id",
+        "meta_from_level",
+        "meta_to_level",
+    ]
+].copy()
+
+ribasim_model.node._update_used_ids()
+
+# Add flushing data
+flush = Flushing(ribasim_model)
+_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
+for row in df_demand[df_demand.demand_type == "flow"].itertuples():
+    from_to_node_function_table.at[row.nid, "function"] = "flushing"
+    from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
+
+add_controllers_to_connector_nodes(
+    model=ribasim_model,
+    node_functions_df=from_to_node_function_table,
+    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
+    target_level_column="meta_streefpeil",
+    drain_capacity=20,
+)
+
+# there are some duplicates in the discrete control? Remove them
+control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
+dup_control = []
+all_nodes = ribasim_model.node_table().df[["node_type"]]
+for to_node_id, group in control.groupby("to_node_id"):
+    if len(group) == 1:
+        continue
+    elif len(group) == 2:
+        group = group.merge(all_nodes, left_on="from_node_id", right_index=True, how="inner")
+        if set(group.node_type.tolist()) == {"DiscreteControl", "FlowDemand"}:
+            continue
+        else:
+            dup_control.append(group.from_node_id.iat[0])
+    else:
+        raise ValueError(
+            f"found {len(group)} incoming control links for {to_node_id=} from {set(group.from_node_id.tolist())}"
+        )
+
+for duplicate in dup_control:
+    ribasim_model.remove_node(duplicate, True)
+    print(f"Removed duplicate control node {duplicate}")
+
+# add the meta_data to the pump and outlet tables again
+# Outlet
+ribasim_model.outlet.static.df = (
+    ribasim_model.outlet.static.df.set_index("node_id").combine_first(outlet_copy.set_index("node_id")).reset_index()
+)
+
+# Pump
+ribasim_model.pump.static.df = (
+    ribasim_model.pump.static.df.set_index("node_id").combine_first(pump_copy.set_index("node_id")).reset_index()
+)
+
+# if flow_rate is 0, set to 20
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.flow_rate == 0, "flow_rate"] = 20.0
+ribasim_model.outlet.static.df["max_flow_rate"] = ribasim_model.outlet.static.df["flow_rate"].copy()
 
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
@@ -556,13 +671,13 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2700, "max_flow_rate"] = 172 / 60
+
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
+mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
+ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
-# lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 25
-ribasim_model.manning_resistance.static.df.manning_n = 0.02
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
@@ -583,17 +698,6 @@ assign = AssignAuthorities(
 )
 ribasim_model = assign.assign_authorities()
 
-# Add flushing data
-flush = Flushing(ribasim_model)
-flush.add_flushing()
-
-# TEMP CHANGES! VERY IMPORTANT TO REMOVE THIS AFTERWARDS! #@TODO ##################################
-reduce_computation_time = False
-if reduce_computation_time:
-    meteo_factor = 100
-    ribasim_model.basin.profile.df.area *= meteo_factor  # increase surface area
-    ribasim_model.basin.time.df.precipitation /= meteo_factor  # decrease meteo
-    ribasim_model.basin.time.df.potential_evaporation /= meteo_factor  # decrease meteo
 
 # set numerical settings
 # write model output

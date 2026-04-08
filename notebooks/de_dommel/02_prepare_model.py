@@ -17,7 +17,8 @@ short_name = "dommel"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
@@ -25,7 +26,7 @@ link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[top10NL_gpkg])
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -138,15 +139,15 @@ ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 
-ds_levels = pd.concat([static_data.basin, static_data.outlet], ignore_index=True).set_index("node_id")[
-    "min_upstream_level"
-]
-ds_levels.dropna(inplace=True)
-ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
-ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
+ds_levels = (
+    pd.concat([static_data.basin, static_data.outlet], ignore_index=True)
+    .set_index("node_id")["min_upstream_level"]
+    .dropna()
+    .groupby(level=0)
+    .min()
+)
 
-levels = ds_node_ids.apply(lambda x: ds_levels[x])
-streefpeil = levels.groupby(levels.index).min()
+streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)

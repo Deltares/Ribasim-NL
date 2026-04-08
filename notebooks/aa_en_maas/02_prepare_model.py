@@ -20,7 +20,8 @@ short_name = "aam"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 
@@ -36,13 +37,12 @@ cloud.synchronize(
     filepaths=[
         peilgebieden_path,
         stuwen_shp,
-        top10NL_gpkg,
-        profiles_gpkg,
         aam_data_gpkg,
         waterschap_grenzen,
         rws_waterschap_grenzen,
     ]
 )
+cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -84,7 +84,6 @@ profiles_df.set_index("profiel_id", inplace=True)
 
 # add streefpeilen
 add_streefpeil(model=model, peilgebieden_path=peilgebieden_path, layername=None, target_level="ZOMERPEIL", code="CODE")
-
 
 # %%
 # OUTLET
@@ -156,6 +155,10 @@ static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True
 gkw_gemaal_df = get_data_from_gkw(authority=authority, layers=["gemaal"])
 flow_rate = gkw_gemaal_df.set_index("code")["maximalecapaciteit"] / 60  # m3/minuut to m3/s
 flow_rate.name = "flow_rate"
+# --- Gemaal Veluwe heeft een capaciteit van 1.5m3/s ---
+static_data.reset_data_frame(node_type="Pump")  # zorgt dat static_data.pump up-to-date is
+static_data.pump.loc[static_data.pump["node_id"] == 100, "flow_rate"] = 1.5
+
 static_data.add_series(node_type="Pump", series=flow_rate)
 
 
@@ -171,15 +174,15 @@ ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 
-ds_levels = pd.concat([static_data.basin, static_data.outlet], ignore_index=True).set_index("node_id")[
-    "min_upstream_level"
-]
-ds_levels.dropna(inplace=True)
-ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
-ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
+ds_levels = (
+    pd.concat([static_data.basin, static_data.outlet], ignore_index=True)
+    .set_index("node_id")["min_upstream_level"]
+    .dropna()
+    .groupby(level=0)
+    .min()
+)
 
-levels = ds_node_ids.apply(lambda x: ds_levels[x])
-streefpeil = levels.groupby(levels.index).min()
+streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
@@ -197,6 +200,35 @@ profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), nam
 static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+
+# handmatige correcties
+forced_levels = {
+    1273: 6.4,
+    1849: 30.75,
+    1496: 4.2,
+    2006: 11.66,
+    1550: 21.93,
+    2011: 21.93,
+    1689: 15,
+    1406: 7.3,
+    1149: 6.95,
+    1465: 6.95,
+    1517: 13,
+    1190: 13.90,
+    1341: 14.82,
+    1922: 15,
+    1275: 2.2,  ## Drongelens kanaal en Dieze op streefpeil 2.2m (WATAK)
+    1743: 2.2,
+    1879: 2.2,
+    1801: 2.2,
+    1950: 2.2,
+    1394: 2.2,
+    2016: 2.2,
+    1627: 2.2,
+}
+
+mask = static_data.basin["node_id"].isin(forced_levels.keys())
+static_data.basin.loc[mask, "streefpeil"] = static_data.basin.loc[mask, "node_id"].map(forced_levels)
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)

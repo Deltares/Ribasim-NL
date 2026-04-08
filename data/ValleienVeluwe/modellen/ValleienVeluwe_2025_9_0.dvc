@@ -1,4 +1,4 @@
-md5: a2a7589074aa9a11e5d8588338f8556a
+md5: d448601aa1ac3fbf2b325310dbc63c08
 frozen: true
 deps:
 - md5: 8af8b899010b0ca3f39caa338d88d39b.dir
@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://modeldata/ValleienVeluwe/modellen/ValleienVeluwe_2025_9_0
 outs:
-- md5: e719c2b1e64acfefe00492ea4e7304aa.dir
-  size: 90497072
-  nfiles: 17
+- md5: 33e98b314470ad447e631c2ea7722be2.dir
+  size: 59207042
+  nfiles: 4
   hash: md5
   path: ValleienVeluwe_2025_9_0

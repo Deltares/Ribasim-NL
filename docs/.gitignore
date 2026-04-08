@@ -1,3 +1,5 @@
 /.quarto/
 /_site/
 /reference/
+
+**/*.quarto_ipynb

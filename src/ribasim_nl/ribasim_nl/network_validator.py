@@ -1,7 +1,11 @@
 from dataclasses import dataclass
 
 import geopandas as gpd
-from ribasim import Model
+from pandera.typing.geopandas import GeoDataFrame
+from ribasim.geometry.link import LinkSchema
+from ribasim.geometry.node import NodeSchema
+
+from ribasim_nl.model import Model
 
 
 def within_distance(row, gdf, tolerance=1.0) -> bool:
@@ -44,7 +48,7 @@ class NetworkValidator:
 
     Parameters
     ----------
-    model: ribasim.Model
+    model: Model
         Ribasim model
     tolerance: float (default=1)
         Tolerance to use for snapping. Should be in the units of the model.crs
@@ -55,11 +59,11 @@ class NetworkValidator:
     tolerance: float = 1
 
     @property
-    def node_df(self):
-        return self.model.node_table().df
+    def node_df(self) -> GeoDataFrame[NodeSchema] | None:
+        return self.model.node.df
 
     @property
-    def link_df(self):
+    def link_df(self) -> GeoDataFrame[LinkSchema] | None:
         return self.model.link.df
 
     def node_overlapping(self):
@@ -75,7 +79,7 @@ class NetworkValidator:
         mask = self.node_df.apply(lambda row: check_internal_basin(row, self.link_df), axis=1)
         return self.node_df[mask]
 
-    def node_invalid_connectivity(self, tolerance: float = 1.0):
+    def node_invalid_connectivity(self, tolerance: float = 1.0) -> GeoDataFrame:
         """Check if node_from and node_to are correct on link"""
         node_df = self.node_df
         invalid_links_df = self.link_incorrect_connectivity()
@@ -115,9 +119,11 @@ class NetworkValidator:
         """Check if the `from_node_type` in link-table in matches the `node_type` of the corresponding node in the node-table"""
         node_df = self.node_df
         mask = ~self.link_df.apply(
-            lambda row: node_df.at[row["from_node_id"], "node_type"] == row["from_node_type"]
-            if row["from_node_id"] in node_df.index
-            else False,
+            lambda row: (
+                node_df.at[row["from_node_id"], "node_type"] == row["from_node_type"]
+                if row["from_node_id"] in node_df.index
+                else False
+            ),
             axis=1,
         )
         return self.link_df[mask]
@@ -126,9 +132,11 @@ class NetworkValidator:
         """Check if the `to_node_type` in link-table in matches the `node_type` of the corresponding node in the node-table"""
         node_df = self.node_df
         mask = ~self.link_df.apply(
-            lambda row: node_df.at[row["to_node_id"], "node_type"] == row["to_node_type"]
-            if row["to_node_id"] in node_df.index
-            else False,
+            lambda row: (
+                node_df.at[row["to_node_id"], "node_type"] == row["to_node_type"]
+                if row["to_node_id"] in node_df.index
+                else False
+            ),
             axis=1,
         )
         return self.link_df[mask]

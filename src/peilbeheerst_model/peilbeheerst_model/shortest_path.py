@@ -10,11 +10,11 @@ import numpy as np
 import pandas as pd
 import shapely
 import tqdm.auto as tqdm
-from shapely.geometry import LineString, MultiLineString, Point
-from shapely.ops import split
+from shapely.geometry import LineString, Point
 from shapely.wkt import dumps
 
 from peilbeheerst_model.waterschappen import waterschap_data
+from ribasim_nl import geometry
 
 # ### Define functions
 # 1. splitting functions
@@ -22,19 +22,7 @@ from peilbeheerst_model.waterschappen import waterschap_data
 # 3. explode nodes functions
 
 
-def split_line_at_point(line, point):
-    buff = point.buffer(1e-4)  # Small buffer around the point
-    split_result = split(line, buff)
-    if len(split_result.geoms) in [2, 3]:
-        # Assume first and last segments are the result, ignore tiny middle segment if exists
-        result = MultiLineString([split_result.geoms[0], split_result.geoms[-1]])
-    else:
-        # Return the original line as a MultiLineString for consistency if no split occurred
-        result = MultiLineString([line])
-    return result
-
-
-def split_lines_at_intersections(gdf_object):
+def split_lines_at_intersections(gdf_object) -> gpd.GeoDataFrame:
     split_lines = []
     gdf_object.drop(columns=["geometry"])  # Preserve non-geometry attributes
 
@@ -52,7 +40,9 @@ def split_lines_at_intersections(gdf_object):
                 if isinstance(intersection, Point):
                     # Split the current line at the intersection point
                     try:
-                        split_result = split_line_at_point(row.geometry, intersection)
+                        split_result = geometry.split_line(
+                            row.geometry, intersection, tolerance=1e-4, as_multilinestring=True
+                        )
                         for geom in split_result.geoms:
                             new_row = row.copy()
                             new_row.geometry = geom
@@ -72,12 +62,12 @@ def split_lines_at_intersections(gdf_object):
     return result_gdf
 
 
-def component_to_gdf(component, node_geometries):
+def component_to_gdf(component, node_geometries) -> gpd.GeoDataFrame:
     geometries = [node_geometries[node] for node in component]
     return gpd.GeoDataFrame(geometry=geometries, index=list(component))
 
 
-def connect_components(graph, node1, node2, node_geometries):
+def connect_components(graph, node1, node2, node_geometries) -> None:
     geom1 = node_geometries[node1]
     geom2 = node_geometries[node2]
     new_link_geom = LineString([geom1.coords[0], geom2.coords[0]])
@@ -111,7 +101,7 @@ def cut_linestring_at_interval(line, interval):
     return [LineString([points[i], points[i + 1]]) for i in range(num_segments)]
 
 
-def explode_linestrings(gdf, interval):
+def explode_linestrings(gdf, interval) -> gpd.GeoDataFrame:
     """Explode LineStrings in a GeoDataFrame into smaller segments based on a distance interval."""
     segments = []
     for _, row in gdf.iterrows():
@@ -122,6 +112,9 @@ def explode_linestrings(gdf, interval):
 
 
 def connect_linestrings_within_distance(gdf, max_distance=4):
+    # FIXME: This function breaks when both ends of the LineString are modified. Instead, the function
+    #  `ribasim_nl.profiles.path_finder.fully_connected_network()` can be used. Here, both ends of the LineString can be
+    #  modified without problems (and this function is faster by implementing `sklearn.cluster.DBSCAN`).
     gdf = gdf.explode(ignore_index=False, index_parts=True)
     gdf["geometry"] = gdf.make_valid()
     gdf["geometry"] = gdf.geometry.apply(shapely.force_2d)
@@ -416,7 +409,7 @@ def shortest_path(waterschap, DATA, gdf_cross, gdf_rhws):
     return gdf_crossings_out
 
 
-def shortest_path_waterschap(waterschap):
+def shortest_path_waterschap(waterschap) -> gpd.GeoDataFrame:
     # Load Data
     # Define crossings file path
     data_path_str = waterschap_data[waterschap]["init"]["output_path"]

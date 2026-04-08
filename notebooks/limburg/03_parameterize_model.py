@@ -12,7 +12,7 @@ short_name = "limburg"
 
 run_model = True
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 
@@ -20,8 +20,7 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg], check_on_remote=False)
-cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+cloud.synchronize(filepaths=[static_data_xlsx])
 
 # %%
 
@@ -40,7 +39,12 @@ mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
+# %% fixes
+model.basin.area.df.loc[model.basin.area.df.node_id == 2418, "meta_streefpeil"] = 27.27
+model.basin.area.df.loc[model.basin.area.df.node_id == 1873, "meta_streefpeil"] = 27.6
 
+
+# %%
 # Write model
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")

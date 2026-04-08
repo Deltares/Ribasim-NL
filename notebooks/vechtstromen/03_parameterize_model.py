@@ -10,7 +10,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 authority = "Vechtstromen"
 short_name = "vechtstromen"
-run_model = False
+run_model = True
 run_period = None
 static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
 
@@ -18,10 +18,7 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
-
-# # you need the excel, but the model should be local-only by running 01_fix_model.py
-# cloud.synchronize(filepaths=[static_data_xlsx])
-# cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
 
 # %%
 # read
@@ -35,31 +32,16 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
 
-# %% deactivate inlets
-# node_ids = model.pump.node.df[model.pump.node.df.meta_function.str.startswith("in")].index.to_numpy()
-# model.pump.static.df.loc[model.pump.static.df.node_id.isin(node_ids), "active"] = False
-
-# Get node IDs where the name contains "inlaat"
-# node_ids = model.outlet.node.df[
-#    model.outlet.node.df["name"].fillna("").str.lower().str.contains("inlaat")
-# ].index.to_numpy()
-
-# Set active = False for these node IDs in the static data
-# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
-
-# node_ids = model.outlet.node.df[model.outlet.node.df.meta_function.str.startswith("inlaat")].index.to_numpy()
-# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "active"] = False
-
 # %%
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2019, ["meta_categorie"]] = "Inlaat"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 704, "min_upstream_level"] = 10.5
-model.pump.static.df.loc[model.pump.static.df.node_id == 672, "max_flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "max_flow_rate"] = 1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 947, "max_flow_rate"] = 2
+model.pump.static.df.loc[model.pump.static.df.node_id == 672, "max_flow_rate"] = 1.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "max_flow_rate"] = 1.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 947, "max_flow_rate"] = 2.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "max_flow_rate"] = 0.5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 532, "max_flow_rate"] = 2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1060, "max_flow_rate"] = 2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 44, "max_flow_rate"] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 532, "max_flow_rate"] = 2.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 1060, "max_flow_rate"] = 2.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 44, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "max_flow_rate"] = 0.5
 
 # %%
@@ -84,7 +66,6 @@ if run_model:
     result = model.run()
     assert result.exit_code == 0
 
-# %%
-controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-indicators = controle_output.run_afvoer()
+    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+    indicators = controle_output.run_afvoer()
 # %%

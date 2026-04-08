@@ -4,7 +4,6 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 
@@ -16,7 +15,7 @@ cloud = CloudStorage()
 
 authority = "Limburg"
 name = "limburg"
-run_model = False
+run_model = True
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -37,11 +36,11 @@ basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer=
 rename_basin_area_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="rename_basin_area")
 add_basin_area_gdf = gpd.read_file(model_edits_gpkg, layer="add_basin_area")
 connect_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="connect_basins")
-reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_edge")
+reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_link")
 add_basin_outlet_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="add_basin_outlet")
 remove_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
-update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")
-merge_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="merge_basins")
+# update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")
+# merge_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="merge_basins")
 
 
 # %% some stuff we'll need again
@@ -100,7 +99,7 @@ for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (926
 for node_id in [276, 2003, 990, 2395, 989]:
     model.remove_node(node_id, remove_links=True)
 
-basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]))
+basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]), tables=basin_data)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[2099, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
@@ -285,16 +284,16 @@ for row in remove_node_gdf.itertuples():
 
 
 # %% update nodes
-for row in update_node_gdf.itertuples():
-    model.update_node(
-        node_id=row.node_id,
-        node_type=row.node_type,
-        node_properties={"meta_code_waterbeheerder": row.meta_code_waterbeheerder},
-    )
+# for row in update_node_gdf.itertuples():
+#     model.update_node(
+#         node_id=row.node_id,
+#         node_type=row.node_type,
+#         node_properties={"meta_code_waterbeheerder": row.meta_code_waterbeheerder},
+#     )
 
 # %% merge_basins
-for row in merge_basins_gdf.itertuples():
-    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=row.are_connected)
+# for row in merge_basins_gdf.itertuples():
+#     model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=row.are_connected)
 
 # %% change node_type
 
@@ -303,6 +302,126 @@ selection_df = basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].not
 for row in basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].notna()].itertuples():
     if row.change_node_type:
         model.update_node(node_id=row.node_id, node_type=row.change_node_type)
+# %% extrad fixes
+outlet_ids = [
+    456,
+    577,
+    1194,
+    905,
+    906,
+    1155,
+    1186,
+    852,
+    1056,
+    839,
+    1055,
+    1054,
+    842,
+    855,
+    857,
+    856,
+    1134,
+    936,
+    1133,
+    1057,
+    933,
+    899,
+    1139,
+    1140,
+    1141,
+    897,
+    898,
+    901,
+    902,
+    1138,
+    1195,
+    1207,
+    1107,
+    845,
+    1157,
+    1104,
+    1052,
+    823,
+    1154,
+    826,
+    1145,
+    829,
+    828,
+    830,
+    1053,
+    1204,
+    932,
+    834,
+    832,
+    1120,
+    1201,
+    1203,
+    1146,
+    817,
+    821,
+    1165,
+    217,
+    1166,
+    813,
+    818,
+    825,
+    1213,
+    1217,
+    1216,
+    1066,
+    1102,
+    1143,
+    1158,
+    1159,
+    1205,
+    1206,
+    1208,
+    1209,
+    1210,
+    1211,
+    1214,
+    1215,
+    805,
+    806,
+    819,
+    820,
+    827,
+    1243,
+    1244,
+    1179,
+    904,
+    1193,
+]
+
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+merge_pairs = [
+    (2334, 1763),
+    (2461, 2070),
+    (2070, 2360),
+    (1885, 2360),
+    (2205, 2144),
+    (1387, 1941),
+    (1983, 2053),
+    (2181, 1582),
+    (1575, 1809),
+    (1481, 2316),
+    (1972, 1697),
+    (2163, 1658),
+]
+
+for basin_id, to_basin_id in merge_pairs:
+    model.merge_basins(
+        basin_id=basin_id,
+        to_basin_id=to_basin_id,
+        are_connected=True,
+    )
+
+model.remove_node(1314, remove_links=True)
+model.remove_node(611, remove_links=True)
+model.remove_node(1118, remove_links=True)
+model.remove_node(1173, remove_links=True)
 
 # %% remove nodes
 
@@ -365,9 +484,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node_table().df.node_type.unique():
-    table = getattr(model, pascal_to_snake_case(node_type)).node
-    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = pd.concat(
@@ -395,33 +512,30 @@ sanitize_node_table(
 # %%
 
 # set buitenlandse aanvoer
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 # %%
 
 # set meta_gestuwd in basins
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
-node_ids = (
-    model.node_table()
-    .df[
-        model.node_table().df["meta_code_waterbeheerder"].str.startswith("S_")
-        | model.node_table().df["meta_code_waterbeheerder"].str.startswith("P_")
-    ]
-    .index
-)
+node_ids = model.node.df[
+    model.node.df["meta_code_waterbeheerder"].str.startswith("S_")
+    | model.node.df["meta_code_waterbeheerder"].str.startswith("P_")
+].index
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_ids]
 
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
+model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
 
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
+    "meta_gestuwd",
+] = True
 
 
 #  %% write model

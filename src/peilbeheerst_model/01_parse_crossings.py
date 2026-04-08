@@ -1,5 +1,6 @@
 import json
 import pathlib
+from typing import Any
 
 import pandas as pd
 
@@ -8,7 +9,7 @@ from peilbeheerst_model import ParseCrossings, waterschap_data
 with open("waterschappen.json") as f:
     waterschap_data = json.load(f)
 
-print_df = {}
+print_df: dict[str, list[Any]] = {}
 for waterschap, waterschap_struct in waterschap_data.items():
     for funcname, func_args in waterschap_struct.items():
         if waterschap != "Wetterskip":

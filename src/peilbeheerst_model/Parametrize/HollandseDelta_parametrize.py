@@ -59,8 +59,8 @@ cloud.synchronize(
     ]
 )
 
-# download the feedback forms, overwrite the old ones
-cloud.download_verwerkt(authority=waterschap, overwrite=True)
+# refresh only the feedback form from cloud
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -111,7 +111,7 @@ processor.run()
 # load model
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    ribasim_model = Model(filepath=ribasim_work_dir_model_toml)
+    ribasim_model = Model.read(ribasim_work_dir_model_toml)
     ribasim_model.set_crs("EPSG:28992")
 
 # model specific tweaks
@@ -370,7 +370,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 # change high initial states to 0
-ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0
+ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0.0
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == 9.999, "meta_streefpeil"] = str(
     unknown_streefpeil
 )
@@ -592,9 +592,9 @@ ribasim_model.remove_node(2534, True)
 ribasim_model.remove_node(2125, True)
 
 # (re) set 'meta_node_id'
-ribasim_model.level_boundary.node.df.meta_node_id = ribasim_model.level_boundary.node.df.index
-ribasim_model.tabulated_rating_curve.node.df.meta_node_id = ribasim_model.tabulated_rating_curve.node.df.index
-ribasim_model.pump.node.df.meta_node_id = ribasim_model.pump.node.df.index
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -633,7 +633,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -661,7 +662,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -0.42, 1.24, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -675,11 +676,11 @@ ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waters
 ribasim_param.add_continuous_control(ribasim_model, dy=-50, exclude_outlets=(1265, 1371))
 
 # manually change the flow rates
-ribasim_model.pump.static.df.flow_rate = 2.5
-ribasim_model.pump.static.df.max_flow_rate = 2.5
+ribasim_model.pump.static.df["flow_rate"] = 2.5
+ribasim_model.pump.static.df["max_flow_rate"] = 2.5
 
-ribasim_model.outlet.static.df.flow_rate = 2.5
-ribasim_model.outlet.static.df.max_flow_rate = 2.5
+ribasim_model.outlet.static.df["flow_rate"] = 2.5
+ribasim_model.outlet.static.df["max_flow_rate"] = 2.5
 
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
@@ -704,11 +705,12 @@ assign_metadata.add_meta_to_basins(
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-ribasim_model.manning_resistance.node.df = ribasim_model.manning_resistance.node.df.dropna(subset="geometry")
+mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
+ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 100
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 100.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formating of the tables
 # only retain node_id's which are present in the .node table

@@ -4,7 +4,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["dynamic_model"]
-SELECTION = ["Noorderzijlvest"]
+SELECTION = ["StichtseRijnlanden"]
 INCLUDE_RESULTS = True
 
 

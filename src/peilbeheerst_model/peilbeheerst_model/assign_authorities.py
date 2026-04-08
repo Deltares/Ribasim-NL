@@ -1,6 +1,10 @@
 import geopandas as gpd
 import pandas as pd
 
+from ribasim_nl import CloudStorage
+
+cloud = CloudStorage()
+
 
 # TODO: Embed correct usage of `static` v. `time` dataframes in `AssignAuthorities`
 class AssignAuthorities:
@@ -22,7 +26,9 @@ class AssignAuthorities:
         ws_buffer=1000,
         RWS_buffer=1000,
         custom_nodes=None,
-    ):
+    ) -> None:
+        # make sure files exist locally
+        cloud.synchronize([ws_grenzen_path, RWS_grenzen_path])
         self.ws_grenzen_path = ws_grenzen_path
         self.RWS_grenzen_path = RWS_grenzen_path
 
@@ -67,10 +73,11 @@ class AssignAuthorities:
             print(temp_node_id.loc[temp_node_id["meta_couple_authority"].isna()])
             print("Warning! Not all LevelBoundary nodes were assigned to an authority.")
 
-        ribasim_model.level_boundary.node.df = temp_node_id.set_index("node_id")
+        lb_ids = ribasim_model.level_boundary.node.df.index
+        ribasim_model.node.df = pd.concat([ribasim_model.node.df.drop(lb_ids), temp_node_id.set_index("node_id")])
         return ribasim_model
 
-    def retrieve_geodataframe(self):
+    def retrieve_geodataframe(self) -> gpd.GeoDataFrame:
         """Main function which calls the other functions."""
         ws_grenzen, RWS_grenzen = self.load_data()
         authority_borders = self.clip_and_buffer(ws_grenzen, RWS_grenzen)
@@ -78,7 +85,7 @@ class AssignAuthorities:
 
         return authority_borders
 
-    def load_data(self):
+    def load_data(self) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
         """Loads and processes the authority areas of the waterschappen and RWS."""
         ws_grenzen = gpd.read_file(self.ws_grenzen_path)
         RWS_grenzen = gpd.read_file(self.RWS_grenzen_path)
@@ -109,7 +116,7 @@ class AssignAuthorities:
 
         return ws_grenzen, RWS_grenzen
 
-    def clip_and_buffer(self, ws_grenzen, RWS_grenzen):
+    def clip_and_buffer(self, ws_grenzen, RWS_grenzen) -> gpd.GeoDataFrame:
         """Clips the waterboard boundaries by removing the RWS areas and applies a buffer to the remaining polygons."""
         # Remove the RWS area in each WS
         ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how="symmetric_difference", keep_geom_type=True)
@@ -128,7 +135,7 @@ class AssignAuthorities:
 
         return authority_borders
 
-    def extent_authority_borders(self, authority_borders):
+    def extent_authority_borders(self, authority_borders) -> gpd.GeoDataFrame:
         """Extends the authority borders by combining them with the original waterboard boundaries and dissolving the geometries based on the name."""
         # Add a bit more area by dissolving it with the original gdf
         authority_borders = pd.concat([authority_borders, self.ws_grenzen_OG])
@@ -163,5 +170,6 @@ class AssignAuthorities:
             .merge(right=joined[["node_id", "meta_couple_authority"]], on="node_id", how="left")
             .set_index("node_id")
         )
-        ribasim_model.level_boundary.node.df = LB_node
+        lb_ids = ribasim_model.level_boundary.node.df.index
+        ribasim_model.node.df = pd.concat([ribasim_model.node.df.drop(lb_ids), LB_node])
         return ribasim_model

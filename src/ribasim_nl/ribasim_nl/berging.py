@@ -1,4 +1,3 @@
-# %%
 from pathlib import Path
 
 import numpy as np
@@ -7,13 +6,15 @@ import pandas as pd
 import rasterio
 import tqdm
 from geopandas import GeoDataFrame
+from rasterio.enums import Resampling
 from rasterio.windows import from_bounds
 from rasterstats import zonal_stats
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.nodes import basin, tabulated_rating_curve
 from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
+from ribasim_nl.model import Model
 
 BANDEN = {
     "maaiveld": 1,
@@ -29,6 +30,45 @@ BANDEN = {
     "opp_secundair": 11,
     "opp_tertiair": 12,
 }
+
+
+def percentage_oppervlaktewater() -> None:
+    """Single-use function to compute percentage surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
+    cloud = CloudStorage()
+    lhm_raster_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
+    out_file = lhm_raster_file.with_name("LHM_oppervlaktewater_percentage.tif")
+    with rasterio.open(lhm_raster_file) as src:
+        band11 = src.read(11).astype("float32")
+        band12 = src.read(12).astype("float32")
+        profile = src.profile.copy()
+
+        # nodata ophalen
+        nodata = src.nodata
+
+        # celoppervlak uit resolutie
+        cell_width = src.transform.a
+        cell_height = abs(src.transform.e)
+        cell_area = cell_width * cell_height
+
+        # geldige pixels bepalen
+        if nodata is not None:
+            valid = (band11 != nodata) & (band12 != nodata)
+        else:
+            valid = np.ones(band11.shape, dtype=bool)
+
+        # oppervlaktes optellen
+        summed_area = np.full(band11.shape, np.nan, dtype="float32")
+        summed_area[valid] = band11[valid] + band12[valid]
+
+        # delen door celoppervlak
+        result = np.full(band11.shape, np.nan, dtype="float32")
+        result[valid] = summed_area[valid] / cell_area
+
+        # output profiel aanpassen naar 1 band
+        profile.update(dtype="float32", count=1, nodata=np.nan)
+
+        with rasterio.open(out_file, "w", **profile) as dst:
+            dst.write(result, 1)
 
 
 def sample_raster(
@@ -161,13 +201,12 @@ def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> ta
 
 
 def get_basin_profile(
-    basin_polygon: Polygon, polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path
+    basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res=25
 ) -> basin.Profile:
     """Generate a basin.Static table for a Polygon using LHM rasters
 
     Args:
         basin_polygon (Polygon): Polygon defining the basin
-        polygon (Polygon): Polygon defining all waters that are to be subtracted in primary waters
         max_level (float): minimal level in basin-profile
         min_level (float): maximal level in basin-profile
         lhm_raster_file (Path): path to lhm-rasters
@@ -177,78 +216,102 @@ def get_basin_profile(
         basin.Profile: basin-profile for basin-node
     """
     with rasterio.open(lhm_raster_file) as src:
-        level = np.array([], dtype=float)
-        area = np.array([], dtype=float)
-
-        # Get the window and its transform
         window = from_bounds(*basin_polygon.bounds, transform=src.transform)
 
-        if (window.width) < 1 or (window.height < 1):
+        if window.width < 1 or window.height < 1:
             window = from_bounds(*basin_polygon.centroid.buffer(125).bounds, transform=src.transform)
+
+        # Maak window netjes integer op pixelgrenzen
+        window = window.round_offsets().round_lengths()
         window_transform = src.window_transform(window)
 
-        # Primary water bottom-level
-        window_data = src.read(3, window=window)
+        # original resolution
+        xres, yres = abs(src.res[0]), abs(src.res[1])
 
-        # We don't want hoofdwater / doorgaand water to be in profile
-        if (polygon is None) | (window_data.size == 0):
-            mask = ~np.isnan(window_data)
-        else:
-            mask = rasterio.features.geometry_mask(
-                [polygon], window_data.shape, window_transform, all_touched=True, invert=True
+        # shape to higher resolution so we follow the polygon a bit better
+        out_height = max(1, round(window.height * yres / sample_res))
+        out_width = max(1, round(window.width * xres / sample_res))
+
+        # new transform
+        new_transform = rasterio.Affine(sample_res, 0.0, window_transform.c, 0.0, -sample_res, window_transform.f)
+
+        # resampled helper
+        def read_resampled(band):
+            return src.read(
+                band, window=window, out_shape=(out_height, out_width), resampling=Resampling.nearest
+            ).astype(float)
+
+        # if no area 1% - 2% of basin-area
+        def default_ah_df() -> pd.DataFrame:
+            df = pd.DataFrame(
+                data={
+                    "level": [min_level, max_level],
+                    "area": [basin_polygon.area * 0.01, basin_polygon.area * 0.02],
+                    "comment": ["default: 1% oppervlak", "default: 2% oppervlak"],
+                }
             )
-            # Include nodata as False in mask
-            mask[np.isnan(window_data)] = False
+            df["level"] = df["level"].round(2)
+            df["area"] = df["area"].round(1)
+            return df
 
-        # add levels
-        level = np.concat([level, window_data[mask].ravel()])
+        mask = rasterio.features.geometry_mask(
+            [basin_polygon], out_shape=(out_height, out_width), transform=new_transform, all_touched=True, invert=True
+        )
 
-        # add areas on same mask
-        window_data = src.read(10, window=window)
-        area = np.concat([area, window_data[mask].ravel()])
+        num_cells = np.sum(mask)
+        if num_cells == 0:
+            ah_df = default_ah_df()
+        else:
+            scale = basin_polygon.area / (num_cells * sample_res**2 * (abs(xres) / sample_res) ** 2)
 
-        # Secondary water
-        window_data = src.read(5, window=window)
-        mask = ~np.isnan(window_data)
-        level = np.concat([level, window_data[mask].ravel()])
+            # 5) bandparen uitlezen
+            band_pairs = [
+                (BANDEN["bodemhoogte_tertiair_zomer"], BANDEN["opp_tertiair"]),
+                (BANDEN["bodemhoogte_secundair_zomer"], BANDEN["opp_secundair"]),
+            ]
 
-        window_data = src.read(11, window=window)
-        area = np.concat([area, window_data[mask].ravel()])
+            dfs = []
 
-        # Tertiary water water
-        window_data = src.read(7, window=window)
-        mask = ~np.isnan(window_data)
-        level = np.concat([level, window_data[mask].ravel()])
+            for level_band, area_band in band_pairs:
+                level = read_resampled(level_band)
+                area = read_resampled(area_band)
 
-        window_data = src.read(12, window=window)
-        area = np.concat([area, window_data[mask].ravel()])
+                valid = mask & np.isfinite(level) & np.isfinite(area)
 
-    # Make sure area is never larger than polygon-area
-    area[area > basin_polygon.area] = basin_polygon.area
+                if np.any(valid):
+                    dfs.append(
+                        pd.DataFrame(
+                            {
+                                "level": level[valid],
+                                "area": area[valid] * scale,
+                            }
+                        )
+                    )
 
-    # If area is empty, we add min_level at 5% of polygon-area
-    if area.size == 0:
-        level = np.append(level, min_level)
-        area = np.append(area, basin_polygon.area * 0.05)
+            # make ah_df by summing identical levels, sorting and taking the cumulative sum of the area
+            if len(dfs) > 1:
+                df = pd.concat(dfs, ignore_index=True)
+                # we round levels to 2 decimals so areas get summed
+                df["level"] = df["level"].round(2)
+                ah_df = df.groupby("level", as_index=False)["area"].sum().sort_values(by="level").reset_index(drop=True)
+                ah_df["area"] = ah_df["area"].cumsum().round(1)
+                ah_df["comment"] = pd.Series(dtype=str)
 
-    # Add extra row with max_level at basin_polygon.area
-    level = np.append(level, max_level)
-    area = np.append(area, basin_polygon.area)
+                # 0 m2 is not allowed we make it 1
+                mask = ah_df.area <= 1
+                ah_df.loc[mask, ["area"]] = 1
+                ah_df.loc[mask, ["comment"]] = "oppervlak >= 1m2 gezet"
 
-    # In pandas for magic
-    df = pd.DataFrame({"level": np.round(level, decimals=2), "area": np.round(area)})
-    df.loc[df["area"] == 0, "area"] = 1  # 0m2 area doesn't work
-    df.sort_values(by="level", inplace=True)
-    df = df.set_index("level").cumsum().reset_index()
-    df.dropna(inplace=True)
-    df.drop_duplicates("level", keep="last", inplace=True)
-
+                if ah_df.empty:
+                    ah_df = default_ah_df()
+            else:
+                ah_df = default_ah_df()
     # Return profile
-    return basin.Profile(area=df.area, level=df.level)
+    return basin.Profile(area=ah_df.area, level=ah_df.level, meta_comment=ah_df.comment)
 
 
 class VdGaastBerging:
-    def __init__(self, model: Model, cloud: CloudStorage, use_add_api: bool = True):
+    def __init__(self, model: Model, cloud: CloudStorage, use_add_api: bool = True) -> None:
         self.model = model
         self.cloud = cloud
         self.use_add_api = use_add_api
@@ -260,7 +323,7 @@ class VdGaastBerging:
         self.lhm_raster_file = lhm_raster_file
         self.ma_raster_file = ma_raster_file
 
-    def add(self):
+    def add(self) -> None:
         model = self.model
 
         # get basin_area and add statistics
@@ -278,31 +341,30 @@ class VdGaastBerging:
             basin_row = basin_area_df.loc[basin_id]
             basin_polygon = basin_row.geometry
 
-            # define storage basin node
-            node = Node(
-                meta_categorie="bergend",
-                geometry=Point(row.geometry.x + 10, row.geometry.y),
-            )
-
             # define storage basin data
-            max_level = max_level = basin_area_df.at[basin_id, "maaiveld_max"]
-            min_level = max_level = basin_area_df.at[basin_id, "maaiveld_min"]
+            max_level = basin_area_df.at[basin_id, "maaiveld_max"]
+            min_level = basin_area_df.at[basin_id, "maaiveld_min"]
             if min_level == max_level:
                 min_level -= 0.1
             basin_profile = get_basin_profile(
                 basin_polygon=basin_polygon,
-                polygon=basin_polygon,
                 max_level=max_level,
                 min_level=min_level,
                 lhm_raster_file=self.lhm_raster_file,
             )
+            oppervlaktewater_percentage = round(basin_profile.df.area.max() / basin_polygon.area * 100, 1)
             data = [
                 basin_profile,
                 basin.State(level=[basin_profile.df.level.min() + 0.1]),
-                basin.Area(geometry=[basin_polygon]),
+                basin.Area(geometry=[basin_polygon], meta_oppervlaktewater_percentage=[oppervlaktewater_percentage]),
             ]
 
             # add storage basin
+
+            node = Node(
+                meta_categorie="bergend",
+                geometry=Point(row.geometry.x + 10, row.geometry.y),
+            )
             basin_node = model.basin.add(node=node, tables=data)
 
             # add connector

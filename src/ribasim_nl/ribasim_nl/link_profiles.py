@@ -19,6 +19,8 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
     if isinstance(profiles, DAMOProfiles):
         profiles = profiles.profile_line_df
 
+    assert model.link.df is not None
+    assert model.node.df is not None
     link_geometry = model.link.df.at[link_id, "geometry"]
 
     # get intersecting profiles
@@ -36,7 +38,7 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
 
         # try to find a better one on the links in the same basin
         node_ids = model.link.df.loc[link_id][["from_node_id", "to_node_id"]].to_numpy()
-        node_id = next((i for i in node_ids if model.node_table().df.at[i, "node_type"] == "Basin"), None)
+        node_id = next((i for i in node_ids if model.node.df.at[i, "node_type"] == "Basin"), None)
         if node_id is not None:
             geometry = model.link.df[
                 (model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)
@@ -49,7 +51,8 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
     return getattr(profile, id_col)
 
 
-def add_link_profile_ids(model: Model, profiles: DAMOProfiles, id_col="globalid"):
+def add_link_profile_ids(model: Model, profiles: DAMOProfiles, id_col="globalid") -> None:
+    assert model.link.df is not None
     for link_id in tqdm(model.link.df.index, desc="link_profile_ids"):
         profile_id = link_profile_id(link_id, model, profiles, id_col)
         model.link.df.loc[link_id, "meta_profielid_waterbeheerder"] = profile_id

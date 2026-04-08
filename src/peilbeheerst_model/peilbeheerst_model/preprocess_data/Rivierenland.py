@@ -1,5 +1,6 @@
 # import packages and functions
 import os
+from typing import Any
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -20,7 +21,7 @@ output_gpkg_path = "../../Data_postprocessed/Waterschappen/WSRL"
 
 
 # WSRL has delivered the data per catchment. Loop through each catchment, and concat all data to a single dictionary
-WSRL = {}
+WSRL: dict[str, Any] = {}
 
 for root, dirs, files in os.walk(data_path):
     for file in files:
