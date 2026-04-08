@@ -4,6 +4,7 @@ import datetime
 import os
 import warnings
 
+import geopandas as gpd
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.add_storage_basins import AddStorageBasins
@@ -59,6 +60,7 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/aanvoer.gpkg")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
+gaarkeuken_path = cloud.joinpath(waterschap, "verwerkt/Parametrisatie_data/gaarkeuken.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -69,7 +71,8 @@ cloud.synchronize(
         # qlr_path,
         # aanvoer_path,
         # meteo_path,
-        profiles_path,
+        # profiles_path,
+        gaarkeuken_path
     ]
 )
 
@@ -331,6 +334,13 @@ ribasim_model.merge_basins(node_id=979, to_node_id=16)  # samenvoegen voor water
 ribasim_model.merge_basins(node_id=182, to_node_id=16)  # part of the boezem
 ribasim_model.merge_basins(node_id=426, to_node_id=17)  # part of the boezem
 ribasim_model.merge_basins(node_id=585, to_node_id=592)  #
+
+# add gaarkeuken to basin 184
+# Add Gaarkeuken to basin 184
+basin_184 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 184]
+gaarkeuken = gpd.read_file(gaarkeuken_path)
+merged_geom = basin_184.geometry.iloc[0].union(gaarkeuken.geometry.union_all())
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 184, "geometry"] = merged_geom
 
 inlaat_pump = []  # pumps
 inlaat_structures = []  # weirs / outlets
