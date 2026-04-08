@@ -211,6 +211,7 @@ ribasim_param.change_pump_func(ribasim_model, 300, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 300, "afvoer", 1)
 ribasim_model.remove_node(160, True)
 ribasim_model.remove_node(439, True)
+ribasim_model.remove_node(139, True)
 ribasim_model.remove_node(528, True)
 ribasim_model.remove_node(635, True)
 ribasim_model.remove_node(505, True)
@@ -290,7 +291,8 @@ ribasim_model.link.add(pump_node, level_boundary_node)
 
 # Inlaat schiegemaal
 trc_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(87696, 435710), name="Inlaat schiegemaal"), [tabulated_rating_curve.Static(flow_rate=[0.1])]
+    Node(geometry=Point(87696, 435710), name="Inlaat schiegemaal"),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, trc_node)
 ribasim_model.link.add(trc_node, ribasim_model.basin[9])
@@ -300,7 +302,8 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(91581, 439314)), [level_boundary.Static(level=[default_level])]
 )
 trc_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(91470, 439259), name="Inlaat Bergsluis"), [tabulated_rating_curve.Static(flow_rate=[0.1])]
+    Node(geometry=Point(91470, 439259), name="Inlaat Bergsluis"),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, trc_node)
 ribasim_model.link.add(trc_node, ribasim_model.basin[9])
@@ -558,7 +561,7 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
 )
 
 # Remove all nodes with a max_flow_rate smaller than the min_scaled_flow_rate
-too_low_flow_rates = (
+too_low_flow_rates_connector_node_ids = (
     ribasim_model.outlet.static.df.loc[
         ribasim_model.outlet.static.df.max_flow_rate <= min_scaled_flow_rate, "node_id"
     ].tolist()
@@ -566,7 +569,34 @@ too_low_flow_rates = (
         ribasim_model.pump.static.df.max_flow_rate <= min_scaled_flow_rate, "node_id"
     ].tolist()
 )
-for node_id in too_low_flow_rates:
+
+# remove the corresponding level_boundaries as well. May be either upstream or downstream from the connector node, so check both
+level_boundary_nodes_to_remove = (
+    ribasim_model.link.df.loc[
+        (ribasim_model.link.df.from_node_id.isin(too_low_flow_rates_connector_node_ids))
+        & (ribasim_model.link.df.meta_to_node_type == "LevelBoundary"),
+        "to_node_id",
+    ].tolist()
+    + ribasim_model.link.df.loc[
+        (ribasim_model.link.df.to_node_id.isin(too_low_flow_rates_connector_node_ids))
+        & (ribasim_model.link.df.meta_from_node_type == "LevelBoundary"),
+        "from_node_id",
+    ].tolist()
+)
+
+# and remove the control nodes
+control_nodes_to_remove = ribasim_model.link.df.loc[
+    (ribasim_model.link.df.to_node_id.isin(too_low_flow_rates_connector_node_ids))
+    & (ribasim_model.link.df.link_type == "control"),
+    "from_node_id",
+].tolist()
+
+# remove the nodes with too low flow rates and the corresponding level boundaries
+for node_id in too_low_flow_rates_connector_node_ids:
+    ribasim_model.remove_node(node_id, True)
+for node_id in level_boundary_nodes_to_remove:
+    ribasim_model.remove_node(node_id, True)
+for node_id in control_nodes_to_remove:
     ribasim_model.remove_node(node_id, True)
 
 # add the water authority column to couple the model with
