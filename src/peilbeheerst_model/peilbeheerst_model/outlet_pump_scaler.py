@@ -8,7 +8,7 @@ import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, settings
 
 __all__ = ["OutletPumpScalingConfig", "scale_outlets_pumps"]
 
@@ -641,7 +641,7 @@ class _OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=model.filepath)
+                run_ribasim(model.filepath, ribasim_home=settings.ribasim_home)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
                 ribasim_water_levels = (
