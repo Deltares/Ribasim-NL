@@ -6,7 +6,6 @@ import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
-from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -21,6 +20,7 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     set_node_functions,
 )
+from ribasim_nl.profiles import implement
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing
@@ -538,22 +538,22 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
-# insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
-ribasim_param.insert_standard_profile(
-    ribasim_model,
-    unknown_streefpeil=unknown_streefpeil,
-    regular_percentage=regular_percentage,
-    boezem_percentage=boezem_percentage,
-    depth_profile=2,
-)
+# # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
+# ribasim_param.insert_standard_profile(
+#     ribasim_model,
+#     unknown_streefpeil=unknown_streefpeil,
+#     regular_percentage=regular_percentage,
+#     boezem_percentage=boezem_percentage,
+#     depth_profile=2,
+# )
 
-add_storage_basins = AddStorageBasins(
-    ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
-)
+# add_storage_basins = AddStorageBasins(
+#     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
+# )
 
-add_storage_basins.create_bergende_basins()
+# add_storage_basins.create_bergende_basins()
 
-# implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
 if DYNAMIC_CONDITIONS:
