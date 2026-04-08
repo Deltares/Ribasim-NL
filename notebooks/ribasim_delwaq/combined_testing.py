@@ -27,6 +27,9 @@ assert toml_path.is_file()
 
 # %%
 """
+
+Pseudo-code of envisioned workflow to set up a delwaq simulation automatically
+
 # configuration of LWKM run:
 # substance or tracer (mode 1 or 2 as done in ANIMO2Delwaq.py)
 # which substances to include (e.g. only N and P or also OON, AAP, OOP)
@@ -120,11 +123,6 @@ format of loadswq.id (without indentation):
 
 # %%
 # manually add input timeseries (boundwq.dat & b6_loads.inc) to delwaq folder
-
-# TODO: automation: add data to ribasim model beforehand so generate.py handles them automatically
-# requires timeseries to be in long format with columns ['ribasim_nodeid', 'time', 'substance', 'value']
-# requires modification of generate.py for loads on Basin nodes UPDATE: this has been done as of 1-12-2025
-
 # %%
 ########## RUNNING DELWAQ SIMULATION ##########
 
@@ -143,7 +141,6 @@ result = subprocess.run([dimr_path, dimr_config_path], cwd=output_path, capture_
 print(result.stdout)
 print(result.stderr)
 result.check_returncode()
-
 
 # %%
 # before parsing model: include manually added substance/load
@@ -171,12 +168,9 @@ model.basin.concentration_external
 # %%
 # save results for QGIS visualization
 nmodel.basin.concentration_external._write_arrow("concentration.arrow", nmodel.filepath.parent, nmodel.results_dir)
+nmodel.write(model_path / "lhm_test.toml")
 
-# $ replace with env variable RIBASIM_NL_DATA_DIR
-nmodel.write("c:/Users/leeuw_je/Projecten/LWKM_Ribasim/clouddata/modellen/lhm_coupled_2025_9_0/lhm_test.toml")
-
+# %%
+# additional inspection
 nmodel.basin.concentration_external.filepath = "results/concentration.arrow"
-
 # display(nmodel.basin.concentration_external)
-
-# does not show anything
