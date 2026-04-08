@@ -25,7 +25,7 @@ def add_forcing(model, cloud, starttime, endtime):
     # Add dynamic groundwater
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    _, budgets_df = offline_budgets.compute_budgets(model)
+    _, budgets_df = offline_budgets.compute_budgets(model)  # budgets_df is used to compute basin_fractions
     return budgets_df
 
 
@@ -105,6 +105,5 @@ for authority in authorities:
             # run model
             model.write(dst_toml_file)
             if write_budgets:
-                budgets_df.to_feather(dst_toml_file.with_name("budgets.arrow"))
-                budgets_df.to_csv(dst_toml_file.with_name("budgets.csv.zip"), compression="zip")
+                budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
             model.run()
