@@ -11,7 +11,6 @@ from peilbeheerst_model.add_storage_basins import AddStorageBasins
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
-from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
@@ -20,6 +19,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    remove_duplicate_controls,
     set_node_functions,
 )
 from shapely import Point
@@ -62,19 +62,19 @@ meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 gaarkeuken_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaarkeuken.gpkg")
 
-cloud.synchronize(
-    filepaths=[
-        # ribasim_base_model_dir,
-        # FeedbackFormulier_path,
-        # ws_grenzen_path,
-        # RWS_grenzen_path,
-        # qlr_path,
-        # aanvoer_path,
-        # meteo_path,
-        # profiles_path,
-        gaarkeuken_path
-    ]
-)
+# cloud.synchronize(
+#     filepaths=[
+#         ribasim_base_model_dir,
+#         FeedbackFormulier_path,
+#         ws_grenzen_path,
+#         RWS_grenzen_path,
+#         qlr_path,
+#         aanvoer_path,
+#         meteo_path,
+#         profiles_path,
+#         gaarkeuken_path,
+#     ]
+# )
 
 # refresh only the feedback form from cloud
 cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -663,7 +663,7 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-ribasim_model.node._update_used_ids()
+# ribasim_model.node._update_used_ids()
 
 # # Add flushing data
 # flush = Flushing(
@@ -674,9 +674,8 @@ ribasim_model.node._update_used_ids()
 #     flushing_col="doorsp_mmj",
 # )
 # _, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
-# for row in df_demand[df_demand.demand_type == "flow"].itertuples():
-#     from_to_node_function_table.at[row.nid, "function"] = "flushing"
-#     from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
+# from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
+
 
 add_controllers_to_connector_nodes(
     model=ribasim_model,
@@ -685,28 +684,7 @@ add_controllers_to_connector_nodes(
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
-
-# there are some duplicates in the discrete control? Remove them
-control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
-dup_control = []
-all_nodes = ribasim_model.node_table().df[["node_type"]]
-for to_node_id, group in control.groupby("to_node_id"):
-    if len(group) == 1:
-        continue
-    elif len(group) == 2:
-        group = group.merge(all_nodes, left_on="from_node_id", right_index=True, how="inner")
-        if set(group.node_type.tolist()) == {"DiscreteControl", "FlowDemand"}:
-            continue
-        else:
-            dup_control.append(group.from_node_id.iat[0])
-    else:
-        raise ValueError(
-            f"found {len(group)} incoming control links for {to_node_id=} from {set(group.from_node_id.tolist())}"
-        )
-
-for duplicate in dup_control:
-    ribasim_model.remove_node(duplicate, True)
-    print(f"Removed duplicate control node {duplicate}")
+remove_duplicate_controls(ribasim_model)
 
 # add the meta_data to the pump and outlet tables again
 # Outlet
@@ -779,20 +757,20 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "
 )
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "flow_rate"] = 0.1
 
-# rescaling of outlets (and pumps)
-ribasim_model, from_to_node_function_table = scale_outlets_pumps(
-    OutletPumpScalingConfig(
-        ribasim_model_path=ribasim_work_dir_model_toml,
-        ribasim_model=ribasim_model,
-        from_to_node_function_table=from_to_node_function_table,
-        waterschap=waterschap,
-        cloud=cloud,
-        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        max_iterations=20,
-        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-    )
-)
+# # rescaling of outlets (and pumps)
+# ribasim_model, from_to_node_function_table = scale_outlets_pumps(
+#     OutletPumpScalingConfig(
+#         ribasim_model_path=ribasim_work_dir_model_toml,
+#         ribasim_model=ribasim_model,
+#         from_to_node_function_table=from_to_node_function_table,
+#         waterschap=waterschap,
+#         cloud=cloud,
+#         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+#         max_iterations=20,
+#         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+#         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+#     )
+# )
 
 # depending on the state, a different flow_rate is set. Set max value to the max_flow_rate when exceeding the max_flow_rate
 ribasim_model.outlet.static.df.loc[
