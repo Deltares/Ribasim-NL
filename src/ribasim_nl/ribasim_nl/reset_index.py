@@ -7,6 +7,7 @@ from ribasim_nl.model import Model
 def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder") -> Model:
     """Reindex all model-nodes to a new node_index series"""
     # reindex the node table
+    assert model.node.df is not None
     if original_index_postfix is not None:
         model.node.df[f"meta_node_id_{original_index_postfix}"] = model.node.df.index.astype("int32")
     model.node.df.index = pd.Index(
