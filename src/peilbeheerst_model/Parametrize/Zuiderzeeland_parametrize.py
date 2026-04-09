@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -59,18 +59,18 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/peilgebieden.
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-cloud.synchronize(
-    filepaths=[
-        #         ribasim_base_model_dir,
-        #         FeedbackFormulier_path,
-        #         ws_grenzen_path,
-        #         RWS_grenzen_path,
-        #         qlr_path,
-        #         aanvoer_path,
-        #         meteo_path,
-        profiles_path
-    ]
-)
+# cloud.synchronize(
+#     filepaths=[
+#         ribasim_base_model_dir,
+#         FeedbackFormulier_path,
+#         ws_grenzen_path,
+#         RWS_grenzen_path,
+#         qlr_path,
+#         aanvoer_path,
+#         meteo_path,
+#         profiles_path
+#     ]
+# )
 
 # refresh only the feedback form from cloud
 cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -538,21 +538,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
-# # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
-# ribasim_param.insert_standard_profile(
-#     ribasim_model,
-#     unknown_streefpeil=unknown_streefpeil,
-#     regular_percentage=regular_percentage,
-#     boezem_percentage=boezem_percentage,
-#     depth_profile=2,
-# )
-
-# add_storage_basins = AddStorageBasins(
-#     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
-# )
-
-# add_storage_basins.create_bergende_basins()
-
+# set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
@@ -644,9 +630,9 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
-to_supply = [493, 659, 664, 672]
-to_flow_control = []
-to_drain = []
+to_supply = (493, 659, 664, 672)
+to_flow_control = (617,)
+to_drain = ()
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
 )
