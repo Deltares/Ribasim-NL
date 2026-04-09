@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -486,6 +486,7 @@ to_flow_control = (
 to_drain = (
     364,  # labelled as "aanvoergemaal" but directed from polder to boezem
     612,
+    467,
 )
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -529,6 +530,15 @@ add_controllers_to_connector_nodes(
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
+
+# # set discharge to 0 in supply state as suggested by D2Hydro
+# flow_demand_nodes = ribasim_model.flow_demand.node.df.index.unique()
+# pump_with_flow_demand = ribasim_model.link.df.loc[ribasim_model.link.df.from_node_id.isin(flow_demand_nodes), "to_node_id"].unique()
+# ribasim_model.pump.static.df.loc[
+#     (ribasim_model.pump.static.df.node_id.isin(pump_with_flow_demand))
+#     & (ribasim_model.pump.static.df.control_state == "aanvoer"),
+#     ["flow_rate", "max_flow_rate"],
+# ] = 0
 
 # replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
 outlet_columns_to_add_back = [

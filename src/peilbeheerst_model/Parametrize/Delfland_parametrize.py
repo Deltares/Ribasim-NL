@@ -7,12 +7,11 @@ import warnings
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim import Node
+from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -29,8 +28,8 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+DYNAMIC_CONDITIONS: bool = True
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -77,7 +76,7 @@ profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 # )
 
 # # refresh only the feedback form from cloud (instead of all "verwerkt" files)
-# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -345,10 +344,10 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-# Add flushing data
-flush = Flushing(ribasim_model)
-_, df_demand = flush.add_flushing()
-from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
+# # Add flushing data
+# flush = Flushing(ribasim_model)
+# _, df_demand = flush.add_flushing()
+# from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
 
 add_controllers_to_connector_nodes(
     model=ribasim_model,
@@ -489,7 +488,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_other=False, suffix="init")
+cli.run_ribasim(ribasim_work_dir_model_toml)
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
