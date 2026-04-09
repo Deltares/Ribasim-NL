@@ -39,8 +39,10 @@ def main(
     # get files from the cloud
     cloud = CloudStorage()
     if sync:
+        print("Syncing with the GoodCloud...", end="", flush=True)
         cloud.download_verwerkt(water_authority, overwrite=overwrite)
         cloud.download_basisgegevens(["Hydrotypen"], overwrite=overwrite)
+        print("Synced with the GoodCloud: 'Verwerkt' & 'Basisgegevens/Hydrotypen'")
 
     # read files
     # > basins
