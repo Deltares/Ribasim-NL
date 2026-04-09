@@ -2,9 +2,12 @@
 from datetime import datetime
 from pathlib import Path
 
-from ribasim.delwaq import generate, parse, run_delwaq
+from ribasim.delwaq import generate, parse
+
+# from ribasim.delwaq import run_delwaq
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.run_delwaq import run_delwaq
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
@@ -142,10 +145,17 @@ for authority in authorities:
                 graph, substances = generate(model, output_path=delwaq_dir)
 
                 # run DELWAQ model
+                # run_delwaq(
+                #     model_dir=delwaq_dir,
+                #     d3d_home=Path(
+                #         "c:/Program Files/Deltares/D-HYDRO Suite 2025.02 1D2D/plugins/DeltaShell.Dimr/kernels/x64"
+                #     ),
+                # )
+
                 run_delwaq(
-                    model_dir=delwaq_dir,
-                    d3d_home=Path(
-                        "c:/Program Files/Deltares/D-HYDRO Suite 2025.02 1D2D/plugins/DeltaShell.Dimr/kernels/x64"
+                    dimr_config=delwaq_dir.joinpath("dimr_config.xml"),
+                    run_dimr_bat=Path(
+                        "c:/Program Files/Deltares/D-HYDRO Suite 2025.02 1D2D/plugins/DeltaShell.Dimr/kernels/x64/bin/run_dimr.bat"
                     ),
                 )
 
