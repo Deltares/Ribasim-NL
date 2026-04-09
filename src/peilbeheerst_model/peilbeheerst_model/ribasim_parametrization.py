@@ -2630,7 +2630,7 @@ def change_outlet_func(ribasim_model: Model, node_id: int, func: str, value: int
 
 
 def remove_non_free_flowing_outlets(
-    ribasim_model: Model, to_exclude: typing.Iterable[int], threshold: float = 0, printing: bool = False
+    ribasim_model: Model, to_exclude: typing.Iterable[int] = (), threshold: float = 0, printing: bool = False
 ) -> Model:
     """Remove outlets that are not free-flowing based on upstream/downstream level metadata.
 
