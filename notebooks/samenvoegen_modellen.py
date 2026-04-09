@@ -7,7 +7,7 @@ import ribasim
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.cloud import ModelVersion
 
-from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
+from ribasim_nl import CloudStorage, Model, concat, prefix_index
 
 # %%
 cloud = CloudStorage()
@@ -218,12 +218,6 @@ def read_and_prepare_model(model_path: Path) -> Model:
     return model
 
 
-def add_meta_waterbeheerder(model: Model, authority: str) -> None:
-    for node_type in model.node.df.node_type.unique():
-        ribasim_node = model.get_component(node_type)
-        ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = authority
-
-
 def process_model_spec(
     idx: int, model_spec: dict[str, Any], lhm_model: Model | None, readme: str, write_toml: Path | None = None
 ) -> tuple[Model | None, str]:
@@ -234,9 +228,7 @@ def process_model_spec(
     model_dir = ensure_model_downloaded(model_spec, model_version)
     model_path = find_toml_path(model_dir)
     model = read_and_prepare_model(model_path)
-    add_meta_waterbeheerder(model, model_spec["authority"])
-    if model_spec["authority"] == "Rijkswaterstaat":
-        model = reset_index(model)
+    model.node.df["meta_waterbeheerder"] = model_spec["authority"]
     try:
         # TODO reduce max_digits back to 4 after fixing #364
         model = prefix_index(model=model, max_digits=5, prefix_id=waterbeheercode[model_spec["authority"]])
