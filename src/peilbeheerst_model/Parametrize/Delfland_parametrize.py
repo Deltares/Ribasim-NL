@@ -234,7 +234,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(81728, 435103)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(
-    Node(geometry=Point(181719, 435319), name="Rioolgemaal Vlaardingen-West"), [pump.Static(flow_rate=[0.1])]
+    Node(geometry=Point(81719, 435319), name="Rioolgemaal Vlaardingen-West"), [pump.Static(flow_rate=[0.1])]
 )
 ribasim_model.link.add(ribasim_model.basin[82], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
@@ -294,7 +294,7 @@ trc_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(87696, 435710), name="Inlaat schiegemaal"),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.link.add(level_boundary_node, trc_node)
+ribasim_model.link.add(ribasim_model.level_boundary[542], trc_node)
 ribasim_model.link.add(trc_node, ribasim_model.basin[9])
 
 # Inlaat Bergsluis
@@ -561,13 +561,16 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
 )
 
 # Remove all nodes with a max_flow_rate smaller than the min_scaled_flow_rate
+# the capacities are twice in the static table (for both aanvoer and afvoer state). Select the highest max_flow_rate, as it is likely that either aanvoer or afvoer is set to 0.
+pump_static = ribasim_model.pump.static.df.copy()
+pump_static = pump_static.sort_values("max_flow_rate", ascending=False).drop_duplicates("node_id", keep="first")
+
+outlet_static = ribasim_model.outlet.static.df.copy()
+outlet_static = outlet_static.sort_values("max_flow_rate", ascending=False).drop_duplicates("node_id", keep="first")
+
 too_low_flow_rates_connector_node_ids = (
-    ribasim_model.outlet.static.df.loc[
-        ribasim_model.outlet.static.df.max_flow_rate <= min_scaled_flow_rate, "node_id"
-    ].tolist()
-    + ribasim_model.pump.static.df.loc[
-        ribasim_model.pump.static.df.max_flow_rate <= min_scaled_flow_rate, "node_id"
-    ].tolist()
+    outlet_static.loc[outlet_static.max_flow_rate <= min_scaled_flow_rate, "node_id"].tolist()
+    + pump_static.loc[pump_static.max_flow_rate <= min_scaled_flow_rate, "node_id"].tolist()
 )
 
 # remove the corresponding level_boundaries as well. May be either upstream or downstream from the connector node, so check both
