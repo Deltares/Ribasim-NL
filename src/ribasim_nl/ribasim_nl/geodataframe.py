@@ -6,7 +6,7 @@ from typing import Literal
 import geopandas as gpd
 import pandas as pd
 from geopandas import GeoDataFrame
-from shapely.geometry import MultiPolygon, Point, Polygon
+from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import polylabel
 
 from ribasim_nl.geometry import snap_boundaries_to_other_line, sort_basins, split_basin
@@ -193,7 +193,7 @@ def direct_basins(
         # iterate per link, to find basin directions
         for line_row in intersecting_network_gdf.itertuples():
             # find upstream and downstream points
-            us_point, ds_point = Point(line_row.geometry.coords[0]), Point(line_row.geometry.coords[-1])
+            us_point, ds_point = line_row.geometry.boundary.geoms
 
             # find upstream and downstream basins
             us_ident = find_ident(us_point)
@@ -302,7 +302,7 @@ def basins_to_points(
                 link = links_select_gdf.loc[links_select_gdf.geometry.length.sort_values(ascending=False).index[0]]
 
                 # get distance to upstream and downstream point in the link
-                us_point, ds_point = Point(link.geometry.coords[0]), Point(link.geometry.coords[-1])
+                us_point, ds_point = link.geometry.boundary.geoms
                 us_dist, ds_dist = (i.distance(point) for i in [us_point, ds_point])
 
                 # choose closest point as basin point
