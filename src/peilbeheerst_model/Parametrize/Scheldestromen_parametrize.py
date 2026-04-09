@@ -254,7 +254,7 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
-        ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
+        ribasim_model, starttime, endtime, -0.42, 0.42, DYNAMIC_CONDITIONS
     )
     ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2
     ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2
@@ -290,7 +290,18 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
-to_drain = (316,)
+to_drain = (
+    194,
+    271,
+    302,
+    316,
+    322,
+    412,
+    413,
+    414,
+    415,
+    505,
+)
 to_flow_control = ()
 to_supply = (
     252,
@@ -301,6 +312,88 @@ from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
 )
 
+# check for flow_control-/supply-nodes outside supplied-basins
+supply_connectors = (
+    234,
+    241,
+    260,
+    309,
+    334,
+    384,
+    422,
+    526,  # non-official supplying pumps?
+    258,
+    266,
+    452,
+    462,
+    473,
+    477,
+    486,
+    491,
+    531,
+    546,
+    547,
+    554,
+    640,  # inflow from Belgium
+    312,
+    357,
+    359,
+    363,
+    364,
+    432,
+    474,
+    487,
+    211,
+    220,
+    242,
+    253,
+    283,
+    305,
+    306,
+    310,
+    316,
+    323,
+    343,
+    344,
+    346,
+    347,
+    353,
+    370,
+    425,
+    426,
+    427,
+    428,
+    429,
+    430,
+    431,
+    435,
+    464,
+    631,
+    632,
+    634,
+    371,
+    523,
+    636,
+)
+if not all(
+    from_to_node_function_table[from_to_node_function_table["function"] == "supply"].index.isin(supply_connectors)
+):
+    for i in from_to_node_function_table[from_to_node_function_table["function"] == "supply"].index.values:
+        if i not in supply_connectors:
+            print(f"{i:4d}: invalid supply")
+if not all(
+    from_to_node_function_table[from_to_node_function_table["function"] == "flow_control"].index.isin(supply_connectors)
+):
+    for i in from_to_node_function_table[from_to_node_function_table["function"] == "flow_control"].index.values:
+        if i not in supply_connectors:
+            print(f"{i:4d}: invalid flow-control")
+
+assert all(
+    from_to_node_function_table[from_to_node_function_table["function"] == "supply"].index.isin(supply_connectors)
+), f"supply:\n{from_to_node_function_table[from_to_node_function_table['function'] == 'supply']}\n"
+assert all(
+    from_to_node_function_table[from_to_node_function_table["function"] == "flow_control"].index.isin(supply_connectors)
+), f"flow control:\n{from_to_node_function_table[from_to_node_function_table['function'] == 'flow_control']}\n"
 
 outlet_copy = ribasim_model.outlet.static.df[
     [
@@ -420,7 +513,7 @@ ribasim_model.pump.static.df.loc[
 #         waterschap=waterschap,
 #         cloud=cloud,
 #         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-#         max_iterations=2,
+#         max_iterations=12,
 #         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
 #         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
 #     )
