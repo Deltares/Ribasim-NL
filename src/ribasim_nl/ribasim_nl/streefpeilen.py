@@ -7,7 +7,7 @@ import pandas as pd
 from ribasim_nl.model import Model
 
 
-def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target_level: str, code: str):
+def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target_level: str, code: str) -> None:
     # Check if the layername is provided and the peilgebieden_path is a GPKG file
     if layername is None:
         layername = gpd.list_layers(peilgebieden_path).at[0, "name"]

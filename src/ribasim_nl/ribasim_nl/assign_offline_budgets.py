@@ -11,11 +11,13 @@ import shapely
 import xarray as xr
 from ribasim import Model
 from tqdm import tqdm
+from xarray.core.dataarray import DataArray
+from xarray.core.dataset import Dataset
 
 from ribasim_nl.assign_fractions_from_budgets import assign_fractions_from_budgets
 
 
-def _crop_to_gdf(da: "xr.DataArray | xr.Dataset", gdf: gpd.GeoDataFrame):
+def _crop_to_gdf(da: "xr.DataArray | xr.Dataset", gdf: gpd.GeoDataFrame) -> DataArray | Dataset:
     """Crop a DataArray or Dataset to a gdf.extent (total_bounds)
 
     Why? As LHM covers NL and we often compute budgets for 1 authority only.
@@ -34,7 +36,7 @@ def _crop_to_gdf(da: "xr.DataArray | xr.Dataset", gdf: gpd.GeoDataFrame):
     )
 
 
-def _compute_budgets_per_basin(budgets: xr.Dataset, basin_mask: xr.DataArray, nodata=-999):
+def _compute_budgets_per_basin(budgets: xr.Dataset, basin_mask: xr.DataArray, nodata=-999) -> pd.DataFrame:
     """Sum all modflow budgets per basin_id over a basin_mask."""
     print(f"∑ budgets {list(budgets.data_vars)} rasters to basins")
 
@@ -82,7 +84,7 @@ class AssignOfflineBudgets:
     def __init__(
         self,
         budgets: Path | str | xr.Dataset,
-    ):
+    ) -> None:
         """Assign offline budgets from MODFLOW-MetaSWAP budget files.
 
         Parameters
@@ -255,9 +257,9 @@ class AssignOfflineBudgets:
         # update basin drainage and infiltration
         assert model.basin.time.df is not None
         idx = pd.MultiIndex.from_frame(model.basin.time.df[["node_id", "time"]])
-        model.basin.time.df["drainage"] = idx.map(drainage)  # type: ignore[arg-type]
-        model.basin.time.df["infiltration"] = idx.map(infiltration)  # type: ignore[arg-type]
-        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)  # type: ignore[arg-type]
+        model.basin.time.df["drainage"] = idx.map(drainage)  # pyrefly: ignore[bad-argument-type]
+        model.basin.time.df["infiltration"] = idx.map(infiltration)  # pyrefly: ignore[bad-argument-type]
+        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)  # pyrefly: ignore[bad-argument-type]
 
         # assign fractions from budgets if user wants to
         if assign_fractions:
@@ -312,7 +314,7 @@ class AssignOfflineBudgets:
 
         return budgets, model
 
-    def _validate_budgets(self, budgets, primary_budgets, secondary_budgets, surface_runoff_budgets):
+    def _validate_budgets(self, budgets, primary_budgets, secondary_budgets, surface_runoff_budgets) -> None:
         """Validate if all budgets are available as data vars in budgets-file"""
         expected = primary_budgets | secondary_budgets | surface_runoff_budgets
         missing = expected - set(budgets.data_vars)
@@ -528,7 +530,7 @@ class AssignOfflineBudgets:
 
         return basin_definition_primair, basin_definition_secondair
 
-    def _validate_meta_basin_column(self, df: pd.DataFrame, basin_metacol: str, expected_values: set[str]):
+    def _validate_meta_basin_column(self, df: pd.DataFrame, basin_metacol: str, expected_values: set[str]) -> None:
         """Validate if all values as expected are present in basin_metacol"""
         exception = ""
         if df[basin_metacol].isna().any():

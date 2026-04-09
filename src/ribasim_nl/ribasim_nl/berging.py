@@ -32,7 +32,7 @@ BANDEN = {
 }
 
 
-def percentage_oppervlaktewater():
+def percentage_oppervlaktewater() -> None:
     """Single-use function to compute percentage surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
     cloud = CloudStorage()
     lhm_raster_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
@@ -242,7 +242,7 @@ def get_basin_profile(
             ).astype(float)
 
         # if no area 1% - 2% of basin-area
-        def default_ah_df():
+        def default_ah_df() -> pd.DataFrame:
             df = pd.DataFrame(
                 data={
                     "level": [min_level, max_level],
@@ -293,7 +293,7 @@ def get_basin_profile(
                 df = pd.concat(dfs, ignore_index=True)
                 # we round levels to 2 decimals so areas get summed
                 df["level"] = df["level"].round(2)
-                ah_df = df.groupby("level", as_index=False)["area"].sum().sort_values(by="level").reset_index(drop=True)  # type: ignore[call-overload]
+                ah_df = df.groupby("level", as_index=False)["area"].sum().sort_values(by="level").reset_index(drop=True)
                 ah_df["area"] = ah_df["area"].cumsum().round(1)
                 ah_df["comment"] = pd.Series(dtype=str)
 
@@ -311,7 +311,7 @@ def get_basin_profile(
 
 
 class VdGaastBerging:
-    def __init__(self, model: Model, cloud: CloudStorage, use_add_api: bool = True):
+    def __init__(self, model: Model, cloud: CloudStorage, use_add_api: bool = True) -> None:
         self.model = model
         self.cloud = cloud
         self.use_add_api = use_add_api
@@ -323,7 +323,7 @@ class VdGaastBerging:
         self.lhm_raster_file = lhm_raster_file
         self.ma_raster_file = ma_raster_file
 
-    def add(self):
+    def add(self) -> None:
         model = self.model
 
         # get basin_area and add statistics

@@ -51,7 +51,7 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
     return getattr(profile, id_col)
 
 
-def add_link_profile_ids(model: Model, profiles: DAMOProfiles, id_col="globalid"):
+def add_link_profile_ids(model: Model, profiles: DAMOProfiles, id_col="globalid") -> None:
     assert model.link.df is not None
     for link_id in tqdm(model.link.df.index, desc="link_profile_ids"):
         profile_id = link_profile_id(link_id, model, profiles, id_col)

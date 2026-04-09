@@ -26,6 +26,7 @@ repos:
     hooks:
       - id: check-added-large-files
         args: [--maxkb=700]
+        exclude: baseline\.json
       - id: check-case-conflict
       - id: check-json
       - id: check-yaml

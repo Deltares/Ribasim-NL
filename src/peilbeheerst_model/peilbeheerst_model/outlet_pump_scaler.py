@@ -8,7 +8,7 @@ import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, settings
 
 __all__ = ["OutletPumpScalingConfig", "scale_outlets_pumps"]
 
@@ -279,13 +279,14 @@ def update_from_to_node_function_table_with_new_flow_rate(
         for col in history_columns:
             val = from_to_node_function_table.at[row_idx, col]
             if pd.notna(val):
-                row_history.append(float(val))  # type: ignore[arg-type]
+                row_history.append(float(val))  # pyrefly: ignore[bad-argument-type]
 
         # No history yet: fall back to current max_flow_rate if present
         if len(row_history) == 0:
             base_value = from_to_node_function_table.at[row_idx, "max_flow_rate"]
             if pd.notna(base_value):
-                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = float(base_value)  # type: ignore[arg-type]
+                # pyrefly: ignore[bad-argument-type]
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = float(base_value)
             continue
 
         latest_value = row_history[-1]
@@ -458,7 +459,7 @@ def update_max_flow_rates_in_model(model: Model, from_to_node_function_table: pd
     flow_rate_updates = flow_rate_updates.rename(columns={last_new_flow_rate_column: "max_flow_rate"})
     flow_rate_updates = flow_rate_updates.dropna(subset=["max_flow_rate"])
     flow_rate_updates = flow_rate_updates.drop_duplicates(subset=["node_id"], keep="last")
-    flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"]  # type: ignore[assignment]
+    flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"]
 
     # update the max_flow_rate in the model for the pump and outlet nodes.
     pump_df = model.pump.static.df.copy()
@@ -476,7 +477,7 @@ def update_max_flow_rates_in_model(model: Model, from_to_node_function_table: pd
     return model
 
 
-def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
+def upload_from_to_node_function_table(from_to_node_function_table, waterschap) -> None:
     """Write the scaled connector table locally and upload the CSV to GoodCloud.
 
     Parameters
@@ -501,7 +502,7 @@ def upload_from_to_node_function_table(from_to_node_function_table, waterschap):
 class _OutletPumpScaler:
     """Execute the iterative outlet and pump scaling workflow for one model."""
 
-    def __init__(self, config: OutletPumpScalingConfig):
+    def __init__(self, config: OutletPumpScalingConfig) -> None:
         """Store the scaler configuration for a single run."""
         self.config = config
 
@@ -640,7 +641,7 @@ class _OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=model.filepath)
+                run_ribasim(model.filepath, ribasim_home=settings.ribasim_home)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
                 ribasim_water_levels = (
@@ -762,7 +763,7 @@ class _OutletPumpScaler:
         return model, from_to_node_function_table
 
 
-def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig):
+def load_from_to_node_function_table_from_goodcloud(config: OutletPumpScalingConfig) -> pd.DataFrame:
     """Download and load a previously saved scaled connector table from GoodCloud.
 
     Parameters

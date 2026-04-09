@@ -18,13 +18,13 @@ class SetDynamicForcing:
         cloud: CloudStorage,
         startdate: str,
         enddate: str,
-    ):
+    ) -> None:
         self.model = model
         self.cloud = cloud
         self.startdate = startdate
         self.enddate = enddate
 
-    def add(self):
+    def add(self) -> Model:
         ############# SET THE DESIRED MODEL AND TIME PERIOD ###################
         # authority = "Rijkswaterstaat"  # Water authority folder that is used on the Cloud Storage
         # model = "lhm_coupled_2025_5_0"  # Model that is selected on the Cloud Storage
@@ -55,7 +55,7 @@ class SetDynamicForcing:
         # return the new model with the meteo information added
         return new_model
 
-    def _sync_meteo_from_cloud(self):
+    def _sync_meteo_from_cloud(self) -> None:
         """
         Synchronize Meteo information from cloud to local directory
 
@@ -121,7 +121,7 @@ class SetDynamicForcing:
         precip: xr.Dataset,
         evp: xr.Dataset,
         fraction_map: dict[int, list[tuple[int, int, float]]],
-    ):
+    ) -> pd.DataFrame:
         """
         Get dynamic meteo per basin
 
@@ -154,8 +154,9 @@ class SetDynamicForcing:
             means[node_id]["prec"] = averaged_P_ms.tolist()
             means[node_id]["evp"] = averaged_ET_ms.tolist()
 
-        # Convert into the right DataFrame format to add to the model
-        full_time_df = self._combine_meteo_into_df(means, startdate_dt, enddate_dt)  # type: ignore[arg-type]
+        # Convert into the right pd.DataFrame format to add to the model
+        # pyrefly: ignore[bad-argument-type]
+        full_time_df = self._combine_meteo_into_df(means, startdate_dt, enddate_dt)
         print("Converted the meteo data to a pd.DataFrame")
         return full_time_df
 
@@ -164,7 +165,7 @@ class SetDynamicForcing:
         meteo_per_node: dict[int, dict[str, list[float]]],
         start_date: "str | np.datetime64[int | None]",
         end_date: "str | np.datetime64[int | None]",
-    ):
+    ) -> pd.DataFrame:
         """
         Convert a dict with meteo info to a pd.Dataframe
 
@@ -181,7 +182,7 @@ class SetDynamicForcing:
         full_time_df.rename(columns={"evp": "potential_evaporation", "prec": "precipitation"}, inplace=True)
         return full_time_df
 
-    def _add_meteo_to_model(self, meteo_means: pd.DataFrame):
+    def _add_meteo_to_model(self, meteo_means: pd.DataFrame) -> Model:
         """
         Add dynamic meteo information to an existing Ribasim model
 
@@ -198,8 +199,8 @@ class SetDynamicForcing:
                 meteo_means["drainage"] = 0
                 meteo_means["infiltration"] = 0
                 final_time_df = meteo_means.copy()
-            model.basin.time.df = final_time_df  # type: ignore[assignment]
-            model.basin.time.df.fillna(0, inplace=True)  # type: ignore[union-attr]
+            model.basin.time.df = final_time_df  # pyrefly: ignore[bad-assignment]
+            model.basin.time.df.fillna(0, inplace=True)  # pyrefly: ignore[missing-attribute]
         else:
             current_df = model.basin.time.df
             current_df["conv_time"] = pd.to_datetime(current_df["time"])
@@ -229,7 +230,7 @@ class SetDynamicForcing:
         model.basin.static.df = None
 
         # Set the start and end date of the model
-        model.starttime = self.startdate  # type: ignore[assignment]
-        model.endtime = self.enddate  # type: ignore[assignment]
+        model.starttime = self.startdate  # pyrefly: ignore[bad-assignment]
+        model.endtime = self.enddate  # pyrefly: ignore[bad-assignment]
         print("Dynamic meteo added to model")
         return model

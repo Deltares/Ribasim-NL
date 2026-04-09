@@ -9,7 +9,7 @@ cloud = CloudStorage()
 noordzee_gpkg = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/noordzee.gpkg")
 
 
-def assign_noordzee(model: Model):
+def assign_noordzee(model: Model) -> None:
     """Assign 'Noordzee' as authority to nodes within the Noordzee polygon."""
     cloud.synchronize([noordzee_gpkg])
     noordzee_poly = gpd.read_file(noordzee_gpkg).union_all()

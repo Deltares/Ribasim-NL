@@ -28,7 +28,7 @@ class Flushing:
         dissolve_by_val: bool = True,
         create_nodes: bool = False,
         debug_output: bool = False,
-    ):
+    ) -> None:
         """Initialize the Flushing class for adding flushing information to a Ribasim model.
 
         Parameters
@@ -236,7 +236,7 @@ class Flushing:
         target_node: NodeData,
         demand: float,
         metadata: dict[str, str] | None,
-    ):
+    ) -> Model:
         """Add a flushing demand node to the model and connect it to a target node.
 
         Parameters
@@ -291,7 +291,7 @@ class Flushing:
         model: Model,
         target_node: NodeData,
         demand: float,
-    ):
+    ) -> Model:
         """Add a level demand node to the model and connect it to a target node.
 
         Parameters
@@ -490,7 +490,7 @@ class Flushing:
         end_paths: list[list[int]],
         valid_nodes: set[int],
         successors: dict[int, set[int]],
-    ):
+    ) -> None:
         """Perform depth-first search to find downstream paths.
 
         Parameters
@@ -526,7 +526,7 @@ class Flushing:
         df[self.flushing_col] = df[self.flushing_col].round().astype(int)
 
         # First step: dissolve by flushing_col and id if these are equal
-        df = df.dissolve(by=[self.flushing_id, self.flushing_col])  # type: ignore[operator]
+        df = df.dissolve(by=[self.flushing_id, self.flushing_col])
         df = df.reset_index()
 
         # Second step: iteratively merge overlapping geometries with the

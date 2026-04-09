@@ -20,7 +20,7 @@ class CrossingsToRibasim:
     processed layer, and a 'crossings layer'.
     """
 
-    def __init__(self, model_characteristics):
+    def __init__(self, model_characteristics) -> None:
         """Initialize the crossings_to_Ribasim object
 
         Parameters
@@ -295,7 +295,7 @@ class CrossingsToRibasim:
 
         return crossings
 
-    def create_links(self, crossings):
+    def create_links(self, crossings) -> pd.DataFrame:
         """Create links for Ribasim network
 
         Create the links, based on the peilgebied_from and peilgebied_to
@@ -591,7 +591,7 @@ class CrossingsToRibasim:
         def discard_duplicate_boezems(boezems):
             temp_boezems = boezems.dropna(subset=["shortest_path"]).copy()
 
-            # Perform the operations on the temporary DataFrame
+            # Perform the operations on the temporary pd.DataFrame
             temp_boezems["shortest_path"] = temp_boezems["shortest_path"].astype(str).apply(loads)
             temp_boezems["first_geom_coordinate"] = temp_boezems["shortest_path"].apply(
                 lambda geom: Point(geom.coords[0])
@@ -620,7 +620,7 @@ class CrossingsToRibasim:
             temp_boezems.sort_values(by="shortest_distance", inplace=True)
             temp_boezems.drop_duplicates(subset=["from", "to"], keep="first", inplace=True)
             temp_boezems.reset_index(drop=True, inplace=True)
-            # Merge the temporary DataFrame back into the original DataFrame
+            # Merge the temporary pd.DataFrame back into the original pd.DataFrame
             boezems.update(temp_boezems)
 
             return boezems
@@ -831,7 +831,7 @@ class CrossingsToRibasim:
 
 
 class RibasimNetwork:
-    def __init__(self, nodes, links, model_characteristics):
+    def __init__(self, nodes, links, model_characteristics) -> None:
         """_summary_
 
         Parameters
@@ -867,7 +867,7 @@ class RibasimNetwork:
 
     #     return node
 
-    def link(self):
+    def link(self) -> gpd.GeoDataFrame:
         """_summary_
 
         Returns
@@ -901,7 +901,7 @@ class RibasimNetwork:
 
         return link
 
-    def basin(self):
+    def basin(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, gpd.GeoDataFrame]:
         """_summary_
 
         Returns
@@ -966,7 +966,7 @@ class RibasimNetwork:
         basin_node = basin_node.set_index("node_id")
         return basin_node, basin_profile, basin_static, basin_state, basin_area
 
-    def tabulated_rating_curve(self):
+    def tabulated_rating_curve(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """_summary_
 
         Returns
@@ -1014,7 +1014,7 @@ class RibasimNetwork:
 
         return rating_curve_node, rating_curve_static
 
-    def pump(self):
+    def pump(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """_summary_
 
         Returns
@@ -1045,7 +1045,7 @@ class RibasimNetwork:
 
         return pump_node, pump_static
 
-    def level_boundary(self):
+    def level_boundary(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """_summary_
 
         Returns
@@ -1075,7 +1075,7 @@ class RibasimNetwork:
 
         return level_boundary_node, level_boundary_static
 
-    def flow_boundary(self):
+    def flow_boundary(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """_summary_
 
         Returns
@@ -1117,7 +1117,7 @@ class RibasimNetwork:
 
         return linear_resistance
 
-    def manning_resistance(self):
+    def manning_resistance(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """_summary_
 
         Returns
@@ -1148,7 +1148,7 @@ class RibasimNetwork:
 
         return manning_resistance_node, manning_resistance_static
 
-    def terminal(self):
+    def terminal(self) -> pd.DataFrame:
         """_summary_
 
         Returns
@@ -1251,7 +1251,7 @@ class RibasimNetwork:
         outlet=None,
         discrete_control=None,
         pid_control=None,
-    ):
+    ) -> Model:
         """_summary_
 
         Parameters
@@ -1314,7 +1314,7 @@ class RibasimNetwork:
 
         return model
 
-    def check(self, model, post_processed_data, crossings):
+    def check(self, model, post_processed_data, crossings) -> dict[str, gpd.GeoDataFrame]:
         """_summary_
 
         Parameters
@@ -1705,7 +1705,7 @@ class RibasimNetwork:
         for _ in range(len(model.basin.area.df)):
             color_list.append(next(color_cycle))
 
-        # Add the color_list as a new column to the DataFrame
+        # Add the color_list as a new column to the pd.DataFrame
         model.basin.area.df["meta_color"] = color_list
 
         ########################################################################
@@ -1812,7 +1812,7 @@ class RibasimNetwork:
 
         return model
 
-    def store_data(data, output_path):
+    def store_data(data, output_path) -> None:
         """_summary_
 
         Parameters
@@ -1827,7 +1827,7 @@ class RibasimNetwork:
 
         return
 
-    def WriteResults(self, model, checks):
+    def WriteResults(self, model, checks) -> None:
         """_summary_
 
         Parameters

@@ -4,7 +4,7 @@ import pandas as pd
 from ribasim_nl.model import Model
 
 
-def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder"):
+def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder") -> Model:
     """Reindex all model-nodes to a new node_index series"""
     # re-number from_node_id and to_node_id
     assert model.link.df is not None
@@ -38,7 +38,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
 
 def prefix_index(
     model: Model, prefix_id: int, max_digits: int = 4, original_index_postfix: str | None = "waterbeheerder"
-):
+) -> Model:
     """Reindex node-tables and links with a prefix and a max number of digits
 
     Args:
@@ -99,7 +99,9 @@ def prefix_index(
     return model
 
 
-def reset_index(model: Model, node_start=1, link_start=1, original_index_postfix: str | None = "waterbeheerder"):
+def reset_index(
+    model: Model, node_start=1, link_start=1, original_index_postfix: str | None = "waterbeheerder"
+) -> Model:
     """Reset a model index to a given node_start and link_start number. Will result in sub-sequent node_ids and link_ids from node_start and link_start.
 
     Args:

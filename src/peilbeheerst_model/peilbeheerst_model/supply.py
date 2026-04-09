@@ -75,7 +75,7 @@ def _load_geometry(geometry: str | gpd.GeoDataFrame, **kwargs) -> gpd.GeoDataFra
 class SupplyBasin:
     """Labelling of Ribasim's basin nodes as 'aanvoergebieden' based on geometry data."""
 
-    def __init__(self, model: str | Model, geometry: str | gpd.GeoDataFrame, **kwargs):
+    def __init__(self, model: str | Model, geometry: str | gpd.GeoDataFrame, **kwargs) -> None:
         """Initiate object.
 
         :param model: Ribasim model, or file/path to a Ribasim model
@@ -233,7 +233,7 @@ class SupplyWork(abc.ABC):
 
     _node_type: str
 
-    def __init__(self, model: str | Model):
+    def __init__(self, model: str | Model) -> None:
         """Initiate object.
 
         :param model: Ribasim model, or file/path to a Ribasim model

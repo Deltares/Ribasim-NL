@@ -7,7 +7,7 @@ def update_flow_boundary_static(
     code_column: str = "meta_code_waterbeheerder",
     meta_values: dict[str, str] = {"meta_categorie": "buitenlandse aanvoer"},
     default_values: dict[str, object] = {"flow_rate": 0.0},
-):
+) -> None:
     """Update FlowBoundary table
 
     Args:
@@ -23,10 +23,10 @@ def update_flow_boundary_static(
 
     # add default values
     for k, v in default_values.items():
-        static_df[k] = v  # type: ignore[call-overload]
+        static_df[k] = v
 
     # add meta_columns
     for k, v in meta_values.items():
         static_df[k] = v
 
-    model.flow_boundary.static.df = static_df  # type: ignore[assignment]
+    model.flow_boundary.static.df = static_df  # pyrefly: ignore[bad-assignment]

@@ -74,7 +74,7 @@ def get_tilesource(layer, map_configs=BACKGROUND_LAYERS):
     return getattr(bokeh_models, map_configs[layer]["class"])(url=url, **args)
 
 
-def update_background(map_figure_widget, background_control_widget, attrname, old, new):
+def update_background(map_figure_widget, background_control_widget, attrname, old, new) -> None:
     """Update map_figure when background is selected"""
     tile_source = get_tilesource(background_control_widget.labels[new])
     idx = next(idx for idx, i in enumerate(map_figure_widget.renderers) if i.name == "background")
@@ -92,7 +92,7 @@ class MapFigure:
     map_figure_widget: figure | None = None
     background_control_widget: RadioGroup | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # setup ranges
         x_range = Range1d(start=self.bounds[0], end=self.bounds[2], min_interval=100)
         y_range = Range1d(start=self.bounds[1], end=self.bounds[3], min_interval=100)
@@ -133,7 +133,7 @@ class MapFigure:
         )
 
     @property
-    def update_background(self):
+    def update_background(self) -> partial[None]:
         return partial(
             update_background,
             map_figure_widget=self.map_figure_widget,

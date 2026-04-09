@@ -5,7 +5,7 @@ from decimal import ROUND_HALF_UP, Decimal
 import pandas as pd
 
 
-def mm_per_day_to_m3_per_second(mm_per_day: float, area_m2: float, precision: float | int = 0.001):
+def mm_per_day_to_m3_per_second(mm_per_day: float, area_m2: float, precision: float | int = 0.001) -> float:
     """
     Convert rainfall rate from mm/day to m³/s based on the given area.
 
@@ -28,7 +28,7 @@ def mm_per_day_to_m3_per_second(mm_per_day: float, area_m2: float, precision: fl
     return round_to_precision(flow_rate_m3_per_s, precision)
 
 
-def round_to_precision(number: float, precision: float | int):
+def round_to_precision(number: float, precision: float | int) -> float:
     """
     Round a number to the nearest multiple of the specified precision.
 

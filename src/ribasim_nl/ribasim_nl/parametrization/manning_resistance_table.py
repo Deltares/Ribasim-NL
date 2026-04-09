@@ -14,7 +14,7 @@ def update_manning_resistance_static(
     profile_slope: float = 1,
     profile_width: float = 25,
     manning_n: float = 0.04,
-):
+) -> None:
     """Generate a default manning-table.
 
     Args:
@@ -56,7 +56,7 @@ def update_manning_resistance_static(
     # manning_n
     static_df.loc[:, "manning_n"] = manning_n
 
-    model.manning_resistance.static.df = static_df  # type: ignore[assignment]
+    model.manning_resistance.static.df = static_df  # pyrefly: ignore[bad-assignment]
 
 
 def calculate_flow_rate(
@@ -123,13 +123,16 @@ def manning_flow_rate(model: Model, manning_node_id: int, at_timestamp: Timestam
     q = calculate_flow_rate(
         depth=depth,
         profile_width=float(
-            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_width"]  # type: ignore[arg-type]
+            # pyrefly: ignore[bad-argument-type]
+            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_width"]
         ),
         profile_slope=float(
-            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_slope"]  # type: ignore[arg-type]
+            # pyrefly: ignore[bad-argument-type]
+            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_slope"]
         ),
         manning_n=float(
-            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "manning_n"]  # type: ignore[arg-type]
+            # pyrefly: ignore[bad-argument-type]
+            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "manning_n"]
         ),
         slope=slope,
     )

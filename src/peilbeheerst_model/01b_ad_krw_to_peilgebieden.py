@@ -38,7 +38,7 @@ for waterschap, waterschap_struct in waterschap_data.items():
         str(init_settings["krw_path"]),
         str(init_settings["krw_column_id"]),
         str(init_settings["krw_column_name"]),
-        float(init_settings["krw_min_overlap"]),  # type: ignore[arg-type]
+        float(init_settings["krw_min_overlap"]),  # pyrefly: ignore[bad-argument-type]
         ",",
     )
 

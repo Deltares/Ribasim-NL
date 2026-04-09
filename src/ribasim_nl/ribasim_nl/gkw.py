@@ -18,7 +18,7 @@ NAMESPACES = {"atom": "http://www.w3.org/2005/Atom", "georss": "http://www.geors
 GKW_ROOT_PATH = cloud.joinpath("Basisgegevens/GKW")
 
 
-def download_geopackage(url: str, save_dir: Path):
+def download_geopackage(url: str, save_dir: Path) -> None:
     """Download a geopackage from an url to a save_dir
 
     Args:

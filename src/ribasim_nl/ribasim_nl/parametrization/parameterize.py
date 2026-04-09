@@ -18,7 +18,7 @@ class Parameterize(BaseModel):
     evaporation_mm_per_day: int | None = None
     max_pump_flow_rate: float | None = None
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> None:
         print("🚀 Start Parameterize.run()")
         print("kwargs ontvangen:", kwargs)
 

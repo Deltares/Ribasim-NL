@@ -3,7 +3,7 @@ from math import pi
 from ribasim.nodes import outlet, tabulated_rating_curve
 
 
-def calculate_area(width: float, shape: str, height: float | None = None):
+def calculate_area(width: float, shape: str, height: float | None = None) -> float:
     """Calculate flow-area of a cross-section"""
     # shapes that only use width
     if shape == "round":
@@ -40,7 +40,7 @@ def calculate_flow_rate(
     height: float | None = None,
     loss_coefficient: float = 0.63,
     shape: str = "rectangle",
-):
+) -> float:
     velocity = calculate_velocity(level=level, crest_level=crest_level)
     area = width * ((2 / 3) * (level - crest_level))
     if height is not None:
