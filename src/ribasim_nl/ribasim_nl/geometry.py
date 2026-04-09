@@ -366,20 +366,22 @@ def split_line(
 def snap_boundaries_to_other_line(line: LineString, other_line: LineString, tolerance: float = 0.1) -> LineString:
     """Snap the boundaries of line to the boundary or link/vertice of other_line if boundaries are within tolerance"""
     coords = list(line.coords)
-    start_pt, end_pt = line.boundary.geoms
+    start_pt, end_pt = Point(line.coords[0]), Point(line.coords[-1])
 
     # modify other_start_pt if within tolerance
     if start_pt.distance(other_line) < tolerance:
+        other_start, other_end = Point(other_line.coords[0]), Point(other_line.coords[-1])
         if start_pt.distance(other_line.boundary) < tolerance:
-            pt = next(i for i in other_line.boundary.geoms if i.distance(start_pt) < tolerance)
+            pt = next(i for i in [other_start, other_end] if i.distance(start_pt) < tolerance)
         else:
             pt = line.interpolate(line.project(start_pt))
         coords[0] = (pt.x, pt.y)
 
     # modify end_start_pt if within tolerance
     if end_pt.distance(other_line) < tolerance:
+        other_start, other_end = Point(other_line.coords[0]), Point(other_line.coords[-1])
         if end_pt.distance(other_line.boundary) < tolerance:
-            pt = next(i for i in other_line.boundary.geoms if i.distance(end_pt) < tolerance)
+            pt = next(i for i in [other_start, other_end] if i.distance(end_pt) < tolerance)
         else:
             pt = line.interpolate(line.project(end_pt))
         coords[-1] = (pt.x, pt.y)

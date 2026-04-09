@@ -708,7 +708,8 @@ class Model(ribasim.Model):
         link_geometry = self.link.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
 
         # add boundary
-        geometry = shapely.affinity.scale(link_geometry, xfact=1.05, yfact=1.05, origin="center").boundary.geoms[1]
+        scaled_geometry = shapely.affinity.scale(link_geometry, xfact=1.05, yfact=1.05, origin="center")
+        geometry = Point(scaled_geometry.coords[-1])
         # geometry = link_geometry.interpolate(1.05, normalized=True)
         boundary_node = self.level_boundary.add(Node(geometry=geometry), tables=DEFAULT_TABLES.level_boundary)
         self.link.add(node, boundary_node)
@@ -920,8 +921,8 @@ class Model(ribasim.Model):
             basin_area_df = basin_area_df[basin_area_df.intersects(geometry)]
             if len(basin_area_df) > 1:
                 mask = ~(
-                    basin_area_df.contains(geometry.boundary.geoms[0])
-                    | basin_area_df.contains(geometry.boundary.geoms[1])
+                    basin_area_df.contains(Point(geometry.coords[0]))
+                    | basin_area_df.contains(Point(geometry.coords[-1]))
                 )
                 basin_area_df = basin_area_df[mask]
 

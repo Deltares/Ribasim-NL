@@ -4,6 +4,7 @@ import geopandas as gpd
 from pandera.typing.geopandas import GeoDataFrame
 from ribasim.geometry.link import LinkSchema
 from ribasim.geometry.node import NodeSchema
+from shapely.geometry import Point
 
 from ribasim_nl.model import Model
 
@@ -20,7 +21,7 @@ def check_node_connectivity(row, node_df, tolerance=1.0) -> bool:
     if row.geometry.length == 0:
         point_from = point_to = row.geometry.centroid
     else:
-        point_from, point_to = row.geometry.boundary.geoms
+        point_from, point_to = Point(row.geometry.coords[0]), Point(row.geometry.coords[-1])
 
     # check if from_node_id is valid
     if row.from_node_id in node_df.index:
@@ -85,11 +86,11 @@ class NetworkValidator:
         invalid_links_df = self.link_incorrect_connectivity()
         invalid_nodes = []
         for row in invalid_links_df.itertuples():
-            geoms = row.geometry.boundary.geoms
+            endpoints = [Point(row.geometry.coords[0]), Point(row.geometry.coords[-1])]
 
             for idx, attr in ((0, "from_node_id"), (1, "to_node_id")):
                 node_id = getattr(row, attr)
-                point = geoms[idx]
+                point = endpoints[idx]
                 if node_id in node_df.index:
                     if point.distance(node_df.at[node_id, "geometry"]) > tolerance:
                         invalid_nodes += [{"node_id": node_id, "geometry": point}]
