@@ -290,11 +290,14 @@ ribasim_model.link.add(ribasim_model.basin[59], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # Inlaat schiegemaal
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(87667, 435675)), [level_boundary.Static(level=[default_level])]
+)
 trc_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(87696, 435710), name="Inlaat schiegemaal"),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.link.add(ribasim_model.level_boundary[542], trc_node)
+ribasim_model.link.add(level_boundary_node, trc_node)
 ribasim_model.link.add(trc_node, ribasim_model.basin[9])
 
 # Inlaat Bergsluis
