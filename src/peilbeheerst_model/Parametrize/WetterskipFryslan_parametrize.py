@@ -344,6 +344,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 184, "
 
 inlaat_pump = []  # pumps
 inlaat_structures = []  # weirs / outlets
+to_drain_node_ids = []
 
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(207500, 587902)), [pump.Static(flow_rate=[1.8])])
@@ -434,7 +435,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[57], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-to_afvoer_node_id1 = tabulated_rating_curve_node.node_id
+to_drain_node_ids.append(tabulated_rating_curve_node.node_id)
 
 # Uitlaat toevoegen at validation location
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -446,7 +447,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 )
 ribasim_model.link.add(ribasim_model.basin[57], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
-to_afvoer_node_id2 = tabulated_rating_curve_node.node_id
+to_drain_node_ids.append(tabulated_rating_curve_node.node_id)
 
 # move node for improved representation
 ribasim_model.move_node(geometry=Point(220029, 561890), node_id=1608)
@@ -598,7 +599,7 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 # manually change the function of some nodes based upon model inspection
-to_supply = [
+to_supply = (
     1312,
     1347,
     1512,
@@ -629,9 +630,9 @@ to_supply = [
     3882,
     3884,
     3888,
-]
-to_flow_control = [2452, 3064, 3065, 3068]
-to_drain = [2147, 2751, 2944, 3041, 3494, 3568, 3709, 3892, to_afvoer_node_id1, to_afvoer_node_id2]
+)
+to_flow_control = (2452, 3064, 3065, 3068)
+to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, 3892, *to_drain_node_ids)
 
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
