@@ -36,7 +36,7 @@ if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
 
 MIXED_CONDITIONS_DESIGN_P = 12
 MIXED_CONDITIONS_DESIGN_E = 2
-LEVEL_DIFFERENCE_THRESHOLD = 0.04
+LEVEL_DIFFERENCE_THRESHOLD = 0.02
 
 # model settings
 waterschap = "HollandseDelta"
@@ -63,13 +63,13 @@ profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
 # cloud.synchronize(
 #     filepaths=[
-#                 ribasim_base_model_dir,
-#                 FeedbackFormulier_path,
-#                 ws_grenzen_path,
-#                 RWS_grenzen_path,
-#                 qlr_path,
-#                 aanvoer_path,
-#                 meteo_path,
+#         ribasim_base_model_dir,
+#         FeedbackFormulier_path,
+#         ws_grenzen_path,
+#         RWS_grenzen_path,
+#         qlr_path,
+#         aanvoer_path,
+#         meteo_path,
 #         profiles_path,
 #     ]
 # )
