@@ -1,124 +1,5 @@
 [
   {
-    "objectID": "cloudstorage.html",
-    "href": "cloudstorage.html",
-    "title": "Cloud storage",
-    "section": "",
-    "text": "For hosting data Ribasim-NL makes extensive use of this cloud storage: https://deltares.thegood.cloud/. The input data is not open, but the output models are, see the links below. This page explains how the cloud storage is setup and used. For the API docs, see the CloudStorage reference."
-  },
-  {
-    "objectID": "cloudstorage.html#access-configuration",
-    "href": "cloudstorage.html#access-configuration",
-    "title": "Cloud storage",
-    "section": "Access configuration",
-    "text": "Access configuration\nBefore you can interact with the cloud storage, you need to configure the access. The section on environment variables documents how to do this. The two relevant variables here are:\n\nRIBASIM_NL_CLOUD_PASS: password for the cloud, to be requested at Deltares\nRIBASIM_NL_DATA_DIR: directory with your local copy of data in the Ribasim-NL cloud\n\nThe password can currently only be shared among project collaborators since not all input data is public. The output models, both nationwide (folder Rijkswaterstaat) and per water board, are public. Share links for the models are below. Sort on “Modified” to find the latest versions.\n\nRijkswaterstaat\nAaenMaas\nAmstelGooienVecht\nBrabantseDelta\nDeDommel\nDelfland\nDrentsOverijsselseDelta\nHollandsNoorderkwartier\nHollandseDelta\nHunzeenAas\nLimburg\nNoorderzijlvest\nRijnenIJssel\nRijnland\nRivierenland\nScheldestromen\nSchielandendeKrimpenerwaard\nStichtseRijnlanden\nValleienVeluwe\nVechtstromen\nWetterskipFryslan\nZuiderzeeland"
-  },
-  {
-    "objectID": "cloudstorage.html#initialize-the-cloud",
-    "href": "cloudstorage.html#initialize-the-cloud",
-    "title": "Cloud storage",
-    "section": "Initialize the cloud",
-    "text": "Initialize the cloud\nImport the Cloud and initialize it.\nfrom ribasim_nl import CloudStorage\n\ncloud_store = CloudStorage()"
-  },
-  {
-    "objectID": "cloudstorage.html#download-sources-basisgegevens",
-    "href": "cloudstorage.html#download-sources-basisgegevens",
-    "title": "Cloud storage",
-    "section": "Download sources (basisgegevens)",
-    "text": "Download sources (basisgegevens)\nFind all sources\n# find all sources, `PBL_watertypenkaart`\nsources = cloud_storage.source_data\n# download, `PBL_watertypenkaart`\ncloud.download_basisgegevens(bronnen=[\"PBL_watertypenkaart\"])"
-  },
-  {
-    "objectID": "cloudstorage.html#find-water-authorities",
-    "href": "cloudstorage.html#find-water-authorities",
-    "title": "Cloud storage",
-    "section": "Find water authorities",
-    "text": "Find water authorities\nTo find available water authorities:\ncloud_storage.water_authorities"
-  },
-  {
-    "objectID": "cloudstorage.html#download-water-authority-datasets",
-    "href": "cloudstorage.html#download-water-authority-datasets",
-    "title": "Cloud storage",
-    "section": "Download water authority datasets",
-    "text": "Download water authority datasets\nauthority = \"Rijkswaterstaat\"\n\n# to download external data (aangeleverd) only\ncloud_storage.download_aangeleverd(authority)\n\n# to download manipulated data (verwerkt) only\ncloud_storage.download_verwerkt(authority)\n\n# to download all\ncloud_storage.download_all(authority)"
-  },
-  {
-    "objectID": "cloudstorage.html#upload-manipulated-data-aangeleverd",
-    "href": "cloudstorage.html#upload-manipulated-data-aangeleverd",
-    "title": "Cloud storage",
-    "section": "Upload manipulated data (aangeleverd)",
-    "text": "Upload manipulated data (aangeleverd)\nauthority = \"Rijkswaterstaat\"\n# upload local `aangeleverd` directory to cloud-storage\ncloud_storage.upload_aangeleverd(authority, overwrite=True)"
-  },
-  {
-    "objectID": "cloudstorage.html#upload-models",
-    "href": "cloudstorage.html#upload-models",
-    "title": "Cloud storage",
-    "section": "Upload models",
-    "text": "Upload models\nauthority = \"Rijkswaterstaat\"\ncloud_storage.uploaded_models(authority) # to see which models have been uploaded\n\ncloud_storage.upload_model(authority, model=\"ijsselmeer\") # to upload a new version of the `ijsselmeermodel`."
-  },
-  {
-    "objectID": "reference/possibly_intersecting.html",
-    "href": "reference/possibly_intersecting.html",
-    "title": "possibly_intersecting",
-    "section": "",
-    "text": "possibly_intersecting(dataframebounds, geometry, buffer=0)\nEfficiently determine possibly intersecting geometries using a bounding box.\nFinding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
-  },
-  {
-    "objectID": "reference/possibly_intersecting.html#parameters",
-    "href": "reference/possibly_intersecting.html#parameters",
-    "title": "possibly_intersecting",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
-  },
-  {
-    "objectID": "reference/find_nearest_branch.html",
-    "href": "reference/find_nearest_branch.html",
-    "title": "find_nearest_branch",
-    "section": "",
-    "text": "find_nearest_branch(branches, geometries, method='overall', maxdist=5)\nDetermine nearest branch for each geometry.\nThe nearest branch can be found by finding t from both ends (ends) or the nearest branch from the geometry as a whole (overall), the centroid (centroid), or intersecting (intersect).\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5"
-  },
-  {
-    "objectID": "reference/find_nearest_branch.html#parameters",
-    "href": "reference/find_nearest_branch.html#parameters",
-    "title": "find_nearest_branch",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5"
-  },
-  {
-    "objectID": "reference/add_styles_to_geopackage.html",
-    "href": "reference/add_styles_to_geopackage.html",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "add_styles_to_geopackage(gpkg_path)\nAdd styles to a HyDAMO GeoPackage\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\nPath\nPath to HyDAMO GeoPackage\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/add_styles_to_geopackage.html#parameters",
-    "href": "reference/add_styles_to_geopackage.html#parameters",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\nPath\nPath to HyDAMO GeoPackage\nrequired"
-  },
-  {
-    "objectID": "reference/add_styles_to_geopackage.html#returns",
-    "href": "reference/add_styles_to_geopackage.html#returns",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "Name\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/ExtendedGeoDataFrame.html",
-    "href": "reference/ExtendedGeoDataFrame.html",
-    "title": "ExtendedGeoDataFrame",
-    "section": "",
-    "text": "ExtendedGeoDataFrame(\n    validation_schema=None,\n    geotype=None,\n    layer_name='',\n    required_columns=None,\n    logger=logging,\n    *args,\n    **kwargs,\n)\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\n\n\n\nName\nDescription\n\n\n\n\ncopy\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.copy(deep=True)\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\nThis method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndeep\nbool\nMake a deep copy, including a copy of the data and the indices. With deep=False neither the indices nor the data are copied.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nExtendedGeoDataFrame\nCopy of ExtendedGeoDataFrame.\n\n\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes={},\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/ExtendedGeoDataFrame.html#methods",
-    "href": "reference/ExtendedGeoDataFrame.html#methods",
-    "title": "ExtendedGeoDataFrame",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\ncopy\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.copy(deep=True)\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\nThis method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndeep\nbool\nMake a deep copy, including a copy of the data and the indices. With deep=False neither the indices nor the data are copied.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nExtendedGeoDataFrame\nCopy of ExtendedGeoDataFrame.\n\n\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes={},\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
     "objectID": "dev/index.html",
     "href": "dev/index.html",
     "title": "Contributing",
@@ -173,78 +54,6 @@
     "title": "Contributing",
     "section": "Baseline file",
     "text": "Baseline file\nExisting type errors are stored in a baseline.json file. Pyrefly’s baseline feature suppresses these known errors and only reports new errors. This way, pyrefly check passes cleanly without requiring ignore comments on every line.\nThe baseline is configured in pyproject.toml:\n[tool.pyrefly]\nbaseline = \"baseline.json\"\n\nUpdating the baseline\nAfter fixing existing type errors, regenerate the baseline to remove the fixed entries:\nuv run pyrefly check --update-baseline\nIf you introduce code that triggers new errors (e.g. from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command. Prefer fixing the error or adding a targeted # pyrefly: ignore[error-code] comment when possible.\n\n\nSuppressing individual errors\nFor specific lines where the type checker is wrong, use a targeted ignore comment:\nx = some_expression  # pyrefly: ignore[error-code]\nFor lines that would exceed 120 characters with the comment appended, place the comment on the line above:\n# pyrefly: ignore[error-code]\nx = some_very_long_expression_that_would_be_too_long_with_an_inline_comment"
-  },
-  {
-    "objectID": "watersystems/limburg.html",
-    "href": "watersystems/limburg.html",
-    "title": "Limburg",
-    "section": "",
-    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Limburg\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\nVia gemaal Katsberg wordt water (max 5.4m3/s) vanuit de Noordervaart aangevoerd naar het kanaal van Deurne.Water wordt ingelaten voor WPM en Aa en Maas in de verdeling 50-50%.\nEen tijdelijke verlaging van aanvoer in de winter is afhankelijk van de natuurlijke afvoer van de Helenavaart die snel reageert op neerslag en die afvoert middels Grenssloot het gebied in. In de winter max 0.1m3/s voor doorspoeling om kwaliteitsredenen. Bij Halte Verdeelwerk wordt het beschikbare water verdeeld over het Peelkanaal en de Grenssloot verdeeld. Middels een automatische klepstuw (Gre 6 en TMX De Halte), wordt hier het aanvoerwater van de Katsberg doorgezet naar de Grenssloot. Stuw is zowel peil als debiet gestuurd Het peil mag nooit lager dan 30.80 vanwege inklappen veenwanden en nooit hoger dan 31.21 vanwege overstromingsgevaar bovenstrooms. In de zomer wordt gestuurd op een peil van 31.12m+NAP. In de winter sturing op 31.19m+NAP (om de veenkades zo nat mogelijk te houden ter voorkoming van inklinking). Het debiet is de resultante van de optelsom vanaf Katsberg en klopt in de zomer vrij goed.\nDe Helenavaart takt aan op Kanaal van Deurne via stuw Hel 1 (automatische stuw). Overtollig water van Helenavaart wordt naar Peelkanaal geleid.\n\n\n\nAfvoer: - Via het Afleidingskanaal wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de Maas\nAanvoer: - Via Verdeelwerk De Halte wordt een deel van het aangevoerde water naar het aanvoergebied Peelkanaal geleid. - Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied Peelscheloop Bakelse AA en Maaskant-Oost)\n\n\n\nAfvoer: - Via de Oostrumsche beek en de Groote Molenbeek naar de Maas\nAanvoer - De aanvoer via Katsberg, naar gemaal Helenveen en een inlaat naar aanvoergebied Helenaveen en Verdeelwerk de Halte.\n\n\n\nAfvoer: - Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de Maas\nAanvoer - Via de Noordervaart kan water ingelaten worden via gemaal Beringe\n\n\n\nAfvoer: - Direct naar de Zuid-Willemsvaart\nAanvoer - Via inlaat de Eendlossing vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - Naar de Zuid-Willemsvaart via Aa en Maas\nAanvoer - Via inlaat Nederweert Hoverlossing vanaf de Zuid-Willemsvaart - Vanaf aanvoergebied Nederweert Hoverlossing wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)\n\n\n\nAfvoer: - Via de uitlaat Sterkselsche Aa wordt het doorgevoerd naar waterschap de Dommel\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - via de Neerbeek en de Tungelroysche beek naar de Maas\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\n\nVia inlaten vanaf de Zwartwaterlossing\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAchterste Moost\nD_25958\n410\ninlaat\n0.02\n0\n\n\nEendlossing\nS_97698\n772\ninlaat\n0.02\n0\n\n\nGemaal Beringe\nG_27621\n583\ninlaat\n0.65\n0\n\n\nGemaal Helenaveen\nG_27616\n590\ninlaat\n0.35\n0\n\n\nHoutstraatlossing\nD_14965\n351\ninlaat\n0.05\n0\n\n\nHushoverbeek\nD_281344\n2502\ninlaat\n0.05\n0\n\n\nInlaat Evertsoord\nS_97322\n604\ninlaat\n0.35\n0\n\n\nInlaat Groote Moost\nS_98847\n236\ninlaat\n0.09\n0\n\n\nInlaat Hulsenlossing\n\n1223\ninlaat\n0.03\n0\n\n\nInlaat Rietbeek\nS_98409\n599\ninlaat\n0.12\n0\n\n\nInlaat Weteringbeek\nS_98009\n731\ninlaat\n0.125\n0\n\n\nKampershoek\n\n2503\ninlaat\n0.05\n0\n\n\nKatsberg\nS_282001\n238\ndoorlaat\n4.7\n0\n\n\nKlein Leukerbeek\nW_153168_0\n1119\ninlaat\n0.08\n0\n\n\nNederweerter Hovenlossing\nD_23657\n534\ninlaat\n0.02\n0\n\n\nNederweerter Riet\nD_25545\n464\ninlaat\n0.05\n0\n\n\nOude Graaf\n\n1136\ninlaat\n0.05\n0\n\n\nRoeven\nS_97840\n2501\ninlaat\n0.01\n0\n\n\nSnepheiderbeek\nD_23544\n411\ninlaat\n0.05\n0\n\n\nUitlaat Sterkselsch kanaal\nS_97873\n748\nuitlaat\n0\n20\n\n\nVerdeelwerk de Halte\nS_97735\n773\ninlaat\n4.7\n0\n\n\nWaatskampoplossing\nS_97872\n598\ninlaat\n0.01\n0\n\n\nZwartwaterlossing\nD_294341\n230\ninlaat\n0.05\n0\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 8)",
-    "crumbs": [
-      "Watersystems",
-      "Limburg"
-    ]
-  },
-  {
-    "objectID": "watersystems/limburg.html#systeembeschrijving",
-    "href": "watersystems/limburg.html#systeembeschrijving",
-    "title": "Limburg",
-    "section": "",
-    "text": "Systeembeschrijving Limburg\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\nVia gemaal Katsberg wordt water (max 5.4m3/s) vanuit de Noordervaart aangevoerd naar het kanaal van Deurne.Water wordt ingelaten voor WPM en Aa en Maas in de verdeling 50-50%.\nEen tijdelijke verlaging van aanvoer in de winter is afhankelijk van de natuurlijke afvoer van de Helenavaart die snel reageert op neerslag en die afvoert middels Grenssloot het gebied in. In de winter max 0.1m3/s voor doorspoeling om kwaliteitsredenen. Bij Halte Verdeelwerk wordt het beschikbare water verdeeld over het Peelkanaal en de Grenssloot verdeeld. Middels een automatische klepstuw (Gre 6 en TMX De Halte), wordt hier het aanvoerwater van de Katsberg doorgezet naar de Grenssloot. Stuw is zowel peil als debiet gestuurd Het peil mag nooit lager dan 30.80 vanwege inklappen veenwanden en nooit hoger dan 31.21 vanwege overstromingsgevaar bovenstrooms. In de zomer wordt gestuurd op een peil van 31.12m+NAP. In de winter sturing op 31.19m+NAP (om de veenkades zo nat mogelijk te houden ter voorkoming van inklinking). Het debiet is de resultante van de optelsom vanaf Katsberg en klopt in de zomer vrij goed.\nDe Helenavaart takt aan op Kanaal van Deurne via stuw Hel 1 (automatische stuw). Overtollig water van Helenavaart wordt naar Peelkanaal geleid.\n\n\n\nAfvoer: - Via het Afleidingskanaal wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de Maas\nAanvoer: - Via Verdeelwerk De Halte wordt een deel van het aangevoerde water naar het aanvoergebied Peelkanaal geleid. - Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied Peelscheloop Bakelse AA en Maaskant-Oost)\n\n\n\nAfvoer: - Via de Oostrumsche beek en de Groote Molenbeek naar de Maas\nAanvoer - De aanvoer via Katsberg, naar gemaal Helenveen en een inlaat naar aanvoergebied Helenaveen en Verdeelwerk de Halte.\n\n\n\nAfvoer: - Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de Maas\nAanvoer - Via de Noordervaart kan water ingelaten worden via gemaal Beringe\n\n\n\nAfvoer: - Direct naar de Zuid-Willemsvaart\nAanvoer - Via inlaat de Eendlossing vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - Naar de Zuid-Willemsvaart via Aa en Maas\nAanvoer - Via inlaat Nederweert Hoverlossing vanaf de Zuid-Willemsvaart - Vanaf aanvoergebied Nederweert Hoverlossing wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)\n\n\n\nAfvoer: - Via de uitlaat Sterkselsche Aa wordt het doorgevoerd naar waterschap de Dommel\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - via de Neerbeek en de Tungelroysche beek naar de Maas\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\n\nVia inlaten vanaf de Zwartwaterlossing",
-    "crumbs": [
-      "Watersystems",
-      "Limburg"
-    ]
-  },
-  {
-    "objectID": "watersystems/limburg.html#capaciteiten",
-    "href": "watersystems/limburg.html#capaciteiten",
-    "title": "Limburg",
-    "section": "",
-    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAchterste Moost\nD_25958\n410\ninlaat\n0.02\n0\n\n\nEendlossing\nS_97698\n772\ninlaat\n0.02\n0\n\n\nGemaal Beringe\nG_27621\n583\ninlaat\n0.65\n0\n\n\nGemaal Helenaveen\nG_27616\n590\ninlaat\n0.35\n0\n\n\nHoutstraatlossing\nD_14965\n351\ninlaat\n0.05\n0\n\n\nHushoverbeek\nD_281344\n2502\ninlaat\n0.05\n0\n\n\nInlaat Evertsoord\nS_97322\n604\ninlaat\n0.35\n0\n\n\nInlaat Groote Moost\nS_98847\n236\ninlaat\n0.09\n0\n\n\nInlaat Hulsenlossing\n\n1223\ninlaat\n0.03\n0\n\n\nInlaat Rietbeek\nS_98409\n599\ninlaat\n0.12\n0\n\n\nInlaat Weteringbeek\nS_98009\n731\ninlaat\n0.125\n0\n\n\nKampershoek\n\n2503\ninlaat\n0.05\n0\n\n\nKatsberg\nS_282001\n238\ndoorlaat\n4.7\n0\n\n\nKlein Leukerbeek\nW_153168_0\n1119\ninlaat\n0.08\n0\n\n\nNederweerter Hovenlossing\nD_23657\n534\ninlaat\n0.02\n0\n\n\nNederweerter Riet\nD_25545\n464\ninlaat\n0.05\n0\n\n\nOude Graaf\n\n1136\ninlaat\n0.05\n0\n\n\nRoeven\nS_97840\n2501\ninlaat\n0.01\n0\n\n\nSnepheiderbeek\nD_23544\n411\ninlaat\n0.05\n0\n\n\nUitlaat Sterkselsch kanaal\nS_97873\n748\nuitlaat\n0\n20\n\n\nVerdeelwerk de Halte\nS_97735\n773\ninlaat\n4.7\n0\n\n\nWaatskampoplossing\nS_97872\n598\ninlaat\n0.01\n0\n\n\nZwartwaterlossing\nD_294341\n230\ninlaat\n0.05\n0",
-    "crumbs": [
-      "Watersystems",
-      "Limburg"
-    ]
-  },
-  {
-    "objectID": "watersystems/limburg.html#bronnen",
-    "href": "watersystems/limburg.html#bronnen",
-    "title": "Limburg",
-    "section": "",
-    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 8)",
-    "crumbs": [
-      "Watersystems",
-      "Limburg"
-    ]
-  },
-  {
-    "objectID": "watersystems/template.html",
-    "href": "watersystems/template.html",
-    "title": "{waterschap}",
-    "section": "",
-    "text": "Laatst bijgewerkt: {datum}\nLaatste modelversie: {modelversie}\n\n\n\n\n\n\nSysteembeschrijving {waterschap}\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})"
-  },
-  {
-    "objectID": "watersystems/template.html#systeembeschrijving",
-    "href": "watersystems/template.html#systeembeschrijving",
-    "title": "{waterschap}",
-    "section": "",
-    "text": "Systeembeschrijving {waterschap}"
-  },
-  {
-    "objectID": "watersystems/template.html#capaciteiten",
-    "href": "watersystems/template.html#capaciteiten",
-    "title": "{waterschap}",
-    "section": "",
-    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven."
-  },
-  {
-    "objectID": "watersystems/template.html#bronnen",
-    "href": "watersystems/template.html#bronnen",
-    "title": "{waterschap}",
-    "section": "",
-    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})"
   },
   {
     "objectID": "watersystems/main.html",
@@ -302,6 +111,150 @@
     ]
   },
   {
+    "objectID": "watersystems/dommel.html",
+    "href": "watersystems/dommel.html",
+    "title": "De Dommel",
+    "section": "",
+    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving De Dommel\n\n\nHet beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.\n\n\nVia de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ’s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.\n\n\n\nBij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Hier wordt gestuwd met Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren &lt;10m3/s en 85% bij afvoeren &gt; 10m3/s).\nDe maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.\n\n\n\nEr kan water worden ingelaten bij inlaat Olen en bij inlaat Son en Breugel. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Son en Breugel is 0.16 m3/s en 0.6 m3/s naar Olen.\n\n\n\nVanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaat Beekloop.\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nInlaat Beekloop\n\n1912\ninlaat\n0.25\n0\n\n\nInlaat Olen\nDSH0023156\n417\ninlaat\n0.6\n0\n\n\nInlaat Son en Breugel\nDO28-st1\n405\ninlaat\n0.16\n0\n\n\nStuw Blaarthem\nDL62-st1\n210\nuitlaat\n0\n20\n\n\nStuw Verdeelwerk\nDL1-st5\n293\nuitlaat\n0\n200\n\n\nVughterstuw\nDO1-st3\n121\nuitlaat\n0\n200\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel E, pagina 39-1)\n[Waterakkoord: 2022-06-27_waterakkoord]",
+    "crumbs": [
+      "Watersystems",
+      "De Dommel"
+    ]
+  },
+  {
+    "objectID": "watersystems/dommel.html#systeembeschrijving",
+    "href": "watersystems/dommel.html#systeembeschrijving",
+    "title": "De Dommel",
+    "section": "",
+    "text": "Systeembeschrijving De Dommel\n\n\nHet beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.\n\n\nVia de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ’s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.\n\n\n\nBij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Hier wordt gestuwd met Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren &lt;10m3/s en 85% bij afvoeren &gt; 10m3/s).\nDe maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.\n\n\n\nEr kan water worden ingelaten bij inlaat Olen en bij inlaat Son en Breugel. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Son en Breugel is 0.16 m3/s en 0.6 m3/s naar Olen.\n\n\n\nVanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaat Beekloop.",
+    "crumbs": [
+      "Watersystems",
+      "De Dommel"
+    ]
+  },
+  {
+    "objectID": "watersystems/dommel.html#capaciteiten",
+    "href": "watersystems/dommel.html#capaciteiten",
+    "title": "De Dommel",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nInlaat Beekloop\n\n1912\ninlaat\n0.25\n0\n\n\nInlaat Olen\nDSH0023156\n417\ninlaat\n0.6\n0\n\n\nInlaat Son en Breugel\nDO28-st1\n405\ninlaat\n0.16\n0\n\n\nStuw Blaarthem\nDL62-st1\n210\nuitlaat\n0\n20\n\n\nStuw Verdeelwerk\nDL1-st5\n293\nuitlaat\n0\n200\n\n\nVughterstuw\nDO1-st3\n121\nuitlaat\n0\n200",
+    "crumbs": [
+      "Watersystems",
+      "De Dommel"
+    ]
+  },
+  {
+    "objectID": "watersystems/dommel.html#bronnen",
+    "href": "watersystems/dommel.html#bronnen",
+    "title": "De Dommel",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel E, pagina 39-1)\n[Waterakkoord: 2022-06-27_waterakkoord]",
+    "crumbs": [
+      "Watersystems",
+      "De Dommel"
+    ]
+  },
+  {
+    "objectID": "watersystems/brabantsedelta.html",
+    "href": "watersystems/brabantsedelta.html",
+    "title": "Brabantse Delta",
+    "section": "",
+    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Brabantse Delta\n\n\nHieronder is de sturing van het Mark-Vliet systeem en de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\nDe Mark, Dintel, Mark-Vlietkanaal, de Roosendaalsche en Steenbergsche Vliet en het Markkanaal staan in open verbinding met elkaar. Bij droogte vindt aanvoer in eerste instantie plaats vanuit het Volkerak. Wanneer dit niet genoeg is kan via de Markduiker water aangevoerd worden.\n\n\n\nDe Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op de Mark dan op de Amertak kunnen de extra deuren worden gesloten om instroom van hoogwater richting het kanaal te voorkomen. De sluis fungeert dan tevens als waterkering.\n\n\n\nAfvoer: - Via de Slagen pomp en gemaal Keizersveer wordt het water afgevoerd naar de Bergsche Maas - In noordoosten watert een klein gebied Gansoijen (noordoosten) via een sifon onder het Afwateringskanaal ’s-Hertogenosch-Drongelen door via het (Aa en Maas) afgevoerd naar de Bergsche Maas. Bij Waalwijk watert nog een klein gebied via gemaal Bloemendaal op het Drongelenskanaal (mondt uit in de Bergsche Maas). - Ten zuiden van het Wilhelminakanaal watert het via aflaatkunstwerk af op het Wilhelminakanaal. Het overige deel van het water wordt via een sifon (Tichelrijt) onder het Wilhelminakanaal geleid en watert af via gemaal Keizersveer op de Bergsche Maas.\nAanvoer: - Vanuit het Wilhelminakanaal zijn diverse inlaten die de Donge, en Paterheide van aanvoer voorzien. - Aanvoergebied de Sprangsloot ontvangt water via inlaat de Sprangse sloot vanuit het Zuiderkanaal die in de zomer op peil wordt gehouden door de Bergsche Maas ????? - De Westplas ontvangt direct water uit de Bergsche Maas\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak - Rechtstreeks naar de Amer en via de Amertak naar de Amer\nAanvoer - De aanvoer vindt plaats via inlaten via de Mark\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak - Rechtstreeks en via de Roode Vaartnaar het Hollandsch diep\nAanvoer - De aanvoer vindt plaats via inlaten via de Mark die op peil wordt gehouden door het Volkerak??\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark-Vlietkanaal en de Dintel , via M-V sluis naar het Volkerak - Vanaf de Steenbergsche Vliet via de scheepvaartsluis naar de Krammer\nAanvoer - De aanvoer vindt plaats via inlaten vanaf de Dintel en de Steenbergsche Vliet\n\n\n\nAfvoer: - Vindt plaats vanaf de Steenbergsche Vliet via de scheepvaartsluis naar de Krammer\nAanvoer: - Vindt plaats vanaf de Steenbergsche Vliet.\n\n\n\nAfvoer: - Vindt plaats via een gemaal direct op het Schelde Rijn-kanaal\nAanvoer: - Vindt plaats via een inlaat vanaf het Zoommeer.\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak\nAanvoer: - De aanvoer vindt plaats via inlaten via de Mark/Markkanaal die op peil wordt gehouden door het Volkerak??\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven. ## Bronnen Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D)",
+    "crumbs": [
+      "Watersystems",
+      "Brabantse Delta"
+    ]
+  },
+  {
+    "objectID": "watersystems/brabantsedelta.html#systeembeschrijving",
+    "href": "watersystems/brabantsedelta.html#systeembeschrijving",
+    "title": "Brabantse Delta",
+    "section": "",
+    "text": "Systeembeschrijving Brabantse Delta\n\n\nHieronder is de sturing van het Mark-Vliet systeem en de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\nDe Mark, Dintel, Mark-Vlietkanaal, de Roosendaalsche en Steenbergsche Vliet en het Markkanaal staan in open verbinding met elkaar. Bij droogte vindt aanvoer in eerste instantie plaats vanuit het Volkerak. Wanneer dit niet genoeg is kan via de Markduiker water aangevoerd worden.\n\n\n\nDe Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op de Mark dan op de Amertak kunnen de extra deuren worden gesloten om instroom van hoogwater richting het kanaal te voorkomen. De sluis fungeert dan tevens als waterkering.\n\n\n\nAfvoer: - Via de Slagen pomp en gemaal Keizersveer wordt het water afgevoerd naar de Bergsche Maas - In noordoosten watert een klein gebied Gansoijen (noordoosten) via een sifon onder het Afwateringskanaal ’s-Hertogenosch-Drongelen door via het (Aa en Maas) afgevoerd naar de Bergsche Maas. Bij Waalwijk watert nog een klein gebied via gemaal Bloemendaal op het Drongelenskanaal (mondt uit in de Bergsche Maas). - Ten zuiden van het Wilhelminakanaal watert het via aflaatkunstwerk af op het Wilhelminakanaal. Het overige deel van het water wordt via een sifon (Tichelrijt) onder het Wilhelminakanaal geleid en watert af via gemaal Keizersveer op de Bergsche Maas.\nAanvoer: - Vanuit het Wilhelminakanaal zijn diverse inlaten die de Donge, en Paterheide van aanvoer voorzien. - Aanvoergebied de Sprangsloot ontvangt water via inlaat de Sprangse sloot vanuit het Zuiderkanaal die in de zomer op peil wordt gehouden door de Bergsche Maas ????? - De Westplas ontvangt direct water uit de Bergsche Maas\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak - Rechtstreeks naar de Amer en via de Amertak naar de Amer\nAanvoer - De aanvoer vindt plaats via inlaten via de Mark\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak - Rechtstreeks en via de Roode Vaartnaar het Hollandsch diep\nAanvoer - De aanvoer vindt plaats via inlaten via de Mark die op peil wordt gehouden door het Volkerak??\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark-Vlietkanaal en de Dintel , via M-V sluis naar het Volkerak - Vanaf de Steenbergsche Vliet via de scheepvaartsluis naar de Krammer\nAanvoer - De aanvoer vindt plaats via inlaten vanaf de Dintel en de Steenbergsche Vliet\n\n\n\nAfvoer: - Vindt plaats vanaf de Steenbergsche Vliet via de scheepvaartsluis naar de Krammer\nAanvoer: - Vindt plaats vanaf de Steenbergsche Vliet.\n\n\n\nAfvoer: - Vindt plaats via een gemaal direct op het Schelde Rijn-kanaal\nAanvoer: - Vindt plaats via een inlaat vanaf het Zoommeer.\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak\nAanvoer: - De aanvoer vindt plaats via inlaten via de Mark/Markkanaal die op peil wordt gehouden door het Volkerak??",
+    "crumbs": [
+      "Watersystems",
+      "Brabantse Delta"
+    ]
+  },
+  {
+    "objectID": "watersystems/brabantsedelta.html#capaciteiten",
+    "href": "watersystems/brabantsedelta.html#capaciteiten",
+    "title": "Brabantse Delta",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven. ## Bronnen Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D)",
+    "crumbs": [
+      "Watersystems",
+      "Brabantse Delta"
+    ]
+  },
+  {
+    "objectID": "cloudstorage.html",
+    "href": "cloudstorage.html",
+    "title": "Cloud storage",
+    "section": "",
+    "text": "For hosting data Ribasim-NL makes extensive use of this cloud storage: https://deltares.thegood.cloud/. The input data is not open, but the output models are, see the links below. This page explains how the cloud storage is setup and used. For the API docs, see the CloudStorage reference."
+  },
+  {
+    "objectID": "cloudstorage.html#access-configuration",
+    "href": "cloudstorage.html#access-configuration",
+    "title": "Cloud storage",
+    "section": "Access configuration",
+    "text": "Access configuration\nBefore you can interact with the cloud storage, you need to configure the access. The section on environment variables documents how to do this. The two relevant variables here are:\n\nRIBASIM_NL_CLOUD_PASS: password for the cloud, to be requested at Deltares\nRIBASIM_NL_DATA_DIR: directory with your local copy of data in the Ribasim-NL cloud\n\nThe password can currently only be shared among project collaborators since not all input data is public. The output models, both nationwide (folder Rijkswaterstaat) and per water board, are public. Share links for the models are below. Sort on “Modified” to find the latest versions.\n\nRijkswaterstaat\nAaenMaas\nAmstelGooienVecht\nBrabantseDelta\nDeDommel\nDelfland\nDrentsOverijsselseDelta\nHollandsNoorderkwartier\nHollandseDelta\nHunzeenAas\nLimburg\nNoorderzijlvest\nRijnenIJssel\nRijnland\nRivierenland\nScheldestromen\nSchielandendeKrimpenerwaard\nStichtseRijnlanden\nValleienVeluwe\nVechtstromen\nWetterskipFryslan\nZuiderzeeland"
+  },
+  {
+    "objectID": "cloudstorage.html#initialize-the-cloud",
+    "href": "cloudstorage.html#initialize-the-cloud",
+    "title": "Cloud storage",
+    "section": "Initialize the cloud",
+    "text": "Initialize the cloud\nImport the Cloud and initialize it.\nfrom ribasim_nl import CloudStorage\n\ncloud_store = CloudStorage()"
+  },
+  {
+    "objectID": "cloudstorage.html#download-sources-basisgegevens",
+    "href": "cloudstorage.html#download-sources-basisgegevens",
+    "title": "Cloud storage",
+    "section": "Download sources (basisgegevens)",
+    "text": "Download sources (basisgegevens)\nFind all sources\n# find all sources, `PBL_watertypenkaart`\nsources = cloud_storage.source_data\n# download, `PBL_watertypenkaart`\ncloud.download_basisgegevens(bronnen=[\"PBL_watertypenkaart\"])"
+  },
+  {
+    "objectID": "cloudstorage.html#find-water-authorities",
+    "href": "cloudstorage.html#find-water-authorities",
+    "title": "Cloud storage",
+    "section": "Find water authorities",
+    "text": "Find water authorities\nTo find available water authorities:\ncloud_storage.water_authorities"
+  },
+  {
+    "objectID": "cloudstorage.html#download-water-authority-datasets",
+    "href": "cloudstorage.html#download-water-authority-datasets",
+    "title": "Cloud storage",
+    "section": "Download water authority datasets",
+    "text": "Download water authority datasets\nauthority = \"Rijkswaterstaat\"\n\n# to download external data (aangeleverd) only\ncloud_storage.download_aangeleverd(authority)\n\n# to download manipulated data (verwerkt) only\ncloud_storage.download_verwerkt(authority)\n\n# to download all\ncloud_storage.download_all(authority)"
+  },
+  {
+    "objectID": "cloudstorage.html#upload-manipulated-data-aangeleverd",
+    "href": "cloudstorage.html#upload-manipulated-data-aangeleverd",
+    "title": "Cloud storage",
+    "section": "Upload manipulated data (aangeleverd)",
+    "text": "Upload manipulated data (aangeleverd)\nauthority = \"Rijkswaterstaat\"\n# upload local `aangeleverd` directory to cloud-storage\ncloud_storage.upload_aangeleverd(authority, overwrite=True)"
+  },
+  {
+    "objectID": "cloudstorage.html#upload-models",
+    "href": "cloudstorage.html#upload-models",
+    "title": "Cloud storage",
+    "section": "Upload models",
+    "text": "Upload models\nauthority = \"Rijkswaterstaat\"\ncloud_storage.uploaded_models(authority) # to see which models have been uploaded\n\ncloud_storage.upload_model(authority, model=\"ijsselmeer\") # to upload a new version of the `ijsselmeermodel`."
+  },
+  {
+    "objectID": "workflow/level-controlled.html",
+    "href": "workflow/level-controlled.html",
+    "title": "Level controlled",
+    "section": "",
+    "text": "Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under src/peilbeheerst_model. The paths below are relative to this path.\n\nRun the preprocessing scripts. One script per water board, path: peilbeheerst_model/preprocess_data/\nRun the postprocessing script. One script per water board, path: peilbeheerst_model/postprocess_data/\nRun the crossings script. One script, path: 01_parse_crossings.ipynb. Moving to one script per water board under peilbeheerst_model/parse_crossings/.\nRun shortest paths scripts. One script per water board, path: Shortest_path/\nRun crossings to Ribasim script. One script, all water boards are below each other, path: 02_crossings_to_ribasim_notebook.ipynb. Moving to one script per water board under peilbeheerst_model/crossings_to_ribasim/.\nRun parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: Parametrize/AmstelGooienVecht_parametrize.ipynb\n\nWe originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as AmstelGooienVecht_parametrize.ipynb.\nFinally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.",
+    "crumbs": [
+      "Workflows",
+      "Level controlled"
+    ]
+  },
+  {
     "objectID": "workflow/gravity-controlled.html",
     "href": "workflow/gravity-controlled.html",
     "title": "Gravity controlled",
@@ -321,6 +274,168 @@
     "crumbs": [
       "Workflows",
       "Profile generation"
+    ]
+  },
+  {
+    "objectID": "reference/CloudStorage.html",
+    "href": "reference/CloudStorage.html",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "CloudStorage(\n    data_dir=settings.ribasim_nl_data_dir,\n    user=RIBASIM_NL_CLOUD_USER,\n    url=BASE_URL,\n    password=settings.ribasim_nl_cloud_pass,\n)\nConnect a local ’data_dir` to cloud-storage.\n\n\n\n\n\nName\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)\n\n\n\n\n\n\n\n\n\nName\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = CloudStorage()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=[], overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(\n    url,\n    overwrite=settings.overwrite_files_from_cloud,\n)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\nbool\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\nbool\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
+  },
+  {
+    "objectID": "reference/CloudStorage.html#attributes",
+    "href": "reference/CloudStorage.html#attributes",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)"
+  },
+  {
+    "objectID": "reference/CloudStorage.html#methods",
+    "href": "reference/CloudStorage.html#methods",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = CloudStorage()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=[], overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(\n    url,\n    overwrite=settings.overwrite_files_from_cloud,\n)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\nbool\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\nbool\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
+  },
+  {
+    "objectID": "reference/read_style.html",
+    "href": "reference/read_style.html",
+    "title": "read_style",
+    "section": "",
+    "text": "read_style(style_path)\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\nExample ‘http://mrcc.com/qgis.dtd -&gt;’‘http://mrcc.com/qgis.dtd’’\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nstyle_path\nPath\nPath to sld-file\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
+  },
+  {
+    "objectID": "reference/read_style.html#parameters",
+    "href": "reference/read_style.html#parameters",
+    "title": "read_style",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nstyle_path\nPath\nPath to sld-file\nrequired"
+  },
+  {
+    "objectID": "reference/read_style.html#returns",
+    "href": "reference/read_style.html#returns",
+    "title": "read_style",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
+  },
+  {
+    "objectID": "reference/ExtendedGeoDataFrame.html",
+    "href": "reference/ExtendedGeoDataFrame.html",
+    "title": "ExtendedGeoDataFrame",
+    "section": "",
+    "text": "ExtendedGeoDataFrame(\n    validation_schema=None,\n    geotype=None,\n    layer_name='',\n    required_columns=None,\n    logger=logging,\n    *args,\n    **kwargs,\n)\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\n\n\n\nName\nDescription\n\n\n\n\ncopy\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.copy(deep=True)\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\nThis method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndeep\nbool\nMake a deep copy, including a copy of the data and the indices. With deep=False neither the indices nor the data are copied.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nExtendedGeoDataFrame\nCopy of ExtendedGeoDataFrame.\n\n\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes={},\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/ExtendedGeoDataFrame.html#methods",
+    "href": "reference/ExtendedGeoDataFrame.html#methods",
+    "title": "ExtendedGeoDataFrame",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\ncopy\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.copy(deep=True)\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\nThis method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndeep\nbool\nMake a deep copy, including a copy of the data and the indices. With deep=False neither the indices nor the data are copied.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nExtendedGeoDataFrame\nCopy of ExtendedGeoDataFrame.\n\n\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes={},\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/find_nearest_branch.html",
+    "href": "reference/find_nearest_branch.html",
+    "title": "find_nearest_branch",
+    "section": "",
+    "text": "find_nearest_branch(branches, geometries, method='overall', maxdist=5)\nDetermine nearest branch for each geometry.\nThe nearest branch can be found by finding t from both ends (ends) or the nearest branch from the geometry as a whole (overall), the centroid (centroid), or intersecting (intersect).\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5"
+  },
+  {
+    "objectID": "reference/find_nearest_branch.html#parameters",
+    "href": "reference/find_nearest_branch.html#parameters",
+    "title": "find_nearest_branch",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5"
+  },
+  {
+    "objectID": "reference/add_styles_to_geopackage.html",
+    "href": "reference/add_styles_to_geopackage.html",
+    "title": "add_styles_to_geopackage",
+    "section": "",
+    "text": "add_styles_to_geopackage(gpkg_path)\nAdd styles to a HyDAMO GeoPackage\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\nPath\nPath to HyDAMO GeoPackage\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/add_styles_to_geopackage.html#parameters",
+    "href": "reference/add_styles_to_geopackage.html#parameters",
+    "title": "add_styles_to_geopackage",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\nPath\nPath to HyDAMO GeoPackage\nrequired"
+  },
+  {
+    "objectID": "reference/add_styles_to_geopackage.html#returns",
+    "href": "reference/add_styles_to_geopackage.html#returns",
+    "title": "add_styles_to_geopackage",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/HyDAMO.html",
+    "href": "reference/HyDAMO.html",
+    "title": "HyDAMO",
+    "section": "",
+    "text": "HyDAMO(\n    version='2.2',\n    schemas_path=SCHEMAS_DIR,\n    ignored_layers=['afvoeraanvoergebied', 'imwa_geoobject', 'leggerwatersysteem', 'leggerwaterveiligheid', 'waterbeheergebied'],\n)\nDefinition of the HyDAMO datamodel.\n\n\n\n\n\nName\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values={},\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/HyDAMO.html#methods",
+    "href": "reference/HyDAMO.html#methods",
+    "title": "HyDAMO",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values={},\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/index.html",
+    "href": "reference/index.html",
+    "title": "API Reference",
+    "section": "",
+    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\n\n\n\n\n\n\nRibasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
+  },
+  {
+    "objectID": "reference/index.html#hydamo",
+    "href": "reference/index.html#hydamo",
+    "title": "API Reference",
+    "section": "",
+    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’."
+  },
+  {
+    "objectID": "reference/index.html#ribasim-nl",
+    "href": "reference/index.html#ribasim-nl",
+    "title": "API Reference",
+    "section": "",
+    "text": "Ribasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
+  },
+  {
+    "objectID": "reference/possibly_intersecting.html",
+    "href": "reference/possibly_intersecting.html",
+    "title": "possibly_intersecting",
+    "section": "",
+    "text": "possibly_intersecting(dataframebounds, geometry, buffer=0)\nEfficiently determine possibly intersecting geometries using a bounding box.\nFinding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
+  },
+  {
+    "objectID": "reference/possibly_intersecting.html#parameters",
+    "href": "reference/possibly_intersecting.html#parameters",
+    "title": "possibly_intersecting",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
+  },
+  {
+    "objectID": "workflow/couple.html",
+    "href": "workflow/couple.html",
+    "title": "Coupling",
+    "section": "",
+    "text": "To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.\nThis procedure assumes there’s a meta_couple_authority column in the LevelBoundary / Static table, which is currently the case for (at least) the level controlled models.\n\nEnsure all models have a meta_couple_authority.\n\n\nnotebooks/samenvoegen_modellen.py\nFirst we determine which models we want to couple. Currently this is tested for Rijkswaterstaat, AmstelGooienVecht, Rijnland, HollandseDelta, Delfland, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g. 80 for Rijkswaterstaat. This will result in an lhm model.\n\n\nnotebooks/koppelen_modellen.py\nSecondly, we can use this lhm model to actually couple the individual models in there. To do so, each LevelBoundary with a filled in meta_couple_authority in their Static table is replaced by another node from the meta_couple_authoritys model.\nThere are several combinations possible:\n\nConnector | LevelBoundary replaced by Connector | Basin\nThe easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the Basin / area polygon). This will relink the connector node (i.e. an Outlet) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the Basin instead.\nFor the Rijkswaterstaat Basins, the new link follows the Rijkswataerstaat/verwerkt/netwerk.gpkg topology, instead of a direct line.\n\n\nOutlet | LevelBoundary . LevelBoundary | Outlet replaced by Outlet\nIn some cases, especially when coupling between two waterboards, there are two LevelBoundarys close to one another, which are treated as duplicates.\n\n\nOther connections\nThere are several other coupling connections that could happen which require further attention:\n\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Pump\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Outlet\nFix Control nodes when merging duplicates\nInvestigate whether other connections happen\n\nCurrently these cases are automatically handled as the Connector | Basin, which leaves duplicate Connector Nodes in place, and might duplicate a flow.",
+    "crumbs": [
+      "Workflows",
+      "Coupling"
+    ]
+  },
+  {
+    "objectID": "workflow/main-watersystem.html",
+    "href": "workflow/main-watersystem.html",
+    "title": "Main watersystem",
+    "section": "",
+    "text": "All files are in notebooks/rijkswaterstaat are numbered in order of execution.\n\n1_bathymetrie.py\nIn this script we merge data from Baseline (version j23_6-v1, non-public) with grids from bathymetrie-Nederland to one 5x5m GeoTiff.\nWe combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column baseline.\n\n\n\n\n\n\nBathymetry mask\n\n\n\n\n\n\n\nBathymetry\n\n\n\n\n\n\n\n2_basins.py\nWe derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of 1_bathymetry.py we write a CSV-file with a Basin profile.\n\n\n3_netwerk.py\nWe derive a ribasim_nl.Network (not a Ribasim network yet!) we can use to build a model_network with 5_model_netwerk.py. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from 2_basins.py as a network node will be put at the intersect of a Basin-polygon and the network.\n\n\n4_kunstwerken.py\nWe combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (model_netwerk.py).\n\n\n5_model_netwerk.py\nWe combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a .\\modellen\\hws_netwerk\\hws.toml file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.\n\n\n6_model_sturing.py\nWe take the model of 5 (.\\modellen\\hws_netwerk\\hws.toml), add control and write it to (.\\modellen\\hws_sturing\\hws.toml)\n\n\n7_model_onttrekkingen.py\nWe take the model of 6 (.\\modellen\\hws_sturing\\hws.toml), add drinking water, industry and energy demands. Then we add junctions and write it to (.\\modellen\\hws_demand\\hws.toml)\n\n\n8 update bc, state, etc.\nScripts to provide boundary/initial conditions to the model in .\\modellen\\hws_demand\\hws.toml and write it in another location.",
+    "crumbs": [
+      "Workflows",
+      "Main watersystem"
     ]
   },
   {
@@ -398,116 +513,6 @@
     "crumbs": [
       "Workflows",
       "Scale max flow rates outlets and pumps based on design events"
-    ]
-  },
-  {
-    "objectID": "workflow/couple.html",
-    "href": "workflow/couple.html",
-    "title": "Coupling",
-    "section": "",
-    "text": "To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.\nThis procedure assumes there’s a meta_couple_authority column in the LevelBoundary / Static table, which is currently the case for (at least) the level controlled models.\n\nEnsure all models have a meta_couple_authority.\n\n\nnotebooks/samenvoegen_modellen.py\nFirst we determine which models we want to couple. Currently this is tested for Rijkswaterstaat, AmstelGooienVecht, Rijnland, HollandseDelta, Delfland, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g. 80 for Rijkswaterstaat. This will result in an lhm model.\n\n\nnotebooks/koppelen_modellen.py\nSecondly, we can use this lhm model to actually couple the individual models in there. To do so, each LevelBoundary with a filled in meta_couple_authority in their Static table is replaced by another node from the meta_couple_authoritys model.\nThere are several combinations possible:\n\nConnector | LevelBoundary replaced by Connector | Basin\nThe easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the Basin / area polygon). This will relink the connector node (i.e. an Outlet) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the Basin instead.\nFor the Rijkswaterstaat Basins, the new link follows the Rijkswataerstaat/verwerkt/netwerk.gpkg topology, instead of a direct line.\n\n\nOutlet | LevelBoundary . LevelBoundary | Outlet replaced by Outlet\nIn some cases, especially when coupling between two waterboards, there are two LevelBoundarys close to one another, which are treated as duplicates.\n\n\nOther connections\nThere are several other coupling connections that could happen which require further attention:\n\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Pump\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Outlet\nFix Control nodes when merging duplicates\nInvestigate whether other connections happen\n\nCurrently these cases are automatically handled as the Connector | Basin, which leaves duplicate Connector Nodes in place, and might duplicate a flow.",
-    "crumbs": [
-      "Workflows",
-      "Coupling"
-    ]
-  },
-  {
-    "objectID": "workflow/main-watersystem.html",
-    "href": "workflow/main-watersystem.html",
-    "title": "Main watersystem",
-    "section": "",
-    "text": "All files are in notebooks/rijkswaterstaat are numbered in order of execution.\n\n1_bathymetrie.py\nIn this script we merge data from Baseline (version j23_6-v1, non-public) with grids from bathymetrie-Nederland to one 5x5m GeoTiff.\nWe combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column baseline.\n\n\n\n\n\n\nBathymetry mask\n\n\n\n\n\n\n\nBathymetry\n\n\n\n\n\n\n\n2_basins.py\nWe derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of 1_bathymetry.py we write a CSV-file with a Basin profile.\n\n\n3_netwerk.py\nWe derive a ribasim_nl.Network (not a Ribasim network yet!) we can use to build a model_network with 5_model_netwerk.py. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from 2_basins.py as a network node will be put at the intersect of a Basin-polygon and the network.\n\n\n4_kunstwerken.py\nWe combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (model_netwerk.py).\n\n\n5_model_netwerk.py\nWe combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a .\\modellen\\hws_netwerk\\hws.toml file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.\n\n\n6_model_sturing.py\nWe take the model of 5 (.\\modellen\\hws_netwerk\\hws.toml), add control and write it to (.\\modellen\\hws_sturing\\hws.toml)\n\n\n7_model_onttrekkingen.py\nWe take the model of 6 (.\\modellen\\hws_sturing\\hws.toml), add drinking water, industry and energy demands. Then we add junctions and write it to (.\\modellen\\hws_demand\\hws.toml)\n\n\n8 update bc, state, etc.\nScripts to provide boundary/initial conditions to the model in .\\modellen\\hws_demand\\hws.toml and write it in another location.",
-    "crumbs": [
-      "Workflows",
-      "Main watersystem"
-    ]
-  },
-  {
-    "objectID": "workflow/level-controlled.html",
-    "href": "workflow/level-controlled.html",
-    "title": "Level controlled",
-    "section": "",
-    "text": "Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under src/peilbeheerst_model. The paths below are relative to this path.\n\nRun the preprocessing scripts. One script per water board, path: peilbeheerst_model/preprocess_data/\nRun the postprocessing script. One script per water board, path: peilbeheerst_model/postprocess_data/\nRun the crossings script. One script, path: 01_parse_crossings.ipynb. Moving to one script per water board under peilbeheerst_model/parse_crossings/.\nRun shortest paths scripts. One script per water board, path: Shortest_path/\nRun crossings to Ribasim script. One script, all water boards are below each other, path: 02_crossings_to_ribasim_notebook.ipynb. Moving to one script per water board under peilbeheerst_model/crossings_to_ribasim/.\nRun parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: Parametrize/AmstelGooienVecht_parametrize.ipynb\n\nWe originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as AmstelGooienVecht_parametrize.ipynb.\nFinally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.",
-    "crumbs": [
-      "Workflows",
-      "Level controlled"
-    ]
-  },
-  {
-    "objectID": "watersystems/brabantsedelta.html",
-    "href": "watersystems/brabantsedelta.html",
-    "title": "Brabantse Delta",
-    "section": "",
-    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Brabantse Delta\n\n\nHieronder is de sturing van het Mark-Vliet systeem en de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\nDe Mark, Dintel, Mark-Vlietkanaal, de Roosendaalsche en Steenbergsche Vliet en het Markkanaal staan in open verbinding met elkaar. Bij droogte vindt aanvoer in eerste instantie plaats vanuit het Volkerak. Wanneer dit niet genoeg is kan via de Markduiker water aangevoerd worden.\n\n\n\nDe Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op de Mark dan op de Amertak kunnen de extra deuren worden gesloten om instroom van hoogwater richting het kanaal te voorkomen. De sluis fungeert dan tevens als waterkering.\n\n\n\nAfvoer: - Via de Slagen pomp en gemaal Keizersveer wordt het water afgevoerd naar de Bergsche Maas - In noordoosten watert een klein gebied Gansoijen (noordoosten) via een sifon onder het Afwateringskanaal ’s-Hertogenosch-Drongelen door via het (Aa en Maas) afgevoerd naar de Bergsche Maas. Bij Waalwijk watert nog een klein gebied via gemaal Bloemendaal op het Drongelenskanaal (mondt uit in de Bergsche Maas). - Ten zuiden van het Wilhelminakanaal watert het via aflaatkunstwerk af op het Wilhelminakanaal. Het overige deel van het water wordt via een sifon (Tichelrijt) onder het Wilhelminakanaal geleid en watert af via gemaal Keizersveer op de Bergsche Maas.\nAanvoer: - Vanuit het Wilhelminakanaal zijn diverse inlaten die de Donge, en Paterheide van aanvoer voorzien. - Aanvoergebied de Sprangsloot ontvangt water via inlaat de Sprangse sloot vanuit het Zuiderkanaal die in de zomer op peil wordt gehouden door de Bergsche Maas ????? - De Westplas ontvangt direct water uit de Bergsche Maas\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak - Rechtstreeks naar de Amer en via de Amertak naar de Amer\nAanvoer - De aanvoer vindt plaats via inlaten via de Mark\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak - Rechtstreeks en via de Roode Vaartnaar het Hollandsch diep\nAanvoer - De aanvoer vindt plaats via inlaten via de Mark die op peil wordt gehouden door het Volkerak??\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark-Vlietkanaal en de Dintel , via M-V sluis naar het Volkerak - Vanaf de Steenbergsche Vliet via de scheepvaartsluis naar de Krammer\nAanvoer - De aanvoer vindt plaats via inlaten vanaf de Dintel en de Steenbergsche Vliet\n\n\n\nAfvoer: - Vindt plaats vanaf de Steenbergsche Vliet via de scheepvaartsluis naar de Krammer\nAanvoer: - Vindt plaats vanaf de Steenbergsche Vliet.\n\n\n\nAfvoer: - Vindt plaats via een gemaal direct op het Schelde Rijn-kanaal\nAanvoer: - Vindt plaats via een inlaat vanaf het Zoommeer.\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak\nAanvoer: - De aanvoer vindt plaats via inlaten via de Mark/Markkanaal die op peil wordt gehouden door het Volkerak??\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven. ## Bronnen Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D)",
-    "crumbs": [
-      "Watersystems",
-      "Brabantse Delta"
-    ]
-  },
-  {
-    "objectID": "watersystems/brabantsedelta.html#systeembeschrijving",
-    "href": "watersystems/brabantsedelta.html#systeembeschrijving",
-    "title": "Brabantse Delta",
-    "section": "",
-    "text": "Systeembeschrijving Brabantse Delta\n\n\nHieronder is de sturing van het Mark-Vliet systeem en de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\nDe Mark, Dintel, Mark-Vlietkanaal, de Roosendaalsche en Steenbergsche Vliet en het Markkanaal staan in open verbinding met elkaar. Bij droogte vindt aanvoer in eerste instantie plaats vanuit het Volkerak. Wanneer dit niet genoeg is kan via de Markduiker water aangevoerd worden.\n\n\n\nDe Marksluis kent in principe alleen schutverliezen. Bij een hoger waterpeil op de Mark dan op de Amertak kunnen de extra deuren worden gesloten om instroom van hoogwater richting het kanaal te voorkomen. De sluis fungeert dan tevens als waterkering.\n\n\n\nAfvoer: - Via de Slagen pomp en gemaal Keizersveer wordt het water afgevoerd naar de Bergsche Maas - In noordoosten watert een klein gebied Gansoijen (noordoosten) via een sifon onder het Afwateringskanaal ’s-Hertogenosch-Drongelen door via het (Aa en Maas) afgevoerd naar de Bergsche Maas. Bij Waalwijk watert nog een klein gebied via gemaal Bloemendaal op het Drongelenskanaal (mondt uit in de Bergsche Maas). - Ten zuiden van het Wilhelminakanaal watert het via aflaatkunstwerk af op het Wilhelminakanaal. Het overige deel van het water wordt via een sifon (Tichelrijt) onder het Wilhelminakanaal geleid en watert af via gemaal Keizersveer op de Bergsche Maas.\nAanvoer: - Vanuit het Wilhelminakanaal zijn diverse inlaten die de Donge, en Paterheide van aanvoer voorzien. - Aanvoergebied de Sprangsloot ontvangt water via inlaat de Sprangse sloot vanuit het Zuiderkanaal die in de zomer op peil wordt gehouden door de Bergsche Maas ????? - De Westplas ontvangt direct water uit de Bergsche Maas\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak - Rechtstreeks naar de Amer en via de Amertak naar de Amer\nAanvoer - De aanvoer vindt plaats via inlaten via de Mark\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak - Rechtstreeks en via de Roode Vaartnaar het Hollandsch diep\nAanvoer - De aanvoer vindt plaats via inlaten via de Mark die op peil wordt gehouden door het Volkerak??\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark-Vlietkanaal en de Dintel , via M-V sluis naar het Volkerak - Vanaf de Steenbergsche Vliet via de scheepvaartsluis naar de Krammer\nAanvoer - De aanvoer vindt plaats via inlaten vanaf de Dintel en de Steenbergsche Vliet\n\n\n\nAfvoer: - Vindt plaats vanaf de Steenbergsche Vliet via de scheepvaartsluis naar de Krammer\nAanvoer: - Vindt plaats vanaf de Steenbergsche Vliet.\n\n\n\nAfvoer: - Vindt plaats via een gemaal direct op het Schelde Rijn-kanaal\nAanvoer: - Vindt plaats via een inlaat vanaf het Zoommeer.\n\n\n\nAfvoer: - Vindt plaats vanaf de Mark, via M-V sluis naar het Volkerak\nAanvoer: - De aanvoer vindt plaats via inlaten via de Mark/Markkanaal die op peil wordt gehouden door het Volkerak??",
-    "crumbs": [
-      "Watersystems",
-      "Brabantse Delta"
-    ]
-  },
-  {
-    "objectID": "watersystems/brabantsedelta.html#capaciteiten",
-    "href": "watersystems/brabantsedelta.html#capaciteiten",
-    "title": "Brabantse Delta",
-    "section": "",
-    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven. ## Bronnen Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D)",
-    "crumbs": [
-      "Watersystems",
-      "Brabantse Delta"
-    ]
-  },
-  {
-    "objectID": "watersystems/dommel.html",
-    "href": "watersystems/dommel.html",
-    "title": "De Dommel",
-    "section": "",
-    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving De Dommel\n\n\nHet beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.\n\n\nVia de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ’s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.\n\n\n\nBij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Hier wordt gestuwd met Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren &lt;10m3/s en 85% bij afvoeren &gt; 10m3/s).\nDe maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.\n\n\n\nEr kan water worden ingelaten bij inlaat Olen en bij inlaat Son en Breugel. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Son en Breugel is 0.16 m3/s en 0.6 m3/s naar Olen.\n\n\n\nVanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaat Beekloop.\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nInlaat Beekloop\n\n1912\ninlaat\n0.25\n0\n\n\nInlaat Olen\nDSH0023156\n417\ninlaat\n0.6\n0\n\n\nInlaat Son en Breugel\nDO28-st1\n405\ninlaat\n0.16\n0\n\n\nStuw Blaarthem\nDL62-st1\n210\nuitlaat\n0\n20\n\n\nStuw Verdeelwerk\nDL1-st5\n293\nuitlaat\n0\n200\n\n\nVughterstuw\nDO1-st3\n121\nuitlaat\n0\n200\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel E, pagina 39-1)\n[Waterakkoord: 2022-06-27_waterakkoord]",
-    "crumbs": [
-      "Watersystems",
-      "De Dommel"
-    ]
-  },
-  {
-    "objectID": "watersystems/dommel.html#systeembeschrijving",
-    "href": "watersystems/dommel.html#systeembeschrijving",
-    "title": "De Dommel",
-    "section": "",
-    "text": "Systeembeschrijving De Dommel\n\n\nHet beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.\n\n\nVia de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ’s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.\n\n\n\nBij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Hier wordt gestuwd met Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren &lt;10m3/s en 85% bij afvoeren &gt; 10m3/s).\nDe maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.\n\n\n\nEr kan water worden ingelaten bij inlaat Olen en bij inlaat Son en Breugel. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Son en Breugel is 0.16 m3/s en 0.6 m3/s naar Olen.\n\n\n\nVanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaat Beekloop.",
-    "crumbs": [
-      "Watersystems",
-      "De Dommel"
-    ]
-  },
-  {
-    "objectID": "watersystems/dommel.html#capaciteiten",
-    "href": "watersystems/dommel.html#capaciteiten",
-    "title": "De Dommel",
-    "section": "",
-    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nInlaat Beekloop\n\n1912\ninlaat\n0.25\n0\n\n\nInlaat Olen\nDSH0023156\n417\ninlaat\n0.6\n0\n\n\nInlaat Son en Breugel\nDO28-st1\n405\ninlaat\n0.16\n0\n\n\nStuw Blaarthem\nDL62-st1\n210\nuitlaat\n0\n20\n\n\nStuw Verdeelwerk\nDL1-st5\n293\nuitlaat\n0\n200\n\n\nVughterstuw\nDO1-st3\n121\nuitlaat\n0\n200",
-    "crumbs": [
-      "Watersystems",
-      "De Dommel"
-    ]
-  },
-  {
-    "objectID": "watersystems/dommel.html#bronnen",
-    "href": "watersystems/dommel.html#bronnen",
-    "title": "De Dommel",
-    "section": "",
-    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel E, pagina 39-1)\n[Waterakkoord: 2022-06-27_waterakkoord]",
-    "crumbs": [
-      "Watersystems",
-      "De Dommel"
     ]
   },
   {
@@ -720,6 +725,50 @@
     ]
   },
   {
+    "objectID": "watersystems/limburg.html",
+    "href": "watersystems/limburg.html",
+    "title": "Limburg",
+    "section": "",
+    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Limburg\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\nVia gemaal Katsberg wordt water (max 5.4m3/s) vanuit de Noordervaart aangevoerd naar het kanaal van Deurne.Water wordt ingelaten voor WPM en Aa en Maas in de verdeling 50-50%.\nEen tijdelijke verlaging van aanvoer in de winter is afhankelijk van de natuurlijke afvoer van de Helenavaart die snel reageert op neerslag en die afvoert middels Grenssloot het gebied in. In de winter max 0.1m3/s voor doorspoeling om kwaliteitsredenen. Bij Halte Verdeelwerk wordt het beschikbare water verdeeld over het Peelkanaal en de Grenssloot verdeeld. Middels een automatische klepstuw (Gre 6 en TMX De Halte), wordt hier het aanvoerwater van de Katsberg doorgezet naar de Grenssloot. Stuw is zowel peil als debiet gestuurd Het peil mag nooit lager dan 30.80 vanwege inklappen veenwanden en nooit hoger dan 31.21 vanwege overstromingsgevaar bovenstrooms. In de zomer wordt gestuurd op een peil van 31.12m+NAP. In de winter sturing op 31.19m+NAP (om de veenkades zo nat mogelijk te houden ter voorkoming van inklinking). Het debiet is de resultante van de optelsom vanaf Katsberg en klopt in de zomer vrij goed.\nDe Helenavaart takt aan op Kanaal van Deurne via stuw Hel 1 (automatische stuw). Overtollig water van Helenavaart wordt naar Peelkanaal geleid.\n\n\n\nAfvoer: - Via het Afleidingskanaal wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de Maas\nAanvoer: - Via Verdeelwerk De Halte wordt een deel van het aangevoerde water naar het aanvoergebied Peelkanaal geleid. - Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied Peelscheloop Bakelse AA en Maaskant-Oost)\n\n\n\nAfvoer: - Via de Oostrumsche beek en de Groote Molenbeek naar de Maas\nAanvoer - De aanvoer via Katsberg, naar gemaal Helenveen en een inlaat naar aanvoergebied Helenaveen en Verdeelwerk de Halte.\n\n\n\nAfvoer: - Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de Maas\nAanvoer - Via de Noordervaart kan water ingelaten worden via gemaal Beringe\n\n\n\nAfvoer: - Direct naar de Zuid-Willemsvaart\nAanvoer - Via inlaat de Eendlossing vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - Naar de Zuid-Willemsvaart via Aa en Maas\nAanvoer - Via inlaat Nederweert Hoverlossing vanaf de Zuid-Willemsvaart - Vanaf aanvoergebied Nederweert Hoverlossing wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)\n\n\n\nAfvoer: - Via de uitlaat Sterkselsche Aa wordt het doorgevoerd naar waterschap de Dommel\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - via de Neerbeek en de Tungelroysche beek naar de Maas\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\n\nVia inlaten vanaf de Zwartwaterlossing\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAchterste Moost\nD_25958\n410\ninlaat\n0.02\n0\n\n\nEendlossing\nS_97698\n772\ninlaat\n0.02\n0\n\n\nGemaal Beringe\nG_27621\n583\ninlaat\n0.65\n0\n\n\nGemaal Helenaveen\nG_27616\n590\ninlaat\n0.35\n0\n\n\nHoutstraatlossing\nD_14965\n351\ninlaat\n0.05\n0\n\n\nHushoverbeek\nD_281344\n2502\ninlaat\n0.05\n0\n\n\nInlaat Evertsoord\nS_97322\n604\ninlaat\n0.35\n0\n\n\nInlaat Groote Moost\nS_98847\n236\ninlaat\n0.09\n0\n\n\nInlaat Hulsenlossing\n\n1223\ninlaat\n0.03\n0\n\n\nInlaat Rietbeek\nS_98409\n599\ninlaat\n0.12\n0\n\n\nInlaat Weteringbeek\nS_98009\n731\ninlaat\n0.125\n0\n\n\nKampershoek\n\n2503\ninlaat\n0.05\n0\n\n\nKatsberg\nS_282001\n238\ndoorlaat\n4.7\n0\n\n\nKlein Leukerbeek\nW_153168_0\n1119\ninlaat\n0.08\n0\n\n\nNederweerter Hovenlossing\nD_23657\n534\ninlaat\n0.02\n0\n\n\nNederweerter Riet\nD_25545\n464\ninlaat\n0.05\n0\n\n\nOude Graaf\n\n1136\ninlaat\n0.05\n0\n\n\nRoeven\nS_97840\n2501\ninlaat\n0.01\n0\n\n\nSnepheiderbeek\nD_23544\n411\ninlaat\n0.05\n0\n\n\nUitlaat Sterkselsch kanaal\nS_97873\n748\nuitlaat\n0\n20\n\n\nVerdeelwerk de Halte\nS_97735\n773\ninlaat\n4.7\n0\n\n\nWaatskampoplossing\nS_97872\n598\ninlaat\n0.01\n0\n\n\nZwartwaterlossing\nD_294341\n230\ninlaat\n0.05\n0\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 8)",
+    "crumbs": [
+      "Watersystems",
+      "Limburg"
+    ]
+  },
+  {
+    "objectID": "watersystems/limburg.html#systeembeschrijving",
+    "href": "watersystems/limburg.html#systeembeschrijving",
+    "title": "Limburg",
+    "section": "",
+    "text": "Systeembeschrijving Limburg\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\nVia gemaal Katsberg wordt water (max 5.4m3/s) vanuit de Noordervaart aangevoerd naar het kanaal van Deurne.Water wordt ingelaten voor WPM en Aa en Maas in de verdeling 50-50%.\nEen tijdelijke verlaging van aanvoer in de winter is afhankelijk van de natuurlijke afvoer van de Helenavaart die snel reageert op neerslag en die afvoert middels Grenssloot het gebied in. In de winter max 0.1m3/s voor doorspoeling om kwaliteitsredenen. Bij Halte Verdeelwerk wordt het beschikbare water verdeeld over het Peelkanaal en de Grenssloot verdeeld. Middels een automatische klepstuw (Gre 6 en TMX De Halte), wordt hier het aanvoerwater van de Katsberg doorgezet naar de Grenssloot. Stuw is zowel peil als debiet gestuurd Het peil mag nooit lager dan 30.80 vanwege inklappen veenwanden en nooit hoger dan 31.21 vanwege overstromingsgevaar bovenstrooms. In de zomer wordt gestuurd op een peil van 31.12m+NAP. In de winter sturing op 31.19m+NAP (om de veenkades zo nat mogelijk te houden ter voorkoming van inklinking). Het debiet is de resultante van de optelsom vanaf Katsberg en klopt in de zomer vrij goed.\nDe Helenavaart takt aan op Kanaal van Deurne via stuw Hel 1 (automatische stuw). Overtollig water van Helenavaart wordt naar Peelkanaal geleid.\n\n\n\nAfvoer: - Via het Afleidingskanaal wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de Maas\nAanvoer: - Via Verdeelwerk De Halte wordt een deel van het aangevoerde water naar het aanvoergebied Peelkanaal geleid. - Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied Peelscheloop Bakelse AA en Maaskant-Oost)\n\n\n\nAfvoer: - Via de Oostrumsche beek en de Groote Molenbeek naar de Maas\nAanvoer - De aanvoer via Katsberg, naar gemaal Helenveen en een inlaat naar aanvoergebied Helenaveen en Verdeelwerk de Halte.\n\n\n\nAfvoer: - Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de Maas\nAanvoer - Via de Noordervaart kan water ingelaten worden via gemaal Beringe\n\n\n\nAfvoer: - Direct naar de Zuid-Willemsvaart\nAanvoer - Via inlaat de Eendlossing vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - Naar de Zuid-Willemsvaart via Aa en Maas\nAanvoer - Via inlaat Nederweert Hoverlossing vanaf de Zuid-Willemsvaart - Vanaf aanvoergebied Nederweert Hoverlossing wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)\n\n\n\nAfvoer: - Via de uitlaat Sterkselsche Aa wordt het doorgevoerd naar waterschap de Dommel\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - via de Neerbeek en de Tungelroysche beek naar de Maas\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\n\nVia inlaten vanaf de Zwartwaterlossing",
+    "crumbs": [
+      "Watersystems",
+      "Limburg"
+    ]
+  },
+  {
+    "objectID": "watersystems/limburg.html#capaciteiten",
+    "href": "watersystems/limburg.html#capaciteiten",
+    "title": "Limburg",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAchterste Moost\nD_25958\n410\ninlaat\n0.02\n0\n\n\nEendlossing\nS_97698\n772\ninlaat\n0.02\n0\n\n\nGemaal Beringe\nG_27621\n583\ninlaat\n0.65\n0\n\n\nGemaal Helenaveen\nG_27616\n590\ninlaat\n0.35\n0\n\n\nHoutstraatlossing\nD_14965\n351\ninlaat\n0.05\n0\n\n\nHushoverbeek\nD_281344\n2502\ninlaat\n0.05\n0\n\n\nInlaat Evertsoord\nS_97322\n604\ninlaat\n0.35\n0\n\n\nInlaat Groote Moost\nS_98847\n236\ninlaat\n0.09\n0\n\n\nInlaat Hulsenlossing\n\n1223\ninlaat\n0.03\n0\n\n\nInlaat Rietbeek\nS_98409\n599\ninlaat\n0.12\n0\n\n\nInlaat Weteringbeek\nS_98009\n731\ninlaat\n0.125\n0\n\n\nKampershoek\n\n2503\ninlaat\n0.05\n0\n\n\nKatsberg\nS_282001\n238\ndoorlaat\n4.7\n0\n\n\nKlein Leukerbeek\nW_153168_0\n1119\ninlaat\n0.08\n0\n\n\nNederweerter Hovenlossing\nD_23657\n534\ninlaat\n0.02\n0\n\n\nNederweerter Riet\nD_25545\n464\ninlaat\n0.05\n0\n\n\nOude Graaf\n\n1136\ninlaat\n0.05\n0\n\n\nRoeven\nS_97840\n2501\ninlaat\n0.01\n0\n\n\nSnepheiderbeek\nD_23544\n411\ninlaat\n0.05\n0\n\n\nUitlaat Sterkselsch kanaal\nS_97873\n748\nuitlaat\n0\n20\n\n\nVerdeelwerk de Halte\nS_97735\n773\ninlaat\n4.7\n0\n\n\nWaatskampoplossing\nS_97872\n598\ninlaat\n0.01\n0\n\n\nZwartwaterlossing\nD_294341\n230\ninlaat\n0.05\n0",
+    "crumbs": [
+      "Watersystems",
+      "Limburg"
+    ]
+  },
+  {
+    "objectID": "watersystems/limburg.html#bronnen",
+    "href": "watersystems/limburg.html#bronnen",
+    "title": "Limburg",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 8)",
+    "crumbs": [
+      "Watersystems",
+      "Limburg"
+    ]
+  },
+  {
     "objectID": "watersystems/noorderzijlvest.html",
     "href": "watersystems/noorderzijlvest.html",
     "title": "Noorderzijlvest",
@@ -764,87 +813,38 @@
     ]
   },
   {
+    "objectID": "watersystems/template.html",
+    "href": "watersystems/template.html",
+    "title": "{waterschap}",
+    "section": "",
+    "text": "Laatst bijgewerkt: {datum}\nLaatste modelversie: {modelversie}\n\n\n\n\n\n\nSysteembeschrijving {waterschap}\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})"
+  },
+  {
+    "objectID": "watersystems/template.html#systeembeschrijving",
+    "href": "watersystems/template.html#systeembeschrijving",
+    "title": "{waterschap}",
+    "section": "",
+    "text": "Systeembeschrijving {waterschap}"
+  },
+  {
+    "objectID": "watersystems/template.html#capaciteiten",
+    "href": "watersystems/template.html#capaciteiten",
+    "title": "{waterschap}",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven."
+  },
+  {
+    "objectID": "watersystems/template.html#bronnen",
+    "href": "watersystems/template.html#bronnen",
+    "title": "{waterschap}",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})"
+  },
+  {
     "objectID": "index.html",
     "href": "index.html",
     "title": "Ribasim-NL",
     "section": "",
     "text": "Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the Ribasim documentation."
-  },
-  {
-    "objectID": "reference/HyDAMO.html",
-    "href": "reference/HyDAMO.html",
-    "title": "HyDAMO",
-    "section": "",
-    "text": "HyDAMO(\n    version='2.2',\n    schemas_path=SCHEMAS_DIR,\n    ignored_layers=['afvoeraanvoergebied', 'imwa_geoobject', 'leggerwatersysteem', 'leggerwaterveiligheid', 'waterbeheergebied'],\n)\nDefinition of the HyDAMO datamodel.\n\n\n\n\n\nName\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values={},\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/HyDAMO.html#methods",
-    "href": "reference/HyDAMO.html#methods",
-    "title": "HyDAMO",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values={},\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/index.html",
-    "href": "reference/index.html",
-    "title": "API Reference",
-    "section": "",
-    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\n\n\n\n\n\n\nRibasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
-  },
-  {
-    "objectID": "reference/index.html#hydamo",
-    "href": "reference/index.html#hydamo",
-    "title": "API Reference",
-    "section": "",
-    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’."
-  },
-  {
-    "objectID": "reference/index.html#ribasim-nl",
-    "href": "reference/index.html#ribasim-nl",
-    "title": "API Reference",
-    "section": "",
-    "text": "Ribasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
-  },
-  {
-    "objectID": "reference/read_style.html",
-    "href": "reference/read_style.html",
-    "title": "read_style",
-    "section": "",
-    "text": "read_style(style_path)\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\nExample ‘http://mrcc.com/qgis.dtd -&gt;’‘http://mrcc.com/qgis.dtd’’\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nstyle_path\nPath\nPath to sld-file\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
-  },
-  {
-    "objectID": "reference/read_style.html#parameters",
-    "href": "reference/read_style.html#parameters",
-    "title": "read_style",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nstyle_path\nPath\nPath to sld-file\nrequired"
-  },
-  {
-    "objectID": "reference/read_style.html#returns",
-    "href": "reference/read_style.html#returns",
-    "title": "read_style",
-    "section": "",
-    "text": "Name\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
-  },
-  {
-    "objectID": "reference/CloudStorage.html",
-    "href": "reference/CloudStorage.html",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "CloudStorage(\n    data_dir=settings.ribasim_nl_data_dir,\n    user=RIBASIM_NL_CLOUD_USER,\n    url=BASE_URL,\n    password=settings.ribasim_nl_cloud_pass,\n)\nConnect a local ’data_dir` to cloud-storage.\n\n\n\n\n\nName\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)\n\n\n\n\n\n\n\n\n\nName\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = CloudStorage()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=[], overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(\n    url,\n    overwrite=settings.overwrite_files_from_cloud,\n)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\nbool\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\nbool\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
-  },
-  {
-    "objectID": "reference/CloudStorage.html#attributes",
-    "href": "reference/CloudStorage.html#attributes",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)"
-  },
-  {
-    "objectID": "reference/CloudStorage.html#methods",
-    "href": "reference/CloudStorage.html#methods",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = CloudStorage()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=[], overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(\n    url,\n    overwrite=settings.overwrite_files_from_cloud,\n)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\nbool\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\nbool\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
   }
 ]
