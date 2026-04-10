@@ -61,6 +61,12 @@ stages:
       # - data/HollandseDelta/modellen/HollandseDelta_parameterized
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
+  koppelen:
+    cmd: uv run python notebooks/koppelen_modellen.py
+    deps:
+      - data/Rijkswaterstaat/modellen/lhm_parts
+    outs:
+      - data/Rijkswaterstaat/modellen/lhm_coupled
   aa_en_maas:
     cmd:
       - uv run python notebooks/aa_en_maas/01_fix_model.py
