@@ -10,6 +10,7 @@ import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
@@ -30,7 +31,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES = False
+RESCALE_FLOW_CAPACITIES = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -632,7 +633,7 @@ to_supply = (
     3888,
 )
 to_flow_control = (2452, 3064, 3065, 3068)
-to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, 3892, *to_drain_node_ids)
+to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, *to_drain_node_ids)
 
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -758,20 +759,20 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "
 )
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "flow_rate"] = 0.1
 
-# # rescaling of outlets (and pumps)
-# ribasim_model, from_to_node_function_table = scale_outlets_pumps(
-#     OutletPumpScalingConfig(
-#         ribasim_model_path=ribasim_work_dir_model_toml,
-#         ribasim_model=ribasim_model,
-#         from_to_node_function_table=from_to_node_function_table,
-#         waterschap=waterschap,
-#         cloud=cloud,
-#         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-#         max_iterations=20,
-#         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-#         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-#     )
-# )
+# rescaling of outlets (and pumps)
+ribasim_model, from_to_node_function_table = scale_outlets_pumps(
+    OutletPumpScalingConfig(
+        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model=ribasim_model,
+        from_to_node_function_table=from_to_node_function_table,
+        waterschap=waterschap,
+        cloud=cloud,
+        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+        max_iterations=12,
+        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+    )
+)
 
 # depending on the state, a different flow_rate is set. Set max value to the max_flow_rate when exceeding the max_flow_rate
 ribasim_model.outlet.static.df.loc[
