@@ -8,7 +8,6 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
-from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
@@ -74,8 +73,8 @@ profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 #     ]
 # )
 
-# refresh only the feedback form from cloud
-cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+# # refresh only the feedback form from cloud
+# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -574,6 +573,19 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[26])
 
+# reversing Pump and Outlet (not possible in FF)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(98844, 425287)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(98846, 425288)), [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(98845, 425289)), [pump.Static(flow_rate=[20])])
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[491])
+ribasim_model.link.add(ribasim_model.basin[491], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+
 # # add LB to "lonely" pumps
 # level_boundary_node = ribasim_model.level_boundary.add(
 #     Node(geometry=Point(93535, 434810)), [level_boundary.Static(level=[default_level])]
@@ -611,6 +623,8 @@ ribasim_model.remove_node(953, True)
 ribasim_model.remove_node(1041, True)
 ribasim_model.remove_node(2534, True)
 ribasim_model.remove_node(2125, True)
+
+ribasim_model.remove_node(2747, True)
 
 # (re) set 'meta_node_id'
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
@@ -711,14 +725,24 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 to_drain = (
+    868,
+    922,
     960,
+    1015,
+    1118,
+    1172,
     1347,
     1378,
     1443,
+    1455,
     1535,
+    1589,
     1611,
+    1690,
     1700,
+    1771,
     1800,
+    1820,
     1824,
     1833,
     1895,
@@ -726,8 +750,11 @@ to_drain = (
     2034,
     2055,
     2206,
+    2290,
     2302,
     2386,
+    2411,
+    2512,
     2532,
 )
 to_flow_control = (
@@ -738,25 +765,26 @@ to_flow_control = (
     1058,
     1066,
     1098,
+    1154,
     1168,
     1184,
     1193,
+    1292,
     1297,
     1300,
     1311,
-    1354,
+    1312,
+    1321,
     1407,
     1422,
     1577,
     1688,
     1706,
-    1757,
-    1758,
+    1726,
     1860,
     1876,
     2007,
     2107,
-    2411,
     2419,
     2552,
     2581,
@@ -764,25 +792,36 @@ to_flow_control = (
 to_supply = (
     830,
     839,
+    946,
     998,
     1091,
     1120,
-    1154,
     1281,
+    1354,
     1451,
     1490,
     1513,
     1540,
     1595,
     1723,
+    1757,
+    1794,
+    1815,
     1840,
     1936,
     2001,
     2006,
+    2065,
     2109,
+    2154,
+    2155,
     2170,
+    2187,
+    2200,
     2203,
     2256,
+    2268,
+    2344,
     2367,
     2371,
     2458,
@@ -917,19 +956,19 @@ ribasim_model.pump.static.df.loc[
 ribasim_model.pump.static.df.max_flow_rate = 15
 ribasim_model.pump.static.df.flow_rate = 15
 
-ribasim_model, from_to_node_table = scale_outlets_pumps(
-    OutletPumpScalingConfig(
-        ribasim_model_path=ribasim_work_dir_model_toml,
-        ribasim_model=ribasim_model,
-        from_to_node_function_table=from_to_node_function_table,
-        waterschap=waterschap,
-        cloud=cloud,
-        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        max_iterations=12,
-        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-    )
-)
+# ribasim_model, from_to_node_table = scale_outlets_pumps(
+#     OutletPumpScalingConfig(
+#         ribasim_model_path=ribasim_work_dir_model_toml,
+#         ribasim_model=ribasim_model,
+#         from_to_node_function_table=from_to_node_function_table,
+#         waterschap=waterschap,
+#         cloud=cloud,
+#         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+#         max_iterations=12,
+#         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+#         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+#     )
+# )
 
 # WEGHALEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ribasim_model.pump.static.df.max_flow_rate *= 1.1
