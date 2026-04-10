@@ -37,8 +37,28 @@ stages:
   samenvoegen:
     cmd: uv run python notebooks/samenvoegen_modellen.py
     deps:
-      - data/Rijkswaterstaat/modellen/hws_2025_10_1
+      - data/Rijkswaterstaat/modellen/hws_transient
+      # - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
+      # - data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized
+      # - data/Delfland/modellen/Delfland_parameterized
+      # - data/Rijnland/modellen/Rijnland_parameterized
+      # - data/Rivierenland/modellen/Rivierenland_parameterized
+      # - data/Scheldestromen/modellen/Scheldestromen_parameterized
+      # - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
+      # - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
+      # - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
       - data/AaenMaas/modellen/AaenMaas_dynamic_model
+      # - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
+      # - data/DeDommel/modellen/DeDommel_dynamic_model
+      # - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
+      # - data/HunzeenAas/modellen/HunzeenAas_dynamic_model
+      # - data/Limburg/modellen/Limburg_dynamic_model
+      # - data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
+      # - data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
+      # - data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
+      # - data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
+      # - data/Vechtstromen/modellen/Vechtstromen_dynamic_model
+      # - data/HollandseDelta/modellen/HollandseDelta_parameterized
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
   aa_en_maas:
