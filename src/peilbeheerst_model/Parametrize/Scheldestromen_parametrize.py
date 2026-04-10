@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
