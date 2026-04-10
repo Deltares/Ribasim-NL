@@ -102,7 +102,7 @@ Here is an example for a filled in `.env` file:
 ```ini
 RIBASIM_NL_CLOUD_PASS='your_password_here'
 RIBASIM_NL_DATA_DIR='data'
-RIBASIM_HOME='bin/ribasim'
+RIBASIM_HOME='bin/ribasim'  # make sure to use single quotes
 OVERWRITE_FILES_FROM_CLOUD='true'
 ```
 

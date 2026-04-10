@@ -6,10 +6,19 @@ from ribasim_nl.model import Model
 
 def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder") -> Model:
     """Reindex all model-nodes to a new node_index series"""
+    # reindex the node table
+    assert model.node.df is not None
+    if original_index_postfix is not None:
+        model.node.df[f"meta_node_id_{original_index_postfix}"] = model.node.df.index.astype("int32")
+    model.node.df.index = pd.Index(
+        model.node.df.reset_index("node_id")["node_id"].apply(lambda x: node_index[x]).to_list(),
+        name="node_id",
+    )
+
     # re-number from_node_id and to_node_id
     assert model.link.df is not None
-    model.link.df.loc[:, ["from_node_id"]] = model.link.df["from_node_id"].apply(lambda x: node_index[x])
-    model.link.df.loc[:, ["to_node_id"]] = model.link.df["to_node_id"].apply(lambda x: node_index[x])
+    model.link.df["from_node_id"] = model.link.df["from_node_id"].apply(lambda x: node_index[x])
+    model.link.df["to_node_id"] = model.link.df["to_node_id"].apply(lambda x: node_index[x])
 
     # renumber all node-tables (node, static, area, ...)
     assert model.node.df is not None
@@ -20,17 +29,10 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
             try:
                 if table.df is not None:
                     if "node_id" in table.df.columns:
-                        table.df.loc[:, "node_id"] = table.df["node_id"].apply(lambda x: node_index[x])
+                        table.df["node_id"] = table.df["node_id"].apply(lambda x: node_index[x])
                         table.df.index += 1
                     if "listen_node_id" in table.df.columns:
-                        table.df.loc[:, "listen_node_id"] = table.df["listen_node_id"].apply(lambda x: node_index[x])
-                    if table.df.index.name == "node_id":
-                        if original_index_postfix is not None:
-                            table.df.loc[:, f"meta_node_id_{original_index_postfix}"] = table.df.index.astype("int32")
-                        table.df.index = pd.Index(
-                            table.df.reset_index("node_id")["node_id"].apply(lambda x: node_index[x]).to_list(),
-                            name="node_id",
-                        )
+                        table.df["listen_node_id"] = table.df["listen_node_id"].apply(lambda x: node_index[x])
             except KeyError as e:
                 raise KeyError(f"node_id {e} in table {node_type} / {attr} not a node_id node-table")
     return model
@@ -94,7 +96,7 @@ def prefix_index(
 
     # keep original index if
     if original_index_postfix is not None:
-        model.link.df.loc[:, f"meta_link_id_{original_index_postfix}"] = link_ids.astype("int32")
+        model.link.df[f"meta_link_id_{original_index_postfix}"] = link_ids.astype("int32")
 
     return model
 
@@ -139,5 +141,5 @@ def reset_index(
 
         # keep original index if
         if original_index_postfix is not None:
-            model.link.df.loc[:, f"meta_link_id_{original_index_postfix}"] = link_ids
+            model.link.df[f"meta_link_id_{original_index_postfix}"] = link_ids
     return model
