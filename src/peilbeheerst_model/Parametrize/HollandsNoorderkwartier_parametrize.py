@@ -8,6 +8,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
@@ -28,7 +29,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -320,53 +321,82 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
+# remove defying-gravity-outlets
+ribasim_model = ribasim_param.remove_non_free_flowing_outlets(ribasim_model, printing=True)
+
 LEVEL_DIFFERENCE_THRESHOLD = 0.02
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 
-unique_connections = from_to_node_table.reset_index(drop=False).groupby(["from_node_id", "to_node_id"]).first()
-double_connections = from_to_node_table[~from_to_node_table.index.isin(unique_connections["node_id"])]
-for i in double_connections.index.values:
-    ribasim_model.remove_node(i, True)
-
-from_to_node_table = from_to_node_table[from_to_node_table.index.isin(unique_connections["node_id"])].copy()
+# unique_connections = from_to_node_table.reset_index(drop=False).groupby(["from_node_id", "to_node_id"]).first()
+# double_connections = from_to_node_table[~from_to_node_table.index.isin(unique_connections["node_id"])]
+# for i in double_connections.index.values:
+#     ribasim_model.remove_node(i, True)
+#
+# from_to_node_table = from_to_node_table[from_to_node_table.index.isin(unique_connections["node_id"])].copy()
 
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
-to_drain = (279,)
+to_drain = (
+    279,
+    588,
+    781,
+    1422,
+)
 to_flow_control = (
+    239,
+    241,
+    245,
     292,
-    302,
+    345,
     347,
     350,
     376,
     385,
-    413,
     472,
+    484,
     510,
-    523,
+    525,
     528,
+    548,
     555,
     574,
     610,
     648,
     653,
+    670,
+    674,
     701,
+    741,
+    758,
     781,
+    848,
     902,
     987,
+    990,
     1039,
     1052,
     1113,
+    1116,
     1176,
-    1219,
+    1212,
     1256,
+    1261,
     1273,
 )
 to_supply = (
+    240,
+    247,
+    255,
     258,
+    263,
+    265,
+    274,
+    296,
+    312,
+    315,
     321,
     325,
     331,
@@ -374,22 +404,43 @@ to_supply = (
     342,
     344,
     355,
+    356,
+    387,
     415,
+    427,
+    499,
+    531,
     549,
+    588,
+    627,
     670,
+    695,
+    700,
+    712,
     728,
     732,
     748,
+    750,
+    795,
+    803,
     808,
+    828,
     868,
+    878,
+    919,
+    922,
     929,
+    935,
     986,
     991,
+    1043,
     1049,
     1077,
     1115,
     1177,
     1214,
+    1229,
+    1263,
     1296,
 )
 from_to_node_function_table = set_node_functions(
@@ -508,19 +559,26 @@ if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
-# ribasim_model, from_to_node_table = scale_outlets_pumps(
-#     OutletPumpScalingConfig(
-#         ribasim_model_path=ribasim_work_dir_model_toml,
-#         ribasim_model=ribasim_model,
-#         from_to_node_function_table=from_to_node_function_table,
-#         waterschap=waterschap,
-#         cloud=cloud,
-#         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-#         max_iterations=12,
-#         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-#         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-#     )
-# )
+ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df["meta_known_flow_rate"] = True
+ribasim_model.pump.static.df.loc[
+    (ribasim_model.pump.static.df["max_flow_rate"].isna()) | (ribasim_model.pump.static.df["max_flow_rate"] == 0),
+    "meta_known_flow_rate",
+] = False
+
+ribasim_model, from_to_node_table = scale_outlets_pumps(
+    OutletPumpScalingConfig(
+        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model=ribasim_model,
+        from_to_node_function_table=from_to_node_function_table,
+        waterschap=waterschap,
+        cloud=cloud,
+        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+        max_iterations=12,
+        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+    )
+)
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
