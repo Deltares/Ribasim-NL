@@ -5,18 +5,18 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
+from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
+from tqdm import tqdm
 
-from ribasim_nl import CloudStorage, Model, Network
+from ribasim_nl import Model, Network
 
 # Constants
 SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
-RUN_SELECTION = ["RDO-Noord"]
 # Configuration
-cloud: CloudStorage = CloudStorage()
-upload_model: bool = False
+data_dir = settings.ribasim_nl_data_dir
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
@@ -64,13 +64,11 @@ def get_basin_link(
     return LineString()
 
 
-def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
+def initialize_models(toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
     """Initialize and load the model and network data.
 
     Parameters
     ----------
-    cloud : CloudStorage
-        CloudStorage instance
     toml_file : Path
         Path to the TOML file
 
@@ -89,8 +87,7 @@ def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Netw
             model.remove_node(node_id=i, remove_links=True)
 
     # Load the network
-    network_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
-    cloud.synchronize([network_gpkg])
+    network_gpkg = data_dir / "Rijkswaterstaat/verwerkt/netwerk.gpkg"
     network = Network.from_network_gpkg(network_gpkg)
 
     # Prepare basin areas dataframe
@@ -215,7 +212,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
 
     all_link_table = []
 
-    for boundary_node_id in boundary_node_ids:
+    for boundary_node_id in tqdm(boundary_node_ids, desc="Coupling boundary nodes"):
         # Check whether the boundary has been merged already
         if boundary_node_id not in model.level_boundary.node.df.index:
             continue
@@ -373,17 +370,13 @@ def fix_basin_profiles(model: Model) -> None:
                 model.basin.profile.df.loc[(mask[mask]).index[0], "level"] = min_level - MIN_BASIN_OUTLET_DIFF
 
 
-def save_model_and_outputs(
-    model: Model, all_link_table: list[dict], cloud: CloudStorage, toml_file: Path, upload_model: bool = False
-) -> None:
+def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> None:
     """Save the model and create output files.
 
     Args:
         model: Model to save
         all_link_table: Link table data
-        cloud: CloudStorage instance
         toml_file: Path to the input/decoupled TOML file
-        upload_model: Whether to upload the model
     """
     # Derive model path from input toml_file, adding -coupled to folder and file name
     root = toml_file.parents[1]
@@ -399,15 +392,6 @@ def save_model_and_outputs(
     links["to_node_id"] = links.to_node.apply(lambda x: x.node_id)
     links = links.drop(columns=["from_node", "to_node"])
     links.to_file(model_path / "link.gpkg")
-
-    # Upload model if requested
-    if upload_model:
-        cloud.upload_model("Rijkswaterstaat", model=model_name)
-
-    # Generate control output (needs simulation)
-    # qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_202502.qlr")
-    # controle_output = Control(ribasim_toml=output_toml_file, qlr_path=qlr_path)
-    # controle_output.run_all()
 
 
 def get_rws_link(
@@ -517,28 +501,10 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
     return merged_outlet
 
 
-# %% Individual execution blocks for notebook use
+# %% Process lhm_parts model
 
-sub_models_dir = cloud.joinpath("Rijkswaterstaat/modellen/lhm_sub_models")
-model_dirs = [i for i in sub_models_dir.glob("*") if i.is_dir() and ("coupled" not in i.name)]
-if RUN_SELECTION:
-    model_dirs = [i for i in model_dirs if i.name in RUN_SELECTION]
-for dir in model_dirs:
-    print(dir.name)
-    toml_file = dir.joinpath(f"{dir.stem}.toml")
-    model, network, basin_areas_df = initialize_models(cloud, toml_file)
-    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-    fix_basin_profiles(model)
-    save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
-
-
-# rdos = ["RDO-Gelderland", "RDO-Noord", "RDO-Twentekanalen", "RDO-West-Midden", "RDO-Zuid-Oost", "RDO-Zuid-West"]
-
-# for rdo in rdos:
-#     toml_file = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
-
-# toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm_parts.toml")
-# model, network, basin_areas_df = initialize_models(cloud, toml_file)
-# all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-# fix_basin_profiles(model)
-# save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
+toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
+model, network, basin_areas_df = initialize_models(toml_file)
+all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+fix_basin_profiles(model)
+save_model_and_outputs(model, all_link_table, toml_file)

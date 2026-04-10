@@ -263,3 +263,17 @@ stages:
       md5: a7b40385a9dbdd357d43ffa3776adcbe.dir
       size: 5095601
       nfiles: 2
+  koppelen:
+    cmd: uv run python notebooks/koppelen_modellen.py
+    deps:
+    - path: data/Rijkswaterstaat/modellen/lhm_parts
+      hash: md5
+      md5: 3f33d99728724c393a23a46a10453b28.dir
+      size: 103313865
+      nfiles: 3
+    outs:
+    - path: data/Rijkswaterstaat/modellen/lhm_coupled
+      hash: md5
+      md5: fe91857fc25f27aa4b91efcda28fd8c1.dir
+      size: 80756923
+      nfiles: 4
