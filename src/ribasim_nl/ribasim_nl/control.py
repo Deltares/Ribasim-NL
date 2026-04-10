@@ -1544,6 +1544,25 @@ def set_node_functions(
     :return: updated table with from-to node data
     :rtype: geopandas.GeoDataFrame
     """
+    # no duplicate node-IDs
+    __duplicates: bool = False
+    if set(to_supply) & set(to_flow_control):
+        LOG.critical(
+            f"Node-IDs occuring in both `to_supply` and `to_flow_control`: {set(to_supply) & set(to_flow_control)}"
+        )
+        __duplicates = True
+    if set(to_supply) & set(to_drain):
+        LOG.critical(f"Node-IDs occuring in both `to_supply` and `to_drain`: {set(to_supply) & set(to_flow_control)}")
+        __duplicates = True
+    if set(to_flow_control) & set(to_drain):
+        LOG.critical(
+            f"Node-IDs occuring in both `to_flow_control` and `to_drain`: {set(to_flow_control) & set(to_flow_control)}"
+        )
+        __duplicates = True
+    if __duplicates:
+        msg = "Node-IDs assigned to different controls; see log-statements."
+        raise ValueError(msg)
+
     # modification flag
     __modified: bool = False
 
