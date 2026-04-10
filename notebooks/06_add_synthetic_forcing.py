@@ -10,11 +10,9 @@ cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 
-area_authority = sys.argv[1]  # e.g. "AaenMaas", "Brabantse_Delta", "Noorderzijlvest",
-# argument added in dvc.yaml, e.g. "uv run python notebooks/07_add_dynamic_forcing aa_en_maas"
-
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = [area_authority] if area_authority else [""]  # if area_authority is empty, then select all
+# pass authorities as arguments, or edit list here
+SELECTION: list[str] = sys.argv[1:] if len(sys.argv) > 1 else ["AaenMaas"]
 REBUILD = True
 
 
@@ -25,6 +23,9 @@ def get_model_dir(authority, post_fix):
 if len(SELECTION) == 0:
     authorities = cloud.water_authorities
 else:
+    invalid = set(SELECTION) - set(cloud.water_authorities)
+    if invalid:
+        raise ValueError(f"Unknown water authorities: {invalid}")
     authorities = SELECTION
 # %%
 for authority in authorities:

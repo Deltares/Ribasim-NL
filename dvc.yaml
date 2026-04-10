@@ -28,8 +28,8 @@ stages:
       - uv run python notebooks/brabantse_delta/02_prepare_model.py
       - uv run python notebooks/brabantse_delta/03_parameterize_model.py
       - uv run python notebooks/brabantse_delta/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend brabantse_delta
-      - uv run python notebooks/07_add_dynamic_forcing.py brabantse_delta
+      - uv run python notebooks/05_add_bergend.py BrabantseDelta
+      - uv run python notebooks/07_add_dynamic_forcing.py BrabantseDelta
     deps:
       - notebooks/brabantse_delta
     outs:
@@ -68,8 +68,8 @@ stages:
       - uv run python notebooks/aa_en_maas/02_prepare_model.py
       - uv run python notebooks/aa_en_maas/03_parameterize_model.py
       - uv run python notebooks/aa_en_maas/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend aa_en_maas
-      - uv run python notebooks/07_add_dynamic_forcing.py aa_en_maas
+      - uv run python notebooks/05_add_bergend.py AaenMaas
+      - uv run python notebooks/07_add_dynamic_forcing.py AaenMaas
     deps:
       - notebooks/aa_en_maas
     outs:
@@ -80,8 +80,8 @@ stages:
       - uv run python notebooks/noorderzijlvest/02_prepare_model.py
       - uv run python notebooks/noorderzijlvest/03_parameterize_model.py
       - uv run python notebooks/noorderzijlvest/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend noorderzijlvest
-      - uv run python notebooks/07_add_dynamic_forcing.py noorderzijlvest
+      - uv run python notebooks/05_add_bergend.py Noorderzijlvest
+      - uv run python notebooks/07_add_dynamic_forcing.py Noorderzijlvest
     deps:
       - notebooks/noorderzijlvest
     outs:
@@ -92,8 +92,8 @@ stages:
       - uv run python notebooks/stichtse_rijnlanden/02_prepare_model.py
       - uv run python notebooks/stichtse_rijnlanden/03_parameterize_model.py
       - uv run python notebooks/stichtse_rijnlanden/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend stichtse_rijnlanden
-      - uv run python notebooks/07_add_dynamic_forcing.py stichtse_rijnlanden
+      - uv run python notebooks/05_add_bergend.py StichtseRijnlanden
+      - uv run python notebooks/07_add_dynamic_forcing.py StichtseRijnlanden
     deps:
       - notebooks/stichtse_rijnlanden
     outs:
@@ -104,8 +104,8 @@ stages:
       - uv run python notebooks/drents_overijsselse_delta/02_prepare_model.py
       - uv run python notebooks/drents_overijsselse_delta/03_parameterize_model.py
       - uv run python notebooks/drents_overijsselse_delta/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend drents_overijsselse_delta
-      - uv run python notebooks/07_add_dynamic_forcing.py drents_overijsselse_delta
+      - uv run python notebooks/05_add_bergend.py DrentsOverijsselseDelta
+      - uv run python notebooks/07_add_dynamic_forcing.py DrentsOverijsselseDelta
     deps:
       - notebooks/drents_overijsselse_delta
     outs:
@@ -116,8 +116,8 @@ stages:
       - uv run python notebooks/rijn_en_ijssel/02_prepare_model.py
       - uv run python notebooks/rijn_en_ijssel/03_parameterize_model.py
       - uv run python notebooks/rijn_en_ijssel/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend rijn_en_ijssel
-      - uv run python notebooks/07_add_dynamic_forcing.py rijn_en_ijssel
+      - uv run python notebooks/05_add_bergend.py RijnenIJssel
+      - uv run python notebooks/07_add_dynamic_forcing.py RijnenIJssel
     deps:
       - notebooks/rijn_en_ijssel
     outs:
@@ -128,8 +128,8 @@ stages:
       - uv run python notebooks/vechtstromen/02_prepare_model.py
       - uv run python notebooks/vechtstromen/03_parameterize_model.py
       - uv run python notebooks/vechtstromen/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend vechtstromen
-      - uv run python notebooks/07_add_dynamic_forcing.py vechtstromen
+      - uv run python notebooks/05_add_bergend.py Vechtstromen
+      - uv run python notebooks/07_add_dynamic_forcing.py Vechtstromen
     deps:
       - notebooks/vechtstromen
     outs:
@@ -140,8 +140,8 @@ stages:
       - uv run python notebooks/de_dommel/02_prepare_model.py
       - uv run python notebooks/de_dommel/03_parameterize_model.py
       - uv run python notebooks/de_dommel/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend de_dommel
-      - uv run python notebooks/07_add_dynamic_forcing.py de_dommel
+      - uv run python notebooks/05_add_bergend.py DeDommel
+      - uv run python notebooks/07_add_dynamic_forcing.py DeDommel
     deps:
       - notebooks/de_dommel
     outs:
@@ -152,8 +152,8 @@ stages:
       - uv run python notebooks/vallei_en_veluwe/02_prepare_model.py
       - uv run python notebooks/vallei_en_veluwe/03_parameterize_model.py
       - uv run python notebooks/vallei_en_veluwe/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend vallei_en_veluwe
-      - uv run python notebooks/07_add_dynamic_forcing.py vallei_en_veluwe
+      - uv run python notebooks/05_add_bergend.py ValleienVeluwe
+      - uv run python notebooks/07_add_dynamic_forcing.py ValleienVeluwe
     deps:
       - notebooks/vallei_en_veluwe
     outs:
@@ -165,8 +165,8 @@ stages:
       - uv run python notebooks/limburg/02_prepare_model.py
       - uv run python notebooks/limburg/03_parameterize_model.py
       - uv run python notebooks/limburg/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend limburg
-      - uv run python notebooks/07_add_dynamic_forcing.py limburg
+      - uv run python notebooks/05_add_bergend.py Limburg
+      - uv run python notebooks/07_add_dynamic_forcing.py Limburg
     deps:
       - notebooks/limburg
     outs:
@@ -177,8 +177,8 @@ stages:
       - uv run python notebooks/hunze_en_aas/02_prepare_model.py
       - uv run python notebooks/hunze_en_aas/03_parameterize_model.py
       - uv run python notebooks/hunze_en_aas/04_add_full_control.py
-      - uv run python notebooks/05_add_bergend hunze_en_aas
-      - uv run python notebooks/07_add_dynamic_forcing.py hunze_en_aas
+      - uv run python notebooks/05_add_bergend.py HunzeenAas
+      - uv run python notebooks/07_add_dynamic_forcing.py HunzeenAas
     deps:
       - notebooks/hunze_en_aas
     outs:
