@@ -443,9 +443,11 @@ def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
         # Start from the original capacity. Rows that are not allowed to scale in
         # either situation keep their original value.
         from_to_node_function_table["scaled_flow_rate"] = from_to_node_function_table["max_flow_rate"]
-        from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = from_to_node_function_table.loc[
-            both_allowed, [latest_demand_column, latest_drainage_column]
-        ].max(axis=1)
+        from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = (
+            from_to_node_function_table.loc[both_allowed, [latest_demand_column, latest_drainage_column]]
+            .max(axis=1)
+            .to_numpy(dtype=float)
+        )
         from_to_node_function_table.loc[demand_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
             demand_only, latest_demand_column
         ]
