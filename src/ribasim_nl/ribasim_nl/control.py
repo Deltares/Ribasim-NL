@@ -1548,15 +1548,15 @@ def set_node_functions(
     __duplicates: bool = False
     if set(to_supply) & set(to_flow_control):
         LOG.critical(
-            f"Node-IDs occuring in both `to_supply` and `to_flow_control`: {set(to_supply) & set(to_flow_control)}"
+            f"Node-IDs occurring in both `to_supply` and `to_flow_control`: {set(to_supply) & set(to_flow_control)}"
         )
         __duplicates = True
     if set(to_supply) & set(to_drain):
-        LOG.critical(f"Node-IDs occuring in both `to_supply` and `to_drain`: {set(to_supply) & set(to_flow_control)}")
+        LOG.critical(f"Node-IDs occurring in both `to_supply` and `to_drain`: {set(to_supply) & set(to_drain)}")
         __duplicates = True
     if set(to_flow_control) & set(to_drain):
         LOG.critical(
-            f"Node-IDs occuring in both `to_flow_control` and `to_drain`: {set(to_flow_control) & set(to_flow_control)}"
+            f"Node-IDs occurring in both `to_flow_control` and `to_drain`: {set(to_flow_control) & set(to_drain)}"
         )
         __duplicates = True
     if __duplicates:
