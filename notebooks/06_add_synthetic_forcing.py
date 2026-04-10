@@ -1,4 +1,5 @@
 # %%
+import sys
 from datetime import datetime
 
 from ribasim_nl.parametrization.basin_tables import add_basin_time_synthetic
@@ -9,9 +10,11 @@ cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 
+area_authority = sys.argv[1]  # e.g. "AaenMaas", "Brabantse_Delta", "Noorderzijlvest",
+# argument added in dvc.yaml, e.g. "uv run python notebooks/07_add_dynamic_forcing aa_en_maas"
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+SELECTION: list[str] = [area_authority] if area_authority else [""]  # if area_authority is empty, then select all
 REBUILD = True
 
 

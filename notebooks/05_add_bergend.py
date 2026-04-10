@@ -1,12 +1,17 @@
 # %%
+import sys
+
 from ribasim_nl.berging import VdGaastBerging
 
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
+area_authority = sys.argv[1]  # e.g. "AaenMaas", "Brabantse_Delta", "Noorderzijlvest",
+# argument added in dvc.yaml, e.g. "uv run python notebooks/05_add_bergend aa_en_maas"
+
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+SELECTION: list[str] = [area_authority] if area_authority else [""]  # if area_authority is empty, then select all
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -49,3 +54,5 @@ for authority in authorities:
             model.write(dst_toml_file)
             result = model.run()
             assert result.exit_code == 0
+
+# %%

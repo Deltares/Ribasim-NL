@@ -1,4 +1,5 @@
 # %%
+import sys
 from datetime import datetime
 
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
@@ -9,6 +10,9 @@ cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 write_budgets: bool = False
+
+area_authority = sys.argv[1]  # e.g. "AaenMaas", "Brabantse_Delta", "Noorderzijlvest",
+# argument added in dvc.yaml, e.g. "uv run python notebooks/07_add_dynamic_forcing aa_en_maas"
 
 
 def add_forcing(model, cloud, starttime, endtime):
@@ -30,7 +34,7 @@ def add_forcing(model, cloud, starttime, endtime):
 
 
 FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = ["AaenMaas"]
+SELECTION: list[str] = [area_authority] if area_authority else [""]  # if area_authority is empty, then select all
 INCLUDE_RESULTS = False
 REBUILD = True
 
