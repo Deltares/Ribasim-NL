@@ -3,126 +3,21 @@ stages:
   samenvoegen:
     cmd: uv run python notebooks/samenvoegen_modellen.py
     deps:
-    - path: data/AaenMaas/modellen/AaenMaas_2025_9_0
+    - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: 9f4a13cbc90b8c64d66212a183aedee7.dir
-      size: 55648170
-      nfiles: 3
-    - path:
-        data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
-      hash: md5
-      md5: 99d614dbc936010e2b53d72927ceac7b.dir
-      size: 23998323
-      nfiles: 3
-    - path: data/BrabantseDelta/modellen/BrabantseDelta_2025_9_0
-      hash: md5
-      md5: e5517187ba82f07084bfdc9a28052979.dir
-      size: 74410370
-      nfiles: 3
-    - path: data/DeDommel/modellen/DeDommel_2025_9_0
-      hash: md5
-      md5: 7a954dd29d7b9c8710a698811339232f.dir
-      size: 80384450
-      nfiles: 3
-    - path: data/Delfland/modellen/Delfland_parameterized_2025_9_1
-      hash: md5
-      md5: ed393eda7ddf0b0785bc3bd3936904dc.dir
-      size: 14147811
-      nfiles: 4
-    - path:
-        data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
-      hash: md5
-      md5: cdceb31a29edea006fb7369d7e5cb41a.dir
-      size: 49107122
-      nfiles: 4
-    - path:
-        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized_2025_9_11
-      hash: md5
-      md5: f2152ae3a799955dd02d5819cb21ae78.dir
-      size: 22903099
-      nfiles: 3
-    - path: data/HollandseDelta/modellen/HollandseDelta_parameterized_2025_9_0
-      hash: md5
-      md5: cb1c75474f12a7f19c2d98ef5c65d07f.dir
-      size: 36260779
-      nfiles: 3
-    - path: data/HunzeenAas/modellen/HunzeenAas_2025_10_1
-      hash: md5
-      md5: c792a0bdb1770ab77b101386a13b03bb.dir
-      size: 345066482
-      nfiles: 4
-    - path: data/Limburg/modellen/Limburg_2025_9_0
-      hash: md5
-      md5: ca20b0f28d97cf3eed1481f539c77071.dir
-      size: 83284450
-      nfiles: 3
-    - path: data/Noorderzijlvest/modellen/Noorderzijlvest_2025_10_3
-      hash: md5
-      md5: aa6933fc18068251f7bac6c9784a9c32.dir
-      size: 52448554
-      nfiles: 3
-    - path: data/Rijkswaterstaat/modellen/hws_2025_10_0
-      hash: md5
-      md5: d3429cc229353a009a2feb17f27576c7.dir
-      size: 42700954
+      md5: 1e5134066c13eed17e408345b3e3be5b.dir
+      size: 59744467
       nfiles: 2
-    - path: data/RijnenIJssel/modellen/RijnenIJssel_2025_9_0
+    - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 86a1b8442f54b646e87bc348efcc88b4.dir
-      size: 31222146
-      nfiles: 3
-    - path: data/Rijnland/modellen/Rijnland_parameterized_2025_9_0
-      hash: md5
-      md5: bdabcfff48e54ea73e2bc7776edab98b.dir
-      size: 30769611
-      nfiles: 3
-    - path: data/Rivierenland/modellen/Rivierenland_parameterized_2025_9_1
-      hash: md5
-      md5: d5493fb785672ff0734b7d821aa13939.dir
-      size: 28609443
-      nfiles: 4
-    - path: data/Scheldestromen/modellen/Scheldestromen_parameterized_2025_9_0
-      hash: md5
-      md5: 95d6967b95bedd7c958c141e5b1800c8.dir
-      size: 15192275
-      nfiles: 3
-    - path:
-        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized_2025_9_0
-      hash: md5
-      md5: 3d59e8121decde30c171b9a92f633969.dir
-      size: 11452403
-      nfiles: 3
-    - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_2025_9_0
-      hash: md5
-      md5: ab8d9a35d8a6597d791a8c6d9e00cd33.dir
-      size: 52399866
-      nfiles: 3
-    - path: data/ValleienVeluwe/modellen/ValleienVeluwe_2025_9_0
-      hash: md5
-      md5: 33e98b314470ad447e631c2ea7722be2.dir
-      size: 59207042
-      nfiles: 4
-    - path: data/Vechtstromen/modellen/Vechtstromen_2025_9_0
-      hash: md5
-      md5: cd9f96ea6857f669725edd17a0368fb1.dir
-      size: 77612002
-      nfiles: 3
-    - path:
-        data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
-      hash: md5
-      md5: bf47c88015d10cf9f0c4fc55ace6903f.dir
-      size: 93337538
-      nfiles: 4
-    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0
-      hash: md5
-      md5: c6944916dee6388016fd8eb7b265168f.dir
-      size: 16092995
-      nfiles: 3
+      md5: 38daf50cffe4d593375a5af02897f1ab.dir
+      size: 42664118
+      nfiles: 2
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: bc3774fd7714f153d60ae3ee58e69ccc.dir
-      size: 1783285170
+      md5: 3f33d99728724c393a23a46a10453b28.dir
+      size: 103313865
       nfiles: 3
   aa_en_maas:
     cmd:
@@ -130,17 +25,19 @@ stages:
     - uv run python notebooks/aa_en_maas/02_prepare_model.py
     - uv run python notebooks/aa_en_maas/03_parameterize_model.py
     - uv run python notebooks/aa_en_maas/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py AaenMaas
+    - uv run python notebooks/07_add_dynamic_forcing.py AaenMaas
     deps:
     - path: notebooks/aa_en_maas
       hash: md5
-      md5: fb9ae3ccc430167a552f25a3bb96948e.dir
-      size: 76348
+      md5: 8c097db226578fff19fe092eddbf6715.dir
+      size: 76340
       nfiles: 5
     outs:
-    - path: data/AaenMaas/modellen/AaenMaas_full_control_model
+    - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: 6a078a8a9cb389e4f6f9b5da6a864917.dir
-      size: 9048275
+      md5: 1e5134066c13eed17e408345b3e3be5b.dir
+      size: 59744467
       nfiles: 2
   noorderzijlvest:
     cmd:
@@ -216,8 +113,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: e16c0af6c8d7aed28f8026c173d3049d.dir
-      size: 42700958
+      md5: 38daf50cffe4d593375a5af02897f1ab.dir
+      size: 42664118
       nfiles: 2
   rijn_en_ijssel:
     cmd:
