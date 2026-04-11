@@ -230,6 +230,16 @@ static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+# Handmatige correcties streefpeilen:
+forced_levels = {
+    2495: 31.4,  # Benedenstrooms stuw Katsberg
+    1413: 30.13,  # Benedenstrooms Grenssloot op Moostdijk en AVL Dorperpeel
+    1861: 31.12,  # Bovenstrooms gemaal Helenaveen
+}
+
+mask = static_data.basin["node_id"].isin(forced_levels.keys())
+static_data.basin.loc[mask, "streefpeil"] = static_data.basin.loc[mask, "node_id"].map(forced_levels)
+
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
 

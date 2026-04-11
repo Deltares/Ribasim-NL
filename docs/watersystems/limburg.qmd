@@ -12,7 +12,8 @@ Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuu
 
 Via gemaal `Katsberg` wordt water (max 5.4m3/s) vanuit de `Noordervaart` aangevoerd naar het kanaal `van Deurne`.Water wordt ingelaten voor WPM en Aa en Maas in de verdeling 50-50%.
 
-Een tijdelijke verlaging van aanvoer in de winter is afhankelijk van de natuurlijke afvoer van de Helenavaart die snel reageert op neerslag en die afvoert middels Grenssloot het gebied in. In de winter max 0.1m3/s voor doorspoeling om kwaliteitsredenen. Bij `Halte Verdeelwerk` wordt het beschikbare water verdeeld over het `Peelkanaal` en de `Grenssloot` verdeeld. Middels een automatische klepstuw (Gre 6 en TMX De Halte), wordt hier het aanvoerwater van de Katsberg doorgezet naar de Grenssloot. Stuw is zowel peil als debiet gestuurd  Het peil mag nooit lager dan 30.80 vanwege inklappen veenwanden en nooit hoger dan 31.21 vanwege overstromingsgevaar bovenstrooms.
+ Bij `Verdeelwerk de Halte` wordt het beschikbare water verdeeld over het `Peelkanaal` en de Grenssloot verdeeld. Middels een automatische klepstuw (Gre 6 en TMX De Halte), wordt hier het aanvoerwater van de Katsberg doorgezet naar de Grenssloot. Deze stuw is zowel peil als debiet gestuurd  Het peil mag nooit lager dan 30.80 vanwege inklappen veenwanden en nooit hoger dan 31.21 vanwege overstromingsgevaar bovenstrooms.
+
 In de zomer wordt gestuurd op een peil van 31.12m+NAP. In de winter sturing op 31.19m+NAP (om de veenkades zo nat mogelijk te houden ter voorkoming van inklinking).
 Het debiet is de resultante van de optelsom vanaf Katsberg en klopt in de zomer vrij goed.
 
@@ -114,3 +115,5 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd).
 
 - Documentatie Distributiemodel (Deel D, hoofdstuk 8)
+- basiskaartwateraanvoer_giho_wateraanvoer_2009.pdf
+- aanvoertabel H 08012021.xlsx
