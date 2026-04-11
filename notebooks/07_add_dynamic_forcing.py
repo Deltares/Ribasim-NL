@@ -1,16 +1,12 @@
 # %%
 import sys
 from datetime import datetime
-from pathlib import Path
 
-from ribasim.delwaq import generate, parse
-
-# from ribasim.delwaq import run_delwaq
+from ribasim.delwaq import generate, parse, run_delwaq
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
-from ribasim_nl.run_delwaq import run_delwaq
 
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
@@ -18,6 +14,7 @@ endtime = datetime(2018, 1, 1)
 write_budgets: bool = True  # write mfms_budgets.arrow for later verification
 assing_fractions: bool = True  # compute (sub-) fractions from budgets-table
 compute_fractions: bool = True
+
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
 primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
@@ -60,7 +57,7 @@ def add_forcing(model, cloud, starttime, endtime, assign_fractions, fraction_pre
 
 FIND_POST_FIXES = ["bergend_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: list[str] = sys.argv[1:] if len(sys.argv) > 1 else ["AaenMaas"]
+SELECTION: set = {"AaenMaas"}
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -94,13 +91,15 @@ def check_build(toml_file):
     return build
 
 
-if len(SELECTION) == 0:
-    authorities = cloud.water_authorities
-else:
-    invalid = set(SELECTION) - set(cloud.water_authorities)
-    if invalid:
-        raise ValueError(f"Unknown water authorities: {invalid}")
-    authorities = SELECTION
+# We make a list of authorities:
+# 1. provided as arguments
+authorities = set(sys.argv[1:]) & set(cloud.water_authorities)
+# 2. provided in global SELECTION
+if len(authorities) == 0:
+    authorities = set(SELECTION) & set(cloud.water_authorities)
+# 3. all authorities
+if len(authorities) == 0:
+    authorities = set(cloud.water_authorities)
 
 for authority in authorities:
     # find model directory
@@ -147,23 +146,17 @@ for authority in authorities:
             if compute_fractions:
                 # generate DELWAQ model
                 delwaq_dir = model.toml_path.with_name("delwaq")
+                print(f"🗀 generate DELWAQ model in {delwaq_dir}")
                 graph, substances = generate(model, output_path=delwaq_dir)
 
                 # run DELWAQ model
-                # run_delwaq(
-                #     model_dir=delwaq_dir,
-                #     d3d_home=Path(
-                #         "c:/Program Files/Deltares/D-HYDRO Suite 2025.02 1D2D/plugins/DeltaShell.Dimr/kernels/x64"
-                #     ),
-                # )
-
+                print("⚙️ run DELWAQ")
                 run_delwaq(
-                    dimr_config=delwaq_dir.joinpath("dimr_config.xml"),
-                    run_dimr_bat=Path(
-                        "c:/Program Files/Deltares/D-HYDRO Suite 2025.02 1D2D/plugins/DeltaShell.Dimr/kernels/x64/bin/run_dimr.bat"
-                    ),
+                    model_dir=delwaq_dir,
+                    d3d_home=settings.d3d_home,
                 )
 
                 # parse DELWAQ results in model
+                print("📖 parse DELWAQ results in Ribasim-model")
                 model = parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
                 model.write(dst_toml_file)

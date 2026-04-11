@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, Settings
 
 class Settings(BaseSettings):
     ribasim_home: Path = Path("bin/ribasim")
-    d3d_home: Path = Path("c:/Program Files/Deltares/D-HYDRO Suite 2025.02 1D2D/plugins/DeltaShell.Dimr/kernels/x64")
+    d3d_home: Path = Path("c:/Program Files/Deltares/D-HYDRO Suite 2026.01 1D2D/plugins/DeltaShell.Dimr/kernels/x64")
     ribasim_nl_cloud_pass: str = ""
     ribasim_nl_data_dir: Path = Path("data")
     overwrite_files_from_cloud: bool = True
