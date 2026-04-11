@@ -50,33 +50,26 @@ damo_profiles = DAMOProfiles(
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
 )
 
-if not profiles_gpkg.exists():
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
-else:
-    profiles_df = gpd.read_file(profiles_gpkg)
-
-profiles_df.set_index("profiel_id", inplace=True)
-static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
-
-
-# %%
-
-# fix link geometries
-use_link_geometries_cache = False
-if link_geometries_gpkg.exists():
+# fix link geometries and profiles
+use_cache = False
+if link_geometries_gpkg.exists() and profiles_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    use_link_geometries_cache = link_geometries_df.index.equals(model.link.df.index)
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
 
-if use_link_geometries_cache:
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
     ]
+    profiles_df = gpd.read_file(profiles_gpkg)
 else:
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
     add_link_profile_ids(model, profiles=damo_profiles)
     fix_link_geometries(model, network, max_straight_line_ratio=5)
     model.link.df.reset_index().to_file(link_geometries_gpkg)
+profiles_df.set_index("profiel_id", inplace=True)
+static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 # %%
 # %% Quick fix basins

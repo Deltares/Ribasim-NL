@@ -1,4 +1,6 @@
 # %%
+import sys
+
 from ribasim_nl.berging import VdGaastBerging
 
 from ribasim_nl import CloudStorage, Model
@@ -6,7 +8,8 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+# pass authorities as arguments, or edit list here
+SELECTION: list[str] = sys.argv[1:] if len(sys.argv) > 1 else ["AaenMaas"]
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -18,6 +21,9 @@ def get_model_dir(authority, post_fix):
 if len(SELECTION) == 0:
     authorities = cloud.water_authorities
 else:
+    invalid = set(SELECTION) - set(cloud.water_authorities)
+    if invalid:
+        raise ValueError(f"Unknown water authorities: {invalid}")
     authorities = SELECTION
 # %%
 link_data = []
@@ -49,3 +55,5 @@ for authority in authorities:
             model.write(dst_toml_file)
             result = model.run()
             assert result.exit_code == 0
+
+# %%

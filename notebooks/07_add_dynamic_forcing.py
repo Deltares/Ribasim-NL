@@ -1,4 +1,5 @@
 # %%
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -58,7 +59,8 @@ def add_forcing(model, cloud, starttime, endtime, assign_fractions, fraction_pre
 
 
 FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = ["AaenMaas"]
+# pass authorities as arguments, or edit list here
+SELECTION: list[str] = sys.argv[1:] if len(sys.argv) > 1 else ["AaenMaas"]
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -95,6 +97,9 @@ def check_build(toml_file):
 if len(SELECTION) == 0:
     authorities = cloud.water_authorities
 else:
+    invalid = set(SELECTION) - set(cloud.water_authorities)
+    if invalid:
+        raise ValueError(f"Unknown water authorities: {invalid}")
     authorities = SELECTION
 
 for authority in authorities:
