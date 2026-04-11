@@ -14,6 +14,8 @@ from tqdm import tqdm
 from xarray.core.dataarray import DataArray
 from xarray.core.dataset import Dataset
 
+from ribasim_nl.assign_fractions_from_budgets import assign_fractions_from_budgets
+
 
 def _crop_to_gdf(da: "xr.DataArray | xr.Dataset", gdf: gpd.GeoDataFrame) -> DataArray | Dataset:
     """Crop a DataArray or Dataset to a gdf.extent (total_bounds)
@@ -110,7 +112,7 @@ class AssignOfflineBudgets:
         secondary_values: set[str] = {"bergend"},
         primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"},
         secondary_budgets: set[str] = {
-            "bdgriv_sys2",  # TODO @gijsber, please verify as this was left-out in the code of the previous version (why?). I've added this as described in the docstring
+            "bdgriv_sys2",
             "bdgriv_sys3",
             "bdgriv_sys6",
             "bdgdrn_sys1",
@@ -119,6 +121,8 @@ class AssignOfflineBudgets:
             "bdgpsswm3",
         },
         surface_runoff_budgets: set[str] = {"bdgqrunm3"},
+        assign_fractions: bool = False,
+        fraction_prefix: str | None = None,
     ) -> tuple[Model, pd.DataFrame]:
         """Compute budgets for Ribasim model.
 
@@ -173,6 +177,10 @@ class AssignOfflineBudgets:
         surface_runoff_budgets: set[str], optional
             set of budgets that are to be summed to secondary surface_runoff
              by default {"bdgqrunm3"}
+        assign_fractions: bool, optional
+             if True, fractions from budgets will be calculated and assigned to model.basin.concentration.df, default False
+        fraction_prefix: str, optional
+             if assing_fractions, then user is to define a fraction prefix here, else it kan be kept None. default None
 
         Returns
         -------
@@ -252,6 +260,23 @@ class AssignOfflineBudgets:
         model.basin.time.df["drainage"] = idx.map(drainage)  # pyrefly: ignore[bad-argument-type]
         model.basin.time.df["infiltration"] = idx.map(infiltration)  # pyrefly: ignore[bad-argument-type]
         model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)  # pyrefly: ignore[bad-argument-type]
+
+        # assign fractions from budgets if user wants to
+        if assign_fractions:
+            secondary_basin_ids = secondary_basin_definition.node_id.values
+            primary_basin_ids = primary_basin_definition.node_id.values
+            if fraction_prefix is None:
+                raise ValueError("fraction_prefix can't be None if assing_fractions is True")
+            assign_fractions_from_budgets(
+                model=model,
+                budgets_df=budgets_df,
+                primary_budgets=primary_budgets,
+                secondary_budgets=secondary_budgets,
+                surface_runoff_budgets=surface_runoff_budgets,
+                primary_basin_ids=primary_basin_ids,
+                secondary_basin_ids=secondary_basin_ids,
+                prefix=fraction_prefix,
+            )
 
         return model, budgets_df
 

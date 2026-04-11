@@ -2,17 +2,35 @@
 import sys
 from datetime import datetime
 
+from ribasim.delwaq import generate, parse, run_delwaq
+from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
-write_budgets: bool = False
+write_budgets: bool = True  # write mfms_budgets.arrow for later verification
+assing_fractions: bool = True  # compute (sub-) fractions from budgets-table
+compute_fractions: bool = True
 
 
-def add_forcing(model, cloud, starttime, endtime):
+# LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
+primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
+secondary_budgets: set[str] = {
+    "bdgriv_sys2",
+    "bdgriv_sys3",
+    "bdgriv_sys6",
+    "bdgdrn_sys1",
+    "bdgdrn_sys2",
+    "bdgdrn_sys3",
+    "bdgpssw",
+}
+surface_runoff_budgets: set[str] = {"bdgqrun"}
+
+
+def add_forcing(model, cloud, starttime, endtime, assign_fractions, fraction_prefix):
     # compute forcing
     forcing = SetDynamicForcing(
         model=model,
@@ -26,13 +44,20 @@ def add_forcing(model, cloud, starttime, endtime):
     # Add dynamic groundwater
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    _, budgets_df = offline_budgets.compute_budgets(model)
+    _, budgets_df = offline_budgets.compute_budgets(
+        model,
+        primary_budgets=primary_budgets,
+        secondary_budgets=secondary_budgets,
+        surface_runoff_budgets=surface_runoff_budgets,
+        assign_fractions=assign_fractions,
+        fraction_prefix=fraction_prefix,
+    )  # budgets_df is used to compute basin_fractions
     return budgets_df
 
 
 FIND_POST_FIXES = ["bergend_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: list[str] = sys.argv[1:] if len(sys.argv) > 1 else ["AaenMaas"]
+SELECTION: set = {"AaenMaas"}
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -66,14 +91,16 @@ def check_build(toml_file):
     return build
 
 
-if len(SELECTION) == 0:
-    authorities = cloud.water_authorities
-else:
-    invalid = set(SELECTION) - set(cloud.water_authorities)
-    if invalid:
-        raise ValueError(f"Unknown water authorities: {invalid}")
-    authorities = SELECTION
-# %%
+# We make a list of authorities:
+# 1. provided as arguments
+authorities = set(sys.argv[1:]) & set(cloud.water_authorities)
+# 2. provided in global SELECTION
+if len(authorities) == 0:
+    authorities = set(SELECTION) & set(cloud.water_authorities)
+# 3. all authorities
+if len(authorities) == 0:
+    authorities = set(cloud.water_authorities)
+
 for authority in authorities:
     # find model directory
     model_dir = next(
@@ -105,11 +132,31 @@ for authority in authorities:
             model.basin.state.df["meta_categorie"] = series.to_numpy()
 
             # add forcing
-            budgets_df = add_forcing(model, cloud, starttime, endtime)
+            budgets_df = add_forcing(
+                model, cloud, starttime, endtime, assing_fractions, fraction_prefix=waterbeheercode[authority]
+            )
 
             # run model
             model.write(dst_toml_file)
             if write_budgets:
-                budgets_df.to_feather(dst_toml_file.with_name("budgets.arrow"))
-                budgets_df.to_csv(dst_toml_file.with_name("budgets.csv.zip"), compression="zip")
+                budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
             model.run()
+
+            # DELWAQ(!)
+            if compute_fractions:
+                # generate DELWAQ model
+                delwaq_dir = model.toml_path.with_name("delwaq")
+                print(f"🗀 generate DELWAQ model in {delwaq_dir}")
+                graph, substances = generate(model, output_path=delwaq_dir)
+
+                # run DELWAQ model
+                print("⚙️ run DELWAQ")
+                run_delwaq(
+                    model_dir=delwaq_dir,
+                    d3d_home=settings.d3d_home,
+                )
+
+                # parse DELWAQ results in model
+                print("📖 parse DELWAQ results in Ribasim-model")
+                model = parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
+                model.write(dst_toml_file)
