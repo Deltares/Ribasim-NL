@@ -43,14 +43,13 @@ class OutletPumpScalingConfig:
     level_boundary_waterlevel_drainage_situation: float = -999
     level_boundary_waterlevel_demand_situation: float = 999
     max_deviation: float = 0.02
-    max_days: int = 5
+    max_exceedance_days: int = 5
     max_scaled_flow_rate: float = 50
     min_scaled_flow_rate: float = 0.001
     add_information_to_from_to_node_function_table: bool = True
     situations: list[str] = field(default_factory=lambda: ["water_demand", "water_drainage"])
-    apply_temporary_debug_changes: bool = False
-    debug_outlet_max_flow_rate: float = 0.10
     rescale_flow_capacities: bool = True
+    simulation_days: int = 365
 
     @property
     def results_path(self) -> pathlib.Path:
@@ -631,6 +630,7 @@ class _OutletPumpScaler:
         original_level_boundary_static = ribasim_model.level_boundary.static.df.copy()
         original_level_boundary_time = ribasim_model.level_boundary.time.df.copy()
         original_basin_time = ribasim_model.basin.time.df.copy()
+        original_endtime = ribasim_model.endtime
 
         # FIXME: Setting critical(?) static-table columns
         # ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
@@ -645,7 +645,6 @@ class _OutletPumpScaler:
         # if max_flow_rate is 0, change to 0.1
         ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
         ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
-        ribasim_model.outlet.static.df.max_flow_rate = config.debug_outlet_max_flow_rate
 
         ###########################
 
@@ -661,10 +660,14 @@ class _OutletPumpScaler:
         level_boundary_waterlevel_drainage_situation = config.level_boundary_waterlevel_drainage_situation
         level_boundary_waterlevel_demand_situation = config.level_boundary_waterlevel_demand_situation
         max_deviation = config.max_deviation
-        max_days = config.max_days
+        max_exceedance_days = config.max_exceedance_days
         max_scaled_flow_rate = config.max_scaled_flow_rate
         min_scaled_flow_rate = config.min_scaled_flow_rate
         add_information_to_from_to_node_function_table = config.add_information_to_from_to_node_function_table
+        simulation_days = config.simulation_days
+
+        # set simulation period
+        ribasim_model.endtime = ribasim_model.starttime + pd.Timedelta(days=simulation_days)
 
         # Set initial conditions equal to the target levels
         initial_water_level, basin_information = set_initial_water_levels(ribasim_model)
@@ -816,12 +819,12 @@ class _OutletPumpScaler:
                 # determine which basins needs to be scaled higher or lower based on the exceeds_deviation_duration_iteration
                 column_name_direction = f"scale_direction_iteration_{iteration}_{situation}"
                 basin_exceedance[column_name_direction] = None
-                basin_exceedance.loc[basin_exceedance[column_name_iteration] > max_days, column_name_direction] = (
-                    "higher"  # if the deviation is exceeded for more than max_days, the flow rate should be scaled higher
-                )
-                basin_exceedance.loc[basin_exceedance[column_name_iteration] <= max_days, column_name_direction] = (
-                    "lower"  # if lower, then the flow rate can be set lower
-                )
+                basin_exceedance.loc[
+                    basin_exceedance[column_name_iteration] > max_exceedance_days, column_name_direction
+                ] = "higher"  # if the deviation is exceeded for more than max_exceedance_days, the flow rate should be scaled higher
+                basin_exceedance.loc[
+                    basin_exceedance[column_name_iteration] <= max_exceedance_days, column_name_direction
+                ] = "lower"  # if lower, then the flow rate can be set lower
 
                 ### bridge basin --> connector nodes ###
                 # add the information to the from_to_node_function_table, based on the situation (drainage: checking downstream nodes, demand: checking upstream nodes)
@@ -858,7 +861,8 @@ class _OutletPumpScaler:
                     column_name_direction=column_name_direction,
                 )
 
-                if situation == "water_drainage":
+                # only run in the last situation and last iteration
+                if situation == situations[-1] and iteration == max_iterations - 1:
                     # if lower values have been assigned for the water_demand situation, then overwrite the max_flow_rate with the value from water_drainage
                     from_to_node_function_table = overwrite_demand_values_with_drainage_values(
                         from_to_node_function_table
@@ -889,12 +893,13 @@ class _OutletPumpScaler:
                     from_to_node_function_table, config.waterschap, upload_to_cloud=False
                 )
 
-        # replace the original meteo, initial water levels and boundary levels in the ribasim model
+        # replace the original meteo, initial water levels, boundary levels and end time in the ribasim model
         ribasim_model.basin.time.df = original_meteo
         ribasim_model.basin.state.df = original_initial_waterlevels
         ribasim_model.basin.time.df = original_basin_time
         ribasim_model.level_boundary.time.df = original_level_boundary_time
         ribasim_model.level_boundary.static.df = original_level_boundary_static
+        ribasim_model.endtime = original_endtime
 
         if not add_information_to_from_to_node_function_table:
             from_to_node_function_table = original_from_to_node_function_table
