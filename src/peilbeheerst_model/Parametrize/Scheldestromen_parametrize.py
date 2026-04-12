@@ -59,21 +59,21 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-# cloud.synchronize(
-#     filepaths=[
-#         ribasim_base_model_dir,
-#         FeedbackFormulier_path,
-#         ws_grenzen_path,
-#         RWS_grenzen_path,
-#         qlr_path,
-#         aanvoer_path,
-#         meteo_path,
-#         profiles_path,
-#     ]
-# )
+cloud.synchronize(
+    filepaths=[
+        #         ribasim_base_model_dir,
+        #         FeedbackFormulier_path,
+        #         ws_grenzen_path,
+        #         RWS_grenzen_path,
+        #         qlr_path,
+        #         aanvoer_path,
+        #         meteo_path,
+        profiles_path,
+    ]
+)
 
 # # refresh only the feedback form from cloud
-# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -213,7 +213,7 @@ for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
 #
 # add_storage_basins.create_bergende_basins()
 
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -518,9 +518,13 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         waterschap=waterschap,
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        max_iterations=12,
+        max_iterations=15,
+        initial_guess_flow_rate_outlet=0.01,  # set flow rates higher due to convergence issues. Therefore slightly higher number of iterations to compensate.
+        initial_guess_flow_rate_pump=15,
         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+        simulation_days=365,  # avoid empty basins which causes convergence issues. Lower max_days
+        max_exceedance_days=5,
     )
 )
 

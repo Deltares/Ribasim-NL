@@ -8,6 +8,7 @@ import shapely
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, cli
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
@@ -366,7 +367,7 @@ ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ri
 #
 # add_storage_basins.create_bergende_basins()
 
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -449,9 +450,12 @@ from_to_node_function_table["demand"] = None
 to_drain = (
     303,
     522,
+    525,
     664,
     668,
     723,
+    785,
+    786,
     814,
     833,
     840,
@@ -474,6 +478,7 @@ to_supply = (
     557,
     566,
     575,
+    625,
     886,
     990,
     999,
@@ -590,19 +595,24 @@ ribasim_model.pump.static.df.loc[
     "meta_known_flow_rate",
 ] = False
 
-# ribasim_model, from_to_node_table = scale_outlets_pumps(
-#     OutletPumpScalingConfig(
-#         ribasim_model_path=ribasim_work_dir_model_toml,
-#         ribasim_model=ribasim_model,
-#         from_to_node_function_table=from_to_node_function_table,
-#         waterschap=waterschap,
-#         cloud=cloud,
-#         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-#         max_iterations=2,
-#         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-#         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-#     )
-# )
+ribasim_model, from_to_node_table = scale_outlets_pumps(
+    OutletPumpScalingConfig(
+        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model=ribasim_model,
+        from_to_node_function_table=from_to_node_function_table,
+        waterschap=waterschap,
+        cloud=cloud,
+        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+        max_iterations=15,
+        initial_guess_flow_rate_outlet=0.01,  # set flow rates higher due to convergence issues. Therefore slightly higher number of iterations to compensate.
+        initial_guess_flow_rate_pump=15,
+        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+        simulation_days=365,  # avoid empty basins which causes convergence issues. Lower max_days
+        max_exceedance_days=5,
+    )
+)
+
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
