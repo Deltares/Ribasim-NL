@@ -1,4 +1,5 @@
 # %%
+import sys
 from datetime import datetime
 
 from ribasim_nl.parametrization.basin_tables import add_basin_time_synthetic
@@ -9,9 +10,9 @@ cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 
-
 FIND_POST_FIXES = ["full_control_model"]
-SELECTION: list[str] = ["StichtseRijnlanden"]
+# pass authorities as arguments, or edit list here
+SELECTION: list[str] = sys.argv[1:] if len(sys.argv) > 1 else ["AaenMaas"]
 REBUILD = True
 
 
@@ -22,6 +23,9 @@ def get_model_dir(authority, post_fix):
 if len(SELECTION) == 0:
     authorities = cloud.water_authorities
 else:
+    invalid = set(SELECTION) - set(cloud.water_authorities)
+    if invalid:
+        raise ValueError(f"Unknown water authorities: {invalid}")
     authorities = SELECTION
 # %%
 for authority in authorities:

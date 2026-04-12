@@ -60,17 +60,16 @@ damo_profiles = DAMOProfiles(
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
     profile_line_id_col="code",
 )
-if not profiles_gpkg.exists():
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
-else:
-    profiles_df = gpd.read_file(profiles_gpkg)
 
 # %%
 
-# fix link geometries
-if link_geometries_gpkg.exists():
+# fix link geometries and profiles
+use_cache = False
+if link_geometries_gpkg.exists() and profiles_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
+
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
         model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[

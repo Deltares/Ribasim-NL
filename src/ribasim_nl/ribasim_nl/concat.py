@@ -32,6 +32,10 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
             node_start = model.node.df.index.max() + 1
             merge_model = reset_index(merge_model, node_start)
 
+        # concat node table
+        node_df = pd.concat([model.node.df, merge_model.node.df])
+        model.node.df = node_df
+
         # concat links
         link_df = pd.concat([model.link.df, merge_model.link.df], ignore_index=not keep_original_index)
         link_df.index.name = "link_id"
@@ -53,8 +57,6 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
                         if "node_id" in model_df.columns:
                             df = pd.concat([model_df, merge_model_df], ignore_index=True)
                             df.index.name = "fid"
-                        elif model_df.index.name == "node_id":
-                            df = pd.concat([model_df, merge_model_df], ignore_index=False)
                         else:
                             raise Exception(f"{node_type} / {attr} cannot be merged")
                     else:
