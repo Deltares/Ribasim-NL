@@ -13,6 +13,12 @@ write_budgets: bool = False
 
 
 def add_forcing(model, cloud, starttime, endtime):
+
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    _precipitation = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
+    _evaporation = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
+    cloud.synchronize(filepaths=[lhm_budget_path, _precipitation, _evaporation], overwrite=False)
+
     # compute forcing
     forcing = SetDynamicForcing(
         model=model,
@@ -24,7 +30,6 @@ def add_forcing(model, cloud, starttime, endtime):
     model = forcing.add()
 
     # Add dynamic groundwater
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     _, budgets_df = offline_budgets.compute_budgets(model)
     return budgets_df
@@ -32,7 +37,7 @@ def add_forcing(model, cloud, starttime, endtime):
 
 FIND_POST_FIXES = ["bergend_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: list[str] = sys.argv[1:] if len(sys.argv) > 1 else ["AaenMaas"]
+SELECTION: set = {"AaenMaas"}
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -66,13 +71,15 @@ def check_build(toml_file):
     return build
 
 
-if len(SELECTION) == 0:
-    authorities = cloud.water_authorities
-else:
-    invalid = set(SELECTION) - set(cloud.water_authorities)
-    if invalid:
-        raise ValueError(f"Unknown water authorities: {invalid}")
-    authorities = SELECTION
+# We make a list of authorities:
+# 1. provided as arguments
+authorities = set(sys.argv[1:]) & set(cloud.water_authorities)
+# 2. provided in global SELECTION
+if len(authorities) == 0:
+    authorities = set(SELECTION) & set(cloud.water_authorities)
+# 3. all authorities
+if len(authorities) == 0:
+    authorities = set(cloud.water_authorities)
 # %%
 for authority in authorities:
     # find model directory
@@ -101,8 +108,10 @@ for authority in authorities:
 
             # add categorie to basin / state
             series = model.basin.node.df.loc[model.basin.state.df["node_id"].to_numpy()]["meta_categorie"]
-            assert series.notna().all()
-            model.basin.state.df["meta_categorie"] = series.to_numpy()
+            uncategorized_basins = series[series.isna()].index.values
+            if len(uncategorized_basins) > 0:
+                print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
+                model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
 
             # add forcing
             budgets_df = add_forcing(model, cloud, starttime, endtime)

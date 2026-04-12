@@ -30,14 +30,14 @@ stages:
     deps:
     - path: notebooks/aa_en_maas
       hash: md5
-      md5: 8c097db226578fff19fe092eddbf6715.dir
-      size: 76340
-      nfiles: 5
+      md5: df53233b12b71ce757c4f41c392c15c1.dir
+      size: 11774737705
+      nfiles: 79
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: 1e5134066c13eed17e408345b3e3be5b.dir
-      size: 59744467
+      md5: dde32dfeb2997eeaf38b025035f00c69.dir
+      size: 59732179
       nfiles: 2
   noorderzijlvest:
     cmd:
@@ -45,17 +45,19 @@ stages:
     - uv run python notebooks/noorderzijlvest/02_prepare_model.py
     - uv run python notebooks/noorderzijlvest/03_parameterize_model.py
     - uv run python notebooks/noorderzijlvest/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py Noorderzijlvest
+    - uv run python notebooks/07_add_dynamic_forcing.py Noorderzijlvest
     deps:
     - path: notebooks/noorderzijlvest
       hash: md5
-      md5: 67f9af254eaa34dbd0d673d02d5c75e0.dir
-      size: 32540
-      nfiles: 4
+      md5: beffe6c38fc061ae88a298257847c645.dir
+      size: 416902015
+      nfiles: 64
     outs:
-    - path: data/Noorderzijlvest/modellen/Noorderzijlvest_full_control_model
+    - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
-      md5: 08ded04c7aea7bb88a4a761cb1d856b2.dir
-      size: 10047699
+      md5: 1077e41c5d320c720622d65e059df24c.dir
+      size: 54526163
       nfiles: 2
   stichtse_rijnlanden:
     cmd:
@@ -63,18 +65,19 @@ stages:
     - uv run python notebooks/stichtse_rijnlanden/02_prepare_model.py
     - uv run python notebooks/stichtse_rijnlanden/03_parameterize_model.py
     - uv run python notebooks/stichtse_rijnlanden/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py StichtseRijnlanden
+    - uv run python notebooks/07_add_dynamic_forcing.py StichtseRijnlanden
     deps:
     - path: notebooks/stichtse_rijnlanden
       hash: md5
-      md5: 691b99a01fa4aa19a23c232a426a797b.dir
-      size: 62902
-      nfiles: 4
+      md5: 81b7a1413fa4680ed13cf4497553a429.dir
+      size: 13012959
+      nfiles: 8
     outs:
-    - path:
-        data/StichtseRijnlanden/modellen/StichtseRijnlanden_full_control_model
+    - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
       hash: md5
-      md5: 06264729808ccd643d04f7a56d3df9ca.dir
-      size: 16802003
+      md5: 3c6e4a4223473ca1aab2bd2d9d8367f9.dir
+      size: 56594643
       nfiles: 2
   bathymetry:
     cmd: uv run python notebooks/rijkswaterstaat/1_bathymetrie.py
@@ -122,17 +125,19 @@ stages:
     - uv run python notebooks/rijn_en_ijssel/02_prepare_model.py
     - uv run python notebooks/rijn_en_ijssel/03_parameterize_model.py
     - uv run python notebooks/rijn_en_ijssel/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py RijnenIJssel
+    - uv run python notebooks/07_add_dynamic_forcing.py RijnenIJssel
     deps:
     - path: notebooks/rijn_en_ijssel
       hash: md5
-      md5: a93828c35e74b5b768fc32be08316932.dir
-      size: 27552
+      md5: b4909f6b2389bc18951e3b8dc61c6337.dir
+      size: 27544
       nfiles: 4
     outs:
-    - path: data/RijnenIJssel/modellen/RijnenIJssel_full_control_model
+    - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: fd86dd3a13cc38ec59c5ed94fb5587d7.dir
-      size: 4722865
+      md5: abffac94af84973b919fec59785fe163.dir
+      size: 33288369
       nfiles: 2
   vechtstromen:
     cmd:
@@ -140,17 +145,19 @@ stages:
     - uv run python notebooks/vechtstromen/02_prepare_model.py
     - uv run python notebooks/vechtstromen/03_parameterize_model.py
     - uv run python notebooks/vechtstromen/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py Vechtstromen
+    - uv run python notebooks/07_add_dynamic_forcing.py Vechtstromen
     deps:
     - path: notebooks/vechtstromen
       hash: md5
-      md5: 106092c9ba8e169e65eec18323ecb21b.dir
-      size: 81621
+      md5: 259415edff063e7f4975da4484ad6ca0.dir
+      size: 81720
       nfiles: 4
     outs:
-    - path: data/Vechtstromen/modellen/Vechtstromen_full_control_model
+    - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
       hash: md5
-      md5: 91d662f5d8ad529fec75455c67915aad.dir
-      size: 18956465
+      md5: f71a7d97cb7f210abf46f91ac46def8a.dir
+      size: 81535153
       nfiles: 2
   de_dommel:
     cmd:
@@ -158,17 +165,19 @@ stages:
     - uv run python notebooks/de_dommel/02_prepare_model.py
     - uv run python notebooks/de_dommel/03_parameterize_model.py
     - uv run python notebooks/de_dommel/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py DeDommel
+    - uv run python notebooks/07_add_dynamic_forcing.py DeDommel
     deps:
     - path: notebooks/de_dommel
       hash: md5
-      md5: 0360dad62a5d0e313483f501291aefbe.dir
-      size: 57572
+      md5: b6ffa137ef70ea3ad605e14a34cf0542.dir
+      size: 57564
       nfiles: 8
     outs:
-    - path: data/DeDommel/modellen/DeDommel_full_control_model
+    - path: data/DeDommel/modellen/DeDommel_dynamic_model
       hash: md5
-      md5: 07162fc20bb3dafb82bd493c581d5569.dir
-      size: 19542227
+      md5: 1365e73ab306eae07345aa77ddf338a3.dir
+      size: 88465619
       nfiles: 2
   brabantse_delta:
     cmd:
@@ -177,17 +186,19 @@ stages:
     - uv run python notebooks/brabantse_delta/02_prepare_model.py
     - uv run python notebooks/brabantse_delta/03_parameterize_model.py
     - uv run python notebooks/brabantse_delta/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py BrabantseDelta
+    - uv run python notebooks/07_add_dynamic_forcing.py BrabantseDelta
     deps:
     - path: notebooks/brabantse_delta
       hash: md5
-      md5: bf64351734c0e24bad596b6ed329f443.dir
-      size: 58771
-      nfiles: 6
+      md5: ab5e85c9bbea9ff5709a7bfb0151c378.dir
+      size: 11069687042
+      nfiles: 15
     outs:
-    - path: data/BrabantseDelta/modellen/BrabantseDelta_full_control_model
+    - path: data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       hash: md5
-      md5: 270d31425fbc9ed4dfb2e69caf8adea2.dir
-      size: 16199891
+      md5: af1987d04fecf67f89ce873b51aa44b9.dir
+      size: 82383059
       nfiles: 2
   drents_overijsselse_delta:
     cmd:
@@ -195,18 +206,20 @@ stages:
     - uv run python notebooks/drents_overijsselse_delta/02_prepare_model.py
     - uv run python notebooks/drents_overijsselse_delta/03_parameterize_model.py
     - uv run python notebooks/drents_overijsselse_delta/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py DrentsOverijsselseDelta
+    - uv run python notebooks/07_add_dynamic_forcing.py DrentsOverijsselseDelta
     deps:
     - path: notebooks/drents_overijsselse_delta
       hash: md5
-      md5: 1cbb6b62232ab195dad433a59b0bdbdf.dir
-      size: 49887
-      nfiles: 4
+      md5: 5c4a27b0ca734a87246dcf643399be14.dir
+      size: 49966
+      nfiles: 5
     outs:
     - path:
-        data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_full_control_model
+        data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
       hash: md5
-      md5: f32be6564685e7518952ea219e131c54.dir
-      size: 7532721
+      md5: f7380eb924b32f258c1539090c4018d6.dir
+      size: 52179121
       nfiles: 2
   vallei_en_veluwe:
     cmd:
@@ -214,17 +227,19 @@ stages:
     - uv run python notebooks/vallei_en_veluwe/02_prepare_model.py
     - uv run python notebooks/vallei_en_veluwe/03_parameterize_model.py
     - uv run python notebooks/vallei_en_veluwe/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py ValleienVeluwe
+    - uv run python notebooks/07_add_dynamic_forcing.py ValleienVeluwe
     deps:
     - path: notebooks/vallei_en_veluwe
       hash: md5
-      md5: 228003668e07f4a7ef9ebf97ea22aaf1.dir
-      size: 63923
-      nfiles: 4
+      md5: 748475d2885a1f27de3f0c59cafcac90.dir
+      size: 63989
+      nfiles: 5
     outs:
-    - path: data/ValleienVeluwe/modellen/ValleienVeluwe_full_control_model
+    - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: dbd7f2c016f7d27f6f1330978810de28.dir
-      size: 20013233
+      md5: befd6cf74071fed7b56a58dfff39979c.dir
+      size: 60379313
       nfiles: 2
   limburg:
     cmd:
@@ -233,17 +248,19 @@ stages:
     - uv run python notebooks/limburg/02_prepare_model.py
     - uv run python notebooks/limburg/03_parameterize_model.py
     - uv run python notebooks/limburg/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py Limburg
+    - uv run python notebooks/07_add_dynamic_forcing.py Limburg
     deps:
     - path: notebooks/limburg
       hash: md5
-      md5: de84eed6311c08a7dcf4ba3b422c12b3.dir
-      size: 47110
-      nfiles: 5
+      md5: d7aebe6e2b81c3831c2517e067c35023.dir
+      size: 58715
+      nfiles: 6
     outs:
-    - path: data/Limburg/modellen/Limburg_full_control_model
+    - path: data/Limburg/modellen/Limburg_dynamic_model
       hash: md5
-      md5: ea8b6020ac2043e7e21f9ce2d2bc1929.dir
-      size: 22843603
+      md5: 20a62545ae54f32cffc4de4fefa266b3.dir
+      size: 97562835
       nfiles: 2
   hunze_en_aas:
     cmd:
@@ -251,17 +268,19 @@ stages:
     - uv run python notebooks/hunze_en_aas/02_prepare_model.py
     - uv run python notebooks/hunze_en_aas/03_parameterize_model.py
     - uv run python notebooks/hunze_en_aas/04_add_full_control.py
+    - uv run python notebooks/05_add_bergend.py HunzeenAas
+    - uv run python notebooks/07_add_dynamic_forcing.py HunzeenAas
     deps:
     - path: notebooks/hunze_en_aas
       hash: md5
-      md5: 4f7cbf75be2542f38b62c266037066ee.dir
-      size: 36722
-      nfiles: 5
+      md5: cd787302dfb0da078dba09baa030d082.dir
+      size: 698294672
+      nfiles: 42
     outs:
-    - path: data/HunzeenAas/modellen/HunzeenAas_full_control_model
+    - path: data/HunzeenAas/modellen/HunzeenAas_dynamic_model
       hash: md5
-      md5: a7b40385a9dbdd357d43ffa3776adcbe.dir
-      size: 5095601
+      md5: 5a298be7b0914436f6c55db3a9fe3210.dir
+      size: 42537137
       nfiles: 2
   koppelen:
     cmd: uv run python notebooks/koppelen_modellen.py
