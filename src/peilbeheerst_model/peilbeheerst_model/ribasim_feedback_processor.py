@@ -522,6 +522,9 @@ class RibasimFeedbackProcessor:
             # logging statement
             print("The function of the pumps have been updated.")
 
+    def clean_tables(self) -> None:
+        """Clean tables after processing feedback and before writing the model."""
+
     def run(self) -> None:
         self.process_model()
         self.save_feedback()
@@ -530,6 +533,8 @@ class RibasimFeedbackProcessor:
 
         self.update_target_levels()
         self.functie_gemalen()
+        if self.use_validation:
+            self.clean_tables()
         self.write_ribasim_model()
 
     def get_basin_aanvoer_corrections(self) -> None:
