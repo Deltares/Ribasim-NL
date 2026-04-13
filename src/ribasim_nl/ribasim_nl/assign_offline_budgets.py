@@ -180,7 +180,7 @@ class AssignOfflineBudgets:
         assign_fractions: bool, optional
              if True, fractions from budgets will be calculated and assigned to model.basin.concentration.df, default False
         fraction_prefix: str, optional
-             if assing_fractions, then user is to define a fraction prefix here, else it kan be kept None. default None
+             if assign_fractions, then user is to define a fraction prefix here, else it kan be kept None. default None
 
         Returns
         -------
@@ -263,10 +263,10 @@ class AssignOfflineBudgets:
 
         # assign fractions from budgets if user wants to
         if assign_fractions:
-            secondary_basin_ids = secondary_basin_definition.node_id.values
-            primary_basin_ids = primary_basin_definition.node_id.values
+            secondary_basin_ids = secondary_basin_definition.node_id.to_numpy()
+            primary_basin_ids = primary_basin_definition.node_id.to_numpy()
             if fraction_prefix is None:
-                raise ValueError("fraction_prefix can't be None if assing_fractions is True")
+                raise ValueError("fraction_prefix can't be None if assign_fractions is True")
             assign_fractions_from_budgets(
                 model=model,
                 budgets_df=budgets_df,

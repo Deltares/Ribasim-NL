@@ -1,16 +1,5 @@
 # Ribasim-Delwaq Integration Guide
 
-## DIMR_PATH Environment Variable
-
-To execute the conversion from ER (Emission Registry) to Delwaq, ensure that the
-environment variable `DIMR_PATH` is set to the path of the DIMR executable.
-This is required to run the conversion scripts.
-
-Example:
-```
-DIMR_PATH=c:\Program Files\Deltares\Delft3D FM Suite 2025.02 HMWQ\plugins\DeltaShell.Dimr\kernels\x64\bin\run_dimr.bat
-```
-
 ## Data Sources
 
 File locations in Python scripts need to be adjusted.

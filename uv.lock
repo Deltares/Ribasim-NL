@@ -3957,7 +3957,7 @@ wheels = [
 [[package]]
 name = "ribasim"
 version = "2026.1.0"
-source = { git = "https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=4e54066b93e7fd5de54fabdbe273a5b1f54227b6#4e54066b93e7fd5de54fabdbe273a5b1f54227b6" }
+source = { git = "https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=c5bb3b0d415a1b0b3b4212d2d7bb45313b658a4b#c5bb3b0d415a1b0b3b4212d2d7bb45313b658a4b" }
 dependencies = [
     { name = "geopandas" },
     { name = "matplotlib" },
@@ -4092,7 +4092,7 @@ requires-dist = [
     { name = "quartodoc", specifier = ">=0.11.1" },
     { name = "rasterstats", specifier = ">=0.20.0" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "ribasim", git = "https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=4e54066b93e7fd5de54fabdbe273a5b1f54227b6" },
+    { name = "ribasim", git = "https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=c5bb3b0d415a1b0b3b4212d2d7bb45313b658a4b" },
     { name = "ribasim-nl", editable = "src/ribasim_nl" },
     { name = "ruff", specifier = ">=0.14.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
