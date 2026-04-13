@@ -2,11 +2,14 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
+from numpy import ndarray
+from pandera.typing.pandas import DataFrame
 from ribasim import Model
 from ribasim.nodes import basin
+from ribasim.schemas import BasinConcentrationSchema
 
 
-def mfms_budget_to_fraction(budget: str, prefix: str):
+def mfms_budget_to_fraction(budget: str, prefix: str) -> str:
     if "_" in budget:
         bdg_part, sys_part = budget.split("_")
         return f"{prefix}_{bdg_part.lstrip('bdg') + sys_part.lstrip('sys')}"
@@ -20,7 +23,7 @@ def make_budget_sub_fraction_table(
     budget: str,
     prefix: str,
     basin_influx: Literal["drainage", "surface_runoff"] = "drainage",
-) -> pd.DataFrame:
+) -> DataFrame[BasinConcentrationSchema]:
     """Build sub-fraction table (sum of concentrations in one basin-influx == 1)
 
     Parameters
@@ -38,8 +41,8 @@ def make_budget_sub_fraction_table(
 
     Returns
     -------
-    pd.DataFrame
-        A basin.concentration.df fraction table
+    DataFrame[BasinConcentrationSchema]
+        A validated basin.concentration.df fraction table
     """
     # not all basins are large enough to get a budget. That's not an issue; no flux is no fraction
     missing_basin_ids = list(set(basin_ids) - set(fractions_df.index.get_level_values("node_id").unique()))
@@ -57,7 +60,7 @@ def make_budget_sub_fraction_table(
     for influx in ["surface_runoff", "precipitation", "drainage"]:
         if influx != basin_influx:
             df[influx] = float(0)
-    return df
+    return BasinConcentrationSchema.validate(df)
 
 
 def compute_budget_fractions(
@@ -66,7 +69,7 @@ def compute_budget_fractions(
     budgets: set[str],
     prefix: str,
     basin_influx: Literal["drainage", "surface_runoff", "precipitation"] = "drainage",
-) -> list[pd.DataFrame]:
+) -> list[DataFrame[BasinConcentrationSchema]]:
     """Build concentration table from budget fractions.
 
     Parameters
@@ -84,14 +87,16 @@ def compute_budget_fractions(
 
     Returns
     -------
-    list[pd.DataFrame]
-        List with one or more basin.concentration.df fraction tables
+    list[DataFrame[BasinConcentrationSchema]]
+        List with one or more validated basin.concentration.df fraction tables
     """
     # if we only have 1 budget, we don't need to compute fractions
     if len(budgets) == 1:
         time = fractions_df.index.get_level_values("time").min()
 
-        def _get_values(column, basin_influx, basin_ids):
+        def _get_values(
+            column: str, basin_influx: Literal["drainage", "precipitation", "surface_runoff"], basin_ids: ndarray
+        ) -> list[int]:
             if column == basin_influx:
                 return [1] * len(basin_ids)
             else:
@@ -121,7 +126,7 @@ def assign_fractions_from_budgets(
     secondary_basin_ids: np.ndarray,
     primary_basin_ids: np.ndarray,
     prefix: str,
-):
+) -> None:
     """Assing fractions to the concentration table from MODFLOW-MetaSWAP budgets.
 
     Note(!) budgets_df is returned by
@@ -190,4 +195,4 @@ def assign_fractions_from_budgets(
     )
 
     fractions_df["meta_lhm_fractions"] = True
-    model.basin.concentration = fractions_df
+    model.basin.concentration.df = BasinConcentrationSchema.validate(fractions_df)
