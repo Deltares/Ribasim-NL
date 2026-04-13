@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -59,18 +59,18 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/peilgebieden.
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-# cloud.synchronize(
-#     filepaths=[
-#         ribasim_base_model_dir,
-#         FeedbackFormulier_path,
-#         ws_grenzen_path,
-#         RWS_grenzen_path,
-#         qlr_path,
-#         aanvoer_path,
-#         meteo_path,
-#         profiles_path
-#     ]
-# )
+cloud.synchronize(
+    filepaths=[
+        #         ribasim_base_model_dir,
+        #         FeedbackFormulier_path,
+        #         ws_grenzen_path,
+        #         RWS_grenzen_path,
+        #         qlr_path,
+        #         aanvoer_path,
+        #         meteo_path,
+        profiles_path
+    ]
+)
 
 # refresh only the feedback form from cloud
 cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -458,6 +458,12 @@ inlaat_pump.append(pump_node.node_id)
 pump_node = ribasim_model.pump.add(Node(geometry=Point(181525, 517580)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.link.add(ribasim_model.basin[8], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[96])
+inlaat_pump.append(pump_node.node_id)
+
+# add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
+pump_node = ribasim_model.pump.add(Node(geometry=Point(156428, 476695)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[16], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[188])
 inlaat_pump.append(pump_node.node_id)
 
 # switching direction prohibited due to "old" terminal-node
