@@ -303,10 +303,9 @@ to_drain = (
     414,
     415,
 )
-to_flow_control = (505,)
+to_flow_control = (252, 505)
 to_supply = (
     206,
-    252,
     265,
     312,
 )
