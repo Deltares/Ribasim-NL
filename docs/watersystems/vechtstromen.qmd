@@ -1,24 +1,42 @@
-# Limburg
-
+# Vechtstromen
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/MW2kiQMyXwFM4xw)
+- [Laatste modelversie](https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT)
 
 ## Systeembeschrijving
-![Systeembeschrijving Limburg](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/limburg.svg)
+![Systeembeschrijving Vechtstromen](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/vechtstromen.svg)
 
 Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.
 
 ### Watersysteem
 
-Via gemaal `Katsberg` wordt water (max 5.4m3/s) vanuit de `Noordervaart` aangevoerd naar het kanaal `van Deurne`.Water wordt ingelaten voor WPM en Aa en Maas in de verdeling 50-50%.
+### Waterbeheer droge perioden
+Als in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit het `Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)` via Sluis Aadorp (maximaal 10 m3/s)
 
- Bij `Verdeelwerk de Halte` wordt het beschikbare water verdeeld over het `Peelkanaal` en de Grenssloot verdeeld. Middels een automatische klepstuw (Gre 6 en TMX De Halte), wordt hier het aanvoerwater van de Katsberg doorgezet naar de Grenssloot. Deze stuw is zowel peil als debiet gestuurd  Het peil mag nooit lager dan 30.80 vanwege inklappen veenwanden en nooit hoger dan 31.21 vanwege overstromingsgevaar bovenstrooms.
+ingelaten in het `Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)`. Buiten deze inlaatperiode stroomt er geen water vanuit het Twentekanaal naar het Kanaal Almelo – de Haandrik.
 
-In de zomer wordt gestuurd op een peil van 31.12m+NAP. In de winter sturing op 31.19m+NAP (om de veenkades zo nat mogelijk te houden ter voorkoming van inklinking).
-Het debiet is de resultante van de optelsom vanaf Katsberg en klopt in de zomer vrij goed.
+Ook bij de Stieltjeskanaalsluis naar de Verlengde Hoogeveensche Vaart kan water worden ingelaten.
 
-De Helenavaart takt aan op Kanaal van Deurne via stuw Hel 1 (automatische stuw). Overtollig water van Helenavaart wordt naar Peelkanaal geleid.
+De inlaten Vroomshoop en Hammervlier – Geerdijk worden alleen ’s zomers gebruikt voor het
+inlaten van water. Het water wordt dan ingelaten vanuit het Kanaal Almelo – de Haandrik.
+Verder is er voor de droge perioden een waterakkoord gesloten met Waterschap Groot Salland.
+Water wordt dan indien mogelijk vanuit het Twentekanaal via Kanaal Almelo – de Haandrik (ook
+Overijssels Kanaal genoemd) naar Salland doorgevoerd. Het doorvoeren naar Salland kan met
+een maximale capaciteit van 5 tot 7 m3/s. Normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s.
 
+Vanuit de `Dinkel` wordt alleen water het gebied ingelaten als er voldoende water in de `Dinkel` aanwezig is. Het water van de Dinkel dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.
+
+Het `Banisgemaal` is een in- en uitlaatgemaal bij Almelo. Bij hoogwater op het
+`Lateraalkanaal`, wordt het `Banisgemaal` gebruikt om het `Lateraalkanaal` te ontlasten. Het water wordt dan door het gemaal op de zijtak van het `Twentekanaal` geloosd. Het gemaal heeft een maximale capaciteit van 10 m3/s. In de zomerperiode wordt water vanuit de zijtak via het inlaatwerk in het `Banisgemaal` van het `Twentekanaal` in het `Lateraalkanaal` gelaten. Dit gebeurt met een maximale capaciteit van 0.43 m3/s.
+
+
+`Stokkumerflier` is ook een in- en uitlaatpunt. Het water wordt uitgemalen op het `Twentekanaal`
+met een maximale capaciteit van 2.29 m3/s. De inlaat van water gebeurt met een maximale capaciteit van 0.42 m3/s. Er wordt ook water ingelaten vanuit het `Twentekanaal` via `Herikervlier`, `Oude Poelsbeek` en `Oude Bolscherbeek`.
+
+Inlaatschuif `Hammerflier` en inlaatschuif `Vriezenveense Veenkanaal` laten water in vanuit
+`Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)`. De maximale inlaatcapaciteiten zijn onbekend. Het water dat bij
+Hammerflier wordt ingelaten wordt gebruikt ter compensatie van de grondwateronttrekking
+door het WMO in Hammerflier. Het niet geïnfiltreerde water wordt via de Regge afgevoerd naar
+de Overijsselse Vecht.
 
 ### Peelkanaal
 
