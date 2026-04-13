@@ -419,8 +419,8 @@ model.remove_node(node_id=1750, remove_links=True)
 model.remove_node(node_id=13, remove_links=True)
 
 # voeg inlaat Meerweg toe (n.a.v communicatie met Vincent)
-boundary_node = model.level_boundary.add(Node(geometry=Point(234937, 575821)))
-outlet_node = model.outlet.add(Node(name="Meerweg", geometry=Point(234893, 575872)))
+boundary_node = model.level_boundary.add(Node(geometry=Point(234937, 575821)), [level_data])
+outlet_node = model.outlet.add(Node(name="Meerweg", geometry=Point(234893, 575872)), [outlet_data])
 model.link.add(boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1192])
 
@@ -437,7 +437,7 @@ model.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminla
 model.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
 model.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
 model.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
-
+model.node.df.loc[728, ["name"]] = ["Sluis Lammerburen"]
 
 #  %% write model
 model.use_validation = True

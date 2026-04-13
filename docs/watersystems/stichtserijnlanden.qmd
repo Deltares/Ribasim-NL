@@ -1,10 +1,10 @@
 # Stichtse Rijnlanden
 
-- Laatst bijgewerkt: 28-01-2026
-- Laatste modelversie: [2026.6.0](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+- Laatst bijgewerkt: 07-04-2026
+- [Laatste modelversie](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
 
 ## Systeembeschrijving
-![Systeembeschrijving Stichtse Rijnlanden](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/stichtserijnlanden.svg)
+![Systeembeschrijving Stichtse Rijnlanden](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/stichtserijnlanden.svg)
 
 Hieronder zijn de gebieden beschreven uit het bovenstaande figuur.
 
@@ -105,4 +105,4 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van `Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco)` en:
 
-- [Documentatie Distributiemodel (Deel B, hoofdstuk 8)](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
+- Documentatie Distributiemodel (Deel B, hoofdstuk 8)

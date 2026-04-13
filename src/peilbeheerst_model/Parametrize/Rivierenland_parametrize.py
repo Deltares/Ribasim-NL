@@ -289,7 +289,7 @@ ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[77])
 
 # set 'aanvoer'-function on
-pump_ids = 989, 1000, 1001
+pump_ids: tuple[int, ...] = 989, 1000, 1001
 for i in pump_ids:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == i, "meta_func_aanvoer"] = 1
 
@@ -367,7 +367,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -401,7 +402,7 @@ if MIXED_CONDITIONS:
     ] = 2.5  # change value of a single LB during summer time, so it can still discharge excess water
 
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -448,8 +449,8 @@ mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_re
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 10
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 10.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table

@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 import geopandas as gpd
@@ -10,7 +11,7 @@ import xarray as xr
 from ribasim_nl import Model
 
 
-def model_loaded(func: callable) -> callable:
+def model_loaded(func: Callable[..., dict[str, object]]) -> Callable[..., dict[str, object]]:
     """Wrapper-function to assert that the model data is loaded before using methods that analyse this data.
 
     :param func: class-method
@@ -20,7 +21,7 @@ def model_loaded(func: callable) -> callable:
     :rtype: callable
     """
 
-    def wrapper(*args, **kwargs) -> dict:
+    def wrapper(*args, **kwargs) -> dict[str, object]:
         """Wrapper-function to assert that the model is loaded before using methods that analyse the data.
 
         :param args: positional arguments
@@ -38,11 +39,11 @@ def model_loaded(func: callable) -> callable:
 
 
 class Control:
-    ds_basin: xr.Dataset = None
-    ds_link: xr.Dataset = None
-    model: Model = None
+    ds_basin: xr.Dataset | None = None
+    ds_link: xr.Dataset | None = None
+    model: Model | None = None
 
-    def __init__(self, qlr_path=None, work_dir=None, ribasim_toml=None):
+    def __init__(self, qlr_path=None, work_dir=None, ribasim_toml=None) -> None:
         if (work_dir is None) and (ribasim_toml is None):
             raise ValueError("provide either work_dir or ribasim_toml")
         else:
@@ -309,7 +310,7 @@ class Control:
         return control_dict
 
     @model_loaded
-    def store_data(self, data, output_path):
+    def store_data(self, data, output_path) -> None:
         """Store the control_dict"""
         for key in data.keys():
             data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG", mode="w")
@@ -324,7 +325,7 @@ class Control:
 
         return
 
-    def run_all(self):
+    def run_all(self) -> dict[str, object]:
         control_dict = self.read_model_output()
         control_dict = self.initial_final_level(control_dict)
         control_dict = self.min_max_level(control_dict)
@@ -341,7 +342,7 @@ class Control:
 
         return control_dict
 
-    def run_afvoer(self):
+    def run_afvoer(self) -> dict[str, object]:
         control_dict = self.read_model_output()
         control_dict = self.initial_final_level(control_dict)
         control_dict = self.min_max_level(control_dict)
@@ -356,7 +357,7 @@ class Control:
         return control_dict
 
     @model_loaded
-    def water_level_bounds(self, control_dict: dict, skip_time_steps: int = 0) -> dict:
+    def water_level_bounds(self, control_dict: dict[str, object], skip_time_steps: int = 0) -> dict[str, object]:
         """Determine the minimum and maximum water levels within the basins occurring over time.
 
         As there might be some water level differences related to the initialisation, the bounds are analysed after a
@@ -372,6 +373,8 @@ class Control:
         :return: updated analysed data collector
         :rtype: dict
         """
+        assert self.ds_basin is not None
+        assert self.model is not None
         start_time = pd.Timestamp(self.ds_basin["time"].values[skip_time_steps])
         level = self.ds_basin["level"].sel(time=slice(start_time, None))
 
@@ -399,7 +402,7 @@ class Control:
         return control_dict
 
     @model_loaded
-    def error_bounds(self, control_dict: dict, autofill_missing_data: bool = True) -> dict:
+    def error_bounds(self, control_dict: dict[str, object], autofill_missing_data: bool = True) -> dict[str, object]:
         """Determine the minimum and maximum basin water level error occurring over time.
 
         Prior to calculating the error bounds, the water level bounds must be determined. If this is not done, the
@@ -431,6 +434,8 @@ class Control:
                 raise ValueError(msg)
 
         # get water level bounds data
+        assert self.ds_basin is not None
+        assert self.model is not None
         min_basin_level = control_dict["min_basin_level"]
         max_basin_level = control_dict["max_basin_level"]
 
@@ -439,11 +444,13 @@ class Control:
 
         # water level differences
         min_difference_level = (
+            # pyrefly: ignore[missing-attribute]
             (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
         )
         max_difference_level = (
+            # pyrefly: ignore[missing-attribute]
             (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
@@ -466,7 +473,7 @@ class Control:
         # return updated analysed data collector
         return control_dict
 
-    def run_dynamic_forcing(self, **kwargs) -> dict:
+    def run_dynamic_forcing(self, **kwargs) -> dict[str, object]:
         """Run the output control formatting for varying forcing conditions.
 
         :param kwargs: optional arguments, which are passed on to the various method-calls within this collective data

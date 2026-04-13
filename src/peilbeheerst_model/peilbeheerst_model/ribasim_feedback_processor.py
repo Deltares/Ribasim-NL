@@ -29,10 +29,10 @@ mapping = {
 
 
 class RibasimFeedbackProcessor:
-    _basin_aanvoer_on: tuple = None
-    _basin_aanvoer_off: tuple = None
-    _outlet_aanvoer_on: tuple = None
-    _outlet_aanvoer_off: tuple = None
+    _basin_aanvoer_on: tuple[int, ...] | None = None
+    _basin_aanvoer_off: tuple[int, ...] | None = None
+    _outlet_aanvoer_on: tuple[int, ...] | None = None
+    _outlet_aanvoer_off: tuple[int, ...] | None = None
 
     def __init__(
         self,
@@ -44,7 +44,7 @@ class RibasimFeedbackProcessor:
         output_folder,
         feedback_excel_processed=None,
         use_validation=True,
-    ):
+    ) -> None:
         self.name = name
         self.waterschap = waterschap
         self.versie = versie
@@ -59,7 +59,7 @@ class RibasimFeedbackProcessor:
         self.model = self.load_ribasim_model(ribasim_toml)
         self.log_filename = Path(output_folder) / f"{waterschap}.log"
 
-    def setup_logging(self):
+    def setup_logging(self) -> None:
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
 
@@ -71,20 +71,20 @@ class RibasimFeedbackProcessor:
         )
 
     @staticmethod
-    def load_feedback(feedback_excel):
+    def load_feedback(feedback_excel) -> pd.DataFrame:
         df = pd.read_excel(feedback_excel, sheet_name="Feedback_Formulier", skiprows=7)
         df = df[df["Actie"].notna()]
         return df
 
     @staticmethod
-    def load_node_type(feedback_excel):
+    def load_node_type(feedback_excel) -> pd.DataFrame:
         df = pd.read_excel(feedback_excel, sheet_name="Node_Data")
         df = df[df["node_id"].notna()]
         df = df.set_index("node_id")
         return df
 
     @staticmethod
-    def load_ribasim_model(ribasim_toml):
+    def load_ribasim_model(ribasim_toml) -> Model:
         model = Model.read(ribasim_toml)
         return model
 
@@ -102,16 +102,16 @@ class RibasimFeedbackProcessor:
         max_id = max(max_ids)
         return max_id
 
-    def write_ribasim_model(self):
+    def write_ribasim_model(self) -> None:
         outputdir = Path(self.output_folder)
         self.model.write(outputdir / "ribasim.toml")
 
-    def update_dataframe_with_new_node_ids(self, node_id_map):
+    def update_dataframe_with_new_node_ids(self, node_id_map) -> pd.DataFrame:
         for old_id, new_id in node_id_map.items():
             self.df.replace(old_id, new_id, inplace=True)
         return self.df
 
-    def process_model(self):
+    def process_model(self) -> None:
         self.setup_logging()
         node_id_map = {}
 
@@ -159,10 +159,9 @@ class RibasimFeedbackProcessor:
                 if hasattr(value, "__dict__"):
                     for sub_key, sub_value in value.__dict__.items():
                         if hasattr(sub_value, "df") and sub_value.df is not None:
-                            if not sub_value.df.empty:
-                                if sub_key == "static":
-                                    filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
-                                    sub_value.df = filtered_df
+                            if not sub_value.df.empty and "node_id" in sub_value.df.columns:
+                                filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                                sub_value.df = filtered_df
 
             # Remove the Links
             rows_to_remove = self.model.link.df[
@@ -178,7 +177,7 @@ class RibasimFeedbackProcessor:
         except Exception as e:
             logging.error(f"Error removing node {row['Node ID']}: {e}")
 
-    def add_node(self, row):
+    def add_node(self, row) -> None:
         try:
             key = row["Node Type.1"]
             key = mapping.get(key, None)
@@ -211,7 +210,7 @@ class RibasimFeedbackProcessor:
                             continue
                         else:
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
+                                logging.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
                                 continue
 
                             if sub_key == "static":
@@ -285,7 +284,7 @@ class RibasimFeedbackProcessor:
         except Exception as e:
             logging.error(f"Error adding node at row {row.name}: {e}")
 
-    def adjust_node(self, row):
+    def adjust_node(self, row) -> int | None:
         try:
             # Get the old node type and id
             key = self.df_node_types.loc[int(row["Node ID.2"])].node_type
@@ -309,14 +308,12 @@ class RibasimFeedbackProcessor:
                             continue
                         else:
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
+                                logging.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
                                 continue
 
-                        if "geometry" in sub_value.df:
-                            if sub_key == "static":
-                                geometry_old = sub_value.df[sub_value.df["node_id"] == node_id].geometry.iloc[0]
-                                filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
-                                sub_value.df = filtered_df
+                        if "node_id" in sub_value.df.columns:
+                            filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                            sub_value.df = filtered_df
 
             new_node_type_name = row["Nieuw Node Type"]
             key = mapping.get(new_node_type_name, None)
@@ -328,6 +325,7 @@ class RibasimFeedbackProcessor:
                 template_row = df_node.iloc[-1:].copy()
                 template_row.index = pd.Index([node_id], name="node_id")
                 template_row["node_type"] = new_node_type_name
+                # pyrefly: ignore[unbound-name]
                 template_row["geometry"] = [geometry_old if "geometry_old" in locals() else None]
                 for col in template_row.columns:
                     if col.startswith("meta_"):
@@ -342,7 +340,7 @@ class RibasimFeedbackProcessor:
                             continue
                         else:
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.warning(f"Sub value for key '{sub_key}' is None or has no DataFrame")
+                                logging.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
                                 continue
 
                             if sub_key == "static":
@@ -393,7 +391,7 @@ class RibasimFeedbackProcessor:
             logging.error(f"Error adjusting node at row: {row}", exc_info=True)
             return None
 
-    def adjust_links(self, row, node_id_map):
+    def adjust_links(self, row, node_id_map) -> None:
         try:
             node_a = int(node_id_map.get(row["Node ID A.1"], row["Node ID A.1"]))
             node_b = int(node_id_map.get(row["Node ID B.1"], row["Node ID B.1"]))
@@ -429,12 +427,12 @@ class RibasimFeedbackProcessor:
         except Exception as e:
             logging.error(f"Error adjusting link: {e}")
 
-    def special_preprocessing_for_hollandse_delta(self):
+    def special_preprocessing_for_hollandse_delta(self) -> None:
         p1 = Proj("epsg:4326")  # WGS84
         p2 = Proj("epsg:28992")  # Rijksdriehoekstelsel
         transformer = Transformer.from_proj(p1, p2)
 
-        def clean_coordinate(coord_str):
+        def clean_coordinate(coord_str) -> float | None:
             if pd.isna(coord_str):
                 return None
             coord_str = str(coord_str).replace("°E", "").replace("°N", "").replace(",", ".")
@@ -450,13 +448,13 @@ class RibasimFeedbackProcessor:
                 self.df.at[index, "Coordinaat X"] = x
                 self.df.at[index, "Coordinaat Y"] = y
 
-    def save_feedback(self):
+    def save_feedback(self) -> None:
         self.df["Naam.1"] = self.name
         self.df["Datum.1"] = datetime.now().strftime("%d-%m-%Y")
         self.df["Versie"] = self.versie
         self.df.to_excel(self.feedback_excel_processed, index=False)
 
-    def update_target_levels(self):
+    def update_target_levels(self) -> None:
         # read sheet with the updated the target levels
         df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
         df_TL = df_TL.sort_values(by=["Basin node_id"]).reset_index(drop=True)
@@ -473,12 +471,13 @@ class RibasimFeedbackProcessor:
             ] = df_TL.Streefpeil.astype(float).to_numpy()
 
             # update streefpeilen in the .area table
+            self.model.basin.area.df["meta_streefpeil"] = self.model.basin.area.df["meta_streefpeil"].astype(object)
             self.model.basin.area.df.loc[
                 self.model.basin.area.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "meta_streefpeil"
             ] = df_TL.Streefpeil.astype(float).to_numpy()
             print("The target levels (streefpeilen) have been updated.")
 
-    def functie_gemalen(self):
+    def functie_gemalen(self) -> None:
         # read sheet with the updated the pump functions
         try:
             df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0, usecols="A:B")
@@ -523,7 +522,7 @@ class RibasimFeedbackProcessor:
             # logging statement
             print("The function of the pumps have been updated.")
 
-    def run(self):
+    def run(self) -> None:
         self.process_model()
         self.save_feedback()
         if not self.use_validation:
@@ -545,10 +544,15 @@ class RibasimFeedbackProcessor:
         else:
             df.dropna(axis=0, inplace=True)
             if len(df) == 0:
-                aanvoer_ids = afvoer_ids = []
+                aanvoer_ids: list[int] = []
+                afvoer_ids: list[int] = []
             else:
-                aanvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Basin ID"].to_numpy(dtype=int)
-                afvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Basin ID"].to_numpy(dtype=int)
+                aanvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Basin ID"].to_numpy(dtype=int).tolist()
+                )
+                afvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Basin ID"].to_numpy(dtype=int).tolist()
+                )
 
             self._basin_aanvoer_on = tuple(aanvoer_ids)
             self._basin_aanvoer_off = tuple(afvoer_ids)
@@ -571,13 +575,18 @@ class RibasimFeedbackProcessor:
         else:
             df.dropna(axis=0, inplace=True)
             if len(df) == 0:
-                aanvoer_ids = afvoer_ids = []
+                aanvoer_ids: list[int] = []
+                afvoer_ids: list[int] = []
             else:
-                aanvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Outlet node_id"].to_numpy(
-                    dtype=int
+                aanvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Outlet node_id"]
+                    .to_numpy(dtype=int)
+                    .tolist()
                 )
-                afvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Outlet node_id"].to_numpy(
-                    dtype=int
+                afvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Outlet node_id"]
+                    .to_numpy(dtype=int)
+                    .tolist()
                 )
 
             self._outlet_aanvoer_on = tuple(aanvoer_ids)
@@ -589,7 +598,7 @@ class RibasimFeedbackProcessor:
             )
 
     @property
-    def basin_aanvoer_on(self) -> tuple:
+    def basin_aanvoer_on(self) -> tuple[int, ...] | None:
         """Basin 'aanvoer'-flagging: True
 
         :return: basin-IDs
@@ -601,7 +610,7 @@ class RibasimFeedbackProcessor:
         return self._basin_aanvoer_on
 
     @property
-    def basin_aanvoer_off(self) -> tuple:
+    def basin_aanvoer_off(self) -> tuple[int, ...] | None:
         """Basin 'aanvoer'-flagging: False
 
         :return: basin-IDs
@@ -613,7 +622,7 @@ class RibasimFeedbackProcessor:
         return self._basin_aanvoer_off
 
     @property
-    def outlet_aanvoer_on(self) -> tuple:
+    def outlet_aanvoer_on(self) -> tuple[int, ...] | None:
         """Oulet 'aanvoer'-flagging: True
 
         :return: outlet-IDs
@@ -625,7 +634,7 @@ class RibasimFeedbackProcessor:
         return self._outlet_aanvoer_on
 
     @property
-    def outlet_aanvoer_off(self) -> tuple:
+    def outlet_aanvoer_off(self) -> tuple[int, ...] | None:
         """Outlet 'aanvoer'-flagging: False
 
         :return: outlet-IDs

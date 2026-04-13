@@ -201,7 +201,7 @@ class Hydrotope:
 
     thresholds: tuple[float, float, float] = dataclasses.field(default=(1, 3, 6), init=False, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Post-initiation input validation."""
         assert len(self.depths) == 4
         assert len(self.thresholds) == 3

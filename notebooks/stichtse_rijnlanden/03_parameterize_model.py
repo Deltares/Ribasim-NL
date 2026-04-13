@@ -55,7 +55,7 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1847, "meta_streefpeil"] 
 model.basin.area.df.loc[model.basin.area.df.node_id == 1583, "meta_streefpeil"] = -0.25  # check streefpeil!
 model.basin.area.df.loc[model.basin.area.df.node_id == 1586, "meta_streefpeil"] = 1.85  # check streefpeil!
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "min_upstream_level"] = -1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "min_upstream_level"] = -1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 906, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 342, "min_upstream_level"] = 0.52
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 164, "min_upstream_level"] = 0.52

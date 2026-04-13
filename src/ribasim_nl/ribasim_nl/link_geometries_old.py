@@ -9,13 +9,13 @@ from ribasim_nl.network import Network
 
 
 class LinkGeometryError(Exception):
-    def __init__(self, message, from_node_id, to_node_id):
+    def __init__(self, message, from_node_id, to_node_id) -> None:
         self.from_node_id = from_node_id
         self.to_node_id = to_node_id
         self.message = message
         super().__init__(self.__str__())
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.message} between node_id {self.from_node_id} and {self.to_node_id}"
 
 
@@ -37,6 +37,7 @@ def link_geometry_from_hydroobject(
     """
     geometry = None
 
+    assert model.node.df is not None
     from_point = drop_z(model.node.df.at[from_node_id, "geometry"])
     to_point = drop_z(model.node.df.at[to_node_id, "geometry"])
     straight_line_distance = from_point.distance(to_point)
@@ -75,7 +76,7 @@ def link_geometry_from_hydroobject(
     return geometry
 
 
-def fix_link_geometries(model, network, max_straight_line_ratio: float = 5):
+def fix_link_geometries(model, network, max_straight_line_ratio: float = 5) -> None:
     # fix link geometries
     for row in model.link.df.itertuples():
         try:

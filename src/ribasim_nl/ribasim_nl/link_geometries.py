@@ -2,7 +2,7 @@
 import logging
 
 import pandas as pd
-from networkx import NetworkXNoPath, shortest_path
+from networkx import NetworkXNoPath, NodeNotFound, shortest_path
 from shapely.geometry import LineString
 from tqdm import tqdm
 
@@ -29,7 +29,7 @@ def get_link_geometry(network, source, target, forbidden_nodes):
     subgraph = network.graph_undirected.subgraph(allowed_nodes)
     try:
         path = shortest_path(subgraph, source=source, target=target, weight="length")
-    except NetworkXNoPath:
+    except (NetworkXNoPath, NodeNotFound):
         return straight_line
 
     geometry = network.path_to_line(path)
@@ -39,8 +39,8 @@ def get_link_geometry(network, source, target, forbidden_nodes):
 
 
 def fix_link_geometries(
-    model: Model, network: Network, max_straight_line_ratio: float = 5, node_ids: list | None = None
-):
+    model: Model, network: Network, max_straight_line_ratio: float = 5, node_ids: list[int] | None = None
+) -> None:
     """Fix model.link.geometry column by finding routes over network
 
     Args:
@@ -50,6 +50,8 @@ def fix_link_geometries(
          If the new line is `max_straight_line_ratio` times longer than straight line distance we don't accept the geometry.
          Defaults to 5.
     """
+    assert model.node.df is not None
+    assert model.link.df is not None
     node_df = model.node.df
     if node_ids is None:
         node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index
