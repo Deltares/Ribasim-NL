@@ -257,15 +257,47 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="sec-environment-variables" class="level2">
 <h2 class="anchored" data-anchor-id="sec-environment-variables">Environment variables</h2>
-<p>The Ribasim-NL code downloads from and uploads to <a href="../cloudstorage.html">cloud storage</a>. The password to access the cloud storage, and local directory it interacts with, both need to be configured. To be able to run the Ribasim core, point RIBASIM_HOME to a Ribasim-NL specific install, to avoid interaction with possible other Ribasim projects.</p>
-<p>In the root of the repository is a <code>.env.default</code> file that can serve as a template to copy to <code>.env</code>. The <code>.env</code> file is gitignored because it is different per developer, and to avoid leaking the password.</p>
-<p>Here is an example for a filled in <code>.env</code> file:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_NL_CLOUD_PASS</span><span class="ot">=</span><span class="st">'your_password_here'</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_NL_DATA_DIR</span><span class="ot">=</span><span class="st">'data'</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="dt">RIBASIM_HOME</span><span class="ot">=</span><span class="st">'bin/ribasim'  # make sure to use single quotes</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="dt">OVERWRITE_FILES_FROM_CLOUD</span><span class="ot">=</span><span class="st">'true'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>These values will be applied using <a href="https://docs.pydantic.dev/latest/concepts/pydantic_settings/">pydantic-settings</a>. If you prefer to set these environment variables in your OS or terminal that will also work.</p>
-<p><code>OVERWRITE_FILES_FROM_CLOUD</code> is optional, and true by default. When using <code>cloud.synchronize</code> or <code>cloud.download_content</code>, this will determine if local files will be overwritten if the <code>overwrite</code> keyword argument is not explicitly passed. Whilst updating datasets locally, you can set this to <code>false</code> to ensure your modifications can be tested and will not be lost. After these edits are done, you can upload the new dataset, and set it back to <code>true</code>.</p>
+<p>Several settings need to be configured via environment variables, managed by <a href="https://docs.pydantic.dev/latest/concepts/pydantic_settings/">pydantic-settings</a> in <code>src/ribasim_nl/ribasim_nl/settings.py</code>.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Environment variable</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>ribasim_home</code></td>
+<td style="text-align: left;"><code>RIBASIM_HOME</code></td>
+<td style="text-align: left;">Root of the Ribasim core installation</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>d3d_home</code></td>
+<td style="text-align: left;"><code>D3D_HOME</code></td>
+<td style="text-align: left;">Root of the Delft3D installation</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ribasim_nl_cloud_pass</code></td>
+<td style="text-align: left;"><code>RIBASIM_NL_CLOUD_PASS</code></td>
+<td style="text-align: left;">Password for <a href="../cloudstorage.html">cloud storage</a> access</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ribasim_nl_data_dir</code></td>
+<td style="text-align: left;"><code>RIBASIM_NL_DATA_DIR</code></td>
+<td style="text-align: left;">Local directory for data files</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>overwrite_files_from_cloud</code></td>
+<td style="text-align: left;"><code>OVERWRITE_FILES_FROM_CLOUD</code></td>
+<td style="text-align: left;">Whether cloud downloads overwrite local files</td>
+</tr>
+</tbody>
+</table>
+<p>In the root of the repository is a <code>.env.default</code> file with the defaults that can serve as a template. Copy it to <code>.env</code> and fill in <code>RIBASIM_NL_CLOUD_PASS</code> with the actual password, and adjust the other paths as needed. The <code>.env</code> file is gitignored because it is different per developer, and to avoid leaking the password. Make sure to use single quotes around values. The defaults below come from <code>src/ribasim_nl/ribasim_nl/settings.py</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-include="../../.env.default"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Values from the <code>.env</code> file take precedence over environment variables, so you can override system-wide settings per project. If you prefer to set these environment variables in your OS or terminal instead, that will also work.</p>
+<p><code>OVERWRITE_FILES_FROM_CLOUD</code> is <code>true</code> by default. When using <code>cloud.synchronize</code> or <code>cloud.download_content</code>, this determines if local files will be overwritten when the <code>overwrite</code> keyword argument is not explicitly passed. Whilst updating datasets locally, you can set this to <code>false</code> to ensure your modifications are not lost. After uploading the new dataset, set it back to <code>true</code>.</p>
 </section>
 </section>
 <section id="type-checking" class="level1">
