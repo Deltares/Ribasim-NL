@@ -73,8 +73,8 @@ profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 #     ]
 # )
 
-# # refresh only the feedback form from cloud
-# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+# refresh only the feedback form from cloud
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
@@ -115,7 +115,7 @@ processor = RibasimFeedbackProcessor(
     ribasim_base_model_toml,
     work_dir,
     FeedbackFormulier_LOG_path,
-    use_validation=True,
+    use_validation=False,
 )
 processor.run()
 
@@ -782,6 +782,7 @@ to_flow_control = (
     1688,
     1706,
     1726,
+    1758,
     1860,
     1876,
     2007,
@@ -795,6 +796,7 @@ to_supply = (
     839,
     946,
     998,
+    1082,
     1091,
     1120,
     1281,
@@ -810,6 +812,7 @@ to_supply = (
     1815,
     1840,
     1936,
+    1941,
     2001,
     2006,
     2065,
