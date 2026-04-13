@@ -9,9 +9,9 @@ from ribasim.nodes import basin
 def mfms_budget_to_fraction(budget: str, prefix: str):
     if "_" in budget:
         bdg_part, sys_part = budget.split("_")
-        return f"{prefix}_{bdg_part.lstrip('bdg') + sys_part.lstrip('sys')}"
+        return f"{prefix}_{bdg_part.removeprefix('bdg') + sys_part.removeprefix('sys')}"
     else:
-        return f"{prefix}_{budget.lstrip('bdg').rstrip('m3')}"
+        return f"{prefix}_{budget.removeprefix('bdg').removesuffix('m3')}"
 
 
 def make_budget_sub_fraction_table(

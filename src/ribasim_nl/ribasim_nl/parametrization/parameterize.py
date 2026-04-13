@@ -2,8 +2,9 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from ribasim_nl.berging import update_primary_basin_profiles
 from ribasim_nl.model import Model
-from ribasim_nl.parametrization.basin_tables import update_basin_profile, update_basin_state, update_basin_static
+from ribasim_nl.parametrization.basin_tables import update_basin_state, update_basin_static
 from ribasim_nl.parametrization.level_boundary_table import update_level_boundary_static
 from ribasim_nl.parametrization.manning_resistance_table import update_manning_resistance_static
 from ribasim_nl.parametrization.node_table import populate_function_column
@@ -72,7 +73,7 @@ class Parameterize(BaseModel):
         print("  ✅ ManningResistance bijgewerkt.")
 
         print("🏞️ Update Basin-profiel en -state...")
-        update_basin_profile(model=self.model)
+        update_primary_basin_profiles(model=self.model)
         update_basin_state(model=self.model)
         update_basin_static(
             model=self.model,

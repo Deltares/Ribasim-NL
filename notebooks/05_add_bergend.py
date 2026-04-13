@@ -9,7 +9,7 @@ cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: list[str] = sys.argv[1:] if len(sys.argv) > 1 else ["AaenMaas"]
+SELECTION: set = {"AaenMaas"}
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -18,13 +18,15 @@ def get_model_dir(authority, post_fix):
     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
 
 
-if len(SELECTION) == 0:
-    authorities = cloud.water_authorities
-else:
-    invalid = set(SELECTION) - set(cloud.water_authorities)
-    if invalid:
-        raise ValueError(f"Unknown water authorities: {invalid}")
-    authorities = SELECTION
+# We make a list of authorities:
+# 1. provided as arguments
+authorities = set(sys.argv[1:]) & set(cloud.water_authorities)
+# 2. provided in global SELECTION
+if len(authorities) == 0:
+    authorities = set(SELECTION) & set(cloud.water_authorities)
+# 3. all authorities
+if len(authorities) == 0:
+    authorities = set(cloud.water_authorities)
 # %%
 link_data = []
 for authority in authorities:
