@@ -11,7 +11,7 @@ from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, cli
-from ribasim.nodes import pump
+from ribasim.nodes import level_boundary, pump
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -132,6 +132,14 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(88007, 469350)), [pump.St
 ribasim_model.link.add(ribasim_model.basin[22], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[27])
 inlaat_pump.append(pump_node.node_id)
+
+# add levelboundary to avoid incorrect coupling of water authorities
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(110865, 446289)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(110884, 446307)), [pump.Static(flow_rate=[1.5])])
+ribasim_model.link.add(ribasim_model.basin[338], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
@@ -268,8 +276,10 @@ from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_mo
 from_to_node_function_table["demand"] = None
 
 to_drain = (
+    525,
     530,
     1096,
+    1307,
     1456,
 )
 to_flow_control = (
@@ -284,10 +294,13 @@ to_flow_control = (
 )
 to_supply = (
     398,
+    619,
     690,
     1032,
     1255,
     1349,
+    1454,
+    1471,
 )
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
