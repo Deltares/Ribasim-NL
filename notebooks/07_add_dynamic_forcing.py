@@ -15,7 +15,6 @@ write_budgets: bool = True  # write mfms_budgets.arrow for later verification
 assing_fractions: bool = True  # compute (sub-) fractions from budgets-table
 compute_fractions: bool = True
 
-
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
 primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
 secondary_budgets: set[str] = {
@@ -34,9 +33,9 @@ def add_forcing(model, cloud, starttime, endtime, assign_fractions, fraction_pre
 
     # sync files so we're good to go!
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
-    _precipitation = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
-    _evaporation = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
-    cloud.synchronize(filepaths=[lhm_budget_path, _precipitation, _evaporation], overwrite=False)
+    precipitation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
+    evaporation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
+    cloud.synchronize(filepaths=[lhm_budget_path, precipitation_path, evaporation_path], overwrite=False)
 
     # compute forcing
     forcing = SetDynamicForcing(
@@ -83,30 +82,33 @@ def check_build(toml_file):
     # we build if we don't have tabulated_rating_curves
     if not build:
         model = Model.read(toml_file)
+        # pyrefly: ignore[missing-attribute]
         build = model.tabulated_rating_curve.node.df is None
 
     # we build if tabulated rating curves don't have a meta_cateogrie colummn
     if not build:
+        # pyrefly: ignore[unbound-name, missing-attribute]
         build = "meta_categorie" not in model.tabulated_rating_curve.node.df.columns
 
     # we build if we don't have any bergend in meta_categorie
-
     if not build:
+        # pyrefly: ignore[missing-attribute]
         build = not (model.tabulated_rating_curve.node.df["meta_categorie"] == "bergend").any()
 
     return build
 
 
+valid_authorities = set(cloud.water_authorities)
+
 # We make a list of authorities:
 # 1. provided as arguments
-authorities = set(sys.argv[1:]) & set(cloud.water_authorities)
+authorities = set(sys.argv[1:]) & valid_authorities
 # 2. provided in global SELECTION
 if len(authorities) == 0:
-    authorities = set(SELECTION) & set(cloud.water_authorities)
+    authorities = SELECTION & valid_authorities
 # 3. all authorities
 if len(authorities) == 0:
-    authorities = set(cloud.water_authorities)
-
+    authorities = valid_authorities
 # %%
 for authority in authorities:
     # find model directory
@@ -134,10 +136,12 @@ for authority in authorities:
             model.update_state()
 
             # add categorie to basin / state
-            series = model.basin.node.df.loc[model.basin.state.df["node_id"].to_numpy()]["meta_categorie"]
+            # pyrefly: ignore[missing-attribute]
+            series = model.basin.node.df["meta_categorie"]
             uncategorized_basins = series[series.isna()].index.values
             if len(uncategorized_basins) > 0:
                 print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
+                # pyrefly: ignore[missing-attribute]
                 model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
 
             # add forcing

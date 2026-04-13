@@ -106,6 +106,9 @@ convention = "numpy"
 [tool.pyrefly]
 baseline = "baseline.json"
 project-includes = [
+    "notebooks/05_add_bergend.py",
+    "notebooks/06_add_synthetic_forcing.py",
+    "notebooks/07_add_dynamic_forcing.py",
     "scripts/repro.py",
     "src/bokeh_helpers/bokeh_helpers",
     "src/hydamo/hydamo",
@@ -113,6 +116,9 @@ project-includes = [
     "src/ribasim_nl/ribasim_nl",
 ]
 search-path = [
+    "notebooks/05_add_bergend.py",
+    "notebooks/06_add_synthetic_forcing.py",
+    "notebooks/07_add_dynamic_forcing.py",
     "scripts/repro.py",
     "src/bokeh_helpers",
     "src/hydamo",
