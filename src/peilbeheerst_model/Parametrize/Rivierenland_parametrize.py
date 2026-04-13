@@ -27,8 +27,8 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+DYNAMIC_CONDITIONS: bool = True
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -594,6 +594,12 @@ ribasim_model.pump.static.df.loc[
     (ribasim_model.pump.static.df["max_flow_rate"].isna()) | (ribasim_model.pump.static.df["max_flow_rate"] == 0),
     "meta_known_flow_rate",
 ] = False
+
+# for some reason, some connector nodes of the Linge are incorrectly scaled. Keep using the original (high) values of the flow_rate to allow for better discharge of the system.
+Linge_nodes = [433, 612, 666]
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df["node_id"].isin(Linge_nodes), "meta_known_flow_rate"
+] = True
 
 ribasim_model, from_to_node_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
