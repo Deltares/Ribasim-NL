@@ -81,6 +81,7 @@ bin/
 *.pdf
 *.nc
 results/
+delwaq/
 
 # Main scripts to run workflows per water authority
 notebooks/*/main.py

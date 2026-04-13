@@ -19,7 +19,10 @@ def get_network_node(network, point, max_distance: float = 5):
 
 
 def accept_length(geometry, point1, point2, max_straight_line_ratio: float = 5):
-    return geometry.length / point1.distance(point2) < 5
+    if geometry.length == 0:
+        return False
+    else:
+        return geometry.length / point1.distance(point2) < max_straight_line_ratio
 
 
 def get_link_geometry(network, source, target, forbidden_nodes):

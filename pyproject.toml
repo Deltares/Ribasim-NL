@@ -106,12 +106,14 @@ convention = "numpy"
 [tool.pyrefly]
 baseline = "baseline.json"
 project-includes = [
+    "scripts/repro.py",
     "src/bokeh_helpers/bokeh_helpers",
     "src/hydamo/hydamo",
     "src/peilbeheerst_model/peilbeheerst_model",
     "src/ribasim_nl/ribasim_nl",
 ]
 search-path = [
+    "scripts/repro.py",
     "src/bokeh_helpers",
     "src/hydamo",
     "src/peilbeheerst_model",

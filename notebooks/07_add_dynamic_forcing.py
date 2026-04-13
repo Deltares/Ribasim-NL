@@ -31,6 +31,13 @@ surface_runoff_budgets: set[str] = {"bdgqrun"}
 
 
 def add_forcing(model, cloud, starttime, endtime, assign_fractions, fraction_prefix):
+
+    # sync files so we're good to go!
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    _precipitation = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
+    _evaporation = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
+    cloud.synchronize(filepaths=[lhm_budget_path, _precipitation, _evaporation], overwrite=False)
+
     # compute forcing
     forcing = SetDynamicForcing(
         model=model,
@@ -42,7 +49,6 @@ def add_forcing(model, cloud, starttime, endtime, assign_fractions, fraction_pre
     model = forcing.add()
 
     # Add dynamic groundwater
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     _, budgets_df = offline_budgets.compute_budgets(
         model,
@@ -101,6 +107,7 @@ if len(authorities) == 0:
 if len(authorities) == 0:
     authorities = set(cloud.water_authorities)
 
+# %%
 for authority in authorities:
     # find model directory
     model_dir = next(
@@ -128,8 +135,10 @@ for authority in authorities:
 
             # add categorie to basin / state
             series = model.basin.node.df.loc[model.basin.state.df["node_id"].to_numpy()]["meta_categorie"]
-            assert series.notna().all()
-            model.basin.state.df["meta_categorie"] = series.to_numpy()
+            uncategorized_basins = series[series.isna()].index.values
+            if len(uncategorized_basins) > 0:
+                print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
+                model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
 
             # add forcing
             budgets_df = add_forcing(
