@@ -40,7 +40,7 @@ with fiona.open(path_zzl + "/zzl_watergangen_nalevering/zzl_Watergangen.shp", "r
 Zuiderzeeland["hydroobject"] = Zuiderzeeland["hydroobject"].set_crs(crs="WGS84", allow_override=True)
 Zuiderzeeland["hydroobject"] = Zuiderzeeland["hydroobject"].to_crs(crs="EPSG:28992")
 
-ZZL: stuwen in KWKSOORT in overigekunstwerken.gpkg
+# ZZL: stuwen in KWKSOORT in overigekunstwerken.gpkg
 
 
 KWKSOORT_stuw = ["Constructie", "inlaat", "uitlaat", "keerwand"]  # gebasseerd op de geleverde data van Zuiderzeeland

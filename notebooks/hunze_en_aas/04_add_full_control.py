@@ -63,8 +63,8 @@ check_basin_level.add_check_basin_level(model=model)
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
 mask = model.outlet.static.df["meta_aanvoer"] == 0
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = 100
-model.pump.static.df.flow_rate = 100
+model.outlet.static.df.flow_rate = 100.0
+model.pump.static.df.flow_rate = 100.0
 model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.max_flow_rate
 model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
 
@@ -151,8 +151,8 @@ model.pump.static.df["max_downstream_level"] = model.pump.static.df["max_downstr
 
 
 # Dokwerd, sluis ten onrechte op 10m3/s gezet
-model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20
-model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20
+model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20.0
+model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 152, "max_flow_rate"] = 0.1
 model.pump.static.df.loc[model.pump.static.df.node_id == 152, "flow_rate"] = 0.1
 

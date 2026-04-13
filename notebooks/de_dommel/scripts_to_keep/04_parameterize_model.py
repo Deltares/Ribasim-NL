@@ -430,7 +430,7 @@ for row in model.node.df[model.node.df.node_type == "Outlet"].itertuples():
 model.flow_boundary.static.df = model.flow_boundary.static.df[
     model.flow_boundary.static.df.node_id.isin(model.node.df[model.node.df.node_type == "FlowBoundary"].index)
 ]
-model.flow_boundary.static.df.loc[:, "flow_rate"] = 0
+model.flow_boundary.static.df.loc[:, "flow_rate"] = 0.0
 # %% write model
 ribasim_toml = cloud.joinpath("DeDommel/modellen/DeDommel_parameterized/model.toml")
 model.write(ribasim_toml)

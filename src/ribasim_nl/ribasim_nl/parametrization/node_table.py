@@ -37,11 +37,13 @@ def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"],
 
         # add function to node via categorie
         defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0)
+        static_data["meta_function"] = pd.NA
         for row in defaults_df.itertuples():
             category = row.Index
             function = row.function
             static_data.loc[static_data["categorie"] == category, "meta_function"] = function
 
+        # pyrefly: ignore[missing-attribute]
         model.node.df.loc[static_data.index, "meta_function"] = static_data["meta_function"]
 
     return model

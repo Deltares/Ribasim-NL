@@ -191,7 +191,7 @@ def connect_linestrings_within_distance(gdf, max_distance=4):
 
 # # Shortest Path
 
-gdf_crossings_out = []
+gdf_crossings_out: list[gpd.GeoDataFrame] = []
 gdf_rhws = gdf_rhws.reset_index(drop=True)
 
 # Loop RHWS polygons

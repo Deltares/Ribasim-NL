@@ -39,8 +39,12 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # %%
 
 # fix link geometries
+use_cache = False
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
+
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
         model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
@@ -345,7 +349,7 @@ flow_rate = pd.Series(
 )
 flow_rate.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=flow_rate)
-static_data.outlet.loc[static_data.outlet.flow_rate.isna(), "flow_rate"] = 20
+static_data.outlet.loc[static_data.outlet.flow_rate.isna(), "flow_rate"] = 20.0
 # %%
 
 model.basin.area.df.set_index("node_id", inplace=True)

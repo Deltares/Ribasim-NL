@@ -370,7 +370,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     if offline_budgets.lhm_budget_path.exists():
         offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
@@ -403,7 +404,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -0.75, 0.75, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -620,15 +621,15 @@ assign_metadata.add_meta_to_basins(
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
 # set the max_flow_rate to the flow_rate
-ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
+ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 10
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 10.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None

@@ -6,7 +6,6 @@ import warnings
 
 import geopandas as gpd
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
-import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -479,7 +478,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 # change high initial states to 0
-ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0
+ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0.0
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == 9.999, "meta_streefpeil"] = str(
     unknown_streefpeil
 )
@@ -519,9 +518,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
-    if offline_budgets.lhm_budget_path.exists():
-        offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -549,7 +547,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -2.3456, 10, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)

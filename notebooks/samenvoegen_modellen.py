@@ -5,12 +5,12 @@ from typing import Any
 
 import ribasim
 from ribasim_nl.aquo import waterbeheercode
-from ribasim_nl.cloud import ModelVersion
+from ribasim_nl.settings import settings
 
-from ribasim_nl import CloudStorage, Model, concat, prefix_index, reset_index
+from ribasim_nl import Model, concat, prefix_index
 
 # %%
-cloud = CloudStorage()
+data_dir = settings.ribasim_nl_data_dir
 readme: str = f"""# Model voor het Landelijk Hydrologisch Model
 Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 Ribasim versie: {ribasim.__version__}
@@ -19,35 +19,34 @@ Getest (u kunt simuleren): Nee
 ** Samengevoegde modellen (beheerder: modelnaam (versie)**
 """
 
-download_latest_model: bool = False
 # Write intermediate models for debugging or scaling tests
 write_intermediate_models: bool = False
-upload_model: bool = False
 
 # Remove any model from this list to skip it
+# TODO when enabling more models, also add them to samenvoegen deps in dvc.yaml
 INCLUDE_MODELS: list[str] = [
     "Rijkswaterstaat",
-    "AmstelGooienVecht",
-    "Delfland",
-    "HollandsNoorderkwartier",
-    "HollandseDelta",
-    "Rijnland",
-    "Rivierenland",
-    "Scheldestromen",
-    "SchielandendeKrimpenerwaard",
-    "WetterskipFryslan",
-    "Zuiderzeeland",
+    # "AmstelGooienVecht",
+    # "Delfland",
+    # "HollandsNoorderkwartier",
+    # "HollandseDelta",
+    # "Rijnland",
+    # "Rivierenland",
+    # "Scheldestromen",
+    # "SchielandendeKrimpenerwaard",
+    # "WetterskipFryslan",
+    # "Zuiderzeeland",
     "AaenMaas",
-    "BrabantseDelta",
-    "DeDommel",
-    "DrentsOverijsselseDelta",
-    "HunzeenAas",
-    "Limburg",
-    "Noorderzijlvest",
-    "RijnenIJssel",
-    "StichtseRijnlanden",
-    "ValleienVeluwe",
-    "Vechtstromen",
+    # "BrabantseDelta",
+    # "DeDommel",
+    # "DrentsOverijsselseDelta",
+    # "HunzeenAas",
+    # "Limburg",
+    # "Noorderzijlvest",
+    # "RijnenIJssel",
+    # "StichtseRijnlanden",
+    # "ValleienVeluwe",
+    # "Vechtstromen",
 ]
 
 sub_models: dict[str, list[str]] = {
@@ -61,11 +60,9 @@ sub_models: dict[str, list[str]] = {
 #     e.g. "HollandsNoorderkwartier"
 # - model: str; The name of the model folder excluding the version
 #     e.g. "HollandsNoorderkwartier_parameterized"
-# - model_version: ModelVersion; Option
-#     e.g. ModelVersion("HollandsNoorderkwartier_parameterized", 2025, 7, 1)
 hws_spec: dict[str, Any] = {
     "authority": "Rijkswaterstaat",
-    "model": "hws",
+    "model": "hws_transient",
 }
 
 model_specs: list[dict[str, Any]] = [
@@ -107,47 +104,47 @@ model_specs: list[dict[str, Any]] = [
     },
     {
         "authority": "AaenMaas",
-        "model": "AaenMaas",
+        "model": "AaenMaas_dynamic_model",
     },
     {
         "authority": "BrabantseDelta",
-        "model": "BrabantseDelta",
+        "model": "BrabantseDelta_dynamic_model",
     },
     {
         "authority": "DeDommel",
-        "model": "DeDommel",
+        "model": "DeDommel_dynamic_model",
     },
     {
         "authority": "DrentsOverijsselseDelta",
-        "model": "DrentsOverijsselseDelta",
+        "model": "DrentsOverijsselseDelta_dynamic_model",
     },
     {
         "authority": "HunzeenAas",
-        "model": "HunzeenAas",
+        "model": "HunzeenAas_dynamic_model",
     },
     {
         "authority": "Limburg",
-        "model": "Limburg",
+        "model": "Limburg_dynamic_model",
     },
     {
         "authority": "Noorderzijlvest",
-        "model": "Noorderzijlvest",
+        "model": "Noorderzijlvest_dynamic_model",
     },
     {
         "authority": "RijnenIJssel",
-        "model": "RijnenIJssel",
+        "model": "RijnenIJssel_dynamic_model",
     },
     {
         "authority": "StichtseRijnlanden",
-        "model": "StichtseRijnlanden",
+        "model": "StichtseRijnlanden_dynamic_model",
     },
     {
         "authority": "ValleienVeluwe",
-        "model": "ValleienVeluwe",
+        "model": "ValleienVeluwe_dynamic_model",
     },
     {
         "authority": "Vechtstromen",
-        "model": "Vechtstromen",
+        "model": "Vechtstromen_dynamic_model",
     },
     {
         "authority": "HollandseDelta",
@@ -156,45 +153,8 @@ model_specs: list[dict[str, Any]] = [
 ]
 
 
-def get_model_path(model: dict[str, Any], model_version: ModelVersion) -> Path:
-    return cloud.joinpath(model["authority"], "modellen", model_version.path_string)
-
-
-def get_latest_model_version(model_spec: dict[str, Any]) -> ModelVersion:
-    if "model_version" in model_spec.keys():
-        return model_spec["model_version"]
-    model_versions = [
-        i
-        for i in cloud.uploaded_models(model_spec["authority"])
-        if i is not None and getattr(i, "model", None) == model_spec["model"]
-    ]
-    if model_versions:
-        return sorted(model_versions, key=lambda x: getattr(x, "sorter", ""))[-1]
-    raise ValueError(f"No models with name {model_spec['model']} in the cloud")
-
-
-def ensure_model_downloaded(model_spec: dict[str, Any], model_version: ModelVersion) -> Path:
-    model_path = get_model_path(model_spec, model_version)
-    if not model_path.exists():
-        if download_latest_model:
-            print(f"Downloaden versie: {model_version.version}")
-            url = cloud.joinurl(model_spec["authority"], "modellen", model_version.path_string)
-            cloud.download_content(url)
-        else:
-            model_versions = sorted(
-                [
-                    i
-                    for i in cloud.uploaded_models(model_spec["authority"])
-                    if i is not None and getattr(i, "model", None) == model_spec["model"]
-                ],
-                key=lambda x: getattr(x, "version", ""),
-                reverse=True,
-            )
-            model_paths = (get_model_path(model_spec, i) for i in model_versions)
-            model_path = next((i for i in model_paths if i.exists()), None)
-            if model_path is None:
-                raise ValueError(f"No models with name {model_spec['model']} on local drive")
-    return model_path
+def get_model_dir(model_spec: dict[str, Any]) -> Path:
+    return data_dir / f"{model_spec['authority']}/modellen/{model_spec['model']}"
 
 
 def find_toml_path(model_dir: Path) -> Path:
@@ -218,25 +178,16 @@ def read_and_prepare_model(model_path: Path) -> Model:
     return model
 
 
-def add_meta_waterbeheerder(model: Model, authority: str) -> None:
-    for node_type in model.node.df.node_type.unique():
-        ribasim_node = model.get_component(node_type)
-        ribasim_node.node.df.loc[:, "meta_waterbeheerder"] = authority
-
-
 def process_model_spec(
     idx: int, model_spec: dict[str, Any], lhm_model: Model | None, readme: str, write_toml: Path | None = None
 ) -> tuple[Model | None, str]:
     if model_spec["authority"] not in INCLUDE_MODELS:
         return lhm_model, readme
     print(f"{model_spec['authority']} - {model_spec['model']}")
-    model_version = get_latest_model_version(model_spec)
-    model_dir = ensure_model_downloaded(model_spec, model_version)
+    model_dir = get_model_dir(model_spec)
     model_path = find_toml_path(model_dir)
     model = read_and_prepare_model(model_path)
-    add_meta_waterbeheerder(model, model_spec["authority"])
-    if model_spec["authority"] == "Rijkswaterstaat":
-        model = reset_index(model)
+    model.node.df["meta_waterbeheerder"] = model_spec["authority"]
     try:
         # TODO reduce max_digits back to 4 after fixing #364
         model = prefix_index(model=model, max_digits=5, prefix_id=waterbeheercode[model_spec["authority"]])
@@ -250,10 +201,8 @@ def process_model_spec(
         assert lhm_model is not None
         lhm_model._validate_model()
 
-    # add version
-    version_str = getattr(model_version, "version", "unknown")
     readme += f"""
-**{model_spec["authority"]}**: {model_spec["model"]} ({version_str})"""
+**{model_spec["authority"]}**: {model_spec["model"]}"""
     if write_intermediate_models and write_toml is not None:
         assert lhm_model is not None
         lhm_model.write(write_toml)
@@ -276,19 +225,17 @@ for model_name, authorities in sub_models.items():
             lhm_model, readme = process_model_spec(0, model_spec, lhm_model, readme)
     # Write lhm model only if it exists
     assert lhm_model is not None
-    ribasim_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm_sub_models/{model_name}/{model_name}.toml")
+    ribasim_toml = data_dir / f"Rijkswaterstaat/modellen/lhm_sub_models/{model_name}/{model_name}.toml"
     lhm_model.write(ribasim_toml)
     ribasim_toml.with_name("readme.md").write_text(readme)
 
 lhm_model, readme = process_model_spec(1, hws_spec, lhm_model, readme)
 for idx, model_spec in enumerate(model_specs):
-    write_toml = cloud.joinpath(f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml")
+    write_toml = data_dir / f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml"
     lhm_model, readme = process_model_spec(idx + 2, model_spec, lhm_model, readme, write_toml=write_toml)
 # Write lhm model only if it exists
 print("write lhm model")
-ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/lhm.toml")
+ribasim_toml = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
 if lhm_model is not None:
     lhm_model.write(ribasim_toml)
-cloud.joinpath("Rijkswaterstaat/modellen/lhm_parts/readme.md").write_text(readme)
-if upload_model:
-    cloud.upload_model("Rijkswaterstaat", model="lhm_parts")
+(data_dir / "Rijkswaterstaat/modellen/lhm_parts/readme.md").write_text(readme)

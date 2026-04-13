@@ -48,17 +48,19 @@ damo_profiles = DAMOProfiles(
     profile_point_df=profile_point_df,
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
 )
-# fix link geometries
-if link_geometries_gpkg.exists():
+# fix link geometries and profiles
+use_cache = False
+if link_geometries_gpkg.exists() and profiles_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
+
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
         model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
             "meta_profielid_waterbeheerder"
         ]
     profiles_df = gpd.read_file(profiles_gpkg)
-
-
 else:
     profiles_df = damo_profiles.process_profiles()
     profiles_df.to_file(profiles_gpkg)
@@ -139,15 +141,15 @@ ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 
-ds_levels = pd.concat([static_data.basin, static_data.outlet], ignore_index=True).set_index("node_id")[
-    "min_upstream_level"
-]
-ds_levels.dropna(inplace=True)
-ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
-ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
+ds_levels = (
+    pd.concat([static_data.basin, static_data.outlet], ignore_index=True)
+    .set_index("node_id")["min_upstream_level"]
+    .dropna()
+    .groupby(level=0)
+    .min()
+)
 
-levels = ds_node_ids.apply(lambda x: ds_levels[x])
-streefpeil = levels.groupby(levels.index).min()
+streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)

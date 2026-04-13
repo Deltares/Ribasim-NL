@@ -104,7 +104,7 @@ outlet_node = model.outlet.add(
     Node(name=kdu.code, geometry=kdu.geometry.interpolate(0.5, normalized=True), meta_object_type="duikersifonhevel"),
     tables=[outlet_data],
 )
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[9528, "geometry"].boundary.geoms[0]))
+basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[9528, "geometry"].boundary.geoms[0]), tables=basin_data)
 model.link.add(model.tabulated_rating_curve[265], basin_node)
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[43])

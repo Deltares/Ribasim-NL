@@ -214,7 +214,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     if offline_budgets.lhm_budget_path.exists():
         offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
@@ -246,7 +247,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -2, 2, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -394,7 +395,7 @@ assign_metadata.add_meta_to_basins(
 
 # according data flow_rate of 0
 zero_flow_pumps = [1436, 1282, 1472]
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25.0
 
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [793, 754, 987, 354, 463, 1179, 496, 781]
@@ -403,7 +404,7 @@ ribasim_model.pump.static.df.loc[
 ] *= 60
 
 # set the flow_rate to the max_flow_rate
-ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
+ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -431,8 +432,8 @@ ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 # del lb_static
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 10
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 10.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table

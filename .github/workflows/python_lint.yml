@@ -10,8 +10,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  mypy:
-    name: Mypy
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -28,7 +28,10 @@ jobs:
         run: uv sync --locked
       - name: Run pre-commit
         run: uv run pre-commit run --all-files
-      - name: Run mypy on hydamo
-        run: uv run mypy --ignore-missing-imports src/hydamo
-      - name: Run mypy on ribasim_nl/profiles
-        run: uv run mypy --ignore-missing-imports src/ribasim_nl/ribasim_nl/profiles
+      - name: Fix baseline paths for Linux
+        # Workaround: baseline.json is generated on Windows with backslash paths.
+        # Remove after https://github.com/facebook/pyrefly/pull/3007 is released and baseline is regenerated.
+        if: runner.os == 'Linux'
+        run: sed -i 's|\\\\|/|g' baseline.json
+      - name: Run type checker
+        run: uv run pyrefly check

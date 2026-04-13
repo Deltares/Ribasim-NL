@@ -5,7 +5,6 @@ import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
-import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -144,7 +143,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 # change high initial states to 0
-ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0
+ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0.0
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == 9.999, "meta_streefpeil"] = str(
     unknown_streefpeil
 )
@@ -257,9 +256,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
-    if offline_budgets.lhm_budget_path.exists():
-        offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -287,7 +285,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -416,13 +414,13 @@ ribasim_model.pump.static.df.loc[
 ] *= 60
 
 # set the flow_rate to the max_flow_rate
-ribasim_model.pump.static.df.max_flow_rate = ribasim_model.pump.static.df.flow_rate.copy()
+ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 559, "max_flow_rate"] = (
     1.5  # TODO: Guessed value, ask Delfland
 )
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
-ribasim_model.outlet.static.df.meta_known_flow_capacities = False
+ribasim_model.outlet.static.df["meta_known_flow_capacities"] = False
 ribasim_model.pump.static.df.loc[
     (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
     "meta_known_flow_capacities",
@@ -433,8 +431,8 @@ ribasim_model.pump.static.df.loc[
 mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 100
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 100.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formating of the tables
 # only retain node_id's which are present in the .node table

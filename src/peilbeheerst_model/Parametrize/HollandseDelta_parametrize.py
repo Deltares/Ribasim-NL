@@ -384,7 +384,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 # change high initial states to 0
-ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0
+ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0.0
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == 9.999, "meta_streefpeil"] = str(
     unknown_streefpeil
 )
@@ -670,7 +670,8 @@ if DYNAMIC_CONDITIONS:
     ribasim_model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets()
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -700,7 +701,7 @@ if MIXED_CONDITIONS:
         ribasim_model, starttime, endtime, -0.42, 1.24, DYNAMIC_CONDITIONS
     )
 else:
-    ribasim_model.level_boundary.static.df.level = default_level
+    ribasim_model.level_boundary.static.df["level"] = default_level
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
@@ -927,8 +928,8 @@ assign_metadata.add_meta_to_basins(
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df.length = 100
-ribasim_model.manning_resistance.static.df.manning_n = 0.01
+ribasim_model.manning_resistance.static.df["length"] = 100.0
+ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table

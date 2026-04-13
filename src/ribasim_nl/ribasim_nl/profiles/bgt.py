@@ -23,7 +23,7 @@ DATA = {
 LOG = logging.getLogger(__name__)
 
 
-def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon = None, **kwargs) -> gpd.GeoDataFrame:
+def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None = None, **kwargs) -> gpd.GeoDataFrame:
     """Download BGT-data including only the 'waterdeel'-feature.
 
     If no `geo_filter` is provided, the whole BGT-dataset is downloaded ('waterdeel'-feature only).

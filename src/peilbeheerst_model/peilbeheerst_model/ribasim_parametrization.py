@@ -9,6 +9,7 @@ import sys
 import typing
 import warnings
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -40,7 +41,7 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
     return max_id
 
 
-def set_initial_basin_state(ribasim_model):
+def set_initial_basin_state(ribasim_model) -> None:
     if "meta_peilgebied_cat" in list(ribasim_model.basin.node.df.keys()):
         basin_state_df = ribasim_model.basin.node.df[["node_id", "meta_peilgebied_cat"]]
         basin_state_df["meta_categorie"] = basin_state_df["meta_peilgebied_cat"]
@@ -54,7 +55,7 @@ def set_initial_basin_state(ribasim_model):
 
 def insert_standard_profile(
     ribasim_model, unknown_streefpeil, regular_percentage=10, boezem_percentage=90, depth_profile=2
-):
+) -> None:
     profile = ribasim_model.basin.area.df.copy()
     profile.node_id, profile.meta_streefpeil = (
         profile.meta_node_id.astype(int),
@@ -155,7 +156,13 @@ def convert_mm_day_to_m_sec(mm_per_day: float) -> float:
     return meters_per_second
 
 
-def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forcing_dict: dict, ribasim_model: object):
+def set_static_forcing(
+    timesteps: int,
+    timestep_size: str,
+    start_time: str | datetime.datetime,
+    forcing_dict: dict[str, Any],
+    ribasim_model: Model,
+) -> None:
     """Generate static forcing data for a Ribasim-NL model
 
     Generate static forcing data for a Ribasim-NL model simulation, assigning
@@ -205,7 +212,9 @@ def set_static_forcing(timesteps: int, timestep_size: str, start_time: str, forc
     ribasim_model.endtime = time_range[-1].to_pydatetime()
 
 
-def set_dynamic_forcing(ribasim_model: Model, time: typing.Sequence[datetime.datetime], forcing: dict) -> None:
+def set_dynamic_forcing(
+    ribasim_model: Model, time: typing.Sequence[datetime.datetime], forcing: dict[str, Any]
+) -> None:
     """Set dynamic forcing conditions.
 
     :param ribasim_model: ribasim model
@@ -226,7 +235,9 @@ def set_dynamic_forcing(ribasim_model: Model, time: typing.Sequence[datetime.dat
 
     # set forcing conditions
     basins_ids = ribasim_model.basin.node.df[["meta_node_id"]].to_numpy(dtype=int)
-    basin_time = pd.DataFrame({"node_id": np.repeat(basins_ids, len(time)), "time": np.tile(time, len(basins_ids))})
+    basin_time = pd.DataFrame(
+        {"node_id": np.repeat(basins_ids, len(time)), "time": np.tile(list(time), len(basins_ids))}
+    )
     for k, v in forcing.items():
         if isinstance(v, float | int):
             basin_time[k] = v
@@ -307,8 +318,8 @@ def set_dynamic_level_boundaries(
     lb_time = pd.DataFrame(
         {
             "node_id": np.repeat(lb_ids, len(time)),
-            "time": np.tile(time, len(lb_ids)),
-            "level": np.tile(levels, len(lb_ids)),
+            "time": np.tile(list(time), len(lb_ids)),
+            "level": np.tile(list(levels), len(lb_ids)),
         }
     )
 
@@ -345,8 +356,8 @@ def set_hypothetical_dynamic_level_boundaries(
         end_summer = datetime.datetime(start_time.year, 10, 1)
         end_summer_1 = end_summer + datetime.timedelta(days=1)
 
-        time = start_time, end_winter, end_winter_1, end_summer, end_summer_1, end_time
-        level = low, low, high, high, low, low
+        time: tuple[datetime.datetime, ...] = start_time, end_winter, end_winter_1, end_summer, end_summer_1, end_time
+        level: tuple[float, ...] = low, low, high, high, low, low
 
     else:
         halftime = start_time + (end_time - start_time) // 3
@@ -358,7 +369,7 @@ def set_hypothetical_dynamic_level_boundaries(
     set_dynamic_level_boundaries(ribasim_model, time, level)
 
 
-def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
+def Terminals_to_LevelBoundaries(ribasim_model, default_level=0) -> None:
     # all Terminals need to be replaced by LevelBoundaries for the integration of the NHWS
 
     # first, locate all the Terminals
@@ -383,7 +394,7 @@ def Terminals_to_LevelBoundaries(ribasim_model, default_level=0):
     return
 
 
-def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
+def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0) -> None:
     # all FlowBoundaries need to be replaced by LevelBoundaries for the integration of the NHWS
 
     # first, locate all the FlowBoundaries
@@ -408,12 +419,12 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
 
     # Also supplement the TRC.static table. Create dummy Q(h)-relations
     TRC_LB1 = nodes_FlowBoundary[["meta_node_id"]].copy()
-    TRC_LB1.loc[:, "level"] = 0
-    TRC_LB1.loc[:, "flow_rate"] = 0
+    TRC_LB1.loc[:, "level"] = 0.0
+    TRC_LB1.loc[:, "flow_rate"] = 0.0
 
     TRC_LB2 = nodes_FlowBoundary[["meta_node_id"]].copy()
-    TRC_LB2.loc[:, "level"] = 1
-    TRC_LB2.loc[:, "flow_rate"] = 1
+    TRC_LB2.loc[:, "level"] = 1.0
+    TRC_LB2.loc[:, "flow_rate"] = 1.0
 
     TRC_LB = pd.concat([TRC_LB1, TRC_LB2])
     TRC_LB = TRC_LB.sort_values(by=["node_id", "level"]).reset_index(drop=True)
@@ -475,7 +486,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     lines_LB["from_point"] = nodes_FlowBoundary.geometry
     lines_LB["to_point"] = nodes_FlowBoundary.geometry.translate(xoff=1, yoff=1)  # = original coordinates
 
-    def create_linestring(row):
+    def create_linestring(row) -> LineString:
         return LineString([row["from_point"], row["to_point"]])
 
     # create the linestrings, and plug them into the df of links_LB
@@ -520,7 +531,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0):
     return
 
 
-def add_outlets(ribasim_model, delta_crest_level=0.10):
+def add_outlets(ribasim_model, delta_crest_level=0.10) -> None:
     # TRC_naar_OL = ribasim_model.tabulated_rating_curve.static.df.copy() #aanpassing RB 11 oktober
     TRC_naar_OL = ribasim_model.tabulated_rating_curve.node.df.copy()
     TRC_naar_OL = TRC_naar_OL.reset_index()  # convert the node_id index to a regular column
@@ -530,7 +541,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     # fill the tables for the outlet
     outlet = pd.DataFrame(columns=["node_id", "control_state", "flow_rate", "min_flow_rate", "max_flow_rate"])
     outlet["node_id"] = TRC_naar_OL
-    outlet["max_flow_rate"] = 25
+    outlet["max_flow_rate"] = 25.0
 
     # find the min_crest_level
     # to do so, find the target levels of the (boezem) connected basins. This has to be done by looking within the links
@@ -557,7 +568,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
         get_outlet_geometries[["meta_node_id", "geometry"]], left_on="node_id", right_on="meta_node_id"
     )
     outlet["node_type"] = "Outlet"
-    outlet["flow_rate"] = 25  # default setting
+    outlet["flow_rate"] = 25.0  # default setting
     outlet["meta_categorie"] = "Inlaat"
 
     outlet_node = outlet[["node_id", "meta_node_id", "node_type", "geometry"]]
@@ -579,7 +590,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10):
     return
 
 
-def add_discrete_control_nodes(ribasim_model):
+def add_discrete_control_nodes(ribasim_model) -> None:
     if len(ribasim_model.discrete_control.node.df) != 0:
         print("Model bevat al discrete controls! Dan voegen we geen extra controls toe...")
         return
@@ -652,7 +663,7 @@ def add_discrete_control_nodes(ribasim_model):
     return
 
 
-def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, LevelBoundary_level=0):
+def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, LevelBoundary_level=0) -> None:
     """Create the Q(h)-relations for each TRC. It starts passing water from target level onwards."""
     # find the originating basin of each TRC
     target_level = ribasim_model.link.df.loc[
@@ -673,7 +684,7 @@ def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, 
     # zero flow rate on target level
     Qh_table0 = target_level[["to_node_id", "level"]]
     Qh_table0 = Qh_table0.rename(columns={"to_node_id": "node_id"})
-    Qh_table0["flow_rate"] = 0
+    Qh_table0["flow_rate"] = 0.0
 
     # pre defined flow rate on target level + level increase
     Qh_table1 = Qh_table0.copy()
@@ -695,7 +706,7 @@ def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, 
     return
 
 
-def set_tabulated_rating_curves_boundaries(ribasim_model, level_increase=0.1, flow_rate=40):
+def set_tabulated_rating_curves_boundaries(ribasim_model, level_increase=0.1, flow_rate=40) -> None:
     # select the TRC which flow to a Terminal
     TRC_ter = ribasim_model.link.df.copy()
     TRC_ter = TRC_ter.loc[
@@ -742,7 +753,7 @@ def set_tabulated_rating_curves_boundaries(ribasim_model, level_increase=0.1, fl
     return
 
 
-def create_sufficient_Qh_relation_points(ribasim_model):
+def create_sufficient_Qh_relation_points(ribasim_model) -> None:
     """There are more TRC nodes than defined in the static table. Identify the nodes which occur less than twice in the table, and create a (for now) dummy relation. Also delete the TRC in the static table if it doesnt occur in the node table"""
     # get rid of all TRC's static rows which do not occur in the node table (assuming the node table is the groundtruth)
     TRC_nodes = ribasim_model.tabulated_rating_curve.node.df.node_id.values
@@ -761,7 +772,7 @@ def create_sufficient_Qh_relation_points(ribasim_model):
         ribasim_model.tabulated_rating_curve.static.df["node_id"].isin(unique_node_ids)
     ]
     one_flow = zero_flow.copy()
-    zero_flow.flow_rate = 0  # set flow rate to 0 if on target level
+    zero_flow.flow_rate = 0.0  # set flow rate to 0 if on target level
     one_flow.level += 1  # set level 1 meter higher where it discharges 1 m3/s
 
     # remove old Qh points
@@ -785,7 +796,7 @@ def create_sufficient_Qh_relation_points(ribasim_model):
     return
 
 
-def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml):
+def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml) -> None:
     # Write Ribasim model to the Z drive
     if not os.path.exists(path_ribasim_toml):
         os.makedirs(path_ribasim_toml)
@@ -793,7 +804,7 @@ def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml):
     ribasim_model.write(path_ribasim_toml)
 
 
-def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_results=True):
+def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_results=True) -> None:
     """Write Ribasim model locally and to the GoodCloud.
 
     Copy the work_dir to the "modellen" dir, as it is required to maintain the same folder structure locally as well as the GoodCloud.
@@ -829,21 +840,21 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
     return
 
 
-def index_reset(ribasim_model):
+def index_reset(ribasim_model) -> None:
     ribasim_model.node.df = ribasim_model.node.df.reset_index(drop=True)
     ribasim_model.node.df.index += 1
 
     return
 
 
-def tqdm_subprocess(cmd, suffix=None, print_other=True, leave=True):
+def tqdm_subprocess(cmd, suffix=None, print_other=True, leave=True) -> None:
     desc = "Simulating"
     if suffix is not None:
         desc = f"{desc} {suffix}"
 
     with tqdm.tqdm(total=100, desc=desc, leave=leave) as pbar:
         process = subprocess.Popen(
-            cmd, shell=False, bufsize=1, universal_newlines=True, stderr=subprocess.PIPE, encoding="utf-8"
+            cmd, shell=False, bufsize=1, encoding="utf-8", errors="replace", stderr=subprocess.PIPE
         )
         for line in process.stderr:
             if line.startswith("Simulating"):
@@ -861,7 +872,7 @@ def tqdm_subprocess(cmd, suffix=None, print_other=True, leave=True):
 
 def iterate_TRC(
     ribasim_param, allowed_tolerance, max_iter, expected_difference, max_adjustment, cmd, output_dir, path_ribasim_toml
-):
+) -> None:
     # Do initial calculation
     ribasim_param.tqdm_subprocess(cmd, print_other=False, suffix="init")
 
@@ -960,7 +971,7 @@ def iterate_TRC(
                 pbar.update(1)
 
 
-def validate_basin_area(model, threshold_area=45000):
+def validate_basin_area(model, threshold_area=45000) -> None:
     """
     Validate the area of basins in the model.
 
@@ -985,7 +996,7 @@ def validate_basin_area(model, threshold_area=45000):
     return
 
 
-def validate_manning_basins(model):
+def validate_manning_basins(model) -> None:
     manning_nodes = model.manning_resistance.node.df.reset_index()[["node_id"]]
     basins_downstream_manning_nodes = model.link.df.loc[
         model.link.df.from_node_id.isin(manning_nodes.to_numpy().flatten())
@@ -1037,7 +1048,7 @@ def validate_manning_basins(model):
         print(manning_nodes.loc[manning_nodes.downstream_streefpeil != manning_nodes.upstream_streefpeil])
 
 
-def identify_node_meta_categorie(ribasim_model: Model, **kwargs):
+def identify_node_meta_categorie(ribasim_model: Model, **kwargs) -> None:
     """
     Identify the meta_categorie of each Outlet, Pump and LevelBoundary.
 
@@ -1341,7 +1352,7 @@ def identify_node_meta_categorie(ribasim_model: Model, **kwargs):
 def set_aanvoer_flags(
     ribasim_model: str | Model,
     aanvoer_regions: str | gpd.GeoDataFrame,
-    processor: RibasimFeedbackProcessor = None,
+    processor: RibasimFeedbackProcessor | None = None,
     **kwargs,
 ) -> Model:
     """
@@ -1382,14 +1393,17 @@ def set_aanvoer_flags(
     outlet_aanvoer_on: tuple[int] | set[int] = kwargs.get("outlet_aanvoer_on", set())
     outlet_aanvoer_off: tuple[int] | set[int] = kwargs.get("outlet_aanvoer_off", set())
     overruling_enabled: bool = kwargs.get("overruling_enabled", True)
-    load_geometry_kw: dict = kwargs.get("load_geometry_kw", {})
+    load_geometry_kw: dict[str, object] = kwargs.get("load_geometry_kw", {})
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
         logging.info("Aanvoer-flagging skipped.")
+        assert not isinstance(ribasim_model, str)
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
         return ribasim_model
+
+    assert not isinstance(ribasim_model, str)
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
@@ -1402,10 +1416,10 @@ def set_aanvoer_flags(
 
     # include 'aanvoer'-settings from feedback form
     if processor is not None:
-        basin_aanvoer_on = set(basin_aanvoer_on) | set(processor.basin_aanvoer_on)
-        basin_aanvoer_off = set(basin_aanvoer_off) | set(processor.basin_aanvoer_off)
-        outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processor.outlet_aanvoer_on)
-        outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processor.outlet_aanvoer_off)
+        basin_aanvoer_on = set(basin_aanvoer_on) | set(processor.basin_aanvoer_on or ())
+        basin_aanvoer_off = set(basin_aanvoer_off) | set(processor.basin_aanvoer_off or ())
+        outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processor.outlet_aanvoer_on or ())
+        outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processor.outlet_aanvoer_off or ())
 
     # label basins as 'aanvoergebied'
     sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)
@@ -1515,7 +1529,9 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
         pump.loc[pump.meta_categorie == types, "flow_rate"] = max_flow_rate
 
     # raise warning if there are np.nan in the columns
-    def check_for_nans_in_columns(df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list | None = None) -> None:
+    def check_for_nans_in_columns(
+        df: pd.DataFrame, outlet_or_pump: str, columns_to_check: list[str] | None = None
+    ) -> None:
         columns_to_check = columns_to_check or ["min_upstream_level", "max_downstream_level", "flow_rate"]
         assert outlet_or_pump in ("outlet", "pump")
 
@@ -1559,7 +1575,7 @@ def set_dynamic_min_upstream_max_downstream(ribasim_model: Model) -> None:
         setattr(ribasim_model, structure, data)
 
 
-def add_discrete_control(ribasim_model, waterschap, default_level):
+def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     """Add discrete control nodes to the network. The rules are based on the meta_categorie of each node."""
     # load in the sturing which is defined in the json files
     sturing = load_model_settings(f"sturing_{waterschap}.json")
@@ -1791,7 +1807,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level):
     return
 
 
-def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, sturing, default_level):
+def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, sturing, default_level) -> None:
     # define the sturing parameters in variables
     upstream_level_offset = sturing[category]["upstream_level_offset"]
     truth_state = sturing[category]["truth_state"]
@@ -2026,7 +2042,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
     DC_link["from_coord"] = DC_nodes["geometry"]
     DC_link["to_coord"] = DC_nodes["geometry"]
 
-    def create_linestring(row):
+    def create_linestring(row) -> LineString:
         return LineString([row["from_coord"], row["to_coord"]])
 
     DC_link["geometry"] = DC_link.apply(create_linestring, axis=1)
@@ -2083,7 +2099,7 @@ def add_continuous_control_node(
     dy: float = kwargs.get("dy", 0)
     capacity: float = kwargs.get("capacity", 20)
     control_variable: str = kwargs.get("control_variable", "flow_rate")
-    listen_targets: list[float] = kwargs.get("listen_targets")
+    listen_targets: list[float] | None = kwargs.get("listen_targets")
     listen_variable: str = kwargs.get("listen_variable", "level")
     node_id_raiser: int = kwargs.get("node_id_raiser", 10000)
     numerical_tolerance: float = kwargs.get("numerical_tolerance", 0.01)
@@ -2231,7 +2247,7 @@ def add_continuous_control(ribasim_model: Model, **kwargs) -> None:
     )
 
 
-def clean_tables(ribasim_model: Model, waterschap: str):
+def clean_tables(ribasim_model: Model, waterschap: str) -> None:
     """Only retain node_id's which are present in the .node table."""
     # Basin
     basin_ids = ribasim_model.basin.node.df.loc[
