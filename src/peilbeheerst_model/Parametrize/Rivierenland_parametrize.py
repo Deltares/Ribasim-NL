@@ -28,7 +28,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -468,7 +468,6 @@ to_flow_control = (
     388,
     468,
     574,
-    625,
     856,
     879,
 )
