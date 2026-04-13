@@ -72,7 +72,7 @@ cloud.synchronize(
     ]
 )
 
-# # refresh only the feedback form from cloud
+# refresh only the feedback form from cloud
 cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
