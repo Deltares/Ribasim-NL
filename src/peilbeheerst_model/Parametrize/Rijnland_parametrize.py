@@ -4,7 +4,6 @@ import datetime
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
-import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -216,8 +215,8 @@ if DYNAMIC_CONDITIONS:
     # Add dynamic groundwater
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    if offline_budgets.lhm_budget_path.exists():
-        offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
+    # if offline_budgets.lhm_budget_path.exists():
+    #     offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -281,10 +280,13 @@ to_drain = (
     530,
     1096,
     1307,
+    1455,
     1456,
+    1474,
 )
 to_flow_control = (
     487,
+    619,
     625,
     630,
     885,
@@ -295,11 +297,12 @@ to_flow_control = (
 )
 to_supply = (
     398,
-    619,
     690,
+    889,
     1032,
     1255,
     1349,
+    1439,
     1454,
     1471,
 )
@@ -394,7 +397,7 @@ assign_metadata.add_meta_to_basins(
 )
 
 # according data flow_rate of 0
-zero_flow_pumps = [1436, 1282, 1472]
+zero_flow_pumps = [1436, 1282, 1471, 1472]
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25.0
 
 # presumably wrong conversion of flow capacity in the data
