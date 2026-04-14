@@ -30,15 +30,15 @@ stages:
     deps:
     - path: notebooks/aa_en_maas
       hash: md5
-      md5: df53233b12b71ce757c4f41c392c15c1.dir
-      size: 11774737705
+      md5: 03ff67ebe370d5c24aa6c2f4303b1e3f.dir
+      size: 11774737778
       nfiles: 79
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: 68ce42c4ed3200040f2cbb5be63f4033.dir
-      size: 59732179
-      nfiles: 2
+      md5: 742ff1a7b8e02efe5092d071eb306a35.dir
+      size: 988831530
+      nfiles: 38
   noorderzijlvest:
     cmd:
     - uv run python notebooks/noorderzijlvest/01_fix_model.py
@@ -56,9 +56,9 @@ stages:
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
-      md5: 74b418ed5e5a7d372843a0edbbd8bc0e.dir
-      size: 54526163
-      nfiles: 2
+      md5: 5763cc7d49d2dd21f1cb48919482c2a5.dir
+      size: 814275769
+      nfiles: 38
   stichtse_rijnlanden:
     cmd:
     - uv run python notebooks/stichtse_rijnlanden/01_fix_model.py
@@ -76,9 +76,9 @@ stages:
     outs:
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
       hash: md5
-      md5: d821f697285135aed989476653962351.dir
-      size: 56594643
-      nfiles: 2
+      md5: 0ef8b1082b8d98d68da0a65cfc664460.dir
+      size: 692331237
+      nfiles: 38
   bathymetry:
     cmd: uv run python notebooks/rijkswaterstaat/1_bathymetrie.py
     deps:
@@ -136,9 +136,9 @@ stages:
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: f152610c548b9594240849fc7976ffe8.dir
-      size: 33288369
-      nfiles: 2
+      md5: cd902ec2f199424e5816d5de4c2643fa.dir
+      size: 554801046
+      nfiles: 38
   vechtstromen:
     cmd:
     - uv run python notebooks/vechtstromen/01_fix_model.py
@@ -156,9 +156,9 @@ stages:
     outs:
     - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
       hash: md5
-      md5: d24ac38306e2fd1717216ff87f4844f6.dir
-      size: 81535153
-      nfiles: 2
+      md5: bec881a75108f93282573b1de2ddecf6.dir
+      size: 1050340677
+      nfiles: 38
   de_dommel:
     cmd:
     - uv run python notebooks/de_dommel/01_fix_model.py
@@ -176,9 +176,9 @@ stages:
     outs:
     - path: data/DeDommel/modellen/DeDommel_dynamic_model
       hash: md5
-      md5: cefef8930fa62c44da435eb75f2d0e4a.dir
-      size: 88465619
-      nfiles: 2
+      md5: c5b0a63b78a91d3d22387367b7684eee.dir
+      size: 1169238456
+      nfiles: 38
   brabantse_delta:
     cmd:
     - uv run python notebooks/brabantse_delta/_preprocess_profielen.py
@@ -191,15 +191,15 @@ stages:
     deps:
     - path: notebooks/brabantse_delta
       hash: md5
-      md5: ab5e85c9bbea9ff5709a7bfb0151c378.dir
-      size: 11069687042
+      md5: e1cbf482583fad7d9d022c4314cb2ded.dir
+      size: 11069687205
       nfiles: 15
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       hash: md5
-      md5: 51899d5d28748111dadb1f390d259817.dir
-      size: 82383059
-      nfiles: 2
+      md5: 9856f508a3bbb801ec6a5a03d87ec99e.dir
+      size: 1171721143
+      nfiles: 38
   drents_overijsselse_delta:
     cmd:
     - uv run python notebooks/drents_overijsselse_delta/01_fix_model.py
@@ -218,9 +218,9 @@ stages:
     - path:
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
       hash: md5
-      md5: 70c4c0194d7cc92af98734cd8eb2a63e.dir
-      size: 52179121
-      nfiles: 2
+      md5: b5fd87d6c4bfd0f46a50ca1e32e22127.dir
+      size: 872917278
+      nfiles: 38
   vallei_en_veluwe:
     cmd:
     - uv run python notebooks/vallei_en_veluwe/01_fix_model.py
@@ -232,15 +232,15 @@ stages:
     deps:
     - path: notebooks/vallei_en_veluwe
       hash: md5
-      md5: 748475d2885a1f27de3f0c59cafcac90.dir
-      size: 63989
+      md5: 815cc47957823637611960e509bc5466.dir
+      size: 64331
       nfiles: 5
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: 1da413835bedce40db0c609a8e18e1cd.dir
-      size: 60379313
-      nfiles: 2
+      md5: b70af9ddf20f6a1ab1bdf73b6b7733ae.dir
+      size: 514827593
+      nfiles: 38
   limburg:
     cmd:
     - uv run python notebooks/limburg/_preprocess_profielen.py
@@ -279,9 +279,9 @@ stages:
     outs:
     - path: data/HunzeenAas/modellen/HunzeenAas_dynamic_model
       hash: md5
-      md5: cdbd8ea63712c3401a2607e333c42aab.dir
-      size: 42537137
-      nfiles: 2
+      md5: 72d974a777b6f343012f908114e99c17.dir
+      size: 793990335
+      nfiles: 38
   koppelen:
     cmd: uv run python notebooks/koppelen_modellen.py
     deps:
