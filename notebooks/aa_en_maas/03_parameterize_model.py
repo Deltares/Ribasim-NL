@@ -45,13 +45,6 @@ model.parameterize(
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-# overschrijf basin-profiel met jouw open-waterpercentages
-# update_basin_profile(
-#     model=model,
-#     percentages_map={"hoofdwater": 10, "doorgaand": 5, "bergend": 2},
-#     default_percentage=10,
-#     profile_depth=3,
-# )
 # update state op basis van nieuw profiel
 update_basin_state(model)
 

@@ -18,6 +18,9 @@ from shapely.geometry import Point, Polygon
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.model import Model
 
+cloud = CloudStorage()
+LHM_RASTER_FILE = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
+
 BANDEN = {
     "maaiveld": 1,
     "bodemhoogte_primair_winter": 2,
@@ -36,10 +39,9 @@ BANDEN = {
 
 def percentage_secundair_oppervlaktewater() -> None:
     """Single-use function to compute percentage secondary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    cloud = CloudStorage()
-    lhm_raster_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
-    out_file = lhm_raster_file.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
-    with rasterio.open(lhm_raster_file) as src:
+    cloud.synchronize([LHM_RASTER_FILE], overwrite=False)
+    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
+    with rasterio.open(LHM_RASTER_FILE) as src:
         band11 = src.read(11).astype("float32")
         band12 = src.read(12).astype("float32")
         profile = src.profile.copy()
@@ -75,10 +77,9 @@ def percentage_secundair_oppervlaktewater() -> None:
 
 def percentage_primair_oppervlaktewater() -> None:
     """Single-use function to compute percentage primary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    cloud = CloudStorage()
-    lhm_raster_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
-    out_file = lhm_raster_file.with_name("LHM_oppervlaktewater_percentage_primair.tif")
-    with rasterio.open(lhm_raster_file) as src:
+    cloud.synchronize([LHM_RASTER_FILE], overwrite=False)
+    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_primair.tif")
+    with rasterio.open(LHM_RASTER_FILE) as src:
         band10 = src.read(11).astype("float32")
         profile = src.profile.copy()
 
@@ -209,6 +210,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
             comment = ["default: 0.1m2", "default: 1% oppervlak", "default: 1% oppervlak"]
         else:
             sw_area = area_fraction * polygon.area
+            comment = [None, None, None]
 
         # if smaller than min_area we set to min_area
         if sw_area < min_area:
@@ -232,7 +234,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
             df = basin.Profile(node_id=node_id, level=level, area=area, meta_comment=comment).df
         else:
             area = np.array([0.1, sw_area, sw_area]).round(1)
-            df = basin.Profile(node_id=node_id, level=level, area=area).df
+            df = basin.Profile(node_id=node_id, level=level, area=area, meta_comment=comment).df
         return df
 
     # generate raster_file if not existing
