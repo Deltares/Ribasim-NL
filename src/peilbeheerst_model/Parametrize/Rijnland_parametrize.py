@@ -27,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
+DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -126,12 +126,6 @@ with warnings.catch_warnings():
 
 inlaat_pump = []
 
-# add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
-pump_node = ribasim_model.pump.add(Node(geometry=Point(88007, 469350)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[22], pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[27])
-inlaat_pump.append(pump_node.node_id)
-
 # add levelboundary to avoid incorrect coupling of water authorities
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(110865, 446289)), [level_boundary.Static(level=[default_level])]
@@ -159,7 +153,7 @@ ribasim_model.merge_basins(node_id=308, to_node_id=22, are_connected=False)
 ribasim_model.merge_basins(node_id=332, to_node_id=138, are_connected=False)
 
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
-pump_node = ribasim_model.pump.add(Node(geometry=Point(88007, 469350)), [pump.Static(flow_rate=[0.1])])
+pump_node = ribasim_model.pump.add(Node(geometry=Point(88284, 469447)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.link.add(ribasim_model.basin[22], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[27])
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
@@ -198,7 +192,7 @@ ribasim_param.validate_manning_basins(ribasim_model)
 #
 # add_storage_basins.create_bergende_basins()
 
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -215,8 +209,6 @@ if DYNAMIC_CONDITIONS:
     # Add dynamic groundwater
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    # if offline_budgets.lhm_budget_path.exists():
-    #     offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:

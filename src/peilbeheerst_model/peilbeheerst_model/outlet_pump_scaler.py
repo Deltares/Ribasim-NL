@@ -771,9 +771,14 @@ class _OutletPumpScaler:
                         ~ribasim_model.pump.static.df["meta_known_flow_rate"], "max_flow_rate"
                     ] = initial_guess_flow_rate_pump
 
-                    # set flow rate equal to max flow rate
-                    ribasim_model.outlet.static.df.flow_rate = ribasim_model.outlet.static.df.max_flow_rate
-                    ribasim_model.pump.static.df.flow_rate = ribasim_model.pump.static.df.max_flow_rate
+                    # if flow rate exceeds max flow rate, set equal to max flow rate
+                    ribasim_model.outlet.static.df.loc[
+                        ribasim_model.outlet.static.df.flow_rate > ribasim_model.outlet.static.df.max_flow_rate,
+                        "flow_rate",
+                    ] = ribasim_model.outlet.static.df.max_flow_rate
+                    ribasim_model.pump.static.df.loc[
+                        ribasim_model.pump.static.df.flow_rate > ribasim_model.pump.static.df.max_flow_rate, "flow_rate"
+                    ] = ribasim_model.pump.static.df.max_flow_rate
 
                     # write model
                     if printing:
@@ -889,8 +894,12 @@ class _OutletPumpScaler:
                 ribasim_model = update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table)
 
                 # set flow rate equal to max flow rate
-                ribasim_model.outlet.static.df["flow_rate"] = ribasim_model.outlet.static.df["max_flow_rate"]
-                ribasim_model.pump.static.df["flow_rate"] = ribasim_model.pump.static.df["max_flow_rate"]
+                ribasim_model.outlet.static.df.loc[
+                    ribasim_model.outlet.static.df.flow_rate > ribasim_model.outlet.static.df.max_flow_rate, "flow_rate"
+                ] = ribasim_model.outlet.static.df.max_flow_rate
+                ribasim_model.pump.static.df.loc[
+                    ribasim_model.pump.static.df.flow_rate > ribasim_model.pump.static.df.max_flow_rate, "flow_rate"
+                ] = ribasim_model.pump.static.df.max_flow_rate
 
                 # store model
                 ribasim_model.write(config.ribasim_model_path)
