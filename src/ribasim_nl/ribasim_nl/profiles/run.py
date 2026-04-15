@@ -146,7 +146,7 @@ def main(
     :key cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
-    :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None
+    :key fn_hydrotopes: *.csv-file containing hydrotope-specifications, defaults to None  # TODO: Remove
         Required if no `HydrotopeTable` is provided (i.e., `hydrotope_table=None`)
     :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to False
     :key kw_make_depth_profile: optional arguments for making depth profile lines, defaults to {}
@@ -154,6 +154,8 @@ def main(
     :key fn_bgt: geospatial file with previously downloaded BGT-data, or where to export the newly downloaded BGT-data
         to for future use, defaults to None
     :key bgt_buffer: minimum overlap between BGT-polygon and hydro-object to be coupled, defaults to 0.1 [m]
+    :key bgt_full_coverage: consider BGT-data not intersecting any hydro-objects as part of the storing capacity of the
+        basin, defaults to True
     :key patch_network: patch the network, defaults to True
         Network patching is computationally expensive, but assures a fully connected network from the hydro-objects
         required for generating a proper graph. This option can be disabled when the hydro-objects are already fully
@@ -161,11 +163,22 @@ def main(
     :key patch_buffer: distance below which endpoints of hydro-objects are considered "connected", defaults to 1 [m]
     :key split_buffer: distance between crossing and hydro-object at which the hydro-object should be split (if not
         already) due to a crossing, defaults to 0.1 [m]
+    :key col_ho_main_route: column-name in `hydro_objects` containing flag(s) for main-routing, defaults to None
+        When `col_ho_main_route` is defined, the main-routing is based on this column instead of drawing a graph per
+        basin and connecting the crossings within the basin using a shortest path algorithm. This means that the
+        `crossings`-dataset is no longer required to generate the profiles. This impacts the required geospatial
+        datasets provided to `data` (see documentation).
+    :key val_ho_main_route: value(s) in `hydro_objects[col_ho_main_route]` flagging main-routing, defaults to True
     :key internal_crossings: include crossings inside the basin (`True`) or limit to crossings at the basin-border
         (`False`), defaults to True
     :key selection_buffer: buffer used when selecting the subset of crossings for a single basin, defaults to 0.1 [m]
         This buffer is applied on the basin-polygon for `internal_crossings=True`, and to the basin-polygon's exterior
         for `internal_crossings=False`.
+    :key water_bodies: water bodies with specific, user-defined representative depths used to overwrite the determined
+        representative depths per hydro-object, defaults to None
+        When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
+        by the depth value(s) in `water_bodies`.
+    :key col_wb_depth: column-name with representative depth values of `water_bodies`, defaults to "depth"
     :key export_intermediate_output: export intermediate output, e.g., for debugging, defaults to False
         If `export_intermediate_output=True`, a working directory must be defined, i.e., `wd_intermediate_output`
     :key wd_intermediate_output: working directory for intermediate output files, defaults to None
@@ -204,7 +217,7 @@ def main(
     split_buffer: float = kwargs.get("split_buffer", 0.1)
     # > main-routing from hydro-objects alone
     col_ho_main_route: str | None = kwargs.get("col_ho_main_route")
-    val_ho_main_route: typing.Any = kwargs.get("val_ho_main_route")
+    val_ho_main_route: typing.Any = kwargs.get("val_ho_main_route", True)
     # > selection of crossings
     internal_crossings: bool = kwargs.get("internal_crossings", True)
     selection_buffer: float = kwargs.get("selection_buffer", 0.1)
@@ -215,8 +228,8 @@ def main(
     export_intermediate_output: bool = kwargs.get("export_intermediate_output", False)
     wd_intermediate_output: pathlib.Path | None = kwargs.get("wd_intermediate_output")
     create_wd_intermediate: bool = kwargs.get("create_wd_intermediate", True)
-    _fn_graph = "graph.gpkg"
-    _fn_int_output = "int_output.gpkg"
+    _fn_graph: str = "graph.gpkg"
+    _fn_int_output: str = "int_output.gpkg"
 
     # transition: abandon `fn_hydrotopes` as optional argument
     # TODO: Implement deprecation of `fn_hydrotopes`
@@ -254,9 +267,6 @@ def main(
     if wd_intermediate_output is not None and create_wd_intermediate:
         wd_intermediate_output.mkdir(parents=True, exist_ok=True)
     # > main routes from hydro-objects
-    if col_ho_main_route is not None and val_ho_main_route is None:
-        msg = f"Use of `col_ho_main_route` requires the definition of `val_ho_main_route` ({val_ho_main_route=})"
-        raise ValueError(msg)
     main_route_from_hydro_objects: bool = col_ho_main_route is not None
 
     # align all CRS
@@ -304,11 +314,11 @@ def main(
             msg = f"{col_ho_main_route=} not found in {hydro_objects.columns=}"
             raise IndexError(msg)
         if pd.api.types.is_scalar(val_ho_main_route):
-            if val_ho_main_route not in hydro_objects[col_ho_main_route].values:
+            if val_ho_main_route not in hydro_objects[col_ho_main_route].unique():
                 msg = f"{val_ho_main_route=} not found in hydro_objects[col_ho_main_route] ({col_ho_main_route=})"
                 raise ValueError(msg)
         else:
-            if not any(v in hydro_objects[col_ho_main_route].values for v in val_ho_main_route):
+            if not any(v in hydro_objects[col_ho_main_route].unique() for v in val_ho_main_route):
                 msg = f"None of {val_ho_main_route=} found in hydro_objects[col_ho_main_route] ({col_ho_main_route=})"
                 raise ValueError(msg)
 
