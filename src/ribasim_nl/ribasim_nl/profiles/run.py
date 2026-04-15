@@ -86,53 +86,26 @@ def _overwrite_depth(
 @typing.overload
 def main(
     basins: gpd.GeoDataFrame,
+    crossings: gpd.GeoDataFrame,  # TODO: Reorder datasets-unpacking -> basins, hydro_objects, crossings, cross_sections
     hydro_objects: gpd.GeoDataFrame,
+    cross_sections: gpd.GeoDataFrame = ...,
     /,
     *,
-    col_ho_main_route: str,
     hydrotope_table: ht.HydrotopeTable | None = None,
-    **kwargs,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
-
-
-@typing.overload
-def main(
-    basins: gpd.GeoDataFrame,
-    hydro_objects: gpd.GeoDataFrame,
-    cross_sections: gpd.GeoDataFrame,
-    /,
-    *,
-    col_ho_main_route: str,
-    hydrotope_table: ht.HydrotopeTable | None = None,
-    **kwargs,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
-
-
-# TODO: Reorder datasets-unpacking
-@typing.overload
-def main(
-    basins: gpd.GeoDataFrame,
-    crossings: gpd.GeoDataFrame,
-    hydro_objects: gpd.GeoDataFrame,
-    /,
-    *,
     col_ho_main_route: None = None,
-    hydrotope_table: ht.HydrotopeTable | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
 
-# TODO: Reorder datasets-unpacking
 @typing.overload
 def main(
     basins: gpd.GeoDataFrame,
-    crossings: gpd.GeoDataFrame,
     hydro_objects: gpd.GeoDataFrame,
-    cross_sections: gpd.GeoDataFrame,
+    cross_sections: gpd.GeoDataFrame = ...,
     /,
     *,
-    col_ho_main_route: None = None,
     hydrotope_table: ht.HydrotopeTable | None = None,
+    col_ho_main_route: str,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
