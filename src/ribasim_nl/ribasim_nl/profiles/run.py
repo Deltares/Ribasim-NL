@@ -48,7 +48,10 @@ def main(
     /,
     *,
     hydrotope_table: ht.HydrotopeTable | None = None,
+    cloud: CloudStorage = CloudStorage(),
     col_ho_main_route: None = None,
+    export_intermediate_output: bool = False,  # TODO: Integrate with defining `wd_intermediate_output`
+    wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
@@ -61,7 +64,10 @@ def main(
     /,
     *,
     hydrotope_table: ht.HydrotopeTable | None = None,
+    cloud: CloudStorage = CloudStorage(),
     col_ho_main_route: str,
+    export_intermediate_output: bool = False,  # TODO: Integrate with defining `wd_intermediate_output`
+    wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
