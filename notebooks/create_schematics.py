@@ -34,6 +34,14 @@ ARROW_LENGTH = {
     "DeDommel": 1400,
     "Vechtstromen": 1400,
 }
+ARROW_LENGTH = {
+    "StichtseRijnlanden": 800,
+    "Noorderzijlvest": 1200,
+    "AaenMaas": 1600,
+    "Limburg": 1400,
+    "DeDommel": 1400,
+    "Vechtstromen": 1400,
+}
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
