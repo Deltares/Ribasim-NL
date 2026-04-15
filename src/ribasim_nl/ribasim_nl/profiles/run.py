@@ -488,6 +488,17 @@ def _validate_hydro_objects_main_routing(hydro_objects: gpd.GeoDataFrame, col: s
 
 
 def _get_bgt_data(fn_bgt: pathlib.Path | str | None, basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Get BGT-data.
+
+    Define the geospatial filter for the BGT-data based on the convex hull of the basins. This ensures that all basins
+    are fully covered by the BGT-data.
+
+    If no filename with BGT-data is provided, the BGT-data is downloaded from the server. This may take a while. Using a
+    pre-downloaded BGT-dataset is recommended.
+
+    :param fn_bgt: filename of BGT-data
+    :param basins: geospatial dataset of basins (polygons)
+    """
     geo_filter = shapely.MultiPolygon(basins.convex_hull.values).convex_hull
     if fn_bgt is None:
         return bgt.download_bgt_water(geo_filter=geo_filter)
