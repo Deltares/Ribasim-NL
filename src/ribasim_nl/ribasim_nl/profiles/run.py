@@ -24,22 +24,41 @@ def _label_main_routing(
     internal_crossings: bool,
     wd_intermediate_output: pathlib.Path | None,
 ) -> gpd.GeoDataFrame:
+    """Labelling of main-route based on shortest path(s) between crossings.
+
+    :param basins: basin areas (polygons)
+    :param hydro_objects: hydro-objects (lines)
+    :param crossings: basin-crossings (points)
+    :param selection_buffer: buffer used when selecting the subset of crossings for a single basin
+        This buffer is applied on the basin-polygon for `internal_crossings=True`, and to the basin-polygon's exterior
+        for `internal_crossings=False`.
+    :param internal_crossings: include crossings inside the basin (`True`) or limit to crossings at the basin-border
+        (`False`)
+    :param wd_intermediate_output: working directory for intermediate output files
+
+    :type basins: geopandas.GeoDataFrame
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type crossings: geopandas.GeoDataFrame
+    :type selection_buffer: float
+    :type internal_crossings: bool
+    :type wd_intermediate_output: pathlib.Path | None
+    """
     # TODO: Collect main route labelling based on shortest path in this function (and out of `main(..)`).
     return NotImplemented
 
 
 def _overwrite_depth(
-    hydro_objects: gpd.GeoDataFrame, water_bodies: gpd.GeoDataFrame, *, col_depth: str = "depth"
+    hydro_objects: gpd.GeoDataFrame, water_bodies: gpd.GeoDataFrame, col_depth: str
 ) -> gpd.GeoDataFrame:
     """Overwrite the representative depth of (large) water bodies based on (Multi)Polygon(s).
 
     :param hydro_objects: hydro-objects containing representative depths
     :param water_bodies: (Multi)Polygon-data with depth-values to overwrite
-    :param col_depth: column-name of `water_bodies` containing depth-values, defaults to "depth"
+    :param col_depth: column-name of `water_bodies` containing depth-values
 
     :type hydro_objects: geopandas.GeoDataFrame
     :type water_bodies: geopandas.GeoDataFrame
-    :type col_depth: str, optional
+    :type col_depth: str
 
     :return: hydro-objects with (partially) overwritten representative depths
     :rtype: geopandas.GeoDataFrame
