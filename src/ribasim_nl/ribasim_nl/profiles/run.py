@@ -149,10 +149,18 @@ def main(
 
     # main route data available in hydro-objects [optional]
     if main_route_from_hydro_objects:
+        assert col_ho_main_route is not None
         if col_ho_main_route not in hydro_objects.columns:
             msg = f"{col_ho_main_route=} not found in {hydro_objects.columns=}"
             raise IndexError(msg)
-        # TODO: Add validation of `val_ho_main_route` in `hydro_objects[col_ho_main_route]`
+        if pd.api.types.is_scalar(val_ho_main_route):
+            if val_ho_main_route not in hydro_objects[col_ho_main_route].values:
+                msg = f"{val_ho_main_route=} not found in hydro_objects[col_ho_main_route] ({col_ho_main_route=})"
+                raise ValueError(msg)
+        else:
+            if not any(v in hydro_objects[col_ho_main_route].values for v in val_ho_main_route):
+                msg = f"None of {val_ho_main_route=} found in hydro_objects[col_ho_main_route] ({col_ho_main_route=})"
+                raise ValueError(msg)
 
     # creating depth profile-lines
     if create_depth_profile_lines and cross_sections is not None:
