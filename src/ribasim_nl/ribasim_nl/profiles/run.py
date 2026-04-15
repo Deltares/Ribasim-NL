@@ -102,7 +102,6 @@ def main(
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    # TODO: Check documentation (parameters and kwargs)
     """Full profile-generating workflow.
 
     The amount of required geospatial datasets (i.e., number of entries for `data`) is somewhat flexible. There are two
@@ -125,7 +124,11 @@ def main(
     :param data: geospatial datasets
     :param hydrotope_table: table with hydrotope-classes
     :param cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
-    :param kwargs: optional arguments
+    :param col_ho_main_route: column-name containing the main route flag, defaults to None
+    :param export_intermediate_output:
+    :param export_intermediate_output: export intermediate output, e.g., for debugging, defaults to False
+        If `export_intermediate_output=True`, a working directory must be defined, i.e., `wd_intermediate_output`
+    :param wd_intermediate_output: working directory for intermediate output files, defaults to None
 
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
@@ -161,9 +164,6 @@ def main(
         When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
         by the depth value(s) in `water_bodies`.
     :key col_wb_depth: column-name with representative depth values of `water_bodies`, defaults to "depth"
-    :key export_intermediate_output: export intermediate output, e.g., for debugging, defaults to False
-        If `export_intermediate_output=True`, a working directory must be defined, i.e., `wd_intermediate_output`
-    :key wd_intermediate_output: working directory for intermediate output files, defaults to None
     :key create_wd_intermediate: create working directory for intermediate output files (if non-existing), including the
         parents, defaults to True
 
