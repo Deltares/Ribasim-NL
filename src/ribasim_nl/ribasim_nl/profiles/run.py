@@ -42,8 +42,8 @@ def target_level_polygons(
 @typing.overload
 def main(
     basins: gpd.GeoDataFrame,
-    crossings: gpd.GeoDataFrame,  # TODO: Reorder datasets-unpacking -> basins, hydro_objects, crossings, cross_sections
     hydro_objects: gpd.GeoDataFrame,
+    crossings: gpd.GeoDataFrame,
     cross_sections: gpd.GeoDataFrame = ...,
     /,
     *,
@@ -88,11 +88,7 @@ def main(
         3.  crossings (points) [optional]
         4.  cross-sections (points | lines) [optional]
 
-    :param data: geospatial datasets:
-        1.  basins (polygons)
-        2.  crossings (points)  # TODO: Becomes kind-of optional: Switch order with hydro-objects?
-        3.  hydro-objects (lines)
-        4.  cross-sections (points | lines) [optional]
+    :param data: geospatial datasets
     :param hydrotope_table: table with hydrotope-classes, defaults to None  # TODO: Remove `fn_hydrotopes`
         When no `HydrotopeTable` is provided, a *.csv-file containing such a table must be provided via the keyworded
         argument `fn_hydrotopes`. If both are `None`, a `ValueError` is raised.
@@ -233,7 +229,7 @@ def main(
 
     # split dataframes
     basins, hydro_objects, crossings, cross_sections = _unpack_data(
-        *data, main_route_from_hydro_objects=main_route_from_hydro_objects
+        *data, flagged_main_route=main_route_from_hydro_objects
     )
 
     # main route data available in hydro-objects [optional]
@@ -364,42 +360,80 @@ def main(
 
 
 def _unpack_data(
-    *data: gpd.GeoDataFrame | None, main_route_from_hydro_objects: bool
+    *data: gpd.GeoDataFrame | None, flagged_main_route: bool
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame | None, gpd.GeoDataFrame | None]:
+    """Unpack geospatial datasets.
+
+    Unpacking of the geospatial datasets is influenced by whether the hydro-objects are flagged to determine the main
+    route, or whether the main routes have to be determined via the shortest path(s) between crossings.
+
+    If `main_route_from_hydro_objects=True`, the hydro-objects contain a flag stating whether each entry belongs to the
+    main route (or not). In that case, the `crossings`-dataset is omitted.
+
+    As the `cross_sections`-dataset is optional, the number of geospatial datasets determines whether this dataset is
+    provided (or not). If not, a warning is raised stating that all hydro-objects will contain representative depth
+    values based on hydrotopes. This may - and probably will - impact the Ribasim-simulation.
+
+    The unpacking of the geospatial datasets results in the following unpacking-order of datasets:
+    if main_route_from_hydro_objects:
+        basins, hydro_objects[, cross_sections] = data
+    else:
+        basins, hydro_objects, crossings[, cross_sections] = data
+
+    This means that the geospatial datasets should be provided in the following order (with type of geometry between
+    brackets):
+        1.  basins (polygons)
+        2.  hydro-objects (lines)
+        3.  crossings (points) [optional]
+        4.  cross-sections (points | lines) [optional]
+
+    :param data: geospatial datasets
+    :param flagged_main_route: main route flag present in hydro-objects geospatial dataset
+
+    :type data: geopandas.GeoDataFrame
+    :type flagged_main_route: bool
+
+    :return: unpacked geospatial datasets
+    :rtype: tuple[GeoDataFrame, GeoDataFrame, GeoDataFrame | None, GeoDataFrame | None]
+
+    :raises TypeError: if the number of geospatial datasets is inconsistent with `flagged_main_route`
+    :raises ValueError: if the number of geospatial datasets has no implementation
+    """
+    # unpack datasets
     match len(data):
         case 2:
-            if not main_route_from_hydro_objects:
+            if not flagged_main_route:
                 msg = (
-                    f"If two datasets are given ({len(data)=}), the main-routing must follow from a flag in the "
-                    f"hydro-objects: col_ho_main_route=None -> `str`"
+                    "2 GeoDataFrames (basins, hydro_objects) require `col_ho_main_route` set to a column-name of "
+                    "`hydro_objects`, got None"
                 )
                 raise TypeError(msg)
             basins, hydro_objects = data
             crossings = cross_sections = None
         case 3:
-            if main_route_from_hydro_objects:
+            if flagged_main_route:
                 basins, hydro_objects, cross_sections = data
                 crossings = None
             else:
-                # TODO: Reorder datasets unpacking
-                basins, crossings, hydro_objects = data
+                basins, hydro_objects, crossings = data
                 cross_sections = None
         case 4:
-            if main_route_from_hydro_objects:
+            if flagged_main_route:
                 msg = (
-                    f"If four datasets are given ({len(data)=}), the main-routing follows from the crossings: "
-                    f"col_ho_main_route=`str` -> None"
+                    "4 GeoDataFrames (basins, hydro_objects, crossings, cross_sections) are incompatible with "
+                    "`col_ho_main_route`: set `col_ho_main_route=None` or pass three (3) geospatial arguments"
                 )
                 raise TypeError(msg)
-            # TODO: Reorder datasets unpacking
-            basins, crossings, hydro_objects, cross_sections = data
+            basins, hydro_objects, crossings, cross_sections = data
         case _:
-            msg = f"There should be 2, 3, or 4 GeoDataFrames provided; {len(data)} given."
+            msg = f"Expected 2, 3, or 4 GeoDataFrames, got {len(data)}"
             raise ValueError(msg)
 
+    # warn missing cross-sections (measured)
     if cross_sections is None:
         LOG.warning("No cross-section data provided: Cross-section profiles fully based on hydrotopes")
 
+    # return unpacked datasets
     return basins, hydro_objects, crossings, cross_sections
 
 
