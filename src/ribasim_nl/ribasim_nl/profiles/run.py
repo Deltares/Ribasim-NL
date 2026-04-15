@@ -28,6 +28,39 @@ def _label_main_routing(
     return NotImplemented
 
 
+def _overwrite_depth(
+    hydro_objects: gpd.GeoDataFrame, water_bodies: gpd.GeoDataFrame, *, col_depth: str = "depth"
+) -> gpd.GeoDataFrame:
+    """Overwrite the representative depth of (large) water bodies based on (Multi)Polygon(s).
+
+    :param hydro_objects: hydro-objects containing representative depths
+    :param water_bodies: (Multi)Polygon-data with depth-values to overwrite
+    :param col_depth: column-name of `water_bodies` containing depth-values, defaults to 'depth'
+
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type water_bodies: geopandas.GeoDataFrame
+    :type col_depth: str, optional
+
+    :return: hydro-objects with (partially) overwritten representative depths
+    :rtype: geopandas.GeoDataFrame
+
+    :raises IndexError: if the hydro-objects have no representative depth assigned (yet)
+    :raises IndexError: if `col_depth` not in `water_bodies.columns`
+    """
+    # validate GeoDataFrames
+    if "depth" not in hydro_objects.columns:
+        msg = f"The representative depth cannot be overwritten as no depths are defined yet: {hydro_objects.columns=}"
+        raise IndexError(msg)
+    if col_depth not in water_bodies.columns:
+        msg = f"Depth-column not found in the water bodies: {water_bodies.columns=}"
+        raise IndexError(msg)
+
+    # overwrite representative depths
+    for g, v in water_bodies[["geometry", col_depth]].values:
+        hydro_objects.loc[hydro_objects.intersects(g), "depth"] = v
+    return hydro_objects
+
+
 def main(
     *data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = None, **kwargs
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
