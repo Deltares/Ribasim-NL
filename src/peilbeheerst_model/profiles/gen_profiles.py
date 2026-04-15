@@ -31,13 +31,6 @@ def main(
     :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
     :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
-
-    :type water_authority: str
-    :type fn_network: str
-    :type export_profile_tables: bool, optional
-    :type sync: bool, optional
-    :type overwrite: bool, optional
-    :type export_intermediate_output: bool, optional
     """
     # get files from the cloud
     cloud = CloudStorage()
