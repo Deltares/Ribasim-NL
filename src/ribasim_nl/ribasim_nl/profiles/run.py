@@ -2,6 +2,7 @@
 
 import logging
 import pathlib
+import typing
 
 import geopandas as gpd
 import momepy
@@ -89,6 +90,9 @@ def main(
     patch_network: bool = kwargs.get("patch_network", True)
     patch_buffer: float = kwargs.get("patch_buffer", 1)
     split_buffer: float = kwargs.get("split_buffer", 0.1)
+    # > main-routing from hydro-objects alone
+    col_ho_main_route: str | None = kwargs.get("col_ho_main_route")
+    val_ho_main_route: typing.Any = kwargs.get("val_ho_main_route")
     # > selection of crossings
     internal_crossings: bool = kwargs.get("internal_crossings", True)
     selection_buffer: float = kwargs.get("selection_buffer", 0.1)
@@ -121,6 +125,11 @@ def main(
         raise ValueError(msg)
     if wd_intermediate_output is not None and create_wd_intermediate:
         wd_intermediate_output.mkdir(parents=True, exist_ok=True)
+    # > main routes from hydro-objects
+    if col_ho_main_route is not None and val_ho_main_route is None:
+        msg = f"Use of `col_ho_main_route` requires the definition of `val_ho_main_route` ({val_ho_main_route=})"
+        raise ValueError(msg)
+    main_route_from_hydro_objects: bool = col_ho_main_route is not None
 
     # align all CRS
     for gdf in data:
@@ -137,6 +146,13 @@ def main(
         case _:
             msg = f"There should be 3 or 4 GeoDataFrames provided; {len(data)} given."
             raise ValueError(msg)
+
+    # main route data available in hydro-objects [optional]
+    if main_route_from_hydro_objects:
+        if col_ho_main_route not in hydro_objects.columns:
+            msg = f"{col_ho_main_route=} not found in {hydro_objects.columns=}"
+            raise IndexError(msg)
+        # TODO: Add validation of `val_ho_main_route` in `hydro_objects[col_ho_main_route]`
 
     # creating depth profile-lines
     if create_depth_profile_lines and cross_sections is not None:
