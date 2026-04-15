@@ -42,6 +42,9 @@ def _label_main_routing(
     :type selection_buffer: float
     :type internal_crossings: bool
     :type wd_intermediate_output: pathlib.Path | None
+
+    :return: labelled hydro-objects
+    :rtype: geopandas.GeoDataFrame
     """
     # TODO: Collect main route labelling based on shortest path in this function (and out of `main(..)`).
     return NotImplemented
