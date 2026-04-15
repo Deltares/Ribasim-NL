@@ -313,6 +313,7 @@ def main(
         hydro_objects = depth.depth_from_measurements(hydro_objects, cross_sections)
 
     # depth from (multi)polygons (user-defined)
+    # TODO: Test this implementation
     if water_bodies is not None:
         hydro_objects = _overwrite_depth(hydro_objects, water_bodies, col_wb_depth)
 
