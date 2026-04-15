@@ -204,7 +204,14 @@ def main(
         )
 
     if main_route_from_hydro_objects:
-        pass
+        # get all user-defined hydro-objects on the main-route (i.e., 'doorgaand')
+        assert col_ho_main_route is not None
+        assert val_ho_main_route is not None
+        if pd.api.types.is_scalar(val_ho_main_route):
+            _indices = hydro_objects[hydro_objects[col_ho_main_route] == val_ho_main_route].index
+        else:
+            _indices = hydro_objects[hydro_objects[col_ho_main_route].isin(val_ho_main_route)].index
+        main_route_idx: set[int] = set(_indices)
     else:
         # collectors
         main_route_idx: set[int] = set()
