@@ -3,7 +3,7 @@
 - [Laatste modelversie]()
 
 ## Systeembeschrijving
-![Systeembeschrijving Limburg](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/vechtstromen.svg)
+![Systeembeschrijving Limburg](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/vechtstromen.svg){.lightbox}
 
 Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.
 
@@ -11,10 +11,7 @@ Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuu
 
 #Waterbeheer droge perioden
 Als in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit het `Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)` via Sluis Aadorp (maximaal 10 m3/s) 
-Vanuit het Overijssels Kanaal kan water afgelaten worden op het Overijssels Kanaal bij Vroomshoop en op de Overijsselse Vecht (11 m3
-/s). 
-
-
+Vanuit het Overijsselsch Kanaal kan water afgelaten worden op het Overijssels Kanaal bij Vroomshoop en op de Overijsselse Vecht (11 m3/s). 
 Ook bij de Stieltjeskanaalsluis naar de Verlengde Hoogeveensche Vaart kan water worden ingelaten.
 
 De inlaten Vroomshoop en Hammervlier – Geerdijk worden alleen ’s zomers gebruikt voor het inlaten van water. Het water wordt dan ingelaten vanuit het Kanaal Almelo – de Haandrik. 

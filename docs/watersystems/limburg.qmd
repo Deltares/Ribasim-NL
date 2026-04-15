@@ -4,7 +4,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/MW2kiQMyXwFM4xw)
 
 ## Systeembeschrijving
-![Systeembeschrijving Limburg](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/limburg.svg)
+![Systeembeschrijving Limburg](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/limburg.svg){.lightbox}
 
 Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.
 

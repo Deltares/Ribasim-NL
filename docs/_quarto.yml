@@ -41,6 +41,9 @@ format:
     theme: cosmo
     css: styles.css
     toc: true
+lightbox:
+  match: auto
+  effect: zoom
 quartodoc:
   style: pkgdown
   dir: reference
