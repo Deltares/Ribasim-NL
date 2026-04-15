@@ -203,45 +203,48 @@ def main(
             .reset_index(drop=True)
         )
 
-    # collectors
-    main_route_idx: set[int] = set()
-    point_collector = []
-    line_collector = []
+    if main_route_from_hydro_objects:
+        pass
+    else:
+        # collectors
+        main_route_idx: set[int] = set()
+        point_collector = []
+        line_collector = []
 
-    # find main routes per basin
-    for basin in basins.geometry.values:
-        # data selections
-        subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
-        subset_crossings = path_finder.select_crossings(
-            basin, crossings, buffer=selection_buffer, internal=internal_crossings
-        )
+        # find main routes per basin
+        for basin in basins.geometry.values:
+            # data selections
+            subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
+            subset_crossings = path_finder.select_crossings(
+                basin, crossings, buffer=selection_buffer, internal=internal_crossings
+            )
 
-        # create network-graph
-        if len(subset_hydro_objects) == 0:
-            LOG.warning(f"No hydro-objects found in {basin=}")
-            continue
-        graph = path_finder.generate_graph(subset_hydro_objects)
+            # create network-graph
+            if len(subset_hydro_objects) == 0:
+                LOG.warning(f"No hydro-objects found in {basin=}")
+                continue
+            graph = path_finder.generate_graph(subset_hydro_objects)
 
-        # basin flatness
-        use_full_graph = path_finder.full_graph_search(basin, graph, subset_crossings)
+            # basin flatness
+            use_full_graph = path_finder.full_graph_search(basin, graph, subset_crossings)
 
-        # find flow routes
-        flow_edges = path_finder.find_flow_routes(graph, subset_crossings, use_full_graph=use_full_graph)
-        indices = path_finder.label_flow_hydro_objects(subset_hydro_objects, graph, flow_edges)
-        main_route_idx.update(indices)
+            # find flow routes
+            flow_edges = path_finder.find_flow_routes(graph, subset_crossings, use_full_graph=use_full_graph)
+            indices = path_finder.label_flow_hydro_objects(subset_hydro_objects, graph, flow_edges)
+            main_route_idx.update(indices)
 
-        # update collectors
+            # update collectors
+            if wd_intermediate_output is not None:
+                points, lines = momepy.nx_to_gdf(graph)
+                point_collector.append(points)
+                line_collector.append(lines)
+
+        # concatenate basin-groups of point- and line-data
         if wd_intermediate_output is not None:
-            points, lines = momepy.nx_to_gdf(graph)
-            point_collector.append(points)
-            line_collector.append(lines)
-
-    # concatenate basin-groups of point- and line-data
-    if wd_intermediate_output is not None:
-        points = pd.concat(point_collector, axis=0)
-        lines = pd.concat(line_collector, axis=0)
-        points.to_file(wd_intermediate_output / _fn_graph, layer="points")
-        lines.to_file(wd_intermediate_output / _fn_graph, layer="lines")
+            points = pd.concat(point_collector, axis=0)
+            lines = pd.concat(line_collector, axis=0)
+            points.to_file(wd_intermediate_output / _fn_graph, layer="points")
+            lines.to_file(wd_intermediate_output / _fn_graph, layer="lines")
 
     # label hydro-objects
     hydro_objects["main-route"] = hydro_objects.index.isin(main_route_idx)
