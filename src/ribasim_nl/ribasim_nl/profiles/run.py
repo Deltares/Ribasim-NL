@@ -286,7 +286,9 @@ def main(
     bgt_data = _get_bgt_data(fn_bgt, basins)
 
     # patch network
-    if patch_network:
+    if main_route_from_hydro_objects:
+        LOG.warning(f"With {main_route_from_hydro_objects=}, no network patching executed ({patch_network=})")
+    elif patch_network:
         hydro_objects = path_finder.fully_connected_network(hydro_objects, buffer=patch_buffer)
         if crossings is not None:
             hydro_objects = path_finder.split_hydro_objects(hydro_objects, crossings, buffer=split_buffer)
