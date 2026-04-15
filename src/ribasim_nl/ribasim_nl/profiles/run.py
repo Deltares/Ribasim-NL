@@ -199,8 +199,8 @@ def main(
 
     # collectors
     main_route_idx: set[int] = set()
-    point_collector: list[shapely.Point] = []
-    line_collector: list[shapely.LineString] = []
+    point_collector: list[gpd.GeoDataFrame] = []
+    line_collector: list[gpd.GeoDataFrame] = []
     error_collector: list[int] = []
 
     # find main routes per basin
