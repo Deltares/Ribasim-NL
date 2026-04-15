@@ -178,8 +178,8 @@ def flagged_hydro_objects(
             print(f"File saved: {fn_table}")
 
         # upload profile files
-        print("\rUploading to the GoodCloud...", end="", flush=True)
+        print("Uploading to the GoodCloud...", end="", flush=True)
         cloud.upload_content(wd_table, overwrite=True)
         if export_intermediate_output:
             cloud.upload_content(wd_table / "intermediate", overwrite=True)
-        print("Files uploaded to the GoodCloud")
+        print("\rFiles uploaded to the GoodCloud")
