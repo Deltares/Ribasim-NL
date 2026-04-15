@@ -16,6 +16,18 @@ from ribasim_nl.profiles import hydrotopes as ht
 LOG = logging.getLogger(__name__)
 
 
+def _label_main_routing(
+    basins: gpd.GeoDataFrame,
+    hydro_objects: gpd.GeoDataFrame,
+    crossings: gpd.GeoDataFrame,
+    selection_buffer: float,
+    internal_crossings: bool,
+    wd_intermediate_output: pathlib.Path | None,
+) -> gpd.GeoDataFrame:
+    # TODO: Collect main route labelling based on shortest path in this function (and out of `main(..)`).
+    return NotImplemented
+
+
 def main(
     *data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = None, **kwargs
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
