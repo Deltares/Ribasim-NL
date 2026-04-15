@@ -200,7 +200,7 @@ def main(
 
     # collectors
     main_route_idx: set[int] = set()
-    point_collector: list[gpd.GeoSeries] = []
+    point_collector: list[gpd.GeoDataFrame] = []
     line_collector: list[gpd.GeoDataFrame] = []
     error_collector: list[int] = []
 
@@ -229,7 +229,7 @@ def main(
 
         # update collectors
         if wd_intermediate_output is not None:
-            points, lines = momepy.nx_to_gdf(graph)
+            points, lines = typing.cast(tuple[gpd.GeoDataFrame, gpd.GeoDataFrame], momepy.nx_to_gdf(graph))
             point_collector.append(points)
             line_collector.append(lines)
 
@@ -239,7 +239,7 @@ def main(
 
     # concatenate basin-groups of point- and line-data
     if wd_intermediate_output is not None:
-        points = typing.cast(gpd.GeoSeries, pd.concat(point_collector, axis=0))
+        points = typing.cast(gpd.GeoDataFrame, pd.concat(point_collector, axis=0))
         lines = typing.cast(gpd.GeoDataFrame, pd.concat(line_collector, axis=0))
         points.to_file(wd_intermediate_output / _fn_graph, layer="points")
         lines.to_file(wd_intermediate_output / _fn_graph, layer="lines")
