@@ -66,8 +66,37 @@ def main(
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
 
+_KNOWN_KWARGS: set[str] = {
+    "debug",
+    "epsg",
+    "filter_basins",
+    "fn_hydrotopes",
+    "target_levels",
+    "create_depth_profile_lines",
+    "kw_make_depth_profile",
+    "simplify_geometries",
+    "fn_bgt",
+    "bgt_buffer",
+    "bgt_full_coverage",
+    "patch_network",
+    "patch_buffer",
+    "split_buffer",
+    "val_ho_main_route",
+    "selection_buffer",
+    "water_bodies",
+    "col_wb_depth",
+    "create_wd_intermediate_output",
+}
+
+
 def main(
-    *data: gpd.GeoDataFrame, hydrotope_table: ht.HydrotopeTable | None = None, **kwargs
+    *data: gpd.GeoDataFrame,
+    hydrotope_table: ht.HydrotopeTable | None = None,
+    cloud: CloudStorage = CloudStorage(),
+    col_ho_main_route: str | None = None,
+    export_intermediate_output: bool = False,  # TODO: Integrate with defining `wd_intermediate_output`
+    wd_intermediate_output: pathlib.Path | None = None,
+    **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Full profile-generating workflow.
 
@@ -92,9 +121,9 @@ def main(
     :param hydrotope_table: table with hydrotope-classes, defaults to None  # TODO: Remove `fn_hydrotopes`
         When no `HydrotopeTable` is provided, a *.csv-file containing such a table must be provided via the keyworded
         argument `fn_hydrotopes`. If both are `None`, a `ValueError` is raised.
+    :param cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :param kwargs: optional arguments
 
-    :key cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
     :key filter_basins: filter basins on 'doorgaand' (i.e., excl. 'bergend'), defaults to True
@@ -137,23 +166,25 @@ def main(
     :key create_wd_intermediate: create working directory for intermediate output files (if non-existing), including the
         parents, defaults to True
 
-    :type data: geopandas.GeoDataFrame
-    :type hydrotope_table: hydrotopes.HydrotopeTable
-
     :return: basin profiles for flowing/'doorgaand' and storing/'bergend' separately
-    :rtype: tuple[geopandas.GeoDataFrame, geopandas.GeoDataFrame]
 
-    :raises ValueError: if both `hydrotope_table` and `fn_hydrotopes` are undefined (i.e., `None`)
-    :raises ValueError: if `wd_intermediate_output` is not defined while `export_intermediate_output=True`
-    :raises ValueError: if less than three (3) or more than four (4) geospatial dataframes are provided as `data`
+    :raises TypeError: if unknown keyword arguments are given (possible typos)
+    :raises ValueError: if both `hydrotope_table` and `fn_hydrotopes` are undefined (i.e., `None`)  # TODO: Remove
+    :raises ValueError: if `wd_intermediate_output` is not defined while `export_intermediate_output=True`  # TODO: Remove
+    :raises ValueError: if less than two (2) or more than four (4) geospatial dataframes are provided as `data`
     :raises ValueError: if NaN-values are found in one of the profile tables and debug-mode is not enabled
     """
+    # check for typos in `kwargs`
+    unknown = kwargs.keys() - _KNOWN_KWARGS
+    if unknown:
+        msg = f"Unexpected keyword argument(s): {unknown}"
+        raise TypeError(msg)
+
     # optional arguments
-    cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
     debug: bool = kwargs.get("debug", False)
     epsg: int = kwargs.get("epsg", 28992)
     filter_basins: bool = kwargs.get("filter_basins", True)
-    # > hydrotopes
+    # > hydrotopes  TODO: Remove
     fn_hydrotopes: pathlib.Path | str | None = kwargs.get("fn_hydrotopes")
     # > target levels
     target_levels: gpd.GeoDataFrame = kwargs.get("target_levels", data[0])
@@ -171,7 +202,7 @@ def main(
     patch_buffer: float = kwargs.get("patch_buffer", 1)
     split_buffer: float = kwargs.get("split_buffer", 0.1)
     # > main-routing from hydro-objects alone
-    col_ho_main_route: str | None = kwargs.get("col_ho_main_route")
+    # col_ho_main_route: str | None = kwargs.get("col_ho_main_route")
     val_ho_main_route: typing.Any = kwargs.get("val_ho_main_route", True)
     # > selection of crossings
     internal_crossings: bool = kwargs.get("internal_crossings", True)
@@ -180,8 +211,8 @@ def main(
     water_bodies: gpd.GeoDataFrame | None = kwargs.get("water_bodies")
     col_wb_depth: str = kwargs.get("col_wb_depth", "depth")
     # > export intermediate output
-    export_intermediate_output: bool = kwargs.get("export_intermediate_output", False)
-    wd_intermediate_output: pathlib.Path | None = kwargs.get("wd_intermediate_output")
+    # export_intermediate_output: bool = kwargs.get("export_intermediate_output", False)
+    # wd_intermediate_output: pathlib.Path | None = kwargs.get("wd_intermediate_output")
     create_wd_intermediate: bool = kwargs.get("create_wd_intermediate", True)
     _fn_int_output: str = "int_output.gpkg"
 
