@@ -102,6 +102,7 @@ def main(
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    # TODO: Check documentation (parameters and kwargs)
     """Full profile-generating workflow.
 
     The amount of required geospatial datasets (i.e., number of entries for `data`) is somewhat flexible. There are two
