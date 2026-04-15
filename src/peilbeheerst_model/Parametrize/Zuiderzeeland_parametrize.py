@@ -5,7 +5,6 @@ import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
-import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -27,7 +26,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
+DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -116,7 +115,7 @@ processor = RibasimFeedbackProcessor(
     ribasim_base_model_toml,
     work_dir,
     FeedbackFormulier_LOG_path,
-    use_validation=True,
+    use_validation=False,
 )
 processor.run()
 
@@ -562,8 +561,8 @@ if DYNAMIC_CONDITIONS:
     # Add dynamic groundwater
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    if offline_budgets.lhm_budget_path.exists():
-        offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
+    # if offline_budgets.lhm_budget_path.exists():
+    #     offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
