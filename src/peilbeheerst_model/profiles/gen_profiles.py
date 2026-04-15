@@ -118,6 +118,7 @@ def flagged_hydro_objects(
     This is a variant of `main(..)` in which the main route is predefined based on a flag in the hydro-objects.
 
     :param water_authority: water authority
+    :param fn_target_levels: filename with geospatial data of target levels
     :param fn_hydro_objects: filename with geospatial data of hydro-objects
         File is considered to be located at '<GoodCloud>/<water_authority>/fn_hydro_objects'
     :param col_flag: column-name containing the main route flag
