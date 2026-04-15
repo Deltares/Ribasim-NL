@@ -5,7 +5,7 @@ import typing
 
 import geopandas as gpd
 import pandas as pd
-from ribasim_nl.profiles import run
+from ribasim_nl.profiles import hydrotopes, run
 
 from ribasim_nl import CloudStorage
 
@@ -60,18 +60,26 @@ def main(
     fn_bgt = cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
     fn_hydrotopes = cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv")
 
+    # load hydrotope-table
+    table = hydrotopes.HydrotopeTable.from_csv(fn_hydrotopes)
+
+    # intermediate output: working directory
+    wd_int = (
+        cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate") if export_intermediate_output else None
+    )
+
     # execute profile generation
     profiles_tables = run.main(
         gdf_basins,
         gdf_hydro_objects,
         gdf_crossings,
         gdf_cross_sections,
+        hydrotope_table=table,
         target_levels=gdf_target_levels,
         cloud=cloud,
         fn_bgt=fn_bgt,
-        fn_hydrotopes=fn_hydrotopes,
         export_intermediate_output=export_intermediate_output,
-        wd_intermediate_output=cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate"),
+        wd_intermediate_output=wd_int,
     )
 
     # export profile table
@@ -89,7 +97,7 @@ def main(
         cloud.upload_content(wd_table, overwrite=True)
         if export_intermediate_output:
             cloud.upload_content(wd_table / "intermediate", overwrite=True)
-        print("Files uploaded to the GoodCloud")
+        print("\rFiles uploaded to the GoodCloud")
 
 
 def flagged_hydro_objects(
@@ -149,20 +157,25 @@ def flagged_hydro_objects(
     fn_bgt = cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
     fn_hydrotopes = cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv")
 
-    # execute profile generation
+    # load hydrotope-table
+    table = hydrotopes.HydrotopeTable.from_csv(fn_hydrotopes)
+
+    # intermediate output: working directory
     wd_int = (
         cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate") if export_intermediate_output else None
     )
+
+    # execute profile generation
     profiles_tables = run.main(
         gdf_basins,
         gdf_hydro_objects,
         gdf_cross_sections,
+        hydrotope_table=table,
         col_ho_main_route=col_flag,
         val_ho_main_route=val_flag,
         target_levels=gdf_target_levels,
         cloud=cloud,
         fn_bgt=fn_bgt,
-        fn_hydrotopes=fn_hydrotopes,
         export_intermediate_output=export_intermediate_output,
         wd_intermediate_output=wd_int,
     )
