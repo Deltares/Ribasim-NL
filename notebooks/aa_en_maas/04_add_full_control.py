@@ -238,7 +238,7 @@ discharge_supply_df["summer"] = discharge_supply_df["summer"].str.replace(",", "
 discharge_supply_df["winter"] = discharge_supply_df["winter"].str.replace(",", ".").astype(float)
 
 # make code (and node type) table
-node_table_df = model.node_table().df
+node_table_df = model.node.df
 
 
 code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
