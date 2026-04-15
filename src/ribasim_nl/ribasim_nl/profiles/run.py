@@ -3,6 +3,7 @@
 import logging
 import pathlib
 import typing
+import warnings
 
 import geopandas as gpd
 import momepy
@@ -216,6 +217,19 @@ def main(
     create_wd_intermediate: bool = kwargs.get("create_wd_intermediate", True)
     _fn_graph = "graph.gpkg"
     _fn_int_output = "int_output.gpkg"
+
+    # transition: abandon `fn_hydrotopes` as optional argument
+    # TODO: Implement deprecation of `fn_hydrotopes`
+    if fn_hydrotopes is not None:
+        warnings.warn(
+            "The semi-optional `fn_hydrotopes`-argument is deprecated and will be removed in the future. Load the "
+            "hydrotopes-table explicitly and pass it to `hydrotope_table` instead:\n\n"
+            "    from ribasim_nl.profiles import hydrotopes as ht\n"
+            "    table = ht.HydrotopeTable.from_csv('path/to/file.csv')\n"
+            "    main(..., hydrotope_table=table)\n",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     # validate optional arguments
     # > hydrotope data
