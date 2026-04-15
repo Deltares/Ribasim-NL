@@ -461,6 +461,19 @@ def _unpack_data(
 
 
 def _validate_hydro_objects_main_routing(hydro_objects: gpd.GeoDataFrame, col: str, val: typing.Any) -> None:
+    """Validate hydro-objects if the main route is flag-based.
+
+    The validation includes:
+        1.  The flag-column is in the hydro-objects dataset;
+        2.  The flag-value(s) is/are present in the flag-column (at least one of the values should be present).
+
+    :param hydro_objects: hydro-objects with main route flagging
+    :param col: column-name of main route flag
+    :param val: value(s) considered as main route flag(s)
+
+    :raises IndexError: if `col` not found in `hydro_objects`
+    :raises ValueError: if `val` (or at least one entry of `val`) is found in `hydro_objects[col]`
+    """
     if col not in hydro_objects.columns:
         msg = f"{col=} not found in {hydro_objects.columns=}"
         raise IndexError(msg)
