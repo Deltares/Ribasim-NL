@@ -1,6 +1,7 @@
 """Generation of profiles."""
 
 import pathlib
+import typing
 
 import geopandas as gpd
 import pandas as pd
@@ -104,6 +105,7 @@ def flagged_hydro_objects(
     fn_hydro_objects: str | pathlib.Path,
     col_flag: str,
     *,
+    val_flag: typing.Any = True,
     layer_hydro_objects: str = "hydroobjects",
     export_profile_tables: bool = True,
     sync: bool = True,
@@ -118,6 +120,7 @@ def flagged_hydro_objects(
     :param fn_hydro_objects: filename with geospatial data of hydro-objects
         File is considered to be located at '<GoodCloud>/<water_authority>/fn_hydro_objects'
     :param col_flag: column-name containing the main route flag
+    :param val_flag: value(s) flagging hydro-object as part of the main route, defaults to True
     :param layer_hydro_objects: layer-name with hydro-objects data, defaults to "hydroobjects"
     :param export_profile_tables: export generated profile tables, defaults to True
     :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
@@ -162,6 +165,7 @@ def flagged_hydro_objects(
         gdf_hydro_objects,
         gdf_cross_sections,
         col_ho_main_route=col_flag,
+        val_ho_main_route=val_flag,
         target_levels=gdf_target_levels,
         cloud=cloud,
         fn_bgt=fn_bgt,
