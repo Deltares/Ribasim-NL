@@ -17,6 +17,68 @@ from ribasim_nl.profiles import hydrotopes as ht
 LOG = logging.getLogger(__name__)
 
 
+def _unpack_data(
+    *data: gpd.GeoDataFrame | None, main_route_from_hydro_objects: bool
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame | None, gpd.GeoDataFrame | None]:
+    match len(data):
+        case 2:
+            if not main_route_from_hydro_objects:
+                msg = (
+                    f"If two datasets are given ({len(data)=}), the main-routing must follow from a flag in the "
+                    f"hydro-objects: col_ho_main_route=None -> `str`"
+                )
+                raise TypeError(msg)
+            basins, hydro_objects = data
+            crossings = cross_sections = None
+        case 3:
+            if main_route_from_hydro_objects:
+                basins, hydro_objects, cross_sections = data
+                crossings = None
+            else:
+                # TODO: Reorder datasets unpacking
+                basins, crossings, hydro_objects = data
+                cross_sections = None
+        case 4:
+            if main_route_from_hydro_objects:
+                msg = (
+                    f"If four datasets are given ({len(data)=}), the main-routing follows from the crossings: "
+                    f"col_ho_main_route=`str` -> None"
+                )
+                raise TypeError(msg)
+            # TODO: Reorder datasets unpacking
+            basins, crossings, hydro_objects, cross_sections = data
+        case _:
+            msg = f"There should be 2, 3, or 4 GeoDataFrames provided; {len(data)} given."
+            raise ValueError(msg)
+
+    if cross_sections is None:
+        LOG.warning("No cross-section data provided: Cross-section profiles fully based on hydrotopes")
+
+    return basins, hydro_objects, crossings, cross_sections
+
+
+def _validate_hydro_objects_main_routing(hydro_objects: gpd.GeoDataFrame, col: str, val: typing.Any) -> None:
+    if col not in hydro_objects.columns:
+        msg = f"{col=} not found in {hydro_objects.columns=}"
+        raise IndexError(msg)
+    if pd.api.types.is_scalar(val):
+        if val not in hydro_objects[col].unique():
+            msg = f"{val=} not found in hydro_objects[col_ho_main_route] ({col=})"
+            raise ValueError(msg)
+    else:
+        if not any(v in hydro_objects[col].unique() for v in val):
+            msg = f"None of {val=} found in hydro_objects[col_ho_main_route] ({col=})"
+            raise ValueError(msg)
+
+
+def _get_bgt_data(fn_bgt: pathlib.Path | str | None, basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    geo_filter = shapely.MultiPolygon(basins.convex_hull.values).convex_hull
+    if fn_bgt is None:
+        return bgt.download_bgt_water(geo_filter=geo_filter)
+    fn_bgt = pathlib.Path(fn_bgt)
+    return bgt.get_water_surfaces(fn_bgt.parent, fn=fn_bgt.name, geo_filter=geo_filter, write=True)
+
+
 def _label_main_routing(
     basins: gpd.GeoDataFrame,
     hydro_objects: gpd.GeoDataFrame,
@@ -274,53 +336,14 @@ def main(
         gdf.to_crs(epsg=epsg, inplace=True)
 
     # split dataframes
-    match len(data):
-        case 2:
-            if not main_route_from_hydro_objects:
-                msg = (
-                    f"If two datasets are given ({len(data)=}), the main-routing must follow from a flag in the "
-                    f"hydro-objects: {col_ho_main_route=} -> `str`"
-                )
-                raise TypeError(msg)
-            basins, hydro_objects = data
-            crossings = cross_sections = None
-            LOG.warning("No cross-section data provided: Cross-section profiles fully based on hydrotopes")
-        case 3:
-            if main_route_from_hydro_objects:
-                basins, hydro_objects, cross_sections = data
-                crossings = None
-            else:
-                # TODO: Reorder datasets-unpacking
-                basins, crossings, hydro_objects = data
-                cross_sections = None
-                LOG.warning("No cross-section data provided: Cross-section profiles fully based on hydrotopes")
-        case 4:
-            if main_route_from_hydro_objects:
-                msg = (
-                    f"If four datasets are given ({len(data)=}), the main-routing follows from the crossings: "
-                    f"{col_ho_main_route=} -> None"
-                )
-                raise TypeError(msg)
-            # TODO: Reorder datasets-unpacking
-            basins, crossings, hydro_objects, cross_sections = data
-        case _:
-            msg = f"There should be 2, 3, or 4 GeoDataFrames provided; {len(data)} given."
-            raise ValueError(msg)
+    basins, hydro_objects, crossings, cross_sections = _unpack_data(
+        *data, main_route_from_hydro_objects=main_route_from_hydro_objects
+    )
 
     # main route data available in hydro-objects [optional]
     if main_route_from_hydro_objects:
         assert col_ho_main_route is not None
-        if col_ho_main_route not in hydro_objects.columns:
-            msg = f"{col_ho_main_route=} not found in {hydro_objects.columns=}"
-            raise IndexError(msg)
-        if pd.api.types.is_scalar(val_ho_main_route):
-            if val_ho_main_route not in hydro_objects[col_ho_main_route].unique():
-                msg = f"{val_ho_main_route=} not found in hydro_objects[col_ho_main_route] ({col_ho_main_route=})"
-                raise ValueError(msg)
-        else:
-            if not any(v in hydro_objects[col_ho_main_route].unique() for v in val_ho_main_route):
-                msg = f"None of {val_ho_main_route=} found in hydro_objects[col_ho_main_route] ({col_ho_main_route=})"
-                raise ValueError(msg)
+        _validate_hydro_objects_main_routing(hydro_objects, col_ho_main_route, val_ho_main_route)
 
     # creating depth profile-lines
     if create_depth_profile_lines and cross_sections is not None:
@@ -333,12 +356,7 @@ def main(
             crossings = path_finder.simplify_geodata(crossings, tolerance=1e-2, col_in_use="in_use")
 
     # get BGT-data
-    geo_filter = shapely.MultiPolygon(basins.convex_hull.values).convex_hull
-    if fn_bgt is None:
-        bgt_data = bgt.download_bgt_water(geo_filter=geo_filter)
-    else:
-        fn_bgt = pathlib.Path(fn_bgt)
-        bgt_data = bgt.get_water_surfaces(fn_bgt.parent, fn=fn_bgt.name, geo_filter=geo_filter, write=True)
+    bgt_data = _get_bgt_data(fn_bgt, basins)
 
     # patch network
     if patch_network:
