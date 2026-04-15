@@ -293,11 +293,13 @@ def main(
     hydro_objects["main-route"] = hydro_objects.index.isin(main_route_idx)
     if wd_intermediate_output is not None:
         hydro_objects[hydro_objects["main-route"]].to_file(wd_intermediate_output / _fn_int_output, layer="main-route")
-        if internal_crossings:
-            _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)
-        else:
-            _temp = shapely.MultiPolygon(basins.explode().exterior.buffer(selection_buffer))
-        crossings[crossings.intersects(_temp)].to_file(wd_intermediate_output / _fn_int_output, layer="endpoints")
+        if not main_route_from_hydro_objects:
+            if internal_crossings:
+                _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)
+            else:
+                _temp = shapely.MultiPolygon(basins.explode().exterior.buffer(selection_buffer))
+            crossings[crossings.intersects(_temp)].to_file(wd_intermediate_output / _fn_int_output, layer="endpoints")
+            del _temp
 
     # BGT-coupling
     hydro_objects = width.couple_bgt_to_hydro_objects(hydro_objects, bgt_data, min_overlap=bgt_buffer)
