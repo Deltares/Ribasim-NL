@@ -115,12 +115,29 @@ def main(
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Full profile-generating workflow.
 
+    The amount of required geospatial datasets (i.e., number of entries for `data`) is somewhat flexible. There are two
+    considerations that influence this:
+        1.  Is the main route ('doorgaand') flagged in the hydro-objects? If so, `col_ho_main_route` should be provided
+            and the `crossings`-data is not used, and thus omitted. Thereby, the required number of geospatial datasets
+            reduces with one (2 or 3 datasets required).
+        2.  Are there measured cross-sectional profiles to be incorporated? If so, 3 or 4 geospatial datasets should be
+            provided: Three (3) datasets if `col_ho_main_route` is defined (i.e., hydro-objects contain main-route
+            flagging); or four (4) datasets if the main-routing follows from the shortest path implementation. If this
+            "additional dataset" is not provided, the cross-sections are fully based on the hydrotope-table (which
+            raises a warning, but does not break the code).
+
+    The order of the geospatial datasets is as follows:
+        1.  basins (polygons)
+        2.  hydro-objects (lines)
+        3.  crossings (points) [optional]
+        4.  cross-sections (points | lines) [optional]
+
     :param data: geospatial datasets:
         1.  basins (polygons)
         2.  crossings (points)  # TODO: Becomes kind-of optional: Switch order with hydro-objects?
         3.  hydro-objects (lines)
         4.  cross-sections (points | lines) [optional]
-    :param hydrotope_table: table with hydrotope-classes, defaults to None
+    :param hydrotope_table: table with hydrotope-classes, defaults to None  # TODO: Remove `fn_hydrotopes`
         When no `HydrotopeTable` is provided, a *.csv-file containing such a table must be provided via the keyworded
         argument `fn_hydrotopes`. If both are `None`, a `ValueError` is raised.
     :param kwargs: optional arguments
