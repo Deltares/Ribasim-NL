@@ -260,7 +260,10 @@ def main(
     match len(data):
         case 2:
             if not main_route_from_hydro_objects:
-                msg = f"If two datasets are given ({len(data)=}), the main-routing must follow from a flag in the hydro-objects: {col_ho_main_route=} -> `str`"
+                msg = (
+                    f"If two datasets are given ({len(data)=}), the main-routing must follow from a flag in the "
+                    f"hydro-objects: {col_ho_main_route=} -> `str`"
+                )
                 raise TypeError(msg)
             basins, hydro_objects = data
             crossings = cross_sections = None
@@ -276,7 +279,10 @@ def main(
                 LOG.warning("No cross-section data provided: Cross-section profiles fully based on hydrotopes")
         case 4:
             if main_route_from_hydro_objects:
-                msg = f"If four datasets are given ({len(data)=}), the main-routing follows from the crossings: {col_ho_main_route=} -> None"
+                msg = (
+                    f"If four datasets are given ({len(data)=}), the main-routing follows from the crossings: "
+                    f"{col_ho_main_route=} -> None"
+                )
                 raise TypeError(msg)
             # TODO: Reorder datasets-unpacking
             basins, crossings, hydro_objects, cross_sections = data
@@ -423,7 +429,8 @@ def main(
     if sum(flowing_profiles["area"].isna()) > 0:
         if debug:
             LOG.warning(
-                f"NaN-values present in profile-table (flowing/'doorgaand'):\n{flowing_profiles[flowing_profiles.isna()]}"
+                f"NaN-values present in profile-table (flowing/'doorgaand'):"
+                f"\n{flowing_profiles[flowing_profiles.isna()]}"
             )
         else:
             msg = f"Abort profile table generation with NaN-values: {sum(flowing_profiles.isna())} NaN-values found"
