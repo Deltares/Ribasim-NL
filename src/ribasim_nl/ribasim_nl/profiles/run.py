@@ -70,7 +70,7 @@ _KNOWN_KWARGS: set[str] = {
     "debug",
     "epsg",
     "filter_basins",
-    "fn_hydrotopes",
+    "fn_hydrotopes",  # TODO: Remove
     "target_levels",
     "create_depth_profile_lines",
     "kw_make_depth_profile",
