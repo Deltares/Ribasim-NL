@@ -450,28 +450,27 @@ def _label_main_routing_from_network(
     basins: gpd.GeoDataFrame,
     hydro_objects: gpd.GeoDataFrame,
     crossings: gpd.GeoDataFrame,
-    selection_buffer: float,
-    internal_crossings: bool,
-    wd_intermediate_output: pathlib.Path | None,
+    buffer: float,
+    internal: bool,
+    wd: pathlib.Path | None,
 ) -> set[int]:
     """Labelling of main-route based on shortest path(s) between crossings.
 
     :param basins: basin areas (polygons)
     :param hydro_objects: hydro-objects (lines)
     :param crossings: basin-crossings (points)
-    :param selection_buffer: buffer used when selecting the subset of crossings for a single basin
+    :param buffer: buffer used when selecting the subset of crossings for a single basin
         This buffer is applied on the basin-polygon for `internal_crossings=True`, and to the basin-polygon's exterior
         for `internal_crossings=False`.
-    :param internal_crossings: include crossings inside the basin (`True`) or limit to crossings at the basin-border
-        (`False`)
-    :param wd_intermediate_output: working directory for intermediate output files
+    :param internal: include crossings inside the basin (`True`) or limit to crossings at the basin-border (`False`)
+    :param wd: working directory for intermediate output files
 
     :type basins: geopandas.GeoDataFrame
     :type hydro_objects: geopandas.GeoDataFrame
     :type crossings: geopandas.GeoDataFrame
-    :type selection_buffer: float
-    :type internal_crossings: bool
-    :type wd_intermediate_output: pathlib.Path | None
+    :type buffer: float
+    :type internal: bool
+    :type wd: pathlib.Path | None
 
     :return: hydro-objects indices to label as main route
     :rtype: set[int]
@@ -486,9 +485,7 @@ def _label_main_routing_from_network(
     for node_id, basin in zip(basins["node_id"].values, basins.geometry.values):
         # data selections
         subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
-        subset_crossings = path_finder.select_crossings(
-            basin, crossings, buffer=selection_buffer, internal=internal_crossings
-        )
+        subset_crossings = path_finder.select_crossings(basin, crossings, buffer=buffer, internal=internal)
 
         # create network-graph
         if len(subset_hydro_objects) == 0:
@@ -506,7 +503,7 @@ def _label_main_routing_from_network(
         main_route_idx.update(indices)
 
         # update collectors
-        if wd_intermediate_output is not None:
+        if wd is not None:
             points, lines = typing.cast(tuple[gpd.GeoDataFrame, gpd.GeoDataFrame], momepy.nx_to_gdf(graph))
             point_collector.append(points)
             line_collector.append(lines)
@@ -516,11 +513,11 @@ def _label_main_routing_from_network(
         LOG.critical(f"No hydro-objects found for the following basins ({len(error_collector)}): {error_collector}")
 
     # concatenate basin-groups of point- and line-data
-    if wd_intermediate_output is not None:
+    if wd is not None:
         points = typing.cast(gpd.GeoDataFrame, pd.concat(point_collector, axis=0))
         lines = typing.cast(gpd.GeoDataFrame, pd.concat(line_collector, axis=0))
-        points.to_file(wd_intermediate_output / "graph.gpkg", layer="points")
-        lines.to_file(wd_intermediate_output / "graph.gpkg", layer="lines")
+        points.to_file(wd / "graph.gpkg", layer="points")
+        lines.to_file(wd / "graph.gpkg", layer="lines")
 
     return main_route_idx
 
