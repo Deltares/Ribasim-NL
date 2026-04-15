@@ -360,44 +360,34 @@ def main(
 
 
 def _unpack_data(
-    *data: gpd.GeoDataFrame | None, flagged_main_route: bool
+    *data: gpd.GeoDataFrame, flagged_main_route: bool
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame | None, gpd.GeoDataFrame | None]:
     """Unpack geospatial datasets.
 
-    Unpacking of the geospatial datasets is influenced by whether the hydro-objects are flagged to determine the main
-    route, or whether the main routes have to be determined via the shortest path(s) between crossings.
+    The unpacking order depends on whether the main route is flagged in the hydro-objects or determined via crossings:
 
-    If `main_route_from_hydro_objects=True`, the hydro-objects contain a flag stating whether each entry belongs to the
-    main route (or not). In that case, the `crossings`-dataset is omitted.
-
-    As the `cross_sections`-dataset is optional, the number of geospatial datasets determines whether this dataset is
-    provided (or not). If not, a warning is raised stating that all hydro-objects will contain representative depth
-    values based on hydrotopes. This may - and probably will - impact the Ribasim-simulation.
-
-    The unpacking of the geospatial datasets results in the following unpacking-order of datasets:
-    if main_route_from_hydro_objects:
+    if flagged_main_route:
         basins, hydro_objects[, cross_sections] = data
     else:
         basins, hydro_objects, crossings[, cross_sections] = data
 
-    This means that the geospatial datasets should be provided in the following order (with type of geometry between
-    brackets):
+    Expected datasets (with geometry type):
         1.  basins (polygons)
         2.  hydro-objects (lines)
-        3.  crossings (points) [optional]
-        4.  cross-sections (points | lines) [optional]
+        3.  crossings (points) - omitted when `flagged_main_route=True`
+        4.  cross-sections (points | lines) - optional
 
-    :param data: geospatial datasets
-    :param flagged_main_route: main route flag present in hydro-objects geospatial dataset
+    When `cross_sections` is omitted, representative depth values are derived entirely from hydrotopes, which may impact
+    the Ribasim simulation.
 
-    :type data: geopandas.GeoDataFrame
-    :type flagged_main_route: bool
+    :param data: geospatial datasets, provided in the order above
+    :param flagged_main_route: whether hydro-objects contains a main-route flag
 
-    :return: unpacked geospatial datasets
-    :rtype: tuple[GeoDataFrame, GeoDataFrame, GeoDataFrame | None, GeoDataFrame | None]
+    :return: (basins, hydro_objects, crossings, cross_sections)
+        `crossings` and/or `cross_sections` may be `None`
 
     :raises TypeError: if the number of geospatial datasets is inconsistent with `flagged_main_route`
-    :raises ValueError: if the number of geospatial datasets has no implementation
+    :raises ValueError: if the number of geospatial datasets is not 2, 3, or 4
     """
     # unpack datasets
     match len(data):
