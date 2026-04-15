@@ -1,0 +1,96 @@
+"""Generation of profiles."""
+
+import geopandas as gpd
+import pandas as pd
+from ribasim_nl.profiles import run
+
+from ribasim_nl import CloudStorage
+
+
+def main(
+    water_authority: str,
+    fn_network: str,
+    *,
+    export_profile_tables: bool = True,
+    sync: bool = True,
+    overwrite: bool = False,
+    export_intermediate_output: bool = False,
+) -> None:
+    """Execute profile table generator.
+
+    This is the generalised profile-generator in which all common files, directories, etc. are coded to minimise
+    overlapping code.
+
+    :param water_authority: water authority
+    :param fn_network: filename with geospatial data of crossings and hydro-objects
+        File is considered to be located at '<GoodCloud>/<water_authority>/verwerkt/Crossings/<fn_network>
+    :param export_profile_tables: export generated profile tables, defaults to True
+    :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
+    :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
+    :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
+
+    :type water_authority: str
+    :type fn_network: str
+    :type export_profile_tables: bool, optional
+    :type sync: bool, optional
+    :type overwrite: bool, optional
+    :type export_intermediate_output: bool, optional
+    """
+    # get files from the cloud
+    cloud = CloudStorage()
+    if sync:
+        print("\rSyncing with the GoodCloud...", end="", flush=True)
+        cloud.download_verwerkt(water_authority, overwrite=overwrite)
+        cloud.download_basisgegevens(["Hydrotypen"], overwrite=overwrite)
+        print("Synced with the GoodCloud: 'Verwerkt' & 'Basisgegevens/Hydrotypen'")
+
+    # read files
+    # > basins
+    fn_basins = cloud.joinpath(
+        water_authority, "verwerkt/Work_dir", f"{water_authority}_parameterized", "input/database.gpkg"
+    )
+    gdf_basins = gpd.read_file(fn_basins, layer="Basin / area")
+    # FIXME: Circular usage of basin-data
+    gdf_basins = gdf_basins[gdf_basins["node_id"] == gdf_basins["meta_node_id"]]
+    # > crossings, hydro-objects & target levels
+    _fn_network = cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_network)
+    gdf_crossings = gpd.read_file(_fn_network, layer="crossings_hydroobject_filtered")
+    gdf_hydro_objects = gpd.read_file(_fn_network, layer="hydroobject")
+    gdf_target_levels = run.target_level_polygons(_fn_network)
+    # > cross-sections
+    fn_cross_sections = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
+    gdf_cross_sections = gpd.read_file(fn_cross_sections)
+    # > BGT-data & hydrotopes
+    fn_bgt = cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
+    fn_hydrotopes = cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv")
+
+    # execute profile generation
+    profiles_tables = run.main(
+        gdf_basins,
+        gdf_crossings,
+        gdf_hydro_objects,
+        gdf_cross_sections,
+        target_levels=gdf_target_levels,
+        cloud=cloud,
+        fn_bgt=fn_bgt,
+        fn_hydrotopes=fn_hydrotopes,
+        export_intermediate_output=export_intermediate_output,
+        wd_intermediate_output=cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate"),
+    )
+
+    # export profile table
+    if export_profile_tables:
+        wd_table = cloud.joinpath(water_authority, "verwerkt", "profielen")
+        wd_table.parent.mkdir(exist_ok=True)
+        for table, name in zip(profiles_tables, ("doorgaand", "bergend")):
+            fn_table = wd_table / f"profielen_{name}.csv"
+            table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
+            table.to_csv(fn_table, index=False)
+            print(f"File saved: {fn_table}")
+
+        # upload profile files
+        print("Uploading to the GoodCloud...", end="", flush=True)
+        cloud.upload_content(wd_table, overwrite=True)
+        if export_intermediate_output:
+            cloud.upload_content(wd_table / "intermediate", overwrite=True)
+        print("Files uploaded to the GoodCloud")

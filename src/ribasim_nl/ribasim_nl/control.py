@@ -1,5 +1,5 @@
 # %%
-
+import logging
 import math
 from datetime import datetime
 from typing import Literal
@@ -10,9 +10,12 @@ from ribasim import Node, nodes
 from ribasim.nodes import discrete_control, flow_demand
 from shapely.geometry import Point, Polygon
 
+import ribasim_nl
 from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
+
+LOG = logging.getLogger(__name__)
 
 
 class InvalidTable(Exception):
@@ -1534,6 +1537,7 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
         "Inlaat buitenwater peilgebied, aanvoer afvoer gemaal",
         "Inlaat buitenwater boezem, aanvoer afvoer gemaal",
         "Boezem boezem, aanvoer afvoer gemaal",
+        "Regulier gemaal",
     ]
 
     # select all drain categories from identify_node_metacatgory
@@ -1564,3 +1568,98 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
         )
 
     return from_to_node_table
+
+
+def set_node_functions(
+    from_to_table: gpd.GeoDataFrame,
+    *,
+    to_supply: tuple[int, ...] = (),
+    to_flow_control: tuple[int, ...] = (),
+    to_drain: tuple[int, ...] = (),
+) -> gpd.GeoDataFrame:
+    """Set pump/outlet function by node-ID.
+
+    :param from_to_table: table with from-to node data
+    :param to_supply: node-IDs to be set as 'supply', defaults to ()
+    :param to_flow_control: node-IDs to be set as 'flow_control', defaults to ()
+    :param to_drain: node-IDs to be set as 'drain', defaults to ()
+
+    :type from_to_table: geopandas.GeoDataFrame
+    :type to_supply: tuple[int, ...], optional
+    :type to_flow_control: tuple[int, ...], optional
+    :type to_drain: tuple[int, ...], optional
+
+    :return: updated table with from-to node data
+    :rtype: geopandas.GeoDataFrame
+    """
+    # no duplicate node-IDs
+    __duplicates: bool = False
+    if set(to_supply) & set(to_flow_control):
+        LOG.critical(
+            f"Node-IDs occurring in both `to_supply` and `to_flow_control`: {set(to_supply) & set(to_flow_control)}"
+        )
+        __duplicates = True
+    if set(to_supply) & set(to_drain):
+        LOG.critical(f"Node-IDs occurring in both `to_supply` and `to_drain`: {set(to_supply) & set(to_drain)}")
+        __duplicates = True
+    if set(to_flow_control) & set(to_drain):
+        LOG.critical(
+            f"Node-IDs occurring in both `to_flow_control` and `to_drain`: {set(to_flow_control) & set(to_drain)}"
+        )
+        __duplicates = True
+    if __duplicates:
+        msg = "Node-IDs assigned to different controls; see log-statements."
+        raise ValueError(msg)
+
+    # modification flag
+    __modified: bool = False
+
+    # set 'supply'-function
+    if to_supply:
+        from_to_table.loc[from_to_table.index.isin(to_supply), "function"] = "supply"
+        __modified = True
+
+    # set 'flow_control'-function
+    if to_flow_control:
+        from_to_table.loc[from_to_table.index.isin(to_flow_control), "function"] = "flow_control"
+        __modified = True
+
+    # set 'drain'-function
+    if to_drain:
+        from_to_table.loc[from_to_table.index.isin(to_drain), "function"] = "drain"
+        __modified = True
+
+    # no modifications
+    if not __modified:
+        LOG.debug(f"From-to-table not modified: {to_supply=}, {to_flow_control=}, {to_drain=}")
+
+    # return modified from-to table
+    return from_to_table
+
+
+def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Model:
+    """Remove duplicate control nodes.
+
+    Duplicate control nodes may arise causing the model to err. Duplicate control nodes are DiscreteControl-nodes that
+    'control' the same Outlet- or Pump-node.
+
+    :param ribasim_model: Ribasim model
+    :type ribasim_model: ribasim_nl.Model
+
+    :return: Ribasim model
+    :rtype: ribasim_nl.Model
+    """
+    # get duplicate control nodes
+    df_link = ribasim_model.link.df[ribasim_model.link.df["link_type"] == "control"].assign(
+        count=lambda df: df.groupby("to_node_id").cumcount()
+    )
+    duplicates = df_link[df_link["count"] > 0]
+
+    # remove duplicate control nodes
+    if not duplicates.empty:
+        LOG.warning(f"Duplicate control nodes found ({len(duplicates)})")
+        for control_node_id in duplicates["from_node_id"].values:
+            ribasim_model.remove_node(control_node_id, remove_links=True)
+
+    # return update Ribasim model
+    return ribasim_model
