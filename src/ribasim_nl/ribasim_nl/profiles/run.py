@@ -2,6 +2,7 @@
 
 import logging
 import pathlib
+import typing
 
 import geopandas as gpd
 import momepy
@@ -199,7 +200,7 @@ def main(
 
     # collectors
     main_route_idx: set[int] = set()
-    point_collector: list[gpd.GeoDataFrame] = []
+    point_collector: list[gpd.GeoSeries] = []
     line_collector: list[gpd.GeoDataFrame] = []
     error_collector: list[int] = []
 
@@ -238,8 +239,8 @@ def main(
 
     # concatenate basin-groups of point- and line-data
     if wd_intermediate_output is not None:
-        points = pd.concat(point_collector, axis=0)
-        lines = pd.concat(line_collector, axis=0)
+        points = typing.cast(gpd.GeoSeries, pd.concat(point_collector, axis=0))
+        lines = typing.cast(gpd.GeoDataFrame, pd.concat(line_collector, axis=0))
         points.to_file(wd_intermediate_output / _fn_graph, layer="points")
         lines.to_file(wd_intermediate_output / _fn_graph, layer="lines")
 
