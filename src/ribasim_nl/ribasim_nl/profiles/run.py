@@ -35,7 +35,7 @@ def _overwrite_depth(
 
     :param hydro_objects: hydro-objects containing representative depths
     :param water_bodies: (Multi)Polygon-data with depth-values to overwrite
-    :param col_depth: column-name of `water_bodies` containing depth-values, defaults to 'depth'
+    :param col_depth: column-name of `water_bodies` containing depth-values, defaults to "depth"
 
     :type hydro_objects: geopandas.GeoDataFrame
     :type water_bodies: geopandas.GeoDataFrame
@@ -68,7 +68,7 @@ def main(
 
     :param data: geospatial datasets:
         1.  basins (polygons)
-        2.  crossings (points)
+        2.  crossings (points)  # TODO: Becomes kind-of optional: Switch order with hydro-objects?
         3.  hydro-objects (lines)
         4.  cross-sections (points | lines) [optional]
     :param hydrotope_table: table with hydrotope-classes, defaults to None
