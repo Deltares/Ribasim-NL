@@ -258,14 +258,30 @@ def main(
 
     # split dataframes
     match len(data):
-        case 3:
-            basins, crossings, hydro_objects = data
-            cross_sections = None
+        case 2:
+            if not main_route_from_hydro_objects:
+                msg = f"If two datasets are given ({len(data)=}), the main-routing must follow from a flag in the hydro-objects: {col_ho_main_route=} -> `str`"
+                raise TypeError(msg)
+            basins, hydro_objects = data
+            crossings = cross_sections = None
             LOG.warning("No cross-section data provided: Cross-section profiles fully based on hydrotopes")
+        case 3:
+            if main_route_from_hydro_objects:
+                basins, hydro_objects, cross_sections = data
+                crossings = None
+            else:
+                # TODO: Reorder datasets-unpacking
+                basins, crossings, hydro_objects = data
+                cross_sections = None
+                LOG.warning("No cross-section data provided: Cross-section profiles fully based on hydrotopes")
         case 4:
+            if main_route_from_hydro_objects:
+                msg = f"If four datasets are given ({len(data)=}), the main-routing follows from the crossings: {col_ho_main_route=} -> None"
+                raise TypeError(msg)
+            # TODO: Reorder datasets-unpacking
             basins, crossings, hydro_objects, cross_sections = data
         case _:
-            msg = f"There should be 3 or 4 GeoDataFrames provided; {len(data)} given."
+            msg = f"There should be 2, 3, or 4 GeoDataFrames provided; {len(data)} given."
             raise ValueError(msg)
 
     # main route data available in hydro-objects [optional]
@@ -289,8 +305,9 @@ def main(
 
     # remove duplicate geometries
     if simplify_geometries:
-        crossings = path_finder.simplify_geodata(crossings, tolerance=1e-2, col_in_use="in_use")
         hydro_objects = path_finder.simplify_geodata(hydro_objects)
+        if crossings is not None:
+            crossings = path_finder.simplify_geodata(crossings, tolerance=1e-2, col_in_use="in_use")
 
     # get BGT-data
     geo_filter = shapely.MultiPolygon(basins.convex_hull.values).convex_hull
@@ -303,7 +320,8 @@ def main(
     # patch network
     if patch_network:
         hydro_objects = path_finder.fully_connected_network(hydro_objects, buffer=patch_buffer)
-        hydro_objects = path_finder.split_hydro_objects(hydro_objects, crossings, buffer=split_buffer)
+        if crossings is not None:
+            hydro_objects = path_finder.split_hydro_objects(hydro_objects, crossings, buffer=split_buffer)
     else:
         hydro_objects = (
             gpd.GeoDataFrame(geometry=[hydro_objects.union_all()], crs=hydro_objects.crs)
@@ -322,6 +340,7 @@ def main(
             _indices = hydro_objects[hydro_objects[col_ho_main_route].isin(val_ho_main_route)].index
         main_route_idx: set[int] = set(_indices)
     else:
+        assert crossings is not None
         # collectors
         main_route_idx: set[int] = set()
         point_collector = []
@@ -367,6 +386,7 @@ def main(
     if wd_intermediate_output is not None:
         hydro_objects[hydro_objects["main-route"]].to_file(wd_intermediate_output / _fn_int_output, layer="main-route")
         if not main_route_from_hydro_objects:
+            assert crossings is not None
             if internal_crossings:
                 _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)
             else:
@@ -388,7 +408,7 @@ def main(
 
     # depth from (multi)polygons (user-defined)
     if water_bodies is not None:
-        hydro_objects = _overwrite_depth(hydro_objects, water_bodies, col_depth=col_wb_depth)
+        hydro_objects = _overwrite_depth(hydro_objects, water_bodies, col_wb_depth)
 
     # export depth-data [optional]
     if wd_intermediate_output is not None:
