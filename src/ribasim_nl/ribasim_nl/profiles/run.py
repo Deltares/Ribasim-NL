@@ -187,7 +187,6 @@ def main(
     export_intermediate_output: bool = kwargs.get("export_intermediate_output", False)
     wd_intermediate_output: pathlib.Path | None = kwargs.get("wd_intermediate_output")
     create_wd_intermediate: bool = kwargs.get("create_wd_intermediate", True)
-    _fn_graph: str = "graph.gpkg"
     _fn_int_output: str = "int_output.gpkg"
 
     # transition: abandon `fn_hydrotopes` as optional argument
@@ -276,58 +275,12 @@ def main(
         # get all user-defined hydro-objects on the main-route (i.e., 'doorgaand')
         assert col_ho_main_route is not None
         assert val_ho_main_route is not None
-        if pd.api.types.is_scalar(val_ho_main_route):
-            _indices = hydro_objects[hydro_objects[col_ho_main_route] == val_ho_main_route].index
-        else:
-            _indices = hydro_objects[hydro_objects[col_ho_main_route].isin(val_ho_main_route)].index
-        main_route_idx: set[int] = set(_indices)
+        main_route_idx = _label_main_routing_from_flags(hydro_objects, col_ho_main_route, val_ho_main_route)
     else:
         assert crossings is not None
-        # collectors
-        main_route_idx: set[int] = set()
-        point_collector: list[gpd.GeoDataFrame] = []
-        line_collector: list[gpd.GeoDataFrame] = []
-        error_collector: list[int] = []
-
-        # find main routes per basin
-        for node_id, basin in zip(basins["node_id"].values, basins.geometry.values):
-            # data selections
-            subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
-            subset_crossings = path_finder.select_crossings(
-                basin, crossings, buffer=selection_buffer, internal=internal_crossings
-            )
-
-            # create network-graph
-            if len(subset_hydro_objects) == 0:
-                error_collector.append(int(node_id))
-                LOG.warning(f"No hydro-objects found for Basin #{node_id}")
-                continue
-            graph = path_finder.generate_graph(subset_hydro_objects)
-
-            # basin flatness
-            use_full_graph = path_finder.full_graph_search(basin, graph, subset_crossings)
-
-            # find flow routes
-            flow_edges = path_finder.find_flow_routes(graph, subset_crossings, use_full_graph=use_full_graph)
-            indices = path_finder.label_flow_hydro_objects(subset_hydro_objects, graph, flow_edges)
-            main_route_idx.update(indices)
-
-            # update collectors
-            if wd_intermediate_output is not None:
-                points, lines = typing.cast(tuple[gpd.GeoDataFrame, gpd.GeoDataFrame], momepy.nx_to_gdf(graph))
-                point_collector.append(points)
-                line_collector.append(lines)
-
-        # overview of erroneous basins
-        if error_collector:
-            LOG.critical(f"No hydro-objects found for the following basins ({len(error_collector)}): {error_collector}")
-
-        # concatenate basin-groups of point- and line-data
-        if wd_intermediate_output is not None:
-            points = typing.cast(gpd.GeoDataFrame, pd.concat(point_collector, axis=0))
-            lines = typing.cast(gpd.GeoDataFrame, pd.concat(line_collector, axis=0))
-            points.to_file(wd_intermediate_output / _fn_graph, layer="points")
-            lines.to_file(wd_intermediate_output / _fn_graph, layer="lines")
+        main_route_idx = _label_main_routing_from_network(
+            basins, hydro_objects, crossings, selection_buffer, internal_crossings, wd_intermediate_output
+        )
 
     # label hydro-objects
     hydro_objects["main-route"] = hydro_objects.index.isin(main_route_idx)
@@ -472,14 +425,35 @@ def _get_bgt_data(fn_bgt: pathlib.Path | str | None, basins: gpd.GeoDataFrame) -
     return bgt.get_water_surfaces(fn_bgt.parent, fn=fn_bgt.name, geo_filter=geo_filter, write=True)
 
 
-def _label_main_routing(
+def _label_main_routing_from_flags(hydro_objects: gpd.GeoDataFrame, col: str, val: typing.Any) -> set[int]:
+    """Label main-routing based on hydro-objects flagging.
+
+    :param hydro_objects: hydro-objects without main-routing labels
+    :param col: column-name in `hydro_objects` containing flag(s) for main-routing
+    :param val: value(s) in `hydro_objects[col_ho_main_route]` flagging main-routing
+
+    :type hydro_objects: geopandas.GeoDataFrame
+    :type col: str
+    :type val: any
+
+    :return: hydro-objects indices to label as main route
+    :rtype: set[int]
+    """
+    if pd.api.types.is_scalar(val):
+        indices = hydro_objects[hydro_objects[col] == val].index
+    else:
+        indices = hydro_objects[hydro_objects[col].isin(val)].index
+    return set(indices)
+
+
+def _label_main_routing_from_network(
     basins: gpd.GeoDataFrame,
     hydro_objects: gpd.GeoDataFrame,
     crossings: gpd.GeoDataFrame,
     selection_buffer: float,
     internal_crossings: bool,
     wd_intermediate_output: pathlib.Path | None,
-) -> gpd.GeoDataFrame:
+) -> set[int]:
     """Labelling of main-route based on shortest path(s) between crossings.
 
     :param basins: basin areas (polygons)
@@ -499,11 +473,56 @@ def _label_main_routing(
     :type internal_crossings: bool
     :type wd_intermediate_output: pathlib.Path | None
 
-    :return: labelled hydro-objects
-    :rtype: geopandas.GeoDataFrame
+    :return: hydro-objects indices to label as main route
+    :rtype: set[int]
     """
-    # TODO: Collect main route labelling based on shortest path in this function (and out of `main(..)`).
-    return NotImplemented
+    # collectors
+    main_route_idx: set[int] = set()
+    point_collector: list[gpd.GeoDataFrame] = []
+    line_collector: list[gpd.GeoDataFrame] = []
+    error_collector: list[int] = []
+
+    # find main routes per basin
+    for node_id, basin in zip(basins["node_id"].values, basins.geometry.values):
+        # data selections
+        subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
+        subset_crossings = path_finder.select_crossings(
+            basin, crossings, buffer=selection_buffer, internal=internal_crossings
+        )
+
+        # create network-graph
+        if len(subset_hydro_objects) == 0:
+            error_collector.append(int(node_id))
+            LOG.warning(f"No hydro-objects found for Basin #{node_id}")
+            continue
+        graph = path_finder.generate_graph(subset_hydro_objects)
+
+        # basin flatness
+        use_full_graph = path_finder.full_graph_search(basin, graph, subset_crossings)
+
+        # find flow routes
+        flow_edges = path_finder.find_flow_routes(graph, subset_crossings, use_full_graph=use_full_graph)
+        indices = path_finder.label_flow_hydro_objects(subset_hydro_objects, graph, flow_edges)
+        main_route_idx.update(indices)
+
+        # update collectors
+        if wd_intermediate_output is not None:
+            points, lines = typing.cast(tuple[gpd.GeoDataFrame, gpd.GeoDataFrame], momepy.nx_to_gdf(graph))
+            point_collector.append(points)
+            line_collector.append(lines)
+
+    # overview of erroneous basins
+    if error_collector:
+        LOG.critical(f"No hydro-objects found for the following basins ({len(error_collector)}): {error_collector}")
+
+    # concatenate basin-groups of point- and line-data
+    if wd_intermediate_output is not None:
+        points = typing.cast(gpd.GeoDataFrame, pd.concat(point_collector, axis=0))
+        lines = typing.cast(gpd.GeoDataFrame, pd.concat(line_collector, axis=0))
+        points.to_file(wd_intermediate_output / "graph.gpkg", layer="points")
+        lines.to_file(wd_intermediate_output / "graph.gpkg", layer="lines")
+
+    return main_route_idx
 
 
 def _overwrite_depth(
