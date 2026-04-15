@@ -141,6 +141,9 @@ def main(
     # > selection of crossings
     internal_crossings: bool = kwargs.get("internal_crossings", True)
     selection_buffer: float = kwargs.get("selection_buffer", 0.1)
+    # > overwriting of representative depth
+    water_bodies: gpd.GeoDataFrame | None = kwargs.get("water_bodies")
+    col_wb_depth: str = kwargs.get("col_wb_depth", "depth")
     # > export intermediate output
     export_intermediate_output: bool = kwargs.get("export_intermediate_output", False)
     wd_intermediate_output: pathlib.Path | None = kwargs.get("wd_intermediate_output")
@@ -307,6 +310,12 @@ def main(
     # depth from measurements
     if cross_sections is not None:
         hydro_objects = depth.depth_from_measurements(hydro_objects, cross_sections)
+
+    # depth from (multi)polygons (user-defined)
+    if water_bodies is not None:
+        hydro_objects = _overwrite_depth(hydro_objects, water_bodies, col_depth=col_wb_depth)
+
+    # export depth-data [optional]
     if wd_intermediate_output is not None:
         hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")
 
