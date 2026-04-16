@@ -36,8 +36,8 @@ def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tu
         raise FileNotFoundError(msg)
 
     # read profile data
-    df_flowing = pd.read_csv(wd / fn_flowing)
-    df_storing = pd.read_csv(wd / fn_storing)
+    df_flowing = pd.read_csv(fn_flowing)
+    df_storing = pd.read_csv(fn_storing)
 
     # return profile tables
     return df_flowing, df_storing
