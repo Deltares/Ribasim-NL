@@ -200,7 +200,6 @@ def main(
     patch_buffer: float = kwargs.get("patch_buffer", 1)
     split_buffer: float = kwargs.get("split_buffer", 0.1)
     # > main-routing from hydro-objects alone
-    # col_ho_main_route: str | None = kwargs.get("col_ho_main_route")
     val_ho_main_route: typing.Any = kwargs.get("val_ho_main_route", True)
     # > selection of crossings
     internal_crossings: bool = kwargs.get("internal_crossings", True)
@@ -209,8 +208,6 @@ def main(
     water_bodies: gpd.GeoDataFrame | None = kwargs.get("water_bodies")
     col_wb_depth: str = kwargs.get("col_wb_depth", "depth")
     # > export intermediate output
-    # export_intermediate_output: bool = kwargs.get("export_intermediate_output", False)
-    # wd_intermediate_output: pathlib.Path | None = kwargs.get("wd_intermediate_output")
     create_wd_intermediate: bool = kwargs.get("create_wd_intermediate", True)
     _fn_int_output: str = "int_output.gpkg"
 
