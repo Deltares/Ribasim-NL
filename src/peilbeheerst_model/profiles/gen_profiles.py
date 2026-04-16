@@ -18,6 +18,7 @@ def main(
     sync: bool = True,
     overwrite: bool = False,
     export_intermediate_output: bool = False,
+    water_bodies: gpd.GeoDataFrame | None = None,
 ) -> None:
     """Execute profile table generator.
 
@@ -80,6 +81,7 @@ def main(
         fn_bgt=fn_bgt,
         export_intermediate_output=export_intermediate_output,
         wd_intermediate_output=wd_int,
+        water_bodies=water_bodies,
     )
 
     # export profile table
@@ -112,6 +114,7 @@ def flagged_hydro_objects(
     sync: bool = True,
     overwrite: bool = False,
     export_intermediate_output: bool = False,
+    water_bodies: gpd.GeoDataFrame | None = None,
 ) -> None:
     """Execute profile table generator with user-defined main-routing.
 
@@ -179,6 +182,7 @@ def flagged_hydro_objects(
         fn_bgt=fn_bgt,
         export_intermediate_output=export_intermediate_output,
         wd_intermediate_output=wd_int,
+        water_bodies=water_bodies,
     )
 
     # export profile table
