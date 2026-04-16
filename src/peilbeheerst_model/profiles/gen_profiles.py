@@ -18,7 +18,7 @@ def main(
     sync: bool = True,
     overwrite: bool = False,
     export_intermediate_output: bool = False,
-    water_bodies: gpd.GeoDataFrame | None = None,
+    fn_water_bodies: gpd.GeoDataFrame | None = None,
 ) -> None:
     """Execute profile table generator.
 
@@ -32,8 +32,8 @@ def main(
     :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
     :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
-    :param water_bodies: water bodies with specific, user-defined representative depths used to overwrite the determined
-        representative depths per hydro-object, defaults to None
+    :param fn_water_bodies: filename with water bodies with specific, user-defined representative depths used to
+        overwrite the determined representative depths per hydro-object, defaults to None
         When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
         by the depth value(s) in `water_bodies`.
     """
@@ -64,9 +64,17 @@ def main(
     # > BGT-data & hydrotopes
     fn_bgt = cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
     fn_hydrotopes = cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv")
-
-    # load hydrotope-table
     table = hydrotopes.HydrotopeTable.from_csv(fn_hydrotopes)
+    # > overwriting water bodies
+    if fn_water_bodies is None:
+        gdf_water_bodies = None
+    elif isinstance(fn_water_bodies, tuple):
+        assert len(fn_water_bodies) == 2
+        gdf_water_bodies = gpd.read_file(
+            cloud.joinpath(water_authority, "aangeleverd", fn_water_bodies[0]), layer=fn_water_bodies[1]
+        )
+    else:
+        gdf_water_bodies = gpd.read_file(cloud.joinpath(water_authority, "aangeleverd", fn_water_bodies))
 
     # intermediate output: working directory
     wd_int = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate")
@@ -82,7 +90,7 @@ def main(
         cloud=cloud,
         fn_bgt=fn_bgt,
         wd_intermediate_output=(wd_int if export_intermediate_output else None),
-        water_bodies=water_bodies,
+        water_bodies=gdf_water_bodies,
     )
 
     # export profile table
@@ -115,7 +123,7 @@ def flagged_hydro_objects(
     sync: bool = True,
     overwrite: bool = False,
     export_intermediate_output: bool = False,
-    water_bodies: gpd.GeoDataFrame | None = None,
+    fn_water_bodies: pathlib.Path | str | tuple[pathlib.Path, str] | tuple[str, str] | None = None,
 ) -> None:
     """Execute profile table generator with user-defined main-routing.
 
@@ -132,8 +140,8 @@ def flagged_hydro_objects(
     :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
     :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
-    :param water_bodies: water bodies with specific, user-defined representative depths used to overwrite the determined
-        representative depths per hydro-object, defaults to None
+    :param fn_water_bodies: filename with water bodies with specific, user-defined representative depths used to
+        overwrite the determined representative depths per hydro-object, defaults to None
         When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
         by the depth value(s) in `water_bodies`.
     """
@@ -144,7 +152,11 @@ def flagged_hydro_objects(
         cloud.download_verwerkt(water_authority, overwrite=overwrite)
         cloud.download_basisgegevens(["Hydrotypen"], overwrite=overwrite)
         cloud.download_file(cloud.joinurl(water_authority, str(fn_hydro_objects)))
-        print("Synced with the GoodCloud: 'Verwerkt', 'Basisgegevens/Hydrotypen' & `fn_hydro_objects`")
+        if fn_water_bodies is not None:
+            cloud.download_file(cloud.joinurl(water_authority, "aangeleverd", fn_water_bodies))
+        print(
+            "Synced with the GoodCloud: 'Verwerkt', 'Basisgegevens/Hydrotypen', `fn_hydro_objects`[, `fn_water_bodies`]"
+        )
 
     # read files
     # > basins
@@ -165,9 +177,17 @@ def flagged_hydro_objects(
     # > BGT-data & hydrotopes
     fn_bgt = cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
     fn_hydrotopes = cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv")
-
-    # load hydrotope-table
     table = hydrotopes.HydrotopeTable.from_csv(fn_hydrotopes)
+    # > overwriting water bodies
+    if fn_water_bodies is None:
+        gdf_water_bodies = None
+    elif isinstance(fn_water_bodies, tuple):
+        assert len(fn_water_bodies) == 2
+        gdf_water_bodies = gpd.read_file(
+            cloud.joinpath(water_authority, "aangeleverd", fn_water_bodies[0]), layer=fn_water_bodies[1]
+        )
+    else:
+        gdf_water_bodies = gpd.read_file(cloud.joinpath(water_authority, "aangeleverd", fn_water_bodies))
 
     # intermediate output: working directory
     wd_int = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate")
@@ -184,7 +204,7 @@ def flagged_hydro_objects(
         cloud=cloud,
         fn_bgt=fn_bgt,
         wd_intermediate_output=(wd_int if export_intermediate_output else None),
-        water_bodies=water_bodies,
+        water_bodies=gdf_water_bodies,
     )
 
     # export profile table
