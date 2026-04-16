@@ -80,6 +80,7 @@ bin/
 *.gdb/
 *.pdf
 *.nc
+*.ps1
 results/
 delwaq/
 
