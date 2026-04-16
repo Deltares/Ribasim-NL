@@ -49,7 +49,6 @@ def main(
     hydrotope_table: ht.HydrotopeTable,
     cloud: CloudStorage = CloudStorage(),
     col_ho_main_route: None = None,
-    export_intermediate_output: bool = False,  # TODO: Integrate with defining `wd_intermediate_output`
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
@@ -65,7 +64,6 @@ def main(
     hydrotope_table: ht.HydrotopeTable,
     cloud: CloudStorage = CloudStorage(),
     col_ho_main_route: str,
-    export_intermediate_output: bool = False,  # TODO: Integrate with defining `wd_intermediate_output`
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
@@ -98,7 +96,6 @@ def main(
     hydrotope_table: ht.HydrotopeTable,
     cloud: CloudStorage = CloudStorage(),
     col_ho_main_route: str | None = None,
-    export_intermediate_output: bool = False,  # TODO: Integrate with defining `wd_intermediate_output`
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -126,9 +123,8 @@ def main(
     :param cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :param col_ho_main_route: column-name containing the main route flag, defaults to None
     :param export_intermediate_output:
-    :param export_intermediate_output: export intermediate output, e.g., for debugging, defaults to False
-        If `export_intermediate_output=True`, a working directory must be defined, i.e., `wd_intermediate_output`
     :param wd_intermediate_output: working directory for intermediate output files, defaults to None
+        If None, no intermediate output is exported
 
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
@@ -170,7 +166,6 @@ def main(
     :return: basin profiles for flowing/'doorgaand' and storing/'bergend' separately
 
     :raises TypeError: if unknown keyword arguments are given (possible typos)
-    :raises ValueError: if `wd_intermediate_output` is not defined while `export_intermediate_output=True`  # TODO: Remove
     :raises ValueError: if less than two (2) or more than four (4) geospatial dataframes are provided as `data`
     :raises ValueError: if NaN-values are found in one of the profile tables and debug-mode is not enabled
     """
@@ -213,12 +208,6 @@ def main(
 
     # validate optional arguments
     # > intermediate output
-    if export_intermediate_output and wd_intermediate_output is None:
-        msg = (
-            f"When exporting the intermediate output ({export_intermediate_output=}), "
-            f"a working directory must be provided: {wd_intermediate_output=}"
-        )
-        raise ValueError(msg)
     if wd_intermediate_output is not None and create_wd_intermediate:
         wd_intermediate_output.mkdir(parents=True, exist_ok=True)
     # > main routes from hydro-objects
