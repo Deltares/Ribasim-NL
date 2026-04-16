@@ -438,7 +438,6 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
@@ -527,7 +526,6 @@ pump_copy = ribasim_model.pump.static.df[
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )

@@ -325,7 +325,6 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # remove defying-gravity-outlets
 ribasim_model = ribasim_param.remove_non_free_flowing_outlets(ribasim_model, printing=True)
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
@@ -477,9 +476,7 @@ pump_copy = ribasim_model.pump.static.df[
 # _, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
 # from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
 
-add_controllers_to_connector_nodes(
-    ribasim_model, from_to_node_function_table, LEVEL_DIFFERENCE_THRESHOLD, drain_capacity=20
-)
+add_controllers_to_connector_nodes(ribasim_model, from_to_node_function_table, drain_capacity=20)
 remove_duplicate_controls(ribasim_model)
 
 outlet_columns_to_add_back = [

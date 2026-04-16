@@ -37,7 +37,6 @@ if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
 
 mixed_conditions_design_P = 12
 mixed_conditions_design_E = 2
-LEVEL_DIFFERENCE_THRESHOLD = 0.04
 
 # model settings
 waterschap = "AmstelGooienVecht"
@@ -449,7 +448,6 @@ pump_copy = ribasim_model.pump.static.df[
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
