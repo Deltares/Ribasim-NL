@@ -40,7 +40,7 @@ def main(
     # sync with the GoodCloud
     cloud = CloudStorage()
     if sync:
-        _sync(cloud, water_authority, overwrite)
+        _sync(cloud, water_authority, overwrite, fn_water_bodies)
 
     # read files
     gdf_basins = _read_basins(cloud, water_authority)
