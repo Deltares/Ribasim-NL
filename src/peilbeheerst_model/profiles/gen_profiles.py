@@ -32,6 +32,10 @@ def main(
     :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
     :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
+    :param water_bodies: water bodies with specific, user-defined representative depths used to overwrite the determined
+        representative depths per hydro-object, defaults to None
+        When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
+        by the depth value(s) in `water_bodies`.
     """
     # get files from the cloud
     cloud = CloudStorage()
@@ -118,7 +122,7 @@ def flagged_hydro_objects(
 ) -> None:
     """Execute profile table generator with user-defined main-routing.
 
-    This is a variant of `main(..)` in which the main route is predefined based on a flag in the hydro-objects.
+    This is a variant of `main(...)` in which the main route is predefined based on a flag in the hydro-objects.
 
     :param water_authority: water authority
     :param fn_target_levels: filename with geospatial data of target levels
@@ -131,6 +135,10 @@ def flagged_hydro_objects(
     :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
     :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
+    :param water_bodies: water bodies with specific, user-defined representative depths used to overwrite the determined
+        representative depths per hydro-object, defaults to None
+        When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
+        by the depth value(s) in `water_bodies`.
     """
     # get files from the cloud
     cloud = CloudStorage()
