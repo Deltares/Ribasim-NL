@@ -99,7 +99,6 @@ def main(
     :param hydrotope_table: table with hydrotope-classes
     :param cloud: cloud-storage object, used to load the hydrotopes-map, defaults to CloudStorage()
     :param col_ho_main_route: column-name containing the main route flag, defaults to None
-    :param export_intermediate_output:
     :param wd_intermediate_output: working directory for intermediate output files, defaults to None
         If None, no intermediate output is exported
 
@@ -123,7 +122,7 @@ def main(
         already) due to a crossing, defaults to 0.1 [m]
     :key col_ho_main_route: column-name in `hydro_objects` containing flag(s) for main-routing, defaults to None
         When `col_ho_main_route` is defined, the main-routing is based on this column instead of drawing a graph per
-        basin and connecting the crossings within the basin using a shortest path algorithm. This means that the
+        basin and connecting the crossings within the basin using a "shortest path"-algorithm. This means that the
         `crossings`-dataset is no longer required to generate the profiles. This impacts the required geospatial
         datasets provided to `data` (see documentation).
     :key val_ho_main_route: value(s) in `hydro_objects[col_ho_main_route]` flagging main-routing, defaults to True
