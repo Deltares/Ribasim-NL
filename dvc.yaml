@@ -32,8 +32,15 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py BrabantseDelta
     deps:
       - notebooks/brabantse_delta
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
+  rwzi:
+    cmd: uv run python notebooks/create_rwzi_model.py
+    deps:
+      - notebooks/create_rwzi_model.py
+    outs:
+      - data/Rijkswaterstaat/modellen/rwzi
   samenvoegen:
     cmd: uv run python notebooks/samenvoegen_modellen.py
     deps:
@@ -77,6 +84,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py AaenMaas
     deps:
       - notebooks/aa_en_maas
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/AaenMaas/modellen/AaenMaas_dynamic_model
   noorderzijlvest:
@@ -89,6 +97,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py Noorderzijlvest
     deps:
       - notebooks/noorderzijlvest
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
   stichtse_rijnlanden:
@@ -101,6 +110,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py StichtseRijnlanden
     deps:
       - notebooks/stichtse_rijnlanden
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
   drents_overijsselse_delta:
@@ -113,6 +123,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py DrentsOverijsselseDelta
     deps:
       - notebooks/drents_overijsselse_delta
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
   rijn_en_ijssel:
@@ -125,6 +136,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py RijnenIJssel
     deps:
       - notebooks/rijn_en_ijssel
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
   vechtstromen:
@@ -137,6 +149,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py Vechtstromen
     deps:
       - notebooks/vechtstromen
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/Vechtstromen/modellen/Vechtstromen_dynamic_model
   de_dommel:
@@ -149,6 +162,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py DeDommel
     deps:
       - notebooks/de_dommel
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/DeDommel/modellen/DeDommel_dynamic_model
   vallei_en_veluwe:
@@ -161,6 +175,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py ValleienVeluwe
     deps:
       - notebooks/vallei_en_veluwe
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
   limburg:
@@ -174,6 +189,7 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py Limburg
     deps:
       - notebooks/limburg
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/Limburg/modellen/Limburg_dynamic_model
   hunze_en_aas:
@@ -186,5 +202,6 @@ stages:
       - uv run python notebooks/07_add_dynamic_forcing.py HunzeenAas
     deps:
       - notebooks/hunze_en_aas
+      - data/Rijkswaterstaat/modellen/rwzi
     outs:
       - data/HunzeenAas/modellen/HunzeenAas_dynamic_model

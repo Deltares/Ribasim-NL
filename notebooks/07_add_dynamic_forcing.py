@@ -1,19 +1,21 @@
 # %%
 import sys
 from datetime import datetime
+from pathlib import Path
 
 from ribasim.delwaq import generate, parse, run_delwaq
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model, settings
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 write_budgets: bool = True  # write mfms_budgets.arrow for later verification
-assing_fractions: bool = True  # compute (sub-) fractions from budgets-table
-compute_fractions: bool = True
+assign_fractions: bool = False  # compute (sub-) fractions from budgets-table
+compute_fractions: bool = False
+rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
 primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
@@ -146,8 +148,17 @@ for authority in authorities:
 
             # add forcing
             budgets_df = add_forcing(
-                model, cloud, starttime, endtime, assing_fractions, fraction_prefix=waterbeheercode[authority]
+                model, cloud, starttime, endtime, assign_fractions, fraction_prefix=waterbeheercode[authority]
             )
+
+            # merge RWZI model
+            model = merge_rwzi_model(model, rwzi_model_path)
+
+            # Avoid large databases by writing some tables to NetCDF
+            # TODO add flow_boundary after we can run core versions with
+            # https://github.com/Deltares/Ribasim/pull/3033
+            if model.basin.time.df is not None:
+                model.basin.time.filepath = Path("basin_time.nc")
 
             # run model
             model.write(dst_toml_file)
@@ -171,4 +182,4 @@ for authority in authorities:
 
                 # parse DELWAQ results in model
                 print("📖 parse DELWAQ results in Ribasim-model")
-                model = parse(model, graph, substances, output_folder=delwaq_dir)
+                parse(model, graph, substances, output_folder=delwaq_dir)

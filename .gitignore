@@ -55,10 +55,12 @@ bin/
 *.shp*
 *.prj
 *.sbn
+*.accdb
 *.sbx
 *.shx
 *.cpg
 *.log
+*.geojson
 *.qlr
 *.png
 *.bat

@@ -4,76 +4,18 @@ Merge standalone model(s) with the RWZI model.
 Replaces the Terminals with Junctions and connects them to the underlying Basin.
 """
 
-# %% Imports
 import logging
-from datetime import datetime
 
 import geopandas as gpd
 import pandas as pd
-import ribasim
+from geopandas.geodataframe import GeoDataFrame
 
-from ribasim_nl import CloudStorage, Model, concat, prefix_index
+from ribasim_nl import Model, concat, prefix_index
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", force=True)
-
-# %%
-# TODO: change the names (lhm_mode etc) to more suitable naming
-# TODO: Check in the final model if we miss some RWZIs (Texel)
-
-# %%
-cloud = CloudStorage()
-readme = f"""# Model van (deel)gebieden uit het Landelijk Hydrologisch Model inclusief RWZI afvoeren
-
-Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Ribasim versie: {ribasim.__version__}
-Getest (u kunt simuleren): Nee
-"""
-
-logging.info(readme)
-
-# %% Define the models that we want to merge
-download_latest_model = True
-upload_model = False
-# TODO:discuss what the buffer_distance should be
-buffer_distance = 20  # meter outside the basin which is still clipped
+logger = logging.getLogger(__name__)
 
 
-model_paths = [
-    cloud.joinpath("Rijkswaterstaat/modellen/lhm_transboundary/lhm.toml"),
-    cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/rwzi.toml"),
-]
-
-
-# %% Download models and update state
-for idx, model_path in enumerate(model_paths):
-    logging.info(model_path)
-
-    # read model
-    model = Model.read(model_path)
-    logging.info("model is loaded")
-
-    if model_path.stem == "rwzi":
-        prefix_id = 999
-        logging.warning("this model still needs a proper prefix_id")
-        try:
-            model = prefix_index(
-                model=model,
-                prefix_id=prefix_id,
-            )
-        except KeyError as e:
-            logging.info("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
-            raise e
-
-    if idx == 0:
-        rwzi_coupled_model = model
-
-    else:
-        # concat and do not mess with original_index as it has been preserved
-        rwzi_coupled_model = concat([rwzi_coupled_model, model], keep_original_index=True)
-
-
-# %% functions
-def create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance):
+def create_rwzi_basin_coupling(rwzi_coupled_model: Model, buffer_distance):
     """
     Match RWZI uitstroom locaties met de onderliggende basins. Wanneer geen match, probeer 20 m buffer.
 
@@ -86,7 +28,7 @@ def create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance):
         coupling_lookup (dict): Lookup table van RWZI codes en basin IDs.
         unmatched_rwzi_df (GeoDataFrame): RWZI locaties die nog niet gematcht zijn met basins.
     """
-    terminals_all = rwzi_coupled_model.terminal.node.df
+    terminals_all = rwzi_coupled_model.terminal.node.df  # pyrefly: ignore[missing-attribute]
     basins = rwzi_coupled_model.basin.area.df
 
     # RWZI codes
@@ -94,10 +36,10 @@ def create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance):
 
     # Filter terminals met RWZI code
     terminals_filtered = terminals_all[terminals_all.meta_rwzi_code.isin(rwzi_codes_df.meta_rwzi_code)].copy()
-    terminals_filtered = terminals_filtered.to_crs(basins.crs)
+    terminals_filtered = terminals_filtered.to_crs(basins.crs)  # pyrefly: ignore[missing-attribute]
 
     # Basins reset
-    basins_reset = basins.reset_index().rename(columns={"node_id": "couple_to_basin_id"})
+    basins_reset = basins.reset_index().rename(columns={"node_id": "couple_to_basin_id"})  # pyrefly: ignore[missing-attribute]
 
     # 1. Koppel terminals aan onderliggende basins
     joined_within = gpd.sjoin(
@@ -144,7 +86,7 @@ def create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance):
     return coupling_lookup, unmatched_rwzi_df
 
 
-def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=False):
+def remove_unmatched_rwzi(rwzi_coupled_model: Model, unmatched_rwzi_df: GeoDataFrame, *, verbose=False):
     """
     Verwijder RWZI-terminals.
 
@@ -158,7 +100,7 @@ def remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, *, verbose=Fals
         terminals_removed += 1
 
     #  2. bijbehorende flow boundaries verwijderen
-    fb_df = rwzi_coupled_model.flow_boundary.node.df
+    fb_df = rwzi_coupled_model.flow_boundary.node.df  # pyrefly: ignore[missing-attribute]
     flow_boundary_to_remove = fb_df[fb_df["meta_rwzi_code"].isin(unmatched_rwzi_df["meta_rwzi_code"])]
 
     flow_boundaries_removed = 0
@@ -213,14 +155,42 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
-# %%
-coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance)
-rwzi_coupled_model, stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=True)
-rwzi_coupled_model = terminal2junction(rwzi_coupled_model, coupling_lookup, verbose=True)
+def merge_rwzi_model(
+    base_model, rwzi_model_path, buffer_distance: int = 20, prefix_id: int = 999, verbose: bool = True
+):
+    """
+    Merge an RWZI model into a base model.
 
-# %%
-print("write coupled rwzi model")
-ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/lhm_rwzi/lhm.toml")
-rwzi_coupled_model.write(ribasim_toml)
+    Reads the RWZI model, prefixes its indices, concatenates it with the base model,
+    couples RWZI terminals to basins, removes unmatched RWZIs, and converts terminals to junctions.
 
-logging.info(f"There are {len(unmatched_rwzi_df)} RWZI's not incorporated in this model")
+    Parameters
+    ----------
+        base_model (Model): The base Ribasim model to merge into.
+        rwzi_model_path (Path): Path to the RWZI model toml file.
+        buffer_distance (float): Buffer distance in meters for spatial coupling.
+        prefix_id (int): Prefix ID for the RWZI model nodes.
+        verbose (bool): Whether to print progress info.
+
+    Returns
+    -------
+        Model: The merged model with RWZI nodes coupled to basins.
+    """
+    rwzi_model = Model.read(rwzi_model_path)
+    logger.info("RWZI model loaded")
+
+    try:
+        rwzi_model = prefix_index(model=rwzi_model, prefix_id=prefix_id)
+    except KeyError as e:
+        logger.info("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
+        raise e
+
+    rwzi_coupled_model = concat([base_model, rwzi_model], keep_original_index=True)
+
+    coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance)
+    rwzi_coupled_model, _stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=verbose)
+    rwzi_coupled_model = terminal2junction(rwzi_coupled_model, coupling_lookup, verbose=verbose)
+
+    logger.info(f"There are {len(unmatched_rwzi_df)} RWZI's not incorporated in this model")
+
+    return rwzi_coupled_model
