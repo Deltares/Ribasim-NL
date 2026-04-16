@@ -30,15 +30,15 @@ stages:
     deps:
     - path: notebooks/aa_en_maas
       hash: md5
-      md5: 8aed425870fa022d8ce059f67440303b.dir
-      size: 76332
+      md5: 03a56c56dd64a355aaf76d7a7e8a8c30.dir
+      size: 76175
       nfiles: 5
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: ef1b82c61e01aa405afb00ef526502b5.dir
-      size: 1725488951
-      nfiles: 38
+      md5: f5a34515367218d82561eea532759084.dir
+      size: 45449642
+      nfiles: 4
   noorderzijlvest:
     cmd:
     - uv run python notebooks/noorderzijlvest/01_fix_model.py
