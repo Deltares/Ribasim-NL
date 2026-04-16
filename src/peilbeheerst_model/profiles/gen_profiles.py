@@ -47,7 +47,7 @@ def main(
     _fn_network = cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_network)
     gdf_hydro_objects = gpd.read_file(_fn_network, layer="hydroobject")
     gdf_crossings = gpd.read_file(_fn_network, layer="crossings_hydroobject_filtered")
-    gdf_target_levels = run.target_level_polygons(_fn_network)
+    gdf_target_levels = _read_target_levels(cloud, water_authority, fn_network)
     gdf_cross_sections = _read_cross_sections(cloud, water_authority)
     gdf_water_bodies = _read_water_bodies(cloud, water_authority, fn_water_bodies)
     table = _read_hydrotope_table(cloud)
@@ -192,8 +192,24 @@ def _read_cross_sections(cloud: CloudStorage, water_authority: str) -> gpd.GeoDa
 
 
 def _read_target_levels(cloud: CloudStorage, water_authority: str, fn_target_levels: str) -> gpd.GeoDataFrame:
+    """Get polygons with target levels from source-data.
+
+    :param fn: filename
+    :param layer_polygons: layer-name with polygon data
+    :param layer_levels: layer-name with target level data
+
+    :type fn: str
+    :type layer_polygons: str, optional
+    :type layer_levels: str, optional
+
+    :return: polygons with target levels
+    :rtype: geopandas.GeoDataFrame
+    """
     fn = cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_target_levels)
-    return run.target_level_polygons(fn)
+    polygons = gpd.read_file(fn, layer="peilgebied")
+    levels = gpd.read_file(fn, layer="streefpeil")
+    out = polygons.assign(meta_streefpeil=polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"]))
+    return out
 
 
 def _read_hydrotope_table(cloud: CloudStorage) -> hydrotopes.HydrotopeTable:
