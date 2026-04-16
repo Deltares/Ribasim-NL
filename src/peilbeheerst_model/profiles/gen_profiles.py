@@ -83,7 +83,6 @@ def main(
         target_levels=gdf_target_levels,
         cloud=cloud,
         fn_bgt=fn_bgt,
-        export_intermediate_output=export_intermediate_output,
         wd_intermediate_output=wd_int,
         water_bodies=water_bodies,
     )
@@ -188,7 +187,6 @@ def flagged_hydro_objects(
         target_levels=gdf_target_levels,
         cloud=cloud,
         fn_bgt=fn_bgt,
-        export_intermediate_output=export_intermediate_output,
         wd_intermediate_output=wd_int,
         water_bodies=water_bodies,
     )
