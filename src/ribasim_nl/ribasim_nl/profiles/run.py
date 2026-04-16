@@ -15,6 +15,27 @@ from ribasim_nl.profiles import hydrotopes as ht
 
 LOG = logging.getLogger(__name__)
 
+_KNOWN_KWARGS: set[str] = {
+    "debug",
+    "epsg",
+    "filter_basins",
+    "target_levels",
+    "create_depth_profile_lines",
+    "kw_make_depth_profile",
+    "simplify_geometries",
+    "fn_bgt",
+    "bgt_buffer",
+    "bgt_full_coverage",
+    "patch_network",
+    "patch_buffer",
+    "split_buffer",
+    "val_ho_main_route",
+    "selection_buffer",
+    "water_bodies",
+    "col_wb_depth",
+    "create_wd_intermediate_output",
+}
+
 
 @typing.overload
 def main(
@@ -45,28 +66,6 @@ def main(
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
-
-
-_KNOWN_KWARGS: set[str] = {
-    "debug",
-    "epsg",
-    "filter_basins",
-    "target_levels",
-    "create_depth_profile_lines",
-    "kw_make_depth_profile",
-    "simplify_geometries",
-    "fn_bgt",
-    "bgt_buffer",
-    "bgt_full_coverage",
-    "patch_network",
-    "patch_buffer",
-    "split_buffer",
-    "val_ho_main_route",
-    "selection_buffer",
-    "water_bodies",
-    "col_wb_depth",
-    "create_wd_intermediate_output",
-}
 
 
 def main(
