@@ -30,14 +30,14 @@ stages:
     deps:
     - path: notebooks/aa_en_maas
       hash: md5
-      md5: 03ff67ebe370d5c24aa6c2f4303b1e3f.dir
-      size: 11774737778
-      nfiles: 79
+      md5: 8aed425870fa022d8ce059f67440303b.dir
+      size: 76332
+      nfiles: 5
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: 742ff1a7b8e02efe5092d071eb306a35.dir
-      size: 988831530
+      md5: ef1b82c61e01aa405afb00ef526502b5.dir
+      size: 1725488951
       nfiles: 38
   noorderzijlvest:
     cmd:
@@ -296,3 +296,16 @@ stages:
       md5: fe91857fc25f27aa4b91efcda28fd8c1.dir
       size: 80756923
       nfiles: 4
+  rwzi:
+    cmd: uv run python notebooks/create_rwzi_model.py
+    deps:
+    - path: notebooks/create_rwzi_model.py
+      hash: md5
+      md5: d142e7e08aba857b382fcf708ecda708
+      size: 20111
+    outs:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2

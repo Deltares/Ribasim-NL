@@ -34,6 +34,12 @@ stages:
       - notebooks/brabantse_delta
     outs:
       - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
+  rwzi:
+    cmd: uv run python notebooks/create_rwzi_model.py
+    deps:
+      - notebooks/create_rwzi_model.py
+    outs:
+      - data/Rijkswaterstaat/modellen/rwzi
   samenvoegen:
     cmd: uv run python notebooks/samenvoegen_modellen.py
     deps:
