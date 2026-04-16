@@ -172,4 +172,3 @@ for authority in authorities:
                 # parse DELWAQ results in model
                 print("📖 parse DELWAQ results in Ribasim-model")
                 model = parse(model, graph, substances, output_folder=delwaq_dir)
-                model.write(dst_toml_file)

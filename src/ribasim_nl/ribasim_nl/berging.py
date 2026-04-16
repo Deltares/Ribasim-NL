@@ -1,15 +1,17 @@
 # %%
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import rasterio
 import tqdm
+from affine import Affine
 from geopandas import GeoDataFrame
 from rasterio.enums import Resampling
 from rasterio.features import geometry_mask
-from rasterio.windows import from_bounds
+from rasterio.windows import Window, from_bounds
 from rasterstats import zonal_stats
 from ribasim import Node
 from ribasim.nodes import basin, tabulated_rating_curve
@@ -120,7 +122,7 @@ def sample_raster(
     all_touched: bool = False,
     stats: str = "mean",
     maaiveld_data: npt.ArrayLike | None = None,
-):
+) -> list[dict[str, Any]]:
     """Sample rasters over Polygons
 
     Args:
@@ -152,7 +154,7 @@ def sample_raster(
         return zonal_stats(df, data, affine=affine, stats=stats, nodata=raster_src.nodata, all_touched=all_touched)
 
 
-def get_resampled_window(src, polygon, sample_res):
+def get_resampled_window(src, polygon, sample_res) -> tuple[tuple[int, int], Window, Affine]:
     window = from_bounds(*polygon.bounds, transform=src.transform)
 
     if window.width < 1 or window.height < 1:
@@ -175,11 +177,16 @@ def get_resampled_window(src, polygon, sample_res):
 
 
 # resampled helper
-def read_resampled(src: rasterio.DatasetReader, band: int, window: rasterio.windows.Window, out_shape: tuple[int, int]):
+def read_resampled(
+    src: rasterio.DatasetReader,
+    band: int,
+    window: rasterio.windows.Window,
+    out_shape: tuple[int, int],
+) -> npt.NDArray[np.float64]:
     return src.read(band, window=window, out_shape=out_shape, resampling=Resampling.nearest).astype(float)
 
 
-def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2):
+def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0) -> None:
     """Surface water area of primary basin based on primair_oppervalktewater in LHM4.3
 
     The average of resampled surface water percentage raster is mulitplied by polygon.area
@@ -199,10 +206,15 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
 
     # ah_df to concat
     def ah_df(
-        node_id: int, polygon: Polygon, target_level: float, area_fraction: float, min_fraction=0.001, min_area=999
+        node_id: int,
+        polygon: Polygon,
+        target_level: float,
+        area_fraction: float,
+        min_fraction: float = 0.001,
+        min_area: float = 999.0,
     ) -> pd.DataFrame:
         level = np.array([target_level - depth - 0.1, target_level - depth, target_level]).round(2)
-        node_id = [node_id] * 3
+        profile_node_ids = [node_id] * 3
 
         # if no fraction, we assume 2% of surface-water area (sq_area)
         if pd.isna(area_fraction):
@@ -220,7 +232,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
                 f"oppervlak >={int(min_area)}m2 gezet",
                 f"oppervlak >={int(min_area)}m2 gezet",
             ]
-            df = basin.Profile(node_id=node_id, level=level, area=area, meta_comment=comment).df
+            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
 
         # if smaller than min_fraction we assume min_fraction
         elif area_fraction < min_fraction:
@@ -231,10 +243,11 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
                 f"oppervlak >= {round(min_fraction * 100, 1)}% gezet",
             ]
             area = np.array([0.1, area_fraction * polygon.area, area_fraction * polygon.area]).round(1)
-            df = basin.Profile(node_id=node_id, level=level, area=area, meta_comment=comment).df
+            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
         else:
             area = np.array([0.1, sw_area, sw_area]).round(1)
-            df = basin.Profile(node_id=node_id, level=level, area=area, meta_comment=comment).df
+            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
+        assert df is not None
         return df
 
     # generate raster_file if not existing
@@ -243,15 +256,19 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
     if not src_file.exists():
         percentage_primair_oppervlaktewater()
 
+    basin_node_df = cast(pd.DataFrame, model.basin.node.df)  # pyrefly: ignore[missing-attribute]
+    basin_area_df = cast(pd.DataFrame, model.basin.area.df)
+    basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
+
     # read resampled raster average and multiply by polygon.area
-    basin_ids = model.basin.node.df[model.basin.node.df.meta_categorie.isin(["hoofdwater", "doorgaand"])].index.values
+    basin_ids = basin_node_df[basin_node_df.meta_categorie.isin(["hoofdwater", "doorgaand"])].index.values
     profiles: list[pd.DataFrame] = []
     with rasterio.open(src_file) as src:
         for basin_id in tqdm.tqdm(basin_ids, total=len(basin_ids), desc="profiles primary basins"):
             # read basin-area table
-            polygon = model.basin.area.df.set_index("node_id").at[basin_id, "geometry"]
-            target_level = float(model.basin.area.df.set_index("node_id").at[basin_id, "meta_streefpeil"])
-            basin_fid = model.basin.area.df[model.basin.area.df.node_id == basin_id].index[0]
+            polygon = cast(Polygon, cast(Any, basin_area_df.set_index("node_id").at[basin_id, "geometry"]))
+            target_level = float(cast(Any, basin_area_df.set_index("node_id").at[basin_id, "meta_streefpeil"]))
+            basin_fid = basin_area_df[basin_area_df.node_id == basin_id].index[0]
 
             # read raster sampled
             out_shape, window, transform = get_resampled_window(src=src, polygon=polygon, sample_res=sample_res)
@@ -281,16 +298,17 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
             else:
                 area_fraction = float(np.nanmean(values))
 
-            model.basin.area.df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = round(area_fraction * 100, 1)
+            basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = round(area_fraction * 100, 1)
             profile = ah_df(node_id=basin_id, polygon=polygon, target_level=target_level, area_fraction=area_fraction)
             percentage = round(profile.area.max() / polygon.area * 100, 1)
-            model.basin.area.df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = percentage
+            basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = percentage
             profiles += [profile]
 
     # replace old profiles
     df = pd.concat(profiles, ignore_index=True)
-    model.basin.profile.df = model.basin.profile.df[~model.basin.profile.df.node_id.isin(basin_ids)]
-    model.basin.profile.df = pd.concat([model.basin.profile.df, df], ignore_index=True)
+    basin_profile_df = basin_profile_df[~basin_profile_df.node_id.isin(basin_ids)]
+    basin_profile_df = pd.concat([basin_profile_df, df], ignore_index=True)
+    model.basin.profile.df = cast(Any, basin_profile_df)
 
 
 def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file: Path) -> GeoDataFrame:
@@ -383,7 +401,7 @@ def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> ta
 
 
 def get_basin_profile(
-    basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res=25
+    basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res: int = 25
 ) -> basin.Profile:
     """Generate a basin.Static table for a Polygon using LHM rasters
 
