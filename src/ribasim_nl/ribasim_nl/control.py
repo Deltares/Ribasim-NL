@@ -844,7 +844,7 @@ def add_controllers_to_supply_nodes(
 def add_controllers_to_flow_control_nodes(
     model: Model,
     flow_control_nodes_df: gpd.GeoDataFrame,
-    us_threshold_offset: float,
+    us_threshold_offset: float = 0.02,
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
     control_node_offset: float = 10,
@@ -861,7 +861,8 @@ def add_controllers_to_flow_control_nodes(
     flow_control_nodes_df : gpd.GeoDataFrame
         GeoDataFrame of connector nodes having a flow_control function, including from_node_id and to_node_id
     us_threshold_offset : float
-        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
+        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold.
+        Default is 0.02.
     us_target_level_offset_supply : float, optional
         Lowering upstream target levels in supply situation, by default -0.04
     target_level_column : str, optional
@@ -879,6 +880,9 @@ def add_controllers_to_flow_control_nodes(
     # update_meta_info we can use in masking control_nodes
     if update_meta_info:
         _update_meta_info(model=model, nodes_df=flow_control_nodes_df, supply=True, drain=True)
+
+    solver_threshold = model.solver.level_difference_threshold
+    assert us_threshold_offset >= solver_threshold, "incompatible thresholds"
 
     # validate if drain_nodes_df does not contain reversed flow directions
     validate_nodes_on_reversed_direction(flow_control_nodes_df, node_function="flow_control")
@@ -970,7 +974,7 @@ def add_controllers_to_flow_control_nodes(
 def add_controllers_and_demand_to_flushing_nodes(
     model: Model,
     flushing_nodes_df: gpd.GeoDataFrame,
-    us_threshold_offset: float,
+    us_threshold_offset: float = 0.02,
     demand_threshold_offset: float = 0.001,
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
@@ -992,7 +996,8 @@ def add_controllers_and_demand_to_flushing_nodes(
         GeoDataFrame of connector nodes having a flusing function, including from_node_id and to_node_id, and demand_flow_rate column.
         Optionally user specifies demand_flow_rate_summer and demand_flow_rate_winter to vary demand over winter/summer time
     us_threshold_offset : float
-        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
+        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold.
+        Default is 0.02.
     demand_threshold_offset : float, optional
         Flow offset of discrete-control to trigger flow., by default 0.001
     us_target_level_offset_supply : float, optional
@@ -1014,6 +1019,9 @@ def add_controllers_and_demand_to_flushing_nodes(
     demand_name_prefix: str, optional
         Prefix assigned to name in demand-node, by default "doorspoeling
     """
+    solver_threshold = model.solver.level_difference_threshold
+    assert us_threshold_offset >= solver_threshold, "incompatible thresholds"
+
     node_types = _read_node_table(model=model)["node_type"]
 
     # make sure we have a demand_flow_rate_summer and demand_flow_rate_winter
@@ -1150,7 +1158,7 @@ def add_controllers_and_demand_to_flushing_nodes(
 def add_controllers_to_connector_nodes(
     model: Model,
     node_functions_df: gpd.GeoDataFrame,
-    level_difference_threshold: float,
+    level_difference_threshold: float = 0.02,
     target_level_column: str = "meta_streefpeil",
     drain_capacity: float = 100,
     add_supply_nodes: bool = True,
@@ -1180,8 +1188,9 @@ def add_controllers_to_connector_nodes(
         Ribasim model
     node_functions_df : gpd.GeoDataFrame
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand`
-    level_difference_threshold : float
-        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
+    level_difference_threshold : float, optional
+        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold.
+        Default is 0.02.
     target_level_column : str, optional
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
     drain_capacity : float, optional
@@ -1193,6 +1202,7 @@ def add_controllers_to_connector_nodes(
     # make sure add-api will not duplicate node-ids
     model.node._update_used_ids()
     model.link._update_used_ids()
+    assert level_difference_threshold >= model.solver.level_difference_threshold, "incompatible threshold"
 
     # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
@@ -1337,7 +1347,7 @@ def add_controllers_to_supply_area(
 
 def add_controllers_to_uncontrolled_connector_nodes(
     model: "Model",
-    us_threshold_offset: float,
+    us_threshold_offset: float = 0.02,
     exclude_nodes: list[int] | None = None,
     supply_nodes: list[int] | None = None,
     drain_nodes: list[int] | None = None,
@@ -1345,7 +1355,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes: dict[int, float] | None = None,
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     us_target_level_offset_supply: float = -0.04,
-    level_difference_threshold: float | None = None,
+    level_difference_threshold: float = 0.02,
 ) -> None:
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
@@ -1363,7 +1373,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     ----------
     model : Model
     us_threshold_offset : float
-        Offset voor flow-control discrete control (moet matchen met solver threshold).
+        Offset voor flow-control discrete control (moet matchen met solver threshold), by default 0.02.
     exclude_nodes : list[int]
         Connector-nodes die je niet wilt aansturen.
     supply_nodes : list[int]
@@ -1378,6 +1388,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Welke connector node types meegenomen worden.
     us_target_level_offset_supply : float
         Offset voor supply controls.
+    level_difference_threshold : float
+        Offset for flushing discrete control (must match model.solver.level_difference_threshold), by default 0.02.
     """
     # make sure add-api will not duplicate node-ids
     model.node._update_used_ids()
@@ -1390,6 +1402,10 @@ def add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes = flushing_nodes or {}
     flow_control_nodes = flow_control_nodes or []
     control_node_types = control_node_types or ["Pump", "Outlet"]
+
+    solver_threshold = model.solver.level_difference_threshold
+    assert us_threshold_offset == solver_threshold, "incompatible threshold"
+    assert level_difference_threshold == solver_threshold, "incompatible threshold"
 
     # --- 1) bepaal welke connector nodes al controlled zijn ---
     control_links = _read_link_table(model=model, link_type="control")
@@ -1442,7 +1458,6 @@ def add_controllers_to_uncontrolled_connector_nodes(
         flushing_nodes_df["demand_flow_rate"] = pd.Series(index=flushing_nodes_df.index, dtype="float")
         flushing_nodes_df.loc[node_ids, "demand_flow_rate"] = [flushing_nodes[n] for n in node_ids]
 
-        level_difference_threshold = level_difference_threshold or model.solver.level_difference_threshold
         add_controllers_and_demand_to_flushing_nodes(
             model=model,
             flushing_nodes_df=flushing_nodes_df,

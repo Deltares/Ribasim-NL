@@ -281,7 +281,6 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 for node in inlaat_structures:
@@ -435,9 +434,7 @@ ribasim_model.pump.static.df.loc[
     "meta_func_afvoer",
 ] = 1
 
-add_controllers_to_connector_nodes(
-    ribasim_model, from_to_node_function_table, LEVEL_DIFFERENCE_THRESHOLD, drain_capacity=20
-)
+add_controllers_to_connector_nodes(ribasim_model, from_to_node_function_table, drain_capacity=20)
 remove_duplicate_controls(ribasim_model)
 
 outlet_columns_to_add_back = [
