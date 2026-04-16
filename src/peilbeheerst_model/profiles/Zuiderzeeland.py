@@ -1,9 +1,9 @@
 """
 Generation of profiles table for Zuiderzeeland.
 
-The generation of profiles for Zuiderzeeland cannot be executed with the generalised approach as defined in
-`src.peilberheest.profiles.gen_profiles.main()`: Its main route is user-defined. Therefore, the built-in flagged-based
-method is implemented: `src.peilbeheerst.profiles.gen_profiles.flagged_hydro_objects()`.
+The generation of profiles for Zuiderzeeland should not be executed with the generalised approach as defined in
+`src.peilberheest.profiles.gen_profiles.main()`: Instead, its main route is user-defined. Therefore, the built-in
+flagged-based method is implemented: `src.peilbeheerst.profiles.gen_profiles.flagged_hydro_objects()`.
 """
 
 from profiles import gen_profiles
