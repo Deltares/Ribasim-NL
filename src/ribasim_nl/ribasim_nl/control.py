@@ -1650,7 +1650,7 @@ def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Mod
     :rtype: ribasim_nl.Model
     """
     # get duplicate control nodes
-    df_link = ribasim_model.link.df[ribasim_model.link.df["link_type"] == "control"].assign(
+    df_link = _read_link_table(ribasim_model, link_type="control").assign(
         count=lambda df: df.groupby("to_node_id").cumcount()
     )
     duplicates = df_link[df_link["count"] > 0]

@@ -114,11 +114,11 @@ def main(
     bgt_full_coverage: bool = kwargs.get("bgt_full_coverage", True)
     # > network patching
     patch_network: bool = kwargs.get("patch_network", True)
-    patch_buffer: float = kwargs.get("patch_buffer", 1)
+    patch_buffer: float = kwargs.get("patch_buffer", 1.0)
     split_buffer: float = kwargs.get("split_buffer", 0.1)
     # > selection of crossings
     internal_crossings: bool = kwargs.get("internal_crossings", True)
-    selection_buffer: float = kwargs.get("selection_buffer", 1)
+    selection_buffer: float = kwargs.get("selection_buffer", 1.0)
     # > export intermediate output
     export_intermediate_output: bool = kwargs.get("export_intermediate_output", False)
     wd_intermediate_output: pathlib.Path | None = kwargs.get("wd_intermediate_output")

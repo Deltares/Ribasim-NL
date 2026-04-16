@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
-import pathlib
 import warnings
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import cast
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
@@ -29,7 +29,7 @@ class OutletPumpScalingConfig:
     and the scenario settings used by the iterative scaling routine.
     """
 
-    ribasim_model_path: str | pathlib.Path
+    ribasim_model_path: str | Path
     ribasim_model: Model
     from_to_node_function_table: pd.DataFrame
     waterschap: str
@@ -53,12 +53,12 @@ class OutletPumpScalingConfig:
     simulation_days: int = 365
 
     @property
-    def results_path(self) -> pathlib.Path:
+    def results_path(self) -> Path:
         """Return the expected Ribasim basin-results file for the model run."""
         try:
-            file = pathlib.Path(self.ribasim_model_path).parent / "results" / "basin.nc"
+            file = Path(self.ribasim_model_path).parent / "results" / "basin.nc"
         except FileNotFoundError:
-            file = pathlib.Path(self.ribasim_model_path).parent / "results" / "basin.arrow"
+            file = Path(self.ribasim_model_path).parent / "results" / "basin.arrow"
             warnings.warn(
                 "Scaling of outlets and pumps based on *.arrow-file will be deprecated. "
                 "Please switch to new Ribasim version (v2026.1.0-rc2 or higher).",
@@ -68,7 +68,7 @@ class OutletPumpScalingConfig:
         return file
 
 
-def read_output_data(file: pathlib.Path, columns: list[str] | None = None) -> pd.DataFrame:
+def read_output_data(file: Path, columns: list[str] | None = None) -> pd.DataFrame:
     """Read (selection of) intermediate output data.
 
     Selection of output data is defined by the `columns`-argument (optional).
@@ -77,7 +77,7 @@ def read_output_data(file: pathlib.Path, columns: list[str] | None = None) -> pd
     :param columns: selection of columns to keep, defaults to None
         If `columns=None`, all columns are kept.
 
-    :type file: pathlib.Path
+    :type file: Path
     :type columns: list[str] | None, optional
 
     :return: (selection of) output data
@@ -444,15 +444,10 @@ def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
         # Start from the original capacity. Rows that are not allowed to scale in
         # either situation keep their original value.
         from_to_node_function_table["scaled_flow_rate"] = from_to_node_function_table["max_flow_rate"]
-        # from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = (
-        #     from_to_node_function_table.loc[both_allowed, [latest_demand_column, latest_drainage_column]]
-        #     .max(axis=1)
-        #     .to_numpy(dtype=float)
-        # )
-        from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = np.max(
-            from_to_node_function_table.loc[both_allowed, [latest_demand_column, latest_drainage_column]],
-            axis=1,
-            dtype=float,
+        from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = (
+            from_to_node_function_table.loc[both_allowed, [latest_demand_column, latest_drainage_column]]
+            .max(axis=1)
+            .to_numpy(dtype=float)
         )
         from_to_node_function_table.loc[demand_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
             demand_only, latest_demand_column
@@ -649,9 +644,11 @@ class _OutletPumpScaler:
         #     ribasim_model.pump.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
         # ] = config.initial_guess_flow_rate_pump
 
-        # if max_flow_rate is 0, change to 0.1
-        ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
-        ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.max_flow_rate == 0, "max_flow_rate"] = 0.1
+        # if max_flow_rate is 0.0, change to 0.1
+        pump_static_df = cast(pd.DataFrame, ribasim_model.pump.static.df)
+        outlet_static_df = cast(pd.DataFrame, ribasim_model.outlet.static.df)
+        pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = 0.1
+        outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = 0.1
 
         ###########################
 
@@ -739,12 +736,8 @@ class _OutletPumpScaler:
             ribasim_model.level_boundary.static.df = None
 
             # if capacity has a flow rate lower than 0, place back to 0.001
-            ribasim_model.outlet.static.df.loc[
-                ribasim_model.outlet.static.df.max_flow_rate < 0.001, "max_flow_rate"
-            ] = min_scaled_flow_rate
-            ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.max_flow_rate < 0.001, "max_flow_rate"] = (
-                min_scaled_flow_rate
-            )
+            outlet_static_df.loc[outlet_static_df.max_flow_rate < 0.001, "max_flow_rate"] = min_scaled_flow_rate
+            pump_static_df.loc[pump_static_df.max_flow_rate < 0.001, "max_flow_rate"] = min_scaled_flow_rate
 
             # loop through each iteration
             for iteration in range(max_iterations):
