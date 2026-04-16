@@ -69,9 +69,7 @@ def main(
     table = hydrotopes.HydrotopeTable.from_csv(fn_hydrotopes)
 
     # intermediate output: working directory
-    wd_int = (
-        cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate") if export_intermediate_output else None
-    )
+    wd_int = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate")
 
     # execute profile generation
     profiles_tables = run.main(
@@ -83,7 +81,7 @@ def main(
         target_levels=gdf_target_levels,
         cloud=cloud,
         fn_bgt=fn_bgt,
-        wd_intermediate_output=wd_int,
+        wd_intermediate_output=(wd_int if export_intermediate_output else None),
         water_bodies=water_bodies,
     )
 
@@ -172,9 +170,7 @@ def flagged_hydro_objects(
     table = hydrotopes.HydrotopeTable.from_csv(fn_hydrotopes)
 
     # intermediate output: working directory
-    wd_int = (
-        cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate") if export_intermediate_output else None
-    )
+    wd_int = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate")
 
     # execute profile generation
     profiles_tables = run.main(
@@ -187,7 +183,7 @@ def flagged_hydro_objects(
         target_levels=gdf_target_levels,
         cloud=cloud,
         fn_bgt=fn_bgt,
-        wd_intermediate_output=wd_int,
+        wd_intermediate_output=(wd_int if export_intermediate_output else None),
         water_bodies=water_bodies,
     )
 
