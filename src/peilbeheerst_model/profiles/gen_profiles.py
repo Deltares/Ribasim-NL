@@ -158,7 +158,7 @@ def _sync(cloud: CloudStorage, water_authority: str, overwrite: bool, *extra_fil
     cloud.download_verwerkt(water_authority, overwrite=overwrite)
     cloud.download_basisgegevens(["Hydrotypen"], overwrite=overwrite)
     for f in extra_file:
-        if None:
+        if f is None:
             continue
         cloud.download_file(cloud.joinurl(water_authority, f))
     print(f"\rSynced with the GoodCloud: {water_authority}")
