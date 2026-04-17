@@ -37,7 +37,7 @@ uv sync
 
 This command automatically installs all required Python packages for development.
 These will not conflict with any pre-installed applications, as uv creates an isolated virtual environment.
-You can run Python commands using `uv run python` or activate the environment with `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows).
+You can run Python scripts using `uv run path/to/script.py` or activate the environment with `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows).
 
 The first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter.
 Open the command box with {{< kbd Ctrl+Shift+P >}} ({{< kbd Cmd+Shift+P >}} on macOS) and run `Python: Select Interpreter`.

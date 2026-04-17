@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   samenvoegen:
-    cmd: uv run python notebooks/samenvoegen_modellen.py
+    cmd: uv run notebooks/samenvoegen_modellen.py
     deps:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
@@ -21,12 +21,12 @@ stages:
       nfiles: 3
   aa_en_maas:
     cmd:
-    - uv run python notebooks/aa_en_maas/01_fix_model.py
-    - uv run python notebooks/aa_en_maas/02_prepare_model.py
-    - uv run python notebooks/aa_en_maas/03_parameterize_model.py
-    - uv run python notebooks/aa_en_maas/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py AaenMaas
-    - uv run python notebooks/07_add_dynamic_forcing.py AaenMaas
+    - uv run notebooks/aa_en_maas/01_fix_model.py
+    - uv run notebooks/aa_en_maas/02_prepare_model.py
+    - uv run notebooks/aa_en_maas/03_parameterize_model.py
+    - uv run notebooks/aa_en_maas/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py AaenMaas
+    - uv run notebooks/07_add_dynamic_forcing.py AaenMaas
     deps:
     - path: notebooks/aa_en_maas
       hash: md5
@@ -41,12 +41,12 @@ stages:
       nfiles: 4
   noorderzijlvest:
     cmd:
-    - uv run python notebooks/noorderzijlvest/01_fix_model.py
-    - uv run python notebooks/noorderzijlvest/02_prepare_model.py
-    - uv run python notebooks/noorderzijlvest/03_parameterize_model.py
-    - uv run python notebooks/noorderzijlvest/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py Noorderzijlvest
-    - uv run python notebooks/07_add_dynamic_forcing.py Noorderzijlvest
+    - uv run notebooks/noorderzijlvest/01_fix_model.py
+    - uv run notebooks/noorderzijlvest/02_prepare_model.py
+    - uv run notebooks/noorderzijlvest/03_parameterize_model.py
+    - uv run notebooks/noorderzijlvest/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py Noorderzijlvest
+    - uv run notebooks/07_add_dynamic_forcing.py Noorderzijlvest
     deps:
     - path: notebooks/noorderzijlvest
       hash: md5
@@ -61,12 +61,12 @@ stages:
       nfiles: 38
   stichtse_rijnlanden:
     cmd:
-    - uv run python notebooks/stichtse_rijnlanden/01_fix_model.py
-    - uv run python notebooks/stichtse_rijnlanden/02_prepare_model.py
-    - uv run python notebooks/stichtse_rijnlanden/03_parameterize_model.py
-    - uv run python notebooks/stichtse_rijnlanden/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py StichtseRijnlanden
-    - uv run python notebooks/07_add_dynamic_forcing.py StichtseRijnlanden
+    - uv run notebooks/stichtse_rijnlanden/01_fix_model.py
+    - uv run notebooks/stichtse_rijnlanden/02_prepare_model.py
+    - uv run notebooks/stichtse_rijnlanden/03_parameterize_model.py
+    - uv run notebooks/stichtse_rijnlanden/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py StichtseRijnlanden
+    - uv run notebooks/07_add_dynamic_forcing.py StichtseRijnlanden
     deps:
     - path: notebooks/stichtse_rijnlanden
       hash: md5
@@ -80,7 +80,7 @@ stages:
       size: 692331237
       nfiles: 38
   bathymetry:
-    cmd: uv run python notebooks/rijkswaterstaat/1_bathymetrie.py
+    cmd: uv run notebooks/rijkswaterstaat/1_bathymetrie.py
     deps:
     - path: notebooks/rijkswaterstaat/1_bathymetrie.py
       hash: md5
@@ -94,14 +94,14 @@ stages:
       nfiles: 4
   rijkswaterstaat:
     cmd:
-    - uv run python notebooks/rijkswaterstaat/2_basins.py
-    - uv run python notebooks/rijkswaterstaat/3_netwerk.py
-    - uv run python notebooks/rijkswaterstaat/4_kunstwerken.py
-    - uv run python notebooks/rijkswaterstaat/5_model_netwerk.py
-    - uv run python notebooks/rijkswaterstaat/6_model_sturing.py
-    - uv run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
-    - uv run python notebooks/rijkswaterstaat/8a_update_state.py
-    - uv run python notebooks/rijkswaterstaat/8b_update_bc.py
+    - uv run notebooks/rijkswaterstaat/2_basins.py
+    - uv run notebooks/rijkswaterstaat/3_netwerk.py
+    - uv run notebooks/rijkswaterstaat/4_kunstwerken.py
+    - uv run notebooks/rijkswaterstaat/5_model_netwerk.py
+    - uv run notebooks/rijkswaterstaat/6_model_sturing.py
+    - uv run notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+    - uv run notebooks/rijkswaterstaat/8a_update_state.py
+    - uv run notebooks/rijkswaterstaat/8b_update_bc.py
     deps:
     - path: data/Rijkswaterstaat/verwerkt/bathymetrie
       hash: md5
@@ -121,12 +121,12 @@ stages:
       nfiles: 2
   rijn_en_ijssel:
     cmd:
-    - uv run python notebooks/rijn_en_ijssel/01_fix_model.py
-    - uv run python notebooks/rijn_en_ijssel/02_prepare_model.py
-    - uv run python notebooks/rijn_en_ijssel/03_parameterize_model.py
-    - uv run python notebooks/rijn_en_ijssel/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py RijnenIJssel
-    - uv run python notebooks/07_add_dynamic_forcing.py RijnenIJssel
+    - uv run notebooks/rijn_en_ijssel/01_fix_model.py
+    - uv run notebooks/rijn_en_ijssel/02_prepare_model.py
+    - uv run notebooks/rijn_en_ijssel/03_parameterize_model.py
+    - uv run notebooks/rijn_en_ijssel/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py RijnenIJssel
+    - uv run notebooks/07_add_dynamic_forcing.py RijnenIJssel
     deps:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
@@ -146,12 +146,12 @@ stages:
       nfiles: 4
   vechtstromen:
     cmd:
-    - uv run python notebooks/vechtstromen/01_fix_model.py
-    - uv run python notebooks/vechtstromen/02_prepare_model.py
-    - uv run python notebooks/vechtstromen/03_parameterize_model.py
-    - uv run python notebooks/vechtstromen/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py Vechtstromen
-    - uv run python notebooks/07_add_dynamic_forcing.py Vechtstromen
+    - uv run notebooks/vechtstromen/01_fix_model.py
+    - uv run notebooks/vechtstromen/02_prepare_model.py
+    - uv run notebooks/vechtstromen/03_parameterize_model.py
+    - uv run notebooks/vechtstromen/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py Vechtstromen
+    - uv run notebooks/07_add_dynamic_forcing.py Vechtstromen
     deps:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
@@ -171,12 +171,12 @@ stages:
       nfiles: 4
   de_dommel:
     cmd:
-    - uv run python notebooks/de_dommel/01_fix_model.py
-    - uv run python notebooks/de_dommel/02_prepare_model.py
-    - uv run python notebooks/de_dommel/03_parameterize_model.py
-    - uv run python notebooks/de_dommel/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py DeDommel
-    - uv run python notebooks/07_add_dynamic_forcing.py DeDommel
+    - uv run notebooks/de_dommel/01_fix_model.py
+    - uv run notebooks/de_dommel/02_prepare_model.py
+    - uv run notebooks/de_dommel/03_parameterize_model.py
+    - uv run notebooks/de_dommel/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py DeDommel
+    - uv run notebooks/07_add_dynamic_forcing.py DeDommel
     deps:
     - path: notebooks/de_dommel
       hash: md5
@@ -191,13 +191,13 @@ stages:
       nfiles: 38
   brabantse_delta:
     cmd:
-    - uv run python notebooks/brabantse_delta/_preprocess_profielen.py
-    - uv run python notebooks/brabantse_delta/01_fix_model.py
-    - uv run python notebooks/brabantse_delta/02_prepare_model.py
-    - uv run python notebooks/brabantse_delta/03_parameterize_model.py
-    - uv run python notebooks/brabantse_delta/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py BrabantseDelta
-    - uv run python notebooks/07_add_dynamic_forcing.py BrabantseDelta
+    - uv run notebooks/brabantse_delta/_preprocess_profielen.py
+    - uv run notebooks/brabantse_delta/01_fix_model.py
+    - uv run notebooks/brabantse_delta/02_prepare_model.py
+    - uv run notebooks/brabantse_delta/03_parameterize_model.py
+    - uv run notebooks/brabantse_delta/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py BrabantseDelta
+    - uv run notebooks/07_add_dynamic_forcing.py BrabantseDelta
     deps:
     - path: notebooks/brabantse_delta
       hash: md5
@@ -212,12 +212,12 @@ stages:
       nfiles: 38
   drents_overijsselse_delta:
     cmd:
-    - uv run python notebooks/drents_overijsselse_delta/01_fix_model.py
-    - uv run python notebooks/drents_overijsselse_delta/02_prepare_model.py
-    - uv run python notebooks/drents_overijsselse_delta/03_parameterize_model.py
-    - uv run python notebooks/drents_overijsselse_delta/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py DrentsOverijsselseDelta
-    - uv run python notebooks/07_add_dynamic_forcing.py DrentsOverijsselseDelta
+    - uv run notebooks/drents_overijsselse_delta/01_fix_model.py
+    - uv run notebooks/drents_overijsselse_delta/02_prepare_model.py
+    - uv run notebooks/drents_overijsselse_delta/03_parameterize_model.py
+    - uv run notebooks/drents_overijsselse_delta/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py DrentsOverijsselseDelta
+    - uv run notebooks/07_add_dynamic_forcing.py DrentsOverijsselseDelta
     deps:
     - path: notebooks/drents_overijsselse_delta
       hash: md5
@@ -233,12 +233,12 @@ stages:
       nfiles: 38
   vallei_en_veluwe:
     cmd:
-    - uv run python notebooks/vallei_en_veluwe/01_fix_model.py
-    - uv run python notebooks/vallei_en_veluwe/02_prepare_model.py
-    - uv run python notebooks/vallei_en_veluwe/03_parameterize_model.py
-    - uv run python notebooks/vallei_en_veluwe/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py ValleienVeluwe
-    - uv run python notebooks/07_add_dynamic_forcing.py ValleienVeluwe
+    - uv run notebooks/vallei_en_veluwe/01_fix_model.py
+    - uv run notebooks/vallei_en_veluwe/02_prepare_model.py
+    - uv run notebooks/vallei_en_veluwe/03_parameterize_model.py
+    - uv run notebooks/vallei_en_veluwe/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py ValleienVeluwe
+    - uv run notebooks/07_add_dynamic_forcing.py ValleienVeluwe
     deps:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
@@ -258,13 +258,13 @@ stages:
       nfiles: 4
   limburg:
     cmd:
-    - uv run python notebooks/limburg/_preprocess_profielen.py
-    - uv run python notebooks/limburg/01_fix_model.py
-    - uv run python notebooks/limburg/02_prepare_model.py
-    - uv run python notebooks/limburg/03_parameterize_model.py
-    - uv run python notebooks/limburg/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py Limburg
-    - uv run python notebooks/07_add_dynamic_forcing.py Limburg
+    - uv run notebooks/limburg/_preprocess_profielen.py
+    - uv run notebooks/limburg/01_fix_model.py
+    - uv run notebooks/limburg/02_prepare_model.py
+    - uv run notebooks/limburg/03_parameterize_model.py
+    - uv run notebooks/limburg/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py Limburg
+    - uv run notebooks/07_add_dynamic_forcing.py Limburg
     deps:
     - path: notebooks/limburg
       hash: md5
@@ -279,12 +279,12 @@ stages:
       nfiles: 2
   hunze_en_aas:
     cmd:
-    - uv run python notebooks/hunze_en_aas/01_fix_model.py
-    - uv run python notebooks/hunze_en_aas/02_prepare_model.py
-    - uv run python notebooks/hunze_en_aas/03_parameterize_model.py
-    - uv run python notebooks/hunze_en_aas/04_add_full_control.py
-    - uv run python notebooks/05_add_bergend.py HunzeenAas
-    - uv run python notebooks/07_add_dynamic_forcing.py HunzeenAas
+    - uv run notebooks/hunze_en_aas/01_fix_model.py
+    - uv run notebooks/hunze_en_aas/02_prepare_model.py
+    - uv run notebooks/hunze_en_aas/03_parameterize_model.py
+    - uv run notebooks/hunze_en_aas/04_add_full_control.py
+    - uv run notebooks/05_add_bergend.py HunzeenAas
+    - uv run notebooks/07_add_dynamic_forcing.py HunzeenAas
     deps:
     - path: notebooks/hunze_en_aas
       hash: md5
@@ -298,7 +298,7 @@ stages:
       size: 793990335
       nfiles: 38
   koppelen:
-    cmd: uv run python notebooks/koppelen_modellen.py
+    cmd: uv run notebooks/koppelen_modellen.py
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
@@ -312,7 +312,7 @@ stages:
       size: 80756923
       nfiles: 4
   rwzi:
-    cmd: uv run python notebooks/create_rwzi_model.py
+    cmd: uv run notebooks/create_rwzi_model.py
     deps:
     - path: notebooks/create_rwzi_model.py
       hash: md5
