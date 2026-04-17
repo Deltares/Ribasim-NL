@@ -1,6 +1,7 @@
 """Run DVC stages sequentially with per-stage logging and a summary."""
 
 import logging
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -44,6 +45,7 @@ def run_stages(stages: list[str], logfile: str | None = None) -> bool:
     for stage in stages:
         logger.info(f"\n=== Running stage: {stage} ===")
 
+        env = {**os.environ, "PYTHONUTF8": "1"}
         process = subprocess.Popen(
             ["uv", "run", "dvc", "repro", "--keep-going", "--force", stage],
             stdout=subprocess.PIPE,
@@ -52,6 +54,7 @@ def run_stages(stages: list[str], logfile: str | None = None) -> bool:
             encoding="utf-8",
             errors="replace",
             bufsize=1,
+            env=env,
         )
 
         assert process.stdout is not None

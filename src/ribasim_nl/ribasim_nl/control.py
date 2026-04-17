@@ -1249,7 +1249,7 @@ def add_controllers_to_supply_area(
     drain_nodes: list[int],
     flushing_nodes: dict[int, float | dict[str, float]],
     supply_nodes: list[int],
-    level_difference_threshold: float,
+    level_difference_threshold: float = 0.02,
     flow_control_nodes: list[int] | None = None,
     exclude_nodes: list[int] | None = None,
     control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
@@ -1313,6 +1313,9 @@ def add_controllers_to_supply_area(
     """
     flow_control_nodes = flow_control_nodes or []
     exclude_nodes = exclude_nodes or []
+
+    solver_threshold = model.solver.level_difference_threshold
+    assert level_difference_threshold == solver_threshold, "incompatible threshold"
 
     node_positions_df = get_control_nodes_position_from_supply_area(
         model=model,

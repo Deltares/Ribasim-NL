@@ -128,6 +128,11 @@ stages:
     - uv run python notebooks/05_add_bergend.py RijnenIJssel
     - uv run python notebooks/07_add_dynamic_forcing.py RijnenIJssel
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/rijn_en_ijssel
       hash: md5
       md5: b4909f6b2389bc18951e3b8dc61c6337.dir
@@ -136,9 +141,9 @@ stages:
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: cd902ec2f199424e5816d5de4c2643fa.dir
-      size: 554801046
-      nfiles: 38
+      md5: 5ac3126a3b89eb93ef22679f9f6240d4.dir
+      size: 25469712
+      nfiles: 4
   vechtstromen:
     cmd:
     - uv run python notebooks/vechtstromen/01_fix_model.py
@@ -148,6 +153,11 @@ stages:
     - uv run python notebooks/05_add_bergend.py Vechtstromen
     - uv run python notebooks/07_add_dynamic_forcing.py Vechtstromen
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/vechtstromen
       hash: md5
       md5: 259415edff063e7f4975da4484ad6ca0.dir
@@ -156,9 +166,9 @@ stages:
     outs:
     - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
       hash: md5
-      md5: bec881a75108f93282573b1de2ddecf6.dir
-      size: 1050340677
-      nfiles: 38
+      md5: 53bda3a5826a43f6c24000076f31ee04.dir
+      size: 68153792
+      nfiles: 4
   de_dommel:
     cmd:
     - uv run python notebooks/de_dommel/01_fix_model.py
@@ -230,17 +240,22 @@ stages:
     - uv run python notebooks/05_add_bergend.py ValleienVeluwe
     - uv run python notebooks/07_add_dynamic_forcing.py ValleienVeluwe
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/vallei_en_veluwe
       hash: md5
-      md5: 815cc47957823637611960e509bc5466.dir
-      size: 64331
-      nfiles: 5
+      md5: ca5be377c0605b728919ec6494a044da.dir
+      size: 64198
+      nfiles: 4
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: b70af9ddf20f6a1ab1bdf73b6b7733ae.dir
-      size: 514827593
-      nfiles: 38
+      md5: f6279dc2a817ba5c009a6080f8c90797.dir
+      size: 54199560
+      nfiles: 4
   limburg:
     cmd:
     - uv run python notebooks/limburg/_preprocess_profielen.py
