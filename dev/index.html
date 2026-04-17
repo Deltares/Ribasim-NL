@@ -176,7 +176,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#clone-ribasim" id="toc-clone-ribasim" class="nav-link" data-scroll-target="#clone-ribasim">Clone Ribasim</a></li>
   <li><a href="#setting-up-uv" id="toc-setting-up-uv" class="nav-link" data-scroll-target="#setting-up-uv">Setting up uv</a></li>
-  <li><a href="#install-pre-commit-git-hook-scripts" id="toc-install-pre-commit-git-hook-scripts" class="nav-link" data-scroll-target="#install-pre-commit-git-hook-scripts">Install pre-commit git hook scripts</a></li>
+  <li><a href="#install-just" id="toc-install-just" class="nav-link" data-scroll-target="#install-just">Install just</a></li>
+  <li><a href="#git-hooks" id="toc-git-hooks" class="nav-link" data-scroll-target="#git-hooks">Git hooks</a></li>
   <li><a href="#co-development-with-ribasim" id="toc-co-development-with-ribasim" class="nav-link" data-scroll-target="#co-development-with-ribasim">Co-development with Ribasim</a></li>
   <li><a href="#sec-environment-variables" id="toc-sec-environment-variables" class="nav-link" data-scroll-target="#sec-environment-variables">Environment variables</a></li>
   </ul></li>
@@ -220,7 +221,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="clone-ribasim" class="level2">
 <h2 class="anchored" data-anchor-id="clone-ribasim">Clone Ribasim</h2>
 <p>In order to have the Ribasim-NL repository locally available, you can clone it with Git. Git can be installed from <a href="https://git-scm.com/downloads">git-scm.com</a>. Once installed, run the following command at a directory of your choice:</p>
-<p>In order to have the Ribasim repository locally available, run the following command at a directory of your choice:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/Deltares/Ribasim-NL.git</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>To continue with the following steps, make the root of the repository your working directory by running</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> Ribasim-NL</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -235,22 +235,33 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter. Open the command box with <kbd title="Ctrl+Shift+P" aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (<kbd title="Cmd+Shift+P" aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and run <code>Python: Select Interpreter</code>. Select the Python interpreter in the <code>.venv</code> folder that uv created. Unless the setting <code>python.terminal.activateEnvironment</code> is disabled, it will already activate the environment in your terminal.</p>
 <p>If you encounter issues related to uv dependencies, it might help to clean your uv environment with <code>uv clean</code>, followed by <code>uv sync</code>.</p>
 </section>
-<section id="install-pre-commit-git-hook-scripts" class="level2">
-<h2 class="anchored" data-anchor-id="install-pre-commit-git-hook-scripts">Install pre-commit git hook scripts</h2>
-<p>Pre-commit is part of the uv environment, hence you can run:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run pre-commit install</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>For more information see the <a href="https://pre-commit.com/#3-install-the-git-hook-scripts">pre-commit documentation</a>.</p>
+<section id="install-just" class="level2">
+<h2 class="anchored" data-anchor-id="install-just">Install just</h2>
+<p>We use <a href="https://just.systems/">just</a> as a command runner. Our justfile uses <a href="https://www.nushell.sh/">Nushell</a> as its shell, so you need to install Nushell first before you can run just recipes.</p>
+<p>Set up the full development environment with:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uvx</span> <span class="at">--from</span> rust-just just install</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This installs all required tools (<code>just</code>, <code>prek</code>, <code>ruff</code>, <code>dvc</code>), syncs Python dependencies, pulls data, and installs git hooks. After the initial setup, you can also run <code>just install</code> directly since <code>just</code> is now on your PATH.</p>
+</section>
+<section id="git-hooks" class="level2">
+<h2 class="anchored" data-anchor-id="git-hooks">Git hooks</h2>
+<p>We use <a href="https://prek.j178.dev/">prek</a> instead of pre-commit for git hooks. It is installed as part of <code>just install</code>, but you can also install it manually:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> tool install prek</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">prek</span> install</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To run all hooks on all files manually:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">just</span> check</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To skip the slower DVC hooks and only run Python linting, formatting, and type checking:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">just</span> pycheck</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="co-development-with-ribasim" class="level2">
 <h2 class="anchored" data-anchor-id="co-development-with-ribasim">Co-development with Ribasim</h2>
 <p>Ribasim-NL pins to a specific Ribasim version in the <code>pyproject.toml</code>. Generally this will be the latest release. During development sometimes you may want to test out the latest unreleased development version of Ribasim.</p>
 <p>To do so, open <code>pyproject.toml</code> in your editor. Find the <code>[tool.uv.sources]</code> section and uncomment or add the git source like below:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ribasim</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">git</span><span class="op"> =</span> <span class="st">"https://github.com/Deltares/Ribasim"</span><span class="op">, </span><span class="dt">branch</span><span class="op"> =</span> <span class="st">"main"</span><span class="op">, </span><span class="dt">subdirectory</span><span class="op"> =</span> <span class="st">"python/ribasim"</span><span class="op"> }</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ribasim</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">git</span><span class="op"> =</span> <span class="st">"https://github.com/Deltares/Ribasim"</span><span class="op">, </span><span class="dt">branch</span><span class="op"> =</span> <span class="st">"main"</span><span class="op">, </span><span class="dt">subdirectory</span><span class="op"> =</span> <span class="st">"python/ribasim"</span><span class="op"> }</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>You can change the branch name if needed, or use a specific commit with for example <code>rev = "0075d4a"</code>.</p>
 <p>If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub. This can be done using this syntax:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ribasim</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">path</span><span class="op"> =</span> <span class="st">"../Ribasim/python/ribasim"</span><span class="op">, </span><span class="dt">editable</span><span class="op"> =</span> <span class="cn">true</span><span class="op"> }</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ribasim</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">path</span><span class="op"> =</span> <span class="st">"../Ribasim/python/ribasim"</span><span class="op">, </span><span class="dt">editable</span><span class="op"> =</span> <span class="cn">true</span><span class="op"> }</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This path will work if you clone Ribasim next to Ribasim-NL.</p>
 <p>After you are done modifying <code>pyproject.toml</code>, you can run <code>uv sync</code> to ensure the dependencies are installed.</p>
 <p>For Ribasim developer documentation see <a href="https://ribasim.org/dev/">ribasim.org/dev</a>.</p>
@@ -295,7 +306,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>In the root of the repository is a <code>.env.default</code> file with the defaults that can serve as a template. Copy it to <code>.env</code> and fill in <code>RIBASIM_NL_CLOUD_PASS</code> with the actual password, and adjust the other paths as needed. The <code>.env</code> file is gitignored because it is different per developer, and to avoid leaking the password. Make sure to use single quotes around values. The defaults below come from <code>src/ribasim_nl/ribasim_nl/settings.py</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-include="../../.env.default"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10" data-include="../../.env.default"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Values from the <code>.env</code> file take precedence over environment variables, so you can override system-wide settings per project. If you prefer to set these environment variables in your OS or terminal instead, that will also work.</p>
 <p><code>OVERWRITE_FILES_FROM_CLOUD</code> is <code>true</code> by default. When using <code>cloud.synchronize</code> or <code>cloud.download_content</code>, this determines if local files will be overwritten when the <code>overwrite</code> keyword argument is not explicitly passed. Whilst updating datasets locally, you can set this to <code>false</code> to ensure your modifications are not lost. After uploading the new dataset, set it back to <code>true</code>.</p>
 </section>
@@ -306,28 +317,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="running-pyrefly" class="level2">
 <h2 class="anchored" data-anchor-id="running-pyrefly">Running Pyrefly</h2>
 <p>To check for type errors, run:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run pyrefly check</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This is also run in CI via the <code>pyrefly</code> job in <code>.github/workflows/python_lint.yml</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">just</span> pycheck</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This runs all hooks except DVC, including Pyrefly type checking. This is also run in CI via the <code>pyrefly</code> job in <code>.github/workflows/python_lint.yml</code>.</p>
 </section>
 <section id="baseline-file" class="level2">
 <h2 class="anchored" data-anchor-id="baseline-file">Baseline file</h2>
 <p>Existing type errors are stored in a <code>baseline.json</code> file. Pyrefly’s <a href="https://pyrefly.org/en/docs/error-suppressions/#baseline-files-experimental">baseline feature</a> suppresses these known errors and only reports <em>new</em> errors. This way, <code>pyrefly check</code> passes cleanly without requiring ignore comments on every line.</p>
 <p>The baseline is configured in <code>pyproject.toml</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.pyrefly]</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="dt">baseline</span> <span class="op">=</span> <span class="st">"baseline.json"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.pyrefly]</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="dt">baseline</span> <span class="op">=</span> <span class="st">"baseline.json"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="updating-the-baseline" class="level3">
 <h3 class="anchored" data-anchor-id="updating-the-baseline">Updating the baseline</h3>
 <p>After fixing existing type errors, regenerate the baseline to remove the fixed entries:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run pyrefly check <span class="at">--update-baseline</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run pyrefly check <span class="at">--update-baseline</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If you introduce code that triggers new errors (e.g.&nbsp;from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command. Prefer fixing the error or adding a targeted <code># pyrefly: ignore[error-code]</code> comment when possible.</p>
 </section>
 <section id="suppressing-individual-errors" class="level3">
 <h3 class="anchored" data-anchor-id="suppressing-individual-errors">Suppressing individual errors</h3>
 <p>For specific lines where the type checker is wrong, use a targeted ignore comment:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_expression  <span class="co"># pyrefly: ignore[error-code]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_expression  <span class="co"># pyrefly: ignore[error-code]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>For lines that would exceed 120 characters with the comment appended, place the comment on the line above:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pyrefly: ignore[error-code]</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_very_long_expression_that_would_be_too_long_with_an_inline_comment</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pyrefly: ignore[error-code]</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_very_long_expression_that_would_be_too_long_with_an_inline_comment</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>

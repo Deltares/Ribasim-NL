@@ -11,7 +11,7 @@
     "href": "dev/index.html#clone-ribasim",
     "title": "Contributing",
     "section": "Clone Ribasim",
-    "text": "Clone Ribasim\nIn order to have the Ribasim-NL repository locally available, you can clone it with Git. Git can be installed from git-scm.com. Once installed, run the following command at a directory of your choice:\nIn order to have the Ribasim repository locally available, run the following command at a directory of your choice:\ngit clone https://github.com/Deltares/Ribasim-NL.git\nTo continue with the following steps, make the root of the repository your working directory by running\ncd Ribasim-NL"
+    "text": "Clone Ribasim\nIn order to have the Ribasim-NL repository locally available, you can clone it with Git. Git can be installed from git-scm.com. Once installed, run the following command at a directory of your choice:\ngit clone https://github.com/Deltares/Ribasim-NL.git\nTo continue with the following steps, make the root of the repository your working directory by running\ncd Ribasim-NL"
   },
   {
     "objectID": "dev/index.html#setting-up-uv",
@@ -21,11 +21,18 @@
     "text": "Setting up uv\nFirst, set up uv as described in the uv documentation.\nWe require at least uv version v0.9.3, but generally recommend the latest release. Check the version with uv --version, update with uv self update.\nThen set up the environment by running the following command.\nuv sync\nThis command automatically installs all required Python packages for development. These will not conflict with any pre-installed applications, as uv creates an isolated virtual environment. You can run Python commands using uv run python or activate the environment with source .venv/bin/activate (Linux/macOS) or .venv\\Scripts\\activate (Windows).\nThe first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter. Open the command box with Ctrl+Shift+PCtrl+Shift+P (Cmd+Shift+PCmd+Shift+P on macOS) and run Python: Select Interpreter. Select the Python interpreter in the .venv folder that uv created. Unless the setting python.terminal.activateEnvironment is disabled, it will already activate the environment in your terminal.\nIf you encounter issues related to uv dependencies, it might help to clean your uv environment with uv clean, followed by uv sync."
   },
   {
-    "objectID": "dev/index.html#install-pre-commit-git-hook-scripts",
-    "href": "dev/index.html#install-pre-commit-git-hook-scripts",
+    "objectID": "dev/index.html#install-just",
+    "href": "dev/index.html#install-just",
     "title": "Contributing",
-    "section": "Install pre-commit git hook scripts",
-    "text": "Install pre-commit git hook scripts\nPre-commit is part of the uv environment, hence you can run:\nuv run pre-commit install\nFor more information see the pre-commit documentation."
+    "section": "Install just",
+    "text": "Install just\nWe use just as a command runner. Our justfile uses Nushell as its shell, so you need to install Nushell first before you can run just recipes.\nSet up the full development environment with:\nuvx --from rust-just just install\nThis installs all required tools (just, prek, ruff, dvc), syncs Python dependencies, pulls data, and installs git hooks. After the initial setup, you can also run just install directly since just is now on your PATH."
+  },
+  {
+    "objectID": "dev/index.html#git-hooks",
+    "href": "dev/index.html#git-hooks",
+    "title": "Contributing",
+    "section": "Git hooks",
+    "text": "Git hooks\nWe use prek instead of pre-commit for git hooks. It is installed as part of just install, but you can also install it manually:\nuv tool install prek\nprek install\nTo run all hooks on all files manually:\njust check\nTo skip the slower DVC hooks and only run Python linting, formatting, and type checking:\njust pycheck"
   },
   {
     "objectID": "dev/index.html#co-development-with-ribasim",
@@ -46,7 +53,7 @@
     "href": "dev/index.html#running-pyrefly",
     "title": "Contributing",
     "section": "Running Pyrefly",
-    "text": "Running Pyrefly\nTo check for type errors, run:\nuv run pyrefly check\nThis is also run in CI via the pyrefly job in .github/workflows/python_lint.yml."
+    "text": "Running Pyrefly\nTo check for type errors, run:\njust pycheck\nThis runs all hooks except DVC, including Pyrefly type checking. This is also run in CI via the pyrefly job in .github/workflows/python_lint.yml."
   },
   {
     "objectID": "dev/index.html#baseline-file",
