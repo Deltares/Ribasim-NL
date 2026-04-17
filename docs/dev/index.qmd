@@ -12,8 +12,6 @@ In order to have the Ribasim-NL repository locally available, you can clone it w
 Git can be installed from [git-scm.com](https://git-scm.com/downloads).
 Once installed, run the following command at a directory of your choice:
 
-In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
-
 ```sh
 git clone https://github.com/Deltares/Ribasim-NL.git
 ```
@@ -48,15 +46,41 @@ Unless the setting `python.terminal.activateEnvironment` is disabled, it will al
 
 If you encounter issues related to uv dependencies, it might help to clean your uv environment with `uv clean`, followed by `uv sync`.
 
-## Install pre-commit git hook scripts
+## Install just
 
-Pre-commit is part of the uv environment, hence you can run:
+We use [just](https://just.systems/) as a command runner.
+Our justfile uses [Nushell](https://www.nushell.sh/) as its shell, so you need to install Nushell first before you can run just recipes.
+
+Set up the full development environment with:
 
 ```sh
-uv run pre-commit install
+uvx --from rust-just just install
 ```
 
-For more information see the [pre-commit documentation](https://pre-commit.com/#3-install-the-git-hook-scripts).
+This installs all required tools (`just`, `prek`, `ruff`, `dvc`), syncs Python dependencies, pulls data, and installs git hooks.
+After the initial setup, you can also run `just install` directly since `just` is now on your PATH.
+
+## Git hooks
+
+We use [prek](https://prek.j178.dev/) instead of pre-commit for git hooks.
+It is installed as part of `just install`, but you can also install it manually:
+
+```sh
+uv tool install prek
+prek install
+```
+
+To run all hooks on all files manually:
+
+```sh
+just check
+```
+
+To skip the slower DVC hooks and only run Python linting, formatting, and type checking:
+
+```sh
+just pycheck
+```
 
 ## Co-development with Ribasim
 
@@ -127,9 +151,10 @@ Pyrefly is configured in the `[tool.pyrefly]` section of `pyproject.toml`.
 To check for type errors, run:
 
 ```sh
-uv run pyrefly check
+just pycheck
 ```
 
+This runs all hooks except DVC, including Pyrefly type checking.
 This is also run in CI via the `pyrefly` job in `.github/workflows/python_lint.yml`.
 
 ## Baseline file
