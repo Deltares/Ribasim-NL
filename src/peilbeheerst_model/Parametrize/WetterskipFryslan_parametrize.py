@@ -11,7 +11,7 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim import Node, cli
+from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -25,7 +25,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -62,19 +62,19 @@ meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 gaarkeuken_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaarkeuken.gpkg")
 
-# cloud.synchronize(
-#     filepaths=[
-#         ribasim_base_model_dir,
-#         FeedbackFormulier_path,
-#         ws_grenzen_path,
-#         RWS_grenzen_path,
-#         qlr_path,
-#         aanvoer_path,
-#         meteo_path,
-#         profiles_path,
-#         gaarkeuken_path,
-#     ]
-# )
+cloud.synchronize(
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+        meteo_path,
+        profiles_path,
+        gaarkeuken_path,
+    ]
+)
 
 # refresh only the feedback form from cloud
 cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -797,7 +797,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-cli.run_ribasim(ribasim_work_dir_model_toml)
+run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)

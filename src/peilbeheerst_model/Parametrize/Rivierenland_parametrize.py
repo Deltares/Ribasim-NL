@@ -10,7 +10,7 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim import Node, cli
+from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -23,7 +23,7 @@ from ribasim_nl.profiles import implement
 from shapely import LineString, Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -643,7 +643,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-cli.run_ribasim(ribasim_work_dir_model_toml)
+run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)

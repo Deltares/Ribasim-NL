@@ -51,6 +51,7 @@ bin/
 *.arrow
 *.gpkg
 *.toml
+*.qgz
 *.dbf
 *.xlsx
 *.shp*

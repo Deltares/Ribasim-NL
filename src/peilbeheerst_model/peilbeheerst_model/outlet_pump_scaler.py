@@ -12,7 +12,7 @@ import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, settings
 
 pd.set_option("display.max_columns", None)
 
@@ -790,7 +790,7 @@ class _OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=config.ribasim_model_path)
+                run_ribasim(toml_path=config.ribasim_model_path, ribasim_home=settings.ribasim_home)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
                 # ribasim_water_levels = pd.read_feather(results_path)

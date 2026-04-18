@@ -18,6 +18,7 @@ stages:
       - uv run notebooks/rijkswaterstaat/8b_update_bc.py
     deps:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
+      - data/Rijkswaterstaat/modellen/rwzi
       - notebooks/rijkswaterstaat
     outs:
       - data/Rijkswaterstaat/modellen/hws_transient

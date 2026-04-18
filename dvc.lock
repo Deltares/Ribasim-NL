@@ -28,16 +28,21 @@ stages:
     - uv run notebooks/05_add_bergend.py AaenMaas
     - uv run notebooks/07_add_dynamic_forcing.py AaenMaas
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/aa_en_maas
       hash: md5
-      md5: 03a56c56dd64a355aaf76d7a7e8a8c30.dir
-      size: 76175
+      md5: 292a74078ed1bbedf85b3217bf09eaa1.dir
+      size: 75184
       nfiles: 5
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: f5a34515367218d82561eea532759084.dir
-      size: 45449642
+      md5: 77364b7a0c9a5b32cd3d276b9e629f2d.dir
+      size: 45449608
       nfiles: 4
   noorderzijlvest:
     cmd:
@@ -48,17 +53,22 @@ stages:
     - uv run notebooks/05_add_bergend.py Noorderzijlvest
     - uv run notebooks/07_add_dynamic_forcing.py Noorderzijlvest
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/noorderzijlvest
       hash: md5
-      md5: beffe6c38fc061ae88a298257847c645.dir
-      size: 416902015
-      nfiles: 64
+      md5: cb6650638fa72dd0aa37b0f77c9b22cb.dir
+      size: 32231
+      nfiles: 4
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
-      md5: 5763cc7d49d2dd21f1cb48919482c2a5.dir
-      size: 814275769
-      nfiles: 38
+      md5: 99ad948c74b19f51f6697ba3fb9905c9.dir
+      size: 43779488
+      nfiles: 4
   stichtse_rijnlanden:
     cmd:
     - uv run notebooks/stichtse_rijnlanden/01_fix_model.py
@@ -68,17 +78,22 @@ stages:
     - uv run notebooks/05_add_bergend.py StichtseRijnlanden
     - uv run notebooks/07_add_dynamic_forcing.py StichtseRijnlanden
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/stichtse_rijnlanden
       hash: md5
-      md5: 81b7a1413fa4680ed13cf4497553a429.dir
-      size: 13012959
-      nfiles: 8
+      md5: d53b1b40b3dd66b596f288af2321bcef.dir
+      size: 62239
+      nfiles: 4
     outs:
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
       hash: md5
-      md5: 0ef8b1082b8d98d68da0a65cfc664460.dir
-      size: 692331237
-      nfiles: 38
+      md5: 81eb059d14e9f971fca86ba4563fef71.dir
+      size: 45970480
+      nfiles: 4
   bathymetry:
     cmd: uv run notebooks/rijkswaterstaat/1_bathymetrie.py
     deps:
@@ -103,6 +118,11 @@ stages:
     - uv run notebooks/rijkswaterstaat/8a_update_state.py
     - uv run notebooks/rijkswaterstaat/8b_update_bc.py
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/bathymetrie
       hash: md5
       md5: a0535db0cef0342e088189db921f7e68.dir
@@ -110,14 +130,14 @@ stages:
       nfiles: 4
     - path: notebooks/rijkswaterstaat
       hash: md5
-      md5: df8cb92b9f3880637cbd1ec65ec185bb.dir
-      size: 94889
+      md5: 74eea1cb37bbb4f42580cd3d8d60a83e.dir
+      size: 95051
       nfiles: 13
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 38daf50cffe4d593375a5af02897f1ab.dir
-      size: 42664118
+      md5: 1f5f9fec3504d16bff8f3767dde2db63.dir
+      size: 48750774
       nfiles: 2
   rijn_en_ijssel:
     cmd:
@@ -141,7 +161,7 @@ stages:
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: 5ac3126a3b89eb93ef22679f9f6240d4.dir
+      md5: d1d05ad723462b706b016400226003a0.dir
       size: 25469712
       nfiles: 4
   vechtstromen:
@@ -166,7 +186,7 @@ stages:
     outs:
     - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
       hash: md5
-      md5: 53bda3a5826a43f6c24000076f31ee04.dir
+      md5: b1a18440d7ee7007d8f9d99b01cf2e8c.dir
       size: 68153792
       nfiles: 4
   de_dommel:
@@ -178,17 +198,22 @@ stages:
     - uv run notebooks/05_add_bergend.py DeDommel
     - uv run notebooks/07_add_dynamic_forcing.py DeDommel
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/de_dommel
       hash: md5
-      md5: b6ffa137ef70ea3ad605e14a34cf0542.dir
-      size: 57564
+      md5: 5c0ea0fd6f1aeeebef9161012629b969.dir
+      size: 57163
       nfiles: 8
     outs:
     - path: data/DeDommel/modellen/DeDommel_dynamic_model
       hash: md5
-      md5: c5b0a63b78a91d3d22387367b7684eee.dir
-      size: 1169238456
-      nfiles: 38
+      md5: 7cb544e1f5f2b8aebcd0f681140e9709.dir
+      size: 70474400
+      nfiles: 4
   brabantse_delta:
     cmd:
     - uv run notebooks/brabantse_delta/_preprocess_profielen.py
@@ -199,17 +224,22 @@ stages:
     - uv run notebooks/05_add_bergend.py BrabantseDelta
     - uv run notebooks/07_add_dynamic_forcing.py BrabantseDelta
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/brabantse_delta
       hash: md5
-      md5: e1cbf482583fad7d9d022c4314cb2ded.dir
-      size: 11069687205
-      nfiles: 15
+      md5: bb3539a8c6f8f71d01c4ba4b408c13da.dir
+      size: 57643
+      nfiles: 6
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       hash: md5
-      md5: 9856f508a3bbb801ec6a5a03d87ec99e.dir
-      size: 1171721143
-      nfiles: 38
+      md5: fb10068ee5289118e40e99bbcd782a96.dir
+      size: 64379616
+      nfiles: 4
   drents_overijsselse_delta:
     cmd:
     - uv run notebooks/drents_overijsselse_delta/01_fix_model.py
@@ -219,18 +249,23 @@ stages:
     - uv run notebooks/05_add_bergend.py DrentsOverijsselseDelta
     - uv run notebooks/07_add_dynamic_forcing.py DrentsOverijsselseDelta
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/drents_overijsselse_delta
       hash: md5
-      md5: 5c4a27b0ca734a87246dcf643399be14.dir
-      size: 49966
-      nfiles: 5
+      md5: 2881cc668c153787c730c22a6c41a0e3.dir
+      size: 49833
+      nfiles: 4
     outs:
     - path:
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
       hash: md5
-      md5: b5fd87d6c4bfd0f46a50ca1e32e22127.dir
-      size: 872917278
-      nfiles: 38
+      md5: 6b2c34b869f4c49bd8a5e59a1b53b4d9.dir
+      size: 40101392
+      nfiles: 4
   vallei_en_veluwe:
     cmd:
     - uv run notebooks/vallei_en_veluwe/01_fix_model.py
@@ -253,7 +288,7 @@ stages:
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: f6279dc2a817ba5c009a6080f8c90797.dir
+      md5: 25589dc55b23857e340f602b7260a810.dir
       size: 54199560
       nfiles: 4
   limburg:
@@ -266,17 +301,22 @@ stages:
     - uv run notebooks/05_add_bergend.py Limburg
     - uv run notebooks/07_add_dynamic_forcing.py Limburg
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/limburg
       hash: md5
-      md5: d7aebe6e2b81c3831c2517e067c35023.dir
-      size: 58715
-      nfiles: 6
+      md5: 6b35f5f3b87ba2fbc3fa552b7a57e6d6.dir
+      size: 57827
+      nfiles: 5
     outs:
     - path: data/Limburg/modellen/Limburg_dynamic_model
       hash: md5
-      md5: 148658b9b87340c8d04504d5aedde476.dir
-      size: 97562835
-      nfiles: 2
+      md5: 69bfef77700d29f915d63083d24652e0.dir
+      size: 76539760
+      nfiles: 4
   hunze_en_aas:
     cmd:
     - uv run notebooks/hunze_en_aas/01_fix_model.py
@@ -286,17 +326,22 @@ stages:
     - uv run notebooks/05_add_bergend.py HunzeenAas
     - uv run notebooks/07_add_dynamic_forcing.py HunzeenAas
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
+      size: 22462646
+      nfiles: 2
     - path: notebooks/hunze_en_aas
       hash: md5
-      md5: cd787302dfb0da078dba09baa030d082.dir
-      size: 698294672
-      nfiles: 42
+      md5: fb8abab4ea1405e7d2cff60ff0ea929e.dir
+      size: 36676
+      nfiles: 5
     outs:
     - path: data/HunzeenAas/modellen/HunzeenAas_dynamic_model
       hash: md5
-      md5: 72d974a777b6f343012f908114e99c17.dir
-      size: 793990335
-      nfiles: 38
+      md5: 0b6c97f20ae9f6e695c17283279ce48b.dir
+      size: 32792336
+      nfiles: 4
   koppelen:
     cmd: uv run notebooks/koppelen_modellen.py
     deps:

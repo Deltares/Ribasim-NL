@@ -47,7 +47,7 @@ def run_stages(stages: list[str], logfile: str | None = None) -> bool:
 
         env = {**os.environ, "PYTHONUTF8": "1"}
         process = subprocess.Popen(
-            ["uv", "run", "dvc", "repro", "--keep-going", "--force", stage],
+            ["uv", "run", "dvc", "repro", "--keep-going", "--single-item", "--force", stage],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
