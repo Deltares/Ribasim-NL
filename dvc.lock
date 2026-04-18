@@ -5,20 +5,71 @@ stages:
     deps:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: 1e5134066c13eed17e408345b3e3be5b.dir
-      size: 59744467
-      nfiles: 2
+      md5: 77364b7a0c9a5b32cd3d276b9e629f2d.dir
+      size: 45449608
+      nfiles: 4
+    - path: data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
+      hash: md5
+      md5: fb10068ee5289118e40e99bbcd782a96.dir
+      size: 64379616
+      nfiles: 4
+    - path: data/DeDommel/modellen/DeDommel_dynamic_model
+      hash: md5
+      md5: 7cb544e1f5f2b8aebcd0f681140e9709.dir
+      size: 70474400
+      nfiles: 4
+    - path:
+        data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
+      hash: md5
+      md5: 6b2c34b869f4c49bd8a5e59a1b53b4d9.dir
+      size: 40101392
+      nfiles: 4
+    - path: data/HunzeenAas/modellen/HunzeenAas_dynamic_model
+      hash: md5
+      md5: 0b6c97f20ae9f6e695c17283279ce48b.dir
+      size: 32792336
+      nfiles: 4
+    - path: data/Limburg/modellen/Limburg_dynamic_model
+      hash: md5
+      md5: 69bfef77700d29f915d63083d24652e0.dir
+      size: 76539760
+      nfiles: 4
+    - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
+      hash: md5
+      md5: 99ad948c74b19f51f6697ba3fb9905c9.dir
+      size: 43779488
+      nfiles: 4
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 38daf50cffe4d593375a5af02897f1ab.dir
-      size: 42664118
+      md5: 1f5f9fec3504d16bff8f3767dde2db63.dir
+      size: 48750774
       nfiles: 2
+    - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
+      hash: md5
+      md5: d1d05ad723462b706b016400226003a0.dir
+      size: 25469712
+      nfiles: 4
+    - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
+      hash: md5
+      md5: 81eb059d14e9f971fca86ba4563fef71.dir
+      size: 45970480
+      nfiles: 4
+    - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
+      hash: md5
+      md5: 25589dc55b23857e340f602b7260a810.dir
+      size: 54199560
+      nfiles: 4
+    - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
+      hash: md5
+      md5: b1a18440d7ee7007d8f9d99b01cf2e8c.dir
+      size: 68153792
+      nfiles: 4
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 3f33d99728724c393a23a46a10453b28.dir
-      size: 103313865
-      nfiles: 3
+      md5: 86bada4106844e631d000bb72b2e27da.dir
+      size: 797237430
+      nfiles: 2
   aa_en_maas:
     cmd:
     - uv run notebooks/aa_en_maas/01_fix_model.py

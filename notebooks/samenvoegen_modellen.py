@@ -28,16 +28,16 @@ INCLUDE_MODELS: list[str] = [
     # "WetterskipFryslan",
     # "Zuiderzeeland",
     "AaenMaas",
-    # "BrabantseDelta",
-    # "DeDommel",
-    # "DrentsOverijsselseDelta",
-    # "HunzeenAas",
-    # "Limburg",
-    # "Noorderzijlvest",
-    # "RijnenIJssel",
-    # "StichtseRijnlanden",
-    # "ValleienVeluwe",
-    # "Vechtstromen",
+    "BrabantseDelta",
+    "DeDommel",
+    "DrentsOverijsselseDelta",
+    "HunzeenAas",
+    "Limburg",
+    "Noorderzijlvest",
+    "RijnenIJssel",
+    "StichtseRijnlanden",
+    "ValleienVeluwe",
+    "Vechtstromen",
 ]
 
 sub_models: dict[str, list[str]] = {
@@ -181,7 +181,7 @@ def process_model_spec(
     model.node.df["meta_waterbeheerder"] = model_spec["authority"]
     try:
         # TODO reduce max_digits back to 4 after fixing #364
-        model = prefix_index(model=model, max_digits=5, prefix_id=waterbeheercode[model_spec["authority"]])
+        model = prefix_index(model=model, max_digits=7, prefix_id=waterbeheercode[model_spec["authority"]])
     except KeyError as e:
         print("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
         raise e

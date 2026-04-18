@@ -55,18 +55,18 @@ stages:
       # - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
       # - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
       # - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
-      - data/AaenMaas/modellen/AaenMaas_dynamic_model
-      # - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
-      # - data/DeDommel/modellen/DeDommel_dynamic_model
-      # - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
-      # - data/HunzeenAas/modellen/HunzeenAas_dynamic_model
-      # - data/Limburg/modellen/Limburg_dynamic_model
-      # - data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
-      # - data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
-      # - data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
-      # - data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
-      # - data/Vechtstromen/modellen/Vechtstromen_dynamic_model
       # - data/HollandseDelta/modellen/HollandseDelta_parameterized
+      - data/AaenMaas/modellen/AaenMaas_dynamic_model
+      - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
+      - data/DeDommel/modellen/DeDommel_dynamic_model
+      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
+      - data/HunzeenAas/modellen/HunzeenAas_dynamic_model
+      - data/Limburg/modellen/Limburg_dynamic_model
+      - data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
+      - data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
+      - data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
+      - data/Vechtstromen/modellen/Vechtstromen_dynamic_model
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
   koppelen:
