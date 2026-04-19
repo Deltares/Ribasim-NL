@@ -176,7 +176,7 @@ node_functions_df = add_controllers_to_supply_area(
 
 # %%
 # Toevoegen ARK/Lek
-polygon = aanvoergebieden_df.at["ARK/Lek", "geometry"]
+polygon = aanvoergebieden_df.at["EVS", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -337,7 +337,7 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # Toevoegen Hollandsche IJssel
 
-polygon = aanvoergebieden_df.at["Hollandsche IJssel", "geometry"]
+polygon = aanvoergebieden_df.at["Gek. Hollandsche IJssel", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -602,7 +602,7 @@ drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 887]
 
 # Flushing nodes
 # 919: Werkhoven
-flushing_nodes = {919: 5}
+flushing_nodes = {919: 5, 186: 1.25, 757: 3.0}
 
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
