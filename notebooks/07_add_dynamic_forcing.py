@@ -16,6 +16,7 @@ write_budgets: bool = True  # write mfms_budgets.arrow for later verification
 assign_fractions: bool = False  # compute (sub-) fractions from budgets-table
 compute_fractions: bool = False
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
+cloud.synchronize(filepaths=[rwzi_model_path.parent])
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
 primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
