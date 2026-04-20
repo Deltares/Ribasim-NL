@@ -13,6 +13,8 @@ SVG images can created based on the watersysteem.gpkg using QGIS.
 An example QGIS project can be found on the [CloudStorage](https://deltares.thegood.cloud/f/238548) (limited access)
 """  # noqa: D301
 
+from __future__ import annotations
+
 import math
 
 import geopandas as gpd
@@ -31,16 +33,65 @@ ARROW_LENGTH = {
     "Noorderzijlvest": 1200,
     "AaenMaas": 1600,
     "Limburg": 1400,
-    "DeDommel": 1400,
-    "Vechtstromen": 1600,
+    "DeDommel": 1200,
+    "Vechtstromen": 1400,
+    "DrentsOverijsselseDelta": 1400,
 }
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["Vechtstromen"]
+AUTHORITIES = ["DrentsOverijsselseDelta"]
 ADD_TOP10_NL = {
+    "DrentsOverijsselseDelta": [
+        "Overijsselsch Kanaal (Zijkanaal Lemelerveld-Raalte-Deventer)",
+        "Basiskanaal",
+        "IJssel",
+        "Soestwetering",
+        "Nieuwe Wetering",
+        "Nieuwe Raalterwetering",
+        "Overijsselsch Kanaal",
+        "Zwarte Water",
+        "Overijsselsche Vecht",
+        "Zwarte Meer",
+        "Ketelmeer",
+        "Reevediep",
+        "Meppelerdiep",
+        "Hoogeveensche Vaart",
+        "Drentsche Hoofdvaart",
+        "Omgelegde Hoogeveense Vaart",
+        "Verlengde Hoogeveensche Vaart",
+        "Oude Vaart",
+        "Wold Aa",
+        "Oude Diep",
+        "Ruiner Aa",
+        "Beilervaart",
+        "Noord-Willemskanaal",
+        "Norgervaart",
+        "Oranjekanaal",
+        "Vledder Aa",
+        "Wapserveensche Aa",
+        "Steenwijker Aa",
+        "Kanaal Steenwijk-Ossenzijl",
+        "Dolderkanaal",
+        "Kanaal Beukers-Steenwijk",
+        "Steenwijkerdiep",
+        "De Lende",
+        "Wetering",
+        "Kalenbergergracht",
+        "Vollenhoverkanaal",
+        "Noorderdiep",
+        "Valsche Trog",
+        "Giethoornsche Meer",
+        "Walengracht",
+        "Beulakerwijde",
+        "Belterwijde",
+        "Beukersgracht",
+        "Schutsloterwijde",
+        "Arembergergracht",
+        "Boschwijde",
+    ],
     "Vechtstromen": [
         "Maas",
         "Mariënberg Vechtkanaal",
@@ -337,7 +388,7 @@ def fix_geometry(geometry):
         return Polygon(geometry.exterior)
 
 
-def generate_mask_box(polygon: Polygon, offsets: dict["str", int]) -> Polygon:
+def generate_mask_box(polygon: Polygon, offsets: dict[str, int]) -> Polygon:
     xmin, ymin, xmax, ymax = polygon.bounds
     xmin -= offsets.get("xmin", 5000)
     ymin -= offsets.get("ymin", 5000)

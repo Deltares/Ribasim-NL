@@ -61,9 +61,9 @@ model.pump.static.df.max_flow_rate = 100.0
 
 # fixes:
 
-# Inlaatschuif Zwinderseveld #Oranjekanaal
-for link_id in [2822, 1337]:
-    model.reverse_link(link_id=link_id)
+# Inlaatschuif Zwinderseveld #Oranjekanaal: Gemaal richting omgedraaid voor inlaat
+# for link_id in [2822, 1337]:
+#    model.reverse_link(link_id=link_id)
 
 # Inlaat Stroomstukkendijk #736 richting omdraaien? anders geen aanvoer
 

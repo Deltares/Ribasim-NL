@@ -45,6 +45,8 @@ format:
 lightbox:
   match: auto
   effect: zoom
+  desc-position: bottom
+  css-class: "fullscreen-lightbox"
 quartodoc:
   style: pkgdown
   dir: reference
