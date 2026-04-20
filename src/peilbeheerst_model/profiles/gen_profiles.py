@@ -268,14 +268,14 @@ def _export_profiles(
     cloud: CloudStorage,
     water_authority: str,
     profile_tables: tuple[gpd.GeoDataFrame, gpd.GeoDataFrame],
-    export_intermediate: bool,
+    export_intermediate_output: bool,
 ) -> None:
     """Export profile tables.
 
     :param cloud: the GoodCloud
     :param water_authority: water authority
     :param profile_tables: tables with profile data ("doorgaand" & "bergend")
-    :param export_intermediate: export intermediate output
+    :param export_intermediate_output: export intermediate output
     """
     # set working directory
     wd = cloud.joinpath(water_authority, "verwerkt", "profielen")
@@ -291,7 +291,7 @@ def _export_profiles(
     # upload files to the GoodCloud
     print("Uploading to the GoodCloud...", end="", flush=True)
     cloud.upload_content(wd, overwrite=True)
-    if export_intermediate:
+    if export_intermediate_output:
         (wd / "intermediate").mkdir(exist_ok=True)
         cloud.upload_content(wd / "intermediate", overwrite=True)
     print("\rFiles uploaded to the GoodCloud")
