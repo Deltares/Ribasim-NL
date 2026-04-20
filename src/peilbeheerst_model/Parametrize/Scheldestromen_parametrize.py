@@ -27,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -59,18 +59,18 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        meteo_path,
-        profiles_path,
-    ]
-)
+# cloud.synchronize(
+#     filepaths=[
+#         ribasim_base_model_dir,
+#         FeedbackFormulier_path,
+#         ws_grenzen_path,
+#         RWS_grenzen_path,
+#         qlr_path,
+#         aanvoer_path,
+#         meteo_path,
+#         profiles_path,
+#     ]
+# )
 
 # # refresh only the feedback form from cloud
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -303,7 +303,10 @@ to_drain = (
     414,
     415,
 )
-to_flow_control = (252, 505)
+to_flow_control = (
+    252,
+    505,
+)
 to_supply = (
     206,
     265,
@@ -490,7 +493,6 @@ assign_metadata.add_meta_to_basins(
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
-
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df["length"] = 10.0
