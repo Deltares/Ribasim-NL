@@ -36,7 +36,7 @@ def upload_file(
 
     client = Minio(MINIO_SERVER, access_key=access_key, secret_key=secret_key)
     try:
-        client.fput_object(BUCKET_NAME, destination, str(source))
+        client.fput_object(BUCKET_NAME, destination, str(source), content_type="image/svg+xml")
     except S3Error as e:
         print(f"Error occurred: {e}")
 
