@@ -194,16 +194,11 @@ def _read_cross_sections(cloud: CloudStorage, water_authority: str) -> gpd.GeoDa
 def _read_target_levels(cloud: CloudStorage, water_authority: str, fn_target_levels: str) -> gpd.GeoDataFrame:
     """Get polygons with target levels from source-data.
 
-    :param fn: filename
-    :param layer_polygons: layer-name with polygon data
-    :param layer_levels: layer-name with target level data
-
-    :type fn: str
-    :type layer_polygons: str, optional
-    :type layer_levels: str, optional
+    :param cloud: the GoodCloud
+    :param water_authority: water authority
+    :param fn_target_levels: filename with target level (geospatial) data
 
     :return: polygons with target levels
-    :rtype: geopandas.GeoDataFrame
     """
     fn = cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_target_levels)
     polygons = gpd.read_file(fn, layer="peilgebied")
