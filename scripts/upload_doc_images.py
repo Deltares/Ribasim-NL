@@ -8,13 +8,17 @@ MINIO_SECRET_KEY
 And can be run with `just upload-doc-images`.
 """
 
-import os
 from pathlib import Path
 
 from minio import Minio
 from minio.error import S3Error
+from requests.exceptions import HTTPError
+from ribasim_nl.settings import settings
 
 from ribasim_nl import CloudStorage
+
+if not settings.minio_access_key or not settings.minio_secret_key:
+    raise OSError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in the environment or .env file.")
 
 MINIO_SERVER = "s3.deltares.nl"
 BUCKET_NAME = "ribasim"
@@ -40,15 +44,18 @@ def upload_file(
 cloud = CloudStorage()
 
 
-destination = "doc-image/ribasim-nl/watersystems"
+destination = "doc-image/ribasim-nl/watersystems/"
 
 for authority in cloud.water_authorities:
-    print(f"Uploading image for {authority}...")
     source = cloud.joinpath(authority, "verwerkt/sturing", f"{authority}.svg")
-    cloud.synchronize([source])
+    try:
+        cloud.synchronize([source])
+    except HTTPError:
+        print(f"Skipping {authority}, could not synchronize image.")
+        continue
     upload_file(
         source,
-        destination,
-        access_key=os.getenv("MINIO_ACCESS_KEY"),
-        secret_key=os.getenv("MINIO_SECRET_KEY"),
+        destination + source.name,
+        access_key=settings.minio_access_key,
+        secret_key=settings.minio_secret_key,
     )
