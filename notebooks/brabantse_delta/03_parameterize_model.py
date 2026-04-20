@@ -32,6 +32,10 @@ start_time = time.time()
 
 # %%
 # parameterize
+# fix basin streefpeilen
+model.basin.area.df.loc[model.basin.area.df.node_id == 1354, "meta_streefpeil"] = (
+    4.1  # n.a.v. min_upstream_level van outlet 342
+)
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.005

@@ -3,7 +3,6 @@ import logging
 from datetime import datetime, timedelta
 
 import pandas as pd
-import ribasim
 
 from ribasim_nl import CloudStorage, Model
 
@@ -27,16 +26,6 @@ cloud.synchronize(filepaths=[BA_data_path])
 ribasim_toml_output = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/modellen/BA_totaal_run/BA.toml")
 
 # %%
-readme = f"""# Model van (deel)gebieden uit het Landelijk Hydrologisch Model inclusief Buitenlandse aanvoeren
-
-Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Ribasim versie: {ribasim.__version__}
-Getest (u kunt simuleren): Nee
-
-** Samengevoegde modellen (beheerder: modelnaam (versie)**
-"""
-
-logging.info(readme)
 
 model = Model.read(ribasim_toml_input)
 

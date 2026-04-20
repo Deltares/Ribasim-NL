@@ -105,6 +105,7 @@ def main(
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
     :key filter_basins: filter basins on 'doorgaand' (i.e., excl. 'bergend'), defaults to True
+    :key filter_basins: filter basins on 'doorgaand' (i.e., excl. 'bergend'), defaults to True
     :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to False
     :key kw_make_depth_profile: optional arguments for making depth profile lines, defaults to {}
     :key simplify_geometries: simplify geometries by removing duplicates, defaults to True
@@ -168,13 +169,13 @@ def main(
     bgt_full_coverage: bool = kwargs.get("bgt_full_coverage", True)
     # > network patching
     patch_network: bool = kwargs.get("patch_network", True)
-    patch_buffer: float = kwargs.get("patch_buffer", 1)
+    patch_buffer: float = kwargs.get("patch_buffer", 1.0)
     split_buffer: float = kwargs.get("split_buffer", 0.1)
     # > main-routing from hydro-objects alone
     val_ho_main_route: typing.Any = kwargs.get("val_ho_main_route", True)
     # > selection of crossings
     internal_crossings: bool = kwargs.get("internal_crossings", True)
-    selection_buffer: float = kwargs.get("selection_buffer", 1)
+    selection_buffer: float = kwargs.get("selection_buffer", 1.0)
     # > overwriting of representative depth
     water_bodies: gpd.GeoDataFrame | None = kwargs.get("water_bodies")
     col_wb_depth: str = kwargs.get("col_wb_depth", "depth")
@@ -202,6 +203,10 @@ def main(
     if main_route_from_hydro_objects:
         assert col_ho_main_route is not None
         _validate_hydro_objects_main_routing(hydro_objects, col_ho_main_route, val_ho_main_route)
+
+    # filter basins
+    if filter_basins:
+        basins = basins[basins["node_id"] == basins["meta_node_id"]]
 
     # filter basins
     if filter_basins:
@@ -253,9 +258,9 @@ def main(
         if not main_route_from_hydro_objects:
             assert crossings is not None
             if internal_crossings:
-                _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)
+                _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)  # pyrefly: ignore[bad-argument-type]
             else:
-                _temp = shapely.MultiPolygon(basins.explode().exterior.buffer(selection_buffer))
+                _temp = shapely.MultiPolygon(basins.explode().exterior.buffer(selection_buffer))  # pyrefly: ignore[bad-argument-type]
             crossings[crossings.intersects(_temp)].to_file(wd_intermediate_output / _fn_int_output, layer="endpoints")
             del _temp
 
@@ -435,7 +440,7 @@ def _get_bgt_data(fn_bgt: pathlib.Path | str | None, basins: gpd.GeoDataFrame) -
     :param fn_bgt: filename of BGT-data
     :param basins: geospatial dataset of basins (polygons)
     """
-    geo_filter = shapely.MultiPolygon(basins.convex_hull.values).convex_hull
+    geo_filter = typing.cast(shapely.Polygon, shapely.MultiPolygon(basins.convex_hull.values).convex_hull)  # pyrefly: ignore[bad-argument-type]
     if fn_bgt is None:
         return bgt.download_bgt_water(geo_filter=geo_filter)
     fn_bgt = pathlib.Path(fn_bgt)

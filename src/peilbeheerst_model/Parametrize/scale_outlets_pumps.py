@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from ribasim import run_ribasim
 
-from ribasim_nl import Model
+from ribasim_nl import Model, settings
 
 pd.set_option("display.max_columns", None)
 
@@ -607,7 +607,7 @@ for situation in situations:  # loop through drainage (afvoer) and demand (aanvo
         if printing:
             print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-        run_ribasim(toml_path=ribasim_scaling_path)
+        run_ribasim(toml_path=ribasim_scaling_path, ribasim_home=settings.ribasim_home)
 
         # extract results, only select relevant columns, merge streefpeil to node_id
         ribasim_water_levels = pd.read_feather(results_path)

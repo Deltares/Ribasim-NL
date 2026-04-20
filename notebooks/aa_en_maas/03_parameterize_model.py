@@ -8,7 +8,6 @@ from ribasim_nl.check_basin_level import add_check_basin_level
 
 # voeg deze imports toe
 from ribasim_nl.parametrization.basin_tables import (
-    update_basin_profile,
     update_basin_state,
     update_basin_static,
 )
@@ -37,6 +36,7 @@ start_time = time.time()
 
 # %%
 # parameterize
+model.basin.area.df.loc[model.basin.area.df.node_id == 1801, "meta_streefpeil"] = -0.25
 model.parameterize(
     static_data_xlsx=static_data_xlsx,
     evaporation_mm_per_day=1,
@@ -45,14 +45,6 @@ model.parameterize(
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-# overschrijf basin-profiel met jouw open-waterpercentages
-update_basin_profile(
-    model=model,
-    percentages_map={"hoofdwater": 10, "doorgaand": 5, "bergend": 2},
-    default_percentage=10,
-    profile_depth=3,
-)
-
 # update state op basis van nieuw profiel
 update_basin_state(model)
 
