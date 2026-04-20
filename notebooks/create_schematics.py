@@ -32,15 +32,7 @@ ARROW_LENGTH = {
     "AaenMaas": 1600,
     "Limburg": 1400,
     "DeDommel": 1400,
-    "Vechtstromen": 1400,
-}
-ARROW_LENGTH = {
-    "StichtseRijnlanden": 800,
-    "Noorderzijlvest": 1200,
-    "AaenMaas": 1600,
-    "Limburg": 1400,
-    "DeDommel": 1400,
-    "Vechtstromen": 1400,
+    "Vechtstromen": 1600,
 }
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
@@ -51,6 +43,7 @@ AUTHORITIES = ["Vechtstromen"]
 ADD_TOP10_NL = {
     "Vechtstromen": [
         "Maas",
+        "Mariënberg Vechtkanaal",
         "Twentekanaal (Zijkanaal naar Almelo)",
         "Twentekanaal (Kanaal Zutphen-Enschede)",
         "Nieuwe Graven",

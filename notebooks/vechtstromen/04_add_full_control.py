@@ -59,6 +59,36 @@ model.outlet.static.df.max_flow_rate = 100.0
 model.pump.static.df.max_flow_rate = 100.0
 
 
+# fixes:
+
+# Inlaatschuif Zwinderseveld #Oranjekanaal
+for link_id in [2822, 1337]:
+    model.reverse_link(link_id=link_id)
+
+# Inlaat Stroomstukkendijk #736 richting omdraaien? anders geen aanvoer
+
+# Vriezenveen Veenkamp #768, 2 richtingen?
+
+# Inlaatschuif Zwinderseveld #250
+for link_id in [1674, 549]:
+    model.reverse_link(link_id=link_id)
+
+# stuw #964 in Dommerskanaal richting omdraaien?
+# for link_id in [796, 2383]:
+#    model.reverse_link(link_id=link_id)
+
+# Gemaal Orveltersluis #665 richting omdraaien
+for link_id in [2823, 2682]:
+    model.reverse_link(link_id=link_id)
+model.remove_node(node_id=665, remove_links=True)
+
+
+# 1353 = Drentse stuw
+model.update_node(node_id=1353, node_type="Outlet")
+
+model.remove_node(node_id=206, remove_links=True)  # Dooze, wordt later weer toegevoegd als inlaat
+
+
 # %% bovenstroomse outlets op 10m3/s zetten en boundary afvoer pumps/outlets
 # geen downstreamm level en aanvoer  pumps/outlets geen upstream level
 def set_values_where(df, updates, node_ids=None, key_col="node_id", mask=None):
