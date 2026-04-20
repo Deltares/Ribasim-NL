@@ -333,7 +333,7 @@ flow_rate = pd.Series(
         752: 56,
         755: 25,
         252: 10,  # inlaat Vreeswijk (i.o. Epke)
-        757: 3,  # weertsluis (op basis van waterakkoord)
+        757: 16,  # weertsluis (op basis van waterakkoord)
         756: 12,
         468: 12,
         481: 10,
