@@ -29,7 +29,3 @@ pycheck:
 docs:
   uv run quartodoc build
   uv run quarto preview
-
-# upload system diagrams to s3.deltares.nl for use in documentation
-upload-doc-images:
-  uv run python scripts/upload_doc_images.py

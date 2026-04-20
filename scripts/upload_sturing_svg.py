@@ -1,3 +1,13 @@
+"""
+Rename and upload system diagram SVGs per water authority to CloudStorage.
+
+For each authority, the single SVG in `verwerkt/sturing/` is renamed to
+`{authority}.svg` (if needed) and then uploaded to CloudStorage.
+
+After running this script, Deltares can run `upload_doc_images.py`
+to push the SVGs from CloudStorage to s3.deltares.nl for use in the documentation.
+"""
+
 # %%
 from pathlib import Path
 

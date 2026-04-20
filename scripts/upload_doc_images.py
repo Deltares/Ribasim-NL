@@ -1,11 +1,11 @@
 """
 Get the system diagrams from the CloudStorage to s3.deltares.nl for use in the documentation.
 
+Relies on the CloudStorage being up-to-date, see `scripts/upload_sturing_svg.py`.
+
 This needs the following environment variables to be set in `.env` (Deltares only):
 MINIO_ACCESS_KEY
 MINIO_SECRET_KEY
-
-And can be run with `just upload-doc-images`.
 """
 
 from pathlib import Path
