@@ -18,15 +18,17 @@ def get_model_dir(authority, post_fix):
     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
 
 
+valid_authorities = set(cloud.water_authorities)
+
 # We make a list of authorities:
 # 1. provided as arguments
-authorities = set(sys.argv[1:]) & set(cloud.water_authorities)
+authorities = set(sys.argv[1:]) & valid_authorities
 # 2. provided in global SELECTION
 if len(authorities) == 0:
-    authorities = set(SELECTION) & set(cloud.water_authorities)
+    authorities = SELECTION & valid_authorities
 # 3. all authorities
 if len(authorities) == 0:
-    authorities = set(cloud.water_authorities)
+    authorities = valid_authorities
 # %%
 link_data = []
 for authority in authorities:
