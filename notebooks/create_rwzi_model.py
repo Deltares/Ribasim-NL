@@ -3,7 +3,6 @@
 # %% imports
 import logging
 from collections import Counter
-from datetime import datetime
 
 import contextily as ctx
 import geopandas as gpd
@@ -11,7 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pyodbc
-import ribasim
 from ribasim import Node
 from ribasim.nodes import flow_boundary
 from shapely.geometry import Point
@@ -20,7 +18,7 @@ from ribasim_nl import CloudStorage, Model
 
 # %% get input data
 cloud = CloudStorage()
-ribasim_toml = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/rwzi.toml")
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # datafiles
@@ -37,7 +35,7 @@ cloud.synchronize(filepaths=[zinfo_influentdebieten_path, db_file, rwzi_ligging_
 
 # %% create empty model
 starttime = "2017-01-01"
-endtime = "2018-01-01"
+endtime = "2020-01-01"
 time_range = pd.date_range(start=starttime, end=endtime, freq="D")
 logging.info(f"Setting up Ribasim-RWZI model between {starttime} and {endtime} in {model_dir}.")
 
@@ -541,16 +539,8 @@ terminal_nodes, node_id_counter = create_terminal_nodes_from_gdf(
 connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_nodes, model)
 
 # %% Run and Results
-readme = f"""# Model met RWZI's connected aan terminals
-
-Gegenereerd: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Ribasim versie: {ribasim.__version__}
-Getest (u kunt simuleren): Nee
-"""
-
 print("write rwzi model")
 model.write(ribasim_toml)
-cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/readme.md").write_text(readme)
 
 upload_model = False
 if upload_model:

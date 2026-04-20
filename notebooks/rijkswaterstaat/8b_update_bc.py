@@ -5,13 +5,14 @@ import numpy as np
 import pandas as pd
 from ribasim.nodes import flow_boundary
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, merge_rwzi_model
 
 cloud = CloudStorage()
 
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")
 model = Model.read(ribasim_toml)
 
+rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/debieten_Rijn_Maas_2023_2024.xlsx")
 iwp_debieten_xlsx = cloud.joinpath("Basisgegevens/Metingen/RWsOS-IWP_debieten_juni2023_juni2024.xlsx")
 cloud.synchronize([debieten_xlsx, iwp_debieten_xlsx])
@@ -167,6 +168,8 @@ level_df = pd.concat(
 )
 model.level_boundary.time.df = level_df
 
+# merge RWZI model
+model = merge_rwzi_model(model, rwzi_model_path)
 
 # %%
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")

@@ -10,7 +10,6 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
 MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "DeDommel"  # authority
 SHORT_NAME: str = "dommel"  # short_name used in toml-file
@@ -89,7 +88,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -131,7 +129,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -173,7 +170,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -200,7 +196,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
-    us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
 
 
@@ -212,7 +207,6 @@ add_controllers_to_uncontrolled_connector_nodes(
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
