@@ -66,5 +66,6 @@ repos:
     hooks:
       - id: pyrefly-check
         name: Pyrefly (type checking)
+        entry: uv run pyrefly check
         pass_filenames: false
         language: system

@@ -332,8 +332,8 @@ flow_rate = pd.Series(
     {
         752: 56,
         755: 25,
-        252: 18,
-        757: 16,
+        252: 10,  # inlaat Vreeswijk (i.o. Epke)
+        757: 16,  # weertsluis (op basis van waterakkoord)
         756: 12,
         468: 12,
         481: 10,
@@ -344,6 +344,8 @@ flow_rate = pd.Series(
         761: 6,
         100: 3,
         758: 0,
+        186: 1.25,  # Westriool (waterakkoord)
+        919: 15,  # Werkhoven, de rest moet langs Caspargouw. I.o. Epke
     },
     name="flow_rate",
 )

@@ -3,7 +3,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT)
 
 ## Systeembeschrijving
-![Systeembeschrijving Vechtstromen](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/vechtstromen.svg)
+![Systeembeschrijving Vechtstromen](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/Vechtstromen.svg)
 
 Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.
 
