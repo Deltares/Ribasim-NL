@@ -7,6 +7,7 @@ from ribasim_nl.model import Model
 from ribasim_nl.network import Network
 from ribasim_nl.network_validator import NetworkValidator
 from ribasim_nl.reset_index import prefix_index, reset_index
+from ribasim_nl.rwzi import merge_rwzi_model
 from ribasim_nl.set_forcing import SetDynamicForcing
 from ribasim_nl.settings import settings
 
@@ -18,6 +19,7 @@ __all__ = [
     "SetDynamicForcing",
     "concat",
     "junctionify",
+    "merge_rwzi_model",
     "prefix_index",
     "reset_index",
     "settings",
