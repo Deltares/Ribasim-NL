@@ -58,6 +58,8 @@ In extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in wer
 - `De Haanwijkersluis` tussen de `Leidsche Rijn` en de `Oude Rijn` wordt geopend; water stroomt richting de `schutsluis bij Bodegraven`.
 - Het systeem wordt aanvullend gevoed vanuit de Lek (bij `De Koekoek`) en het `ARK` (via het `Noordergemaal`). Vanuit de Lek stroomt water via gebied `de Lopikerwaard`, via `inlaat Hekendorp`, naar de Enkele Wiericke en de `Oude Rijn`. Vanuit het `Noordergemaal` stroomt water via de via de `Doorslag` eveneens richting `Hekendorp`.
 
+N.B. (!) de KWA is nu niet opgenomen in de huidige versie van het Ribasim-model!
+
 ### Hollandsche IJssel
 Het meeste water uit dit gebied wordt **afgevoerd** via de `Leidsche Rijn` naar het `ARK` en de `Oude Rijn` richting `Bodegraven`. Een klein deel, in het oosten van het gebied, wordt afgevoerd via de gekanaliseerde Hollandse IJssel (`Doorslag sluis`) en de `Hollandse IJssel` naar `Gouda`
 
