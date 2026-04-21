@@ -1,6 +1,6 @@
 # %%
 import ast
-import os
+from pathlib import Path
 
 import geopandas as gdf
 import geopandas as gpd
@@ -313,7 +313,7 @@ if filter_waterschappen:
 
 # model = Model.read(os.path.join(model_folder, toml_naam)) # Aangepast van lhm.toml
 
-model = Model.read(os.path.join(model_folder_temporary, toml_naam))  # Aangepast van lhm.toml
+model = Model.read(Path(model_folder_temporary) / toml_naam)  # Aangepast van lhm.toml
 
 links = model.link.df
 
@@ -766,7 +766,7 @@ gdf = gpd.GeoDataFrame(koppeltabel, geometry="geometry")
 # Set CRS (e.g., EPSG:28992 for RD New, modify as needed)
 gdf.set_crs(epsg=28992, inplace=True)  # Update EPSG code based on your data's CRS
 
-output_path = os.path.splitext(wegschrijven_nieuwe_tabel)[0] + ".gpkg"
+output_path = Path(wegschrijven_nieuwe_tabel).with_suffix(".gpkg")
 
 gdf.to_file(output_path, layer="Koppeling_model_meting", driver="GPKG")
 

@@ -1,7 +1,7 @@
 """Generation of profiles."""
 
-import pathlib
 import typing
+from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -77,8 +77,8 @@ def main(
 
 def flagged_hydro_objects(
     water_authority: str,
-    fn_target_levels: pathlib.Path | str,
-    fn_hydro_objects: pathlib.Path | str,
+    fn_target_levels: Path | str,
+    fn_hydro_objects: Path | str,
     col_flag: str,
     *,
     val_flag: typing.Any = True,
@@ -87,7 +87,7 @@ def flagged_hydro_objects(
     sync: bool = True,
     overwrite: bool = False,
     export_intermediate_output: bool = False,
-    fn_water_bodies: pathlib.Path | str | tuple[pathlib.Path, str] | tuple[str, str] | None = None,
+    fn_water_bodies: Path | str | tuple[Path, str] | tuple[str, str] | None = None,
 ) -> None:
     """Execute profile table generator with user-defined main-routing.
 
@@ -219,7 +219,7 @@ def _read_hydrotope_table(cloud: CloudStorage) -> hydrotopes.HydrotopeTable:
 
 
 def _read_water_bodies(
-    cloud: CloudStorage, water_authority: str, fn_water_bodies: pathlib.Path | str | tuple | None
+    cloud: CloudStorage, water_authority: str, fn_water_bodies: Path | str | tuple | None
 ) -> gpd.GeoDataFrame | None:
     """Read geospatial dataset with water bodies (polygons).
 
@@ -237,7 +237,7 @@ def _read_water_bodies(
     return gpd.read_file(cloud.joinpath(water_authority, fn_water_bodies))
 
 
-def _bgt_path(cloud: CloudStorage, water_authority: str) -> pathlib.Path:
+def _bgt_path(cloud: CloudStorage, water_authority: str) -> Path:
     """Absolute file-path (GoodCloud) with BGT-data.
 
     :param cloud: the GoodCloud
@@ -248,7 +248,7 @@ def _bgt_path(cloud: CloudStorage, water_authority: str) -> pathlib.Path:
     return cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
 
 
-def _int_output_path(cloud: CloudStorage, water_authority: str, export: bool) -> pathlib.Path | None:
+def _int_output_path(cloud: CloudStorage, water_authority: str, export: bool) -> Path | None:
     """Absolute folder-path (GoodCloud) for intermediate output.
 
     If intermediate output is not exported, no path is returned (None). This translates in the `run.main(..)`-function

@@ -1,5 +1,4 @@
 import logging
-import os
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -51,16 +50,16 @@ class Control:
                 self.path_ribasim_toml = ribasim_toml
                 self.work_dir = Path(ribasim_toml).parent
             else:
-                self.path_ribasim_toml = os.path.join(work_dir, "ribasim.toml")
+                self.path_ribasim_toml = Path(work_dir) / "ribasim.toml"  # pyrefly: ignore[bad-argument-type]
                 self.work_dir = work_dir
 
         if qlr_path is None:
             self.qlr_path = Path(__file__).parent.joinpath("data", "output_controle.qlr")
         else:
             self.qlr_path = qlr_path
-        self.path_basin_output = os.path.join(self.work_dir, "results", "basin.nc")
-        self.path_link_output = os.path.join(self.work_dir, "results", "flow.nc")
-        self.path_control_dict_path = os.path.join(self.work_dir, "results", "output_controle")
+        self.path_basin_output = Path(self.work_dir) / "results" / "basin.nc"
+        self.path_link_output = Path(self.work_dir) / "results" / "flow.nc"
+        self.path_control_dict_path = Path(self.work_dir) / "results" / "output_controle"
 
     def read_model_output(self):
         ds_basin = xr.open_dataset(self.path_basin_output)
@@ -317,11 +316,12 @@ class Control:
 
         # copy checks_symbology file from old dir to new dir
         # delete old .qlr file (overwriting does apparently not work due to permission rights)
-        if os.path.exists(os.path.join(self.work_dir, "results", "output_controle.qlr")):
-            os.remove(os.path.join(self.work_dir, "results", "output_controle.qlr"))
+        qlr_dst = Path(self.work_dir) / "results" / "output_controle.qlr"
+        if qlr_dst.exists():
+            qlr_dst.unlink()
 
         # copy .qlr file
-        shutil.copy(src=self.qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
+        shutil.copy(src=self.qlr_path, dst=qlr_dst)
 
         return
 

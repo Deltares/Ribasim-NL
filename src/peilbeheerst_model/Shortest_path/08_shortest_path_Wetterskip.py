@@ -5,7 +5,6 @@
 # Code is based on: https://github.com/Deltares/Ribasim-NL/blob/1ad35931f49280fe223cbd9409e321953932a3a4/notebooks/ijsselmeermodel/netwerk.py#L55
 
 
-import os
 from pathlib import Path
 
 import fiona
@@ -31,7 +30,7 @@ waterschap = "WetterskipFryslan"
 data_path = cloud.joinpath(waterschap, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg")
 base_path = settings.ribasim_nl_data_dir
 output_path = f"{waterschap}/verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"
-output_path = os.path.join(base_path, output_path)  # add the base path
+output_path = Path(base_path) / output_path  # add the base path
 
 # Load crossings file
 DATA = {L: gpd.read_file(data_path, layer=L) for L in fiona.listlayers(data_path)}
@@ -403,9 +402,9 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         gdf_cross_single.plot(ax=ax, color="orange", label="crossings")
         plt_paths.plot(ax=ax, color="purple", label="shortest paths")
         ax.legend()
-        path_figs = os.path.join(
-            settings.ribasim_nl_data_dir,
-            "WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new",
+        path_figs = (
+            settings.ribasim_nl_data_dir
+            / "WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new"
         )
         plt.savefig(
             path_figs,
@@ -435,9 +434,9 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
 
         for key, value in objects.items():
             # For each GeoDataFrame, save it to a layer in the GeoPackage
-            path_gpkg = os.path.join(
-                settings.ribasim_nl_data_dir,
-                "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg",
+            path_gpkg = (
+                settings.ribasim_nl_data_dir
+                / "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg"
             )
             value.to_file(
                 # f"./shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg", layer=key, driver="GPKG"

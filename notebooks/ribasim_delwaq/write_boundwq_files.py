@@ -1,7 +1,7 @@
 # %%
 import json
 import logging
-import os
+from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -149,7 +149,7 @@ else:
 
 # %% Meetlocaties IM-metingen inladen en linken aan de modeldata
 def load_geojson(meetlocaties_path):
-    with open(meetlocaties_path, encoding="utf-8") as geojson_file:
+    with meetlocaties_path.open(encoding="utf-8") as geojson_file:
         geojson_data = json.load(geojson_file)
     logging.info(f"IM meetlocaties ingeladen: {meetlocaties_path}")
     return geojson_data
@@ -222,7 +222,7 @@ grenspunt_meetobject_df = extract_and_add_node_ids(df_IM_meetlocaties, df_model_
 # %% Lezen excel sheet IM-metingen (langzaam)
 def read_excel_file(file_path: str) -> pd.DataFrame:
     """Reads an Excel file and returns its contents as a pandas DataFrame."""
-    if not os.path.exists(file_path):
+    if not Path(file_path).exists():
         logging.error(f"Bestand bestaat niet: {file_path}")
         raise FileNotFoundError(f"Het Excel-bestand bestaat niet: {file_path}")
 

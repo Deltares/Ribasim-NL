@@ -202,7 +202,7 @@ class Model(ribasim.Model):
         ribasim_log = self.results_path / "ribasim.log"
         if not ribasim_log.exists():
             return None  # model has never been run
-        with open(ribasim_log, encoding="utf-8") as src:
+        with ribasim_log.open(encoding="utf-8") as src:
             for line in src:
                 if "Computation time" in line:
                     computation_time = parse_computation_time(line)

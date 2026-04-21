@@ -1,6 +1,6 @@
 # %%
 
-import os
+from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -652,7 +652,7 @@ def spatial_match(
     # Save matched buffers as a shapefile
     if matched_buffers and write_buffer_shp and output_buffer_shapefile and cloud_sync:
         buffer_gdf = gpd.GeoDataFrame(matched_buffers, geometry="geometry", crs=shape_koppeling.crs)
-        os.makedirs(os.path.dirname(output_buffer_shapefile), exist_ok=True)
+        Path(output_buffer_shapefile).parent.mkdir(parents=True, exist_ok=True)
         buffer_gdf.to_file(output_buffer_shapefile)
         buffer_gdf.to_file(output_buffer_shapefile)
         cloud_sync.upload_file(output_buffer_shapefile)

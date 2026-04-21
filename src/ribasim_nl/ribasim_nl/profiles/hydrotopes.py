@@ -1,8 +1,8 @@
 """Interface for hydrotopes."""
 
 import dataclasses
-import pathlib
 import typing
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -108,7 +108,7 @@ class HydrotopeTable:
         return HydrotopeTable(*collection.values())
 
     @classmethod
-    def from_csv(cls, fn: pathlib.Path | str, **kwargs) -> "HydrotopeTable":
+    def from_csv(cls, fn: Path | str, **kwargs) -> "HydrotopeTable":
         """Initiate a hydrotope-table from a *.csv-file, containing the required information per hydrotope.
 
         :param fn: filename

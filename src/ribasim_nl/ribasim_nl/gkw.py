@@ -40,7 +40,7 @@ def download_geopackage(url: str, save_dir: Path) -> None:
                 # Check if the response is a Geopackage file
                 if "application/geopackage+sqlite3" in content_type:
                     # Save the file locally
-                    with open(filepath, "wb") as file:
+                    with filepath.open("wb") as file:
                         for chunk in response.iter_content(chunk_size=8192):
                             file.write(chunk)
                     print(f"Downloaded: {filepath}")

@@ -148,7 +148,7 @@ class CloudStorage:
         url = self.file_url(file_path)
 
         # read file and upload
-        with open(file_path, "rb") as f:
+        with Path(file_path).open("rb") as f:
             r = requests.put(url, data=f, auth=self.auth, timeout=300)
         r.raise_for_status()
 
@@ -164,7 +164,7 @@ class CloudStorage:
         file_path.parent.mkdir(exist_ok=True, parents=True)
 
         # write file
-        with open(file_path, "wb") as f:
+        with file_path.open("wb") as f:
             f.write(r.content)
 
     def content(self, url: str) -> list[str]:

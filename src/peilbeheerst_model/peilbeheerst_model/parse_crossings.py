@@ -1,9 +1,8 @@
 import itertools
 import logging
 import math
-import os
-import pathlib
 from collections.abc import Hashable
+from pathlib import Path
 from typing import Any
 
 import fiona
@@ -22,15 +21,15 @@ from ribasim_nl import CloudStorage, settings
 class ParseCrossings:
     def __init__(
         self,
-        gpkg_path: pathlib.Path | str,
-        output_path: pathlib.Path | str | None = None,
+        gpkg_path: Path | str,
+        output_path: Path | str | None = None,
         allowed_distance: float = 0.5,
         search_radius_structure: float = 60.0,
         search_radius_HWS_BZM: float = 30.0,
         agg_peilgebieden_layer: str | None = None,
         agg_peilgebieden_column: str | None = None,
         agg_areas_threshold: float = 0.8,
-        krw_path: pathlib.Path | str | None = None,
+        krw_path: Path | str | None = None,
         krw_column_id: str | None = None,
         krw_column_name: str | None = None,
         krw_min_overlap: float = 0.1,
@@ -41,15 +40,15 @@ class ParseCrossings:
         list_sep: str = ",",
         disable_progress: bool = False,
         show_log: bool = False,
-        logfile: pathlib.Path | str | None = None,
+        logfile: Path | str | None = None,
     ) -> None:
         """_summary_
 
         Parameters
         ----------
-        gpkg_path : pathlib.Path | str
+        gpkg_path : Path | str
             _description_
-        output_path : pathlib.Path | str | None, optional
+        output_path : Path | str | None, optional
             _description_, by default None
         allowed_distance : float, optional
             _description_, by default 0.5
@@ -63,7 +62,7 @@ class ParseCrossings:
             _description_, by default None
         agg_areas_threshold : float, optional
             _description_, by default 0.8
-        krw_path : pathlib.Path | str | None, optional
+        krw_path : Path | str | None, optional
             _description_, by default None
         krw_column_id : str | None, optional
             _description_, by default None
@@ -85,7 +84,7 @@ class ParseCrossings:
             _description_, by default False
         show_log : bool, optional
             _description_, by default False
-        logfile : pathlib.Path | str | None, optional
+        logfile : Path | str | None, optional
             _description_, by default None
 
         Raises
@@ -127,7 +126,7 @@ class ParseCrossings:
 
         # read all layers of geopackage
         base_path = settings.ribasim_nl_data_dir
-        gpkg_path = os.path.join(base_path, gpkg_path)  # add the base path
+        gpkg_path = Path(base_path) / gpkg_path  # add the base path
         self.df_gpkg = {L: gpd.read_file(gpkg_path, layer=L) for L in fiona.listlayers(gpkg_path)}
 
         # Validate globalids
@@ -153,26 +152,26 @@ class ParseCrossings:
                 raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
 
         # KRW
-        krw_path = os.path.join(base_path, str(krw_path))  # add the base path
+        krw_path = Path(base_path) / str(krw_path)  # add the base path
         self.krw_path = krw_path
         self.krw_column_id = krw_column_id
         self.krw_column_name = krw_column_name
         self.krw_min_overlap = krw_min_overlap
 
         # Output path
-        output_path = os.path.join(base_path, str(output_path))  # add the base path
+        output_path = Path(base_path) / str(output_path)  # add the base path
         self.output_path = output_path
 
         # logger settings
-        logger_name = f"{__name__.split('.')[0]}_{pathlib.Path(gpkg_path).stem}"
+        logger_name = f"{__name__.split('.')[0]}_{Path(gpkg_path).stem}"
         self.log = logging.getLogger(logger_name)
         handlers: list[logging.Handler] = [logging.NullHandler()]
         if show_log:
             handlers.append(logging.StreamHandler())
         if logfile is not None:
             # Prepend base_path to logfile if it's not an absolute path
-            logfile = os.path.join(base_path, logfile) if not os.path.isabs(logfile) else logfile
-            handlers.append(logging.FileHandler(pathlib.Path(logfile), "w"))
+            logfile = Path(base_path) / logfile if not Path(logfile).is_absolute() else logfile
+            handlers.append(logging.FileHandler(Path(logfile), "w"))
         for handler in handlers:
             formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
             handler.setFormatter(formatter)
@@ -349,7 +348,7 @@ class ParseCrossings:
     @pydantic.validate_call(config={"arbitrary_types_allowed": True, "strict": True})
     def add_krw_to_peilgebieden(
         df_peilgebieden: gpd.GeoDataFrame,
-        krw_path: pathlib.Path | str | None,
+        krw_path: Path | str | None,
         krw_column_id: str | None,
         krw_column_name: str | None,
         krw_min_overlap: float,
@@ -361,7 +360,7 @@ class ParseCrossings:
         ----------
         df_peilgebieden : gpd.GeoDataFrame
             _description_
-        krw_path : pathlib.Path | str | None
+        krw_path : Path | str | None
             _description_
         krw_column_id : str | None
             _description_
@@ -605,7 +604,7 @@ class ParseCrossings:
         df_filter: gpd.GeoDataFrame | None = None,
         df_hydro_filter: gpd.GeoDataFrame | None = None,
     ) -> None:
-        output_path = pathlib.Path(self.output_path)
+        output_path = Path(self.output_path)
         if not output_path.parent.exists():
             output_path.parent.mkdir(parents=True)
 

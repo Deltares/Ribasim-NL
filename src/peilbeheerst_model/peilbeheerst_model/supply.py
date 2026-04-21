@@ -10,6 +10,7 @@ Author: Gijs G. Hendrickx
 import abc
 import os
 import typing
+from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
@@ -533,7 +534,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     """
     # optional arguments
     export_modified_geo_data: bool = kwargs.get("export", False)
-    export_directory: str | None = kwargs.get("export_directory")
+    export_directory: str | Path | None = kwargs.get("export_directory")
     export_filename: str = kwargs.get("export_filename", "aanvoer_mod.shp")
     kw_extra_files: typing.Sequence[str] | None = kwargs.get("extra_files")
     kw_key: str | None = kwargs.get("key")
@@ -684,8 +685,8 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
 
     # export 'aanvoer'-geometry
     if export_modified_geo_data:
-        export_directory = export_directory or os.path.dirname(f_geometry)
-        _file = os.path.join(export_directory, export_filename)
+        export_directory = Path(export_directory) if export_directory else Path(f_geometry).parent
+        _file = export_directory / export_filename
         geometry.to_file(_file)
         print(f"Modified 'aanvoer'-geometry exported as {_file}")
 

@@ -2,7 +2,7 @@
 """Script met verschillende functies om de uitvoer van de Ribasim modellen te vergelijken met meetreeksen"""
 
 import ast
-import os
+from pathlib import Path
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -83,11 +83,7 @@ def ReadOutputFile(model_folder, filetype) -> pd.DataFrame:
         raise ValueError(f"{filetype} not available. Choose on of the following: {possible_filetypes}")
 
     else:
-        data = (
-            xr.open_dataset(os.path.join(model_folder, "results", filetype.lower() + ".nc"))
-            .to_dataframe()
-            .reset_index()
-        )
+        data = xr.open_dataset(Path(model_folder) / "results" / (filetype.lower() + ".nc")).to_dataframe().reset_index()
 
         # The timing is not yet correct between the measurements and the flow results. Subtract 12 years from the flow data to fix this
         # data['time'] = data['time'] - pd.DateOffset(years=12) #TODO repair!
@@ -429,7 +425,7 @@ def CompareOutputMeasurements(
             koppelinfo=full_title,
             fig_name=fig_name,
             bron_meting=bron_meting,
-            output_folder=os.path.join(model_folder, "results", "figures"),
+            output_folder=Path(model_folder) / "results" / "figures",
         )
         fig_name_clean = fig_name.replace(" ", "_")
         pop_up_figure = f'<img src="../figures/{meetlocaties_link.iloc[0]["Waterschap"]}/{fig_name_clean}.png" width=400 height=300>'
@@ -457,7 +453,7 @@ def CompareOutputMeasurements(
             koppelinfo=full_title,
             fig_name=fig_name,
             bron_meting=bron_meting,
-            output_folder=os.path.join(model_folder, "results", "figures"),
+            output_folder=Path(model_folder) / "results" / "figures",
         )
         fig_name_clean = fig_name.replace(" ", "_")
         pop_up_figure = f'<img src="../figures/{meetlocaties_link.iloc[0]["Waterschap"]}/{fig_name_clean}.png" width=400 height=300>'
@@ -484,23 +480,21 @@ def CompareOutputMeasurements(
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
         results_gdf.set_crs(epsg="28992", inplace=True)
         results_combined.append(results_gdf)
-        results_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten.gpkg"), layer=waterschap)
+        results_gdf.to_file(Path(model_folder) / "results" / "Validatie_resultaten.gpkg", layer=waterschap)
 
     for waterschap, results in results_measurements_decade.items():
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
         results_gdf.set_crs(epsg="28992", inplace=True)
         results_dec_combined.append(results_gdf)
-        results_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten_dec.gpkg"), layer=waterschap)
+        results_gdf.to_file(Path(model_folder) / "results" / "Validatie_resultaten_dec.gpkg", layer=waterschap)
 
     # Save all the results in one geopackage to make handling in QGIS or HTML easier
     if save_results_combined:
         final_gdf = pd.concat(results_combined, ignore_index=True)
         final_dec_gdf = pd.concat(results_dec_combined, ignore_index=True)
 
-        final_gdf.to_file(os.path.join(model_folder, "results", "Validatie_resultaten_all.gpkg"), layer="Compleet")
-        final_dec_gdf.to_file(
-            os.path.join(model_folder, "results", "Validatie_resultaten_dec_all.gpkg"), layer="Compleet"
-        )
+        final_gdf.to_file(Path(model_folder) / "results" / "Validatie_resultaten_all.gpkg", layer="Compleet")
+        final_dec_gdf.to_file(Path(model_folder) / "results" / "Validatie_resultaten_dec_all.gpkg", layer="Compleet")
 
 
 def ConvertToDecade(combined_df_results):
@@ -570,11 +564,11 @@ def LoadMeasurements(meas_folder) -> dict[str, pd.DataFrame]:
     measurements = {}
     for key, file in meas_files.items():
         try:
-            measurements[key] = pd.read_csv(os.path.join(meas_folder, file), parse_dates=["Unnamed: 0"])
+            measurements[key] = pd.read_csv(Path(meas_folder) / file, parse_dates=["Unnamed: 0"])
             measurements[key].rename(columns={"Unnamed: 0": "time"}, inplace=True)
         except:  # noqa: E722 TODO: specify exception
             try:
-                measurements[key] = pd.read_csv(os.path.join(meas_folder, file), parse_dates=["Datum"])
+                measurements[key] = pd.read_csv(Path(meas_folder) / file, parse_dates=["Datum"])
                 measurements[key].rename(columns={"Datum": "time"}, inplace=True)
             except ValueError:
                 print("Cannot identify date/time column. Can be [Unnamed: 0, Datum] ")
@@ -606,9 +600,9 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
     """
     # Create the folder where the plot can be saved
     if bron_meting is None:
-        os.makedirs(output_folder, exist_ok=True)
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
     else:
-        os.makedirs(os.path.join(output_folder, bron_meting), exist_ok=True)
+        (Path(output_folder) / bron_meting).mkdir(parents=True, exist_ok=True)
 
     font = "Arial"
 
@@ -664,9 +658,9 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
     # Save the figure in the right location
     fig_name_clean = fig_name.replace(" ", "_").replace("/", "_")  # remove / as it will raise FileNotFoundError
     if bron_meting is None:
-        fig_path = os.path.join(output_folder, fig_name_clean + ".png")
+        fig_path = Path(output_folder) / (fig_name_clean + ".png")
     else:
-        fig_path = os.path.join(output_folder, bron_meting, fig_name_clean + ".png")
+        fig_path = Path(output_folder) / bron_meting / (fig_name_clean + ".png")
     fig.savefig(fig_path, bbox_inches="tight", dpi=200)
     plt.close()
 

@@ -1,8 +1,6 @@
-# import pathlib
 import datetime
 import json
 import logging
-import os
 import shutil
 import subprocess
 import sys
@@ -792,8 +790,8 @@ def create_sufficient_Qh_relation_points(ribasim_model) -> None:
 
 def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml) -> None:
     # Write Ribasim model to the Z drive
-    if not os.path.exists(path_ribasim_toml):
-        os.makedirs(path_ribasim_toml)
+    if not Path(path_ribasim_toml).exists():
+        Path(path_ribasim_toml).mkdir(parents=True)
 
     ribasim_model.write(path_ribasim_toml)
 
@@ -805,23 +803,20 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
     Also clear the directory of modellen/parametereized, as there may be old results in it.
     The log file of the feedback form is not included to avoid cluttering.'
     """
-    destination_path = os.path.join(
-        settings.ribasim_nl_data_dir, waterschap, "modellen", f"{waterschap}_parameterized/"
-    )
+    destination_path = settings.ribasim_nl_data_dir / waterschap / "modellen" / f"{waterschap}_parameterized/"
 
     # clear the modellen/parameterized dir
-    if os.path.exists(destination_path):
+    if destination_path.exists():
         shutil.rmtree(destination_path)  # Remove the entire directory
-    os.makedirs(destination_path)  # Recreate the empty folder
+    destination_path.mkdir(parents=True)  # Recreate the empty folder
 
     # copy the work_dir to the "modellen" dir to maintain the same folder structure locally as well as on the 'GoodCloud'
     shutil.copytree(work_dir, destination_path, dirs_exist_ok=True)
 
     # it is not necessary to inlcude the log file of the feedback forms. Delete it
-    for file in os.listdir(destination_path):
-        file_path = os.path.join(destination_path, file)
-        if file.endswith(".log") and os.path.isfile(file_path):
-            os.remove(file_path)
+    for file in destination_path.iterdir():
+        if file.suffix == ".log" and file.is_file():
+            file.unlink()
 
     cloud_storage = CloudStorage()
 
@@ -1444,7 +1439,7 @@ def load_model_settings(file_path):
     script_path = Path(__file__)  # Get the path to the current python file
     file_path = script_path.parent.parent / "Parametrize" / file_path  # Correct the path to the JSON file
 
-    with open(file_path) as file:
+    with Path(file_path).open() as file:
         settings = json.load(file)
     return settings
 

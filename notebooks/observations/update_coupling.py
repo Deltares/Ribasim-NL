@@ -15,6 +15,7 @@
 # Packages
 import ast
 import os
+from pathlib import Path
 
 import pandas as pd
 from shapely.geometry import Point
@@ -184,7 +185,7 @@ def update_koppeltabel_with_feedback(
 
     # Generate output file name
     _folder, filename = os.path.split(input_koppeltabel_path)
-    basename, ext = os.path.splitext(filename)
+    basename, ext = Path(filename).stem, Path(filename).suffix
     base_without_feedback = basename.split("_Feedback")[0]
 
     if partij:

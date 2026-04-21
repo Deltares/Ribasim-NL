@@ -38,7 +38,7 @@ kunstwerken_gpkg = kunstwerken_xlsx.parent / f"{kunstwerken_xlsx.stem}.gpkg"
 
 
 def upload_file(url, path):
-    with open(path, "rb") as f:
+    with Path(path).open("rb") as f:
         r = requests.put(url, data=f, auth=(RIBASIM_NL_CLOUD_USER, RIBASIM_NL_CLOUD_PASS), timeout=300)
     r.raise_for_status()
 

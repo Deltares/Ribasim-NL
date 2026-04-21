@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import geopandas as gpd
@@ -11,7 +10,7 @@ cloud = CloudStorage()
 # Ensure the directory for post_processed_path exists
 authority = "WetterskipFryslan"
 post_processed_dir = Path(cloud.joinpath(authority, "verwerkt/Data_postprocessed"))
-os.makedirs(post_processed_dir, exist_ok=True)
+post_processed_dir.mkdir(parents=True, exist_ok=True)
 
 # Define the full path for the GeoPackage file
 post_processed_path = post_processed_dir / f"{authority}.gpkg"

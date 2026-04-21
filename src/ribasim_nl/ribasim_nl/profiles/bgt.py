@@ -4,9 +4,9 @@ import io
 import itertools
 import json
 import logging
-import pathlib
 import time
 import zipfile
+from pathlib import Path
 
 import geopandas as gpd
 import requests
@@ -47,7 +47,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     # optional arguments
     fn: str = kwargs.get("fn", "bgt_water.gpkg")
     sleep_time: float = kwargs.get("sleep_time", 1)
-    wd: pathlib.Path | None = kwargs.get("wd")
+    wd: Path | None = kwargs.get("wd")
 
     # API URL
     __full_custom_url = "lv/bgt/download/v1_0/full/custom"
@@ -112,7 +112,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     return bgt_data
 
 
-def get_water_surfaces(wd: pathlib.Path, **kwargs) -> gpd.GeoDataFrame:
+def get_water_surfaces(wd: Path, **kwargs) -> gpd.GeoDataFrame:
     """Get water surfaces data, i.e., BGT-data.
 
     If the data is not saved locally (i.e., `wd`) or `overwrite=True`, the data is downloaded via de PDOK API.
@@ -125,7 +125,7 @@ def get_water_surfaces(wd: pathlib.Path, **kwargs) -> gpd.GeoDataFrame:
     :key overwrite: overwrite the downloaded BGT-data with a new download, defaults to False
     :key write: export the newly downloaded BGT-data to `wd`, defaults to True
 
-    :type wd: pathlib.Path
+    :type wd: Path
 
     :return: BGT-data
     :rtype: geopandas.GeoDataFrame
@@ -207,7 +207,7 @@ def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwa
 def save_bgt_coupling(
     hydro_objects: gpd.GeoDataFrame,
     bgt_data: gpd.GeoDataFrame,
-    wd: pathlib.Path,
+    wd: Path,
     *,
     fn: str = "int_output.gpkg",
     layer: str = "bgt",
@@ -226,7 +226,7 @@ def save_bgt_coupling(
 
     :type hydro_objects: geopandas.GeoDataFrame
     :type bgt_data: geopandas.GeoDataFrame
-    :type wd: pathlib.Path
+    :type wd: Path
     :type fn: str, optional
     :type layer: str, optional
 

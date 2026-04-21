@@ -1,6 +1,6 @@
 # %% import modules
-import os
 from datetime import timedelta
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -245,8 +245,8 @@ print(df)
 cloud = CloudStorage()
 
 # Create output directory for temporary storage of plots
-output_dir = "plots"
-os.makedirs(output_dir, exist_ok=True)
+output_dir = Path("plots")
+output_dir.mkdir(parents=True, exist_ok=True)
 
 # Plot data for each MEETPUNT_IDENTIFICATIE
 for monster_id, group in grouped:
@@ -261,7 +261,7 @@ for monster_id, group in grouped:
     plt.grid(True)
 
     # Save plot as PNG
-    plot_file_path = os.path.join(output_dir, f"{monster_id}.png")
+    plot_file_path = output_dir / f"{monster_id}.png"
     plt.savefig(plot_file_path)
     plt.close()
 

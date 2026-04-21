@@ -363,7 +363,7 @@ class HyDAMO:
         self.validation_schemas: dict[str, Any] = {}
 
         # read schema as dict
-        with open(self.schema_json) as src:
+        with self.schema_json.open() as src:
             schema = json.load(src)
             hydamo_layers = [Path(i["$ref"]).name for i in schema["properties"]["HyDAMO"]["anyOf"]]
             self.layers = [i for i in hydamo_layers if i not in self.ignored_layers]

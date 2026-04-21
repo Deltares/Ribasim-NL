@@ -1,5 +1,6 @@
 # import packages and functions
 import os
+from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
@@ -26,7 +27,7 @@ WSRL: dict[str, Any] = {}
 for root, _dirs, files in os.walk(data_path):
     for file in files:
         if file.endswith(".gpkg"):
-            gpkg_path = os.path.join(root, file)
+            gpkg_path = Path(root) / file
 
             if WSRL == {}:
                 WSRL = read_gpkg_layers(gpkg_path=gpkg_path)
@@ -230,8 +231,8 @@ show_layers_and_columns(waterschap=WSRL)
 
 
 # Check if the directory exists
-if not os.path.exists(output_gpkg_path):
+if not Path(output_gpkg_path).exists():
     # If it doesn't exist, create it
-    os.makedirs(output_gpkg_path)
+    Path(output_gpkg_path).mkdir(parents=True)
 
 store_data(waterschap=WSRL, output_gpkg_path=output_gpkg_path + "/WSRL")
