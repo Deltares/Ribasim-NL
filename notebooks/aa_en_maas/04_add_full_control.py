@@ -43,7 +43,7 @@ def add_discharge_supply_nodes(
 ):
     # get tables and nodes
     node_table_df = get_node_table_with_from_to_node_ids(model, node_ids=list(discharge_supply_nodes.keys()))
-    node_types = model.node_table().df["node_type"]
+    node_types = model.node.df["node_type"]
 
     # demand parameters
     summer_season_start: tuple[int, int] = (4, 1)
