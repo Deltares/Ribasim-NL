@@ -1132,9 +1132,19 @@ class Model(ribasim.Model):
         outlet_a = self.outlet.node.df.loc[outlet_a_id]
         outlet_b = self.outlet.node.df.loc[outlet_b_id]
 
-        # correct link from and to attributes
-        link_ids = self.link.df[self.link.df.to_node_id == outlet_a_id].index.to_list()
-        link_ids += self.link.df[self.link.df.from_node_id == outlet_b_id].index.to_list()
+        # Remove upstream (outlet_a) control node before link redirection, keeping the downstream one
+        upstream_ctrl_links = self.link.df[
+            (self.link.df.to_node_id == outlet_a_id) & (self.link.df.link_type == "control")
+        ]
+        for ctrl_link_id in upstream_ctrl_links.index:
+            ctrl_node_id: int = self.link.df.at[ctrl_link_id, "from_node_id"]  # pyrefly: ignore[bad-assignment]
+            self.remove_node(ctrl_node_id, remove_links=True)
+
+        # correct link from and to attributes (collect all links connected to either outlet for geometry reset)
+        link_ids = self.link.df[
+            (self.link.df.from_node_id.isin([outlet_a_id, outlet_b_id]))
+            | (self.link.df.to_node_id.isin([outlet_a_id, outlet_b_id]))
+        ].index.to_list()
 
         # Remove outlet_b from the links
         self.link.df.loc[self.link.df.from_node_id == outlet_b_id, "from_node_id"] = outlet_a_id
