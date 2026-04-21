@@ -314,7 +314,7 @@ class Control:
     def store_data(self, data, output_path) -> None:
         """Store the control_dict"""
         for key in data:
-            data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG", mode="w")
+            data[str(key)].to_file(Path(output_path).with_suffix(".gpkg"), layer=str(key), driver="GPKG", mode="w")
 
         # copy checks_symbology file from old dir to new dir
         # delete old .qlr file (overwriting does apparently not work due to permission rights)

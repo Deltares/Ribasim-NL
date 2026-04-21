@@ -1821,7 +1821,7 @@ class RibasimNetwork:
             _description_
         """
         for key in data:
-            data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG")
+            data[str(key)].to_file(Path(output_path).with_suffix(".gpkg"), layer=str(key), driver="GPKG")
 
         return
 

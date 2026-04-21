@@ -1,4 +1,6 @@
 # import packages and functions
+from pathlib import Path
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -76,7 +78,7 @@ def store_data(waterschap, output_gpkg_path) -> None:
     - output_gpkg_path: The file path for the output GPKG file. The '.gpkg' extension is added automatically.
     """
     for key in waterschap:
-        waterschap[str(key)].to_file(output_gpkg_path + ".gpkg", layer=str(key), driver="GPKG")
+        waterschap[str(key)].to_file(Path(output_gpkg_path).with_suffix(".gpkg"), layer=str(key), driver="GPKG")
 
 
 def overlapping_peilgebieden(waterschap_peilgebieden) -> pd.DataFrame | gpd.GeoDataFrame:
