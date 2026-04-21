@@ -126,7 +126,7 @@ if remove_cat_2:
 
 output_gpkg_path = verwerkt_dir / "postprocessed.gpkg"
 
-for key in AVG.keys():
+for key in AVG:
     print(key)
     AVG[str(key)].to_file(output_gpkg_path, layer=str(key), driver="GPKG")
 

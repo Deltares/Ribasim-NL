@@ -158,10 +158,14 @@ class RibasimFeedbackProcessor:
                 # Remove from type-specific tables
                 if hasattr(value, "__dict__"):
                     for _sub_key, sub_value in value.__dict__.items():
-                        if hasattr(sub_value, "df") and sub_value.df is not None:
-                            if not sub_value.df.empty and "node_id" in sub_value.df.columns:
-                                filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
-                                sub_value.df = filtered_df
+                        if (
+                            hasattr(sub_value, "df")
+                            and sub_value.df is not None
+                            and not sub_value.df.empty
+                            and "node_id" in sub_value.df.columns
+                        ):
+                            filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                            sub_value.df = filtered_df
 
             # Remove the Links
             rows_to_remove = self.model.link.df[
@@ -180,7 +184,7 @@ class RibasimFeedbackProcessor:
     def add_node(self, row) -> None:
         try:
             key = row["Node Type.1"]
-            key = mapping.get(key, None)
+            key = mapping.get(key)
             max_id = self.get_current_max_nodeid()
             node_id = max_id + 1
             logging.info(f"Node ID: {node_id}")
@@ -316,7 +320,7 @@ class RibasimFeedbackProcessor:
                             sub_value.df = filtered_df
 
             new_node_type_name = row["Nieuw Node Type"]
-            key = mapping.get(new_node_type_name, None)
+            key = mapping.get(new_node_type_name)
             value = getattr(self.model, key, None)
 
             if value is not None:
@@ -406,10 +410,7 @@ class RibasimFeedbackProcessor:
             if df_row_a_b.empty and df_row_b_a.empty:
                 logging.error(f"Link not found between Node A: {node_a} and Node B: {node_b} at index {row}")
                 return
-            if not df_row_a_b.empty:
-                df_row = df_row_a_b
-            else:
-                df_row = df_row_b_a
+            df_row = df_row_a_b if not df_row_a_b.empty else df_row_b_a
             self.model.link.df.loc[df_row.index, ["from_node_id", "to_node_id"]] = self.model.link.df.loc[
                 df_row.index, ["to_node_id", "from_node_id"]
             ].to_numpy()

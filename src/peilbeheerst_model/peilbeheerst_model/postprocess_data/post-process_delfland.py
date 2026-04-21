@@ -190,6 +190,6 @@ if remove_cat_2:
 # ## Write output
 
 
-for key in delfland.keys():
+for key in delfland:
     print(key)
     delfland[str(key)].to_file(f"{output_folder}/{waterschap}.gpkg", layer=str(key), driver="GPKG")

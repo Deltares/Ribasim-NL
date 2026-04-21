@@ -99,23 +99,16 @@ print(f"Number of overlapping shapes with filter: {len(overlap_ids)}")
 peilgebieden_cat = []
 
 for _index, row in HD["peilgebied"].iterrows():
-    if row.code == "Zuiderdiepboezem_164":
-        peilgebieden_cat.append(1)
-    elif row.code == "Zuiderdiepboezem_163":
-        peilgebieden_cat.append(1)
-    elif row.code == "Zoetwaterboezem_571":
-        peilgebieden_cat.append(1)
-    elif row.code == "Kanaal door Voorne_570":
-        peilgebieden_cat.append(1)
-    elif row.code == "Binnenbedijkte Maas_290":
-        peilgebieden_cat.append(1)
-    elif row.code == "Boezemloozende door Strijensas_333":
-        peilgebieden_cat.append(1)
-    # elif row.code == 'Zuiderdiepboezem':
-    #     peilgebieden_cat.append(1)
-    elif row.code == "Kreekkade_660":
-        peilgebieden_cat.append(1)
-    elif row.code == "Zwijndrechtse Waard_703":
+    if (
+        row.code == "Zuiderdiepboezem_164"
+        or row.code == "Zuiderdiepboezem_163"
+        or row.code == "Zoetwaterboezem_571"
+        or row.code == "Kanaal door Voorne_570"
+        or row.code == "Binnenbedijkte Maas_290"
+        or row.code == "Boezemloozende door Strijensas_333"
+        or row.code == "Kreekkade_660"
+        or row.code == "Zwijndrechtse Waard_703"
+    ):
         peilgebieden_cat.append(1)
     else:
         peilgebieden_cat.append(0)
@@ -214,6 +207,6 @@ if remove_cat_2:
 # ## Store output
 
 
-for key in HD.keys():
+for key in HD:
     print(key)
     HD[str(key)].to_file(f"{output_folder}/{waterschap2}.gpkg", layer=str(key), driver="GPKG")

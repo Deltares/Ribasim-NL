@@ -57,10 +57,7 @@ def percentage_secundair_oppervlaktewater() -> None:
         cell_area = cell_width * cell_height
 
         # geldige pixels bepalen
-        if nodata is not None:
-            valid = (band11 != nodata) & (band12 != nodata)
-        else:
-            valid = np.ones(band11.shape, dtype=bool)
+        valid = (band11 != nodata) & (band12 != nodata) if nodata is not None else np.ones(band11.shape, dtype=bool)
 
         # oppervlaktes optellen
         summed_area = np.full(band11.shape, np.nan, dtype="float32")
@@ -94,10 +91,7 @@ def percentage_primair_oppervlaktewater() -> None:
         cell_area = cell_width * cell_height
 
         # geldige pixels bepalen
-        if nodata is not None:
-            valid = band10 != nodata
-        else:
-            valid = np.ones(band10.shape, dtype=bool)
+        valid = band10 != nodata if nodata is not None else np.ones(band10.shape, dtype=bool)
 
         # oppervlaktes optellen
         summed_area = np.full(band10.shape, np.nan, dtype="float32")
@@ -293,10 +287,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
             values = data[mask]
 
             # get area_fraction and add oppervlaktewater_percentage to basin.area table
-            if values.size == 0 or np.all(np.isnan(values)):
-                area_fraction = np.nan
-            else:
-                area_fraction = float(np.nanmean(values))
+            area_fraction = np.nan if values.size == 0 or np.all(np.isnan(values)) else float(np.nanmean(values))
 
             basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = round(area_fraction * 100, 1)
             profile = ah_df(node_id=basin_id, polygon=polygon, target_level=target_level, area_fraction=area_fraction)
@@ -382,10 +373,7 @@ def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> ta
     depth[depth < 0] = 0
 
     # level relative to maaiveld
-    if maaiveld is not None:
-        level = maaiveld - depth
-    else:
-        level = row.maaiveld - depth
+    level = maaiveld - depth if maaiveld is not None else row.maaiveld - depth
 
     # make sure level >= min_level
     level[level < min_level] = min_level

@@ -397,10 +397,7 @@ class CloudStorage:
             if (i.model == model) and (i.year == today.year) and (i.month == today.month)
         ]
 
-        if monthly_revisions:
-            revision = max(monthly_revisions) + 1
-        else:
-            revision = 0
+        revision = max(monthly_revisions) + 1 if monthly_revisions else 0
 
         # create local version_directory
         model_version_dir = model_dir.parent.joinpath(f"{model}_{today.year}_{today.month}_{revision}")

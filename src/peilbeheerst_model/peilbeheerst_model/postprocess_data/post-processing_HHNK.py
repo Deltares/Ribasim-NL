@@ -206,7 +206,7 @@ if remove_cat_2:
 # ## Write output
 
 
-for key in HHNK.keys():
+for key in HHNK:
     print(key)
     HHNK[str(key)].to_file(f"{output_folder}/{waterschap2}.gpkg", layer=str(key), driver="GPKG")
 

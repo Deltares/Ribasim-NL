@@ -1102,10 +1102,7 @@ class ParseCrossings:
                     for (pfrom, pto), subgroup in group.groupby(
                         ["peilgebied_from", "peilgebied_to"], dropna=False, sort=False
                     ):
-                        if pd.isna(pfrom) or pd.isna(pto):
-                            in_use = subgroup.index
-                        else:
-                            in_use = subgroup.index[[0]]
+                        in_use = subgroup.index if pd.isna(pfrom) or pd.isna(pto) else subgroup.index[[0]]
                         match_group_unique = True
                         if len(in_use) > 1:
                             match_group_unique = False
@@ -1254,10 +1251,7 @@ class ParseCrossings:
                                 check_from = pd.isna(group.peilgebied_from)
                             else:
                                 check_from = group.peilgebied_from == pfrom
-                            if pd.isna(pto):
-                                check_to = pd.isna(group.peilgebied_to)
-                            else:
-                                check_to = group.peilgebied_to == pto
+                            check_to = pd.isna(group.peilgebied_to) if pd.isna(pto) else group.peilgebied_to == pto
                             entry_exists = check_from & check_to
                             if entry_exists.any():
                                 # The entry exists, toggle it to 'in_use'.
@@ -1649,10 +1643,7 @@ class ParseCrossings:
 
         # Only look at crossing that are going to be used
         filter_col = "in_use"
-        if filter_col in dfs.columns:
-            df_filter = dfs[dfs[filter_col]].copy()
-        else:
-            df_filter = dfs.copy()
+        df_filter = dfs[dfs[filter_col]].copy() if filter_col in dfs.columns else dfs.copy()
 
         # Add structures to crossings.
         df_sub_structures = df_structures.copy()

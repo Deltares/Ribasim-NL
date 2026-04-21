@@ -32,7 +32,7 @@ for root, _dirs, files in os.walk(data_path):
                 WSRL = read_gpkg_layers(gpkg_path=gpkg_path)
             else:
                 temp_WSRL = read_gpkg_layers(gpkg_path=gpkg_path)
-                for variable in WSRL.keys():
+                for variable in WSRL:
                     WSRL[variable] = pd.concat([WSRL[variable], temp_WSRL[variable]]).reset_index(drop=True)
 
 

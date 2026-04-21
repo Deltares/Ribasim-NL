@@ -363,10 +363,7 @@ class Flushing:
 
         # Ignore nodes in cycles
         cycles = list(simple_cycles(model.graph.subgraph(uniq_nodes)))
-        if len(cycles) == 0:
-            ignore_nodes = np.array([])
-        else:
-            ignore_nodes = np.unique(np.concatenate(cycles))
+        ignore_nodes = np.array([]) if len(cycles) == 0 else np.unique(np.concatenate(cycles))
         uniq_nodes = uniq_nodes[~np.isin(uniq_nodes, ignore_nodes)]
 
         # Some areas have a lot of paths with duplicate nodes. Improve

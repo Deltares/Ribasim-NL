@@ -96,6 +96,7 @@ select = [
     "PD",
     "RUF",
     "S",
+    "SIM",
     "UP",
 ]
 ignore = [

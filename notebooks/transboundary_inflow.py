@@ -149,7 +149,7 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
 
     # Add node_id to each location and filter out locations not found in model
     locations_to_remove = []
-    for loc in dict_BA.keys():
+    for loc in dict_BA:
         try:
             node_id = model.flow_boundary.node.df.reset_index(drop=False).set_index("name").at[loc, "node_id"]
             dict_BA[loc]["node_id"] = node_id

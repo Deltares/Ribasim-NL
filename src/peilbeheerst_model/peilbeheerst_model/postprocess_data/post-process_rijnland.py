@@ -278,6 +278,6 @@ if remove_cat_2:
 # ### Store data
 
 
-for key in Rijnland.keys():
+for key in Rijnland:
     print(key)
     Rijnland[str(key)].to_file(f"{output_folder}/{waterschap}.gpkg", layer=str(key), driver="GPKG")

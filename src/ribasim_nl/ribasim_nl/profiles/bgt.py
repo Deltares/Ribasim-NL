@@ -57,10 +57,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
         LOG.warning("No geo-filter provided; download BGT-data of the whole Netherlands? [y/n] ")
 
     # download description
-    if geo_filter is None:
-        data = DATA.copy()
-    else:
-        data = {**DATA, **{"geofilter": str(geo_filter)}}
+    data = DATA.copy() if geo_filter is None else {**DATA, **{"geofilter": str(geo_filter)}}
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",

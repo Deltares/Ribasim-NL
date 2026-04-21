@@ -108,10 +108,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["WS_MAX_PEI"] < 30:
-            level = peilgebied["WS_MAX_PEI"]
-        else:
-            level = None
+        level = peilgebied["WS_MAX_PEI"] if peilgebied["WS_MAX_PEI"] < 30 else None
     levels += [level]
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -140,10 +137,7 @@ for node_id in node_ids:
 
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["WS_MAX_PEI"] < 30:  # 🔹 Drempelwaarde voor max peil
-            level = peilgebied["WS_MAX_PEI"]
-        else:
-            level = None
+        level = peilgebied["WS_MAX_PEI"] if peilgebied["WS_MAX_PEI"] < 30 else None  # 🔹 Drempelwaarde voor max peil
     else:
         level = None
 
@@ -240,10 +234,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["WS_MAX_PEI"] < 30:
-            level = peilgebied["WS_MAX_PEI"]
-        else:
-            level = None
+        level = peilgebied["WS_MAX_PEI"] if peilgebied["WS_MAX_PEI"] < 30 else None
     levels += [level]
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")

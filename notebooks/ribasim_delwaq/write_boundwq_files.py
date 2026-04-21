@@ -251,7 +251,7 @@ def filter_units(sheets_dict_mgpl: dict[str, pd.DataFrame]) -> dict[str, list[st
     Logs which units were deleted per parameter.
     """
     deleted_units = {}
-    for par in sheets_dict_mgpl.keys():
+    for par in sheets_dict_mgpl:
         before_filtering = set(sheets_dict_mgpl[par]["Eenheid.code"].unique())
         sheets_dict_mgpl[par] = sheets_dict_mgpl[par][sheets_dict_mgpl[par]["Eenheid.code"] == "mg/l"]
         after_filtering = set(sheets_dict_mgpl[par]["Eenheid.code"].unique())
@@ -268,7 +268,7 @@ def log_unique_codes(sheets_dict_mgpl: dict[str, pd.DataFrame]) -> None:
     """Logs all unique 'Eenheid.code' values for each parameter in the measurement sheets."""
     parameters = []
     unique_codes = []
-    for par in sheets_dict_mgpl.keys():
+    for par in sheets_dict_mgpl:
         parameters.append(par)
         unique_codes.append(list(sheets_dict_mgpl[par]["Eenheid.code"].unique()))
     df_unique_codes = pd.DataFrame({"Parameter": parameters, "Unique Eenheid.code": unique_codes})
@@ -396,12 +396,12 @@ def process_measurement_data(
             values="Numeriekewaarde",
         ).reset_index()
 
-        df_pivot["NO3_0"] = df_pivot["NO3"] if "NO3" in df_pivot else -999
-        df_pivot["NO3_1"] = df_pivot["sNO3NO2"] if "sNO3NO2" in df_pivot else -999
-        df_pivot["NO3_2"] = df_pivot["NOx"] if "NOx" in df_pivot else -999
+        df_pivot["NO3_0"] = df_pivot.get("NO3", -999)
+        df_pivot["NO3_1"] = df_pivot.get("sNO3NO2", -999)
+        df_pivot["NO3_2"] = df_pivot.get("NOx", -999)
         df_pivot["NO3_3"] = (NO3_Ntot_fractie * df_pivot["Ntot"]) if "Ntot" in df_pivot else -999
 
-        df_pivot["NH4_0"] = df_pivot["NH4"] if "NH4" in df_pivot else -999
+        df_pivot["NH4_0"] = df_pivot.get("NH4", -999)
         df_pivot["NH4_1"] = (NH4_Nkj_fractie * df_pivot["NKj"]) if "NKj" in df_pivot else -999
         df_pivot["NH4_2"] = (NH4_Ntot_fractie * df_pivot["Ntot"]) if "Ntot" in df_pivot else -999
 
@@ -416,7 +416,7 @@ def process_measurement_data(
         # Now this part works only if NO3 is directly measured, do we want to include computed N03 values as well?
         # df_pivot['Ntot_1'] = (df_pivot['NO3'] + df_pivot['NH4'] + df_pivot['OON']) if all(col in df_pivot for col in ['NO3', 'NH4', 'OON']) else -999
 
-        df_pivot["PO4_0"] = df_pivot["PO4"] if "PO4" in df_pivot else -999
+        df_pivot["PO4_0"] = df_pivot.get("PO4", -999)
         df_pivot["PO4_1"] = (PO4_Ptot_fractie * df_pivot["Ptot"]) if all(col in df_pivot for col in ["Ptot"]) else -999
 
         df_pivot["AAP_0"] = (

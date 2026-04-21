@@ -81,22 +81,21 @@ def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
         else:
             properties = default_properties.copy()
             properties["id"] = k
-            if "type" in v.keys():
+            if "type" in v:
                 properties["dtype"] = DTYPE_MAPPING[v["type"]]
-                if "format" in v.keys():
+                if "format" in v:
                     properties["dtype"] = DTYPE_MAPPING[v["format"]]
 
             # set required
-            if "minItems" in v.keys():
-                if v["minItems"] == 1:
-                    properties["required"] = True
+            if "minItems" in v and v["minItems"] == 1:
+                properties["required"] = True
 
             # set unique
-            if "uniqueItems" in v.keys():
+            if "uniqueItems" in v:
                 properties["unique"] = v["uniqueItems"]
 
             # set domain
-            if "enum" in v.keys():
+            if "enum" in v:
                 properties["domain"] = [{"value": i} for i in v["enum"]]
             result.append(properties)
     return result
@@ -175,15 +174,16 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
 
     def _check_geotype(self) -> None:
         """Check geometry type"""
-        if self.geotype:
-            if not all(any(isinstance(geo, GEOTYPE_MAPPING[i]) for i in self.geotype) for geo in self.geometry):
-                raise TypeError(
-                    'Geometry-type "{}" required in layer "{}". The input feature-file has geometry type(s) {}.'.format(
-                        re.findall("([A-Z].*)'", repr(self.geotype))[0],
-                        self.layer_name,
-                        self.geometry.type.unique().tolist(),
-                    )
+        if self.geotype and not all(
+            any(isinstance(geo, GEOTYPE_MAPPING[i]) for i in self.geotype) for geo in self.geometry
+        ):
+            raise TypeError(
+                'Geometry-type "{}" required in layer "{}". The input feature-file has geometry type(s) {}.'.format(
+                    re.findall("([A-Z].*)''", repr(self.geotype))[0],
+                    self.layer_name,
+                    self.geometry.type.unique().tolist(),
                 )
+            )
 
     def _get_schema(self):
         """Return fiona schema dict from validation_schema."""
@@ -376,7 +376,7 @@ class HyDAMO:
             # add layer to data_model
             geotype = next((i["dtype"] for i in layer_schema if i["id"] == "geometry"), None)
 
-            required_columns = [i["id"] for i in [i for i in layer_schema if "required" in i.keys()] if i["required"]]
+            required_columns = [i["id"] for i in [i for i in layer_schema if "required" in i] if i["required"]]
 
             setattr(
                 self,

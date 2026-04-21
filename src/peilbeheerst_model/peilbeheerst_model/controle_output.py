@@ -312,7 +312,7 @@ class Control:
     @model_loaded
     def store_data(self, data, output_path) -> None:
         """Store the control_dict"""
-        for key in data.keys():
+        for key in data:
             data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG", mode="w")
 
         # copy checks_symbology file from old dir to new dir

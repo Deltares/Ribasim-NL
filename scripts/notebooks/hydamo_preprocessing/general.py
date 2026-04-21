@@ -190,13 +190,14 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
         for node in split_action["split_points"]:
             (modified_linestring, index_nearest_neighbour) = add_point_to_linestring(Point(node), linestring)
 
-            if index_nearest_neighbour == 0 and linestring.coords[0] in list(
-                connections_to_create.loc[connections_to_create["inserted"], "point"].values
-            ):
-                continue
-
-            elif index_nearest_neighbour == len(linestring.coords) - 1 and linestring.coords[-1] in list(
-                connections_to_create.loc[connections_to_create["inserted"], "point"].values
+            if (
+                index_nearest_neighbour == 0
+                and linestring.coords[0]
+                in list(connections_to_create.loc[connections_to_create["inserted"], "point"].values)
+            ) or (
+                index_nearest_neighbour == len(linestring.coords) - 1
+                and linestring.coords[-1]
+                in list(connections_to_create.loc[connections_to_create["inserted"], "point"].values)
             ):
                 continue
 

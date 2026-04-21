@@ -232,15 +232,15 @@ for basin_fid, split_lijnen_select_df in split_lijnen_df[split_lijnen_df.opmerki
     # update existing basin / area if basin / node is within
     basin_row = model.basin.area.df.loc[basin_fid]
     drop_fid = True
-    if basin_row.node_id in model.basin.node.df.index.to_numpy():  # check is valid node
-        if series.contains(
-            model.basin[basin_row.node_id].geometry
-        ).any():  # check if any of series is contained by node-geometry
-            model.basin.area.df.loc[basin_fid, "geometry"] = series[
-                series.contains(model.basin[basin_row.node_id].geometry)
-            ].iloc[0]
-            series = series[~series.contains(model.basin[basin_row.node_id].geometry)]
-            drop_fid = False
+    if (
+        basin_row.node_id in model.basin.node.df.index.to_numpy()
+        and series.contains(model.basin[basin_row.node_id].geometry).any()
+    ):  # check is valid node and any of series is contained by node-geometry
+        model.basin.area.df.loc[basin_fid, "geometry"] = series[
+            series.contains(model.basin[basin_row.node_id].geometry)
+        ].iloc[0]
+        series = series[~series.contains(model.basin[basin_row.node_id].geometry)]
+        drop_fid = False
 
     if drop_fid:  # if we haven't updated existing record, we drop it
         model.basin.area.df = model.basin.area.df[model.basin.area.df.index != basin_fid]

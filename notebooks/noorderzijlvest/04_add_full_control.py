@@ -272,10 +272,9 @@ for y in sorted(years):
 
 # Als model.starttime eerder is dan de eerste tijd in pid_times_all, voeg een start-marker toe
 sim_start = pd.Timestamp(model.starttime)
-if sim_start < min(pid_times_all):
-    # alleen toevoegen als het nog niet exact bestaat
-    if sim_start != pid_times_all[0]:
-        pid_times_all.insert(0, sim_start)
+# alleen toevoegen als het nog niet exact bestaat
+if sim_start < min(pid_times_all) and sim_start != pid_times_all[0]:
+    pid_times_all.insert(0, sim_start)
 pid_times_all = sorted(dict.fromkeys(pid_times_all))
 pattern_proportional = [1e6, 1e6, 1e6, 1e6]
 pattern_integral = [0.0, 0.0, 0.0, 0.0]

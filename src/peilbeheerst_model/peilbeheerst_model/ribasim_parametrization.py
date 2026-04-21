@@ -33,10 +33,7 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node.df
 
-    if len(df_all_nodes) == 0:
-        max_id = 1
-    else:
-        max_id = int(df_all_nodes.meta_node_id.max())
+    max_id = 1 if len(df_all_nodes) == 0 else int(df_all_nodes.meta_node_id.max())
 
     return max_id
 
@@ -611,10 +608,7 @@ def add_discrete_control_nodes(ribasim_model) -> None:
     for _i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
         # Get max nodeid and iterate
         cur_max_node_id = get_current_max_node_id(ribasim_model)
-        if cur_max_node_id < 90000:
-            new_nodeid = 90000 + cur_max_node_id + 1  # aanpassen loopt vanaf 90000 +1
-        else:
-            new_nodeid = cur_max_node_id + 1
+        new_nodeid = 90000 + cur_max_node_id + 1 if cur_max_node_id < 90000 else cur_max_node_id + 1
         # print(new_nodeid, end="\r")
 
         # @TODO Ron aangeven in geval van meerdere matches welke basin gepakt moet worden

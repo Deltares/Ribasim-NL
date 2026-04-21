@@ -719,12 +719,10 @@ print("Done")
 # Inspect results.
 supply_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "supply"]
 
-count = 0
-for supply_node_id in supply_nodes.node_id:
+for count, supply_node_id in enumerate(supply_nodes.node_id, start=1):
     plot_guessed_max_flow_rate_per_iteration(
         from_to_node_function_table=from_to_node_function_table, node_id=supply_node_id
     )
-    count += 1
     if count >= 20:
         break
 

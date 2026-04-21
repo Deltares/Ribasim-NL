@@ -81,7 +81,7 @@ def find_codes(
     else:
         df = codes_df.loc[codes_df.name.apply(lambda x: organization.lower() in x.lower())]
     if to_dict:
-        if isinstance(df, DataFrame):
+        if isinstance(df, DataFrame):  # noqa: SIM108
             codes = df.to_dict(orient="records")  # pyrefly: ignore[bad-assignment]
         else:
             codes = df.to_dict()  # pyrefly: ignore[bad-assignment]
@@ -128,13 +128,12 @@ def generate_model_id(code, layer, wbh_code=None, bgt_code=None, geometry=None) 
     if wbh_code:
         if wbh_code_exists(wbh_code):
             result = WBH_CODE_TEMPLATE.format(wbh_code=wbh_code, layer=layer, code=code)
-    elif bgt_code:
-        if bgt_code_exists(bgt_code):
-            wbh_code = bgt_to_wbh_code(bgt_code)
-            if wbh_code:
-                result = WBH_CODE_TEMPLATE.format(wbh_code=wbh_code, layer=layer, code=code)
-            else:
-                result = BGT_CODE_TEMPLATE.format(bgt_code=bgt_code, layer=layer, code=code)
+    elif bgt_code and bgt_code_exists(bgt_code):
+        wbh_code = bgt_to_wbh_code(bgt_code)
+        if wbh_code:
+            result = WBH_CODE_TEMPLATE.format(wbh_code=wbh_code, layer=layer, code=code)
+        else:
+            result = BGT_CODE_TEMPLATE.format(bgt_code=bgt_code, layer=layer, code=code)
     if result is None:
         raise ValueError(
             f"""

@@ -97,7 +97,7 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
 
         ## filter polygons with two intersection-points only
         poly_select_gdf = poly_select_gdf[
-            poly_select_gdf.geometry.boundary.intersection(line.geometry).apply(lambda x: not x.geom_type == "Point")
+            poly_select_gdf.geometry.boundary.intersection(line.geometry).apply(lambda x: x.geom_type != "Point")
         ]
 
         ## if there are no polygon-candidates, something is wrong

@@ -269,6 +269,6 @@ if remove_cat_2:
 # ## Store data
 
 
-for key in Wetterskip.keys():
+for key in Wetterskip:
     print(key)
     Wetterskip[str(key)].to_file(f"{output_folder}/{waterschap}.gpkg", layer=str(key), driver="GPKG")

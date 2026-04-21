@@ -106,10 +106,7 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5) -> No
             if dist.min() < maxdist:
                 branchidxmin = dist.idxmin()
                 geometries.loc[geometry.Index, "branch_id"] = dist.idxmin()
-                if isinstance(geometry.geometry, Point):
-                    geo = geometry.geometry
-                else:
-                    geo = geometry.geometry.centroid
+                geo = geometry.geometry if isinstance(geometry.geometry, Point) else geometry.geometry.centroid
 
                 # Calculate offset
                 branchgeo = branches.loc[branchidxmin, "geometry"]

@@ -660,10 +660,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
             raise ValueError(msg)
 
         gdf = _load_geometry(file, layer=layer)
-        if isinstance(value, bool):
-            out = gdf[gdf[key]]
-        else:
-            out = gdf[gdf[key] == value]
+        out = gdf[gdf[key]] if isinstance(value, bool) else gdf[gdf[key] == value]
         return out
 
     # execute special load-method

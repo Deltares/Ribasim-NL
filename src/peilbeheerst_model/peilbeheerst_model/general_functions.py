@@ -47,7 +47,7 @@ def show_layers_and_columns(waterschap) -> None:
     in a dictionary.
 
     """
-    for key in waterschap.keys():
+    for key in waterschap:
         print(key)
         print(waterschap[str(key)].columns.values)
         print("type = ", type(waterschap[str(key)]))
@@ -75,7 +75,7 @@ def store_data(waterschap, output_gpkg_path) -> None:
     - waterschap: A dictionary where the keys represent layer names, and the values are GeoDataFrames.
     - output_gpkg_path: The file path for the output GPKG file. The '.gpkg' extension is added automatically.
     """
-    for key in waterschap.keys():
+    for key in waterschap:
         waterschap[str(key)].to_file(output_gpkg_path + ".gpkg", layer=str(key), driver="GPKG")
 
 
@@ -285,7 +285,7 @@ def burn_in_peilgebieden(base_layer, overlay_layer, plot=True) -> pd.DataFrame:
     # base_layer_without_overlapping.waterhoogte_1.fillna(value = base_layer_without_overlapping.waterhoogte, inplace=True)
 
     if (
-        "waterhoogte_1" in base_layer_without_overlapping.keys()
+        "waterhoogte_1" in base_layer_without_overlapping
     ):  # sometimes a waterhoogte is present in the peilgebieden. Manage this.
         base_layer_without_overlapping.rename(
             columns={

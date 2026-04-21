@@ -99,17 +99,10 @@ Zuiderzeeland["peilgebied"]
 peilgebieden_cat = []
 
 for _index, row in Zuiderzeeland["peilgebied"].iterrows():
-    if "LVA.01" in row.code:
+    if "LVA.01" in row.code or "3.01" in row.code:
         peilgebieden_cat.append(1)
         print("yes")
-    elif "3.01" in row.code:
-        peilgebieden_cat.append(1)
-        print("yes")
-    elif "LAGE AFDELING" in row.code:
-        print("yes")
-        peilgebieden_cat.append(1)
-
-    elif "HOGE AFDELING" in row.code:
+    elif "LAGE AFDELING" in row.code or "HOGE AFDELING" in row.code:
         print("yes")
         peilgebieden_cat.append(1)
 
@@ -199,6 +192,6 @@ if remove_cat_2:
 assert Zuiderzeeland["peilgebied"].globalid.is_unique
 
 
-for key in Zuiderzeeland.keys():
+for key in Zuiderzeeland:
     print(key)
     Zuiderzeeland[str(key)].to_file(f"{output_folder}/{waterschap2}.gpkg", layer=str(key), driver="GPKG")

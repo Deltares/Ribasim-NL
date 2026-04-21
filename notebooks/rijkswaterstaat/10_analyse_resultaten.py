@@ -43,7 +43,7 @@ meting_df = meting_df.resample("D").mean()
 
 for k, v in CONFIG.items():
     name = k
-    if "link_id" in v.keys():
+    if "link_id" in v:
         Q_meting = meting_df["Debiet"]["(m3/s)"][name]
         Q_meting.columns = ["meting"]
         Q_berekening = flow_df[flow_df["link_id"] == v["link_id"]][["flow_rate"]].rename(
@@ -54,7 +54,7 @@ for k, v in CONFIG.items():
         fig = plot.get_figure()
         fig.savefig(plots_dir / f"{name}_m3_s.png")
 
-    if "node_id" in v.keys():
+    if "node_id" in v:
         H_meting = meting_df["Waterstand"]["(m) "][name]
         H_meting.columns = ["meting"]
         H_berekening = basin_df[basin_df["node_id"] == v["node_id"]][["level"]].rename(columns={"level": "berekend"})

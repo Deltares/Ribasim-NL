@@ -24,7 +24,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
     assert model.node.df is not None
     for node_type in model.node.df.node_type.unique():
         ribasim_node = model.get_component(node_type)
-        for attr in ribasim_node.model_fields.keys():
+        for attr in ribasim_node.model_fields:
             table = getattr(ribasim_node, attr)
             try:
                 if table.df is not None:

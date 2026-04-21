@@ -327,7 +327,7 @@ def CompareOutputMeasurements(
         meetlocaties_link = koppeltabel[mask]
 
         # Create a result dictionary per waterschap
-        if meetlocaties_link.iloc[0]["Waterschap"] not in results_measurements.keys():
+        if meetlocaties_link.iloc[0]["Waterschap"] not in results_measurements:
             results_measurements[meetlocaties_link.iloc[0]["Waterschap"]] = {
                 "koppelinfo": [],
                 "waterschap": [],

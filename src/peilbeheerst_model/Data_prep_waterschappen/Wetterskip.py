@@ -36,7 +36,7 @@ def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
 
 
 def store_data(waterschap, output_gpkg_path):
-    for key in waterschap.keys():
+    for key in waterschap:
         waterschap[str(key)].to_file(output_gpkg_path, layer=str(key), driver="GPKG")
 
 
@@ -262,7 +262,7 @@ variables = ["aggregation_area", "peilgebied", "stuw", "gemaal", "duikersifonhev
 for var in variables:
     temp = Wetterskip[var]
 
-    for column in temp.keys():
+    for column in temp:
         if column in ["globalid", "code"]:
             temp_column = temp[column]
 

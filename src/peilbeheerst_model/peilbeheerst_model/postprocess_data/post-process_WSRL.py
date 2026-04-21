@@ -214,6 +214,6 @@ WSRL["peilgebied"]["peilgebied_cat"].unique()
 # ## Store output
 
 
-for key in WSRL.keys():
+for key in WSRL:
     print(key)
     WSRL[str(key)].to_file(f"{output_folder}/{waterschap}.gpkg", layer=str(key), driver="GPKG")

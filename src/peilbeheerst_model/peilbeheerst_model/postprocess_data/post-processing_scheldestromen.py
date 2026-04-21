@@ -186,6 +186,6 @@ if remove_cat_2:
 # ## Store output
 
 
-for key in Scheldestromen.keys():
+for key in Scheldestromen:
     print(key)
     Scheldestromen[str(key)].to_file(f"{output_folder}/{waterschap2}.gpkg", layer=str(key), driver="GPKG")

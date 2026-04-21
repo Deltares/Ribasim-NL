@@ -117,9 +117,11 @@ def _target_level(
                     target_level = model.level_boundary.time.df.set_index("node_id").loc[[node_id], "level"].min()
 
             # read from static-table exist and node_id is in it
-            elif model.level_boundary.static.df is not None:
-                if node_id in model.level_boundary.static.df["node_id"].values:
-                    target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].min()
+            elif (
+                model.level_boundary.static.df is not None
+                and node_id in model.level_boundary.static.df["node_id"].values
+            ):
+                target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].min()
 
             if (not allow_missing) and (target_level is None):
                 msg = f"Listen node: {node_id} not found in LevelBoundary.Time or LevelBoundary.Static table"
@@ -436,7 +438,7 @@ def add_control_functions_to_connector_nodes(
         )
 
     # check on flushing nodes
-    missing_flushing_nodes = [i for i in flushing_nodes.keys() if i not in all_nodes]
+    missing_flushing_nodes = [i for i in flushing_nodes if i not in all_nodes]
     if missing_flushing_nodes:
         raise ValueError(
             f"user-defined `flushing_nodes.keys()` not found in outflow+inflow+internal nodes: {missing_flushing_nodes}"
