@@ -62,21 +62,21 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-# cloud.synchronize(
-#     filepaths=[
-#         ribasim_base_model_dir,
-#         FeedbackFormulier_path,
-#         ws_grenzen_path,
-#         RWS_grenzen_path,
-#         qlr_path,
-#         aanvoer_path,
-#         meteo_path,
-#         profiles_path,
-#     ]
-# )
+cloud.synchronize(
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+        meteo_path,
+        profiles_path,
+    ]
+)
 
-# download the Feedback Formulieren, overwrite the old ones
-cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+# # download the Feedback Formulieren, overwrite the old ones
+# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
 work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
