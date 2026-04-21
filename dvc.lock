@@ -51,8 +51,8 @@ stages:
       nfiles: 4
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
       hash: md5
-      md5: 81eb059d14e9f971fca86ba4563fef71.dir
-      size: 45970480
+      md5: a6f2246b8c533e9ba1e7e861d0060181.dir
+      size: 45958192
       nfiles: 4
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
@@ -67,8 +67,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 86bada4106844e631d000bb72b2e27da.dir
-      size: 797237430
+      md5: c84e75558c1607f96b9f741424f9045e.dir
+      size: 797290678
       nfiles: 2
   aa_en_maas:
     cmd:
@@ -136,13 +136,13 @@ stages:
       nfiles: 2
     - path: notebooks/stichtse_rijnlanden
       hash: md5
-      md5: b60577fde370270aa1196aa89ad4c7ac.dir
-      size: 13012757
-      nfiles: 8
+      md5: 2920f2e9234dd3838bb2a0ba7da18048.dir
+      size: 62674
+      nfiles: 4
     outs:
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
       hash: md5
-      md5: 5cf57c519ddb65fd76080996b26708e6.dir
+      md5: a6f2246b8c533e9ba1e7e861d0060181.dir
       size: 45958192
       nfiles: 4
   bathymetry:
@@ -398,14 +398,14 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 3f33d99728724c393a23a46a10453b28.dir
-      size: 103313865
-      nfiles: 3
+      md5: c84e75558c1607f96b9f741424f9045e.dir
+      size: 797290678
+      nfiles: 2
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: fe91857fc25f27aa4b91efcda28fd8c1.dir
-      size: 80756923
+      md5: 9c3ae34ac427b10db0ef254cf68a672d.dir
+      size: 551486171
       nfiles: 4
   rwzi:
     cmd: uv run notebooks/create_rwzi_model.py
