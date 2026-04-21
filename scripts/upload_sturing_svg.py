@@ -1,3 +1,4 @@
+# %%
 """
 Rename and upload system diagram SVGs per water authority to CloudStorage.
 
@@ -22,10 +23,14 @@ def get_sturing_dir(authority: str) -> Path:
     return cloud.joinpath(authority, "verwerkt", "sturing")
 
 
-def rename_svg_to_authority(authority: str, sturing_dir: Path) -> Path:
+def rename_svg_to_authority(authority: str, sturing_dir: Path) -> Path | None:
     svg_paths = list(sturing_dir.glob("*.svg"))
-    if len(svg_paths) != 1:
-        raise ValueError(f"{authority}: expected exactly 1 svg in {sturing_dir}, found {len(svg_paths)}")
+
+    if len(svg_paths) == 0:
+        return None
+
+    if len(svg_paths) > 1:
+        raise ValueError(f"{authority}: expected at most 1 svg in {sturing_dir}, found {len(svg_paths)}")
 
     svg_path = svg_paths[0]
     target_path = sturing_dir / f"{authority}.svg"
@@ -36,8 +41,7 @@ def rename_svg_to_authority(authority: str, sturing_dir: Path) -> Path:
     if target_path.exists() and svg_path.name.lower() != target_path.name.lower():
         raise FileExistsError(f"{authority}: target svg already exists: {target_path}")
 
-    # On Windows a rename that only changes casing may be skipped or behave
-    # inconsistently on case-insensitive filesystems, so use an intermediate name.
+    # Handle case-insensitive filesystems (e.g. Windows)
     if svg_path.name.lower() == target_path.name.lower():
         tmp_path = sturing_dir / f"{authority}__tmp__.svg"
         if tmp_path.exists():
@@ -57,6 +61,7 @@ for authority in cloud.water_authorities:
         continue
 
     svg_path = rename_svg_to_authority(authority, sturing_dir)
-    print(f"uploading {svg_path}")
-    cloud.create_dir(authority, "verwerkt", "sturing")
-    cloud.upload_file(svg_path)
+    if svg_path is not None:
+        print(f"uploading {svg_path}")
+        cloud.create_dir(authority, "verwerkt", "sturing")
+        cloud.upload_file(svg_path)

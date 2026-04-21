@@ -33,13 +33,14 @@ ARROW_LENGTH = {
     "Limburg": 1400,
     "DeDommel": 1400,
     "Vechtstromen": 1400,
+    "HunzeenAas": 1400,
 }
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["StichtseRijnlanden"]
+AUTHORITIES = ["HunzeenAas"]
 ADD_TOP10_NL = {
     "Vechtstromen": [
         "Maas",
@@ -318,6 +319,29 @@ ADD_TOP10_NL = {
         "Wetsingermaar",
         "Kanaal Baflo-Mensingeweer",
         "Rasquerdermaar",
+    ],
+    "HunzeenAas": [
+        "Reitdiep",
+        "Hunzehaven",
+        "Hoendiep",
+        "Winschoterdiep",
+        "Eemskanaal",
+        "Westerwoldsche Aa",
+        "Vereenigd- of B L Tijdenskanaal",
+        "Mussel Aa kanaal",
+        "Zuidlaardermeer",
+        "A G Wildervanckkanaal",
+        "Verlengde Hoogeveensche Vaart",
+        "Pekel-Aa",
+        "Oostermoersche Vaart of Hunze",
+        "Noord-Willemskanaal",
+        "Drentsche Aa",
+        "Oosterhornkanaal",
+        "Oosterhornhaven",
+        "Termunterzijldiep",
+        "Afwateringskanaal van Duurswold",
+        "Oude Eemskanaal",
+        "Ter Apel-kanaal",
     ],
 }
 
