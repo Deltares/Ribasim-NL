@@ -6,6 +6,8 @@ import pandas as pd
 
 from ribasim_nl import CloudStorage, Model
 
+logger = logging.getLogger(__name__)
+
 cloud = CloudStorage()
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", force=True)
@@ -32,7 +34,7 @@ model = Model.read(ribasim_toml_input)
 start_time = pd.to_datetime("2017-01-01")
 stop_time = pd.to_datetime("2018-01-01")
 flowboundaries = model.flow_boundary.node.df.name
-logging.info(f"Alle flow boundaries in het model: {flowboundaries}")
+logger.info(f"Alle flow boundaries in het model: {flowboundaries}")
 
 # %%
 # Importeer de door waterschappen aangeleverde buitenlandse aanvoeren
@@ -63,7 +65,7 @@ def fix_date_string(date_str):
         # Use dayfirst=True to parse dates like "23-06-2017"
         return pd.to_datetime(date_str, dayfirst=True)
     except Exception as e:
-        logging.warning(f"Date parse error: '{date_str}' -> {e}")
+        logger.warning(f"Date parse error: '{date_str}' -> {e}")
         return pd.NaT
 
 
@@ -95,7 +97,7 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
     for sheet in sheet_names:
         df = pd.read_excel(xls, sheet_name=sheet)
         if "Datum" in df.columns:
-            logging.info(f"Importeer de data voor: {', '.join(df.columns[1:])}")
+            logger.info(f"Importeer de data voor: {', '.join(df.columns[1:])}")
             df["Datum"] = df["Datum"].apply(fix_date_string)
             df = df.dropna(subset=["Datum"])
             df.set_index("Datum", inplace=True)
@@ -128,10 +130,10 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
     for col in cols_with_nan:
         mean_value = df_buitenlandse_aanvoer[col].mean()
         if pd.isna(mean_value):  # hele kolom is leeg
-            logging.warning(f"Locatie '{col}' heeft geen metingen; filling NaNs with 0.")
+            logger.warning(f"Locatie '{col}' heeft geen metingen; filling NaNs with 0.")
             df_buitenlandse_aanvoer[col] = df_buitenlandse_aanvoer[col].fillna(0)
         else:
-            logging.warning(
+            logger.warning(
                 f"Locatie '{col}' heeft  geen metingen gedurende de gemodelleerde periode; "
                 f"filling NaNs with mean value ({mean_value:.2f})."
             )
@@ -154,14 +156,14 @@ def importeer_buitenlandse_aanvoer(BA_data_path, start_time, stop_time, flowboun
             node_id = model.flow_boundary.node.df.reset_index(drop=False).set_index("name").at[loc, "node_id"]
             dict_BA[loc]["node_id"] = node_id
         except KeyError:
-            logging.warning(f"Warning: '{loc}' not found in model.flow_boundary.node.df. Will be removed from dict_BA.")
+            logger.warning(f"Warning: '{loc}' not found in model.flow_boundary.node.df. Will be removed from dict_BA.")
             locations_to_remove.append(loc)
 
     # Remove locations that were not found in the model
     for loc in locations_to_remove:
         dict_BA.pop(loc, None)
 
-    logging.info(f"Dictionary aangemaakt met de buitenlandse aanvoeren: {dict_BA}")
+    logger.info(f"Dictionary aangemaakt met de buitenlandse aanvoeren: {dict_BA}")
     return dict_BA
 
 
@@ -172,7 +174,7 @@ df_flowboundaries_time = pd.concat(dict_BA.values(), axis=0)
 
 included_node_ids = df_flowboundaries_time.node_id.unique()
 included_names = flowboundaries[flowboundaries.index.isin(included_node_ids)].tolist()
-logging.info(f"Flowboundaries included in data: {', '.join(included_names)}")
+logger.info(f"Flowboundaries included in data: {', '.join(included_names)}")
 
 # remove the static flow rates when we have timeseries
 if model.flow_boundary.static.df is not None:
@@ -194,7 +196,7 @@ else:
 # TODO: Bepaal de goede locaties en naamgeving voor de modellen
 model.write(ribasim_toml_output)
 if upload_model:
-    logging.info("Upload het model met Buitenlandse Aanvoeren")
+    logger.info("Upload het model met Buitenlandse Aanvoeren")
     cloud.upload_model("Basisgegevens/BuitenlandseAanvoer", model="BA_totaal_run")
 
 # model.run()

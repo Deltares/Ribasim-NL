@@ -93,6 +93,7 @@ select = [
     "F",
     "FURB",
     "I",
+    "LOG",
     "NPY",
     "PD",
     "PERF",

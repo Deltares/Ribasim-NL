@@ -9,6 +9,8 @@ from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model
 
+logger = logging.getLogger(__name__)
+
 # Mapping between feedback form and model names
 mapping = {
     "Basin": "basin",
@@ -117,7 +119,7 @@ class RibasimFeedbackProcessor:
 
         try:
             for index, row in self.df.iterrows():
-                logging.info(f"Processing row: {index + 7}")
+                logger.info(f"Processing row: {index + 7}")  # pyrefly: ignore[unsupported-operation]
                 try:
                     if row["Actie"] == "Verwijderen":
                         self.remove_node(row)
@@ -135,7 +137,7 @@ class RibasimFeedbackProcessor:
                         elif row["Verbinding"] in ("Edge", "Link") and row["Aanpassing"] == "Stroomrichting Omdraaien":
                             self.adjust_links(row, node_id_map)
                 except Exception as e:
-                    logging.error(f"Error processing {row['Actie']}, {row['Verbinding']}, at index {index}: {e}")
+                    logger.error(f"Error processing {row['Actie']}, {row['Verbinding']}, at index {index}: {e}")
         finally:
             for handler in logging.root.handlers[:]:
                 handler.close()
@@ -148,7 +150,7 @@ class RibasimFeedbackProcessor:
             key = row["Node Type"]
             key = mapping[key]
             node_id = int(row["Node ID"])
-            logging.info(f"Node ID: {node_id}")
+            logger.info(f"Node ID: {node_id}")
             value = getattr(self.model, key, None)
 
             # Remove the Node
@@ -174,12 +176,12 @@ class RibasimFeedbackProcessor:
             self.model.link.df = self.model.link.df.drop(rows_to_remove)
 
             # Log status
-            logging.info(f"Successfully removed node with Node ID: {node_id}, Action: Verwijderen")
+            logger.info(f"Successfully removed node with Node ID: {node_id}, Action: Verwijderen")
 
             return rows_to_remove
 
         except Exception as e:
-            logging.error(f"Error removing node {row['Node ID']}: {e}")
+            logger.error(f"Error removing node {row['Node ID']}: {e}")
 
     def add_node(self, row) -> None:
         try:
@@ -187,7 +189,7 @@ class RibasimFeedbackProcessor:
             key = mapping.get(key)
             max_id = self.get_current_max_nodeid()
             node_id = max_id + 1
-            logging.info(f"Node ID: {node_id}")
+            logger.info(f"Node ID: {node_id}")
             value = getattr(self.model, key, None)
 
             # Add the Node
@@ -214,7 +216,7 @@ class RibasimFeedbackProcessor:
                             continue
                         else:
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
+                                logger.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
                                 continue
 
                             if sub_key == "static":
@@ -254,10 +256,10 @@ class RibasimFeedbackProcessor:
                         node_a = getattr(self.model, node_type_a, None)[int(row["Node ID A"])]
                         self.model.link.add(new_node, node_a)
                     else:
-                        logging.warning(f"'Node ID A' is NaN for node type {key} at index {row.name}")
+                        logger.warning(f"'Node ID A' is NaN for node type {key} at index {row.name}")
                 else:
                     if pd.isna(row["Node ID A"]) or pd.isna(row["Node ID B"]):
-                        logging.error(f"'Node ID A' or 'Node ID B' is NaN for node type {key} at index {row.name}")
+                        logger.error(f"'Node ID A' or 'Node ID B' is NaN for node type {key} at index {row.name}")
                         return None
                     new_node = getattr(self.model, key, None)[node_id]
                     node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
@@ -283,10 +285,10 @@ class RibasimFeedbackProcessor:
 
                 self.df_node_types = pd.concat([self.df_node_types, new_node_type_row])
 
-                logging.info(f"Successfully added node with Node ID: {node_id}, Action: Toevoegen")
+                logger.info(f"Successfully added node with Node ID: {node_id}, Action: Toevoegen")
 
         except Exception as e:
-            logging.error(f"Error adding node at row {row.name}: {e}")
+            logger.error(f"Error adding node at row {row.name}: {e}")
 
     def adjust_node(self, row) -> int | None:
         try:
@@ -294,7 +296,7 @@ class RibasimFeedbackProcessor:
             key = self.df_node_types.loc[int(row["Node ID.2"])].node_type
             key = mapping[key]
             node_id = int(row["Node ID.2"])
-            logging.info(f"Node ID: {node_id}")
+            logger.info(f"Node ID: {node_id}")
             # node_id_old = node_id
             value = getattr(self.model, key, None)
 
@@ -312,7 +314,7 @@ class RibasimFeedbackProcessor:
                             continue
                         else:
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
+                                logger.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
                                 continue
 
                         if "node_id" in sub_value.df.columns:
@@ -344,7 +346,7 @@ class RibasimFeedbackProcessor:
                             continue
                         else:
                             if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
-                                logging.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
+                                logger.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
                                 continue
 
                             if sub_key == "static":
@@ -386,13 +388,13 @@ class RibasimFeedbackProcessor:
                     # Update the meta_node_type for the from_node
                     self.model.link.df.at[idx, "meta_from_node_type"] = key
 
-            logging.info(f"Successfully updated meta_node_type for links related to Node ID: {node_id}")
+            logger.info(f"Successfully updated meta_node_type for links related to Node ID: {node_id}")
 
-            logging.info(f"Successfully adjusted node with old Node ID: {node_id}, Action: Aanpassen")
+            logger.info(f"Successfully adjusted node with old Node ID: {node_id}, Action: Aanpassen")
             return node_id
 
         except Exception:
-            logging.error(f"Error adjusting node at row: {row}", exc_info=True)
+            logger.error(f"Error adjusting node at row: {row}", exc_info=True)
             return None
 
     def adjust_links(self, row, node_id_map) -> None:
@@ -408,7 +410,7 @@ class RibasimFeedbackProcessor:
             ]
 
             if df_row_a_b.empty and df_row_b_a.empty:
-                logging.error(f"Link not found between Node A: {node_a} and Node B: {node_b} at index {row}")
+                logger.error(f"Link not found between Node A: {node_a} and Node B: {node_b} at index {row}")
                 return
             df_row = df_row_a_b if not df_row_a_b.empty else df_row_b_a
             self.model.link.df.loc[df_row.index, ["from_node_id", "to_node_id"]] = self.model.link.df.loc[
@@ -421,12 +423,12 @@ class RibasimFeedbackProcessor:
                 reversed_line = LineString(reversed_coords)
                 self.model.link.df.at[row_index, "geometry"] = reversed_line
             print(f"Swapped link direction between Node A: {node_a} and Node B: {node_b}")
-            logging.info(
+            logger.info(
                 f"Successfully swapped link direction between Node A: {node_a} and Node B: {node_b}, "
                 f"Action: Aanpassen, Adjustment: Stroomrichting Omdraaien"
             )
         except Exception as e:
-            logging.error(f"Error adjusting link: {e}")
+            logger.error(f"Error adjusting link: {e}")
 
     def special_preprocessing_for_hollandse_delta(self) -> None:
         p1 = Proj("epsg:4326")  # WGS84
@@ -544,7 +546,7 @@ class RibasimFeedbackProcessor:
         try:
             df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B")
         except ValueError:
-            logging.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
+            logger.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
             self._basin_aanvoer_on = ()
             self._basin_aanvoer_off = ()
         else:
@@ -563,7 +565,7 @@ class RibasimFeedbackProcessor:
             self._basin_aanvoer_on = tuple(aanvoer_ids)
             self._basin_aanvoer_off = tuple(afvoer_ids)
         finally:
-            logging.warning(
+            logger.warning(
                 f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: '
                 f'Make sure that feedback forms will have a sheet-name titled "{sheet_name}".'
             )
@@ -575,7 +577,7 @@ class RibasimFeedbackProcessor:
         try:
             df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B")
         except ValueError:
-            logging.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
+            logger.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
             self._outlet_aanvoer_on = ()
             self._outlet_aanvoer_off = ()
         else:
@@ -598,7 +600,7 @@ class RibasimFeedbackProcessor:
             self._outlet_aanvoer_on = tuple(aanvoer_ids)
             self._outlet_aanvoer_off = tuple(afvoer_ids)
         finally:
-            logging.warning(
+            logger.warning(
                 f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: '
                 f'Make sure that feedback forms will have a sheet-name titled "{sheet_name}".'
             )

@@ -23,6 +23,8 @@ from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model, settings
 
+logger = logging.getLogger(__name__)
+
 
 # FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
 #  (e.g., the used 'meta_node_id'-column contains many `<NA>`-values).
@@ -1387,7 +1389,7 @@ def set_aanvoer_flags(
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
-        logging.info("Aanvoer-flagging skipped.")
+        logger.info("Aanvoer-flagging skipped.")
         assert not isinstance(ribasim_model, str)
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
@@ -1397,7 +1399,7 @@ def set_aanvoer_flags(
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
-        logging.warning(
+        logger.warning(
             f'With aanvoer_regions={aanvoer_regions}, the whole region is considered an "aanvoergebied". '
             f"This is a temporary catch and will be deprecated in the future: "
             f'Make sure that all water boards have a geometry-file from which the "aanvoergebieden" can be deduced.'

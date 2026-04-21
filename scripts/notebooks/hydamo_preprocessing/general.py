@@ -8,6 +8,8 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString, Point
 
+logger = logging.getLogger(__name__)
+
 # %% Monitoring
 
 
@@ -248,7 +250,7 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
     unconnected_endpoints_count = 0
     finished = False
 
-    logging.info(f"Detect unconnected endpoints nearby linestrings, buffer distance: {buffer_distance}m")
+    logger.info(f"Detect unconnected endpoints nearby linestrings, buffer distance: {buffer_distance}m")
 
     while not finished:
         endpoints = get_endpoints_from_lines(lines)
@@ -301,26 +303,26 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
         unconnected_endpoints_count = len(unconnected_endpoints)
         if iterations == 0:
             unconnected_endpoints_count_total = unconnected_endpoints_count
-        logging.info(f"{unconnected_endpoints_count} unconnected endpoints detected nearby intersecting lines")
+        logger.info(f"{unconnected_endpoints_count} unconnected endpoints detected nearby intersecting lines")
         if unconnected_endpoints_count != 0 and unconnected_endpoints_count != previous_unconnected_endpoints_count:
-            logging.info("Connecting linestrings...")
+            logger.info("Connecting linestrings...")
             lines = connect_lines_by_endpoints(unconnected_endpoints, lines)
             iterations += 1
-            logging.info("Linestrings connected, starting new iteration...")
+            logger.info("Linestrings connected, starting new iteration...")
         else:
             lines = lines.drop(["startpoint", "endpoint", "buffer_geometry"], axis=1)
             finished = True
 
     end_time = time.time()
     passed_time = report_time_interval(start_time, end_time)
-    logging.info(
+    logger.info(
         f"Summary:\n\n\
           Detected unconnected endpoints nearby intersecting lines: {unconnected_endpoints_count_total} \n\
           Connected endpoints: {unconnected_endpoints_count_total - unconnected_endpoints_count} \n\
           Remaining unconnected endpoints: {unconnected_endpoints_count}\n\
           Iterations: {iterations}"
     )
-    logging.info(f"Finished within {passed_time}")
+    logger.info(f"Finished within {passed_time}")
     return lines
 
 

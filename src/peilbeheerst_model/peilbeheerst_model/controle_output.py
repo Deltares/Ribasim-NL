@@ -9,6 +9,8 @@ import xarray as xr
 
 from ribasim_nl import Model
 
+logger = logging.getLogger(__name__)
+
 
 def model_loaded(func: Callable[..., dict[str, object]]) -> Callable[..., dict[str, object]]:
     """Wrapper-function to assert that the model data is loaded before using methods that analyse this data.
@@ -424,9 +426,9 @@ class Control:
         # validate available analysed data
         _keys = "min_basin_level", "max_basin_level"
         if not all(k in control_dict for k in _keys):
-            logging.info(f"Water level bounds not yet determined and `autofill_missing_data={autofill_missing_data}`:")
+            logger.info(f"Water level bounds not yet determined and `autofill_missing_data={autofill_missing_data}`:")
             if autofill_missing_data:
-                logging.info("Water level bounds auto-filled: Default settings used.")
+                logger.info("Water level bounds auto-filled: Default settings used.")
                 control_dict = self.water_level_bounds(control_dict)
             else:
                 _data = {k: control_dict.get(k) for k in _keys}
@@ -504,8 +506,8 @@ class Control:
         # check for dynamic forcing specific *.qlr
         filename_cc_qlr = "output_controle_cc.qlr"
         if not suppress_file_warning and not str(self.qlr_path).endswith(filename_cc_qlr):
-            logging.warning(f"*.qlr-file is different from default for dynamic forcing: {filename_cc_qlr}")
-            logging.warning(f"*.qlr-file may not be compatible with dynamic forcing: {self.qlr_path}")
+            logger.warning(f"*.qlr-file is different from default for dynamic forcing: {filename_cc_qlr}")
+            logger.warning(f"*.qlr-file may not be compatible with dynamic forcing: {self.qlr_path}")
 
         # export analysed data
         self.store_data(control_dict, self.path_control_dict_path)
