@@ -5,8 +5,7 @@ import logging
 import pandas as pd
 import shapely
 
-import ribasim_nl
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 LOG = logging.getLogger(__name__)
 
@@ -146,7 +145,7 @@ def single_profile_nodes(
     return storing_ids, out_flowing, out_storing
 
 
-def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **kwargs) -> ribasim_nl.Model:
+def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> Model:
     """Set basin profiles and add storing basins where applicable.
 
     Based on the profile generation, trapezoidal profiles are set to the flowing basins. In case there are storing basin
@@ -183,15 +182,6 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     ):
         msg = "Required model tables are missing."
         raise ValueError(msg)
-
-    # node_df = ribasim_model.node.df.copy()
-    # basin_profile_df = ribasim_model.basin.profile.df.copy()
-    # basin_node_df = ribasim_model.basin.node.df.copy()
-    # basin_static_df = ribasim_model.basin.static.df.copy()
-    # basin_state_df = ribasim_model.basin.state.df.copy()
-    # basin_area_df = ribasim_model.basin.area.df.copy()
-    # link_df = ribasim_model.link.df.copy()
-    # manning_static_df = ribasim_model.manning_resistance.static.df.copy()
 
     # modify existing basins ('doorgaand')
     ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
@@ -301,8 +291,8 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     )
 
     # update model IDs
-    _ = ribasim_model.node._update_used_ids
-    _ = ribasim_model.link._update_used_ids
+    ribasim_model.node._update_used_ids()  # pyrefly: ignore[not-callable]
+    ribasim_model.link._update_used_ids()  # pyrefly: ignore[not-callable]
 
     # return the updated Ribasim model
     return ribasim_model
