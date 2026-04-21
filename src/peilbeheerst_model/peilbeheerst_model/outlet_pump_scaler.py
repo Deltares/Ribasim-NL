@@ -16,8 +16,6 @@ from ribasim_nl import CloudStorage, Model, settings
 
 pd.set_option("display.max_columns", None)
 
-pd.set_option("display.max_columns", None)
-
 __all__ = ["OutletPumpScalingConfig", "scale_outlets_pumps"]
 
 LOG = logging.getLogger(__name__)
