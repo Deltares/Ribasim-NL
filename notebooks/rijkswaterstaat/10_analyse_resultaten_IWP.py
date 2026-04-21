@@ -288,7 +288,7 @@ request = {
 }
 
 # Send the POST request
-resp = requests.post(collect_catalogus, json=request)
+resp = requests.post(collect_catalogus, json=request, timeout=300)
 elements = resp.json()
 
 

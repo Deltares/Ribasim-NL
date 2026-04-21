@@ -85,7 +85,7 @@ class CloudStorage:
         if self.password is None:
             raise ValueError("""'password' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_PASS.""")
         # check if we have correct credentials
-        response = requests.get(self.url, auth=self.auth)
+        response = requests.get(self.url, auth=self.auth, timeout=300)
         if response.ok:
             logger.info("valid credentials")
         else:
@@ -149,7 +149,7 @@ class CloudStorage:
 
         # read file and upload
         with open(file_path, "rb") as f:
-            r = requests.put(url, data=f, auth=self.auth)
+            r = requests.put(url, data=f, auth=self.auth, timeout=300)
         r.raise_for_status()
 
     def download_file(self, file_url: str) -> None:
@@ -157,7 +157,7 @@ class CloudStorage:
         file_path = self.file_path(file_url)
 
         # download file
-        r = requests.get(file_url, auth=self.auth)
+        r = requests.get(file_url, auth=self.auth, timeout=300)
         r.raise_for_status()
 
         # make directory
@@ -195,12 +195,12 @@ class CloudStorage:
         </D:propfind>
         """
 
-        response = requests.request("PROPFIND", url, headers=headers, auth=self.auth, data=xml_data)
+        response = requests.request("PROPFIND", url, headers=headers, auth=self.auth, data=xml_data, timeout=300)
 
         if response.status_code != 207:
             response.raise_for_status()
 
-        xml_tree = ElementTree.fromstring(response.text)
+        xml_tree = ElementTree.fromstring(response.text)  # noqa: S314
         namespaces = {"D": "DAV:"}
         excluded_content = ["..", Path(url).name, *HIDDEN_DIRS]
         content = [
@@ -243,6 +243,7 @@ class CloudStorage:
                     "Depth": "0",
                 },
                 auth=self.auth,
+                timeout=300,
             )
 
     def download_content(self, url: str, overwrite: bool = settings.overwrite_files_from_cloud) -> None:
@@ -452,7 +453,7 @@ class CloudStorage:
             path = Path(path)
             url = self.joinurl(*path.relative_to(self.data_dir).parts)
             # check if file exists on remote, if not raise for status
-            r = requests.head(url, auth=self.auth)
+            r = requests.head(url, auth=self.auth, timeout=300)
             r.raise_for_status()
 
             # check if file exists local, if not download (or force overwrite)

@@ -24,7 +24,7 @@ body = {
 }
 
 
-resp = requests.post(collect_catalogus, json=body)
+resp = requests.post(collect_catalogus, json=body, timeout=300)
 result = resp.json()
 
 locaties_df = gpd.GeoDataFrame(result["LocatieLijst"], geometry=gpd.GeoSeries(), crs=25831)
@@ -60,7 +60,7 @@ body = {
     # },
 }
 
-resp = requests.post(laatste_waarneming, json=body)
+resp = requests.post(laatste_waarneming, json=body, timeout=300)
 # result = resp.json()
 
 # %%

@@ -67,7 +67,9 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     }
 
     # download request
-    post_response = requests.post(f"{BASE_URL}/{__full_custom_url}", headers=headers, data=json.dumps(data))
+    post_response = requests.post(
+        f"{BASE_URL}/{__full_custom_url}", headers=headers, data=json.dumps(data), timeout=300
+    )
     if post_response.status_code == 202:
         download_request_id = post_response.json()["downloadRequestId"]
         LOG.debug(f"{download_request_id=}")
@@ -77,7 +79,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     # request download
     get_url = f"{BASE_URL}/{__full_custom_url}/{download_request_id}/status"
     while True:
-        get_response = requests.get(get_url, headers=headers)
+        get_response = requests.get(get_url, headers=headers, timeout=300)
         match get_response.status_code:
             case 200:
                 LOG.debug(f"Download not yet ready; sleep {sleep_time} seconds")
@@ -94,7 +96,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     relative_download_url = get_response.json()["_links"]["download"]["href"]
     download_url = BASE_URL + relative_download_url
     LOG.debug(f"{download_url=}")
-    download_response = requests.get(download_url)
+    download_response = requests.get(download_url, timeout=300)
     LOG.debug(f"{download_response.status_code=}")
 
     # download BGT-data

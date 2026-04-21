@@ -214,18 +214,19 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list[int] | int, spec_op: s
         case _:
             # Handel de specifieke formule af
             # Create a mapping between link numbers and link IDs
-            link_mapping = {f"link{i + 1}": ID for i, ID in enumerate(link)}
+            # link_mapping = {f"link{i + 1}": ID for i, ID in enumerate(link)}
 
             # Select the dataframe with the specified links
-            subset_links = data[data["link_id"].isin(link)]
-            subset_pivot = subset_links.pivot(index="time", columns="link_id", values="flow_rate")
-            env = {placeholder: subset_pivot[link_id] for placeholder, link_id in link_mapping.items()}
+            # subset_links = data[data["link_id"].isin(link)]
+            # subset_pivot = subset_links.pivot(index="time", columns="link_id", values="flow_rate")
+            # env = {placeholder: subset_pivot[link_id] for placeholder, link_id in link_mapping.items()}
 
             # Evaluate the formula and add the results to the pivoted dataframe
-            subset_pivot["result"] = eval(spec_op, {}, env)
+            raise NotImplementedError("eval() is unsafe (S307); refactor to avoid dynamic code execution")
+            # subset_pivot["result"] = eval(spec_op, {}, env)
 
             # Rename the results to 'flow_rate'
-            subset_output = subset_pivot["result"].reset_index().rename(columns={"result": "flow_rate"})
+            # subset_output = subset_pivot["result"].reset_index().rename(columns={"result": "flow_rate"})
 
     return subset_output
 
