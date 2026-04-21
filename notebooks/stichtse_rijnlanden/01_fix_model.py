@@ -63,7 +63,7 @@ model.link.df.drop_duplicates(inplace=True)
 
 # %%
 model.remove_links(link_ids=[2677])
-for node_id in [52, 53, 2056, 2053, 2042]:
+for node_id in [52, 53, 2056, 2053, 2042, 749]:
     model.remove_node(node_id, remove_links=True)
 
 model.link.add(model.tabulated_rating_curve[924], model.level_boundary[51])
@@ -630,6 +630,9 @@ model.remove_node(node_id=77, remove_links=True)
 model.remove_node(node_id=27, remove_links=True)
 model.remove_node(node_id=68, remove_links=True)
 
+# Koekoek gaat (direct) naar Broeik (basin 2089)
+model.redirect_link(link_id=68, from_node_id=100, to_node_id=2089)
+
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
@@ -651,6 +654,9 @@ sanitize_node_table(
     ],
     names=names,
 )
+
+model.node.df.loc[186, "name"] = "Westriool"
+model.node.df.loc[252, "name"] = "Inlaat Vreeswijk"
 
 #  %% write model
 model.use_validation = True

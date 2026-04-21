@@ -9,7 +9,7 @@ import sys
 import typing
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import geopandas as gpd
 import numpy as np
@@ -282,15 +282,15 @@ def set_hypothetical_dynamic_forcing(
     # define forcing time-series
     v_P = convert_mm_day_to_m_sec(mixed_conditions_design_P)
     v_E = convert_mm_day_to_m_sec(mixed_conditions_design_E)
-    precipitation = v_P, 0, 0
-    evaporation = 0, v_E, v_E
+    precipitation = v_P, 0.0, 0.0
+    evaporation = 0.0, v_E, v_E
 
     # set forcing conditions
     forcing = {
         "precipitation": precipitation,
         "potential_evaporation": evaporation,
-        "drainage": 0,
-        "infiltration": 0,
+        "drainage": 0.0,
+        "infiltration": 0.0,
     }
     set_dynamic_forcing(ribasim_model, time, forcing)
 
@@ -1059,8 +1059,8 @@ def identify_node_meta_categorie(ribasim_model: Model, **kwargs) -> None:
     # aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
 
     # update meta_from/to_node_type
-    node_df = ribasim_model.node_table().df.reset_index()[["node_id", "node_type"]]
-    link_df = ribasim_model.link.df.copy()
+    node_df = cast(pd.DataFrame, ribasim_model.node.df).reset_index()[["node_id", "node_type"]]
+    link_df = cast(pd.DataFrame, ribasim_model.link.df)
 
     updated_link_df = link_df.drop(
         columns=["meta_from_node_type", "meta_to_node_type"],
@@ -1548,7 +1548,7 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
         print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
         pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
-    outlet.flow_rate = outlet.flow_rate.fillna(25)
+    outlet.flow_rate = outlet.flow_rate.fillna(25.0)
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
     ribasim_model.pump.static.df = pump
@@ -2288,18 +2288,14 @@ def clean_tables(ribasim_model: Model, waterschap: str) -> None:
 
     # TODO: change all meta_node_id to the index. Too risky to do it right before samenwerkdag, so we have to do it after
     # ManningResistance
-    manningresistance_ids = ribasim_model.manning_resistance.node.df.index[
-        ribasim_model.manning_resistance.node.df.node_type == "ManningResistance"
-    ].to_numpy()
+    manningresistance_ids = ribasim_model.manning_resistance.node.df.index.to_numpy()
 
     ribasim_model.manning_resistance.static = ribasim_model.manning_resistance.static.df.loc[
         ribasim_model.manning_resistance.static.df.node_id.isin(manningresistance_ids)
     ].reset_index(drop=True)
 
     # LevelBoundary
-    levelboundary_ids = ribasim_model.level_boundary.node.df.loc[
-        ribasim_model.level_boundary.node.df.node_type == "LevelBoundary", "meta_node_id"
-    ].to_numpy()
+    levelboundary_ids = ribasim_model.level_boundary.node.df["meta_node_id"].to_numpy()
     ribasim_model.level_boundary.static = ribasim_model.level_boundary.static.df.loc[
         ribasim_model.level_boundary.static.df.node_id.isin(levelboundary_ids)
     ].reset_index(drop=True)

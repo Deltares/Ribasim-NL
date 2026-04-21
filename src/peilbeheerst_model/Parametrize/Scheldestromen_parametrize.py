@@ -9,7 +9,7 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim import Node, cli
+from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -23,11 +23,11 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -281,7 +281,6 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 for node in inlaat_structures:
@@ -435,9 +434,7 @@ ribasim_model.pump.static.df.loc[
     "meta_func_afvoer",
 ] = 1
 
-add_controllers_to_connector_nodes(
-    ribasim_model, from_to_node_function_table, LEVEL_DIFFERENCE_THRESHOLD, drain_capacity=20
-)
+add_controllers_to_connector_nodes(ribasim_model, from_to_node_function_table, drain_capacity=20)
 remove_duplicate_controls(ribasim_model)
 
 outlet_columns_to_add_back = [
@@ -490,7 +487,6 @@ assign_metadata.add_meta_to_basins(
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
-
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df["length"] = 10.0
@@ -550,7 +546,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-cli.run_ribasim(ribasim_work_dir_model_toml)
+run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)

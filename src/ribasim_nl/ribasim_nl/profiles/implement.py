@@ -5,8 +5,7 @@ import logging
 import pandas as pd
 import shapely
 
-import ribasim_nl
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 LOG = logging.getLogger(__name__)
 
@@ -36,8 +35,8 @@ def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tu
         raise FileNotFoundError(msg)
 
     # read profile data
-    df_flowing = pd.read_csv(wd / fn_flowing)
-    df_storing = pd.read_csv(wd / fn_storing)
+    df_flowing = pd.read_csv(fn_flowing)
+    df_storing = pd.read_csv(fn_storing)
 
     # return profile tables
     return df_flowing, df_storing
@@ -123,7 +122,7 @@ def single_profile_nodes(
     df = profile_merging(df_flowing, df_storing, suffixes=("_flowing", "_storing"))
 
     # flag storing basin
-    assert sum(df[["area_flowing", "area_storing"]].isna().all(axis=1)) == 0
+    assert sum(df[["area_flowing", "area_storing"]].isna().all(axis=1)) == 0.0
     df["storing_basin"] = ~df[["area_flowing", "area_storing"]].isna().any(axis=1)
 
     # modify flowing profiles table
@@ -146,7 +145,7 @@ def single_profile_nodes(
     return storing_ids, out_flowing, out_storing
 
 
-def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **kwargs) -> ribasim_nl.Model:
+def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> Model:
     """Set basin profiles and add storing basins where applicable.
 
     Based on the profile generation, trapezoidal profiles are set to the flowing basins. In case there are storing basin
@@ -163,19 +162,32 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     """
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
-    dx: float = kwargs.get("dx", 10)
-    dy: float = kwargs.get("dy", 0)
+    dx: float = kwargs.get("dx", 10.0)
+    dy: float = kwargs.get("dy", 0.0)
     min_area: float = kwargs.get("min_area", 1e-3)
 
     # get profile data
     tables = get_tables(water_authority, cloud=cloud)
     storing_ids, df_flowing, df_storing = single_profile_nodes(*tables, min_area=min_area)
 
+    if (
+        ribasim_model.node.df is None
+        or ribasim_model.basin.profile.df is None
+        or ribasim_model.basin.node.df is None  # pyrefly: ignore[missing-attribute]
+        or ribasim_model.basin.static.df is None
+        or ribasim_model.basin.state.df is None
+        or ribasim_model.basin.area.df is None
+        or ribasim_model.link.df is None
+        or ribasim_model.manning_resistance.static.df is None
+    ):
+        msg = "Required model tables are missing."
+        raise ValueError(msg)
+
     # modify existing basins ('doorgaand')
     ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
     _basin_profile = ribasim_model.basin.profile.df.copy()
     _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
-    ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(
+    ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(  # pyrefly: ignore[bad-assignment]
         _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
     )[_basin_profile.columns]
     del _basin_profile
@@ -188,7 +200,7 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     basin_profile = df_storing.copy(deep=True)
 
     # ID-selection: add storing basins
-    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy(deep=True)
+    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy(deep=True)  # pyrefly: ignore[bad-index,missing-attribute]
     basin_static = basin_static[basin_static["node_id"].isin(storing_ids)].copy(deep=True)
     basin_state = basin_state[basin_state["node_id"].isin(storing_ids)].copy(deep=True)
     basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy(deep=True)
@@ -265,22 +277,22 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
 
     # concatenate all newly generated tables to Ribasim model
     # > Node-table
-    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)
+    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)  # pyrefly: ignore[bad-assignment]
     # > Link-table
-    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)
+    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)  # pyrefly: ignore[bad-assignment]
     # > Basin-tables
-    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
-    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
-    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
-    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
+    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)  # pyrefly: ignore[bad-assignment]
     # > ManningResistance-tables
-    ribasim_model.manning_resistance.static.df = pd.concat(
+    ribasim_model.manning_resistance.static.df = pd.concat(  # pyrefly: ignore[bad-assignment]
         [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
     )
 
     # update model IDs
-    _ = ribasim_model.node._update_used_ids
-    _ = ribasim_model.link._update_used_ids
+    ribasim_model.node._update_used_ids()  # pyrefly: ignore[not-callable]
+    ribasim_model.link._update_used_ids()  # pyrefly: ignore[not-callable]
 
     # return the updated Ribasim model
     return ribasim_model

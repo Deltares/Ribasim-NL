@@ -10,7 +10,7 @@ from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim import Node, cli
+from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -23,7 +23,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -438,7 +438,6 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
@@ -527,7 +526,6 @@ pump_copy = ribasim_model.pump.static.df[
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
@@ -682,7 +680,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-cli.run_ribasim(ribasim_work_dir_model_toml)
+run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)

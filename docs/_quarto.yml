@@ -30,13 +30,13 @@ website:
     - title: "Watersystems"
       contents:
         - watersystems/main.qmd
-        - watersystems/aaenmaas.qmd
-        - watersystems/brabantsedelta.qmd
-        - watersystems/dommel.qmd
-        - watersystems/limburg.qmd
-        - watersystems/noorderzijlvest.qmd
-        - watersystems/stichtserijnlanden.qmd
-        # - watersystems/vechtstromen.qmd
+        - watersystems/AaenMaas.qmd
+        - watersystems/BrabantseDelta.qmd
+        - watersystems/DeDommel.qmd
+        - watersystems/Limburg.qmd
+        - watersystems/Noorderzijlvest.qmd
+        - watersystems/StichtseRijnlanden.qmd
+        # - watersystems/Vechtstromen.qmd
 format:
   html:
     theme: cosmo
