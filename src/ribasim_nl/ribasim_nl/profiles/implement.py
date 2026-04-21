@@ -35,8 +35,8 @@ def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tu
         raise FileNotFoundError(msg)
 
     # read profile data
-    df_flowing = pd.read_csv(wd / fn_flowing)
-    df_storing = pd.read_csv(wd / fn_storing)
+    df_flowing = pd.read_csv(fn_flowing)
+    df_storing = pd.read_csv(fn_storing)
 
     # return profile tables
     return df_flowing, df_storing
@@ -122,7 +122,7 @@ def single_profile_nodes(
     df = profile_merging(df_flowing, df_storing, suffixes=("_flowing", "_storing"))
 
     # flag storing basin
-    assert sum(df[["area_flowing", "area_storing"]].isna().all(axis=1)) == 0
+    assert sum(df[["area_flowing", "area_storing"]].isna().all(axis=1)) == 0.0
     df["storing_basin"] = ~df[["area_flowing", "area_storing"]].isna().any(axis=1)
 
     # modify flowing profiles table
@@ -162,8 +162,8 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     """
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
-    dx: float = kwargs.get("dx", 10)
-    dy: float = kwargs.get("dy", 0)
+    dx: float = kwargs.get("dx", 10.0)
+    dy: float = kwargs.get("dy", 0.0)
     min_area: float = kwargs.get("min_area", 1e-3)
 
     # get profile data
