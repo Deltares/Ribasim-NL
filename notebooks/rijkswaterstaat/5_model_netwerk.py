@@ -447,11 +447,15 @@ for verdeelsleutel in VERDEELSLEUTELS:
     # verdeelsleutel_node_id += 1
 
     # add all verdelingen as Outlets
-    for verdeling in [verdeelsleutel_properties[i] for i in verdeelsleutel_properties if i.startswith("Verdeling")]:
+    for verdeling in [
+        verdeelsleutel_properties[i]
+        for i in verdeelsleutel_properties.keys()  # noqa: SIM118
+        if i.startswith("Verdeling")
+    ]:
         print(f"verdeling: {verdeling}")
         verdeling_df = pd.read_excel(verdeelsleutels_xlsx, sheet_name=verdeling)
         verdeling_properties = read_kwk_properties(verdeling_df)
-        waterlichamen = [i for i in verdeling_properties if i.startswith("waterlichaam")]
+        waterlichamen = [i for i in verdeling_properties.keys() if i.startswith("waterlichaam")]  # noqa: SIM118
         qhq_df = verdeling_df.loc[verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :].iloc[
             :, : len(waterlichamen) + 2
         ]
