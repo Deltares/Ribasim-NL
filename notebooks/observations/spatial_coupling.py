@@ -614,11 +614,11 @@ def spatial_match(
 
         # Store results
         # Als er op connector knoop is gematch, deze opnemen in de tabel
-        shape_koppeling.at[idx, "match_nodes"] = matched_nodes if matched_nodes else None
+        shape_koppeling.at[idx, "match_nodes"] = matched_nodes or None
 
         # Alle Link info meenemen in de tabel
         for col in link_columns:
-            shape_koppeling.at[idx, f"Link_{col}"] = matched_links[col] if matched_links[col] else None
+            shape_koppeling.at[idx, f"Link_{col}"] = matched_links[col] or None
 
         # Extract from_node_id and to_node_id from matched links (if found)
         from_node_ids = matched_links.get("from_node_id", [])
@@ -639,11 +639,11 @@ def spatial_match(
         # print(to_node_geometries)
 
         # Store geometries in shape_koppeling
-        shape_koppeling.at[idx, "from_node_geometry"] = from_node_geometries if from_node_geometries else None
-        shape_koppeling.at[idx, "to_node_geometry"] = to_node_geometries if to_node_geometries else None
+        shape_koppeling.at[idx, "from_node_geometry"] = from_node_geometries or None
+        shape_koppeling.at[idx, "to_node_geometry"] = to_node_geometries or None
 
-        shape_koppeling.at[idx, "from_node_types"] = from_node_types if from_node_types else None
-        shape_koppeling.at[idx, "to_node_types"] = to_node_types if to_node_types else None
+        shape_koppeling.at[idx, "from_node_types"] = from_node_types or None
+        shape_koppeling.at[idx, "to_node_types"] = to_node_types or None
 
     # Rename columns back to original names except for Link_geometry
     rename_columns = {f"Link_{col}": col for col in link_columns if col != "geometry"}

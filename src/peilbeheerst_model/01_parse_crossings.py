@@ -24,7 +24,7 @@ for waterschap, waterschap_struct in waterschap_data.items():
     init_settings, crossing_settings = waterschap_struct.values()
     init_settings["logfile"] = Path(init_settings["output_path"]).with_suffix("").with_suffix(".log")
 
-    if waterschap not in ["Wetterskip"]:
+    if waterschap != "Wetterskip":
         continue
 
     # Crossings class initializeren

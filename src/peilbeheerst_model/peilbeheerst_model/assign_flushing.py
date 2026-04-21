@@ -374,7 +374,7 @@ class Flushing:
         for nid in uniq_nodes:
             # Only pumps for now
             nid_type = all_nodes.node_type.at[nid]
-            if nid_type in ["Pump"]:
+            if nid_type == "Pump":
                 if nid in df_control_links.index:
                     # This node has incoming control links, check if a
                     # FlowDemand node is present already

@@ -161,19 +161,15 @@ def update_koppeltabel_with_feedback(
             to_node_types = [search_type_nodes(lhm_model, node_id) for node_id in to_node_ids]
 
             # Update columns in input koppeltabel
-            input_koppeltabel.at[input_index, "new_link_id"] = link_ids if link_ids else None
+            input_koppeltabel.at[input_index, "new_link_id"] = link_ids or None
 
-            input_koppeltabel.at[input_index, "new_from_node_geometry"] = (
-                from_node_geometries if from_node_geometries else None
-            )
+            input_koppeltabel.at[input_index, "new_from_node_geometry"] = from_node_geometries or None
 
-            input_koppeltabel.at[input_index, "new_to_node_geometry"] = (
-                to_node_geometries if to_node_geometries else None
-            )
+            input_koppeltabel.at[input_index, "new_to_node_geometry"] = to_node_geometries or None
 
-            input_koppeltabel.at[input_index, "new_from_node_types"] = from_node_types if from_node_types else None
+            input_koppeltabel.at[input_index, "new_from_node_types"] = from_node_types or None
 
-            input_koppeltabel.at[input_index, "new_to_node_types"] = to_node_types if to_node_types else None
+            input_koppeltabel.at[input_index, "new_to_node_types"] = to_node_types or None
 
             # Als we een update doen dan ook de status en de match_nodes aanpassen als we
             input_koppeltabel.at[input_index, "status"] = "Updated obv feedback"

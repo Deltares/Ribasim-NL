@@ -12,9 +12,9 @@ def calculate_area(width: float, shape: str, height: float | None = None) -> flo
     # shapes that need height
     elif height is None:
         raise ValueError(f"for shape {shape} height cannot be None")
-    elif shape in ["rectangle"]:
+    elif shape == "rectangle":
         return width * height
-    elif shape in ["ellipse"]:
+    elif shape == "ellipse":
         return pi * (width / 2) * (height / 2)
 
     # shapes not implemented
