@@ -7,7 +7,6 @@ import warnings
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
@@ -391,7 +390,6 @@ to_supply = (
     338,
     348,
     390,
-    417,
     425,
     435,
     450,
@@ -445,26 +443,23 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
+# # Add flushing data
+# flush = Flushing(
+#     ribasim_model,
+#     lhm_flushing_path="AmstelGooienVecht/aangeleverd/Na_levering/AmstelGooienVecht_doorspoeling.gpkg",
+#     flushing_layer="AmstelGooienVecht_flushing",
+#     flushing_id="flushing_id",
+#     flushing_col="doorsp_mmj",
+# )
+# _, df_demand = flush.add_flushing()
+# from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
+
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
-
-# Add flushing data
-flush = Flushing(
-    ribasim_model,
-    lhm_flushing_path="AmstelGooienVecht/aangeleverd/Na_levering/AmstelGooienVecht_doorspoeling.gpkg",
-    flushing_layer="AmstelGooienVecht_flushing",
-    flushing_id="flushing_id",
-    flushing_col="doorsp_mmj",
-)
-
-_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
-for row in df_demand[df_demand.demand_type == "flow"].itertuples():
-    from_to_node_function_table.at[row.nid, "function"] = "flushing"
-    from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
 
 # add increased flushing at the location of Zeesluis
 from_to_node_function_table.loc[from_to_node_function_table.index == zeesluis_node_id, "demand"] = 5  # 5 m3/s
