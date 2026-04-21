@@ -27,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
+DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -487,7 +487,6 @@ assign_metadata.add_meta_to_basins(
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
-
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df["length"] = 10.0

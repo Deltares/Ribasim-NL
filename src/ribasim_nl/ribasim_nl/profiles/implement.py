@@ -5,8 +5,7 @@ import logging
 import pandas as pd
 import shapely
 
-import ribasim_nl
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
 
 LOG = logging.getLogger(__name__)
 
@@ -123,7 +122,7 @@ def single_profile_nodes(
     df = profile_merging(df_flowing, df_storing, suffixes=("_flowing", "_storing"))
 
     # flag storing basin
-    assert sum(df[["area_flowing", "area_storing"]].isna().all(axis=1)) == 0
+    assert sum(df[["area_flowing", "area_storing"]].isna().all(axis=1)) == 0.0
     df["storing_basin"] = ~df[["area_flowing", "area_storing"]].isna().any(axis=1)
 
     # modify flowing profiles table
@@ -146,7 +145,7 @@ def single_profile_nodes(
     return storing_ids, out_flowing, out_storing
 
 
-def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **kwargs) -> ribasim_nl.Model:
+def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> Model:
     """Set basin profiles and add storing basins where applicable.
 
     Based on the profile generation, trapezoidal profiles are set to the flowing basins. In case there are storing basin
@@ -157,8 +156,8 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     :param kwargs: optional arguments
 
     :key cloud: the GoodCloud storage, defaults to CloudStorage()
-    :key dx: horizontal distance between flowing and storing basins, defaults to 10.0 [m]
-    :key dy: vertical distance between flowing and storing basins, defaults to 0.0 [m]
+    :key dx: horizontal distance between flowing and storing basins, defaults to 10 [m]
+    :key dy: vertical distance between flowing and storing basins, defaults to 0 [m]
     :key min_area: minimum are in profile table to be considered valid (removed otherwise), defaults to 1e-3 [m2]
     """
     # optional arguments
@@ -184,19 +183,9 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
         msg = "Required model tables are missing."
         raise ValueError(msg)
 
-    node_df = ribasim_model.node.df
-    basin_profile_df = ribasim_model.basin.profile.df
-    basin_node_df = ribasim_model.basin.node.df
-    basin_static_df = ribasim_model.basin.static.df
-    basin_state_df = ribasim_model.basin.state.df
-    basin_area_df = ribasim_model.basin.area.df
-    link_df = ribasim_model.link.df
-    manning_static_df = ribasim_model.manning_resistance.static.df
-
     # modify existing basins ('doorgaand')
-    node_df = node_df.assign(meta_node_id=node_df.index)
-    ribasim_model.node.df = node_df
-    _basin_profile = basin_profile_df.copy()
+    ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
+    _basin_profile = ribasim_model.basin.profile.df.copy()
     _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
     ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(  # pyrefly: ignore[bad-assignment]
         _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
@@ -204,10 +193,10 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     del _basin_profile
 
     # duplicate all basin-tables
-    basin_node = basin_node_df
-    basin_static = basin_static_df
-    basin_state = basin_state_df
-    basin_area = basin_area_df
+    basin_node = ribasim_model.basin.node.df
+    basin_static = ribasim_model.basin.static.df
+    basin_state = ribasim_model.basin.state.df
+    basin_area = ribasim_model.basin.area.df
     basin_profile = df_storing.copy(deep=True)
 
     # ID-selection: add storing basins
@@ -236,14 +225,12 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
     basin_node["manning_id"] = basin_node.index + incr_node_id
 
     # create links
-    basin_node["link_sm_geometry"] = [
-        shapely.LineString((geometry, manning_geometry))
-        for geometry, manning_geometry in zip(basin_node["geometry"], basin_node["manning_geometry"])
-    ]
-    basin_node["link_mf_geometry"] = [
-        shapely.LineString((manning_geometry, flowing_geometry))
-        for manning_geometry, flowing_geometry in zip(basin_node["manning_geometry"], basin_node["flowing_geometry"])
-    ]
+    basin_node["link_sm_geometry"] = basin_node.apply(
+        lambda row: shapely.LineString((row["geometry"], row["manning_geometry"])), axis=1
+    )
+    basin_node["link_mf_geometry"] = basin_node.apply(
+        lambda row: shapely.LineString((row["manning_geometry"], row["flowing_geometry"])), axis=1
+    )
 
     # create node table: ManningResistance
     manning_node = basin_node[["manning_id", "manning_geometry"]].reset_index(drop=True)
@@ -280,7 +267,7 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
         )
     )
     link = pd.concat([sm_link, mf_link], axis=0, ignore_index=True)
-    incr_link_id = link_df.index.max() + 1
+    incr_link_id = ribasim_model.link.df.index.max() + 1
     link["link_id"] = link.index + incr_link_id
     link.set_index("link_id", inplace=True)
 
@@ -290,17 +277,17 @@ def set_basin_profiles(ribasim_model: ribasim_nl.Model, water_authority: str, **
 
     # concatenate all newly generated tables to Ribasim model
     # > Node-table
-    ribasim_model.node.df = pd.concat([node_df, basin_node, manning_node], ignore_index=False)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)  # pyrefly: ignore[bad-assignment]
     # > Link-table
-    ribasim_model.link.df = pd.concat([link_df, link], ignore_index=False)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)  # pyrefly: ignore[bad-assignment]
     # > Basin-tables
-    ribasim_model.basin.static.df = pd.concat([basin_static_df, basin_static], ignore_index=True)  # pyrefly: ignore[bad-assignment]
-    ribasim_model.basin.state.df = pd.concat([basin_state_df, basin_state], ignore_index=True)  # pyrefly: ignore[bad-assignment]
-    ribasim_model.basin.profile.df = pd.concat([basin_profile_df, basin_profile], ignore_index=True)  # pyrefly: ignore[bad-assignment]
-    ribasim_model.basin.area.df = pd.concat([basin_area_df, basin_area], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)  # pyrefly: ignore[bad-assignment]
     # > ManningResistance-tables
     ribasim_model.manning_resistance.static.df = pd.concat(  # pyrefly: ignore[bad-assignment]
-        [manning_static_df, manning_static], ignore_index=True
+        [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
     )
 
     # update model IDs
