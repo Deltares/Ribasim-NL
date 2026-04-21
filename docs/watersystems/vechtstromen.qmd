@@ -12,10 +12,10 @@ Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuu
 
 # Waterbeheer droge perioden hoofdsysteem
 
-Als in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit de Twentekanalen naar het `Kanaal Almelo–Haandrik` via Sluis Aadorp (maximaal 10 m3/s). Buiten deze inlaatperiode stroomt er geen water vanuit het Twentekanaal naar het Kanaal Almelo – de Haandrik.
+Als in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit de Twentekanalen naar het `Kanaal Almelo–Haandrik` via `Sluis Aadorp` (maximaal 10 m3/s). Bij lage afvoeren van de Vecht vanuit Duitsland wordt via `kanaal Almelo-Haandrik` dit water verder doorgevoerd naar het `Coevorden-Vecht kanaal` en het `Stieltjeskanaal`.  Buiten deze inlaatperiode stroomt er geen water vanuit het `Twentekanaal` naar het `Kanaal Almelo - Haandrik`. 
 Ook kan er via het `Alte Picardiekanaal` vanuit Duitsland water worden ingelaten. 
 
-Bij `inlaatwerk Hancate` wordt water doorgevoerd naar Salland in droge perioden, max 5.7m3/s??Het kan met een maximale capaciteit van 5 tot 7 m3/s. Deze capaciteit is nog nooit benut, normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s. 
+Bij `inlaatwerk Hancate` wordt water doorgevoerd naar Salland in droge perioden, max 5.7m3/s. Het kan met een maximale capaciteit van 5 tot 7 m3/s. Deze capaciteit is nog nooit benut, normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s. 
 
 Verder wordt er in het noorden water ingelaten via de `Verlengde Hoogeveenschevaart` dat vanaf de Noordschutsluis (WDOD) max 6.86m3/s met pompen kan aanvoeren.
 Via de `Verlengde Hoogeveenschevaart`wordt water doorgevoerd naar Waterschap Hunze en Aa’s via `inlaat Hunze en Aa`, als er onvoldoende verhang gerealiseerd is in de `Verlengde Hoogeveensche Vaart`. 
