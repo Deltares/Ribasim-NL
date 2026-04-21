@@ -1,6 +1,6 @@
 # %%
 
-import os
+from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -214,7 +214,7 @@ def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name
 
     # Filter links for the specified waterboard
     region_links = gpd.GeoDataFrame()
-    for node_name, filtered_connector_df in filtered_connector_gdfs.items():
+    for filtered_connector_df in filtered_connector_gdfs.values():
         if not filtered_connector_df.empty:
             # Check for links connected to the nodes in this connector_df
             node_ids = filtered_connector_df["node_id"].unique()
@@ -341,7 +341,7 @@ def match_with_connector_nodes(row, filtered_connector_gdfs, region_links, buffe
         # Create a buffer around the measurement point
         measurement_buffer = row.geometry.buffer(buffer_size)
 
-        for node_name, filtered_connector_df in filtered_connector_gdfs.items():
+        for filtered_connector_df in filtered_connector_gdfs.values():
             if not filtered_connector_df.empty:
                 connector_gdf = gpd.GeoDataFrame(filtered_connector_df, geometry="geometry")
 
@@ -614,11 +614,11 @@ def spatial_match(
 
         # Store results
         # Als er op connector knoop is gematch, deze opnemen in de tabel
-        shape_koppeling.at[idx, "match_nodes"] = matched_nodes if matched_nodes else None
+        shape_koppeling.at[idx, "match_nodes"] = matched_nodes or None
 
         # Alle Link info meenemen in de tabel
         for col in link_columns:
-            shape_koppeling.at[idx, f"Link_{col}"] = matched_links[col] if matched_links[col] else None
+            shape_koppeling.at[idx, f"Link_{col}"] = matched_links[col] or None
 
         # Extract from_node_id and to_node_id from matched links (if found)
         from_node_ids = matched_links.get("from_node_id", [])
@@ -639,11 +639,11 @@ def spatial_match(
         # print(to_node_geometries)
 
         # Store geometries in shape_koppeling
-        shape_koppeling.at[idx, "from_node_geometry"] = from_node_geometries if from_node_geometries else None
-        shape_koppeling.at[idx, "to_node_geometry"] = to_node_geometries if to_node_geometries else None
+        shape_koppeling.at[idx, "from_node_geometry"] = from_node_geometries or None
+        shape_koppeling.at[idx, "to_node_geometry"] = to_node_geometries or None
 
-        shape_koppeling.at[idx, "from_node_types"] = from_node_types if from_node_types else None
-        shape_koppeling.at[idx, "to_node_types"] = to_node_types if to_node_types else None
+        shape_koppeling.at[idx, "from_node_types"] = from_node_types or None
+        shape_koppeling.at[idx, "to_node_types"] = to_node_types or None
 
     # Rename columns back to original names except for Link_geometry
     rename_columns = {f"Link_{col}": col for col in link_columns if col != "geometry"}
@@ -652,7 +652,7 @@ def spatial_match(
     # Save matched buffers as a shapefile
     if matched_buffers and write_buffer_shp and output_buffer_shapefile and cloud_sync:
         buffer_gdf = gpd.GeoDataFrame(matched_buffers, geometry="geometry", crs=shape_koppeling.crs)
-        os.makedirs(os.path.dirname(output_buffer_shapefile), exist_ok=True)
+        Path(output_buffer_shapefile).parent.mkdir(parents=True, exist_ok=True)
         buffer_gdf.to_file(output_buffer_shapefile)
         buffer_gdf.to_file(output_buffer_shapefile)
         cloud_sync.upload_file(output_buffer_shapefile)

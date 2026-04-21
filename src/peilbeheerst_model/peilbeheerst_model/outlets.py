@@ -1,6 +1,6 @@
-import os
 import subprocess
 import warnings
+from pathlib import Path
 
 import pandas as pd
 import xarray as xr
@@ -24,9 +24,9 @@ class case1:
 
     def __init__(self, case_example_name) -> None:
         """Initialize the class. Convert the forcing from mm/day to m/s."""
-        case_example_path = os.path.join("../../../../Outlet_tests/json", case_example_name + ".json")
+        case_example_path = Path("../../../../Outlet_tests/json") / (case_example_name + ".json")
 
-        with open(case_example_path) as file:
+        with case_example_path.open() as file:
             characteristics = yaml.safe_load(file)
 
         self.characteristics = characteristics
@@ -240,32 +240,32 @@ class case1:
         #     self.characteristics["results_dir"], self.characteristics["case"], self.characteristics["example"]
         # )
         # create the directory where the model should be stored
-        if not os.path.exists(os.path.join(self.characteristics["results_dir"], self.characteristics["case"])):
-            os.makedirs(os.path.join(self.characteristics["results_dir"], self.characteristics["case"]))
+        results_case_dir = Path(self.characteristics["results_dir"]) / self.characteristics["case"]
+        if not results_case_dir.exists():
+            results_case_dir.mkdir(parents=True)
 
         # store the model
         model.write(
-            filepath=os.path.join(
-                self.characteristics["results_dir"],
-                self.characteristics["case"],
-                self.characteristics["example"],
-                "ribasim.toml",
-            )
+            filepath=Path(self.characteristics["results_dir"])
+            / self.characteristics["case"]
+            / self.characteristics["example"]
+            / "ribasim.toml",
         )
 
     def run_model(self, model) -> None:
         """Run the created Ribasim model."""
+        toml_path = str(
+            Path(self.characteristics["results_dir"])
+            / self.characteristics["case"]
+            / self.characteristics["example"]
+            / "ribasim.toml"
+        )
         if self.characteristics["show_progress"]:
             # show progress of the Ribasim model
             subprocess.run(
                 [
                     "ribasim",
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "ribasim.toml",
-                    ),
+                    toml_path,
                 ],
                 check=False,
             )
@@ -273,12 +273,7 @@ class case1:
             subprocess.run(
                 [
                     "ribasim",
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "ribasim.toml",
-                    ),
+                    toml_path,
                 ],
                 check=False,
                 stdout=subprocess.DEVNULL,
@@ -291,13 +286,11 @@ class case1:
             # load in the data
             df_basin = (
                 xr.open_dataset(
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "results",
-                        "basin.nc",
-                    )
+                    Path(self.characteristics["results_dir"])
+                    / self.characteristics["case"]
+                    / self.characteristics["example"]
+                    / "results"
+                    / "basin.nc"
                 )
                 .to_dataframe()
                 .reset_index()
@@ -338,9 +331,9 @@ class case2:
 
     def __init__(self, case_example_name, model) -> None:
         """Initialize the class. Convert the forcing from mm/day to m/s."""
-        case_example_path = os.path.join("../../../../Outlet_tests/json", case_example_name + ".json")
+        case_example_path = Path("../../../../Outlet_tests/json") / (case_example_name + ".json")
 
-        with open(case_example_path) as file:
+        with case_example_path.open() as file:
             characteristics = yaml.safe_load(file)
 
         # define the characteristics and the base model
@@ -529,32 +522,32 @@ class case2:
         #     self.characteristics["results_dir"], self.characteristics["case"], self.characteristics["example"]
         # )
         # create the directory where the model should be stored
-        if not os.path.exists(os.path.join(self.characteristics["results_dir"], self.characteristics["case"])):
-            os.makedirs(os.path.join(self.characteristics["results_dir"], self.characteristics["case"]))
+        results_case_dir = Path(self.characteristics["results_dir"]) / self.characteristics["case"]
+        if not results_case_dir.exists():
+            results_case_dir.mkdir(parents=True)
 
         # store the model
         model.write(
-            filepath=os.path.join(
-                self.characteristics["results_dir"],
-                self.characteristics["case"],
-                self.characteristics["example"],
-                "ribasim.toml",
-            )
+            filepath=Path(self.characteristics["results_dir"])
+            / self.characteristics["case"]
+            / self.characteristics["example"]
+            / "ribasim.toml",
         )
 
     def run_model(self, model) -> None:
         """Run the created Ribasim model."""
+        toml_path = str(
+            Path(self.characteristics["results_dir"])
+            / self.characteristics["case"]
+            / self.characteristics["example"]
+            / "ribasim.toml"
+        )
         if self.characteristics["show_progress"]:
             # show progress of the Ribasim model
             subprocess.run(
                 [
                     "ribasim",
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "ribasim.toml",
-                    ),
+                    toml_path,
                 ],
                 check=False,
             )
@@ -562,12 +555,7 @@ class case2:
             subprocess.run(
                 [
                     "ribasim",
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "ribasim.toml",
-                    ),
+                    toml_path,
                 ],
                 check=False,
                 stdout=subprocess.DEVNULL,
@@ -580,13 +568,11 @@ class case2:
             # load in the data
             df_basin = (
                 xr.open_dataset(
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "results",
-                        "basin.nc",
-                    )
+                    Path(self.characteristics["results_dir"])
+                    / self.characteristics["case"]
+                    / self.characteristics["example"]
+                    / "results"
+                    / "basin.nc"
                 )
                 .to_dataframe()
                 .reset_index()

@@ -169,13 +169,12 @@ class AddStorageBasins:
     def get_current_max_nodeid(self):
         """Get the current maximum node ID from the model where node_id is stored as an index."""
         max_ids = []
-        for k, v in self.ribasim_model.__dict__.items():
-            if hasattr(v, "node"):
-                # Check if the DataFrame's index is named 'meta_node_id'
-                if v.node.df.index.name == "node_id":
-                    mid = v.node.df.index.max()
-                    if not pd.isna(mid):
-                        max_ids.append(int(mid))
+        for v in self.ribasim_model.__dict__.values():
+            # Check if the DataFrame's index is named 'meta_node_id'
+            if hasattr(v, "node") and v.node.df.index.name == "node_id":
+                mid = v.node.df.index.max()
+                if not pd.isna(mid):
+                    max_ids.append(int(mid))
         if len(max_ids) == 0:
             raise ValueError("No node ids found")
         max_id = max(max_ids)

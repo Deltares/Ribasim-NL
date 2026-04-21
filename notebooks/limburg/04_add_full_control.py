@@ -286,7 +286,7 @@ level_supply_nodes = [
     445,  # Aanvoerleiding Vredepeel
 ]
 
-double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes.keys()]
+double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes]
 if double_defined:
     raise ValueError(f"these nodes are labelled as q-supply and level-supply {double_defined}")
 

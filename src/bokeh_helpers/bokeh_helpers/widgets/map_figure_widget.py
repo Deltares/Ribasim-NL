@@ -67,10 +67,7 @@ FIGURE_SETTINGS = {
 
 def get_tilesource(layer, map_configs=BACKGROUND_LAYERS):
     url = map_configs[layer]["url"]
-    if "args" in map_configs[layer]:
-        args = map_configs[layer]["args"]
-    else:
-        args = {}
+    args = map_configs[layer].get("args", {})
     return getattr(bokeh_models, map_configs[layer]["class"])(url=url, **args)
 
 

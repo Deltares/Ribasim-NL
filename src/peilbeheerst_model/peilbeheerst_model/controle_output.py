@@ -1,5 +1,4 @@
 import logging
-import os
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -9,6 +8,8 @@ import pandas as pd
 import xarray as xr
 
 from ribasim_nl import Model
+
+logger = logging.getLogger(__name__)
 
 
 def model_loaded(func: Callable[..., dict[str, object]]) -> Callable[..., dict[str, object]]:
@@ -51,16 +52,16 @@ class Control:
                 self.path_ribasim_toml = ribasim_toml
                 self.work_dir = Path(ribasim_toml).parent
             else:
-                self.path_ribasim_toml = os.path.join(work_dir, "ribasim.toml")
+                self.path_ribasim_toml = Path(work_dir) / "ribasim.toml"  # pyrefly: ignore[bad-argument-type]
                 self.work_dir = work_dir
 
         if qlr_path is None:
             self.qlr_path = Path(__file__).parent.joinpath("data", "output_controle.qlr")
         else:
             self.qlr_path = qlr_path
-        self.path_basin_output = os.path.join(self.work_dir, "results", "basin.nc")
-        self.path_link_output = os.path.join(self.work_dir, "results", "flow.nc")
-        self.path_control_dict_path = os.path.join(self.work_dir, "results", "output_controle")
+        self.path_basin_output = Path(self.work_dir) / "results" / "basin.nc"
+        self.path_link_output = Path(self.work_dir) / "results" / "flow.nc"
+        self.path_control_dict_path = Path(self.work_dir) / "results" / "output_controle"
 
     def read_model_output(self):
         ds_basin = xr.open_dataset(self.path_basin_output)
@@ -312,16 +313,17 @@ class Control:
     @model_loaded
     def store_data(self, data, output_path) -> None:
         """Store the control_dict"""
-        for key in data.keys():
+        for key in data:
             data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG", mode="w")
 
         # copy checks_symbology file from old dir to new dir
         # delete old .qlr file (overwriting does apparently not work due to permission rights)
-        if os.path.exists(os.path.join(self.work_dir, "results", "output_controle.qlr")):
-            os.remove(os.path.join(self.work_dir, "results", "output_controle.qlr"))
+        qlr_dst = Path(self.work_dir) / "results" / "output_controle.qlr"
+        if qlr_dst.exists():
+            qlr_dst.unlink()
 
         # copy .qlr file
-        shutil.copy(src=self.qlr_path, dst=os.path.join(self.work_dir, "results", "output_controle.qlr"))
+        shutil.copy(src=self.qlr_path, dst=qlr_dst)
 
         return
 
@@ -424,9 +426,9 @@ class Control:
         # validate available analysed data
         _keys = "min_basin_level", "max_basin_level"
         if not all(k in control_dict for k in _keys):
-            logging.info(f"Water level bounds not yet determined and `autofill_missing_data={autofill_missing_data}`:")
+            logger.info(f"Water level bounds not yet determined and `autofill_missing_data={autofill_missing_data}`:")
             if autofill_missing_data:
-                logging.info("Water level bounds auto-filled: Default settings used.")
+                logger.info("Water level bounds auto-filled: Default settings used.")
                 control_dict = self.water_level_bounds(control_dict)
             else:
                 _data = {k: control_dict.get(k) for k in _keys}
@@ -504,8 +506,8 @@ class Control:
         # check for dynamic forcing specific *.qlr
         filename_cc_qlr = "output_controle_cc.qlr"
         if not suppress_file_warning and not str(self.qlr_path).endswith(filename_cc_qlr):
-            logging.warning(f"*.qlr-file is different from default for dynamic forcing: {filename_cc_qlr}")
-            logging.warning(f"*.qlr-file may not be compatible with dynamic forcing: {self.qlr_path}")
+            logger.warning(f"*.qlr-file is different from default for dynamic forcing: {filename_cc_qlr}")
+            logger.warning(f"*.qlr-file may not be compatible with dynamic forcing: {self.qlr_path}")
 
         # export analysed data
         self.store_data(control_dict, self.path_control_dict_path)

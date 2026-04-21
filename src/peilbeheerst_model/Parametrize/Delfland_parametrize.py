@@ -1,7 +1,6 @@
 """Parametrisation of water board: Delfland."""
 
 import datetime
-import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -86,8 +85,8 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
 # create work_dir/parameterized
-parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-os.makedirs(parameterized, exist_ok=True)
+parameterized = work_dir / f"{waterschap}_parameterized/"
+parameterized.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -104,10 +103,7 @@ saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-if AANVOER_CONDITIONS:
-    default_level = 0.42
-else:
-    default_level = -0.42
+default_level = 0.42 if AANVOER_CONDITIONS else -0.42
 
 # process the feedback form
 name = "HKV"

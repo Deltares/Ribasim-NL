@@ -1,8 +1,6 @@
-# import pathlib
 import datetime
 import json
 import logging
-import os
 import shutil
 import subprocess
 import sys
@@ -25,6 +23,8 @@ from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model, settings
 
+logger = logging.getLogger(__name__)
+
 
 # FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
 #  (e.g., the used 'meta_node_id'-column contains many `<NA>`-values).
@@ -33,10 +33,7 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node.df
 
-    if len(df_all_nodes) == 0:
-        max_id = 1
-    else:
-        max_id = int(df_all_nodes.meta_node_id.max())
+    max_id = 1 if len(df_all_nodes) == 0 else int(df_all_nodes.meta_node_id.max())
 
     return max_id
 
@@ -608,13 +605,10 @@ def add_discrete_control_nodes(ribasim_model) -> None:
         dfs_pump = pd.concat(dfs_pump, ignore_index=True)
         ribasim_model.pump.static.df = dfs_pump
 
-    for i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
+    for _i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
         # Get max nodeid and iterate
         cur_max_node_id = get_current_max_node_id(ribasim_model)
-        if cur_max_node_id < 90000:
-            new_nodeid = 90000 + cur_max_node_id + 1  # aanpassen loopt vanaf 90000 +1
-        else:
-            new_nodeid = cur_max_node_id + 1
+        new_nodeid = 90000 + cur_max_node_id + 1 if cur_max_node_id < 90000 else cur_max_node_id + 1
         # print(new_nodeid, end="\r")
 
         # @TODO Ron aangeven in geval van meerdere matches welke basin gepakt moet worden
@@ -798,8 +792,8 @@ def create_sufficient_Qh_relation_points(ribasim_model) -> None:
 
 def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml) -> None:
     # Write Ribasim model to the Z drive
-    if not os.path.exists(path_ribasim_toml):
-        os.makedirs(path_ribasim_toml)
+    if not Path(path_ribasim_toml).exists():
+        Path(path_ribasim_toml).mkdir(parents=True)
 
     ribasim_model.write(path_ribasim_toml)
 
@@ -811,23 +805,20 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
     Also clear the directory of modellen/parametereized, as there may be old results in it.
     The log file of the feedback form is not included to avoid cluttering.'
     """
-    destination_path = os.path.join(
-        settings.ribasim_nl_data_dir, waterschap, "modellen", f"{waterschap}_parameterized/"
-    )
+    destination_path = settings.ribasim_nl_data_dir / waterschap / "modellen" / f"{waterschap}_parameterized/"
 
     # clear the modellen/parameterized dir
-    if os.path.exists(destination_path):
+    if destination_path.exists():
         shutil.rmtree(destination_path)  # Remove the entire directory
-    os.makedirs(destination_path)  # Recreate the empty folder
+    destination_path.mkdir(parents=True)  # Recreate the empty folder
 
     # copy the work_dir to the "modellen" dir to maintain the same folder structure locally as well as on the 'GoodCloud'
     shutil.copytree(work_dir, destination_path, dirs_exist_ok=True)
 
     # it is not necessary to inlcude the log file of the feedback forms. Delete it
-    for file in os.listdir(destination_path):
-        file_path = os.path.join(destination_path, file)
-        if file.endswith(".log") and os.path.isfile(file_path):
-            os.remove(file_path)
+    for file in destination_path.iterdir():
+        if file.suffix == ".log" and file.is_file():
+            file.unlink()
 
     cloud_storage = CloudStorage()
 
@@ -901,9 +892,10 @@ def iterate_TRC(
             basins_converged = []
             for basin_node, trc_group in df_trc.groupby("from_node_id"):
                 # Check for a single streefpeil for all connected tabulated rating curves
-                trc_streefpeilen = []
-                for row in trc_group.itertuples():
-                    trc_streefpeilen.append(df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min())
+                trc_streefpeilen = [
+                    df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min()
+                    for row in trc_group.itertuples()
+                ]
                 assert len(set(trc_streefpeilen)) == 1
 
                 # Assert that we have a single unique basin
@@ -981,7 +973,7 @@ def validate_basin_area(model, threshold_area=45000) -> None:
     """
     too_small_basins = []
     error = False
-    for index, row in model.basin.node.df.iterrows():
+    for _index, row in model.basin.node.df.iterrows():
         basin_id = int(row["meta_node_id"])
         basin_geometry = model.basin.area.df.loc[model.basin.area.df["meta_node_id"] == basin_id, "geometry"]
         if not basin_geometry.empty:
@@ -1397,7 +1389,7 @@ def set_aanvoer_flags(
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
-        logging.info("Aanvoer-flagging skipped.")
+        logger.info("Aanvoer-flagging skipped.")
         assert not isinstance(ribasim_model, str)
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
@@ -1407,7 +1399,7 @@ def set_aanvoer_flags(
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
-        logging.warning(
+        logger.warning(
             f'With aanvoer_regions={aanvoer_regions}, the whole region is considered an "aanvoergebied". '
             f"This is a temporary catch and will be deprecated in the future: "
             f'Make sure that all water boards have a geometry-file from which the "aanvoergebieden" can be deduced.'
@@ -1450,7 +1442,7 @@ def load_model_settings(file_path):
     script_path = Path(__file__)  # Get the path to the current python file
     file_path = script_path.parent.parent / "Parametrize" / file_path  # Correct the path to the JSON file
 
-    with open(file_path) as file:
+    with Path(file_path).open() as file:
         settings = json.load(file)
     return settings
 
@@ -1538,7 +1530,8 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
         if df[columns_to_check].isnull().values.any():
             warnings.warn(
                 f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
-                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}"
+                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}",
+                stacklevel=2,
             )
 
     check_for_nans_in_columns(outlet, "outlet")
@@ -1631,7 +1624,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     ]
 
     # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
-    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw):
+    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw, strict=True):
         if len(nodes_to_control) > 0:
             print(f"Sturing has been added for the category {category}")
             add_discrete_control_partswise(
@@ -1741,7 +1734,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     ]
 
     # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
-    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal):
+    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal, strict=True):
         if len(nodes_to_control) > 0:
             print(f"Sturing has been added for the category {category}")
             add_discrete_control_partswise(
@@ -2127,7 +2120,7 @@ def add_continuous_control_node(
         except IndexError:
             listen_targets = []
             node_types = [ribasim_model.node.df.loc[i, "node_type"] for i in listen_nodes]
-            for i, t in zip(listen_nodes, node_types):
+            for i, t in zip(listen_nodes, node_types, strict=True):
                 match t.lower():
                     case "basin":
                         value = ribasim_model.basin.area.df.loc[
@@ -2142,7 +2135,7 @@ def add_continuous_control_node(
                             f"Unknown node-type ({t.lower()}) for implementation of `ContinuousControl`-node for "
                             f"{connection_node.node_type} #{connection_node.node_id}."
                         )
-                        raise NotImplementedError(msg)
+                        raise NotImplementedError(msg) from None
 
                 listen_targets.append(float(value.values[0]))
 
@@ -2153,7 +2146,7 @@ def add_continuous_control_node(
 
     # set ON-switch for continuous control node
     margin = 2 * numerical_tolerance
-    on_switch = sum(t * w for t, w in zip(listen_targets, weights))
+    on_switch = sum(t * w for t, w in zip(listen_targets, weights, strict=True))
 
     # add continuous control
     point = connection_node.geometry

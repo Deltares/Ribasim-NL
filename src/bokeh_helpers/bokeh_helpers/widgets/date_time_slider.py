@@ -29,25 +29,13 @@ class DatetimeSlider:
         if self.value > self.end:
             raise ValueError(f"{self.value} > {self.end}")
 
-        if isinstance(self.start, datetime):
-            start = self.start.timestamp() * 1000
-        else:
-            start = self.start
+        start = self.start.timestamp() * 1000 if isinstance(self.start, datetime) else self.start
 
-        if isinstance(self.end, datetime):
-            end = self.end.timestamp() * 1000
-        else:
-            end = self.end
+        end = self.end.timestamp() * 1000 if isinstance(self.end, datetime) else self.end
 
-        if isinstance(self.value, datetime):
-            value = self.value.timestamp() * 1000
-        else:
-            value = self.value
+        value = self.value.timestamp() * 1000 if isinstance(self.value, datetime) else self.value
 
-        if isinstance(self.step, timedelta):
-            step = self.step.total_seconds() * 1000
-        else:
-            step = self.step
+        step = self.step.total_seconds() * 1000 if isinstance(self.step, timedelta) else self.step
 
         self.widget = Slider(
             start=round_seconds(start, step, "floor"),

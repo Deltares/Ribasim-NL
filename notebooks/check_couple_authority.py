@@ -11,10 +11,7 @@ def get_model_dir(authority, post_fix):
     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
 
 
-if len(SELECTION) == 0:
-    authorities = cloud.water_authorities
-else:
-    authorities = SELECTION
+authorities = cloud.water_authorities if len(SELECTION) == 0 else SELECTION
 
 
 to_couple_boundaries = {}

@@ -9,7 +9,7 @@ def downstream_nodes(
     node_id: int,
     stop_at_outlet: bool = False,
     stop_at_node_type: str | None = None,
-    stop_at_node_ids: list[int] = [],
+    stop_at_node_ids: list[int] | None = None,
 ) -> set[int]:
     """Efficiently find all downstream nodes in a directed graph starting from a given node,
     stopping traversal at nodes stopping at the next outlet.
@@ -26,6 +26,8 @@ def downstream_nodes(
     -------
     - set: A set of all downstream nodes excluding the starting node.
     """  # noqa: D205
+    if stop_at_node_ids is None:
+        stop_at_node_ids = []
     visited = set()  # To keep track of visited nodes
     node_ids = set({node_id})  # To store the result
 

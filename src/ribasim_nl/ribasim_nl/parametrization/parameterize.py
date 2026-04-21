@@ -57,7 +57,7 @@ class Parameterize(BaseModel):
                 )
                 print(f"  ✅ {node_type} succesvol geparametriseerd.")
             except Exception as e:
-                raise Exception(f"  ❌ Fout bij {node_type}: {type(e).__name__}: {e}")
+                raise Exception(f"  ❌ Fout bij {node_type}: {type(e).__name__}: {e}") from e
 
         if self.max_pump_flow_rate is not None:
             print(f"⚙️  max_pump_flow_rate: {self.max_pump_flow_rate}")
