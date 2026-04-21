@@ -292,7 +292,7 @@ year_times_map = {y: make_year_times(y) for y in years}
 
 for t in pid_times_all:
     assigned = False
-    for _y, times in year_times_map.items():
+    for times in year_times_map.values():
         if t in times:
             idx = times.index(t)  # 0..3
             proportional.append(pattern_proportional[idx])

@@ -90,7 +90,7 @@ class RibasimFeedbackProcessor:
 
     def get_current_max_nodeid(self):
         max_ids = []
-        for _k, v in self.model.__dict__.items():
+        for v in self.model.__dict__.values():
             if hasattr(v, "node") and not v.node.df.index.empty:
                 mid = v.node.df.index.max()
                 if not np.isnan(mid):
@@ -157,7 +157,7 @@ class RibasimFeedbackProcessor:
                 self.model.node.df = self.model.node.df[self.model.node.df.index != node_id]
                 # Remove from type-specific tables
                 if hasattr(value, "__dict__"):
-                    for _sub_key, sub_value in value.__dict__.items():
+                    for sub_value in value.__dict__.values():
                         if (
                             hasattr(sub_value, "df")
                             and sub_value.df is not None

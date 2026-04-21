@@ -1701,9 +1701,7 @@ class RibasimNetwork:
 
         ### add a random color to the basins ###
         color_cycle = itertools.cycle(Category10[10])
-        color_list = []
-        for _ in range(len(model.basin.area.df)):
-            color_list.append(next(color_cycle))
+        color_list = [next(color_cycle) for _ in range(len(model.basin.area.df))]
 
         # Add the color_list as a new column to the pd.DataFrame
         model.basin.area.df["meta_color"] = color_list

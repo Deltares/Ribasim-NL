@@ -1926,11 +1926,12 @@ class ParseCrossings:
         df_filter = dfs[dfs[filter_col]].copy()
 
         # Find previously assigned structures that are now unassigned.
-        orphaned_structures: list[tuple[Any, Any]] = []
-        for structure_id, group in dfs.groupby(structurelayer, sort=False):
-            if not group[filter_col].any():
-                for sid in structure_id.split(self.list_sep):
-                    orphaned_structures.append((sid, df_structures.geometry.at[sid]))
+        orphaned_structures: list[tuple[Any, Any]] = [
+            (sid, df_structures.geometry.at[sid])
+            for structure_id, group in dfs.groupby(structurelayer, sort=False)
+            if not group[filter_col].any()
+            for sid in structure_id.split(self.list_sep)
+        ]
 
         df_sub_structures = pd.DataFrame(orphaned_structures, columns=["globalid", "geometry"])
         df_sub_structures = df_sub_structures.drop_duplicates(subset="globalid")

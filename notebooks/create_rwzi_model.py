@@ -304,8 +304,7 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         # Identify and remove NaN values, store the removed time steps
         nan_mask = flow_rates.isna()
         removed_times = rwzi_flow_data_all.time[nan_mask]
-        for t in removed_times:
-            removed_timesteps.append((rwzi_name, t))
+        removed_timesteps.extend((rwzi_name, t) for t in removed_times)
 
         # Filter out NaN values and keep only valid flow data
         valid_mask = ~flow_rates.isna()

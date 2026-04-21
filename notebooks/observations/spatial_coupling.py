@@ -214,7 +214,7 @@ def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name
 
     # Filter links for the specified waterboard
     region_links = gpd.GeoDataFrame()
-    for _node_name, filtered_connector_df in filtered_connector_gdfs.items():
+    for filtered_connector_df in filtered_connector_gdfs.values():
         if not filtered_connector_df.empty:
             # Check for links connected to the nodes in this connector_df
             node_ids = filtered_connector_df["node_id"].unique()
@@ -341,7 +341,7 @@ def match_with_connector_nodes(row, filtered_connector_gdfs, region_links, buffe
         # Create a buffer around the measurement point
         measurement_buffer = row.geometry.buffer(buffer_size)
 
-        for _node_name, filtered_connector_df in filtered_connector_gdfs.items():
+        for filtered_connector_df in filtered_connector_gdfs.values():
             if not filtered_connector_df.empty:
                 connector_gdf = gpd.GeoDataFrame(filtered_connector_df, geometry="geometry")
 

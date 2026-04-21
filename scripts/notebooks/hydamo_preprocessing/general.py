@@ -116,12 +116,11 @@ def split_linestring_by_indices(linestring: LineString, split_indices: list) -> 
     -------
         list: list of resulting linestrings
     """
-    split_linestrings = []
     split_indices = sorted({0, *split_indices, len(linestring.coords) - 1})
-    for i in range(len(split_indices) - 1):
-        split_linestrings.append(LineString(linestring.coords[split_indices[i] : split_indices[i + 1] + 1]))
-
-    return split_linestrings
+    return [
+        LineString(linestring.coords[split_indices[i] : split_indices[i + 1] + 1])
+        for i in range(len(split_indices) - 1)
+    ]
 
 
 def remove_duplicate_split_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:

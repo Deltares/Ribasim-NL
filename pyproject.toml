@@ -94,6 +94,7 @@ select = [
     "I",
     "NPY",
     "PD",
+    "PERF",
     "PTH",
     "RUF",
     "S",

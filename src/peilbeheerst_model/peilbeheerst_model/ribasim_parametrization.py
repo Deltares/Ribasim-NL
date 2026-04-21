@@ -890,9 +890,10 @@ def iterate_TRC(
             basins_converged = []
             for basin_node, trc_group in df_trc.groupby("from_node_id"):
                 # Check for a single streefpeil for all connected tabulated rating curves
-                trc_streefpeilen = []
-                for row in trc_group.itertuples():
-                    trc_streefpeilen.append(df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min())
+                trc_streefpeilen = [
+                    df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min()
+                    for row in trc_group.itertuples()
+                ]
                 assert len(set(trc_streefpeilen)) == 1
 
                 # Assert that we have a single unique basin

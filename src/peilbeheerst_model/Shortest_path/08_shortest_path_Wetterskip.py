@@ -331,9 +331,10 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                 shortest_path = nx.shortest_path(
                     graph, source=startpoint, target=endpoint, weight="length", method="dijkstra"
                 )
-                links = []
-                for i in range(0, len(shortest_path) - 1):
-                    links.append(graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"])
+                links = [
+                    graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"]
+                    for i in range(len(shortest_path) - 1)
+                ]
                 gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = shapely.ops.linemerge(
                     links
                 )
