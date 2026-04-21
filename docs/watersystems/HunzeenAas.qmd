@@ -1,0 +1,67 @@
+# {waterschap}
+
+- Laatst bijgewerkt: 20-4-2026
+- [Laatste modelversie](https://deltares.thegood.cloud/s/3Q2eGKqwpqdLkE8)
+
+## Systeembeschrijving
+![Systeembeschrijving Hunze en Aas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/HunzeenAas.svg)
+
+### Hoofdsysteem
+Water wordt aan de zuidzijde aangevoerd vanuit waterschap Vechtstromen via de verlengde `Hoogeveensche Vaart`. Aan de noordzijde vindt aanvoer plaats via `aanvoergemaal Dorkwerd` vanuit waterschap Noorderzijlvest (via Gaarkuiken en Lemmer vanuit het IJsselmeer).
+
+Er zijn twee grote boezemsystemen: de Eemsboezem (bestaande uit het `Eemskanaal`, `Winschoterdiep` en het `Zuidlaardermeer`) en de Dollardboezem. Beide systemen worden gescheiden door stuw `De Bult`.
+
+Vanuit de Eemsboezem wordt water aangevoerd via het `Wildervanckkanaal` en `Ter Apelkanaal` richting het `Mussel Aa-kanaal`, met inzet van de aanvoergemalen `H. Küpers`, `V.M. Vennix` en `Ter Apelkanaal`.
+
+Het Hunzegebied bestaat uit een zandrug, met inzijging in hogere delen en kwel in lagere delen. De Hunze watert af via het `Zuidlaardermeer` naar het `Winschoterdiep`. Het peil van de Eemsboezem geldt tot circa `Gietenveen`; bovenstrooms is het gebied vrij afstromend.
+
+De `Drentse Aa` mondt op meerdere locaties uit in het `Noord-Willemskanaal`. De afvoer wordt gestuurd bij `Verdeelwerk Loon`, waar circa 3 m³/s richting de `Drentse Aa` wordt geleid en het overige deel naar het `Noord-Willemskanaal`.
+
+Langs de `Hunze` en de `Drentse Aa`/het `Noord-Willemskanaal` bevinden zich diverse inlaten voor de watervoorziening van lager gelegen gebieden.
+
+In onderstaande secties wordt de aan- en afvoer per deelgebied beknopt beschreven.
+
+---
+
+### Aanvoergebied Verlengde Hoogeveense Vaart
+- Aanvoer vanuit `Vechtstromen` via meerdere inlaten langs de `Verlengde Hoogeveensche Vaart`, o.a. `Inlaat Purit` bij `Klazienaveen`
+- Afvoer via het `Wildervanckkanaal`
+
+### Aanvoergebied TAK
+- Aanvoer via inlaten langs het `Ter Apelkanaal`, gevoed door `Aanvoergemaal Ter Apelkanaal`
+- Afvoer via het gebied `Avebe`
+
+### Aanvoergebied Avebe
+- Aanvoer via het `Mussel Aa-kanaal`, gevoed door `Aanvoergemaal Ter Apelkanaal`
+- Afvoer richting `Fiemel`/`Westerwolde` (Dollardboezem)
+
+### Aanvoergebied Vennix
+- Aanvoer via `Gemaal Vennix` en inlaten langs het `Wildervanckkanaal`
+- Afvoer richting de `Veenkoloniën` (`Veendam`) via het `Wildervanckkanaal` (vrij verval)
+
+### Aanvoergebied Veenkoloniën Veendam
+- Aanvoer via gemaal `H. Küpers` en inlaten langs het `Wildervanckkanaal`
+- Afvoer naar het `Winschoterdiep` via het `Wildervanckkanaal` (vrij verval)
+
+### Aanvoergebied Fiemel/Westerwolde
+- Aanvoer vanuit het `Winschoterdiep`
+- Afvoer via `Nieuwe Statenzijl` en de gemalen `Fiemel` en `Breebaart` naar de `Dollard`
+
+### Aanvoergebied Oldambt
+- Aanvoer vanuit het `Winschoterdiep`
+- Afvoer via gemaal `Rozema`; via de `Oosthornhaven` kan ook op de `Eems` worden afgevoerd wanneer spuien niet mogelijk is
+
+### Aanvoergebied Duurswold
+- Aanvoer via het `Winschoterdiep`
+- Afvoer via de `Spuisluis Oude Eemskanaal`, de `Uitwateringsluis` en gemaal `Duurswold`
+
+## Capaciteiten
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+
+P.M.
+
+## Bronnen
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+
+- Documentatie Distributiemodel, Deel C, hoofdstuk 25
+- Bespreekverslag SWECO (12-12-2023)
