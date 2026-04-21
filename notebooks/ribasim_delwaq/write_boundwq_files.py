@@ -601,6 +601,7 @@ loc_to_node = dict(
     zip(
         grenspunt_meetobject_df["Meetobject.code"],
         grenspunt_meetobject_df["node_id"],
+        strict=True,
     )
 )
 
@@ -633,6 +634,7 @@ loc_to_node_zinfo = dict(
     zip(
         df_rwzi_mapping_table["meta_rwzi_codeist"],
         df_rwzi_mapping_table["node_id"],
+        strict=True,
     )
 )
 
@@ -689,10 +691,12 @@ if make_plots:
         ),
     }
 
-    for group, parameter_keys in zip(["N Parameters", "P Parameters"], [["NO3", "NH4", "OON"], ["PO4", "AAP", "OOP"]]):
+    for group, parameter_keys in zip(
+        ["N Parameters", "P Parameters"], [["NO3", "NH4", "OON"], ["PO4", "AAP", "OOP"]], strict=True
+    ):
         fig, axes = plt.subplots(len(parameter_keys), 1, figsize=(20, 10), dpi=1000)
         print()
-        for parameter_key, ax in zip(parameter_keys, axes):
+        for parameter_key, ax in zip(parameter_keys, axes, strict=True):
             parsset, parslab = parameters[parameter_key]
             locations = dict_choosen_method_IM.keys()
             location_percentages = {loc: dict.fromkeys([*parsset, "-999"], 0) for loc in locations}
@@ -779,7 +783,9 @@ if make_plots:
         return chunks
 
     # Example for 4 subplots:
-    for group, parameter_keys in zip(["N Parameters", "P Parameters"], [["NO3", "NH4", "OON"], ["PO4", "AAP", "OOP"]]):
+    for _group, parameter_keys in zip(
+        ["N Parameters", "P Parameters"], [["NO3", "NH4", "OON"], ["PO4", "AAP", "OOP"]], strict=True
+    ):
         for parameter_key in parameter_keys:
             parsset, parslab = parameters[parameter_key]
             locations = list(dict_choosen_method_Zinfo.keys())  # Convert to a list to allow slicing
@@ -790,7 +796,7 @@ if make_plots:
             if num_subplots == 1:
                 axes = [axes]  # Ensure axes is always a list for consistent iteration
 
-            for idx, (loc_chunk, ax) in enumerate(zip(location_chunks, axes)):
+            for idx, (loc_chunk, ax) in enumerate(zip(location_chunks, axes, strict=True)):
                 location_percentages = {loc: dict.fromkeys([*parsset, "-999"], 0) for loc in loc_chunk}
 
                 # Calculate percentages for each parameter and location

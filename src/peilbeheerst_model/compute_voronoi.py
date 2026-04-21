@@ -44,7 +44,7 @@ df["merged_poly_id"] = merged_poly_ids
 
 
 df_center = []
-for idx, row in tqdm.tqdm(df_merged.iterrows(), total=len(df_merged)):
+for _idx, row in tqdm.tqdm(df_merged.iterrows(), total=len(df_merged)):
     geom = row.geometry
     interp_dist: float = 10
     if geom.area < 1000:
@@ -92,7 +92,7 @@ idxs, node_ids, connectivity = [], [], []
 for poly_id, poly_group in tqdm.tqdm(
     df_center_single_boundary_points.groupby("poly_id", sort=False), desc="assign node ids"
 ):
-    for geom, group in tqdm.tqdm(poly_group.groupby("geometry", sort=False), desc=f"{poly_id=}", leave=False):
+    for _geom, group in tqdm.tqdm(poly_group.groupby("geometry", sort=False), desc=f"{poly_id=}", leave=False):
         idxs.append(group.index)
         node_ids.append(len(group) * [node_id])
         connectivity.append(len(group) * [len(group)])
@@ -106,8 +106,6 @@ assert not pd.isna(df_center_single_boundary_points.node_id).any()
 assert not pd.isna(df_center_single_boundary_points.connectivity).any()
 
 df_center_single_boundary_points = df_center_single_boundary_points.droplevel(-1).set_index("node_id", append=True)
-df_center_single_boundary_points
-
 
 # Alleen links proberen te mergen waarvan beide uiteindes (nodes) connectivity 2 hebben
 pot_reduce = []
@@ -145,7 +143,7 @@ for poly_id, polygroup in tqdm.tqdm(pot_reduce.groupby("poly_id", sort=False), d
 # Merge
 df_center_single_red = df_center_single[~df_center_single.index.isin(pot_reduce.index)].copy()
 add_rows = []
-for group_id, group in tqdm.tqdm(pot_reduce.groupby("merge_group", dropna=True, sort=False), desc="merge links"):
+for _group_id, group in tqdm.tqdm(pot_reduce.groupby("merge_group", dropna=True, sort=False), desc="merge links"):
     links_to_merge = np.unique(group.index.get_level_values("link_id").to_numpy())
     geoms = df_center_single.geometry.loc[pd.IndexSlice[:, links_to_merge]].tolist()
     geom = shapely.ops.linemerge(geoms)
@@ -163,7 +161,7 @@ df_center_single_boundary["geometry"] = df_center_single.boundary
 df_center_single_boundary_points = df_center_single_boundary.explode(index_parts=True)
 df_center_single_boundary_points["node_id"] = None
 idxs, node_ids = [], []
-for node_id, (geom, group) in enumerate(
+for node_id, (_geom, group) in enumerate(
     tqdm.tqdm(df_center_single_boundary_points.groupby("geometry", sort=False), desc="assign node ids")
 ):
     idxs.append(group.index)
@@ -186,10 +184,7 @@ df_center_single_boundary_points = df_center_single_boundary_points.droplevel(-1
 #     elif len(idxs) == 0:
 #         print(f"No connection for {idx}: {df_center_single_boundary.iloc[idxs].index}")
 
-df_center_single_boundary_points
-
-
-link_lengths = dict(zip(df_center_single.index.get_level_values("link_id"), df_center_single.length))
+link_lengths = dict(zip(df_center_single.index.get_level_values("link_id"), df_center_single.length, strict=True))
 shortest_paths: dict[str, list[Any]] = {"poly_id": [], "start_node": [], "end_node": [], "geometry": []}
 for poly_id, row in tqdm.tqdm(df_merged.iterrows(), total=len(df_merged)):
     merged_poly = row.geometry
@@ -208,7 +203,6 @@ for poly_id, row in tqdm.tqdm(df_merged.iterrows(), total=len(df_merged)):
     idx_end = idx_end[1, 0]
     idx_end = df_graph.index[idx_end]
     end_node = idx_end[-1]
-    df_crossings
     # print(f"{poly_id=}, closest vertex for endpoint at {distance_end:.2f}m ({idx_end=})")
 
     # Starting points

@@ -34,7 +34,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
                     if "listen_node_id" in table.df.columns:
                         table.df["listen_node_id"] = table.df["listen_node_id"].apply(lambda x: node_index[x])
             except KeyError as e:
-                raise KeyError(f"node_id {e} in table {node_type} / {attr} not a node_id node-table")
+                raise KeyError(f"node_id {e} in table {node_type} / {attr} not a node_id node-table") from e
     return model
 
 

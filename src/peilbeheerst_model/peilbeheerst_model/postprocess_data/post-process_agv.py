@@ -89,7 +89,7 @@ print(f"Number of overlapping shapes with filter: {len(overlap_ids)}")
 # Add occurence to geodataframe
 peilgebieden_cat = []
 
-for index, row in AVG["peilgebied"].iterrows():
+for _index, row in AVG["peilgebied"].iterrows():
     if "Oosterpark" in row.code or "Vechtboezem" in row.code or "Stadsboezem Amsterdam" in row.code:
         print(f"true {row.code}")
         peilgebieden_cat.append(1)

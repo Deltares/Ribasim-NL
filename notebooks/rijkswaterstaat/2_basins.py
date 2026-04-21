@@ -79,11 +79,11 @@ for line in merge_lines_gdf.itertuples():
     try:
         idx_from = basins_gdf[basins_gdf.contains(point_from)].index[0]
     except IndexError:
-        raise ValueError(f"line with index {line.Index} does not start in a polygon")
+        raise IndexError(f"line with index {line.Index} does not start in a polygon") from None
     try:
         idx_to = basins_gdf[basins_gdf.contains(point_to)].index[0]
     except IndexError:
-        raise ValueError(f"line with index {line.Index} does not end in a polygon")
+        raise IndexError(f"line with index {line.Index} does not end in a polygon") from None
     if idx_from == idx_to:
         print(f"line with index {line.Index} is contained within a polygon")
     basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].union_all()
@@ -172,7 +172,7 @@ for row in basins_gdf.itertuples():
             invert_level = elevation_df.streefpeil.max()
             bottom_level = elevation_df.bodemhoogte.min()
             if bottom_level > invert_level:
-                raise ValueError(f"bottom_level > invert_level: {bottom_level} > {invert_level}")
+                raise ValueError(f"bottom_level > invert_level: {bottom_level} > {invert_level}") from None
             bottom_area = row.geometry.buffer(-((invert_level - bottom_level) * 2)).area
 
             df = pd.DataFrame(

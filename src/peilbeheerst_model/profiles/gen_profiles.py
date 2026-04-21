@@ -282,7 +282,7 @@ def _export_profiles(
     wd.mkdir(exist_ok=True)
 
     # export profile tables
-    for table, name in zip(profile_tables, ("doorgaand", "bergend")):
+    for table, name in zip(profile_tables, ("doorgaand", "bergend"), strict=True):
         fn = wd / f"profielen_{name}.csv"
         table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
         table.to_csv(fn, index=False)

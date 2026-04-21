@@ -293,7 +293,9 @@ ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
 
 # Keep only those that exist in min_upstream_level
 valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
-streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid_ds.values, valid_ds.index)))
+streefpeil = min_upstream_level.loc[valid_ds.values].rename(
+    index=dict(zip(valid_ds.values, valid_ds.index, strict=True))
+)
 streefpeil = streefpeil.groupby(streefpeil.index).min()
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"

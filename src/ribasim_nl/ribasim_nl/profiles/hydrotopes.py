@@ -219,7 +219,10 @@ class Hydrotope:
 
 
 def get_hydrotopes_map(
-    cloud: CloudStorage = CloudStorage(), *, sync: bool = True, crs: str = "epsg:28992"
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
+    *,
+    sync: bool = True,
+    crs: str = "epsg:28992",
 ) -> gpd.GeoDataFrame:
     """Get map with hydrotope data from the GoodCloud.
 

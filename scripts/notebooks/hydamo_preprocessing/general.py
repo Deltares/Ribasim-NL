@@ -262,19 +262,23 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
             lines[lines.buffer_geometry.contains(x)].code.tolist() for x in boundary_endpoints.geometry
         ]
         boundary_endpoints["startpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: [
-                x["coordinates"] in list(lines[lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]
+            lambda x, _lines=lines: [
+                x["coordinates"] in list(_lines[_lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]
             ],
             axis=1,
         )
         boundary_endpoints["endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: [
-                x["coordinates"] in list(lines[lines.code == y].startpoint.values) for y in x["overlaying_line_buffers"]
+            lambda x, _lines=lines: [
+                x["coordinates"] in list(_lines[_lines.code == y].startpoint.values)
+                for y in x["overlaying_line_buffers"]
             ],
             axis=1,
         )
         boundary_endpoints["start_or_endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: list(zip(x["startpoint_overlaying_line_buffers"], x["endpoint_overlaying_line_buffers"])), axis=1
+            lambda x: list(
+                zip(x["startpoint_overlaying_line_buffers"], x["endpoint_overlaying_line_buffers"], strict=True)
+            ),
+            axis=1,
         )
         boundary_endpoints["crossed_by_unconnected_lines"] = boundary_endpoints.apply(
             lambda x: True in [True not in y for y in x["start_or_endpoint_overlaying_line_buffers"]], axis=1

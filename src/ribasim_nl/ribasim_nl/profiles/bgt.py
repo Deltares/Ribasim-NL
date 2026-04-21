@@ -153,7 +153,7 @@ def get_water_surfaces(wd: pathlib.Path, **kwargs) -> gpd.GeoDataFrame:
     return bgt_data
 
 
-def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwargs) -> None:
+def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwargs) -> None:  # noqa: B008
     """Upload BGT-data per water authority.
 
     The geo-filter used for the download of the BGT-data is based on the basins of the water authority: A convex hull is

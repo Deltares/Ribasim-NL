@@ -23,7 +23,7 @@ output_gpkg_path = "../../Data_postprocessed/Waterschappen/WSRL"
 # WSRL has delivered the data per catchment. Loop through each catchment, and concat all data to a single dictionary
 WSRL: dict[str, Any] = {}
 
-for root, dirs, files in os.walk(data_path):
+for root, _dirs, files in os.walk(data_path):
     for file in files:
         if file.endswith(".gpkg"):
             gpkg_path = os.path.join(root, file)

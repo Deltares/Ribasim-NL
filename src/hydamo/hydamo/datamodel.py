@@ -202,7 +202,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         index_col=None,
         check_columns=True,
         check_geotype=True,
-        extra_attributes={},
+        extra_attributes=None,
     ) -> None:
         """
         Set data to the ExtendedGeoDataFrame.
@@ -224,6 +224,8 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         None.
 
         """
+        if extra_attributes is None:
+            extra_attributes = {}
         if not self.empty:
             self.delete_all()
 
@@ -335,14 +337,16 @@ class HyDAMO:
         self,
         version: str = "2.2",
         schemas_path: Path = SCHEMAS_DIR,
-        ignored_layers: list[str] = [
-            "afvoeraanvoergebied",
-            "imwa_geoobject",
-            "leggerwatersysteem",
-            "leggerwaterveiligheid",
-            "waterbeheergebied",
-        ],
+        ignored_layers: list[str] | None = None,
     ) -> None:
+        if ignored_layers is None:
+            ignored_layers = [
+                "afvoeraanvoergebied",
+                "imwa_geoobject",
+                "leggerwatersysteem",
+                "leggerwaterveiligheid",
+                "waterbeheergebied",
+            ]
         self.version = version
         self.schema_json = schemas_path.joinpath(f"HyDAMO_{version}.json")
         self.layers: list[str] = []
@@ -411,7 +415,7 @@ class HyDAMO:
         index_col=None,
         check_columns=True,
         check_geotype=True,
-        extra_values={},
+        extra_values=None,
     ) -> None:
         """
         Set data to a HyDAMO object-layer.
@@ -435,6 +439,8 @@ class HyDAMO:
         None.
 
         """
+        if extra_values is None:
+            extra_values = {}
         getattr(self, layer).set_data(
             gdf,
             index_col=index_col,

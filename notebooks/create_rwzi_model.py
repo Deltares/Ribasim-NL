@@ -162,7 +162,7 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     )
 
     # Map Codeist to RWZI name for renaming columns
-    codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"]))
+    codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"], strict=True))
 
     # Rename columns
     df_Zinfo_influentdebieten_renamed = df_Zinfo_influentdebieten.rename(
@@ -229,7 +229,7 @@ def process_rws_quantity_data(db_file, gdf_excluded):
     logging.info("Distributing annual values evenly across daily time series...")
     daily_dataframes = []
 
-    for idx, row in df_afvoeren_pivot.iterrows():
+    for _idx, row in df_afvoeren_pivot.iterrows():
         year = row["time"].year
         start_of_year = pd.Timestamp(f"{year}-01-01")
         end_of_year = pd.Timestamp(f"{year}-12-31")
@@ -475,7 +475,7 @@ logging.info(f"RWZIs with Zinfo data: {len(rwzi_names_zinfo_incl)} names, {len(r
 logging.info(f"RWZIs without Zinfo data: {len(rwzi_names_zinfo_excl)} names, {len(rwzi_RwziCode_zinfo_excl)} RwziCodes")
 
 # Rename DataFrame columns: map Codeist to actual RWZI names
-codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"]))
+codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"], strict=True))
 
 df_Zinfo_influentdebieten_renamed = df_Zinfo_influentdebieten.rename(
     columns={col: codeist_to_name.get(col, col) for col in df_Zinfo_influentdebieten.columns if col != "time"}

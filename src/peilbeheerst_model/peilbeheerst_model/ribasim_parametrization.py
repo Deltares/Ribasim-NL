@@ -608,7 +608,7 @@ def add_discrete_control_nodes(ribasim_model) -> None:
         dfs_pump = pd.concat(dfs_pump, ignore_index=True)
         ribasim_model.pump.static.df = dfs_pump
 
-    for i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
+    for _i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
         # Get max nodeid and iterate
         cur_max_node_id = get_current_max_node_id(ribasim_model)
         if cur_max_node_id < 90000:
@@ -981,7 +981,7 @@ def validate_basin_area(model, threshold_area=45000) -> None:
     """
     too_small_basins = []
     error = False
-    for index, row in model.basin.node.df.iterrows():
+    for _index, row in model.basin.node.df.iterrows():
         basin_id = int(row["meta_node_id"])
         basin_geometry = model.basin.area.df.loc[model.basin.area.df["meta_node_id"] == basin_id, "geometry"]
         if not basin_geometry.empty:
@@ -1538,7 +1538,8 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
         if df[columns_to_check].isnull().values.any():
             warnings.warn(
                 f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
-                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}"
+                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}",
+                stacklevel=2,
             )
 
     check_for_nans_in_columns(outlet, "outlet")
@@ -1631,7 +1632,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     ]
 
     # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
-    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw):
+    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw, strict=True):
         if len(nodes_to_control) > 0:
             print(f"Sturing has been added for the category {category}")
             add_discrete_control_partswise(
@@ -1741,7 +1742,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     ]
 
     # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
-    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal):
+    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal, strict=True):
         if len(nodes_to_control) > 0:
             print(f"Sturing has been added for the category {category}")
             add_discrete_control_partswise(
@@ -2127,7 +2128,7 @@ def add_continuous_control_node(
         except IndexError:
             listen_targets = []
             node_types = [ribasim_model.node.df.loc[i, "node_type"] for i in listen_nodes]
-            for i, t in zip(listen_nodes, node_types):
+            for i, t in zip(listen_nodes, node_types, strict=True):
                 match t.lower():
                     case "basin":
                         value = ribasim_model.basin.area.df.loc[
@@ -2142,7 +2143,7 @@ def add_continuous_control_node(
                             f"Unknown node-type ({t.lower()}) for implementation of `ContinuousControl`-node for "
                             f"{connection_node.node_type} #{connection_node.node_id}."
                         )
-                        raise NotImplementedError(msg)
+                        raise NotImplementedError(msg) from None
 
                 listen_targets.append(float(value.values[0]))
 
@@ -2153,7 +2154,7 @@ def add_continuous_control_node(
 
     # set ON-switch for continuous control node
     margin = 2 * numerical_tolerance
-    on_switch = sum(t * w for t, w in zip(listen_targets, weights))
+    on_switch = sum(t * w for t, w in zip(listen_targets, weights, strict=True))
 
     # add continuous control
     point = connection_node.geometry

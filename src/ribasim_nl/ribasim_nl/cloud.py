@@ -306,8 +306,10 @@ class CloudStorage:
         url = self.joinurl(authority, "verwerkt")
         self.download_content(url, overwrite=overwrite)
 
-    def download_basisgegevens(self, bronnen: list[str] = [], overwrite: bool = True) -> None:
+    def download_basisgegevens(self, bronnen: list[str] | None = None, overwrite: bool = True) -> None:
         """Download sources in the folder 'Basisgegevens'"""
+        if bronnen is None:
+            bronnen = []
         source_data = self.source_data
         if not bronnen:
             bronnen = source_data

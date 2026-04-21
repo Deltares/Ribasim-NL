@@ -437,8 +437,10 @@ class Model(ribasim.Model):
                 )
 
     def update_node(
-        self, node_id, node_type, data: list[object] | None = None, node_properties: dict[str, object] = {}
+        self, node_id, node_type, data: list[object] | None = None, node_properties: dict[str, object] | None = None
     ) -> None:
+        if node_properties is None:
+            node_properties = {}
         assert self.node.df is not None
         existing_node_type = self.node.df.at[node_id, "node_type"]
 
@@ -487,7 +489,7 @@ class Model(ribasim.Model):
         ctrl_type: Literal["DiscreteControl", "PidControl"] = "DiscreteControl",
         node_geom: Point | None = None,
         node_offset: int = 100,
-        node_properties: dict[str, object] = {},
+        node_properties: dict[str, object] | None = None,
     ) -> None:
         """Add a control_node to the network
 
@@ -511,6 +513,8 @@ class Model(ribasim.Model):
 
         """
         # define node
+        if node_properties is None:
+            node_properties = {}
         if node_geom is None:
             if isinstance(to_node_id, list):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
@@ -1032,11 +1036,11 @@ class Model(ribasim.Model):
         are_connected=True,
     ) -> None:
         if basin_id is not None:
-            warnings.warn("basin_id is deprecated, use node_id instead", DeprecationWarning)
+            warnings.warn("basin_id is deprecated, use node_id instead", DeprecationWarning, stacklevel=2)
             node_id = basin_id
 
         if to_basin_id is not None:
-            warnings.warn("to_basin_id is deprecated, use to_node_id instead", DeprecationWarning)
+            warnings.warn("to_basin_id is deprecated, use to_node_id instead", DeprecationWarning, stacklevel=2)
             to_node_id = to_basin_id
 
         assert self.basin.node is not None
@@ -1255,7 +1259,11 @@ class Model(ribasim.Model):
         # on tuples we can easily check duplicates irrespective of order
         duplicated_links = pd.Series(
             list(
-                zip(np.minimum(df["from_node_id"], df["to_node_id"]), np.maximum(df["from_node_id"], df["to_node_id"]))
+                zip(
+                    np.minimum(df["from_node_id"], df["to_node_id"]),
+                    np.maximum(df["from_node_id"], df["to_node_id"]),
+                    strict=True,
+                )
             ),
             index=df.index,
         ).duplicated(keep=False)

@@ -238,7 +238,7 @@ drainage_areas_df = gpd.read_file(areas_gpkg, layer="drainage_areas")
 
 drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
 
-for idx, geometry in enumerate(geoseries):
+for _idx, geometry in enumerate(geoseries):
     # select drainage-area
     drainage_area_select = drainage_areas_df[drainage_areas_df.contains(geometry.buffer(-10))]
     if not drainage_area_select.empty:

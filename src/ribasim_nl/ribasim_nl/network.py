@@ -207,7 +207,7 @@ class Network:
                     continue
 
                 # More than one node. We order selected nodes by distance from start_node
-                nodes_select["distance"] = nodes_select.geometry.apply(lambda x: geometry.project(x))
+                nodes_select["distance"] = nodes_select.geometry.apply(lambda x: geometry.project(x))  # noqa: B023
                 nodes_select.sort_values("distance", inplace=True)
 
                 # More than one node. We select start_node and point-geometry
@@ -398,7 +398,7 @@ class Network:
         point: Point,
         max_distance: float,
         align_distance: float,
-        node_types=["connection", "upstream_boundary", "downstream_boundary"],
+        node_types=None,
     ):
         """Move network nodes and links to new location
 
@@ -412,6 +412,8 @@ class Network:
             Distance over link, from node, where vertices will be removed to align adjacent links with Point
         """
         # take links and nodes as gdf
+        if node_types is None:
+            node_types = ["connection", "upstream_boundary", "downstream_boundary"]
         nodes_gdf = self.nodes
         links_gdf = self.links
 
@@ -550,8 +552,11 @@ class Network:
         directed=True,
         duplicated_nodes=True,
         weight="length",
-        ignore_links=[],
+        ignore_links=None,
     ) -> GeoDataFrame:
+        if ignore_links is None:
+            ignore_links = []
+
         def find_duplicates(lst, counts):
             counter = Counter(lst)
             duplicates = [item for item, count in counter.items() if count == counts]

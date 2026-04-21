@@ -95,7 +95,7 @@ gdf_rhws = gpd.read_file(boezem_path)
 # Add to geodataframe
 peilgebieden_cat = []
 
-for index, row in Wetterskip["streefpeil"].iterrows():
+for _index, row in Wetterskip["streefpeil"].iterrows():
     if round(row.waterhoogte, 2) == -0.52:
         peilgebieden_cat.append(1)
     else:
@@ -259,7 +259,7 @@ Wetterskip["streefpeil"] = gpd.GeoDataFrame(Wetterskip["streefpeil"])
 # Wetterskip['streefpeil'] = Wetterskip['streefpeil'][~Wetterskip['streefpeil'].index.isin(numbers_to_remove)]
 
 
-Wetterskip["streefpeil"]["globalid"].is_unique
+assert Wetterskip["streefpeil"]["globalid"].is_unique
 
 
 if remove_cat_2:

@@ -121,7 +121,7 @@ def update_koppeltabel_with_feedback(
     input_koppeltabel["status"] = None
 
     # Iterate through the feedback koppeltabel to match and update rows in the input koppeltabel
-    for index, feedback_row in feedback_koppeltabel.iterrows():
+    for _index, feedback_row in feedback_koppeltabel.iterrows():
         meetreeks_c = feedback_row["MeetreeksC"]
         aan_af_value = feedback_row["Aan/Af"]
 
@@ -131,7 +131,7 @@ def update_koppeltabel_with_feedback(
             (input_koppeltabel["MeetreeksC"] == meetreeks_c) & (input_koppeltabel["Aan/Af"] == aan_af_value)
         ]
 
-        for input_index, input_row in matching_rows.iterrows():
+        for input_index, _input_row in matching_rows.iterrows():
             link_ids = feedback_row["link_id_correct"]
             if not isinstance(link_ids, list):
                 link_ids = (

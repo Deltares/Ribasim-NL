@@ -53,7 +53,7 @@ gdf_buffer = gdf_buffer.to_crs("EPSG:28992")
 gdf_buffer = gdf_buffer.dissolve()
 
 
-HD["peilgebied"].globalid.is_unique
+assert HD["peilgebied"].globalid.is_unique
 
 
 # ## Select waterschap boundaries and clip hws layer
@@ -98,7 +98,7 @@ print(f"Number of overlapping shapes with filter: {len(overlap_ids)}")
 # Add occurence to geodataframe
 peilgebieden_cat = []
 
-for index, row in HD["peilgebied"].iterrows():
+for _index, row in HD["peilgebied"].iterrows():
     if row.code == "Zuiderdiepboezem_164":
         peilgebieden_cat.append(1)
     elif row.code == "Zuiderdiepboezem_163":

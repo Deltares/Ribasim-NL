@@ -475,7 +475,7 @@ new_cols = [
 
 if any(col in koppeltabel.columns for col in previous_cols):
     # Case A: previous already exists -> move current new_ → previous_
-    for pcol, ncol in zip(previous_cols, new_cols[:-1]):  # skip opmerking_transform
+    for pcol, ncol in zip(previous_cols, new_cols[:-1], strict=True):  # skip opmerking_transform
         if ncol in koppeltabel.columns:
             koppeltabel[pcol] = koppeltabel[ncol]
     # Reinitialize fresh new_* columns
@@ -548,7 +548,9 @@ for index, row in koppeltabel.iterrows():
 
         # loop per rij over de verschillende links (combi van from en to nodes)
 
-        for from_node, to_node, from_type, to_type in zip(prev_from_geom, prev_to_geom, prev_from_types, prev_to_types):
+        for from_node, to_node, from_type, to_type in zip(
+            prev_from_geom, prev_to_geom, prev_from_types, prev_to_types, strict=True
+        ):
             # default values for this iteration
             # found_from_nodes_geom = None
             # found_to_nodes_geom = None

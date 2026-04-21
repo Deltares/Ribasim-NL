@@ -107,7 +107,7 @@ def overlapping_peilgebieden(waterschap_peilgebieden) -> pd.DataFrame | gpd.GeoD
     overlapping_polygons = gpd.GeoDataFrame(columns=peilgebied.columns)
 
     # Iterate through each polygon in peilgebied
-    for index, row in peilgebied.iterrows():
+    for index, _row in peilgebied.iterrows():
         current_polygon = peilgebied.iloc[[index]]  # select the current polygon
         other_polygons = peilgebied.drop(index)  # create a GeoDataFrame without the current polygon
         overlaps = other_polygons[

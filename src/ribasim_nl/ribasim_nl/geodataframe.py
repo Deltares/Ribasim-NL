@@ -116,7 +116,7 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
                 except ValueError as e:
                     raise ValueError(
                         f"Basin with index {basin.Index} can not be cut by line with index {line.Index} raising Exception: {e}"
-                    )
+                    ) from e
 
         ## we update basins_gdf with new polygons
         basins_gdf = basins_gdf[~basins_gdf.index.isin(poly_select_gdf.index)]
@@ -307,10 +307,10 @@ def basins_to_points(
 
                 # choose closest point as basin point
                 if us_dist < ds_dist:
-                    node_id = getattr(link, "node_from")
+                    node_id = link.node_from
                     point = us_point
                 else:
-                    node_id = getattr(link, "node_to")
+                    node_id = link.node_to
                     point = ds_point
 
         # if we don't snap on network, we make sure point is within polygon

@@ -64,7 +64,7 @@ def split_lines_at_intersections(gdf_object):
         possible_matches = gdf_object.iloc[possible_matches_index].drop(idx)  # Exclude self
         precise_matches = possible_matches[possible_matches.intersects(row.geometry)]
 
-        for match_idx, match in precise_matches.iterrows():
+        for _match_idx, match in precise_matches.iterrows():
             if row.geometry.intersects(match.geometry):
                 intersection = row.geometry.intersection(match.geometry)
                 if isinstance(intersection, Point):
@@ -249,7 +249,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         # Use the unique points as nodes in networkx
         nodes_gdf.insert(0, "node_id", -1)
         node_id = 1
-        for geom, group in nodes_gdf.groupby("geometry"):
+        for _geom, group in nodes_gdf.groupby("geometry"):
             nodes_gdf.loc[group.index, "node_id"] = node_id
             node_id += 1
 

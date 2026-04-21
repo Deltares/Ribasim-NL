@@ -90,7 +90,7 @@ class RibasimFeedbackProcessor:
 
     def get_current_max_nodeid(self):
         max_ids = []
-        for k, v in self.model.__dict__.items():
+        for _k, v in self.model.__dict__.items():
             if hasattr(v, "node") and not v.node.df.index.empty:
                 mid = v.node.df.index.max()
                 if not np.isnan(mid):
@@ -157,7 +157,7 @@ class RibasimFeedbackProcessor:
                 self.model.node.df = self.model.node.df[self.model.node.df.index != node_id]
                 # Remove from type-specific tables
                 if hasattr(value, "__dict__"):
-                    for sub_key, sub_value in value.__dict__.items():
+                    for _sub_key, sub_value in value.__dict__.items():
                         if hasattr(sub_value, "df") and sub_value.df is not None:
                             if not sub_value.df.empty and "node_id" in sub_value.df.columns:
                                 filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
@@ -514,7 +514,7 @@ class RibasimFeedbackProcessor:
             # change the meta_func_* columns
             pump_ids = aanvoer_pump_ids, afvoer_pump_ids, allround_pump_ids
             booleans = [0, 1], [1, 0], [1, 1]
-            for p, b in zip(pump_ids, booleans):
+            for p, b in zip(pump_ids, booleans, strict=True):
                 self.model.pump.static.df.loc[
                     self.model.pump.static.df["node_id"].isin(p), ["meta_func_afvoer", "meta_func_aanvoer"]
                 ] = b

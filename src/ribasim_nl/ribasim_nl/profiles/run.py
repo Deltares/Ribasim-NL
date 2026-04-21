@@ -46,7 +46,7 @@ def main(
     /,
     *,
     hydrotope_table: ht.HydrotopeTable,
-    cloud: CloudStorage = CloudStorage(),
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: None = None,
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
@@ -61,7 +61,7 @@ def main(
     /,
     *,
     hydrotope_table: ht.HydrotopeTable,
-    cloud: CloudStorage = CloudStorage(),
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: str,
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
@@ -71,7 +71,7 @@ def main(
 def main(
     *data: gpd.GeoDataFrame,
     hydrotope_table: ht.HydrotopeTable,
-    cloud: CloudStorage = CloudStorage(),
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: str | None = None,
     wd_intermediate_output: pathlib.Path | None = None,
     **kwargs,
@@ -504,7 +504,7 @@ def _label_main_routing_from_network(
     error_collector: list[int] = []
 
     # find main routes per basin
-    for node_id, basin in zip(basins["node_id"].values, basins.geometry.values):
+    for node_id, basin in zip(basins["node_id"].values, basins.geometry.values, strict=True):
         # data selections
         subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
         subset_crossings = path_finder.select_crossings(basin, crossings, buffer=buffer, internal=internal)

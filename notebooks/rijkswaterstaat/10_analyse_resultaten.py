@@ -26,8 +26,6 @@ model = Model.read(ribasim_toml)
 start_time = model.starttime + timedelta(days=40)
 end_time = model.endtime
 
-ribasim_model_dir
-
 plots_dir.mkdir(exist_ok=True)
 
 flow_df = xr.open_dataset(ribasim_toml.parent / "results" / "flow.nc").to_dataframe().reset_index().set_index("time")

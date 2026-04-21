@@ -173,7 +173,7 @@ basin = shapely.union_all(
     ]
 )
 polygons = geometry.split_basin(basin, split_line_string)
-for basin_id, polygon in zip(basin_ids, polygons.geoms):
+for basin_id, polygon in zip(basin_ids, polygons.geoms, strict=True):
     ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = polygon
 
 # change unknown streefpeilen to a default streefpeil

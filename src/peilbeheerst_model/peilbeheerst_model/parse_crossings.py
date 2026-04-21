@@ -1889,7 +1889,7 @@ class ParseCrossings:
             old_structs = df_structures.geometry.loc[old_struct_ids]
             if old_structs.distance(crossing).min() > structure_geom.distance(crossing):
                 self.log.info(f"Replacing {structurelayer} at {crossing} with '{structure_id}'")
-                for old_struct_id, old_struct in zip(old_struct_ids, old_structs):
+                for old_struct_id, old_struct in zip(old_struct_ids, old_structs, strict=True):
                     orphaned_structures.append((old_struct_id, old_struct))
                 dfs.loc[df_stacked.index, structurelayer] = structure_id
 
@@ -2137,7 +2137,7 @@ class ParseCrossings:
                 pfrom, pto = gvars[0], gvars[1]
                 if pd.isna(pfrom) or pd.isna(pto):
                     self.log.error(
-                        f"One or both values in {dict(zip(basegroup, [pfrom, pto]))} are NaN, skipping link aggregation"
+                        f"One or both values in {dict(zip(basegroup, [pfrom, pto], strict=True))} are NaN, skipping link aggregation"
                     )
                     continue
 

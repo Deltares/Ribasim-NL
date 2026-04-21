@@ -1318,7 +1318,6 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 # %%
 
 # hoofd run met verdamping
-model.starttime
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
 model.starttime = datetime(2020, 5, 1)
 model.endtime = datetime(2020, 9, 1)

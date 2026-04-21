@@ -56,7 +56,7 @@ print(len(HHSK["duikersifonhevel"].globalid.unique()))
 print(len(HHSK["duikersifonhevel"].globalid))
 
 
-HHSK["peilgebied"].globalid.is_unique
+assert HHSK["peilgebied"].globalid.is_unique
 
 
 len(HHSK["hydroobject"])

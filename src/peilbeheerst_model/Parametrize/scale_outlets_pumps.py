@@ -733,9 +733,6 @@ plot_guessed_max_flow_rate_per_iteration(
     from_to_node_function_table=from_to_node_function_table, node_id=node_id_to_plot
 )
 
-from_to_node_function_table.loc[from_to_node_function_table.node_id == node_id_to_plot]
-ribasim_model.basin.time.df
-
 from_to_node_function_table.to_csv(
     r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\from_to_node_function_table.csv", index=False
 )

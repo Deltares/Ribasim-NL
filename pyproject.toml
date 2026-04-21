@@ -86,6 +86,7 @@ line-length = 120
 [tool.ruff.lint]
 # See https://docs.astral.sh/ruff/rules/
 select = [
+    "B",
     "C4",
     "D",
     "E",

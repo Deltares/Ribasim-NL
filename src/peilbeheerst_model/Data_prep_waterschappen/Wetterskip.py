@@ -113,7 +113,7 @@ others = gdf[~gdf["polder"].isin(["Boezem", "Boezem_to_merge"])].copy()
 merged_boezems = []
 
 # For each boezem_to_merge, find ONE boezem it touches
-for idx, row in to_merge.iterrows():
+for _idx, row in to_merge.iterrows():
     # Create a temporary buffer to enlarge geometry slightly
     buffered_geom = row.geometry.buffer(1)
 

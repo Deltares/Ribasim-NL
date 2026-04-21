@@ -319,11 +319,11 @@ def CompareOutputMeasurements(
             if np.isnan(link):
                 print("A link with type NaN has been found. Skipped.")
                 continue
-        except:  # noqa: E722 TODO: do not use bare except
-            None
+        except:  # noqa: E722, S110 TODO: do not use bare except
+            pass
 
         # for n, meetlocatie in tqdm.tqdm(koppeltabel.iterrows(), total=len(koppeltabel), desc='Verwerken metingen'):
-        mask = koppeltabel["link_id_parsed"].apply(lambda x: x == link)
+        mask = koppeltabel["link_id_parsed"].apply(lambda x: x == link)  # noqa: B023
         meetlocaties_link = koppeltabel[mask]
 
         # Create a result dictionary per waterschap
@@ -381,7 +381,7 @@ def CompareOutputMeasurements(
         ]
 
         if link == 8059555:
-            None
+            pass
         if len(pd.Series.unique(subset_specs["Specifiek"])) > 1:
             print(
                 f"Two different operations found for the same set of links. A.o. in measurements {existing_measurements}"

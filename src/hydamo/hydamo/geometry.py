@@ -96,7 +96,7 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5) -> No
                 crds = geometry.geometry.coords[:]
                 dist = (
                     selection["geometry"]
-                    .apply(lambda x: max(x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))))
+                    .apply(lambda x: max(x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))))  # noqa: B023
                     .astype(float)
                 )
             else:

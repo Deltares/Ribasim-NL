@@ -53,7 +53,7 @@ gdf_buffer = gdf_buffer.to_crs("EPSG:28992")
 gdf_buffer = gdf_buffer.dissolve()
 
 
-Scheldestromen["peilgebied"].globalid.is_unique
+assert Scheldestromen["peilgebied"].globalid.is_unique
 
 
 Scheldestromen["peilgebied"]
@@ -101,7 +101,7 @@ print(f"Number of overlapping shapes with filter: {len(overlap_ids)}")
 # Add occurence to geodataframe
 peilgebieden_cat = []
 
-for index, row in Scheldestromen["peilgebied"].iterrows():
+for _index, row in Scheldestromen["peilgebied"].iterrows():
     if row.nen3610id == "dummy_nen3610id_peilgebied_549":
         print(True)
         peilgebieden_cat.append(1)

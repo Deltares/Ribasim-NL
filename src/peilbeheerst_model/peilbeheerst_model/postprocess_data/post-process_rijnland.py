@@ -55,7 +55,7 @@ gdf_buffer = gpd.read_file(buffer_path)
 Rijnland["peilgebied"] = Rijnland["peilgebied"].drop(index=2, axis=1)
 
 
-Rijnland["peilgebied"].globalid.is_unique
+assert Rijnland["peilgebied"].globalid.is_unique
 
 
 # ## Select waterschap boundaries and clip hws layer
@@ -100,7 +100,7 @@ print(f"Number of overlapping shapes with filter: {len(overlap_ids)}")
 # Add occurence to geodataframe
 peilgebieden_cat = []
 
-for index, row in Rijnland["peilgebied"].iterrows():
+for _index, row in Rijnland["peilgebied"].iterrows():
     if "RIJNLANDSBOEZEM" in row.code:
         print("true")
         peilgebieden_cat.append(1)
