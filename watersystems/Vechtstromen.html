@@ -41,6 +41,9 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-618ece6ff6c2cd7781e4e628b6cc2456.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -73,7 +76,7 @@ ul.task-list li input[type="checkbox"] {
 <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="nav-fixed quarto-light">
+<body class="nav-sidebar floating nav-fixed quarto-light">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -105,7 +108,7 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Workflows</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../watersystems/main.html"> 
+    <a class="nav-link active" href="../watersystems/main.html" aria-current="page"> 
 <span class="menu-text">Watersystems</span></a>
   </li>  
 </ul>
@@ -125,10 +128,103 @@ ul.task-list li input[type="checkbox"] {
 </div>
       </div> <!-- /container-fluid -->
     </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../watersystems/Vechtstromen.html">Vechtstromen</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/main.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Watersystemen (NL)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/AaenMaas.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Aa en Maas</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/BrabantseDelta.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Brabantse Delta</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/DeDommel.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">De Dommel</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/DrentsOverijsselseDelta.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Drents Overijsselse Delta</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/HunzeenAas.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hunze en Aas</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/Limburg.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Limburg</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/Noorderzijlvest.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Noorderzijlvest</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/RijnenIJssel.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Rijn en IJssel</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/StichtseRijnlanden.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Stichtse Rijnlanden</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/ValleienVeluwe.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Vallei en Veluwe</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../watersystems/Vechtstromen.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Vechtstromen</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active">
@@ -140,16 +236,32 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#systeembeschrijving" id="toc-systeembeschrijving" class="nav-link" data-scroll-target="#systeembeschrijving">Systeembeschrijving</a>
   <ul class="collapse">
   <li><a href="#watersysteem" id="toc-watersysteem" class="nav-link" data-scroll-target="#watersysteem">Watersysteem</a></li>
-  <li><a href="#waterbeheer-droge-perioden" id="toc-waterbeheer-droge-perioden" class="nav-link" data-scroll-target="#waterbeheer-droge-perioden">Waterbeheer droge perioden</a></li>
-  <li><a href="#peelkanaal" id="toc-peelkanaal" class="nav-link" data-scroll-target="#peelkanaal">Peelkanaal</a></li>
-  <li><a href="#helenavaart" id="toc-helenavaart" class="nav-link" data-scroll-target="#helenavaart">Helenavaart</a></li>
-  <li><a href="#beringe" id="toc-beringe" class="nav-link" data-scroll-target="#beringe">Beringe</a></li>
-  <li><a href="#eendlossing" id="toc-eendlossing" class="nav-link" data-scroll-target="#eendlossing">Eendlossing</a></li>
-  <li><a href="#nederweert-hoverlossing" id="toc-nederweert-hoverlossing" class="nav-link" data-scroll-target="#nederweert-hoverlossing">Nederweert Hoverlossing</a></li>
-  <li><a href="#oude-graaf" id="toc-oude-graaf" class="nav-link" data-scroll-target="#oude-graaf">Oude Graaf</a></li>
-  <li><a href="#tungelroysche-beek" id="toc-tungelroysche-beek" class="nav-link" data-scroll-target="#tungelroysche-beek">Tungelroysche beek</a></li>
-  <li><a href="#rogge" id="toc-rogge" class="nav-link" data-scroll-target="#rogge">Rogge</a></li>
   </ul></li>
+  </ul></li>
+  <li><a href="#waterbeheer-droge-perioden-hoofdsysteem" id="toc-waterbeheer-droge-perioden-hoofdsysteem" class="nav-link" data-scroll-target="#waterbeheer-droge-perioden-hoofdsysteem">Waterbeheer droge perioden hoofdsysteem</a></li>
+  <li><a href="#aanvoergebieden" id="toc-aanvoergebieden" class="nav-link" data-scroll-target="#aanvoergebieden">Aanvoergebieden</a>
+  <ul class="collapse">
+  <li><a href="#schipbeek" id="toc-schipbeek" class="nav-link" data-scroll-target="#schipbeek">Schipbeek</a></li>
+  <li><a href="#oude-bolscherbeek" id="toc-oude-bolscherbeek" class="nav-link" data-scroll-target="#oude-bolscherbeek">Oude Bolscherbeek</a></li>
+  <li><a href="#boven-regge" id="toc-boven-regge" class="nav-link" data-scroll-target="#boven-regge">Boven Regge</a></li>
+  <li><a href="#lateraalkanaal" id="toc-lateraalkanaal" class="nav-link" data-scroll-target="#lateraalkanaal">Lateraalkanaal</a></li>
+  <li><a href="#de-pollen" id="toc-de-pollen" class="nav-link" data-scroll-target="#de-pollen">De Pollen</a></li>
+  <li><a href="#vriezenveen" id="toc-vriezenveen" class="nav-link" data-scroll-target="#vriezenveen">Vriezenveen</a></li>
+  <li><a href="#overrijsselsche-vecht" id="toc-overrijsselsche-vecht" class="nav-link" data-scroll-target="#overrijsselsche-vecht">Overrijsselsche Vecht</a></li>
+  <li><a href="#dooze" id="toc-dooze" class="nav-link" data-scroll-target="#dooze">Dooze</a></li>
+  <li><a href="#overijsselsch-kanaal-noord" id="toc-overijsselsch-kanaal-noord" class="nav-link" data-scroll-target="#overijsselsch-kanaal-noord">Overijsselsch Kanaal noord</a></li>
+  <li><a href="#braambergersloot" id="toc-braambergersloot" class="nav-link" data-scroll-target="#braambergersloot">Braambergersloot</a></li>
+  <li><a href="#coevorden-zwinderen" id="toc-coevorden-zwinderen" class="nav-link" data-scroll-target="#coevorden-zwinderen">Coevorden-Zwinderen</a></li>
+  <li><a href="#schoonebeek" id="toc-schoonebeek" class="nav-link" data-scroll-target="#schoonebeek">Schoonebeek</a></li>
+  <li><a href="#nieuwe-drostendiep" id="toc-nieuwe-drostendiep" class="nav-link" data-scroll-target="#nieuwe-drostendiep">Nieuwe Drostendiep</a></li>
+  <li><a href="#oranjekanaal" id="toc-oranjekanaal" class="nav-link" data-scroll-target="#oranjekanaal">Oranjekanaal</a></li>
+  <li><a href="#oosterhesselen" id="toc-oosterhesselen" class="nav-link" data-scroll-target="#oosterhesselen">Oosterhesselen</a></li>
+  <li><a href="#geesbrug" id="toc-geesbrug" class="nav-link" data-scroll-target="#geesbrug">Geesbrug</a></li>
+  <li><a href="#oosterwijk" id="toc-oosterwijk" class="nav-link" data-scroll-target="#oosterwijk">Oosterwijk</a></li>
+  <li><a href="#dinkel" id="toc-dinkel" class="nav-link" data-scroll-target="#dinkel">Dinkel</a></li>
+  </ul></li>
+  <li><a href="#waterbeheer-natte-periode-hoofdsysteem" id="toc-waterbeheer-natte-periode-hoofdsysteem" class="nav-link" data-scroll-target="#waterbeheer-natte-periode-hoofdsysteem">Waterbeheer natte periode hoofdsysteem:</a>
+  <ul class="collapse">
   <li><a href="#capaciteiten" id="toc-capaciteiten" class="nav-link" data-scroll-target="#capaciteiten">Capaciteiten</a></li>
   <li><a href="#bronnen" id="toc-bronnen" class="nav-link" data-scroll-target="#bronnen">Bronnen</a></li>
   </ul></li>
@@ -172,67 +284,112 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="systeembeschrijving">Systeembeschrijving</h2>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/Vechtstromen.svg" class="img-fluid figure-img"></p>
+<p><a href="https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/Vechtstromen.svg" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Systeembeschrijving Vechtstromen"><img src="https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/Vechtstromen.svg" class="img-fluid figure-img" alt="Systeembeschrijving Vechtstromen"></a></p>
 <figcaption>Systeembeschrijving Vechtstromen</figcaption>
 </figure>
 </div>
-<p>Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.</p>
+<p>Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur. <code>Overijsselsch Kanaal (Kanaal Almelo–Haandrik)</code> is in de figuur afgekort als <code>Kanaal Almelo– Haandrik</code>.</p>
 <section id="watersysteem" class="level3">
 <h3 class="anchored" data-anchor-id="watersysteem">Watersysteem</h3>
 </section>
-<section id="waterbeheer-droge-perioden" class="level3">
-<h3 class="anchored" data-anchor-id="waterbeheer-droge-perioden">Waterbeheer droge perioden</h3>
-<p>Als in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit het <code>Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)</code> via Sluis Aadorp (maximaal 10 m3/s)</p>
-<p>ingelaten in het <code>Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)</code>. Buiten deze inlaatperiode stroomt er geen water vanuit het Twentekanaal naar het Kanaal Almelo – de Haandrik.</p>
-<p>Ook bij de Stieltjeskanaalsluis naar de Verlengde Hoogeveensche Vaart kan water worden ingelaten.</p>
-<p>De inlaten Vroomshoop en Hammervlier – Geerdijk worden alleen ’s zomers gebruikt voor het inlaten van water. Het water wordt dan ingelaten vanuit het Kanaal Almelo – de Haandrik. Verder is er voor de droge perioden een waterakkoord gesloten met Waterschap Groot Salland. Water wordt dan indien mogelijk vanuit het Twentekanaal via Kanaal Almelo – de Haandrik (ook Overijssels Kanaal genoemd) naar Salland doorgevoerd. Het doorvoeren naar Salland kan met een maximale capaciteit van 5 tot 7 m3/s. Normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s.</p>
-<p>Vanuit de <code>Dinkel</code> wordt alleen water het gebied ingelaten als er voldoende water in de <code>Dinkel</code> aanwezig is. Het water van de Dinkel dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.</p>
-<p>Het <code>Banisgemaal</code> is een in- en uitlaatgemaal bij Almelo. Bij hoogwater op het <code>Lateraalkanaal</code>, wordt het <code>Banisgemaal</code> gebruikt om het <code>Lateraalkanaal</code> te ontlasten. Het water wordt dan door het gemaal op de zijtak van het <code>Twentekanaal</code> geloosd. Het gemaal heeft een maximale capaciteit van 10 m3/s. In de zomerperiode wordt water vanuit de zijtak via het inlaatwerk in het <code>Banisgemaal</code> van het <code>Twentekanaal</code> in het <code>Lateraalkanaal</code> gelaten. Dit gebeurt met een maximale capaciteit van 0.43 m3/s.</p>
-<p><code>Stokkumerflier</code> is ook een in- en uitlaatpunt. Het water wordt uitgemalen op het <code>Twentekanaal</code> met een maximale capaciteit van 2.29 m3/s. De inlaat van water gebeurt met een maximale capaciteit van 0.42 m3/s. Er wordt ook water ingelaten vanuit het <code>Twentekanaal</code> via <code>Herikervlier</code>, <code>Oude Poelsbeek</code> en <code>Oude Bolscherbeek</code>.</p>
-<p>Inlaatschuif <code>Hammerflier</code> en inlaatschuif <code>Vriezenveense Veenkanaal</code> laten water in vanuit <code>Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)</code>. De maximale inlaatcapaciteiten zijn onbekend. Het water dat bij Hammerflier wordt ingelaten wordt gebruikt ter compensatie van de grondwateronttrekking door het WMO in Hammerflier. Het niet geïnfiltreerde water wordt via de Regge afgevoerd naar de Overijsselse Vecht.</p>
 </section>
-<section id="peelkanaal" class="level3">
-<h3 class="anchored" data-anchor-id="peelkanaal">Peelkanaal</h3>
-<p><strong>Afvoer:</strong> - Via het <code>Afleidingskanaal</code> wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de <code>Maas</code></p>
-<p><strong>Aanvoer:</strong> - Via <code>Verdeelwerk De Halte</code> wordt een deel van het aangevoerde water naar het aanvoergebied <code>Peelkanaal</code> geleid. - Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied <code>Peelscheloop</code> <code>Bakelse AA</code> en <code>Maaskant-Oost</code>)</p>
 </section>
-<section id="helenavaart" class="level3">
-<h3 class="anchored" data-anchor-id="helenavaart">Helenavaart</h3>
-<p><strong>Afvoer:</strong> - Via de Oostrumsche beek en de Groote Molenbeek naar de Maas</p>
-<p><strong>Aanvoer</strong> - De aanvoer via Katsberg, naar <code>gemaal Helenveen</code> en een inlaat naar aanvoergebied <code>Helenaveen</code> en <code>Verdeelwerk de Halte</code>.</p>
+<section id="waterbeheer-droge-perioden-hoofdsysteem" class="level1">
+<h1>Waterbeheer droge perioden hoofdsysteem</h1>
+<p>Als in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit de Twentekanalen naar het <code>Kanaal Almelo–Haandrik</code> via <code>Sluis Aadorp</code> (maximaal 10 m3/s). Bij lage afvoeren van de Vecht vanuit Duitsland wordt via <code>kanaal Almelo-Haandrik</code> dit water verder doorgevoerd naar het <code>Coevorden-Vecht kanaal</code> en het <code>Stieltjeskanaal</code>. Buiten deze inlaatperiode stroomt er geen water vanuit het <code>Twentekanaal</code> naar het <code>Kanaal Almelo - Haandrik</code>. Ook kan er via het <code>Alte Picardiekanaal</code> vanuit Duitsland water worden ingelaten.</p>
+<p>Bij <code>inlaatwerk Hancate</code> wordt water doorgevoerd naar Salland in droge perioden, max 5.7m3/s. Het kan met een maximale capaciteit van 5 tot 7 m3/s. Deze capaciteit is nog nooit benut, normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s.</p>
+<p>Verder wordt er in het noorden water ingelaten via de <code>Verlengde Hoogeveenschevaart</code> dat vanaf de Noordschutsluis (WDOD) max 6.86m3/s met pompen kan aanvoeren. Via de <code>Verlengde Hoogeveenschevaart</code>wordt water doorgevoerd naar Waterschap Hunze en Aa’s via <code>inlaat Hunze en Aa</code>, als er onvoldoende verhang gerealiseerd is in de <code>Verlengde Hoogeveensche Vaart</code>.</p>
+<p>Ook via het <code>Oranjekanaal</code> wordt water ingelaten via <code>gemaal Orveltersluis</code> vanuit WDOD (max 1.34m3/s).</p>
+<p>De <code>Dinkel</code> kan water inlaten als er voldoende water in de <code>Dinkel</code> aanwezig is. Het water van de <code>Dinkel</code> dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.</p>
 </section>
-<section id="beringe" class="level3">
-<h3 class="anchored" data-anchor-id="beringe">Beringe</h3>
-<p><strong>Afvoer:</strong> - Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de <code>Maas</code></p>
-<p><strong>Aanvoer</strong> - Via de <code>Noordervaart</code> kan water ingelaten worden via <code>gemaal Beringe</code></p>
+<section id="aanvoergebieden" class="level1">
+<h1>Aanvoergebieden</h1>
+<section id="schipbeek" class="level2">
+<h2 class="anchored" data-anchor-id="schipbeek">Schipbeek</h2>
+<p><code>Aanvoergemaal Stokkumervlier</code> laat water direct in vanuit het <code>Twentekanaal</code> en voert het via een onderleider door naar aanvoergebied <code>Boven Regge</code> Via inlaat <code>Oude Boven Regge</code> en <code>Diepenheimse Molenbeek</code> wordt water in het zuiden van het aanvoergebied ingelaten vanuit Schipbeek.</p>
 </section>
-<section id="eendlossing" class="level3">
-<h3 class="anchored" data-anchor-id="eendlossing">Eendlossing</h3>
-<p><strong>Afvoer:</strong> - Direct naar de <code>Zuid-Willemsvaart</code></p>
-<p><strong>Aanvoer</strong> - Via inlaat de <code>Eendlossing</code> vanaf de <code>Zuid-Willemsvaart</code></p>
+<section id="oude-bolscherbeek" class="level2">
+<h2 class="anchored" data-anchor-id="oude-bolscherbeek">Oude Bolscherbeek</h2>
+<p>Via inlaat <code>Oude Boscherbeek</code> wordt water ingevlaten naar aanvoergebied Bolscherbeek</p>
 </section>
-<section id="nederweert-hoverlossing" class="level3">
-<h3 class="anchored" data-anchor-id="nederweert-hoverlossing">Nederweert Hoverlossing</h3>
-<p><strong>Afvoer:</strong> - Naar de <code>Zuid-Willemsvaart</code> via Aa en Maas</p>
-<p><strong>Aanvoer</strong> - Via inlaat Nederweert Hoverlossing vanaf de <code>Zuid-Willemsvaart</code> - Vanaf aanvoergebied <code>Nederweert Hoverlossing</code> wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)</p>
-</section>
-<section id="oude-graaf" class="level3">
-<h3 class="anchored" data-anchor-id="oude-graaf">Oude Graaf</h3>
-<p><strong>Afvoer:</strong> - Via de <code>uitlaat Sterkselsche Aa</code> wordt het doorgevoerd naar waterschap de Dommel</p>
-<p><strong>Aanvoer:</strong> - Via inlaten vanaf de <code>Zuid-Willemsvaart</code></p>
-</section>
-<section id="tungelroysche-beek" class="level3">
-<h3 class="anchored" data-anchor-id="tungelroysche-beek">Tungelroysche beek</h3>
-<p><strong>Afvoer:</strong> - via de Neerbeek en de Tungelroysche beek naar de <code>Maas</code></p>
-<p><strong>Aanvoer:</strong> - Via inlaten vanaf de <code>Zuid-Willemsvaart</code></p>
-</section>
-<section id="rogge" class="level3">
-<h3 class="anchored" data-anchor-id="rogge">Rogge</h3>
+<section id="boven-regge" class="level2">
+<h2 class="anchored" data-anchor-id="boven-regge">Boven Regge</h2>
+<p>De inlaten <code>Herikervlier</code>, <code>aanvoergemaal Stokkumervlier</code> en <code>Oude Poelsbeek</code> laten water in direct vanuit het <code>Twentekanaal</code>. Stokkumervlier kan ook water uitmalen op het <code>Twentekanaal (kanaal Zutphen-Enschede)</code> met een maximale capaciteit van 2.29 m3/s.</p>
+<p><code>Inlaat Vroomshoop</code>, <code>inlaat Linderveld Vroomshoop</code>, <code>Twicklervaart</code>, <code>oude Hagmolenbeek</code> en <code>inlaat Hammerflier</code> laten water in vanuit het <code>Kanaal Almelo–Haandrik</code>. - Water dat bij <code>Hammerflier</code> wordt ingelaten wordt gebruikt ter compensatie van de grondwateronttrekking door het WMO in <code>Hammerflier</code>. Het niet geïnfiltreerde water wordt via de Regge afgevoerd naar de <code>Overijsselse Vecht</code>. - Via <code>inlaat Vroomshoop</code> wordt water doorgevoerd via het <code>Kanaal Almelo–Haandrik</code> naar het beheergebied van WDOD via <code>Inlaatwerk Hancate</code>. - Via <code>inlaat Linderveld Vroomshoop</code> wordt water aangevoerd naar de Linderbeek. - Water uit het Overijsselsch kanaal kan via <code>aanvoergemaal Linderveld Vroomshoop</code> via een onderleider onder de <code>Linderbeek</code> gepompt worden om het stroomgebied Linderbeek van water te voorzien (ten westen van Vroomshoop).</p>
 <ul>
-<li>Via inlaten vanaf de <code>Zwartwaterlossing</code></li>
+<li>Via inlaat <code>Twicklerveld Delden</code> wordt water direct vanuit het <code>Twentekanaal (kanaal Zutphen-Enschede)</code> ingelaten. Daarnaast wordt via <code>kanaal Almelo Nordhorn</code> via inlaat Banis water aangevoerd. Via de <code>Doorbraak</code> wordt het water onder het <code>Twentekanaal (Zijkanaal naar Almelo)</code> verder aangevoerd richting de <code>Beneden Regge</code>.</li>
 </ul>
 </section>
+<section id="lateraalkanaal" class="level2">
+<h2 class="anchored" data-anchor-id="lateraalkanaal">Lateraalkanaal</h2>
+<p>Via <code>aanvoergemaal Hedeman</code> en <code>inlaat Banis</code> wordt water ingelaten vanuit het <code>Kanaal Almelo-Nordhorn</code> Via <code>Inlaat Banis Almelo</code> wordt het water via het <code>Lateraalkanaal</code> over verschillende inlaten verdeeld. Het <code>Lateraalkanaal</code> stroomt onder het <code>Overijsselsch Kanaal (Kanaal Almelo-De Haandrik)</code> door naar de <code>Veeneleiding</code> waar ook diverse inlaten zijn.</p>
 </section>
+<section id="de-pollen" class="level2">
+<h2 class="anchored" data-anchor-id="de-pollen">De Pollen</h2>
+<p>??</p>
+</section>
+<section id="vriezenveen" class="level2">
+<h2 class="anchored" data-anchor-id="vriezenveen">Vriezenveen</h2>
+<p>Via inlaat <code>Vriezenveensche Veenkam</code> wordt water ingelaten vanuit <code>Kanaal Almelo–Haandrik</code> naar het <code>Vrienzenveensche Veenkanaal</code>. Dit kanaal voert het water door naar het <code>Nieuwe Stroomkanaal</code> van waaruit het via diverse inlaten het gebied ingelaten.</p>
+</section>
+<section id="overrijsselsche-vecht" class="level2">
+<h2 class="anchored" data-anchor-id="overrijsselsche-vecht">Overrijsselsche Vecht</h2>
+<p>De <code>Overijsselsche Vecht</code> wordt grotendeels in droge tijden grotendeels van water voorzien via de <code>Beneden Regge</code>, via inlaat <code>Alte Picardi</code> en via het <code>Kanaal Almelo–Haandrik</code>. Er komt nauwelijks water van de <code>Overijsselsche Vecht</code> in het <code>Kanaal Almelo–Haandrik</code>, behalve als de waterstand op de Vecht te hoog wordt.</p>
+</section>
+<section id="dooze" class="level2">
+<h2 class="anchored" data-anchor-id="dooze">Dooze</h2>
+<p>Via inlaat Fortwijk aan het <code>Nieuwe Stroomkanaal</code> wordt water ingelaten. En verder via Ittrebecker See????</p>
+</section>
+<section id="overijsselsch-kanaal-noord" class="level2">
+<h2 class="anchored" data-anchor-id="overijsselsch-kanaal-noord">Overijsselsch Kanaal noord</h2>
+<p>Via verschillende inlaten wordt water ingelaten vanuit het <code>Kanaal Almelo–Haandrik</code>.</p>
+</section>
+<section id="braambergersloot" class="level2">
+<h2 class="anchored" data-anchor-id="braambergersloot">Braambergersloot</h2>
+<p>Via inlaat <code>Bisschop</code>(WDOD) en <code>inlaat Zuidwolder Waterlossing</code> (WDOD) wordt in dit gebied water ingelaten Daarnaast zittten er vanuit het <code>Kanaal Almelo–Haandrik</code>. Daarnaast via <code>inlaaschuif Zwinderse kanaal</code> en via <code>inlaatstuw Geesbrug</code> wordt er vanuit het de <code>Verlengde Hoogeveensche Vaart</code> water ingelaten.</p>
+</section>
+<section id="coevorden-zwinderen" class="level2">
+<h2 class="anchored" data-anchor-id="coevorden-zwinderen">Coevorden-Zwinderen</h2>
+<p>Coevorden wordt via diverse inlaten aan Kanaal Coevorden-Zwinderen van water voorzien. In het noorden van centrum Coevorden water water ingelaten via inlaat <code>Hemelweg</code> vanuit het <code>Kanaal Coevorden-Zwinderen</code>.</p>
+</section>
+<section id="schoonebeek" class="level2">
+<h2 class="anchored" data-anchor-id="schoonebeek">Schoonebeek</h2>
+<p>Via de Verlengde Hoogeveensche Vaart die water aanvoert naar het Stieltjeskanaal en Dommerskanaal wordt water via diverse inlaten ingelaten. Daarnaast wordt 0,12 m3/s doorgevoerd ten behoeve van het Bargerveen (provincie Drenthe).</p>
+</section>
+<section id="nieuwe-drostendiep" class="level2">
+<h2 class="anchored" data-anchor-id="nieuwe-drostendiep">Nieuwe Drostendiep</h2>
+<p>Via diverse inlaten aan de Verlengde Hoogeveensche Vaart wordt water ingelaten in het <code>Nieuwe Drostendiep</code>. Bij inlaat de Klenke wordt aangevoerd via Kwel vanuit Kelenckerveld.</p>
+</section>
+<section id="oranjekanaal" class="level2">
+<h2 class="anchored" data-anchor-id="oranjekanaal">Oranjekanaal</h2>
+<p>Vanuit gemaal Orveltersluis wordt water ingelaten vanuit WDOD naar het <code>Oranjekanaal</code> ingelaten.</p>
+</section>
+<section id="oosterhesselen" class="level2">
+<h2 class="anchored" data-anchor-id="oosterhesselen">Oosterhesselen</h2>
+<p>Via de <code>Verlengde Hoogeveensche Vaart</code> wordt water ingelaten via inlaat <code>Albring</code>.</p>
+</section>
+<section id="geesbrug" class="level2">
+<h2 class="anchored" data-anchor-id="geesbrug">Geesbrug</h2>
+<p>Via de <code>Verlengde Hoogeveensche Vaart</code> wordt water ingelaten via inlaat <code>Geesbrug</code>.</p>
+</section>
+<section id="oosterwijk" class="level2">
+<h2 class="anchored" data-anchor-id="oosterwijk">Oosterwijk</h2>
+<p>??</p>
+</section>
+<section id="dinkel" class="level2">
+<h2 class="anchored" data-anchor-id="dinkel">Dinkel</h2>
+<p>Vanuit de <code>Dinkel</code> wordt alleen water het gebied ingelaten als er voldoende water in de <code>Dinkel</code> aanwezig is. Het water van de <code>Dinkel</code> dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.</p>
+</section>
+</section>
+<section id="waterbeheer-natte-periode-hoofdsysteem" class="level1">
+<h1>Waterbeheer natte periode hoofdsysteem:</h1>
+<p>De Verlengde Hoogeveensche Vaart staat in verbinding met het Oranjekanaal, het Stieltjeskanaal, het Kanaal Coevorden – Zwinderen en de Hoogeveensche Vaart. De <code>Verlengde Hoogeveensche Vaart</code> bestaat uit twee panden. Dit is een pand van <code>Oranjesluis</code> tot aan de <code>Ericasluis</code> en een pand van de <code>Ericasluis</code> naar de <code>Noordscheschutsluis</code> (WDOD). De panden hebben een peil van respectievelijk NAP +15.80 m en NAP +12.9 m. De Verlengde Hoogeveensche Vaart heeft naast de verbinding met de Hoogeveensche Vaart nog twee afvoerpunten. Dit zijn de <code>Stieltjeskanaalsluis</code> en de <code>Zwindersluis</code>. De <code>Zwindersluis</code> wordt pas bij een extreme afvoer gebruikt als afvoerpunt. Het water wordt dan afgevoerd naar het <code>Kanaal Coevorden – Zwinderen</code>. In de zomerperiode gaat in principe al het water naar <code>Noordscheschut</code>. Pas als bij de <code>Noordscheschut</code> de spuicapaciteit niet voldoende is, wordt het water gespuid via de sluis bij het <code>Stieltjeskanaal</code>.</p>
+<p>Het <code>Coevorden – Vechtkanaal</code> is de verbinding tussen de stadswateren van Coevorden en de <code>Overijsselsche Vecht</code>. De <code>Coevordensluis</code> kan het <code>Coevorden – Vechtkanaal</code> afsluiten van de <code>Overijsselsche Vecht</code>. Onder normale omstandigheden is de sluis open en loost het <code>Coevorden – Vechtkanaal</code> op de <code>Overijsselsche Vecht</code>. Bij een toenemende waterstand zal de stromingsrichting omdraaien en stroomt het water vanaf de Vecht op het <code>Coevorden – Vechtkanaal</code>. Als dit zich voordoet, wordt de <code>Coevordensluis</code> gesloten. Om de afwatering van het Coevorden – Vechtkanaal te continueren kan de <code>Overijsselse Stuw</code> tussen het Coevorden – Vechtkanaal opengezet worden. De <code>Drentse Stuw</code> verdeeld het <code>Afwateringskanaal</code> in een boven en beneden pand. Bij hoogwater ontvangt het beneden pand van het Afwateringskanaal ook water van het <code>Coevorden – Vechtkanaal</code>.</p>
+<p>Het <code>Afwateringskanaal</code>, het <code>Coevorden – Vechtkanaal</code>, <code>Ommerkanaal</code> en het <code>Kanaal Almelo–Haandrik</code> zijn verbonden met de Overijsselse Vecht. In de <code>Overijsselse Vecht</code> liggen zes stuwen. Dit zijn de <code>Haandrik</code>, <code>Hardenberg</code>, <code>Mariënberg</code>, <code>Junne</code>, Vilsteren (WDOD) en Vechterweerd (WDOD). Als de waterstand hoger wordt dan de hoogte van de stuwen, overstromen de stuwen. Er is dus geen maximale afvoer capaciteit in de Vecht. De afvoer van het <code>Kanaal Almelo–Haandrik</code> naar de Vecht vindt theoretisch plaats via <code>Sluis de Haandrik</code>. In principe is deze sluis het gehele jaar open. In werkelijkheid wordt er nauwelijks water via de Haandrik Sluis naar de Vecht gestuurd. Het water stroomt vanuit het <code>Kanaal Almelo–Haandrik</code> via <code>Aflaatschuif Prinsen</code> naar het <code>Marienberg Vechtkanaal</code> naar de <code>Overijsselsche Vecht</code>. Dit gebeurt met een maximale capaciteit van 11 m3/s.</p>
+<p>Het water van de <code>Regge</code> stroomt onder vrij verval naar de <code>Overijsselsche Vecht</code>. Bij het <code>verdeelwerk Vroomshoop</code> komen de <code>Veeneleiding</code>, de in- en uitlaat zijtak <code>Kanaal Almelo–Haandrik</code>, de <code>Linderbeek</code> en het <code>Overijssels Kanaal</code> samen. Het verdeelwerk en inlaatsysteem zijn geautomatiseerd. In normale omstandigheden wordt het water van de Veeneleiding afgevoerd op de <code>Linderbeek</code>, die weer water afvoert via de <code>Regge</code> naar de <code>Overrijselsche Vecht</code>. Als de <code>Veeneleiding</code> een afvoer overschrijdt van 3.0 m3/s, dan wordt het meerdere hiervan afgevoerd naar het <code>Overijssels Kanaal</code>.</p>
+<p>Bij hoogwater in het <code>Overijssels Kanaal</code>, benedenstrooms van Sluis4 in het gebied van waterschap Groot Salland, stort water uit het <code>Overijssels Kanaal</code> over in de Beneden Regge</p>
+<p>Het <code>Banisgemaal</code> is een uitlaatgemaal bij Almelo. Bij hoogwater op het<code>Lateraalkanaal</code>, wordt het <code>Banisgemaal</code> gebruikt om het <code>Lateraalkanaal</code> te ontlasten. Het water wordt dan door het gemaal op de zijtak van het <code>Twentekanaal</code> geloosd. Het gemaal heeft een maximale capaciteit van 10 m3/s.</p>
+<p>Vanuit Duitsland komt de <code>Dinkel</code> Nederland binnen. Het water verlaat Nederland ook weer via de <code>Dinkel</code>, deze watert uiteindelijk af in de Duitse Vecht. Bij piekafvoeren verdeelt het verdeelwerk bij Dinkel de afvoer van de Boven Dinkel over de Beneden <code>Dinkel</code> en het <code>Omleidingskanaal</code>. Het water uit het <code>Omleidingskanaal</code> komt uiteindelijk weer op de Beneden <code>Dinkel.</code></p>
 <section id="capaciteiten" class="level2">
 <h2 class="anchored" data-anchor-id="capaciteiten">Capaciteiten</h2>
 <p>Per kunstwerk, gespecificeerd op <code>naam</code>, <code>code</code> (waterbeheerder), <code>node_id</code> (v.h. Ribasim model) zijn hieronder de functie (<code>inlaat</code>, <code>doorlaat</code>, <code>uitlaat</code>, <code>uitlaat (doorspoeling))</code>) en de capaciteiten onder <code>aanvoer</code> en <code>afvoer</code> condities opgegeven.</p>
@@ -257,187 +414,11 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">Achterste Moost</td>
+<td style="text-align: left;">A</td>
 <td style="text-align: left;">D_25958</td>
 <td style="text-align: right;">410</td>
 <td style="text-align: left;">inlaat</td>
 <td style="text-align: right;">0.02</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Eendlossing</td>
-<td style="text-align: left;">S_97698</td>
-<td style="text-align: right;">772</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.02</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Gemaal Beringe</td>
-<td style="text-align: left;">G_27621</td>
-<td style="text-align: right;">583</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.65</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Gemaal Helenaveen</td>
-<td style="text-align: left;">G_27616</td>
-<td style="text-align: right;">590</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.35</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Houtstraatlossing</td>
-<td style="text-align: left;">D_14965</td>
-<td style="text-align: right;">351</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.05</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Hushoverbeek</td>
-<td style="text-align: left;">D_281344</td>
-<td style="text-align: right;">2502</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.05</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Inlaat Evertsoord</td>
-<td style="text-align: left;">S_97322</td>
-<td style="text-align: right;">604</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.35</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Inlaat Groote Moost</td>
-<td style="text-align: left;">S_98847</td>
-<td style="text-align: right;">236</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.09</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Inlaat Hulsenlossing</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1223</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.03</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Inlaat Rietbeek</td>
-<td style="text-align: left;">S_98409</td>
-<td style="text-align: right;">599</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.12</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Inlaat Weteringbeek</td>
-<td style="text-align: left;">S_98009</td>
-<td style="text-align: right;">731</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.125</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Kampershoek</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">2503</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.05</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Katsberg</td>
-<td style="text-align: left;">S_282001</td>
-<td style="text-align: right;">238</td>
-<td style="text-align: left;">doorlaat</td>
-<td style="text-align: right;">4.7</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Klein Leukerbeek</td>
-<td style="text-align: left;">W_153168_0</td>
-<td style="text-align: right;">1119</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.08</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Nederweerter Hovenlossing</td>
-<td style="text-align: left;">D_23657</td>
-<td style="text-align: right;">534</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.02</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Nederweerter Riet</td>
-<td style="text-align: left;">D_25545</td>
-<td style="text-align: right;">464</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.05</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Oude Graaf</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1136</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.05</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Roeven</td>
-<td style="text-align: left;">S_97840</td>
-<td style="text-align: right;">2501</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.01</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Snepheiderbeek</td>
-<td style="text-align: left;">D_23544</td>
-<td style="text-align: right;">411</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.05</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Uitlaat Sterkselsch kanaal</td>
-<td style="text-align: left;">S_97873</td>
-<td style="text-align: right;">748</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">20</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Verdeelwerk de Halte</td>
-<td style="text-align: left;">S_97735</td>
-<td style="text-align: right;">773</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">4.7</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Waatskampoplossing</td>
-<td style="text-align: left;">S_97872</td>
-<td style="text-align: right;">598</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.01</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Zwartwaterlossing</td>
-<td style="text-align: left;">D_294341</td>
-<td style="text-align: right;">230</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.05</td>
 <td style="text-align: right;">0</td>
 </tr>
 </tbody>
@@ -858,6 +839,38 @@ ul.task-list li input[type="checkbox"] {
   });
   </script>
 </div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 

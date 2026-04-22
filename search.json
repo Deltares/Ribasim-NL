@@ -283,135 +283,465 @@
     ]
   },
   {
-    "objectID": "watersystems/Noorderzijlvest.html",
-    "href": "watersystems/Noorderzijlvest.html",
-    "title": "Noorderzijlvest",
+    "objectID": "watersystems/DrentsOverijsselseDelta.html",
+    "href": "watersystems/DrentsOverijsselseDelta.html",
+    "title": "Drents Overijsselse Delta",
     "section": "",
-    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Noorderzijlvest\n\n\n\n\n\nBij Gaarkeuken kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.\nEen deel daarvan (tot 20 m³/s) kan via gemaal Dorkwerd worden opgepompt richting waterschap Hunze en Aa’s.\nWater dat op de Electraboezem nodig is, wordt via de sluis bij Gaarkeuken ingelaten; overschot wordt afgevoerd richting het Lauwersmeer.\nPraktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via Dorkwerd naar Hunze en Aa’s (Eemskanaalboezem).\n\n\n\n\nHet witte gebied en zalmroze gebied (Elektraboezem-Oost) op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen H.D. Louwes (toekomstig Hunsingo) en De Waterwolf — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de Cleveringsluizen op de Waddenzee.\n\n\n\nIn afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.\nIn het zuidoosten wordt via een reeks kleinere inlaten — Jonkersbrug, Ter Aard, Huis ter Heide, Heideheimheem, Meerweg vanuit Hunze en Aa’s en Drents Overijsselse Delta water ingelaten.\n\n\n\nDit gebied voert water af naar de Electraboezem via de uitlaat Leek en het Dwarsdiep.\nDe wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij Leek, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via Leek wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.\n\n\n\nDe noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (Noordpolderzijl en Spijksterpompen).\nIn droge periodes wordt water uit de Electraboezem (via boezemgemalen Stad en Lande, Schaphalsterzijl en Tilburg) met kleine aanvoergemalen naar de kustpolders opgemalen.\n\n\n\nLoost via gemaal De Drie Delfzijlen bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de Oostersluis. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij Spijksterpompen.\n\n\n\nMarnerwaard loost water via Nieuw Robbengat op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.\nIn droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de Herculesstuw.\n\n\n\nDongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal Dongeradielen op het Lauwersmeer en via de sluis Dokkumer Nieuwezijlen onder vrij verval.\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAbelstok\nKGM156\n147\nuitlaat\n0\n10\n\n\nAllartsooginlaat\nINL201\n698\ninlaat\n20\n0\n\n\nDe Drie Delfzijlen\nKGM046\n67\nuitlaat\n0\n25\n\n\nDe Waterwolf\nKGM001\n29\ndoorlaat\n75\n75\n\n\nDokkumer Nieuwezijlen\n\n1755\nuitlaat\n0\n0\n\n\nDrie-Provinciëninlaat\nINL202\n699\ninlaat\n20\n0\n\n\nFrieschepaleninlaat\nINL077\n687\ninlaat\n20\n0\n\n\nGaarkeukeninlaat\n\n1741\ninlaat\n24\n0\n\n\nGemaal Dokwerd\n\n1753\ninlaat\n20\n0\n\n\nGemaal de Dongeradielen\n\n1748\nuitlaat\n0\n0\n\n\nH.D. Louwes\nKGM002\n30\nuitlaat\n0\n16.7\n\n\nHeidenheeminlaat\nINL055\n1743\ninlaat\n0.072\n0\n\n\nHerculesstuw\nKST0169\n412\nuitlaat (doorspoeling)\n0.2\n10.2\n\n\nHuis ter Heide-inlaat\nINL114\n1742\ninlaat\n0.105\n0\n\n\nJonkersbruginlaat\nINL095\n1739\ninlaat\n0.032\n0\n\n\nLeek\nKGM009\n36\ninlaat\n1.17\n0\n\n\nMeerweg\n\n1758\ninlaat\n0.021\n0\n\n\nNieuwe Robbengat\nKGM016\n42\nuitlaat\n0\n4.33\n\n\nNoordpolderzijl\nKGM014\n40\nuitlaat\n0\n4\n\n\nOostersluis\nKGM148\n142\ninlaat\n2.5\n0\n\n\nR.J. Cleveringsluizen\nKSL011\n724\nuitlaat\n0\n668\n\n\nSchaphalsterzijl\nKGM155_i\n146\ninlaat\n2.5\n0\n\n\nSpijksterpompen\nKGM015\n41\nuitlaat (doorspoeling)\n0.4\n12.9\n\n\nStad en Lande\nKGM003_i\n32\ninlaat\n1.5\n0\n\n\nTer Aardinlaat\nINL001\n1751\ninlaat\n0.043\n0\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel C, hoofdstuk 26)\nNoorderzijlvest - beschrijving wateraanvoer en doorspoeling",
+    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.",
     "crumbs": [
       "Watersystems",
-      "Noorderzijlvest"
+      "Drents Overijsselse Delta"
     ]
   },
   {
-    "objectID": "watersystems/Noorderzijlvest.html#systeembeschrijving",
-    "href": "watersystems/Noorderzijlvest.html#systeembeschrijving",
-    "title": "Noorderzijlvest",
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#systeembeschrijving",
+    "href": "watersystems/DrentsOverijsselseDelta.html#systeembeschrijving",
+    "title": "Drents Overijsselse Delta",
     "section": "",
-    "text": "Systeembeschrijving Noorderzijlvest\n\n\n\n\n\nBij Gaarkeuken kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.\nEen deel daarvan (tot 20 m³/s) kan via gemaal Dorkwerd worden opgepompt richting waterschap Hunze en Aa’s.\nWater dat op de Electraboezem nodig is, wordt via de sluis bij Gaarkeuken ingelaten; overschot wordt afgevoerd richting het Lauwersmeer.\nPraktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via Dorkwerd naar Hunze en Aa’s (Eemskanaalboezem).\n\n\n\n\nHet witte gebied en zalmroze gebied (Elektraboezem-Oost) op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen H.D. Louwes (toekomstig Hunsingo) en De Waterwolf — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de Cleveringsluizen op de Waddenzee.\n\n\n\nIn afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.\nIn het zuidoosten wordt via een reeks kleinere inlaten — Jonkersbrug, Ter Aard, Huis ter Heide, Heideheimheem, Meerweg vanuit Hunze en Aa’s en Drents Overijsselse Delta water ingelaten.\n\n\n\nDit gebied voert water af naar de Electraboezem via de uitlaat Leek en het Dwarsdiep.\nDe wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij Leek, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via Leek wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.\n\n\n\nDe noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (Noordpolderzijl en Spijksterpompen).\nIn droge periodes wordt water uit de Electraboezem (via boezemgemalen Stad en Lande, Schaphalsterzijl en Tilburg) met kleine aanvoergemalen naar de kustpolders opgemalen.\n\n\n\nLoost via gemaal De Drie Delfzijlen bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de Oostersluis. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij Spijksterpompen.\n\n\n\nMarnerwaard loost water via Nieuw Robbengat op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.\nIn droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de Herculesstuw.\n\n\n\nDongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal Dongeradielen op het Lauwersmeer en via de sluis Dokkumer Nieuwezijlen onder vrij verval.",
+    "text": "Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.",
     "crumbs": [
       "Watersystems",
-      "Noorderzijlvest"
+      "Drents Overijsselse Delta"
     ]
   },
   {
-    "objectID": "watersystems/Noorderzijlvest.html#capaciteiten",
-    "href": "watersystems/Noorderzijlvest.html#capaciteiten",
-    "title": "Noorderzijlvest",
-    "section": "",
-    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAbelstok\nKGM156\n147\nuitlaat\n0\n10\n\n\nAllartsooginlaat\nINL201\n698\ninlaat\n20\n0\n\n\nDe Drie Delfzijlen\nKGM046\n67\nuitlaat\n0\n25\n\n\nDe Waterwolf\nKGM001\n29\ndoorlaat\n75\n75\n\n\nDokkumer Nieuwezijlen\n\n1755\nuitlaat\n0\n0\n\n\nDrie-Provinciëninlaat\nINL202\n699\ninlaat\n20\n0\n\n\nFrieschepaleninlaat\nINL077\n687\ninlaat\n20\n0\n\n\nGaarkeukeninlaat\n\n1741\ninlaat\n24\n0\n\n\nGemaal Dokwerd\n\n1753\ninlaat\n20\n0\n\n\nGemaal de Dongeradielen\n\n1748\nuitlaat\n0\n0\n\n\nH.D. Louwes\nKGM002\n30\nuitlaat\n0\n16.7\n\n\nHeidenheeminlaat\nINL055\n1743\ninlaat\n0.072\n0\n\n\nHerculesstuw\nKST0169\n412\nuitlaat (doorspoeling)\n0.2\n10.2\n\n\nHuis ter Heide-inlaat\nINL114\n1742\ninlaat\n0.105\n0\n\n\nJonkersbruginlaat\nINL095\n1739\ninlaat\n0.032\n0\n\n\nLeek\nKGM009\n36\ninlaat\n1.17\n0\n\n\nMeerweg\n\n1758\ninlaat\n0.021\n0\n\n\nNieuwe Robbengat\nKGM016\n42\nuitlaat\n0\n4.33\n\n\nNoordpolderzijl\nKGM014\n40\nuitlaat\n0\n4\n\n\nOostersluis\nKGM148\n142\ninlaat\n2.5\n0\n\n\nR.J. Cleveringsluizen\nKSL011\n724\nuitlaat\n0\n668\n\n\nSchaphalsterzijl\nKGM155_i\n146\ninlaat\n2.5\n0\n\n\nSpijksterpompen\nKGM015\n41\nuitlaat (doorspoeling)\n0.4\n12.9\n\n\nStad en Lande\nKGM003_i\n32\ninlaat\n1.5\n0\n\n\nTer Aardinlaat\nINL001\n1751\ninlaat\n0.043\n0",
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#boezem-noordwest",
+    "href": "watersystems/DrentsOverijsselseDelta.html#boezem-noordwest",
+    "title": "Drents Overijsselse Delta",
+    "section": "Boezem Noordwest",
+    "text": "Boezem Noordwest\nHet gebied Boezem Noordwest Overijssel wordt van water voorzien door de inlaat bij gemaal Stroink.",
     "crumbs": [
       "Watersystems",
-      "Noorderzijlvest"
+      "Drents Overijsselse Delta"
     ]
   },
   {
-    "objectID": "watersystems/Noorderzijlvest.html#bronnen",
-    "href": "watersystems/Noorderzijlvest.html#bronnen",
-    "title": "Noorderzijlvest",
-    "section": "",
-    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel C, hoofdstuk 26)\nNoorderzijlvest - beschrijving wateraanvoer en doorspoeling",
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#drentse-hoofdvaart",
+    "href": "watersystems/DrentsOverijsselseDelta.html#drentse-hoofdvaart",
+    "title": "Drents Overijsselse Delta",
+    "section": "Drentse Hoofdvaart",
+    "text": "Drentse Hoofdvaart\nVia de Paradijssluis wordt water ingelaten vanuit het Meppelerdiep naar de Drentsche Hoofdvaart. De Drentsche Hoofdvaart loopt van het Meppelerdiep tot aan het Noord - Willemskanaal. De Drentsche Hoofdvaart is verdeeld in zes panden. Deze panden worden gescheiden door sluizen. Tussen de panden vindt water transport plaats via sluizen en pompen. De sluizen zijn gezien van de Paradijssluis naar het Noord-Willemskanaal; de Paradijssluis, de Haveltersluis, de Uffeltersluis, de Dieversluis, de Haarsluis en de Veenesluis.",
     "crumbs": [
       "Watersystems",
-      "Noorderzijlvest"
+      "Drents Overijsselse Delta"
     ]
   },
   {
-    "objectID": "watersystems/RijnenIJssel.html",
-    "href": "watersystems/RijnenIJssel.html",
-    "title": "Rijn en IJssel",
-    "section": "",
-    "text": "Laatst bijgewerkt: 27-4-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Rijn en IJssel\n\n\n\n\nWater wordt aangevoerd naar een aantal beken vanuit het Twentekanaal in het noorden van het beheergebied. Daarnaast vindt aanvoer plaats vanuit Duitsland. Dit water wordt op meerdere locaties verdeeld en lokaal ingelaten.\nDe afvoer vindt plaats via de Twentekanalen, de IJssel en de Rijn.\nHieronder worden de belangrijkste systemen beknopt beschreven.\n\n\n\n\n\nAanvoer vanuit het Twentekanaal via Inlaat Schipbeek\nBovenstrooms van het Twentekanaal wordt via de Schipbeek een deel van het water doorgevoerd naar Vechtstromen (Boven-Regge, niet op de kaart)\nDe Schipbeek ontvangt daarnaast water vanuit Duitsland\nAfvoer richting de IJssel, met een noodoverlaat op het Twentekanaal bij de inlaat\n\n\n\n\n\nAanvoer via Inlaat Herkel naar de Eefse Beek\nAfvoer via de Eefse Beek naar het Twentekanaal, bovenstrooms van Eefde, deels onder vrij verval en deels via een gemaal\n\n\n\n\n\nAanvoer via Inlaat Lochem naar de Berkel (benedenstrooms richting Lochem en Zutphen)\nDe Berkel en Slinge ontvangen tevens water vanuit Duitsland\nWater wordt op meerdere locaties verdeeld en lokaal ingelaten\nAfvoer via de Berkel richting het Twentekanaal en de IJssel\n\n\n\n\n\nDe bovenlopen van de Oude-IJssel ontvangen water vanuit Duitsland\nDit water wordt op verschillende locaties verdeeld\nAfvoer van de Oude-IJssel vindt plaats naar de IJssel\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel Deel C, hoofdstuk 20\nWaterakkoord Twentekanalen (2025)\nSchematic SWECO n.a.v samenwerkdag december 2023",
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#hoogeveensche-vaart",
+    "href": "watersystems/DrentsOverijsselseDelta.html#hoogeveensche-vaart",
+    "title": "Drents Overijsselse Delta",
+    "section": "Hoogeveensche Vaart",
+    "text": "Hoogeveensche Vaart\nVia de Rogatsluis wordt water ingelaten vanuit het Meppelerdiep naar de Hoogeveensche Vaart. De Hoogeveensche Vaart bestaat uit vier panden. Deze panden zijn gescheiden door sluizen. Dit zijn gezien van de Verlengde Hoogeveensche Vaart naar het Meppelerdiep; de Noordscheschutsluis, de Nieuwebrugsluis, de Ossesluis en de Rogatsluis.",
     "crumbs": [
       "Watersystems",
-      "Rijn en IJssel"
+      "Drents Overijsselse Delta"
     ]
   },
   {
-    "objectID": "watersystems/RijnenIJssel.html#systeembeschrijving",
-    "href": "watersystems/RijnenIJssel.html#systeembeschrijving",
-    "title": "Rijn en IJssel",
-    "section": "",
-    "text": "Systeembeschrijving Rijn en IJssel\n\n\n\n\nWater wordt aangevoerd naar een aantal beken vanuit het Twentekanaal in het noorden van het beheergebied. Daarnaast vindt aanvoer plaats vanuit Duitsland. Dit water wordt op meerdere locaties verdeeld en lokaal ingelaten.\nDe afvoer vindt plaats via de Twentekanalen, de IJssel en de Rijn.\nHieronder worden de belangrijkste systemen beknopt beschreven.\n\n\n\n\n\nAanvoer vanuit het Twentekanaal via Inlaat Schipbeek\nBovenstrooms van het Twentekanaal wordt via de Schipbeek een deel van het water doorgevoerd naar Vechtstromen (Boven-Regge, niet op de kaart)\nDe Schipbeek ontvangt daarnaast water vanuit Duitsland\nAfvoer richting de IJssel, met een noodoverlaat op het Twentekanaal bij de inlaat\n\n\n\n\n\nAanvoer via Inlaat Herkel naar de Eefse Beek\nAfvoer via de Eefse Beek naar het Twentekanaal, bovenstrooms van Eefde, deels onder vrij verval en deels via een gemaal\n\n\n\n\n\nAanvoer via Inlaat Lochem naar de Berkel (benedenstrooms richting Lochem en Zutphen)\nDe Berkel en Slinge ontvangen tevens water vanuit Duitsland\nWater wordt op meerdere locaties verdeeld en lokaal ingelaten\nAfvoer via de Berkel richting het Twentekanaal en de IJssel\n\n\n\n\n\nDe bovenlopen van de Oude-IJssel ontvangen water vanuit Duitsland\nDit water wordt op verschillende locaties verdeeld\nAfvoer van de Oude-IJssel vindt plaats naar de IJssel",
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#ankersmit",
+    "href": "watersystems/DrentsOverijsselseDelta.html#ankersmit",
+    "title": "Drents Overijsselse Delta",
+    "section": "Ankersmit",
+    "text": "Ankersmit\nVia aanvoergemaal Ankersmit wordt water via de IJssel aangevoerd naar het Overijssels Kanaal. In werkelijkheid komt dit water niet verder dan een dam ten noorden van Raalte.",
     "crumbs": [
       "Watersystems",
-      "Rijn en IJssel"
+      "Drents Overijsselse Delta"
     ]
   },
   {
-    "objectID": "watersystems/RijnenIJssel.html#capaciteiten",
-    "href": "watersystems/RijnenIJssel.html#capaciteiten",
-    "title": "Rijn en IJssel",
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#overijssels-kanaal",
+    "href": "watersystems/DrentsOverijsselseDelta.html#overijssels-kanaal",
+    "title": "Drents Overijsselse Delta",
+    "section": "Overijssels Kanaal",
+    "text": "Overijssels Kanaal\nAanvoergebied Overijssels Kanaal wordt aangevoerd vanuit het Overijssels Kanaal via Hancate (Vechtstromen).",
+    "crumbs": [
+      "Watersystems",
+      "Drents Overijsselse Delta"
+    ]
+  },
+  {
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#westerveld",
+    "href": "watersystems/DrentsOverijsselseDelta.html#westerveld",
+    "title": "Drents Overijsselse Delta",
+    "section": "Westerveld",
+    "text": "Westerveld\nVia een inlaat bij Westerveld wordt water aangevoerd vanuit het Zwarte Water naar de Soestwetering. Via Westerveld kan ook water worden uitgelaten op het Zwarte water",
+    "crumbs": [
+      "Watersystems",
+      "Drents Overijsselse Delta"
+    ]
+  },
+  {
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#vecht-twentekanalen",
+    "href": "watersystems/DrentsOverijsselseDelta.html#vecht-twentekanalen",
+    "title": "Drents Overijsselse Delta",
+    "section": "Vecht-Twentekanalen",
+    "text": "Vecht-Twentekanalen\nVia het Ommerkanaal wordt het water ingelaten bij Langewijk Emsland1 en 2 in het aanvoergebied Vecht-Twentekanalen. Verder zitten er nog divese inlaten aan de Overrijselse Vecht die dit gebied van water voorzien.",
+    "crumbs": [
+      "Watersystems",
+      "Drents Overijsselse Delta"
+    ]
+  },
+  {
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#ijsselmeergebied",
+    "href": "watersystems/DrentsOverijsselseDelta.html#ijsselmeergebied",
+    "title": "Drents Overijsselse Delta",
+    "section": "IJsselmeergebied",
+    "text": "IJsselmeergebied\nHet Ijsselmeergebied wordt van water voorzien door diverse inlaten aan de IJssel, het Zwartemeer/Zwarte Water en het Meppelerdiep.",
+    "crumbs": [
+      "Watersystems",
+      "Drents Overijsselse Delta"
+    ]
+  },
+  {
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#capaciteiten",
+    "href": "watersystems/DrentsOverijsselseDelta.html#capaciteiten",
+    "title": "Drents Overijsselse Delta",
+    "section": "Capaciteiten",
+    "text": "Capaciteiten\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nA\nD_25958\n410\ninlaat\n0.02\n0\n\n\n\nKunstwerk capaciteit sluis (m3/s) capaciteit pompen (m3/s) Noordscheschutsluis 11 6.9 Nieuwebrugsluis 29 7.1 Ossesluis 29 7.5 Rogatsluis 43 8.2\nSluis capaciteit sluis (m3/s) capaciteit pompen (m3/s) Paradijsssluis 16 6.7 Haveltersluis 14 6.6 Uffeltersluis 14 6.3 Dieversluis 12 6.3 Haarsluis 12 5.8 Veenesluis 13 5.9 Sluis Peelo 15 geen gemaal",
+    "crumbs": [
+      "Watersystems",
+      "Drents Overijsselse Delta"
+    ]
+  },
+  {
+    "objectID": "watersystems/DrentsOverijsselseDelta.html#bronnen",
+    "href": "watersystems/DrentsOverijsselseDelta.html#bronnen",
+    "title": "Drents Overijsselse Delta",
+    "section": "Bronnen",
+    "text": "Bronnen\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel C, hoofdstuk 22 en 24)\nWaterakkoord Twentekanalen/Overijsselse Vecht",
+    "crumbs": [
+      "Watersystems",
+      "Drents Overijsselse Delta"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html",
+    "href": "watersystems/Vechtstromen.html",
+    "title": "Vechtstromen",
+    "section": "",
+    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Vechtstromen\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur. Overijsselsch Kanaal (Kanaal Almelo–Haandrik) is in de figuur afgekort als Kanaal Almelo– Haandrik.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#systeembeschrijving",
+    "href": "watersystems/Vechtstromen.html#systeembeschrijving",
+    "title": "Vechtstromen",
+    "section": "",
+    "text": "Systeembeschrijving Vechtstromen\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur. Overijsselsch Kanaal (Kanaal Almelo–Haandrik) is in de figuur afgekort als Kanaal Almelo– Haandrik.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#schipbeek",
+    "href": "watersystems/Vechtstromen.html#schipbeek",
+    "title": "Vechtstromen",
+    "section": "Schipbeek",
+    "text": "Schipbeek\nAanvoergemaal Stokkumervlier laat water direct in vanuit het Twentekanaal en voert het via een onderleider door naar aanvoergebied Boven Regge Via inlaat Oude Boven Regge en Diepenheimse Molenbeek wordt water in het zuiden van het aanvoergebied ingelaten vanuit Schipbeek.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#oude-bolscherbeek",
+    "href": "watersystems/Vechtstromen.html#oude-bolscherbeek",
+    "title": "Vechtstromen",
+    "section": "Oude Bolscherbeek",
+    "text": "Oude Bolscherbeek\nVia inlaat Oude Boscherbeek wordt water ingevlaten naar aanvoergebied Bolscherbeek",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#boven-regge",
+    "href": "watersystems/Vechtstromen.html#boven-regge",
+    "title": "Vechtstromen",
+    "section": "Boven Regge",
+    "text": "Boven Regge\nDe inlaten Herikervlier, aanvoergemaal Stokkumervlier en Oude Poelsbeek laten water in direct vanuit het Twentekanaal. Stokkumervlier kan ook water uitmalen op het Twentekanaal (kanaal Zutphen-Enschede) met een maximale capaciteit van 2.29 m3/s.\nInlaat Vroomshoop, inlaat Linderveld Vroomshoop, Twicklervaart, oude Hagmolenbeek en inlaat Hammerflier laten water in vanuit het Kanaal Almelo–Haandrik. - Water dat bij Hammerflier wordt ingelaten wordt gebruikt ter compensatie van de grondwateronttrekking door het WMO in Hammerflier. Het niet geïnfiltreerde water wordt via de Regge afgevoerd naar de Overijsselse Vecht. - Via inlaat Vroomshoop wordt water doorgevoerd via het Kanaal Almelo–Haandrik naar het beheergebied van WDOD via Inlaatwerk Hancate. - Via inlaat Linderveld Vroomshoop wordt water aangevoerd naar de Linderbeek. - Water uit het Overijsselsch kanaal kan via aanvoergemaal Linderveld Vroomshoop via een onderleider onder de Linderbeek gepompt worden om het stroomgebied Linderbeek van water te voorzien (ten westen van Vroomshoop).\n\nVia inlaat Twicklerveld Delden wordt water direct vanuit het Twentekanaal (kanaal Zutphen-Enschede) ingelaten. Daarnaast wordt via kanaal Almelo Nordhorn via inlaat Banis water aangevoerd. Via de Doorbraak wordt het water onder het Twentekanaal (Zijkanaal naar Almelo) verder aangevoerd richting de Beneden Regge.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#lateraalkanaal",
+    "href": "watersystems/Vechtstromen.html#lateraalkanaal",
+    "title": "Vechtstromen",
+    "section": "Lateraalkanaal",
+    "text": "Lateraalkanaal\nVia aanvoergemaal Hedeman en inlaat Banis wordt water ingelaten vanuit het Kanaal Almelo-Nordhorn Via Inlaat Banis Almelo wordt het water via het Lateraalkanaal over verschillende inlaten verdeeld. Het Lateraalkanaal stroomt onder het Overijsselsch Kanaal (Kanaal Almelo-De Haandrik) door naar de Veeneleiding waar ook diverse inlaten zijn.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#de-pollen",
+    "href": "watersystems/Vechtstromen.html#de-pollen",
+    "title": "Vechtstromen",
+    "section": "De Pollen",
+    "text": "De Pollen\n??",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#vriezenveen",
+    "href": "watersystems/Vechtstromen.html#vriezenveen",
+    "title": "Vechtstromen",
+    "section": "Vriezenveen",
+    "text": "Vriezenveen\nVia inlaat Vriezenveensche Veenkam wordt water ingelaten vanuit Kanaal Almelo–Haandrik naar het Vrienzenveensche Veenkanaal. Dit kanaal voert het water door naar het Nieuwe Stroomkanaal van waaruit het via diverse inlaten het gebied ingelaten.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#overrijsselsche-vecht",
+    "href": "watersystems/Vechtstromen.html#overrijsselsche-vecht",
+    "title": "Vechtstromen",
+    "section": "Overrijsselsche Vecht",
+    "text": "Overrijsselsche Vecht\nDe Overijsselsche Vecht wordt grotendeels in droge tijden grotendeels van water voorzien via de Beneden Regge, via inlaat Alte Picardi en via het Kanaal Almelo–Haandrik. Er komt nauwelijks water van de Overijsselsche Vecht in het Kanaal Almelo–Haandrik, behalve als de waterstand op de Vecht te hoog wordt.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#dooze",
+    "href": "watersystems/Vechtstromen.html#dooze",
+    "title": "Vechtstromen",
+    "section": "Dooze",
+    "text": "Dooze\nVia inlaat Fortwijk aan het Nieuwe Stroomkanaal wordt water ingelaten. En verder via Ittrebecker See????",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#overijsselsch-kanaal-noord",
+    "href": "watersystems/Vechtstromen.html#overijsselsch-kanaal-noord",
+    "title": "Vechtstromen",
+    "section": "Overijsselsch Kanaal noord",
+    "text": "Overijsselsch Kanaal noord\nVia verschillende inlaten wordt water ingelaten vanuit het Kanaal Almelo–Haandrik.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#braambergersloot",
+    "href": "watersystems/Vechtstromen.html#braambergersloot",
+    "title": "Vechtstromen",
+    "section": "Braambergersloot",
+    "text": "Braambergersloot\nVia inlaat Bisschop(WDOD) en inlaat Zuidwolder Waterlossing (WDOD) wordt in dit gebied water ingelaten Daarnaast zittten er vanuit het Kanaal Almelo–Haandrik. Daarnaast via inlaaschuif Zwinderse kanaal en via inlaatstuw Geesbrug wordt er vanuit het de Verlengde Hoogeveensche Vaart water ingelaten.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#coevorden-zwinderen",
+    "href": "watersystems/Vechtstromen.html#coevorden-zwinderen",
+    "title": "Vechtstromen",
+    "section": "Coevorden-Zwinderen",
+    "text": "Coevorden-Zwinderen\nCoevorden wordt via diverse inlaten aan Kanaal Coevorden-Zwinderen van water voorzien. In het noorden van centrum Coevorden water water ingelaten via inlaat Hemelweg vanuit het Kanaal Coevorden-Zwinderen.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#schoonebeek",
+    "href": "watersystems/Vechtstromen.html#schoonebeek",
+    "title": "Vechtstromen",
+    "section": "Schoonebeek",
+    "text": "Schoonebeek\nVia de Verlengde Hoogeveensche Vaart die water aanvoert naar het Stieltjeskanaal en Dommerskanaal wordt water via diverse inlaten ingelaten. Daarnaast wordt 0,12 m3/s doorgevoerd ten behoeve van het Bargerveen (provincie Drenthe).",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#nieuwe-drostendiep",
+    "href": "watersystems/Vechtstromen.html#nieuwe-drostendiep",
+    "title": "Vechtstromen",
+    "section": "Nieuwe Drostendiep",
+    "text": "Nieuwe Drostendiep\nVia diverse inlaten aan de Verlengde Hoogeveensche Vaart wordt water ingelaten in het Nieuwe Drostendiep. Bij inlaat de Klenke wordt aangevoerd via Kwel vanuit Kelenckerveld.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#oranjekanaal",
+    "href": "watersystems/Vechtstromen.html#oranjekanaal",
+    "title": "Vechtstromen",
+    "section": "Oranjekanaal",
+    "text": "Oranjekanaal\nVanuit gemaal Orveltersluis wordt water ingelaten vanuit WDOD naar het Oranjekanaal ingelaten.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#oosterhesselen",
+    "href": "watersystems/Vechtstromen.html#oosterhesselen",
+    "title": "Vechtstromen",
+    "section": "Oosterhesselen",
+    "text": "Oosterhesselen\nVia de Verlengde Hoogeveensche Vaart wordt water ingelaten via inlaat Albring.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#geesbrug",
+    "href": "watersystems/Vechtstromen.html#geesbrug",
+    "title": "Vechtstromen",
+    "section": "Geesbrug",
+    "text": "Geesbrug\nVia de Verlengde Hoogeveensche Vaart wordt water ingelaten via inlaat Geesbrug.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#oosterwijk",
+    "href": "watersystems/Vechtstromen.html#oosterwijk",
+    "title": "Vechtstromen",
+    "section": "Oosterwijk",
+    "text": "Oosterwijk\n??",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#dinkel",
+    "href": "watersystems/Vechtstromen.html#dinkel",
+    "title": "Vechtstromen",
+    "section": "Dinkel",
+    "text": "Dinkel\nVanuit de Dinkel wordt alleen water het gebied ingelaten als er voldoende water in de Dinkel aanwezig is. Het water van de Dinkel dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#capaciteiten",
+    "href": "watersystems/Vechtstromen.html#capaciteiten",
+    "title": "Vechtstromen",
+    "section": "Capaciteiten",
+    "text": "Capaciteiten\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nA\nD_25958\n410\ninlaat\n0.02\n0",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/Vechtstromen.html#bronnen",
+    "href": "watersystems/Vechtstromen.html#bronnen",
+    "title": "Vechtstromen",
+    "section": "Bronnen",
+    "text": "Bronnen\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 8)\nbasiskaartwateraanvoer_giho_wateraanvoer_2009.pdf\naanvoertabel H 08012021.xlsx",
+    "crumbs": [
+      "Watersystems",
+      "Vechtstromen"
+    ]
+  },
+  {
+    "objectID": "watersystems/DeDommel.html",
+    "href": "watersystems/DeDommel.html",
+    "title": "De Dommel",
+    "section": "",
+    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving De Dommel\n\n\nHet beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.\n\n\nVia de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ’s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.\n\n\n\nBij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Hier wordt gestuwd met Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren &lt;10m3/s en 85% bij afvoeren &gt; 10m3/s).\nDe maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.\n\n\n\nEr kan water worden ingelaten bij inlaat Olen en bij inlaat Son en Breugel. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Son en Breugel is 0.16 m3/s en 0.6 m3/s naar Olen.\n\n\n\nVanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaat Beekloop.\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nInlaat Beekloop\n\n1912\ninlaat\n0.25\n0\n\n\nInlaat Olen\nDSH0023156\n417\ninlaat\n0.6\n0\n\n\nInlaat Son en Breugel\nDO28-st1\n405\ninlaat\n0.16\n0\n\n\nStuw Blaarthem\nDL62-st1\n210\nuitlaat\n0\n20\n\n\nStuw Verdeelwerk\nDL1-st5\n293\nuitlaat\n0\n200\n\n\nVughterstuw\nDO1-st3\n121\nuitlaat\n0\n200\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel E, pagina 39-1)\n[Waterakkoord: 15 juni 2022, Waterakkoord Midden-Limburgse en NoordBrabantse Kanalen 2021,Definitieve versie 1.2, Rijkswaterstaat Zuid-Nederland]",
+    "crumbs": [
+      "Watersystems",
+      "De Dommel"
+    ]
+  },
+  {
+    "objectID": "watersystems/DeDommel.html#systeembeschrijving",
+    "href": "watersystems/DeDommel.html#systeembeschrijving",
+    "title": "De Dommel",
+    "section": "",
+    "text": "Systeembeschrijving De Dommel\n\n\nHet beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.\n\n\nVia de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ’s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.\n\n\n\nBij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Hier wordt gestuwd met Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren &lt;10m3/s en 85% bij afvoeren &gt; 10m3/s).\nDe maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.\n\n\n\nEr kan water worden ingelaten bij inlaat Olen en bij inlaat Son en Breugel. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Son en Breugel is 0.16 m3/s en 0.6 m3/s naar Olen.\n\n\n\nVanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaat Beekloop.",
+    "crumbs": [
+      "Watersystems",
+      "De Dommel"
+    ]
+  },
+  {
+    "objectID": "watersystems/DeDommel.html#capaciteiten",
+    "href": "watersystems/DeDommel.html#capaciteiten",
+    "title": "De Dommel",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nInlaat Beekloop\n\n1912\ninlaat\n0.25\n0\n\n\nInlaat Olen\nDSH0023156\n417\ninlaat\n0.6\n0\n\n\nInlaat Son en Breugel\nDO28-st1\n405\ninlaat\n0.16\n0\n\n\nStuw Blaarthem\nDL62-st1\n210\nuitlaat\n0\n20\n\n\nStuw Verdeelwerk\nDL1-st5\n293\nuitlaat\n0\n200\n\n\nVughterstuw\nDO1-st3\n121\nuitlaat\n0\n200",
+    "crumbs": [
+      "Watersystems",
+      "De Dommel"
+    ]
+  },
+  {
+    "objectID": "watersystems/DeDommel.html#bronnen",
+    "href": "watersystems/DeDommel.html#bronnen",
+    "title": "De Dommel",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel E, pagina 39-1)\n[Waterakkoord: 15 juni 2022, Waterakkoord Midden-Limburgse en NoordBrabantse Kanalen 2021,Definitieve versie 1.2, Rijkswaterstaat Zuid-Nederland]",
+    "crumbs": [
+      "Watersystems",
+      "De Dommel"
+    ]
+  },
+  {
+    "objectID": "watersystems/ValleienVeluwe.html",
+    "href": "watersystems/ValleienVeluwe.html",
+    "title": "Vallei en Veluwe",
+    "section": "",
+    "text": "Laatst bijgewerkt: 25-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Vallei en Veluwe\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})",
+    "crumbs": [
+      "Watersystems",
+      "Vallei en Veluwe"
+    ]
+  },
+  {
+    "objectID": "watersystems/ValleienVeluwe.html#systeembeschrijving",
+    "href": "watersystems/ValleienVeluwe.html#systeembeschrijving",
+    "title": "Vallei en Veluwe",
+    "section": "",
+    "text": "Systeembeschrijving Vallei en Veluwe",
+    "crumbs": [
+      "Watersystems",
+      "Vallei en Veluwe"
+    ]
+  },
+  {
+    "objectID": "watersystems/ValleienVeluwe.html#capaciteiten",
+    "href": "watersystems/ValleienVeluwe.html#capaciteiten",
+    "title": "Vallei en Veluwe",
     "section": "",
     "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.",
     "crumbs": [
       "Watersystems",
-      "Rijn en IJssel"
+      "Vallei en Veluwe"
     ]
   },
   {
-    "objectID": "watersystems/RijnenIJssel.html#bronnen",
-    "href": "watersystems/RijnenIJssel.html#bronnen",
-    "title": "Rijn en IJssel",
+    "objectID": "watersystems/ValleienVeluwe.html#bronnen",
+    "href": "watersystems/ValleienVeluwe.html#bronnen",
+    "title": "Vallei en Veluwe",
     "section": "",
-    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel Deel C, hoofdstuk 20\nWaterakkoord Twentekanalen (2025)\nSchematic SWECO n.a.v samenwerkdag december 2023",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})",
     "crumbs": [
       "Watersystems",
-      "Rijn en IJssel"
-    ]
-  },
-  {
-    "objectID": "watersystems/StichtseRijnlanden.html",
-    "href": "watersystems/StichtseRijnlanden.html",
-    "title": "Stichtse Rijnlanden",
-    "section": "",
-    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Stichtse Rijnlanden\n\n\nHieronder zijn de gebieden beschreven uit het bovenstaande figuur.\n\n\nAfvoer:\n\nVia spuisluis Oog in Al naar het ARK (hoofdroute).\nVia het Weerdsluiscomplex en het Westriool naar de Utrechtse Vecht.\nVia het sifon onder het ARK naar het Merwedekanaal, met afvoer onder vrij verval.\n\nAanvoer:\n\nVanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede en gemaal bij Caspargauw.\nRechtstreeks vanuit het ARK via het Noordergemaal.\nVanuit het Merwedekanaal via het sifon onder het ARK, met aanvoer via inlaat Vreeswijk. Wateraanvoer onder vrij verval via de Doorslag is onder normale omstandigheden niet mogelijk vanwege te weinig verval. Doorslag Sluis staat wel permanent open.\n\n\n\n\nDe wetering aan de voet van de Utrechtse Heuvelrug voert af op de Kromme Rijn. Vanwege de helling in dit gebied is er beperkt aanvoer mogelijk vanuit de Kromme Rijn.\n\n\n\nDit gebied voert af op het Amsterdam-Rijnkanaal, de Kromme Rijn en de stadswatereren Utrecht deels onder vrij verval en deels via bemalingen (niet opgenomen in bovenstaande figuur)\nAanvoer vindt hoofdzakelijk plaats vanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede. Aanvullend wordt water aangevoerd via Caspargauw en de Caspargauwse wetering. In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m³/s. Water wordt als volgt gestuurd:\n\nBij overschrijding gaat stuw Werkhoven omhoog en wordt stuw Cothen gestreken.\nAfvoer vindt dan bovenstrooms van Werkhoven plaats via de Caspargauw en benedenstrooms via Utrecht.\n\n\n\n\nDit gebied voert af naar het ARK, deels door bemaling en deels onder vrij verval. Aanvoer vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.\n\n\n\nAfvoer:\n\nOnder normale omstandigheden loost de Leidsche Rijn op het ARK en de Oude Rijn via de schutsluis bij Bodegraven. De Haanwijkersluis is gesloten.\nOvertollig water uit de polders wordt met poldergemalen uitgeslagen op de Oude Rijn, de Leidsche Rijn en het ARK.\nIn het noordwesten lozen polders via meerdere gemalen op de boezem van Amstel, Gooi en Vecht.\n\nWateraanvoer:\n\nVia de Leidsche Rijn en de Oude Rijn.\nIn het Noorden via het boezemsysteem van Amstel, Gooi en Vecht.\n\nBijzondere sturing (KWA) – Leidsche Rijn en Oude Rijn\nIn extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in werking:\n\nDe Groenwoudsedijksluis bij gemaal De Aanvoerder wordt gesloten.\nGemaal De Aanvoerder pompt water vanuit het ARK in de Leidsche Rijn en zet het peil aan de oostzijde op (0,20 m +NAP).\nDe Haanwijkersluis tussen de Leidsche Rijn en de Oude Rijn wordt geopend; water stroomt richting de schutsluis bij Bodegraven.\nHet systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via gebied de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de via de Doorslag eveneens richting Hekendorp.\n\nN.B. (!) de KWA is nu niet opgenomen in de huidige versie van het Ribasim-model!\n\n\n\nHet meeste water uit dit gebied wordt afgevoerd via de Leidsche Rijn naar het ARK en de Oude Rijn richting Bodegraven. Een klein deel, in het oosten van het gebied, wordt afgevoerd via de gekanaliseerde Hollandse IJssel (Doorslag sluis) en de Hollandse IJssel naar Gouda\nWateraanvoer: De Hollandsche IJssel wordt aangevoerd via:\n\nVia inlaat Vreeswijk, via het Merwedekanaal en de Doorslag.\nVia de stadswateren van Utrecht, via het sifon onder het ARK.\nVia het Noordergemaal (alleen in KWA-situaties), waarbij water uit het ARK via het sifon onder het ARK en de Doorslag wordt aangevoerd.\n\nWateraanvoer naar polders gaat grotendeels via de Hollandsche IJssel en de Leidsche–Oude Rijn\n\n\n\nOvertollig water uit de polder wordt afgevoerd op de Hollandsche IJssel en de Lek via vier gemalen: De Keulevaart, De Koekoek, De Pleyt en De Hoekse Molen.\nWateraanvoer:\n\nGrotendeels vanuit de Lek via inlaat De Koekoek.\nAanvullend vanuit de Hollandsche IJssel via de Doorslag\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAanvoerder, De\nG4031\n542\ninlaat\n7\n0\n\n\nBodegraven Sluis\nSL0005\n755\nuitlaat\n0\n25\n\n\nCaspargauw\nG3003\n601\ninlaat\n3.3\n0\n\n\nCothen Stuw\nST3001\n777\ndoorlaat\n20\n20\n\n\nDoorslag sluis\nSL0030\n754\ninlaat\n7\n0\n\n\nHaanwijkersluis\nSL0003\n742\ninlaat\n6.2\n0\n\n\nInlaat Hekendorp\nI6098\n141\ninlaat\n6.2\n0\n\n\nInlaat Vreeswijk\nI6119\n252\ninlaat\n18\n0\n\n\nInlaat wijk bij duurstede\nAF0093\n481\ninlaat\n10\n0\n\n\nKeulevaart, De\nG3025\n623\nuitlaat\n0\n5.34\n\n\nKoekoek, De\nG5002\n541\nuitlaat\n0\n11.2\n\n\nNoordergemaal\nG6007\n536\ninlaat\n12\n0\n\n\nOog in Al spuisluis\nI1580\n168\nuitlaat\n0\n20\n\n\nSifon onder ARK\nSY0070\n468\ninlaat\n12\n0\n\n\nWaaiersluis Gouda\nG8000\n567\nuitlaat\n0\n14\n\n\nWeerdsluis\nSL0009\n757\nuitlaat\n0\n16\n\n\nWerkhoven stuw\nST2028\n919\nuitlaat (doorspoeling)\n5\n20\n\n\nZuidersluis\nSL0016\n758\nuitlaat\n0\n0\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco) en:\n\nDocumentatie Distributiemodel (Deel B, hoofdstuk 8)",
-    "crumbs": [
-      "Watersystems",
-      "Stichtse Rijnlanden"
-    ]
-  },
-  {
-    "objectID": "watersystems/StichtseRijnlanden.html#systeembeschrijving",
-    "href": "watersystems/StichtseRijnlanden.html#systeembeschrijving",
-    "title": "Stichtse Rijnlanden",
-    "section": "",
-    "text": "Systeembeschrijving Stichtse Rijnlanden\n\n\nHieronder zijn de gebieden beschreven uit het bovenstaande figuur.\n\n\nAfvoer:\n\nVia spuisluis Oog in Al naar het ARK (hoofdroute).\nVia het Weerdsluiscomplex en het Westriool naar de Utrechtse Vecht.\nVia het sifon onder het ARK naar het Merwedekanaal, met afvoer onder vrij verval.\n\nAanvoer:\n\nVanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede en gemaal bij Caspargauw.\nRechtstreeks vanuit het ARK via het Noordergemaal.\nVanuit het Merwedekanaal via het sifon onder het ARK, met aanvoer via inlaat Vreeswijk. Wateraanvoer onder vrij verval via de Doorslag is onder normale omstandigheden niet mogelijk vanwege te weinig verval. Doorslag Sluis staat wel permanent open.\n\n\n\n\nDe wetering aan de voet van de Utrechtse Heuvelrug voert af op de Kromme Rijn. Vanwege de helling in dit gebied is er beperkt aanvoer mogelijk vanuit de Kromme Rijn.\n\n\n\nDit gebied voert af op het Amsterdam-Rijnkanaal, de Kromme Rijn en de stadswatereren Utrecht deels onder vrij verval en deels via bemalingen (niet opgenomen in bovenstaande figuur)\nAanvoer vindt hoofdzakelijk plaats vanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede. Aanvullend wordt water aangevoerd via Caspargauw en de Caspargauwse wetering. In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m³/s. Water wordt als volgt gestuurd:\n\nBij overschrijding gaat stuw Werkhoven omhoog en wordt stuw Cothen gestreken.\nAfvoer vindt dan bovenstrooms van Werkhoven plaats via de Caspargauw en benedenstrooms via Utrecht.\n\n\n\n\nDit gebied voert af naar het ARK, deels door bemaling en deels onder vrij verval. Aanvoer vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.\n\n\n\nAfvoer:\n\nOnder normale omstandigheden loost de Leidsche Rijn op het ARK en de Oude Rijn via de schutsluis bij Bodegraven. De Haanwijkersluis is gesloten.\nOvertollig water uit de polders wordt met poldergemalen uitgeslagen op de Oude Rijn, de Leidsche Rijn en het ARK.\nIn het noordwesten lozen polders via meerdere gemalen op de boezem van Amstel, Gooi en Vecht.\n\nWateraanvoer:\n\nVia de Leidsche Rijn en de Oude Rijn.\nIn het Noorden via het boezemsysteem van Amstel, Gooi en Vecht.\n\nBijzondere sturing (KWA) – Leidsche Rijn en Oude Rijn\nIn extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in werking:\n\nDe Groenwoudsedijksluis bij gemaal De Aanvoerder wordt gesloten.\nGemaal De Aanvoerder pompt water vanuit het ARK in de Leidsche Rijn en zet het peil aan de oostzijde op (0,20 m +NAP).\nDe Haanwijkersluis tussen de Leidsche Rijn en de Oude Rijn wordt geopend; water stroomt richting de schutsluis bij Bodegraven.\nHet systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via gebied de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de via de Doorslag eveneens richting Hekendorp.\n\nN.B. (!) de KWA is nu niet opgenomen in de huidige versie van het Ribasim-model!\n\n\n\nHet meeste water uit dit gebied wordt afgevoerd via de Leidsche Rijn naar het ARK en de Oude Rijn richting Bodegraven. Een klein deel, in het oosten van het gebied, wordt afgevoerd via de gekanaliseerde Hollandse IJssel (Doorslag sluis) en de Hollandse IJssel naar Gouda\nWateraanvoer: De Hollandsche IJssel wordt aangevoerd via:\n\nVia inlaat Vreeswijk, via het Merwedekanaal en de Doorslag.\nVia de stadswateren van Utrecht, via het sifon onder het ARK.\nVia het Noordergemaal (alleen in KWA-situaties), waarbij water uit het ARK via het sifon onder het ARK en de Doorslag wordt aangevoerd.\n\nWateraanvoer naar polders gaat grotendeels via de Hollandsche IJssel en de Leidsche–Oude Rijn\n\n\n\nOvertollig water uit de polder wordt afgevoerd op de Hollandsche IJssel en de Lek via vier gemalen: De Keulevaart, De Koekoek, De Pleyt en De Hoekse Molen.\nWateraanvoer:\n\nGrotendeels vanuit de Lek via inlaat De Koekoek.\nAanvullend vanuit de Hollandsche IJssel via de Doorslag",
-    "crumbs": [
-      "Watersystems",
-      "Stichtse Rijnlanden"
-    ]
-  },
-  {
-    "objectID": "watersystems/StichtseRijnlanden.html#capaciteiten",
-    "href": "watersystems/StichtseRijnlanden.html#capaciteiten",
-    "title": "Stichtse Rijnlanden",
-    "section": "",
-    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAanvoerder, De\nG4031\n542\ninlaat\n7\n0\n\n\nBodegraven Sluis\nSL0005\n755\nuitlaat\n0\n25\n\n\nCaspargauw\nG3003\n601\ninlaat\n3.3\n0\n\n\nCothen Stuw\nST3001\n777\ndoorlaat\n20\n20\n\n\nDoorslag sluis\nSL0030\n754\ninlaat\n7\n0\n\n\nHaanwijkersluis\nSL0003\n742\ninlaat\n6.2\n0\n\n\nInlaat Hekendorp\nI6098\n141\ninlaat\n6.2\n0\n\n\nInlaat Vreeswijk\nI6119\n252\ninlaat\n18\n0\n\n\nInlaat wijk bij duurstede\nAF0093\n481\ninlaat\n10\n0\n\n\nKeulevaart, De\nG3025\n623\nuitlaat\n0\n5.34\n\n\nKoekoek, De\nG5002\n541\nuitlaat\n0\n11.2\n\n\nNoordergemaal\nG6007\n536\ninlaat\n12\n0\n\n\nOog in Al spuisluis\nI1580\n168\nuitlaat\n0\n20\n\n\nSifon onder ARK\nSY0070\n468\ninlaat\n12\n0\n\n\nWaaiersluis Gouda\nG8000\n567\nuitlaat\n0\n14\n\n\nWeerdsluis\nSL0009\n757\nuitlaat\n0\n16\n\n\nWerkhoven stuw\nST2028\n919\nuitlaat (doorspoeling)\n5\n20\n\n\nZuidersluis\nSL0016\n758\nuitlaat\n0\n0",
-    "crumbs": [
-      "Watersystems",
-      "Stichtse Rijnlanden"
-    ]
-  },
-  {
-    "objectID": "watersystems/StichtseRijnlanden.html#bronnen",
-    "href": "watersystems/StichtseRijnlanden.html#bronnen",
-    "title": "Stichtse Rijnlanden",
-    "section": "",
-    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco) en:\n\nDocumentatie Distributiemodel (Deel B, hoofdstuk 8)",
-    "crumbs": [
-      "Watersystems",
-      "Stichtse Rijnlanden"
+      "Vallei en Veluwe"
     ]
   },
   {
@@ -831,76 +1161,136 @@
     ]
   },
   {
-    "objectID": "watersystems/DeDommel.html",
-    "href": "watersystems/DeDommel.html",
-    "title": "De Dommel",
+    "objectID": "watersystems/StichtseRijnlanden.html",
+    "href": "watersystems/StichtseRijnlanden.html",
+    "title": "Stichtse Rijnlanden",
     "section": "",
-    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving De Dommel\n\n\nHet beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.\n\n\nVia de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ’s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.\n\n\n\nBij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Hier wordt gestuwd met Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren &lt;10m3/s en 85% bij afvoeren &gt; 10m3/s).\nDe maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.\n\n\n\nEr kan water worden ingelaten bij inlaat Olen en bij inlaat Son en Breugel. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Son en Breugel is 0.16 m3/s en 0.6 m3/s naar Olen.\n\n\n\nVanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaat Beekloop.\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nInlaat Beekloop\n\n1912\ninlaat\n0.25\n0\n\n\nInlaat Olen\nDSH0023156\n417\ninlaat\n0.6\n0\n\n\nInlaat Son en Breugel\nDO28-st1\n405\ninlaat\n0.16\n0\n\n\nStuw Blaarthem\nDL62-st1\n210\nuitlaat\n0\n20\n\n\nStuw Verdeelwerk\nDL1-st5\n293\nuitlaat\n0\n200\n\n\nVughterstuw\nDO1-st3\n121\nuitlaat\n0\n200\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel E, pagina 39-1)\n[Waterakkoord: 2022-06-27_waterakkoord]",
+    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Stichtse Rijnlanden\n\n\nHieronder zijn de gebieden beschreven uit het bovenstaande figuur.\n\n\nAfvoer:\n\nVia spuisluis Oog in Al naar het ARK (hoofdroute).\nVia het Weerdsluiscomplex en het Westriool naar de Utrechtse Vecht.\nVia het sifon onder het ARK naar het Merwedekanaal, met afvoer onder vrij verval.\n\nAanvoer:\n\nVanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede en gemaal bij Caspargauw.\nRechtstreeks vanuit het ARK via het Noordergemaal.\nVanuit het Merwedekanaal via het sifon onder het ARK, met aanvoer via inlaat Vreeswijk. Wateraanvoer onder vrij verval via de Doorslag is onder normale omstandigheden niet mogelijk vanwege te weinig verval. Doorslag Sluis staat wel permanent open.\n\n\n\n\nDe wetering aan de voet van de Utrechtse Heuvelrug voert af op de Kromme Rijn. Vanwege de helling in dit gebied is er beperkt aanvoer mogelijk vanuit de Kromme Rijn.\n\n\n\nDit gebied voert af op het Amsterdam-Rijnkanaal, de Kromme Rijn en de stadswatereren Utrecht deels onder vrij verval en deels via bemalingen (niet opgenomen in bovenstaande figuur)\nAanvoer vindt hoofdzakelijk plaats vanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede. Aanvullend wordt water aangevoerd via Caspargauw en de Caspargauwse wetering. In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m³/s. Water wordt als volgt gestuurd:\n\nBij overschrijding gaat stuw Werkhoven omhoog en wordt stuw Cothen gestreken.\nAfvoer vindt dan bovenstrooms van Werkhoven plaats via de Caspargauw en benedenstrooms via Utrecht.\n\n\n\n\nDit gebied voert af naar het ARK, deels door bemaling en deels onder vrij verval. Aanvoer vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.\n\n\n\nAfvoer:\n\nOnder normale omstandigheden loost de Leidsche Rijn op het ARK en de Oude Rijn via de schutsluis bij Bodegraven. De Haanwijkersluis is gesloten.\nOvertollig water uit de polders wordt met poldergemalen uitgeslagen op de Oude Rijn, de Leidsche Rijn en het ARK.\nIn het noordwesten lozen polders via meerdere gemalen op de boezem van Amstel, Gooi en Vecht.\n\nWateraanvoer:\n\nVia de Leidsche Rijn en de Oude Rijn.\nIn het Noorden via het boezemsysteem van Amstel, Gooi en Vecht.\n\nBijzondere sturing (KWA) – Leidsche Rijn en Oude Rijn\nIn extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in werking:\n\nDe Groenwoudsedijksluis bij gemaal De Aanvoerder wordt gesloten.\nGemaal De Aanvoerder pompt water vanuit het ARK in de Leidsche Rijn en zet het peil aan de oostzijde op (0,20 m +NAP).\nDe Haanwijkersluis tussen de Leidsche Rijn en de Oude Rijn wordt geopend; water stroomt richting de schutsluis bij Bodegraven.\nHet systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via gebied de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de via de Doorslag eveneens richting Hekendorp.\n\nN.B. (!) de KWA is nu niet opgenomen in de huidige versie van het Ribasim-model!\n\n\n\nHet meeste water uit dit gebied wordt afgevoerd via de Leidsche Rijn naar het ARK en de Oude Rijn richting Bodegraven. Een klein deel, in het oosten van het gebied, wordt afgevoerd via de gekanaliseerde Hollandse IJssel (Doorslag sluis) en de Hollandse IJssel naar Gouda\nWateraanvoer: De Hollandsche IJssel wordt aangevoerd via:\n\nVia inlaat Vreeswijk, via het Merwedekanaal en de Doorslag.\nVia de stadswateren van Utrecht, via het sifon onder het ARK.\nVia het Noordergemaal (alleen in KWA-situaties), waarbij water uit het ARK via het sifon onder het ARK en de Doorslag wordt aangevoerd.\n\nWateraanvoer naar polders gaat grotendeels via de Hollandsche IJssel en de Leidsche–Oude Rijn\n\n\n\nOvertollig water uit de polder wordt afgevoerd op de Hollandsche IJssel en de Lek via vier gemalen: De Keulevaart, De Koekoek, De Pleyt en De Hoekse Molen.\nWateraanvoer:\n\nGrotendeels vanuit de Lek via inlaat De Koekoek.\nAanvullend vanuit de Hollandsche IJssel via de Doorslag\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAanvoerder, De\nG4031\n542\ninlaat\n7\n0\n\n\nBodegraven Sluis\nSL0005\n755\nuitlaat\n0\n25\n\n\nCaspargauw\nG3003\n601\ninlaat\n3.3\n0\n\n\nCothen Stuw\nST3001\n777\ndoorlaat\n20\n20\n\n\nDoorslag sluis\nSL0030\n754\ninlaat\n7\n0\n\n\nHaanwijkersluis\nSL0003\n742\ninlaat\n6.2\n0\n\n\nInlaat Hekendorp\nI6098\n141\ninlaat\n6.2\n0\n\n\nInlaat Vreeswijk\nI6119\n252\ninlaat\n18\n0\n\n\nInlaat wijk bij duurstede\nAF0093\n481\ninlaat\n10\n0\n\n\nKeulevaart, De\nG3025\n623\nuitlaat\n0\n5.34\n\n\nKoekoek, De\nG5002\n541\nuitlaat\n0\n11.2\n\n\nNoordergemaal\nG6007\n536\ninlaat\n12\n0\n\n\nOog in Al spuisluis\nI1580\n168\nuitlaat\n0\n20\n\n\nSifon onder ARK\nSY0070\n468\ninlaat\n12\n0\n\n\nWaaiersluis Gouda\nG8000\n567\nuitlaat\n0\n14\n\n\nWeerdsluis\nSL0009\n757\nuitlaat\n0\n16\n\n\nWerkhoven stuw\nST2028\n919\nuitlaat (doorspoeling)\n5\n20\n\n\nZuidersluis\nSL0016\n758\nuitlaat\n0\n0\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco) en:\n\nDocumentatie Distributiemodel (Deel B, hoofdstuk 8)",
     "crumbs": [
       "Watersystems",
-      "De Dommel"
+      "Stichtse Rijnlanden"
     ]
   },
   {
-    "objectID": "watersystems/DeDommel.html#systeembeschrijving",
-    "href": "watersystems/DeDommel.html#systeembeschrijving",
-    "title": "De Dommel",
+    "objectID": "watersystems/StichtseRijnlanden.html#systeembeschrijving",
+    "href": "watersystems/StichtseRijnlanden.html#systeembeschrijving",
+    "title": "Stichtse Rijnlanden",
     "section": "",
-    "text": "Systeembeschrijving De Dommel\n\n\nHet beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.\n\n\nVia de Vughterstuw wordt water van de Dommel afgevoerd naar de Dieze, die via spuisluis Crèvecoeur uitstroomt in de Maas. Bij hoogwater kan de afvoer van de Dommel bij de Vughterstuw deels om ’s-Hertogenbosch heen geleid worden door het Drongelens kanaal, dat meer benedenstrooms in de Maas uitmondt en dus langer onder vrij verval kan lozen bij stuw Bovenlandse Sluis.\n\n\n\nBij Eindhoven staat Stuw Verdeelwerk. Een deel van het water van de Dommel gaat bij deze stuw naar het Beatrixkanaal. Hier wordt gestuwd met Stuw Blaarthem. Uit metingen blijkt (DM rapport-2009) dat het overgrote deel, ongeveer 90% naar de Dommel stroomt. (93% bij afvoeren &lt;10m3/s en 85% bij afvoeren &gt; 10m3/s).\nDe maximaal toegestane afvoer op het Beatrixkanaal is 20 m3/s en is vastgelegd in het waterakkoord. Het Beatrixkanaal staat in open verbinding met het Wilhelminakanaal.\n\n\n\nEr kan water worden ingelaten bij inlaat Olen en bij inlaat Son en Breugel. Deze onttrekkingen zijn vastgelegd in het waterakkoord. De maximale onttrekking naar Son en Breugel is 0.16 m3/s en 0.6 m3/s naar Olen.\n\n\n\nVanuit het kanaal van Bocholt naar Herentals (vanuit Belgie) wordt water aangevoerd naar inlaat Beekloop.",
+    "text": "Systeembeschrijving Stichtse Rijnlanden\n\n\nHieronder zijn de gebieden beschreven uit het bovenstaande figuur.\n\n\nAfvoer:\n\nVia spuisluis Oog in Al naar het ARK (hoofdroute).\nVia het Weerdsluiscomplex en het Westriool naar de Utrechtse Vecht.\nVia het sifon onder het ARK naar het Merwedekanaal, met afvoer onder vrij verval.\n\nAanvoer:\n\nVanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede en gemaal bij Caspargauw.\nRechtstreeks vanuit het ARK via het Noordergemaal.\nVanuit het Merwedekanaal via het sifon onder het ARK, met aanvoer via inlaat Vreeswijk. Wateraanvoer onder vrij verval via de Doorslag is onder normale omstandigheden niet mogelijk vanwege te weinig verval. Doorslag Sluis staat wel permanent open.\n\n\n\n\nDe wetering aan de voet van de Utrechtse Heuvelrug voert af op de Kromme Rijn. Vanwege de helling in dit gebied is er beperkt aanvoer mogelijk vanuit de Kromme Rijn.\n\n\n\nDit gebied voert af op het Amsterdam-Rijnkanaal, de Kromme Rijn en de stadswatereren Utrecht deels onder vrij verval en deels via bemalingen (niet opgenomen in bovenstaande figuur)\nAanvoer vindt hoofdzakelijk plaats vanuit de Kromme Rijn via de inlaat bij Wijk bij Duurstede. Aanvullend wordt water aangevoerd via Caspargauw en de Caspargauwse wetering. In natte perioden wordt bij Amelisweerd gestuurd op een maximale afvoer van 10 m³/s. Water wordt als volgt gestuurd:\n\nBij overschrijding gaat stuw Werkhoven omhoog en wordt stuw Cothen gestreken.\nAfvoer vindt dan bovenstrooms van Werkhoven plaats via de Caspargauw en benedenstrooms via Utrecht.\n\n\n\n\nDit gebied voert af naar het ARK, deels door bemaling en deels onder vrij verval. Aanvoer vindt plaats vanuit het ARK, voornamelijk met gemalen en in mindere mate onder vrij verval.\n\n\n\nAfvoer:\n\nOnder normale omstandigheden loost de Leidsche Rijn op het ARK en de Oude Rijn via de schutsluis bij Bodegraven. De Haanwijkersluis is gesloten.\nOvertollig water uit de polders wordt met poldergemalen uitgeslagen op de Oude Rijn, de Leidsche Rijn en het ARK.\nIn het noordwesten lozen polders via meerdere gemalen op de boezem van Amstel, Gooi en Vecht.\n\nWateraanvoer:\n\nVia de Leidsche Rijn en de Oude Rijn.\nIn het Noorden via het boezemsysteem van Amstel, Gooi en Vecht.\n\nBijzondere sturing (KWA) – Leidsche Rijn en Oude Rijn\nIn extreem droge perioden treedt de Kleinschalige Wateraanvoerroute (KWA) in werking:\n\nDe Groenwoudsedijksluis bij gemaal De Aanvoerder wordt gesloten.\nGemaal De Aanvoerder pompt water vanuit het ARK in de Leidsche Rijn en zet het peil aan de oostzijde op (0,20 m +NAP).\nDe Haanwijkersluis tussen de Leidsche Rijn en de Oude Rijn wordt geopend; water stroomt richting de schutsluis bij Bodegraven.\nHet systeem wordt aanvullend gevoed vanuit de Lek (bij De Koekoek) en het ARK (via het Noordergemaal). Vanuit de Lek stroomt water via gebied de Lopikerwaard, via inlaat Hekendorp, naar de Enkele Wiericke en de Oude Rijn. Vanuit het Noordergemaal stroomt water via de via de Doorslag eveneens richting Hekendorp.\n\nN.B. (!) de KWA is nu niet opgenomen in de huidige versie van het Ribasim-model!\n\n\n\nHet meeste water uit dit gebied wordt afgevoerd via de Leidsche Rijn naar het ARK en de Oude Rijn richting Bodegraven. Een klein deel, in het oosten van het gebied, wordt afgevoerd via de gekanaliseerde Hollandse IJssel (Doorslag sluis) en de Hollandse IJssel naar Gouda\nWateraanvoer: De Hollandsche IJssel wordt aangevoerd via:\n\nVia inlaat Vreeswijk, via het Merwedekanaal en de Doorslag.\nVia de stadswateren van Utrecht, via het sifon onder het ARK.\nVia het Noordergemaal (alleen in KWA-situaties), waarbij water uit het ARK via het sifon onder het ARK en de Doorslag wordt aangevoerd.\n\nWateraanvoer naar polders gaat grotendeels via de Hollandsche IJssel en de Leidsche–Oude Rijn\n\n\n\nOvertollig water uit de polder wordt afgevoerd op de Hollandsche IJssel en de Lek via vier gemalen: De Keulevaart, De Koekoek, De Pleyt en De Hoekse Molen.\nWateraanvoer:\n\nGrotendeels vanuit de Lek via inlaat De Koekoek.\nAanvullend vanuit de Hollandsche IJssel via de Doorslag",
     "crumbs": [
       "Watersystems",
-      "De Dommel"
+      "Stichtse Rijnlanden"
     ]
   },
   {
-    "objectID": "watersystems/DeDommel.html#capaciteiten",
-    "href": "watersystems/DeDommel.html#capaciteiten",
-    "title": "De Dommel",
+    "objectID": "watersystems/StichtseRijnlanden.html#capaciteiten",
+    "href": "watersystems/StichtseRijnlanden.html#capaciteiten",
+    "title": "Stichtse Rijnlanden",
     "section": "",
-    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nInlaat Beekloop\n\n1912\ninlaat\n0.25\n0\n\n\nInlaat Olen\nDSH0023156\n417\ninlaat\n0.6\n0\n\n\nInlaat Son en Breugel\nDO28-st1\n405\ninlaat\n0.16\n0\n\n\nStuw Blaarthem\nDL62-st1\n210\nuitlaat\n0\n20\n\n\nStuw Verdeelwerk\nDL1-st5\n293\nuitlaat\n0\n200\n\n\nVughterstuw\nDO1-st3\n121\nuitlaat\n0\n200",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAanvoerder, De\nG4031\n542\ninlaat\n7\n0\n\n\nBodegraven Sluis\nSL0005\n755\nuitlaat\n0\n25\n\n\nCaspargauw\nG3003\n601\ninlaat\n3.3\n0\n\n\nCothen Stuw\nST3001\n777\ndoorlaat\n20\n20\n\n\nDoorslag sluis\nSL0030\n754\ninlaat\n7\n0\n\n\nHaanwijkersluis\nSL0003\n742\ninlaat\n6.2\n0\n\n\nInlaat Hekendorp\nI6098\n141\ninlaat\n6.2\n0\n\n\nInlaat Vreeswijk\nI6119\n252\ninlaat\n18\n0\n\n\nInlaat wijk bij duurstede\nAF0093\n481\ninlaat\n10\n0\n\n\nKeulevaart, De\nG3025\n623\nuitlaat\n0\n5.34\n\n\nKoekoek, De\nG5002\n541\nuitlaat\n0\n11.2\n\n\nNoordergemaal\nG6007\n536\ninlaat\n12\n0\n\n\nOog in Al spuisluis\nI1580\n168\nuitlaat\n0\n20\n\n\nSifon onder ARK\nSY0070\n468\ninlaat\n12\n0\n\n\nWaaiersluis Gouda\nG8000\n567\nuitlaat\n0\n14\n\n\nWeerdsluis\nSL0009\n757\nuitlaat\n0\n16\n\n\nWerkhoven stuw\nST2028\n919\nuitlaat (doorspoeling)\n5\n20\n\n\nZuidersluis\nSL0016\n758\nuitlaat\n0\n0",
     "crumbs": [
       "Watersystems",
-      "De Dommel"
+      "Stichtse Rijnlanden"
     ]
   },
   {
-    "objectID": "watersystems/DeDommel.html#bronnen",
-    "href": "watersystems/DeDommel.html#bronnen",
-    "title": "De Dommel",
+    "objectID": "watersystems/StichtseRijnlanden.html#bronnen",
+    "href": "watersystems/StichtseRijnlanden.html#bronnen",
+    "title": "Stichtse Rijnlanden",
     "section": "",
-    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel E, pagina 39-1)\n[Waterakkoord: 2022-06-27_waterakkoord]",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco) en:\n\nDocumentatie Distributiemodel (Deel B, hoofdstuk 8)",
     "crumbs": [
       "Watersystems",
-      "De Dommel"
+      "Stichtse Rijnlanden"
     ]
   },
   {
-    "objectID": "watersystems/Vechtstromen.html",
-    "href": "watersystems/Vechtstromen.html",
-    "title": "Vechtstromen",
+    "objectID": "watersystems/RijnenIJssel.html",
+    "href": "watersystems/RijnenIJssel.html",
+    "title": "Rijn en IJssel",
     "section": "",
-    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Vechtstromen\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\n\n\n\nAls in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit het Overijsselsch Kanaal (Kanaal Almelo – de Haandrik) via Sluis Aadorp (maximaal 10 m3/s)\ningelaten in het Overijsselsch Kanaal (Kanaal Almelo – de Haandrik). Buiten deze inlaatperiode stroomt er geen water vanuit het Twentekanaal naar het Kanaal Almelo – de Haandrik.\nOok bij de Stieltjeskanaalsluis naar de Verlengde Hoogeveensche Vaart kan water worden ingelaten.\nDe inlaten Vroomshoop en Hammervlier – Geerdijk worden alleen ’s zomers gebruikt voor het inlaten van water. Het water wordt dan ingelaten vanuit het Kanaal Almelo – de Haandrik. Verder is er voor de droge perioden een waterakkoord gesloten met Waterschap Groot Salland. Water wordt dan indien mogelijk vanuit het Twentekanaal via Kanaal Almelo – de Haandrik (ook Overijssels Kanaal genoemd) naar Salland doorgevoerd. Het doorvoeren naar Salland kan met een maximale capaciteit van 5 tot 7 m3/s. Normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s.\nVanuit de Dinkel wordt alleen water het gebied ingelaten als er voldoende water in de Dinkel aanwezig is. Het water van de Dinkel dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.\nHet Banisgemaal is een in- en uitlaatgemaal bij Almelo. Bij hoogwater op het Lateraalkanaal, wordt het Banisgemaal gebruikt om het Lateraalkanaal te ontlasten. Het water wordt dan door het gemaal op de zijtak van het Twentekanaal geloosd. Het gemaal heeft een maximale capaciteit van 10 m3/s. In de zomerperiode wordt water vanuit de zijtak via het inlaatwerk in het Banisgemaal van het Twentekanaal in het Lateraalkanaal gelaten. Dit gebeurt met een maximale capaciteit van 0.43 m3/s.\nStokkumerflier is ook een in- en uitlaatpunt. Het water wordt uitgemalen op het Twentekanaal met een maximale capaciteit van 2.29 m3/s. De inlaat van water gebeurt met een maximale capaciteit van 0.42 m3/s. Er wordt ook water ingelaten vanuit het Twentekanaal via Herikervlier, Oude Poelsbeek en Oude Bolscherbeek.\nInlaatschuif Hammerflier en inlaatschuif Vriezenveense Veenkanaal laten water in vanuit Overijsselsch Kanaal (Kanaal Almelo – de Haandrik). De maximale inlaatcapaciteiten zijn onbekend. Het water dat bij Hammerflier wordt ingelaten wordt gebruikt ter compensatie van de grondwateronttrekking door het WMO in Hammerflier. Het niet geïnfiltreerde water wordt via de Regge afgevoerd naar de Overijsselse Vecht.\n\n\n\nAfvoer: - Via het Afleidingskanaal wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de Maas\nAanvoer: - Via Verdeelwerk De Halte wordt een deel van het aangevoerde water naar het aanvoergebied Peelkanaal geleid. - Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied Peelscheloop Bakelse AA en Maaskant-Oost)\n\n\n\nAfvoer: - Via de Oostrumsche beek en de Groote Molenbeek naar de Maas\nAanvoer - De aanvoer via Katsberg, naar gemaal Helenveen en een inlaat naar aanvoergebied Helenaveen en Verdeelwerk de Halte.\n\n\n\nAfvoer: - Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de Maas\nAanvoer - Via de Noordervaart kan water ingelaten worden via gemaal Beringe\n\n\n\nAfvoer: - Direct naar de Zuid-Willemsvaart\nAanvoer - Via inlaat de Eendlossing vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - Naar de Zuid-Willemsvaart via Aa en Maas\nAanvoer - Via inlaat Nederweert Hoverlossing vanaf de Zuid-Willemsvaart - Vanaf aanvoergebied Nederweert Hoverlossing wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)\n\n\n\nAfvoer: - Via de uitlaat Sterkselsche Aa wordt het doorgevoerd naar waterschap de Dommel\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - via de Neerbeek en de Tungelroysche beek naar de Maas\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\n\nVia inlaten vanaf de Zwartwaterlossing\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAchterste Moost\nD_25958\n410\ninlaat\n0.02\n0\n\n\nEendlossing\nS_97698\n772\ninlaat\n0.02\n0\n\n\nGemaal Beringe\nG_27621\n583\ninlaat\n0.65\n0\n\n\nGemaal Helenaveen\nG_27616\n590\ninlaat\n0.35\n0\n\n\nHoutstraatlossing\nD_14965\n351\ninlaat\n0.05\n0\n\n\nHushoverbeek\nD_281344\n2502\ninlaat\n0.05\n0\n\n\nInlaat Evertsoord\nS_97322\n604\ninlaat\n0.35\n0\n\n\nInlaat Groote Moost\nS_98847\n236\ninlaat\n0.09\n0\n\n\nInlaat Hulsenlossing\n\n1223\ninlaat\n0.03\n0\n\n\nInlaat Rietbeek\nS_98409\n599\ninlaat\n0.12\n0\n\n\nInlaat Weteringbeek\nS_98009\n731\ninlaat\n0.125\n0\n\n\nKampershoek\n\n2503\ninlaat\n0.05\n0\n\n\nKatsberg\nS_282001\n238\ndoorlaat\n4.7\n0\n\n\nKlein Leukerbeek\nW_153168_0\n1119\ninlaat\n0.08\n0\n\n\nNederweerter Hovenlossing\nD_23657\n534\ninlaat\n0.02\n0\n\n\nNederweerter Riet\nD_25545\n464\ninlaat\n0.05\n0\n\n\nOude Graaf\n\n1136\ninlaat\n0.05\n0\n\n\nRoeven\nS_97840\n2501\ninlaat\n0.01\n0\n\n\nSnepheiderbeek\nD_23544\n411\ninlaat\n0.05\n0\n\n\nUitlaat Sterkselsch kanaal\nS_97873\n748\nuitlaat\n0\n20\n\n\nVerdeelwerk de Halte\nS_97735\n773\ninlaat\n4.7\n0\n\n\nWaatskampoplossing\nS_97872\n598\ninlaat\n0.01\n0\n\n\nZwartwaterlossing\nD_294341\n230\ninlaat\n0.05\n0\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 8)\nbasiskaartwateraanvoer_giho_wateraanvoer_2009.pdf\naanvoertabel H 08012021.xlsx"
+    "text": "Laatst bijgewerkt: 27-4-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Rijn en IJssel\n\n\n\n\nWater wordt aangevoerd naar een aantal beken vanuit het Twentekanaal in het noorden van het beheergebied. Daarnaast vindt aanvoer plaats vanuit Duitsland. Dit water wordt op meerdere locaties verdeeld en lokaal ingelaten.\nDe afvoer vindt plaats via de Twentekanalen, de IJssel en de Rijn.\nHieronder worden de belangrijkste systemen beknopt beschreven.\n\n\n\n\n\nAanvoer vanuit het Twentekanaal via Inlaat Schipbeek\nBovenstrooms van het Twentekanaal wordt via de Schipbeek een deel van het water doorgevoerd naar Vechtstromen (Boven-Regge, niet op de kaart)\nDe Schipbeek ontvangt daarnaast water vanuit Duitsland\nAfvoer richting de IJssel, met een noodoverlaat op het Twentekanaal bij de inlaat\n\n\n\n\n\nAanvoer via Inlaat Herkel naar de Eefse Beek\nAfvoer via de Eefse Beek naar het Twentekanaal, bovenstrooms van Eefde, deels onder vrij verval en deels via een gemaal\n\n\n\n\n\nAanvoer via Inlaat Lochem naar de Berkel (benedenstrooms richting Lochem en Zutphen)\nDe Berkel en Slinge ontvangen tevens water vanuit Duitsland\nWater wordt op meerdere locaties verdeeld en lokaal ingelaten\nAfvoer via de Berkel richting het Twentekanaal en de IJssel\n\n\n\n\n\nDe bovenlopen van de Oude-IJssel ontvangen water vanuit Duitsland\nDit water wordt op verschillende locaties verdeeld\nAfvoer van de Oude-IJssel vindt plaats naar de IJssel\n\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel Deel C, hoofdstuk 20\nWaterakkoord Twentekanalen (2025)\nSchematic SWECO n.a.v samenwerkdag december 2023",
+    "crumbs": [
+      "Watersystems",
+      "Rijn en IJssel"
+    ]
   },
   {
-    "objectID": "watersystems/Vechtstromen.html#systeembeschrijving",
-    "href": "watersystems/Vechtstromen.html#systeembeschrijving",
-    "title": "Vechtstromen",
+    "objectID": "watersystems/RijnenIJssel.html#systeembeschrijving",
+    "href": "watersystems/RijnenIJssel.html#systeembeschrijving",
+    "title": "Rijn en IJssel",
     "section": "",
-    "text": "Systeembeschrijving Vechtstromen\n\n\nHieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.\n\n\n\n\n\nAls in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit het Overijsselsch Kanaal (Kanaal Almelo – de Haandrik) via Sluis Aadorp (maximaal 10 m3/s)\ningelaten in het Overijsselsch Kanaal (Kanaal Almelo – de Haandrik). Buiten deze inlaatperiode stroomt er geen water vanuit het Twentekanaal naar het Kanaal Almelo – de Haandrik.\nOok bij de Stieltjeskanaalsluis naar de Verlengde Hoogeveensche Vaart kan water worden ingelaten.\nDe inlaten Vroomshoop en Hammervlier – Geerdijk worden alleen ’s zomers gebruikt voor het inlaten van water. Het water wordt dan ingelaten vanuit het Kanaal Almelo – de Haandrik. Verder is er voor de droge perioden een waterakkoord gesloten met Waterschap Groot Salland. Water wordt dan indien mogelijk vanuit het Twentekanaal via Kanaal Almelo – de Haandrik (ook Overijssels Kanaal genoemd) naar Salland doorgevoerd. Het doorvoeren naar Salland kan met een maximale capaciteit van 5 tot 7 m3/s. Normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s.\nVanuit de Dinkel wordt alleen water het gebied ingelaten als er voldoende water in de Dinkel aanwezig is. Het water van de Dinkel dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.\nHet Banisgemaal is een in- en uitlaatgemaal bij Almelo. Bij hoogwater op het Lateraalkanaal, wordt het Banisgemaal gebruikt om het Lateraalkanaal te ontlasten. Het water wordt dan door het gemaal op de zijtak van het Twentekanaal geloosd. Het gemaal heeft een maximale capaciteit van 10 m3/s. In de zomerperiode wordt water vanuit de zijtak via het inlaatwerk in het Banisgemaal van het Twentekanaal in het Lateraalkanaal gelaten. Dit gebeurt met een maximale capaciteit van 0.43 m3/s.\nStokkumerflier is ook een in- en uitlaatpunt. Het water wordt uitgemalen op het Twentekanaal met een maximale capaciteit van 2.29 m3/s. De inlaat van water gebeurt met een maximale capaciteit van 0.42 m3/s. Er wordt ook water ingelaten vanuit het Twentekanaal via Herikervlier, Oude Poelsbeek en Oude Bolscherbeek.\nInlaatschuif Hammerflier en inlaatschuif Vriezenveense Veenkanaal laten water in vanuit Overijsselsch Kanaal (Kanaal Almelo – de Haandrik). De maximale inlaatcapaciteiten zijn onbekend. Het water dat bij Hammerflier wordt ingelaten wordt gebruikt ter compensatie van de grondwateronttrekking door het WMO in Hammerflier. Het niet geïnfiltreerde water wordt via de Regge afgevoerd naar de Overijsselse Vecht.\n\n\n\nAfvoer: - Via het Afleidingskanaal wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de Maas\nAanvoer: - Via Verdeelwerk De Halte wordt een deel van het aangevoerde water naar het aanvoergebied Peelkanaal geleid. - Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied Peelscheloop Bakelse AA en Maaskant-Oost)\n\n\n\nAfvoer: - Via de Oostrumsche beek en de Groote Molenbeek naar de Maas\nAanvoer - De aanvoer via Katsberg, naar gemaal Helenveen en een inlaat naar aanvoergebied Helenaveen en Verdeelwerk de Halte.\n\n\n\nAfvoer: - Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de Maas\nAanvoer - Via de Noordervaart kan water ingelaten worden via gemaal Beringe\n\n\n\nAfvoer: - Direct naar de Zuid-Willemsvaart\nAanvoer - Via inlaat de Eendlossing vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - Naar de Zuid-Willemsvaart via Aa en Maas\nAanvoer - Via inlaat Nederweert Hoverlossing vanaf de Zuid-Willemsvaart - Vanaf aanvoergebied Nederweert Hoverlossing wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)\n\n\n\nAfvoer: - Via de uitlaat Sterkselsche Aa wordt het doorgevoerd naar waterschap de Dommel\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\nAfvoer: - via de Neerbeek en de Tungelroysche beek naar de Maas\nAanvoer: - Via inlaten vanaf de Zuid-Willemsvaart\n\n\n\n\nVia inlaten vanaf de Zwartwaterlossing"
+    "text": "Systeembeschrijving Rijn en IJssel\n\n\n\n\nWater wordt aangevoerd naar een aantal beken vanuit het Twentekanaal in het noorden van het beheergebied. Daarnaast vindt aanvoer plaats vanuit Duitsland. Dit water wordt op meerdere locaties verdeeld en lokaal ingelaten.\nDe afvoer vindt plaats via de Twentekanalen, de IJssel en de Rijn.\nHieronder worden de belangrijkste systemen beknopt beschreven.\n\n\n\n\n\nAanvoer vanuit het Twentekanaal via Inlaat Schipbeek\nBovenstrooms van het Twentekanaal wordt via de Schipbeek een deel van het water doorgevoerd naar Vechtstromen (Boven-Regge, niet op de kaart)\nDe Schipbeek ontvangt daarnaast water vanuit Duitsland\nAfvoer richting de IJssel, met een noodoverlaat op het Twentekanaal bij de inlaat\n\n\n\n\n\nAanvoer via Inlaat Herkel naar de Eefse Beek\nAfvoer via de Eefse Beek naar het Twentekanaal, bovenstrooms van Eefde, deels onder vrij verval en deels via een gemaal\n\n\n\n\n\nAanvoer via Inlaat Lochem naar de Berkel (benedenstrooms richting Lochem en Zutphen)\nDe Berkel en Slinge ontvangen tevens water vanuit Duitsland\nWater wordt op meerdere locaties verdeeld en lokaal ingelaten\nAfvoer via de Berkel richting het Twentekanaal en de IJssel\n\n\n\n\n\nDe bovenlopen van de Oude-IJssel ontvangen water vanuit Duitsland\nDit water wordt op verschillende locaties verdeeld\nAfvoer van de Oude-IJssel vindt plaats naar de IJssel",
+    "crumbs": [
+      "Watersystems",
+      "Rijn en IJssel"
+    ]
   },
   {
-    "objectID": "watersystems/Vechtstromen.html#capaciteiten",
-    "href": "watersystems/Vechtstromen.html#capaciteiten",
-    "title": "Vechtstromen",
+    "objectID": "watersystems/RijnenIJssel.html#capaciteiten",
+    "href": "watersystems/RijnenIJssel.html#capaciteiten",
+    "title": "Rijn en IJssel",
     "section": "",
-    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAchterste Moost\nD_25958\n410\ninlaat\n0.02\n0\n\n\nEendlossing\nS_97698\n772\ninlaat\n0.02\n0\n\n\nGemaal Beringe\nG_27621\n583\ninlaat\n0.65\n0\n\n\nGemaal Helenaveen\nG_27616\n590\ninlaat\n0.35\n0\n\n\nHoutstraatlossing\nD_14965\n351\ninlaat\n0.05\n0\n\n\nHushoverbeek\nD_281344\n2502\ninlaat\n0.05\n0\n\n\nInlaat Evertsoord\nS_97322\n604\ninlaat\n0.35\n0\n\n\nInlaat Groote Moost\nS_98847\n236\ninlaat\n0.09\n0\n\n\nInlaat Hulsenlossing\n\n1223\ninlaat\n0.03\n0\n\n\nInlaat Rietbeek\nS_98409\n599\ninlaat\n0.12\n0\n\n\nInlaat Weteringbeek\nS_98009\n731\ninlaat\n0.125\n0\n\n\nKampershoek\n\n2503\ninlaat\n0.05\n0\n\n\nKatsberg\nS_282001\n238\ndoorlaat\n4.7\n0\n\n\nKlein Leukerbeek\nW_153168_0\n1119\ninlaat\n0.08\n0\n\n\nNederweerter Hovenlossing\nD_23657\n534\ninlaat\n0.02\n0\n\n\nNederweerter Riet\nD_25545\n464\ninlaat\n0.05\n0\n\n\nOude Graaf\n\n1136\ninlaat\n0.05\n0\n\n\nRoeven\nS_97840\n2501\ninlaat\n0.01\n0\n\n\nSnepheiderbeek\nD_23544\n411\ninlaat\n0.05\n0\n\n\nUitlaat Sterkselsch kanaal\nS_97873\n748\nuitlaat\n0\n20\n\n\nVerdeelwerk de Halte\nS_97735\n773\ninlaat\n4.7\n0\n\n\nWaatskampoplossing\nS_97872\n598\ninlaat\n0.01\n0\n\n\nZwartwaterlossing\nD_294341\n230\ninlaat\n0.05\n0"
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.",
+    "crumbs": [
+      "Watersystems",
+      "Rijn en IJssel"
+    ]
   },
   {
-    "objectID": "watersystems/Vechtstromen.html#bronnen",
-    "href": "watersystems/Vechtstromen.html#bronnen",
-    "title": "Vechtstromen",
+    "objectID": "watersystems/RijnenIJssel.html#bronnen",
+    "href": "watersystems/RijnenIJssel.html#bronnen",
+    "title": "Rijn en IJssel",
     "section": "",
-    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow.\n\nDocumentatie Distributiemodel (Deel D, hoofdstuk 8)\nbasiskaartwateraanvoer_giho_wateraanvoer_2009.pdf\naanvoertabel H 08012021.xlsx"
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel Deel C, hoofdstuk 20\nWaterakkoord Twentekanalen (2025)\nSchematic SWECO n.a.v samenwerkdag december 2023",
+    "crumbs": [
+      "Watersystems",
+      "Rijn en IJssel"
+    ]
+  },
+  {
+    "objectID": "watersystems/Noorderzijlvest.html",
+    "href": "watersystems/Noorderzijlvest.html",
+    "title": "Noorderzijlvest",
+    "section": "",
+    "text": "Laatst bijgewerkt: 07-04-2026\nLaatste modelversie\n\n\n\n\n\n\nSysteembeschrijving Noorderzijlvest\n\n\n\n\n\nBij Gaarkeuken kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.\nEen deel daarvan (tot 20 m³/s) kan via gemaal Dorkwerd worden opgepompt richting waterschap Hunze en Aa’s.\nWater dat op de Electraboezem nodig is, wordt via de sluis bij Gaarkeuken ingelaten; overschot wordt afgevoerd richting het Lauwersmeer.\nPraktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via Dorkwerd naar Hunze en Aa’s (Eemskanaalboezem).\n\n\n\n\nHet witte gebied en zalmroze gebied (Elektraboezem-Oost) op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen H.D. Louwes (toekomstig Hunsingo) en De Waterwolf — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de Cleveringsluizen op de Waddenzee.\n\n\n\nIn afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.\nIn het zuidoosten wordt via een reeks kleinere inlaten — Jonkersbrug, Ter Aard, Huis ter Heide, Heideheimheem, Meerweg vanuit Hunze en Aa’s en Drents Overijsselse Delta water ingelaten.\n\n\n\nDit gebied voert water af naar de Electraboezem via de uitlaat Leek en het Dwarsdiep.\nDe wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij Leek, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via Leek wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.\n\n\n\nDe noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (Noordpolderzijl en Spijksterpompen).\nIn droge periodes wordt water uit de Electraboezem (via boezemgemalen Stad en Lande, Schaphalsterzijl en Tilburg) met kleine aanvoergemalen naar de kustpolders opgemalen.\n\n\n\nLoost via gemaal De Drie Delfzijlen bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de Oostersluis. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij Spijksterpompen.\n\n\n\nMarnerwaard loost water via Nieuw Robbengat op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.\nIn droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de Herculesstuw.\n\n\n\nDongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal Dongeradielen op het Lauwersmeer en via de sluis Dokkumer Nieuwezijlen onder vrij verval.\n\n\n\n\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAbelstok\nKGM156\n147\nuitlaat\n0\n10\n\n\nAllartsooginlaat\nINL201\n698\ninlaat\n20\n0\n\n\nDe Drie Delfzijlen\nKGM046\n67\nuitlaat\n0\n25\n\n\nDe Waterwolf\nKGM001\n29\ndoorlaat\n75\n75\n\n\nDokkumer Nieuwezijlen\n\n1755\nuitlaat\n0\n0\n\n\nDrie-Provinciëninlaat\nINL202\n699\ninlaat\n20\n0\n\n\nFrieschepaleninlaat\nINL077\n687\ninlaat\n20\n0\n\n\nGaarkeukeninlaat\n\n1741\ninlaat\n24\n0\n\n\nGemaal Dokwerd\n\n1753\ninlaat\n20\n0\n\n\nGemaal de Dongeradielen\n\n1748\nuitlaat\n0\n0\n\n\nH.D. Louwes\nKGM002\n30\nuitlaat\n0\n16.7\n\n\nHeidenheeminlaat\nINL055\n1743\ninlaat\n0.072\n0\n\n\nHerculesstuw\nKST0169\n412\nuitlaat (doorspoeling)\n0.2\n10.2\n\n\nHuis ter Heide-inlaat\nINL114\n1742\ninlaat\n0.105\n0\n\n\nJonkersbruginlaat\nINL095\n1739\ninlaat\n0.032\n0\n\n\nLeek\nKGM009\n36\ninlaat\n1.17\n0\n\n\nMeerweg\n\n1758\ninlaat\n0.021\n0\n\n\nNieuwe Robbengat\nKGM016\n42\nuitlaat\n0\n4.33\n\n\nNoordpolderzijl\nKGM014\n40\nuitlaat\n0\n4\n\n\nOostersluis\nKGM148\n142\ninlaat\n2.5\n0\n\n\nR.J. Cleveringsluizen\nKSL011\n724\nuitlaat\n0\n668\n\n\nSchaphalsterzijl\nKGM155_i\n146\ninlaat\n2.5\n0\n\n\nSpijksterpompen\nKGM015\n41\nuitlaat (doorspoeling)\n0.4\n12.9\n\n\nStad en Lande\nKGM003_i\n32\ninlaat\n1.5\n0\n\n\nTer Aardinlaat\nINL001\n1751\ninlaat\n0.043\n0\n\n\n\n\n\n\nVoor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel C, hoofdstuk 26)\nNoorderzijlvest - beschrijving wateraanvoer en doorspoeling",
+    "crumbs": [
+      "Watersystems",
+      "Noorderzijlvest"
+    ]
+  },
+  {
+    "objectID": "watersystems/Noorderzijlvest.html#systeembeschrijving",
+    "href": "watersystems/Noorderzijlvest.html#systeembeschrijving",
+    "title": "Noorderzijlvest",
+    "section": "",
+    "text": "Systeembeschrijving Noorderzijlvest\n\n\n\n\n\nBij Gaarkeuken kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.\nEen deel daarvan (tot 20 m³/s) kan via gemaal Dorkwerd worden opgepompt richting waterschap Hunze en Aa’s.\nWater dat op de Electraboezem nodig is, wordt via de sluis bij Gaarkeuken ingelaten; overschot wordt afgevoerd richting het Lauwersmeer.\nPraktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via Dorkwerd naar Hunze en Aa’s (Eemskanaalboezem).\n\n\n\n\nHet witte gebied en zalmroze gebied (Elektraboezem-Oost) op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen H.D. Louwes (toekomstig Hunsingo) en De Waterwolf — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de Cleveringsluizen op de Waddenzee.\n\n\n\nIn afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.\nIn het zuidoosten wordt via een reeks kleinere inlaten — Jonkersbrug, Ter Aard, Huis ter Heide, Heideheimheem, Meerweg vanuit Hunze en Aa’s en Drents Overijsselse Delta water ingelaten.\n\n\n\nDit gebied voert water af naar de Electraboezem via de uitlaat Leek en het Dwarsdiep.\nDe wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij Leek, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via Leek wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.\n\n\n\nDe noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (Noordpolderzijl en Spijksterpompen).\nIn droge periodes wordt water uit de Electraboezem (via boezemgemalen Stad en Lande, Schaphalsterzijl en Tilburg) met kleine aanvoergemalen naar de kustpolders opgemalen.\n\n\n\nLoost via gemaal De Drie Delfzijlen bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de Oostersluis. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij Spijksterpompen.\n\n\n\nMarnerwaard loost water via Nieuw Robbengat op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.\nIn droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de Herculesstuw.\n\n\n\nDongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal Dongeradielen op het Lauwersmeer en via de sluis Dokkumer Nieuwezijlen onder vrij verval.",
+    "crumbs": [
+      "Watersystems",
+      "Noorderzijlvest"
+    ]
+  },
+  {
+    "objectID": "watersystems/Noorderzijlvest.html#capaciteiten",
+    "href": "watersystems/Noorderzijlvest.html#capaciteiten",
+    "title": "Noorderzijlvest",
+    "section": "",
+    "text": "Per kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAbelstok\nKGM156\n147\nuitlaat\n0\n10\n\n\nAllartsooginlaat\nINL201\n698\ninlaat\n20\n0\n\n\nDe Drie Delfzijlen\nKGM046\n67\nuitlaat\n0\n25\n\n\nDe Waterwolf\nKGM001\n29\ndoorlaat\n75\n75\n\n\nDokkumer Nieuwezijlen\n\n1755\nuitlaat\n0\n0\n\n\nDrie-Provinciëninlaat\nINL202\n699\ninlaat\n20\n0\n\n\nFrieschepaleninlaat\nINL077\n687\ninlaat\n20\n0\n\n\nGaarkeukeninlaat\n\n1741\ninlaat\n24\n0\n\n\nGemaal Dokwerd\n\n1753\ninlaat\n20\n0\n\n\nGemaal de Dongeradielen\n\n1748\nuitlaat\n0\n0\n\n\nH.D. Louwes\nKGM002\n30\nuitlaat\n0\n16.7\n\n\nHeidenheeminlaat\nINL055\n1743\ninlaat\n0.072\n0\n\n\nHerculesstuw\nKST0169\n412\nuitlaat (doorspoeling)\n0.2\n10.2\n\n\nHuis ter Heide-inlaat\nINL114\n1742\ninlaat\n0.105\n0\n\n\nJonkersbruginlaat\nINL095\n1739\ninlaat\n0.032\n0\n\n\nLeek\nKGM009\n36\ninlaat\n1.17\n0\n\n\nMeerweg\n\n1758\ninlaat\n0.021\n0\n\n\nNieuwe Robbengat\nKGM016\n42\nuitlaat\n0\n4.33\n\n\nNoordpolderzijl\nKGM014\n40\nuitlaat\n0\n4\n\n\nOostersluis\nKGM148\n142\ninlaat\n2.5\n0\n\n\nR.J. Cleveringsluizen\nKSL011\n724\nuitlaat\n0\n668\n\n\nSchaphalsterzijl\nKGM155_i\n146\ninlaat\n2.5\n0\n\n\nSpijksterpompen\nKGM015\n41\nuitlaat (doorspoeling)\n0.4\n12.9\n\n\nStad en Lande\nKGM003_i\n32\ninlaat\n1.5\n0\n\n\nTer Aardinlaat\nINL001\n1751\ninlaat\n0.043\n0",
+    "crumbs": [
+      "Watersystems",
+      "Noorderzijlvest"
+    ]
+  },
+  {
+    "objectID": "watersystems/Noorderzijlvest.html#bronnen",
+    "href": "watersystems/Noorderzijlvest.html#bronnen",
+    "title": "Noorderzijlvest",
+    "section": "",
+    "text": "Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze workflow. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:\n\nDocumentatie Distributiemodel (Deel C, hoofdstuk 26)\nNoorderzijlvest - beschrijving wateraanvoer en doorspoeling",
+    "crumbs": [
+      "Watersystems",
+      "Noorderzijlvest"
+    ]
   },
   {
     "objectID": "watersystems/template.html",
