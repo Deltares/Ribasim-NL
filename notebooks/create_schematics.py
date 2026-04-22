@@ -13,8 +13,6 @@ SVG images can created based on the watersysteem.gpkg using QGIS.
 An example QGIS project can be found on the [CloudStorage](https://deltares.thegood.cloud/f/238548) (limited access)
 """  # noqa: D301
 
-from __future__ import annotations
-
 import math
 
 import geopandas as gpd
