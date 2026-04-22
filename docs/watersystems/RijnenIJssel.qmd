@@ -1,0 +1,47 @@
+# Rijn en IJssel
+
+- Laatst bijgewerkt: 27-4-2026
+- [Laatste modelversie](https://deltares.thegood.cloud/s/e8LbgZrgjsetPYn)
+
+## Systeembeschrijving
+![Systeembeschrijving Rijn en IJssel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/RijnenIJssel.svg)
+
+### Hoofdsysteem
+Water wordt aangevoerd naar een aantal beken vanuit het `Twentekanaal` in het noorden van het beheergebied. Daarnaast vindt aanvoer plaats vanuit Duitsland. Dit water wordt op meerdere locaties verdeeld en lokaal ingelaten.
+
+De afvoer vindt plaats via de `Twentekanalen`, de `IJssel` en de `Rijn`.
+
+Hieronder worden de belangrijkste systemen beknopt beschreven.
+
+---
+
+### Aanvoergebied Schipbeek
+- Aanvoer vanuit het `Twentekanaal` via `Inlaat Schipbeek`
+- Bovenstrooms van het Twentekanaal wordt via de `Schipbeek` een deel van het water doorgevoerd naar `Vechtstromen` (Boven-Regge, niet op de kaart)
+- De `Schipbeek` ontvangt daarnaast water vanuit Duitsland
+- Afvoer richting de `IJssel`, met een noodoverlaat op het `Twentekanaal` bij de inlaat
+
+### Aanvoergebied Herkel
+- Aanvoer via `Inlaat Herkel` naar de `Eefse Beek`
+- Afvoer via de `Eefse Beek` naar het `Twentekanaal`, bovenstrooms van `Eefde`, deels onder vrij verval en deels via een gemaal
+
+### Aanvoergebied Lochem/Berkel/Slinge
+- Aanvoer via `Inlaat Lochem` naar de `Berkel` (benedenstrooms richting `Lochem` en `Zutphen`)
+- De `Berkel` en `Slinge` ontvangen tevens water vanuit Duitsland
+- Water wordt op meerdere locaties verdeeld en lokaal ingelaten
+- Afvoer via de `Berkel` richting het `Twentekanaal` en de `IJssel`
+
+### Oude-IJssel
+- De bovenlopen van de `Oude-IJssel` ontvangen water vanuit Duitsland
+- Dit water wordt op verschillende locaties verdeeld
+- Afvoer van de `Oude-IJssel` vindt plaats naar de `IJssel`
+
+## Capaciteiten
+Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
+
+## Bronnen
+Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+
+- Documentatie Distributiemodel Deel C, hoofdstuk 20
+- Waterakkoord Twentekanalen (2025)
+- Schematic SWECO n.a.v samenwerkdag december 2023

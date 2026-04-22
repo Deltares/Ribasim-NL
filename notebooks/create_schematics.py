@@ -34,13 +34,14 @@ ARROW_LENGTH = {
     "DeDommel": 1400,
     "Vechtstromen": 1400,
     "HunzeenAas": 1400,
+    "RijnenIJssel": 1400,
 }
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["HunzeenAas"]
+AUTHORITIES = ["RijnenIJssel"]
 ADD_TOP10_NL = {
     "Vechtstromen": [
         "Maas",
@@ -342,6 +343,29 @@ ADD_TOP10_NL = {
         "Afwateringskanaal van Duurswold",
         "Oude Eemskanaal",
         "Ter Apel-kanaal",
+    ],
+    "RijnenIJssel": [
+        "Twentekanaal (Kanaal Zutphen-Enschede)",
+        "IJssel",
+        "Schipbeek",
+        "Eefse Beek",
+        "Dortherbeek",
+        "Berkel",
+        "Oude Rijn",
+        "Bolksbeek",
+        "Grote Waterleiding",
+        "Oude IJssel",
+        "Veengoot",
+        "Grote Beek",
+        "Pannerdenschkanaal",
+        "Neder-Rijn",
+        "Bijlandsch Kanaal",
+        "Boven-Rijn",
+        "Slinge",
+        "Boven Slinge",
+        "Keizersbeek",
+        "Bielheimerbeek",
+        "Aa-strang",
     ],
 }
 

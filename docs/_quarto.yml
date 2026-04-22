@@ -36,6 +36,7 @@ website:
         - watersystems/HunzeenAas.qmd
         - watersystems/Limburg.qmd
         - watersystems/Noorderzijlvest.qmd
+        - watersystems/RijnenIJssel.qmd
         - watersystems/StichtseRijnlanden.qmd
         # - watersystems/Vechtstromen.qmd
 format:
