@@ -7,11 +7,15 @@ from ribasim_nl.model import Model
 
 def sanitize_node_table(
     model: Model,
-    meta_columns: list[str] = [],
-    copy_map: list[dict[str, object]] = [],
+    meta_columns: list[str] | None = None,
+    copy_map: list[dict[str, object]] | None = None,
     names: "pd.Series[str] | None" = None,
 ) -> None:
     """Clean all node-tables to their expected columns + (optionally) meta_columns."""
+    if copy_map is None:
+        copy_map = []
+    if meta_columns is None:
+        meta_columns = []
     assert model.basin.node is not None
     node_columns = model.basin.node.columns() + meta_columns
 

@@ -11,7 +11,6 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
 MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "StichtseRijnlanden"  # authority
 SHORT_NAME: str = "hdsr"  # short_name used in toml-file
@@ -170,13 +169,12 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
 # %%
 # Toevoegen ARK/Lek
-polygon = aanvoergebieden_df.at["ARK/Lek", "geometry"]
+polygon = aanvoergebieden_df.at["EVS", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -221,7 +219,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -274,7 +271,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -329,7 +325,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -337,7 +332,7 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # Toevoegen Hollandsche IJssel
 
-polygon = aanvoergebieden_df.at["Hollandsche IJssel", "geometry"]
+polygon = aanvoergebieden_df.at["Gek. Hollandsche IJssel", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -377,7 +372,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -425,7 +419,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -473,7 +466,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -602,7 +594,7 @@ drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 887]
 
 # Flushing nodes
 # 919: Werkhoven
-flushing_nodes = {919: 5}
+flushing_nodes = {919: 5, 186: 1.25, 757: 3.0}
 
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
@@ -613,7 +605,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
-    us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
@@ -637,7 +628,6 @@ model = junctionify(model)
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 

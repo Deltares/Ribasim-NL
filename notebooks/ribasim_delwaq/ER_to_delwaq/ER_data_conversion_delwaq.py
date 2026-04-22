@@ -40,9 +40,9 @@ conv_ton2g = 10**6
 
 def makedir(path):
     """Make directory if not existing."""
-    if not os.path.exists(path):
+    if not Path(path).exists():
         print("path doesn't exist. trying to make")
-        os.makedirs(path)
+        Path(path).mkdir(parents=True)
 
 
 def write_dataframe(filename, df):
@@ -204,19 +204,19 @@ with pd.option_context("display.max_rows", None):
 
 # Manual file to fill in Deltares ER yearly loads #$ not using this rn
 Emissies_per_jaar_buiten_ER = pd.read_csv(
-    os.path.join(inputdir, "Emissies_per_jaar_buiten_ER.csv"), delimiter=";", encoding="latin1"
+    Path(inputdir) / "Emissies_per_jaar_buiten_ER.csv", delimiter=";", encoding="latin1"
 )
 
 # Direct download from the ER website at GAF90 level #$ MAKE SEARCH FOR MOST RECENT DATE INSTEAD OF MANUALLY WRITING
 ER_data_EMK_GAF90 = pd.read_excel(
-    os.path.join(inputdir, "ER_DataExport-2024-01-29-142759.xlsx"),  # $ I have a recent import but need a match
+    Path(inputdir) / "ER_DataExport-2024-01-29-142759.xlsx",  # $ I have a recent import but need a match
     sheet_name="Emissies",
     usecols=["Stofcode", "Stof", "Code_gebied", "Sector", "Subsector", "Emissieoorzaak", "Jaar", "Emissie"],
 )
 
 # Manual file to import bedrijven without coastal waters #$ also not rn
 OverigeEmissies_bedrijven__2024_01_24 = pd.read_csv(
-    os.path.join(inputdir, "OverigeEmissies_bedrijven__2024_01_24.csv"), delimiter=";", encoding="latin1"
+    Path(inputdir) / "OverigeEmissies_bedrijven__2024_01_24.csv", delimiter=";", encoding="latin1"
 )
 
 # -------------------------------Overige emissies ER----------------------------
@@ -669,7 +669,7 @@ output_path = model_path / "delwaq"
 
 grouped = DifusseEmissions_OE.groupby(["NodeId", "VariableId"])
 
-with open(output_path / "B6_loads.inc", "w") as f:
+with (output_path / "B6_loads.inc").open("w") as f:
     for (node_id, variable_id), group in grouped:
         f.write(f"ITEM 'Basin_{node_id}' CONCENTRATIONS '{variable_id}' LINEAR TIME LINEAR DATA '{variable_id}'\n")
 

@@ -32,6 +32,7 @@ src/peilbeheerst_model/.vscode
 /src/peilbeheerst_model/Parametrize/ribasim
 /src/peilbeheerst_model/Parametrize/fix_FF_HHSK.ipynb
 /src/peilbeheerst_model/01_test_parse_crossings.ipynb
+docs/objects.json
 
 notebooks/rijkswaterstaat/plots/
 /src/peilbeheerst_model/peilbeheerst_model/Oud
@@ -50,15 +51,18 @@ bin/
 *.arrow
 *.gpkg
 *.toml
+*.qgz
 *.dbf
 *.xlsx
 *.shp*
 *.prj
 *.sbn
+*.accdb
 *.sbx
 *.shx
 *.cpg
 *.log
+*.geojson
 *.qlr
 *.png
 *.bat
@@ -80,6 +84,7 @@ bin/
 *.gdb/
 *.pdf
 *.nc
+*.ps1
 results/
 delwaq/
 

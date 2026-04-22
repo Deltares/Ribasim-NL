@@ -50,6 +50,32 @@ forced_coupling = {
 
 
 # %% Functions
+def replace_listen_node_id(model: Model, old_node_id: int, new_node_id: int | None) -> bool:
+    """Replace listen_node_id references in all control tables.
+
+    If new_node_id is None, removes the entries instead of replacing.
+    Returns True if any references were found.
+    """
+    has_control = False
+    tables = [
+        model.discrete_control.variable.df,
+        model.continuous_control.variable.df,
+        model.pid_control.static.df,
+        model.pid_control.time.df,
+    ]
+    for df in tables:
+        if df is None:
+            continue
+        mask = df.listen_node_id == old_node_id
+        if mask.any():
+            has_control = True
+            if new_node_id is not None:
+                df.loc[mask, "listen_node_id"] = new_node_id
+            else:
+                df.drop(df.index[mask], inplace=True)
+    return has_control
+
+
 def get_basin_link(
     model: Model,
     basin_id: int,
@@ -84,6 +110,7 @@ def initialize_models(toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
     node_ids = model.node.df.index.to_numpy()
     for i in remove_nodes:
         if i in node_ids:
+            replace_listen_node_id(model, i, None)
             model.remove_node(node_id=i, remove_links=True)
 
     # Load the network
@@ -301,12 +328,8 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 for i in to_node_ids
             ]
 
-        # Replace boundary id in discrete and continuous control with basin id
-        has_control = False
-        for df in [model.discrete_control.variable.df, model.continuous_control.variable.df]:
-            if df is not None:
-                has_control = any(df.listen_node_id == boundary_node_id)
-                df.loc[df.listen_node_id == boundary_node_id, "listen_node_id"] = couple_with_basin_id
+        # Replace boundary id in all control tables with basin id
+        has_control = replace_listen_node_id(model, boundary_node_id, couple_with_basin_id)
 
         # Add control node for non RWS boundaries when no control node is yet present
         # Disabled since no data is supplied yet to the control node
@@ -491,6 +514,17 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
             f"Cannot merge {boundary_node} => {neighbor_node}: Expected Outlet, got {model.get_node_type(from_node_ids)} and {model.get_node_type(to_node_ids)}"
         )
         return
+
+    # Update listen references for removed boundary nodes
+    upstream_basin_id = model.upstream_node_id(from_node_ids)
+    if isinstance(upstream_basin_id, pd.Series):
+        upstream_basin_id = upstream_basin_id.iloc[0]
+    downstream_basin_id = model.downstream_node_id(to_node_ids)
+    if isinstance(downstream_basin_id, pd.Series):
+        downstream_basin_id = downstream_basin_id.iloc[0]
+    replacement_basin = upstream_basin_id if upstream_basin_id is not None else downstream_basin_id
+    replace_listen_node_id(model, boundary_node_id, replacement_basin)
+    replace_listen_node_id(model, neighbor_id, replacement_basin)
 
     # Remove boundary node from model
     model.remove_node(boundary_node_id, remove_links=True)

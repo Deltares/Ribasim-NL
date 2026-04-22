@@ -1,6 +1,7 @@
 """Run DVC stages sequentially with per-stage logging and a summary."""
 
 import logging
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -23,7 +24,7 @@ VRIJ_AFWATEREND = [
 
 
 def run_stages(stages: list[str], logfile: str | None = None) -> bool:
-    """Run each DVC stage, log output, and print a summary.
+    """Run each DVC stage, stream output to logger, and print a summary.
 
     Returns True if all stages succeeded.
     """
@@ -35,6 +36,7 @@ def run_stages(stages: list[str], logfile: str | None = None) -> bool:
         level=logging.INFO,
         format="%(message)s",
         handlers=handlers,
+        force=True,
     )
 
     logger.info(f"Start run: {datetime.now()}")
@@ -42,13 +44,27 @@ def run_stages(stages: list[str], logfile: str | None = None) -> bool:
 
     for stage in stages:
         logger.info(f"\n=== Running stage: {stage} ===")
-        result = subprocess.run(
-            ["uv", "run", "dvc", "repro", "--keep-going", "--force", stage],
+
+        env = {**os.environ, "PYTHONUTF8": "1"}
+        process = subprocess.Popen(
+            ["uv", "run", "dvc", "repro", "--keep-going", "--single-item", "--force", stage],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
             encoding="utf-8",
             errors="replace",
+            bufsize=1,
+            env=env,
         )
-        results[stage] = result.returncode
-        status = "SUCCESS" if result.returncode == 0 else f"FAILED (exit code {result.returncode})"
+
+        assert process.stdout is not None
+        for line in process.stdout:
+            logger.info(line.rstrip())
+
+        process.wait()
+        results[stage] = process.returncode
+
+        status = "SUCCESS" if process.returncode == 0 else f"FAILED (exit code {process.returncode})"
         logger.info(f"{stage}: {status}")
 
     logger.info("\n=== SUMMARY ===")

@@ -35,7 +35,7 @@ def empty_table_df(
     model: Model,
     node_type: str,
     table_type: Literal["Static", "Profile", "Time"],
-    meta_columns: list[str] = [],
+    meta_columns: list[str] | None = None,
     fill_value: float | None = None,
 ) -> pd.DataFrame:
     """
@@ -72,6 +72,8 @@ def empty_table_df(
         node table.
     """
     # read node from model
+    if meta_columns is None:
+        meta_columns = []
     node = model.get_component(node_type)
     meta_columns = [i for i in meta_columns if i in node.node.df.columns]
 

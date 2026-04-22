@@ -1,5 +1,5 @@
 # %%
-
+import logging
 import math
 from datetime import datetime
 from typing import Literal
@@ -10,9 +10,12 @@ from ribasim import Node, nodes
 from ribasim.nodes import discrete_control, flow_demand
 from shapely.geometry import Point, Polygon
 
+import ribasim_nl
 from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
+
+LOG = logging.getLogger(__name__)
 
 
 class InvalidTable(Exception):
@@ -114,9 +117,11 @@ def _target_level(
                     target_level = model.level_boundary.time.df.set_index("node_id").loc[[node_id], "level"].min()
 
             # read from static-table exist and node_id is in it
-            elif model.level_boundary.static.df is not None:
-                if node_id in model.level_boundary.static.df["node_id"].values:
-                    target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].min()
+            elif (
+                model.level_boundary.static.df is not None
+                and node_id in model.level_boundary.static.df["node_id"].values
+            ):
+                target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].min()
 
             if (not allow_missing) and (target_level is None):
                 msg = f"Listen node: {node_id} not found in LevelBoundary.Time or LevelBoundary.Static table"
@@ -262,10 +267,8 @@ def add_and_connect_discrete_control_node(
 def get_node_table_with_from_to_node_ids(
     model: Model,
     node_ids: list[int] | None = None,
-    node_types: list[Literal["Pump", "Outlet", "ManningResistance", "TabulatedRatingCurve", "LinearResistance"]] = [
-        "Outlet",
-        "Pump",
-    ],
+    node_types: list[Literal["Pump", "Outlet", "ManningResistance", "TabulatedRatingCurve", "LinearResistance"]]
+    | None = None,
     max_iter=20,
 ) -> gpd.GeoDataFrame:
     """Get a node_df from selected connector-nodes, including upstream and downstream non-Junction type node_ids.
@@ -291,6 +294,8 @@ def get_node_table_with_from_to_node_ids(
         GeoDataFrame with node info including from_node_id and to_node_id
     """
     # add from_node_id and to_node_id to node_select_df
+    if node_types is None:
+        node_types = ["Outlet", "Pump"]
     _df = _read_link_table(model=model, link_type="flow")
     _from_node_id = _df.set_index("to_node_id")["from_node_id"]
     _to_node_id = _df.set_index("from_node_id")["to_node_id"]
@@ -394,7 +399,7 @@ def add_control_functions_to_connector_nodes(
                 except KeyError:
                     raise ValueError(
                         f'flushing node dict value should be {{"summer": float, "winter": float}}, got {value}'
-                    )
+                    ) from None
 
             else:
                 raise ValueError(
@@ -433,7 +438,7 @@ def add_control_functions_to_connector_nodes(
         )
 
     # check on flushing nodes
-    missing_flushing_nodes = [i for i in flushing_nodes.keys() if i not in all_nodes]
+    missing_flushing_nodes = [i for i in flushing_nodes if i not in all_nodes]
     if missing_flushing_nodes:
         raise ValueError(
             f"user-defined `flushing_nodes.keys()` not found in outflow+inflow+internal nodes: {missing_flushing_nodes}"
@@ -512,9 +517,9 @@ def add_control_functions_to_connector_nodes(
 def get_control_nodes_position_from_supply_area(
     model: Model,
     polygon: Polygon,
-    exclude_nodes: list[int] = [],
-    control_node_types: list[Literal["Outlet", "Pump"]] = ["Outlet", "Pump"],
-    ignore_intersecting_links: list[int] = [],
+    exclude_nodes: list[int] | None = None,
+    control_node_types: list[Literal["Outlet", "Pump"]] | None = None,
+    ignore_intersecting_links: list[int] | None = None,
 ) -> gpd.GeoDataFrame:
     """Get control nodes with nodes position relative to a supply area defined by a polygon.
 
@@ -550,6 +555,12 @@ def get_control_nodes_position_from_supply_area(
         In case intersecting links are found that are not managed by a node_type defined in `control_node_types`
     """
     # fix polygon, get exterior and polygonize so we won't miss anythin within area
+    if ignore_intersecting_links is None:
+        ignore_intersecting_links = []
+    if control_node_types is None:
+        control_node_types = ["Outlet", "Pump"]
+    if exclude_nodes is None:
+        exclude_nodes = []
     exterior = polygon.exterior
     polygon = Polygon(exterior)
 
@@ -841,7 +852,7 @@ def add_controllers_to_supply_nodes(
 def add_controllers_to_flow_control_nodes(
     model: Model,
     flow_control_nodes_df: gpd.GeoDataFrame,
-    us_threshold_offset: float,
+    us_threshold_offset: float = 0.02,
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
     control_node_offset: float = 10,
@@ -858,7 +869,8 @@ def add_controllers_to_flow_control_nodes(
     flow_control_nodes_df : gpd.GeoDataFrame
         GeoDataFrame of connector nodes having a flow_control function, including from_node_id and to_node_id
     us_threshold_offset : float
-        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
+        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold.
+        Default is 0.02.
     us_target_level_offset_supply : float, optional
         Lowering upstream target levels in supply situation, by default -0.04
     target_level_column : str, optional
@@ -876,6 +888,9 @@ def add_controllers_to_flow_control_nodes(
     # update_meta_info we can use in masking control_nodes
     if update_meta_info:
         _update_meta_info(model=model, nodes_df=flow_control_nodes_df, supply=True, drain=True)
+
+    solver_threshold = model.solver.level_difference_threshold
+    assert us_threshold_offset >= solver_threshold, "incompatible thresholds"
 
     # validate if drain_nodes_df does not contain reversed flow directions
     validate_nodes_on_reversed_direction(flow_control_nodes_df, node_function="flow_control")
@@ -967,7 +982,7 @@ def add_controllers_to_flow_control_nodes(
 def add_controllers_and_demand_to_flushing_nodes(
     model: Model,
     flushing_nodes_df: gpd.GeoDataFrame,
-    us_threshold_offset: float,
+    us_threshold_offset: float = 0.02,
     demand_threshold_offset: float = 0.001,
     us_target_level_offset_supply: float = -0.04,
     target_level_column: str = "meta_streefpeil",
@@ -989,7 +1004,8 @@ def add_controllers_and_demand_to_flushing_nodes(
         GeoDataFrame of connector nodes having a flusing function, including from_node_id and to_node_id, and demand_flow_rate column.
         Optionally user specifies demand_flow_rate_summer and demand_flow_rate_winter to vary demand over winter/summer time
     us_threshold_offset : float
-        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
+        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold.
+        Default is 0.02.
     demand_threshold_offset : float, optional
         Flow offset of discrete-control to trigger flow., by default 0.001
     us_target_level_offset_supply : float, optional
@@ -1011,6 +1027,9 @@ def add_controllers_and_demand_to_flushing_nodes(
     demand_name_prefix: str, optional
         Prefix assigned to name in demand-node, by default "doorspoeling
     """
+    solver_threshold = model.solver.level_difference_threshold
+    assert us_threshold_offset >= solver_threshold, "incompatible thresholds"
+
     node_types = _read_node_table(model=model)["node_type"]
 
     # make sure we have a demand_flow_rate_summer and demand_flow_rate_winter
@@ -1147,7 +1166,7 @@ def add_controllers_and_demand_to_flushing_nodes(
 def add_controllers_to_connector_nodes(
     model: Model,
     node_functions_df: gpd.GeoDataFrame,
-    level_difference_threshold: float,
+    level_difference_threshold: float = 0.02,
     target_level_column: str = "meta_streefpeil",
     drain_capacity: float = 100,
     add_supply_nodes: bool = True,
@@ -1177,8 +1196,9 @@ def add_controllers_to_connector_nodes(
         Ribasim model
     node_functions_df : gpd.GeoDataFrame
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand`
-    level_difference_threshold : float
-        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold
+    level_difference_threshold : float, optional
+        Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold.
+        Default is 0.02.
     target_level_column : str, optional
         Column in Basin.Area table to read target_level, by default "meta_streefpeil"
     drain_capacity : float, optional
@@ -1190,6 +1210,7 @@ def add_controllers_to_connector_nodes(
     # make sure add-api will not duplicate node-ids
     model.node._update_used_ids()
     model.link._update_used_ids()
+    assert level_difference_threshold >= model.solver.level_difference_threshold, "incompatible threshold"
 
     # add supply nodes
     supply_nodes_df = node_functions_df[node_functions_df["function"] == "supply"]
@@ -1236,10 +1257,10 @@ def add_controllers_to_supply_area(
     drain_nodes: list[int],
     flushing_nodes: dict[int, float | dict[str, float]],
     supply_nodes: list[int],
-    level_difference_threshold: float,
+    level_difference_threshold: float = 0.02,
     flow_control_nodes: list[int] | None = None,
     exclude_nodes: list[int] | None = None,
-    control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
+    control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
     add_supply_nodes: bool = False,
@@ -1298,8 +1319,13 @@ def add_controllers_to_supply_area(
     gpd.GeoDataFrame
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand` for verification
     """
+    if control_node_types is None:
+        control_node_types = ["Pump", "Outlet"]
     flow_control_nodes = flow_control_nodes or []
     exclude_nodes = exclude_nodes or []
+
+    solver_threshold = model.solver.level_difference_threshold
+    assert level_difference_threshold == solver_threshold, "incompatible threshold"
 
     node_positions_df = get_control_nodes_position_from_supply_area(
         model=model,
@@ -1334,7 +1360,7 @@ def add_controllers_to_supply_area(
 
 def add_controllers_to_uncontrolled_connector_nodes(
     model: "Model",
-    us_threshold_offset: float,
+    us_threshold_offset: float = 0.02,
     exclude_nodes: list[int] | None = None,
     supply_nodes: list[int] | None = None,
     drain_nodes: list[int] | None = None,
@@ -1342,7 +1368,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes: dict[int, float] | None = None,
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     us_target_level_offset_supply: float = -0.04,
-    level_difference_threshold: float | None = None,
+    level_difference_threshold: float = 0.02,
 ) -> None:
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
@@ -1360,7 +1386,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     ----------
     model : Model
     us_threshold_offset : float
-        Offset voor flow-control discrete control (moet matchen met solver threshold).
+        Offset voor flow-control discrete control (moet matchen met solver threshold), by default 0.02.
     exclude_nodes : list[int]
         Connector-nodes die je niet wilt aansturen.
     supply_nodes : list[int]
@@ -1375,6 +1401,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Welke connector node types meegenomen worden.
     us_target_level_offset_supply : float
         Offset voor supply controls.
+    level_difference_threshold : float
+        Offset for flushing discrete control (must match model.solver.level_difference_threshold), by default 0.02.
     """
     # make sure add-api will not duplicate node-ids
     model.node._update_used_ids()
@@ -1387,6 +1415,10 @@ def add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes = flushing_nodes or {}
     flow_control_nodes = flow_control_nodes or []
     control_node_types = control_node_types or ["Pump", "Outlet"]
+
+    solver_threshold = model.solver.level_difference_threshold
+    assert us_threshold_offset == solver_threshold, "incompatible threshold"
+    assert level_difference_threshold == solver_threshold, "incompatible threshold"
 
     # --- 1) bepaal welke connector nodes al controlled zijn ---
     control_links = _read_link_table(model=model, link_type="control")
@@ -1439,7 +1471,6 @@ def add_controllers_to_uncontrolled_connector_nodes(
         flushing_nodes_df["demand_flow_rate"] = pd.Series(index=flushing_nodes_df.index, dtype="float")
         flushing_nodes_df.loc[node_ids, "demand_flow_rate"] = [flushing_nodes[n] for n in node_ids]
 
-        level_difference_threshold = level_difference_threshold or model.solver.level_difference_threshold
         add_controllers_and_demand_to_flushing_nodes(
             model=model,
             flushing_nodes_df=flushing_nodes_df,
@@ -1534,6 +1565,7 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
         "Inlaat buitenwater peilgebied, aanvoer afvoer gemaal",
         "Inlaat buitenwater boezem, aanvoer afvoer gemaal",
         "Boezem boezem, aanvoer afvoer gemaal",
+        "Regulier gemaal",
     ]
 
     # select all drain categories from identify_node_metacatgory
@@ -1564,3 +1596,98 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
         )
 
     return from_to_node_table
+
+
+def set_node_functions(
+    from_to_table: gpd.GeoDataFrame,
+    *,
+    to_supply: tuple[int, ...] = (),
+    to_flow_control: tuple[int, ...] = (),
+    to_drain: tuple[int, ...] = (),
+) -> gpd.GeoDataFrame:
+    """Set pump/outlet function by node-ID.
+
+    :param from_to_table: table with from-to node data
+    :param to_supply: node-IDs to be set as 'supply', defaults to ()
+    :param to_flow_control: node-IDs to be set as 'flow_control', defaults to ()
+    :param to_drain: node-IDs to be set as 'drain', defaults to ()
+
+    :type from_to_table: geopandas.GeoDataFrame
+    :type to_supply: tuple[int, ...], optional
+    :type to_flow_control: tuple[int, ...], optional
+    :type to_drain: tuple[int, ...], optional
+
+    :return: updated table with from-to node data
+    :rtype: geopandas.GeoDataFrame
+    """
+    # no duplicate node-IDs
+    __duplicates: bool = False
+    if set(to_supply) & set(to_flow_control):
+        LOG.critical(
+            f"Node-IDs occurring in both `to_supply` and `to_flow_control`: {set(to_supply) & set(to_flow_control)}"
+        )
+        __duplicates = True
+    if set(to_supply) & set(to_drain):
+        LOG.critical(f"Node-IDs occurring in both `to_supply` and `to_drain`: {set(to_supply) & set(to_drain)}")
+        __duplicates = True
+    if set(to_flow_control) & set(to_drain):
+        LOG.critical(
+            f"Node-IDs occurring in both `to_flow_control` and `to_drain`: {set(to_flow_control) & set(to_drain)}"
+        )
+        __duplicates = True
+    if __duplicates:
+        msg = "Node-IDs assigned to different controls; see log-statements."
+        raise ValueError(msg)
+
+    # modification flag
+    __modified: bool = False
+
+    # set 'supply'-function
+    if to_supply:
+        from_to_table.loc[from_to_table.index.isin(to_supply), "function"] = "supply"
+        __modified = True
+
+    # set 'flow_control'-function
+    if to_flow_control:
+        from_to_table.loc[from_to_table.index.isin(to_flow_control), "function"] = "flow_control"
+        __modified = True
+
+    # set 'drain'-function
+    if to_drain:
+        from_to_table.loc[from_to_table.index.isin(to_drain), "function"] = "drain"
+        __modified = True
+
+    # no modifications
+    if not __modified:
+        LOG.debug(f"From-to-table not modified: {to_supply=}, {to_flow_control=}, {to_drain=}")
+
+    # return modified from-to table
+    return from_to_table
+
+
+def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Model:
+    """Remove duplicate control nodes.
+
+    Duplicate control nodes may arise causing the model to err. Duplicate control nodes are DiscreteControl-nodes that
+    'control' the same Outlet- or Pump-node.
+
+    :param ribasim_model: Ribasim model
+    :type ribasim_model: ribasim_nl.Model
+
+    :return: Ribasim model
+    :rtype: ribasim_nl.Model
+    """
+    # get duplicate control nodes
+    df_link = _read_link_table(ribasim_model, link_type="control").assign(
+        count=lambda df: df.groupby("to_node_id").cumcount()
+    )
+    duplicates = df_link[df_link["count"] > 0]
+
+    # remove duplicate control nodes
+    if not duplicates.empty:
+        LOG.warning(f"Duplicate control nodes found ({len(duplicates)})")
+        for control_node_id in duplicates["from_node_id"].values:
+            ribasim_model.remove_node(control_node_id, remove_links=True)
+
+    # return update Ribasim model
+    return ribasim_model

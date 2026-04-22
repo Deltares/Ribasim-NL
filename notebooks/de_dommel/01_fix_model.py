@@ -113,11 +113,13 @@ if not network_validator.link_incorrect_connectivity().empty:
 for row in network_validator.node_internal_basin().itertuples():
     if row.Index not in model.basin.area.df.node_id.to_numpy():  # remove or change to level-boundary
         link_select_df = model.link.df[model.link.df.to_node_id == row.Index]
-        if len(link_select_df) == 1:
-            if model.node.df.at[link_select_df.iloc[0]["from_node_id"], "node_type"] == "FlowBoundary":
-                model.remove_node(row.Index)
-                model.remove_node(link_select_df.iloc[0]["from_node_id"])
-                model.link.df.drop(index=link_select_df.index[0], inplace=True)
+        if (
+            len(link_select_df) == 1
+            and model.node.df.at[link_select_df.iloc[0]["from_node_id"], "node_type"] == "FlowBoundary"
+        ):
+            model.remove_node(row.Index)
+            model.remove_node(link_select_df.iloc[0]["from_node_id"])
+            model.link.df.drop(index=link_select_df.index[0], inplace=True)
 
 df = model.node.df[model.node.df.node_type == "Basin"]
 
@@ -238,7 +240,7 @@ drainage_areas_df = gpd.read_file(areas_gpkg, layer="drainage_areas")
 
 drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
 
-for idx, geometry in enumerate(geoseries):
+for _idx, geometry in enumerate(geoseries):
     # select drainage-area
     drainage_area_select = drainage_areas_df[drainage_areas_df.contains(geometry.buffer(-10))]
     if not drainage_area_select.empty:

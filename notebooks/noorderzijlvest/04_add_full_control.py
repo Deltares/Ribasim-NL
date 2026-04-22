@@ -12,7 +12,6 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
 MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "Noorderzijlvest"  # authority
 SHORT_NAME: str = "nzv"  # short_name used in toml-file
@@ -90,7 +89,6 @@ for node_type in CONTROL_NODE_TYPES:
 #     drain_nodes=drain_nodes,
 #     flushing_nodes=flushing_nodes,
 #     supply_nodes=supply_nodes,
-#     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
 #     control_node_types=CONTROL_NODE_TYPES
 # )
 # ```
@@ -122,7 +120,6 @@ for node_type in CONTROL_NODE_TYPES:
 # add_controllers_to_connector_nodes(
 #     model=model,
 #     node_functions_df=node_functions_df,
-#     level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
 # )
 # ```
 
@@ -169,7 +166,6 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -211,7 +207,6 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -246,7 +241,6 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -278,10 +272,9 @@ for y in sorted(years):
 
 # Als model.starttime eerder is dan de eerste tijd in pid_times_all, voeg een start-marker toe
 sim_start = pd.Timestamp(model.starttime)
-if sim_start < min(pid_times_all):
-    # alleen toevoegen als het nog niet exact bestaat
-    if sim_start != pid_times_all[0]:
-        pid_times_all.insert(0, sim_start)
+# alleen toevoegen als het nog niet exact bestaat
+if sim_start < min(pid_times_all) and sim_start != pid_times_all[0]:
+    pid_times_all.insert(0, sim_start)
 pid_times_all = sorted(dict.fromkeys(pid_times_all))
 pattern_proportional = [1e6, 1e6, 1e6, 1e6]
 pattern_integral = [0.0, 0.0, 0.0, 0.0]
@@ -299,7 +292,7 @@ year_times_map = {y: make_year_times(y) for y in years}
 
 for t in pid_times_all:
     assigned = False
-    for y, times in year_times_map.items():
+    for times in year_times_map.values():
         if t in times:
             idx = times.index(t)  # 0..3
             proportional.append(pattern_proportional[idx])
@@ -351,7 +344,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
-    us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
 
 # %%
@@ -360,7 +352,6 @@ add_controllers_to_uncontrolled_connector_nodes(
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1.0

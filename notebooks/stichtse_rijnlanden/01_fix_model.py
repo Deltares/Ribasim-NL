@@ -63,7 +63,7 @@ model.link.df.drop_duplicates(inplace=True)
 
 # %%
 model.remove_links(link_ids=[2677])
-for node_id in [52, 53, 2056, 2053, 2042]:
+for node_id in [52, 53, 2056, 2053, 2042, 749]:
     model.remove_node(node_id, remove_links=True)
 
 model.link.add(model.tabulated_rating_curve[924], model.level_boundary[51])
@@ -232,15 +232,15 @@ for basin_fid, split_lijnen_select_df in split_lijnen_df[split_lijnen_df.opmerki
     # update existing basin / area if basin / node is within
     basin_row = model.basin.area.df.loc[basin_fid]
     drop_fid = True
-    if basin_row.node_id in model.basin.node.df.index.to_numpy():  # check is valid node
-        if series.contains(
-            model.basin[basin_row.node_id].geometry
-        ).any():  # check if any of series is contained by node-geometry
-            model.basin.area.df.loc[basin_fid, "geometry"] = series[
-                series.contains(model.basin[basin_row.node_id].geometry)
-            ].iloc[0]
-            series = series[~series.contains(model.basin[basin_row.node_id].geometry)]
-            drop_fid = False
+    if (
+        basin_row.node_id in model.basin.node.df.index.to_numpy()
+        and series.contains(model.basin[basin_row.node_id].geometry).any()
+    ):  # check is valid node and any of series is contained by node-geometry
+        model.basin.area.df.loc[basin_fid, "geometry"] = series[
+            series.contains(model.basin[basin_row.node_id].geometry)
+        ].iloc[0]
+        series = series[~series.contains(model.basin[basin_row.node_id].geometry)]
+        drop_fid = False
 
     if drop_fid:  # if we haven't updated existing record, we drop it
         model.basin.area.df = model.basin.area.df[model.basin.area.df.index != basin_fid]
@@ -630,6 +630,9 @@ model.remove_node(node_id=77, remove_links=True)
 model.remove_node(node_id=27, remove_links=True)
 model.remove_node(node_id=68, remove_links=True)
 
+# Koekoek gaat (direct) naar Broeik (basin 2089)
+model.redirect_link(link_id=68, from_node_id=100, to_node_id=2089)
+
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
@@ -651,6 +654,9 @@ sanitize_node_table(
     ],
     names=names,
 )
+
+model.node.df.loc[186, "name"] = "Westriool"
+model.node.df.loc[252, "name"] = "Inlaat Vreeswijk"
 
 #  %% write model
 model.use_validation = True

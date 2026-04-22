@@ -104,7 +104,7 @@ class Flushing:
         df_basin = gpd.GeoDataFrame(df_basin, crs=model.basin.area.df.crs)
 
         # Reset the internal graph to ensure we have the most up-to-date version
-        model.reset_graph
+        _ = model.reset_graph
 
         # Find matching basins for each flushing geometry
         df_demand: dict[str, list[Any]] = {
@@ -363,10 +363,7 @@ class Flushing:
 
         # Ignore nodes in cycles
         cycles = list(simple_cycles(model.graph.subgraph(uniq_nodes)))
-        if len(cycles) == 0:
-            ignore_nodes = np.array([])
-        else:
-            ignore_nodes = np.unique(np.concatenate(cycles))
+        ignore_nodes = np.array([]) if len(cycles) == 0 else np.unique(np.concatenate(cycles))
         uniq_nodes = uniq_nodes[~np.isin(uniq_nodes, ignore_nodes)]
 
         # Some areas have a lot of paths with duplicate nodes. Improve
@@ -377,7 +374,7 @@ class Flushing:
         for nid in uniq_nodes:
             # Only pumps for now
             nid_type = all_nodes.node_type.at[nid]
-            if nid_type in ["Pump"]:
+            if nid_type == "Pump":
                 if nid in df_control_links.index:
                     # This node has incoming control links, check if a
                     # FlowDemand node is present already
@@ -584,3 +581,25 @@ class Flushing:
         df_flushing = gpd.read_file(self.lhm_flushing_path, layer=self.flushing_layer)
 
         return model, df_flushing
+
+    @staticmethod
+    def update_function_table(df_demand: pd.DataFrame, function_table: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        """Assign flushing-data to from-to node function table.
+
+        :param df_demand: flushing demand information
+        :param function_table: from-to node function table
+
+        :type df_demand: pandas.DataFrame
+        :type function_table: geopandas.GeoDataFrame
+
+        :return: updated from-to node function table
+        :rtype: geopandas.GeoDataFrame
+        """
+        flow_rows = df_demand[df_demand["demand_type"] == "flow"]
+
+        for row in flow_rows.itertuples():
+            function_table.at[row.nid, "function"] = "flushing"
+            function_table.at[row.nid, "demand_flow_rate"] = row.demand
+
+        # return updated function table
+        return function_table

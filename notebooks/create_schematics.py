@@ -36,6 +36,8 @@ ARROW_LENGTH = {
     "DeDommel": 1200,
     "Vechtstromen": 1400,
     "DrentsOverijsselseDelta": 2000,
+    "HunzeenAas": 1400,
+    "RijnenIJssel": 1400,
 }
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
@@ -355,6 +357,52 @@ ADD_TOP10_NL = {
         "Kanaal Baflo-Mensingeweer",
         "Rasquerdermaar",
     ],
+    "HunzeenAas": [
+        "Reitdiep",
+        "Hunzehaven",
+        "Hoendiep",
+        "Winschoterdiep",
+        "Eemskanaal",
+        "Westerwoldsche Aa",
+        "Vereenigd- of B L Tijdenskanaal",
+        "Mussel Aa kanaal",
+        "Zuidlaardermeer",
+        "A G Wildervanckkanaal",
+        "Verlengde Hoogeveensche Vaart",
+        "Pekel-Aa",
+        "Oostermoersche Vaart of Hunze",
+        "Noord-Willemskanaal",
+        "Drentsche Aa",
+        "Oosterhornkanaal",
+        "Oosterhornhaven",
+        "Termunterzijldiep",
+        "Afwateringskanaal van Duurswold",
+        "Oude Eemskanaal",
+        "Ter Apel-kanaal",
+    ],
+    "RijnenIJssel": [
+        "Twentekanaal (Kanaal Zutphen-Enschede)",
+        "IJssel",
+        "Schipbeek",
+        "Eefse Beek",
+        "Dortherbeek",
+        "Berkel",
+        "Oude Rijn",
+        "Bolksbeek",
+        "Grote Waterleiding",
+        "Oude IJssel",
+        "Veengoot",
+        "Grote Beek",
+        "Pannerdenschkanaal",
+        "Neder-Rijn",
+        "Bijlandsch Kanaal",
+        "Boven-Rijn",
+        "Slinge",
+        "Boven Slinge",
+        "Keizersbeek",
+        "Bielheimerbeek",
+        "Aa-strang",
+    ],
 }
 
 
@@ -424,7 +472,7 @@ for authority in AUTHORITIES:
     gpd.GeoSeries([poly_mask], crs=28992).to_file(system_gpkg, layer="mask")
 
     # get Top10NL
-    if authority in ADD_TOP10_NL.keys():
+    if authority in ADD_TOP10_NL:
         df = gpd.read_file(
             cloud.joinpath(r"Basisgegevens\Top10NL\top10nl_Compleet.gpkg"),
             layer="top10nl_waterdeel_vlak",

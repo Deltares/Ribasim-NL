@@ -73,7 +73,7 @@ def run(
         term_width = shutil.get_terminal_size((80, 20)).columns
         for line in proc.stdout:
             if "Simulating" in line:
-                print("", end="\r")
+                print(end="\r")
                 print("\r" + " " * term_width, end="\r")  # Clear current line
                 print(line.rstrip(), end="\r")  # Allow progress bar to stay on one line
                 was_simulating = True

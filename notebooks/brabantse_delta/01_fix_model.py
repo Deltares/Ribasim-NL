@@ -1,6 +1,5 @@
 # %%
 import inspect
-import os
 
 import geopandas as gpd
 import pandas as pd
@@ -140,7 +139,7 @@ for row in network_validator.link_incorrect_type_connectivity(
 # then assign Ribasim node-ID's to areas with the same area code.
 # Many nodata areas are removed by this method
 
-if os.path.exists(ribasim_areas_bewerkt_gpkg):
+if ribasim_areas_bewerkt_gpkg.exists():
     # Load precomputed result
     combined_basin_areas_gdf = gpd.read_file(ribasim_areas_bewerkt_gpkg)
 else:

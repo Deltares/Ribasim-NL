@@ -934,7 +934,7 @@ holes_df = holes_df[~holes_df.index.isin([10, 22, 29, 32, 38, 39, 41])]
 
 drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
 
-for idx, geometry in enumerate(holes_df):
+for _idx, geometry in enumerate(holes_df):
     # select drainage-area
     drainage_area_select = drainage_areas_df[drainage_areas_df.contains(geometry.buffer(-10))]
     if not drainage_area_select.empty:

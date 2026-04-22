@@ -34,7 +34,7 @@ def split_lines_at_intersections(gdf_object) -> gpd.GeoDataFrame:
         possible_matches = gdf_object.iloc[possible_matches_index].drop(idx)  # Exclude self
         precise_matches = possible_matches[possible_matches.intersects(row.geometry)]
 
-        for match_idx, match in precise_matches.iterrows():
+        for _match_idx, match in precise_matches.iterrows():
             if row.geometry.intersects(match.geometry):
                 intersection = row.geometry.intersection(match.geometry)
                 if isinstance(intersection, Point):
@@ -219,7 +219,7 @@ def shortest_path(waterschap, DATA, gdf_cross, gdf_rhws):
             # Use the unique points as nodes in networkx
             nodes_gdf.insert(0, "node_id", -1)
             node_id = 1
-            for geom, group in nodes_gdf.groupby("geometry"):
+            for _geom, group in nodes_gdf.groupby("geometry"):
                 nodes_gdf.loc[group.index, "node_id"] = node_id
                 node_id += 1
 
@@ -303,9 +303,10 @@ def shortest_path(waterschap, DATA, gdf_cross, gdf_rhws):
                     shortest_path = nx.shortest_path(
                         graph, source=startpoint, target=endpoint, weight="length", method="dijkstra"
                     )
-                    links = []
-                    for i in range(0, len(shortest_path) - 1):
-                        links.append(graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"])
+                    links = [
+                        graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"]
+                        for i in range(len(shortest_path) - 1)
+                    ]
                     gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = (
                         shapely.ops.linemerge(links)
                     )

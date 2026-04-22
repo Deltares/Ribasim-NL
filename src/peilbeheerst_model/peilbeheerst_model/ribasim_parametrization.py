@@ -1,16 +1,13 @@
-# %%
-# import pathlib
 import datetime
 import json
 import logging
-import os
 import shutil
 import subprocess
 import sys
 import typing
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import geopandas as gpd
 import numpy as np
@@ -26,6 +23,8 @@ from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model, settings
 
+logger = logging.getLogger(__name__)
+
 
 # FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
 #  (e.g., the used 'meta_node_id'-column contains many `<NA>`-values).
@@ -34,10 +33,7 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node.df
 
-    if len(df_all_nodes) == 0:
-        max_id = 1
-    else:
-        max_id = int(df_all_nodes.meta_node_id.max())
+    max_id = 1 if len(df_all_nodes) == 0 else int(df_all_nodes.meta_node_id.max())
 
     return max_id
 
@@ -252,38 +248,46 @@ def set_dynamic_forcing(
 
 
 def set_hypothetical_dynamic_forcing(
-    ribasim_model: Model, start_time: datetime.datetime, end_time: datetime.datetime, value: float = 10
+    ribasim_model: Model,
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
+    mixed_conditions_design_P: float,
+    mixed_conditions_design_E: float,
 ) -> None:
     """Set a basic hypothetical dynamic forcing.
 
-    The hypothetical forcing consists of a period of precipitation followed by a period of evaporation. These periods
-    are equally divided over the total model duration.
+    The hypothetical forcing consists of an initial precipitation period covering the
+    first third of the simulation, followed by a potential-evaporation period covering
+    the remaining two thirds.
 
     :param ribasim_model: ribasim model
     :param start_time: start time of simulation
     :param end_time: end time of simulation
-    :param value: value for precipitation and evaporation in mm per day, defaults to 10
+    :param mixed_conditions_design_P: precipitation rate during the first period in mm/day
+    :param mixed_conditions_design_E: potential evaporation rate during the later period in mm/day
 
     :type ribasim_model: Model
     :type start_time: datetime.datetime
     :type end_time: datetime.datetime
-    :type value: float, optional
+    :type mixed_conditions_design_P: float
+    :type mixed_conditions_design_E: float
     """
     # define time-variables
     halftime = start_time + (end_time - start_time) // 3
     time = start_time, halftime, end_time
 
     # define forcing time-series
-    v = convert_mm_day_to_m_sec(value)
-    precipitation = v, 0, 0
-    evaporation = 0, v, v
+    v_P = convert_mm_day_to_m_sec(mixed_conditions_design_P)
+    v_E = convert_mm_day_to_m_sec(mixed_conditions_design_E)
+    precipitation = v_P, 0.0, 0.0
+    evaporation = 0.0, v_E, v_E
 
     # set forcing conditions
     forcing = {
         "precipitation": precipitation,
         "potential_evaporation": evaporation,
-        "drainage": 0,
-        "infiltration": 0,
+        "drainage": 0.0,
+        "infiltration": 0.0,
     }
     set_dynamic_forcing(ribasim_model, time, forcing)
 
@@ -561,7 +565,7 @@ def add_outlets(ribasim_model, delta_crest_level=0.10) -> None:
         get_outlet_geometries[["meta_node_id", "geometry"]], left_on="node_id", right_on="meta_node_id"
     )
     outlet["node_type"] = "Outlet"
-    outlet["flow_rate"] = 0.0  # default setting
+    outlet["flow_rate"] = 25.0  # default setting
     outlet["meta_categorie"] = "Inlaat"
 
     outlet_node = outlet[["node_id", "meta_node_id", "node_type", "geometry"]]
@@ -601,13 +605,10 @@ def add_discrete_control_nodes(ribasim_model) -> None:
         dfs_pump = pd.concat(dfs_pump, ignore_index=True)
         ribasim_model.pump.static.df = dfs_pump
 
-    for i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
+    for _i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
         # Get max nodeid and iterate
         cur_max_node_id = get_current_max_node_id(ribasim_model)
-        if cur_max_node_id < 90000:
-            new_nodeid = 90000 + cur_max_node_id + 1  # aanpassen loopt vanaf 90000 +1
-        else:
-            new_nodeid = cur_max_node_id + 1
+        new_nodeid = 90000 + cur_max_node_id + 1 if cur_max_node_id < 90000 else cur_max_node_id + 1
         # print(new_nodeid, end="\r")
 
         # @TODO Ron aangeven in geval van meerdere matches welke basin gepakt moet worden
@@ -791,8 +792,8 @@ def create_sufficient_Qh_relation_points(ribasim_model) -> None:
 
 def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml) -> None:
     # Write Ribasim model to the Z drive
-    if not os.path.exists(path_ribasim_toml):
-        os.makedirs(path_ribasim_toml)
+    if not Path(path_ribasim_toml).exists():
+        Path(path_ribasim_toml).mkdir(parents=True)
 
     ribasim_model.write(path_ribasim_toml)
 
@@ -804,23 +805,20 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
     Also clear the directory of modellen/parametereized, as there may be old results in it.
     The log file of the feedback form is not included to avoid cluttering.'
     """
-    destination_path = os.path.join(
-        settings.ribasim_nl_data_dir, waterschap, "modellen", f"{waterschap}_parameterized/"
-    )
+    destination_path = settings.ribasim_nl_data_dir / waterschap / "modellen" / f"{waterschap}_parameterized/"
 
     # clear the modellen/parameterized dir
-    if os.path.exists(destination_path):
+    if destination_path.exists():
         shutil.rmtree(destination_path)  # Remove the entire directory
-    os.makedirs(destination_path)  # Recreate the empty folder
+    destination_path.mkdir(parents=True)  # Recreate the empty folder
 
     # copy the work_dir to the "modellen" dir to maintain the same folder structure locally as well as on the 'GoodCloud'
     shutil.copytree(work_dir, destination_path, dirs_exist_ok=True)
 
     # it is not necessary to inlcude the log file of the feedback forms. Delete it
-    for file in os.listdir(destination_path):
-        file_path = os.path.join(destination_path, file)
-        if file.endswith(".log") and os.path.isfile(file_path):
-            os.remove(file_path)
+    for file in destination_path.iterdir():
+        if file.suffix == ".log" and file.is_file():
+            file.unlink()
 
     cloud_storage = CloudStorage()
 
@@ -894,9 +892,10 @@ def iterate_TRC(
             basins_converged = []
             for basin_node, trc_group in df_trc.groupby("from_node_id"):
                 # Check for a single streefpeil for all connected tabulated rating curves
-                trc_streefpeilen = []
-                for row in trc_group.itertuples():
-                    trc_streefpeilen.append(df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min())
+                trc_streefpeilen = [
+                    df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min()
+                    for row in trc_group.itertuples()
+                ]
                 assert len(set(trc_streefpeilen)) == 1
 
                 # Assert that we have a single unique basin
@@ -974,7 +973,7 @@ def validate_basin_area(model, threshold_area=45000) -> None:
     """
     too_small_basins = []
     error = False
-    for index, row in model.basin.node.df.iterrows():
+    for _index, row in model.basin.node.df.iterrows():
         basin_id = int(row["meta_node_id"])
         basin_geometry = model.basin.area.df.loc[model.basin.area.df["meta_node_id"] == basin_id, "geometry"]
         if not basin_geometry.empty:
@@ -1051,6 +1050,29 @@ def identify_node_meta_categorie(ribasim_model: Model, **kwargs) -> None:
     # # optional arguments
     # aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
 
+    # update meta_from/to_node_type
+    node_df = cast(pd.DataFrame, ribasim_model.node.df).reset_index()[["node_id", "node_type"]]
+    link_df = cast(pd.DataFrame, ribasim_model.link.df)
+
+    updated_link_df = link_df.drop(
+        columns=["meta_from_node_type", "meta_to_node_type"],
+        errors="ignore",
+    )
+
+    updated_link_df = updated_link_df.merge(
+        node_df.rename(columns={"node_id": "from_node_id", "node_type": "meta_from_node_type"}),
+        on="from_node_id",
+        how="left",
+    )
+
+    updated_link_df = updated_link_df.merge(
+        node_df.rename(columns={"node_id": "to_node_id", "node_type": "meta_to_node_type"}),
+        on="to_node_id",
+        how="left",
+    )
+
+    ribasim_model.link.df = updated_link_df
+
     # create new columsn to store the meta categorie of each node
     ribasim_model.outlet.static.df["meta_categorie"] = np.nan
     ribasim_model.pump.static.df["meta_categorie"] = np.nan
@@ -1065,10 +1087,14 @@ def identify_node_meta_categorie(ribasim_model: Model, **kwargs) -> None:
 
     # select the nodes which originate from, and go to a boundary
     nodes_from_boundary = ribasim_model.link.df.loc[
-        ribasim_model.link.df.meta_from_node_type == "LevelBoundary", "to_node_id"
+        (ribasim_model.link.df.meta_from_node_type == "LevelBoundary")
+        | (ribasim_model.link.df.meta_from_node_type == "level_boundary"),
+        "to_node_id",
     ]
     nodes_to_boundary = ribasim_model.link.df.loc[
-        ribasim_model.link.df.meta_to_node_type == "LevelBoundary", "from_node_id"
+        (ribasim_model.link.df.meta_from_node_type == "LevelBoundary")
+        | (ribasim_model.link.df.meta_from_node_type == "level_boundary"),
+        "from_node_id",
     ]
 
     # some pumps do not have a function yet, as they may have been changed due to the feedback forms. Set it to afvoer.
@@ -1329,10 +1355,10 @@ def set_aanvoer_flags(
     :param processor: Ribasim feedback processor object, defaults to None
 
     :key aanvoer_enabled: 'aanvoer'-settings are enabled, defaults to True
-    :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to None
-    :key basin_aanvoer_off: basin node-IDs to manually set 'aanvoer' to False, defaults to None
-    :key outlet_aanvoer_on: outlet node-IDs to manually set 'aanvoer' to True, defaults to None
-    :key outlet_aanvoer_off: outlet node-IDs to manually set 'aanvoer' to False, defaults to None
+    :key basin_aanvoer_on: basin node-IDs to manually set 'aanvoer' to True, defaults to ()
+    :key basin_aanvoer_off: basin node-IDs to manually set 'aanvoer' to False, defaults to ()
+    :key outlet_aanvoer_on: outlet node-IDs to manually set 'aanvoer' to True, defaults to ()
+    :key outlet_aanvoer_off: outlet node-IDs to manually set 'aanvoer' to False, defaults to ()
     :key overruling_enabled: in case a basin can be supplied directly from the 'hoofdwatersysteem', other supply-routes
         are "overruled", i.e., removed, defaults to True
 
@@ -1340,10 +1366,10 @@ def set_aanvoer_flags(
     :type aanvoer_regions: str, geopandas.GeoDataFrame
     :type processor: RibasimFeedbackProcessor, optional
     :type aanvoer_enabled: bool, optional
-    :type basin_aanvoer_on: tuple, optional
-    :type basin_aanvoer_off: tuple, optional
-    :type outlet_aanvoer_on: tuple, optional
-    :type outlet_aanvoer_off: tuple, optional
+    :type basin_aanvoer_on: tuple[int] | set[int], optional
+    :type basin_aanvoer_off: tuple[int] | set[int], optional
+    :type outlet_aanvoer_on: tuple[int] | set[int], optional
+    :type outlet_aanvoer_off: tuple[int] | set[int], optional
     :type overruling_enabled: bool, optional
     """
     # manual 'aanvoer'-flagging
@@ -1354,16 +1380,16 @@ def set_aanvoer_flags(
 
     # optional arguments
     aanvoer_enabled: bool = kwargs.get("aanvoer_enabled", True)
-    basin_aanvoer_on: tuple[int, ...] | set[object] = kwargs.get("basin_aanvoer_on", ())
-    basin_aanvoer_off: tuple[int, ...] | set[object] = kwargs.get("basin_aanvoer_off", ())
-    outlet_aanvoer_on: tuple[int, ...] | set[object] = kwargs.get("outlet_aanvoer_on", ())
-    outlet_aanvoer_off: tuple[int, ...] | set[object] = kwargs.get("outlet_aanvoer_off", ())
+    basin_aanvoer_on: tuple[int] | set[int] = kwargs.get("basin_aanvoer_on", set())
+    basin_aanvoer_off: tuple[int] | set[int] = kwargs.get("basin_aanvoer_off", set())
+    outlet_aanvoer_on: tuple[int] | set[int] = kwargs.get("outlet_aanvoer_on", set())
+    outlet_aanvoer_off: tuple[int] | set[int] = kwargs.get("outlet_aanvoer_off", set())
     overruling_enabled: bool = kwargs.get("overruling_enabled", True)
     load_geometry_kw: dict[str, object] = kwargs.get("load_geometry_kw", {})
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
-        logging.info("Aanvoer-flagging skipped.")
+        logger.info("Aanvoer-flagging skipped.")
         assert not isinstance(ribasim_model, str)
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
@@ -1373,7 +1399,7 @@ def set_aanvoer_flags(
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
-        logging.warning(
+        logger.warning(
             f'With aanvoer_regions={aanvoer_regions}, the whole region is considered an "aanvoergebied". '
             f"This is a temporary catch and will be deprecated in the future: "
             f'Make sure that all water boards have a geometry-file from which the "aanvoergebieden" can be deduced.'
@@ -1409,14 +1435,14 @@ def set_aanvoer_flags(
 
     # reset ribasim model
     ribasim_model = so.model
-    return
+    return ribasim_model
 
 
 def load_model_settings(file_path):
     script_path = Path(__file__)  # Get the path to the current python file
     file_path = script_path.parent.parent / "Parametrize" / file_path  # Correct the path to the JSON file
 
-    with open(file_path) as file:
+    with Path(file_path).open() as file:
         settings = json.load(file)
     return settings
 
@@ -1504,7 +1530,8 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
         if df[columns_to_check].isnull().values.any():
             warnings.warn(
                 f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
-                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}"
+                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}",
+                stacklevel=2,
             )
 
     check_for_nans_in_columns(outlet, "outlet")
@@ -1514,6 +1541,7 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
         print("Warning! Some pumps do not have a flow rate yet. Dummy value of 0.1234 m3/s has been taken.")
         pump.fillna({"flow_rate": 0.1234}, inplace=True)
 
+    outlet.flow_rate = outlet.flow_rate.fillna(25.0)
     # place the df's back in the ribasim_model
     ribasim_model.outlet.static.df = outlet
     ribasim_model.pump.static.df = pump
@@ -1596,7 +1624,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     ]
 
     # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
-    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw):
+    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw, strict=True):
         if len(nodes_to_control) > 0:
             print(f"Sturing has been added for the category {category}")
             add_discrete_control_partswise(
@@ -1706,7 +1734,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     ]
 
     # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
-    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal):
+    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal, strict=True):
         if len(nodes_to_control) > 0:
             print(f"Sturing has been added for the category {category}")
             add_discrete_control_partswise(
@@ -2092,7 +2120,7 @@ def add_continuous_control_node(
         except IndexError:
             listen_targets = []
             node_types = [ribasim_model.node.df.loc[i, "node_type"] for i in listen_nodes]
-            for i, t in zip(listen_nodes, node_types):
+            for i, t in zip(listen_nodes, node_types, strict=True):
                 match t.lower():
                     case "basin":
                         value = ribasim_model.basin.area.df.loc[
@@ -2107,7 +2135,7 @@ def add_continuous_control_node(
                             f"Unknown node-type ({t.lower()}) for implementation of `ContinuousControl`-node for "
                             f"{connection_node.node_type} #{connection_node.node_id}."
                         )
-                        raise NotImplementedError(msg)
+                        raise NotImplementedError(msg) from None
 
                 listen_targets.append(float(value.values[0]))
 
@@ -2118,7 +2146,7 @@ def add_continuous_control_node(
 
     # set ON-switch for continuous control node
     margin = 2 * numerical_tolerance
-    on_switch = sum(t * w for t, w in zip(listen_targets, weights))
+    on_switch = sum(t * w for t, w in zip(listen_targets, weights, strict=True))
 
     # add continuous control
     point = connection_node.geometry
@@ -2251,18 +2279,16 @@ def clean_tables(ribasim_model: Model, waterschap: str) -> None:
         ribasim_model.pump.static.df.node_id.isin(pump_ids)
     ].reset_index(drop=True)
 
+    # TODO: change all meta_node_id to the index. Too risky to do it right before samenwerkdag, so we have to do it after
     # ManningResistance
-    manningresistance_ids = ribasim_model.manning_resistance.node.df.loc[
-        ribasim_model.manning_resistance.node.df.node_type == "ManningResistance", "meta_node_id"
-    ].to_numpy()
+    manningresistance_ids = ribasim_model.manning_resistance.node.df.index.to_numpy()
+
     ribasim_model.manning_resistance.static = ribasim_model.manning_resistance.static.df.loc[
         ribasim_model.manning_resistance.static.df.node_id.isin(manningresistance_ids)
     ].reset_index(drop=True)
 
     # LevelBoundary
-    levelboundary_ids = ribasim_model.level_boundary.node.df.loc[
-        ribasim_model.level_boundary.node.df.node_type == "LevelBoundary", "meta_node_id"
-    ].to_numpy()
+    levelboundary_ids = ribasim_model.level_boundary.node.df["meta_node_id"].to_numpy()
     ribasim_model.level_boundary.static = ribasim_model.level_boundary.static.df.loc[
         ribasim_model.level_boundary.static.df.node_id.isin(levelboundary_ids)
     ].reset_index(drop=True)
@@ -2609,7 +2635,7 @@ def change_outlet_func(ribasim_model: Model, node_id: int, func: str, value: int
 
 
 def remove_non_free_flowing_outlets(
-    ribasim_model: Model, to_exclude: typing.Iterable[int], threshold: float = 0, printing: bool = False
+    ribasim_model: Model, to_exclude: typing.Iterable[int] = (), threshold: float = 0, printing: bool = False
 ) -> Model:
     """Remove outlets that are not free-flowing based on upstream/downstream level metadata.
 

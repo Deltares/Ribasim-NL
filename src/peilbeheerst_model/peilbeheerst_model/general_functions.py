@@ -1,4 +1,6 @@
 # import packages and functions
+from pathlib import Path
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -47,7 +49,7 @@ def show_layers_and_columns(waterschap) -> None:
     in a dictionary.
 
     """
-    for key in waterschap.keys():
+    for key in waterschap:
         print(key)
         print(waterschap[str(key)].columns.values)
         print("type = ", type(waterschap[str(key)]))
@@ -75,8 +77,8 @@ def store_data(waterschap, output_gpkg_path) -> None:
     - waterschap: A dictionary where the keys represent layer names, and the values are GeoDataFrames.
     - output_gpkg_path: The file path for the output GPKG file. The '.gpkg' extension is added automatically.
     """
-    for key in waterschap.keys():
-        waterschap[str(key)].to_file(output_gpkg_path + ".gpkg", layer=str(key), driver="GPKG")
+    for key in waterschap:
+        waterschap[str(key)].to_file(Path(output_gpkg_path).with_suffix(".gpkg"), layer=str(key), driver="GPKG")
 
 
 def overlapping_peilgebieden(waterschap_peilgebieden) -> pd.DataFrame | gpd.GeoDataFrame:
@@ -107,7 +109,7 @@ def overlapping_peilgebieden(waterschap_peilgebieden) -> pd.DataFrame | gpd.GeoD
     overlapping_polygons = gpd.GeoDataFrame(columns=peilgebied.columns)
 
     # Iterate through each polygon in peilgebied
-    for index, row in peilgebied.iterrows():
+    for index, _row in peilgebied.iterrows():
         current_polygon = peilgebied.iloc[[index]]  # select the current polygon
         other_polygons = peilgebied.drop(index)  # create a GeoDataFrame without the current polygon
         overlaps = other_polygons[
@@ -285,7 +287,7 @@ def burn_in_peilgebieden(base_layer, overlay_layer, plot=True) -> pd.DataFrame:
     # base_layer_without_overlapping.waterhoogte_1.fillna(value = base_layer_without_overlapping.waterhoogte, inplace=True)
 
     if (
-        "waterhoogte_1" in base_layer_without_overlapping.keys()
+        "waterhoogte_1" in base_layer_without_overlapping
     ):  # sometimes a waterhoogte is present in the peilgebieden. Manage this.
         base_layer_without_overlapping.rename(
             columns={
