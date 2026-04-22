@@ -980,10 +980,10 @@ def validate_basin_area(model, threshold_area=45000) -> None:
             basin_area = basin_geometry.iloc[0].area
             if basin_area < threshold_area:
                 error = True
-                print(f"Basin with Node ID {basin_id} has an area smaller than {threshold_area} m²: {basin_area} m²")
+                print(f"Basin with Node ID {basin_id} has an area smaller than {threshold_area} m2: {basin_area} m2")
                 too_small_basins.append(basin_id)
     if not error:
-        print(f"All basins are larger than {threshold_area} m²")
+        print(f"All basins are larger than {threshold_area} m2")
 
     return
 
