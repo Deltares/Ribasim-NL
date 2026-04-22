@@ -198,14 +198,14 @@ class AssignOfflineBudgets:
             secondary_values = {"bergend"}
         if primary_values is None:
             primary_values = {"hoofdwater", "doorgaand"}
-        print("📖 read and validate budgets and model")
+        print("read and validate budgets and model")
         budgets, model = self._sync_files(model)  # read model and budgets form zarr-store
         self._validate_budgets(
             budgets, primary_budgets, secondary_budgets, surface_runoff_budgets
         )  # check if all data-variables are present
 
         # Split into primary and secondary basin definition
-        print("🪓 split basins into primary and secondary")
+        print("split basins into primary and secondary")
         primary_basin_definition, secondary_basin_definition = self._split_basin_definitions(
             model,
             basin_split=basin_split,
@@ -215,7 +215,7 @@ class AssignOfflineBudgets:
             secondary_values=secondary_values,
         )
 
-        print("▦ rasterize basins to masks")
+        print("rasterize basins to masks")
         primary_basin_mask = imod.prepare.rasterize(
             primary_basin_definition,
             column="node_id",
@@ -231,7 +231,7 @@ class AssignOfflineBudgets:
             dtype=np.int32,
         )
 
-        print("⚙️ compute budgets per basin")
+        print("compute budgets per basin")
         primary_budgets_df = (
             _compute_budgets_per_basin(
                 _crop_to_gdf(budgets[list(primary_budgets)], primary_basin_definition),
@@ -248,7 +248,7 @@ class AssignOfflineBudgets:
             / 86400
         )
 
-        print("📈 add budgets to drainage/infiltration and surface_runoff columns")
+        print("add budgets to drainage/infiltration and surface_runoff columns")
         # concat all budgets so we can return those for verification
         budgets_df = pd.concat([primary_budgets_df, secondary_budgets_df]).sort_index()
 

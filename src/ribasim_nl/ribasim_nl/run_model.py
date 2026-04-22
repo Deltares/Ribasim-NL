@@ -68,6 +68,9 @@ def run(
 
     with proc:
         assert proc.stdout is not None
+        # Reconfigure stdout to replace unencodable characters (e.g. cp1252 on Windows)
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(errors="replace")
         was_simulating = False
         computation_time = None
         term_width = shutil.get_terminal_size((80, 20)).columns

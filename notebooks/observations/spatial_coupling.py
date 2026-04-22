@@ -513,7 +513,7 @@ def spatial_match(
 
     # Iterate through each point
     for idx, row in tqdm(
-        shape_koppeling.iterrows(), total=len(shape_koppeling), desc="🔄 Verwerken ruimtelijke koppeling van meetpunten"
+        shape_koppeling.iterrows(), total=len(shape_koppeling), desc="Verwerken ruimtelijke koppeling van meetpunten"
     ):
         # if idx == 1:
 
