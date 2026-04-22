@@ -4,7 +4,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/e8LbgZrgjsetPYn)
 
 ## Systeembeschrijving
-![Systeembeschrijving Rijn en IJssel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/RijnenIJssel.svg)
+![Systeembeschrijving Rijn en IJssel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/RijnenIJssel.svg){.lightbox}
 
 ### Hoofdsysteem
 Water wordt aangevoerd naar een aantal beken vanuit het `Twentekanaal` in het noorden van het beheergebied. Daarnaast vindt aanvoer plaats vanuit Duitsland. Dit water wordt op meerdere locaties verdeeld en lokaal ingelaten.

@@ -31,8 +31,9 @@ ARROW_LENGTH = {
     "Noorderzijlvest": 1200,
     "AaenMaas": 1600,
     "Limburg": 1400,
-    "DeDommel": 1400,
+    "DeDommel": 1200,
     "Vechtstromen": 1400,
+    "DrentsOverijsselseDelta": 2000,
     "HunzeenAas": 1400,
     "RijnenIJssel": 1400,
 }
@@ -41,10 +42,42 @@ OFFSETS = {
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["RijnenIJssel"]
+AUTHORITIES = ["DrentsOverijsselseDelta"]
 ADD_TOP10_NL = {
+    "DrentsOverijsselseDelta": [
+        "Overijsselsch Kanaal (Zijkanaal Lemelerveld-Raalte-Deventer)",
+        "Basiskanaal",
+        "IJssel",
+        "Soestwetering",
+        "Overijsselsch Kanaal",
+        "Zwarte Water",
+        "Overijsselsche Vecht",
+        "Reest",
+        "De Reest",
+        "Zwarte Meer",
+        "Wold Aa",
+        "Ommerkanaal",
+        "Ketelmeer",
+        "Reevediep",
+        "Nieuwe Kanaal",
+        "Meppelerdiep",
+        "Hoogeveensche Vaart",
+        "Drentsche Hoofdvaart",
+        "Omgelegde Hoogeveense Vaart",
+        "Omgelegde Hoogeveensche Vaart",
+        "Verlengde Hoogeveensche Vaart",
+        "Oude Vaart",
+        "Wold Aa",
+        "Oude Diep",
+        "Beilervaart",
+        "Noord-Willemskanaal",
+        "Oranjekanaal",
+        "Dolderkanaal",
+        "Vollenhoverkanaal",
+    ],
     "Vechtstromen": [
         "Maas",
+        "Mariënberg Vechtkanaal",
         "Twentekanaal (Zijkanaal naar Almelo)",
         "Twentekanaal (Kanaal Zutphen-Enschede)",
         "Nieuwe Graven",
@@ -54,6 +87,7 @@ ADD_TOP10_NL = {
         "Loolee",
         "Doorbraak",
         "Bornsche Beek",
+        "Veenleiding",
         "Oude Bornsche Beek",
         "Hagmolenbeek",
         "Bolscherbeek",
@@ -383,7 +417,7 @@ def fix_geometry(geometry):
         return Polygon(geometry.exterior)
 
 
-def generate_mask_box(polygon: Polygon, offsets: dict["str", int]) -> Polygon:
+def generate_mask_box(polygon: Polygon, offsets: dict[str, int]) -> Polygon:
     xmin, ymin, xmax, ymax = polygon.bounds
     xmin -= offsets.get("xmin", 5000)
     ymin -= offsets.get("ymin", 5000)
