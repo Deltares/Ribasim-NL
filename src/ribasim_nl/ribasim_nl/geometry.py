@@ -1,12 +1,10 @@
 # %%
 """Functions to apply on a shapely.geometry"""
 
-import typing
-import warnings
 from typing import get_type_hints
 
 import numpy as np
-from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import polygonize, polylabel
 
 from ribasim_nl.generic import _validate_inputs
@@ -221,42 +219,12 @@ def project_point(line: LineString, point: Point, tolerance: float = 1) -> Point
     return line.interpolate(line.project(point))
 
 
-@typing.overload
-def split_line(
-    line: LineString, point: Point, *deprecated: typing.Any, tolerance: float = 0.1, as_multilinestring: None
-) -> MultiLineString | LineString: ...
-
-
-# TODO: Next transition step: Default `as_multilinestring=None` with `=True`-behaviour and a UserWarning
-
-
-@typing.overload
 def split_line(
     line: LineString,
     point: Point,
-    *deprecated: typing.Any,
+    *,
     tolerance: float = 0.1,
-    as_multilinestring: typing.Literal[True] = True,
-) -> MultiLineString | LineString: ...
-
-
-@typing.overload
-def split_line(
-    line: LineString,
-    point: Point,
-    *deprecated: typing.Any,
-    tolerance: float = 0.1,
-    as_multilinestring: typing.Literal[False],
-) -> tuple[LineString, ...]: ...
-
-
-def split_line(
-    line: LineString,
-    point: Point,
-    *deprecated: typing.Any,
-    tolerance: float = 0.1,
-    as_multilinestring: bool | None = True,
-) -> MultiLineString | LineString | tuple[LineString, ...]:
+) -> tuple[LineString, ...]:
     """Split a line into two lines based on a point.
 
     As the built-in `shapely.ops.split` is not designed to do this splitting, its use should be avoided.
@@ -266,50 +234,20 @@ def split_line(
     Args:
         line (LineString): line to be split
         point (Point): point to mark split-location
-        deprecated (any): the `tolerance`-argument will eventually be keyword-only
         tolerance (float, optional): tolerance of distance from point to line, defaults to 0.1.
-        as_multilinestring (bool, optional): return split line as MultiLineString-object, defaults to True
-            raises deprecation warning as the future implementation will always return a tuple of LineString-objects
 
     Returns
     -------
-        MultiLineString | LineString: in case `as_multilinestring=True`, returns a MultiLineString with two lines if
-            being split otherwise a single LineString (will be deprecated)
-        tuple[LineString, ...]: in case `as_multilinestring=False`, returns a tuple of one or two LineString-objects,
-            and is the intended approach for the future
+        tuple[LineString, ...]: a tuple of one or two LineString-objects
     """
-    # deprecation warnings
-    if deprecated:
-        warnings.warn(
-            "Passing 'tolerance' positionally is deprecated. Use keyword argument 'tolerance='.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        tolerance = deprecated[0]
-    if as_multilinestring is None:
-        warnings.warn(
-            "Calling 'split_line' without specifying 'as_multilinestring' is deprecated. "
-            "In a future version, this will return 'tuple[LineString, ...]'. "
-            "Set 'as_multilinestring' explicitly (and set to False for future-proofing the code).",
-            UserWarning,
-            stacklevel=2,
-        )
-    elif as_multilinestring:
-        warnings.warn(
-            "The 'split_line'-function will return tuple with LineString-objects in the future. "
-            "Change to the future behaviour by setting 'as_multilinestring=False'.",
-            FutureWarning,
-            stacklevel=2,
-        )
-
     # point is too far from the line: no splitting
     if point.distance(line) > tolerance:
-        return line if as_multilinestring else (line,)
+        return (line,)
 
     # point is too close to the line's end: no splitting
     distance = line.project(point)
     if distance <= tolerance or distance >= line.length - tolerance:
-        return line if as_multilinestring else (line,)
+        return (line,)
 
     # find splitting index
     coordinates = np.array(line.coords)
@@ -321,46 +259,7 @@ def split_line(
     # create split lines
     line1 = LineString([*coordinates[:i], point])
     line2 = LineString([point, *coordinates[i:]])
-    if as_multilinestring:
-        return MultiLineString([line1, line2])
     return line1, line2
-
-
-# def split_line(line: LineString, point: Point, tolerance: float = 0.1) -> MultiLineString | LineString:
-#     """Split a line into a 2 geometry multiline
-#
-#     Args:
-#         line (LineString): input line
-#         point (Point): point to split on
-#         tolerance (float, optional): tolerance of point to line. Defaults to 0.1.
-#
-#     Returns
-#     -------
-#         MultiLineString | LineString: in case LineString is split, return MultiLineString with 2 LineStrings
-#     """
-#     # if point is within tolerance of line.boundary we don't split
-#     if line.boundary.distance(point) < tolerance:
-#         return line
-#
-#     # try if a normal split works
-#     result = split(line, point)
-#     if len(list(result.geoms)) == 2:
-#         return MultiLineString(result)
-#
-#     # if not, we try it again
-#     else:
-#         # project the point on the line, checking if it's not too far of first
-#         point = project_point(line, point, tolerance)
-#
-#         # we snap the line to the point so it will have the point coordinate
-#         line = snap(line, point, 1e-8)
-#
-#         # now we should be able to split
-#         result = split(line, point)
-#         if len(list(result.geoms)) == 2:
-#             return MultiLineString(result)
-#         else:
-#             return line
 
 
 def snap_boundaries_to_other_line(line: LineString, other_line: LineString, tolerance: float = 0.1) -> LineString:
