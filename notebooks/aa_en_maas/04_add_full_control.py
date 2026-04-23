@@ -357,7 +357,7 @@ supply_nodes = [226]
 flow_control_nodes = [681, 774, 775, 776, 934, 974]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -476,7 +476,7 @@ flow_control_nodes = [
 ]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -547,7 +547,7 @@ supply_nodes = [183, 375, 521, 640, 1054]
 flow_control_nodes = [155, 212, 332, 388, 823, 824, 1051, 1062]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -613,7 +613,7 @@ supply_nodes = [166, 211]
 flow_control_nodes = [205, 239, 413, 438, 526, 533, 790, 791, 952]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -662,7 +662,7 @@ supply_nodes = []
 flow_control_nodes = [328, 361, 352, 708]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -708,7 +708,7 @@ supply_nodes = [227]
 flow_control_nodes = [154, 158, 177, 338, 538, 622, 710, 826, 828, 909, 954]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -753,7 +753,7 @@ supply_nodes = [335]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -802,7 +802,7 @@ supply_nodes = [246]
 flow_control_nodes = [269, 886]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -847,7 +847,7 @@ supply_nodes = []
 flow_control_nodes = [748]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -896,7 +896,7 @@ supply_nodes = [355, 510, 531]
 flow_control_nodes = [218, 469]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -1005,7 +1005,7 @@ flow_control_nodes = [
 
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -1053,7 +1053,7 @@ supply_nodes = [734]
 flow_control_nodes = [722, 723, 1067, 1070]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -1148,7 +1148,7 @@ flow_control_nodes = []
 
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -1325,9 +1325,8 @@ model.write(ribasim_toml_dry)
 
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_dry)
 
 # prerun om het model te initialiseren met neerslag
@@ -1338,9 +1337,8 @@ model.write(ribasim_toml_wet)
 
 # run prerun model
 if MODEL_EXEC:
-    prerun_result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_wet)
 
 # hoofd run
@@ -1348,8 +1346,7 @@ update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
 
 # %%
