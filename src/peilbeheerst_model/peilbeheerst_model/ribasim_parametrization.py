@@ -525,6 +525,10 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0) -> None:
     )
     ribasim_model.level_boundary.static = new_static_LevelBoundary
 
+    # empty FlowBoundary-tables
+    ribasim_model.flow_boundary.static.df = None
+    ribasim_model.flow_boundary.time.df = None
+
     return
 
 
