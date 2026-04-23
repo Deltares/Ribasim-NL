@@ -158,7 +158,7 @@ drain_nodes = [40, 442, 412, 837]
 supply_nodes = [136, 139, 943, 125, 107, 112, 116, 121, 184]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -199,7 +199,7 @@ drain_nodes = [551, 652]
 supply_nodes = [37, 38]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -233,7 +233,7 @@ drain_nodes = []
 supply_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -362,9 +362,8 @@ model.write(ribasim_toml_dry)
 
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_dry)
 
 # prerun om het model te initialiseren met neerslag
@@ -373,9 +372,8 @@ model.write(ribasim_toml_wet)
 
 # run prerun model
 if MODEL_EXEC:
-    prerun_result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_wet)
 
 # hoofd run
@@ -383,6 +381,5 @@ update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()

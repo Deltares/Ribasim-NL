@@ -5,7 +5,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
+from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
@@ -48,7 +48,6 @@ network_validator = NetworkValidator(model)
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -608,7 +607,7 @@ merge_pairs = [
 
 for basin_id, to_basin_id in merge_pairs:
     model.merge_basins(
-        basin_id=basin_id,
+        node_id=basin_id,
         to_node_id=to_basin_id,
         are_connected=True,
     )

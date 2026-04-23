@@ -251,6 +251,5 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
