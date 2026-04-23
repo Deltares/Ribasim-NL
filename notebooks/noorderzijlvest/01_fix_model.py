@@ -219,10 +219,7 @@ for node_id in model.basin.node.df.index:
     network._graph.nodes[network_basin_node]["node_id"] = node_id
 
     upstream_node_ids = model.upstream_node_id(node_id)
-    if isinstance(upstream_node_ids, pd.Series):
-        upstream_node_ids = upstream_node_ids.to_list()
-    else:
-        upstream_node_ids = [upstream_node_ids]
+    upstream_node_ids = upstream_node_ids.to_list() if isinstance(upstream_node_ids, pd.Series) else [upstream_node_ids]
 
     downstream_node_ids = model.downstream_node_id(node_id)
     if isinstance(downstream_node_ids, pd.Series):

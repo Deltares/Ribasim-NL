@@ -43,7 +43,7 @@ def add_discharge_supply_nodes(
 ):
     # get tables and nodes
     node_table_df = get_node_table_with_from_to_node_ids(model, node_ids=list(discharge_supply_nodes.keys()))
-    node_types = model.node_table().df["node_type"]
+    node_types = model.node.df["node_type"]
 
     # demand parameters
     summer_season_start: tuple[int, int] = (4, 1)
@@ -293,7 +293,7 @@ level_supply_nodes = [
     2020,
 ]
 
-double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes.keys()]
+double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes]
 if double_defined:
     raise ValueError(f"these nodes are labelled as q-supply and level-supply {double_defined}")
 
@@ -1318,7 +1318,6 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 # %%
 
 # hoofd run met verdamping
-model.starttime
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
 model.starttime = datetime(2020, 5, 1)
 model.endtime = datetime(2020, 9, 1)

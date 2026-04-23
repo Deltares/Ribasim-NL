@@ -433,18 +433,12 @@ if "fid" in missing_gdf.columns:
 
 # %% merge_basins
 for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
-    if pd.isna(row.connected):
-        are_connected = True
-    else:
-        are_connected = row.connected
+    are_connected = True if pd.isna(row.connected) else row.connected
     model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
 
 mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
 for row in internal_basin_edits_gdf[mask].itertuples():
-    if pd.isna(row.connected):
-        are_connected = True
-    else:
-        are_connected = row.connected
+    are_connected = True if pd.isna(row.connected) else row.connected
     model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
 
 # %% add and connect nodes

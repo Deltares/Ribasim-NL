@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
@@ -447,14 +448,14 @@ def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
         from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = (
             from_to_node_function_table.loc[both_allowed, [latest_demand_column, latest_drainage_column]]
             .max(axis=1)
-            .to_numpy(dtype=float)
+            .to_numpy(dtype=float, na_value=np.nan)
         )
         from_to_node_function_table.loc[demand_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
             demand_only, latest_demand_column
-        ]
+        ].to_numpy(dtype=float, na_value=np.nan)
         from_to_node_function_table.loc[drainage_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
             drainage_only, latest_drainage_column
-        ]
+        ].to_numpy(dtype=float, na_value=np.nan)
 
     return from_to_node_function_table
 

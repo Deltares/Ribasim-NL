@@ -79,7 +79,7 @@ outlet_node = model.outlet.add(Node(geometry=geometry.interpolate(271)), tables=
 model.redirect_link(link_id=2202, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
-for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
+for fid, link_id, _boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
     kdu = duiker_gdf.loc[fid]
     basin_node = model.basin.add(
         Node(geometry=model.link.df.loc[link_id, "geometry"].boundary.geoms[0]), tables=basin_data
@@ -265,10 +265,7 @@ for row in add_basin_area_gdf.itertuples():
 # merge basins
 selection_df = basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()]
 for row in selection_df.itertuples():
-    if pd.isna(row.connected):
-        are_connected = True
-    else:
-        are_connected = row.connected
+    are_connected = True if pd.isna(row.connected) else row.connected
     model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
 
 # %% reverse links

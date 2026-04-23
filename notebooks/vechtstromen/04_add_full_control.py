@@ -59,6 +59,36 @@ model.outlet.static.df.max_flow_rate = 100.0
 model.pump.static.df.max_flow_rate = 100.0
 
 
+# fixes:
+
+# Inlaatschuif Zwinderseveld #Oranjekanaal: Gemaal richting omgedraaid voor inlaat
+# for link_id in [2822, 1337]:
+#    model.reverse_link(link_id=link_id)
+
+# Inlaat Stroomstukkendijk #736 richting omdraaien? anders geen aanvoer
+
+# Vriezenveen Veenkamp #768, 2 richtingen?
+
+# Inlaatschuif Zwinderseveld #250
+for link_id in [1674, 549]:
+    model.reverse_link(link_id=link_id)
+
+# stuw #964 in Dommerskanaal richting omdraaien?
+# for link_id in [796, 2383]:
+#    model.reverse_link(link_id=link_id)
+
+# Gemaal Orveltersluis #665 richting omdraaien
+for link_id in [2823, 2682]:
+    model.reverse_link(link_id=link_id)
+model.remove_node(node_id=665, remove_links=True)
+
+
+# 1353 = Drentse stuw
+model.update_node(node_id=1353, node_type="Outlet")
+
+model.remove_node(node_id=206, remove_links=True)  # Dooze, wordt later weer toegevoegd als inlaat
+
+
 # %% bovenstroomse outlets op 10m3/s zetten en boundary afvoer pumps/outlets
 # geen downstreamm level en aanvoer  pumps/outlets geen upstream level
 def set_values_where(df, updates, node_ids=None, key_col="node_id", mask=None):
@@ -155,6 +185,11 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1269, "min_upstream
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 982, "max_downstream_level"] = 9.15
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 982, "min_upstream_level"] = 9.15
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 34, "level"] = 9.17
+# %%
+# node 1122 (Dooze) moet een inlaat worden ipv Manning
+model.update_node(node_id=1122, node_type="Outlet")
+
+# %%
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 check_basin_level.add_check_basin_level(model=model)

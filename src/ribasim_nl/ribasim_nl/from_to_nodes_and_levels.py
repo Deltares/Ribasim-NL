@@ -3,12 +3,14 @@ import pandas as pd
 from ribasim_nl import Model
 
 
-def add_from_to_nodes_and_levels(model: Model, node_types=["outlet", "pump"]) -> None:
+def add_from_to_nodes_and_levels(model: Model, node_types=None) -> None:
     """Add from and to nodes and levels
 
     Args:
         model (Model): ribasim-nl Model
     """
+    if node_types is None:
+        node_types = ["outlet", "pump"]
 
     def get_upstream_node_id(node_id) -> int | None:
         us_node_ids = model._upstream_nodes(node_id, stop_at_node_type="Basin")

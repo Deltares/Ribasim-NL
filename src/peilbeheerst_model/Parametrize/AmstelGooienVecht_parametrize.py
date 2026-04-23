@@ -1,7 +1,6 @@
 """Parameterisation of water board: Amstel, Gooi en Vecht."""
 
 import datetime
-import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -86,8 +85,8 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
 # create work_dir/parameterized
-parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-os.makedirs(parameterized, exist_ok=True)
+parameterized = work_dir / f"{waterschap}_parameterized/"
+parameterized.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -490,11 +489,10 @@ ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=pump_co
     pump_copy, on="node_id", how="left"
 )
 
-# FIXME: Avoid using `ribasim_model.node_table()` (deprecated)
 # there are some duplicates in the discrete control? Remove them
 control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 dup_control = []
-all_nodes = ribasim_model.node_table().df[["node_type"]]
+all_nodes = ribasim_model.node.df[["node_type"]]
 for to_node_id, group in control.groupby("to_node_id"):
     if len(group) == 1:
         continue

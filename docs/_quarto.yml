@@ -33,16 +33,24 @@ website:
         - watersystems/AaenMaas.qmd
         - watersystems/BrabantseDelta.qmd
         - watersystems/DeDommel.qmd
+        - watersystems/DrentsOverijsselseDelta.qmd
         - watersystems/HunzeenAas.qmd
         - watersystems/Limburg.qmd
         - watersystems/Noorderzijlvest.qmd
+        - watersystems/RijnenIJssel.qmd
         - watersystems/StichtseRijnlanden.qmd
-        # - watersystems/Vechtstromen.qmd
+        - watersystems/ValleienVeluwe.qmd
+        - watersystems/Vechtstromen.qmd
 format:
   html:
     theme: cosmo
     css: styles.css
     toc: true
+lightbox:
+  match: auto
+  effect: zoom
+  desc-position: bottom
+  css-class: "fullscreen-lightbox"
 quartodoc:
   style: pkgdown
   dir: reference

@@ -1,6 +1,6 @@
 import itertools
-import os
 import shutil
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -1701,9 +1701,7 @@ class RibasimNetwork:
 
         ### add a random color to the basins ###
         color_cycle = itertools.cycle(Category10[10])
-        color_list = []
-        for _ in range(len(model.basin.area.df)):
-            color_list.append(next(color_cycle))
+        color_list = [next(color_cycle) for _ in range(len(model.basin.area.df))]
 
         # Add the color_list as a new column to the pd.DataFrame
         model.basin.area.df["meta_color"] = color_list
@@ -1822,8 +1820,8 @@ class RibasimNetwork:
         output_path : _type_
             _description_
         """
-        for key in data.keys():
-            data[str(key)].to_file(output_path + ".gpkg", layer=str(key), driver="GPKG")
+        for key in data:
+            data[str(key)].to_file(Path(output_path).with_suffix(".gpkg"), layer=str(key), driver="GPKG")
 
         return
 
@@ -1838,51 +1836,50 @@ class RibasimNetwork:
             _description_
         """
         dir_path = settings.ribasim_nl_data_dir
-        dir_path = os.path.join(dir_path, self.model_characteristics["waterschap"])
+        dir_path = Path(dir_path) / self.model_characteristics["waterschap"]
 
         ##### write the model to the Z drive #####
         if self.model_characteristics["write_Zdrive"]:
             dir_path = f"../../../../Ribasim_networks/Waterschappen/{self.model_characteristics['waterschap']}/modellen/{self.model_characteristics['waterschap']}_{self.model_characteristics['modeltype']}"
 
-            if not os.path.exists(dir_path):
-                os.makedirs(dir_path)
+            if not Path(dir_path).exists():
+                Path(dir_path).mkdir(parents=True)
             else:
-                for filename in os.listdir(dir_path):  # delete outdated models in de original folder
-                    file_path = os.path.join(dir_path, filename)
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
+                for file_path in Path(dir_path).iterdir():  # delete outdated models in de original folder
+                    if file_path.is_file():
+                        file_path.unlink()
 
-            path_ribasim = os.path.join(
-                dir_path,
-                "",
-                "modellen",
-                "",
-                self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                "ribasim.toml",
+            path_ribasim = (
+                Path(dir_path)
+                / "modellen"
+                / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
+                / "ribasim.toml"
             )
             model.write(path_ribasim)
 
         ##### write to the P drive #####
         if self.model_characteristics["write_Pdrive"]:
             P_path = self.model_characteristics["path_Pdrive"]
-            P_path = os.path.join(
-                P_path,
-                self.model_characteristics["waterschap"],
-                "modellen",
-                self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                self.model_characteristics["waterschap"]
-                + "_"
-                + self.model_characteristics["modelname"]
-                + "_"
-                + self.model_characteristics["modeltype"],
+            P_path = (
+                Path(P_path)
+                / self.model_characteristics["waterschap"]
+                / "modellen"
+                / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
+                / (
+                    self.model_characteristics["waterschap"]
+                    + "_"
+                    + self.model_characteristics["modelname"]
+                    + "_"
+                    + self.model_characteristics["modeltype"]
+                )
             )
 
-            if not os.path.exists(P_path):
-                os.makedirs(P_path)
+            if not P_path.exists():
+                P_path.mkdir(parents=True)
 
-            P_path = os.path.join(
-                P_path,
-                f"{self.model_characteristics['waterschap']}_{self.model_characteristics['modelname']}_{self.model_characteristics['modeltype']}_ribasim.toml",
+            P_path = (
+                P_path
+                / f"{self.model_characteristics['waterschap']}_{self.model_characteristics['modelname']}_{self.model_characteristics['modeltype']}_ribasim.toml"
             )
 
             model.write(P_path)
@@ -1890,102 +1887,93 @@ class RibasimNetwork:
             # write checks to the P drive
             RibasimNetwork.store_data(
                 data=checks,
-                output_path=str(P_path + "visualisation_checks"),
+                output_path=str(P_path) + "visualisation_checks",
             )
 
         ##### copy symbology for the Ribasim model #####
         if self.model_characteristics["write_symbology"]:
-            checks_symbology_path = os.path.join(
-                settings.ribasim_nl_data_dir, "Basisgegevens/QGIS_qlr/visualisation_Ribasim.qlr"
-            )
-            checks_symbology_path_new = os.path.join(
-                dir_path,
-                "modellen",
-                self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                "visualisation_Ribasim.qlr",
+            checks_symbology_path = settings.ribasim_nl_data_dir / "Basisgegevens/QGIS_qlr/visualisation_Ribasim.qlr"
+            checks_symbology_path_new = (
+                Path(dir_path)
+                / "modellen"
+                / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
+                / "visualisation_Ribasim.qlr"
             )
 
             # check if the directory exists, if not create it
-            if not os.path.exists(os.path.dirname(checks_symbology_path_new)):
-                os.makedirs(os.path.dirname(checks_symbology_path_new))
+            if not checks_symbology_path_new.parent.exists():
+                checks_symbology_path_new.parent.mkdir(parents=True)
             # copy checks_symbology file from old dir to new dir
             shutil.copy(src=checks_symbology_path, dst=checks_symbology_path_new)
 
             if self.model_characteristics["write_Pdrive"]:
                 # write Ribasim model to the P drive
                 P_path = self.model_characteristics["path_Pdrive"]
-                P_path = os.path.join(
-                    P_path,
-                    self.model_characteristics["waterschap"],
-                    "modellen",
-                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    self.model_characteristics["waterschap"]
-                    + "_"
-                    + self.model_characteristics["modelname"]
-                    + "_"
-                    + self.model_characteristics["modeltype"],
+                P_path = (
+                    Path(P_path)
+                    / self.model_characteristics["waterschap"]
+                    / "modellen"
+                    / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
+                    / (
+                        self.model_characteristics["waterschap"]
+                        + "_"
+                        + self.model_characteristics["modelname"]
+                        + "_"
+                        + self.model_characteristics["modeltype"]
+                    )
                 )
 
-                if not os.path.exists(P_path):
-                    os.makedirs(P_path)
+                if not P_path.exists():
+                    P_path.mkdir(parents=True)
 
-                P_path_ribasim = os.path.join(P_path, "ribasim.toml")
+                P_path_ribasim = P_path / "ribasim.toml"
                 model.write(P_path_ribasim)
 
                 shutil.copy(
                     src=checks_symbology_path_new,
-                    dst=os.path.join(
-                        P_path,
-                        "visualisation_Ribasim.qlr",
-                    ),
+                    dst=P_path / "visualisation_Ribasim.qlr",
                 )
 
         # write model locally
-        output_locally = os.path.join(
-            dir_path,
-            "modellen",
-            self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
+        output_locally = (
+            Path(dir_path)
+            / "modellen"
+            / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
         )
-        if not os.path.exists(output_locally):
-            os.makedirs(output_locally)
-        model.write(filepath=output_locally + "/ribasim.toml")
+        if not output_locally.exists():
+            output_locally.mkdir(parents=True)
+        model.write(filepath=output_locally / "ribasim.toml")
 
         ##### write the checks #####
         if self.model_characteristics["write_checks"]:
             print("dir_path = ", dir_path)
             print(
-                os.path.join(
-                    dir_path,
-                    "modellen",
-                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    "database_checks",
-                )
+                Path(dir_path)
+                / "modellen"
+                / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
+                / "database_checks"
             )
             print("Done")
 
             RibasimNetwork.store_data(
                 data=checks,
-                output_path=os.path.join(
-                    dir_path,
-                    "modellen",
-                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    "database_checks",
-                ),
+                output_path=Path(dir_path)
+                / "modellen"
+                / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
+                / "database_checks",
             )
 
         ##### copy symbology for the CHECKS data #####
         if self.model_characteristics["write_symbology"]:
             # dont change the paths below!
 
-            checks_symbology_path = os.path.join(
-                settings.ribasim_nl_data_dir, "Basisgegevens/QGIS_qlr/visualisation_checks.qlr"
-            )
+            checks_symbology_path = settings.ribasim_nl_data_dir / "Basisgegevens/QGIS_qlr/visualisation_checks.qlr"
 
-            checks_symbology_path_new = os.path.join(
-                dir_path,
-                "modellen",
-                self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                "visualisation_checks.qlr",
+            checks_symbology_path_new = (
+                Path(dir_path)
+                / "modellen"
+                / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
+                / "visualisation_checks.qlr"
             )
 
             # copy checks_symbology file from old dir to new dir
@@ -1994,30 +1982,29 @@ class RibasimNetwork:
             if self.model_characteristics["write_Pdrive"]:
                 # write Ribasim model to the P drive
                 P_path = self.model_characteristics["path_Pdrive"]
-                P_path = os.path.join(
-                    P_path,
-                    self.model_characteristics["waterschap"],
-                    "modellen",
-                    self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"],
-                    self.model_characteristics["waterschap"]
-                    + "_"
-                    + self.model_characteristics["modelname"]
-                    + "_"
-                    + self.model_characteristics["modeltype"],
+                P_path = (
+                    Path(P_path)
+                    / self.model_characteristics["waterschap"]
+                    / "modellen"
+                    / (self.model_characteristics["waterschap"] + "_" + self.model_characteristics["modeltype"])
+                    / (
+                        self.model_characteristics["waterschap"]
+                        + "_"
+                        + self.model_characteristics["modelname"]
+                        + "_"
+                        + self.model_characteristics["modeltype"]
+                    )
                 )
 
-                if not os.path.exists(P_path):
-                    os.makedirs(P_path)
+                if not P_path.exists():
+                    P_path.mkdir(parents=True)
 
-                P_path_ribasim = os.path.join(P_path, "ribasim.toml")
+                P_path_ribasim = P_path / "ribasim.toml"
                 model.write(P_path_ribasim)
 
                 shutil.copy(
                     src=checks_symbology_path_new,
-                    dst=os.path.join(
-                        P_path,
-                        "visualisation_Ribasim.qlr",
-                    ),
+                    dst=P_path / "visualisation_Ribasim.qlr",
                 )
 
         if self.model_characteristics["write_goodcloud"]:

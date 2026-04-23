@@ -4,7 +4,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
 
 ## Systeembeschrijving
-![Systeembeschrijving Aa en Maas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/AaenMaas.svg)
+![Systeembeschrijving Aa en Maas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/AaenMaas.svg){.lightbox}
 
 ### Maaskant-West
 

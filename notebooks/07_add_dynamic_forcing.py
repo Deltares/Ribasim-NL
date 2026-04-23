@@ -170,16 +170,16 @@ for authority in authorities:
             if compute_fractions:
                 # generate DELWAQ model
                 delwaq_dir = model.toml_path.with_name("delwaq")
-                print(f"🗀 generate DELWAQ model in {delwaq_dir}")
+                print(f"generate DELWAQ model in {delwaq_dir}")
                 graph, substances = generate(model, output_path=delwaq_dir)
 
                 # run DELWAQ model
-                print("⚙️ run DELWAQ")
+                print("run DELWAQ")
                 run_delwaq(
                     model_dir=delwaq_dir,
                     d3d_home=settings.d3d_home,
                 )
 
                 # parse DELWAQ results in model
-                print("📖 parse DELWAQ results in Ribasim-model")
+                print("parse DELWAQ results in Ribasim-model")
                 parse(model, graph, substances, output_folder=delwaq_dir)

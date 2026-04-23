@@ -31,7 +31,7 @@ def download_geopackage(url: str, save_dir: Path) -> None:
             filepath = save_dir / Path(url).name
 
             # Make the GET request
-            response = requests.get(url, headers={"Accept": "application/geopackage+sqlite3"}, stream=True)
+            response = requests.get(url, headers={"Accept": "application/geopackage+sqlite3"}, stream=True, timeout=300)
 
             # Check if the response is successful
             if response.status_code == 200:
@@ -40,7 +40,7 @@ def download_geopackage(url: str, save_dir: Path) -> None:
                 # Check if the response is a Geopackage file
                 if "application/geopackage+sqlite3" in content_type:
                     # Save the file locally
-                    with open(filepath, "wb") as file:
+                    with filepath.open("wb") as file:
                         for chunk in response.iter_content(chunk_size=8192):
                             file.write(chunk)
                     print(f"Downloaded: {filepath}")
@@ -64,11 +64,11 @@ def download_from_pdok(force_update: bool = False, upload_to_cloud_storage: bool
     """
     # get atom-feed
     print(f"Downloading GKW-data from {PDOK_URL}")
-    response = requests.get(PDOK_URL)
+    response = requests.get(PDOK_URL, timeout=300)
     response.raise_for_status()
 
     # updated datetime and define gkw_source_dir
-    root = ET.fromstring(response.text)
+    root = ET.fromstring(response.text)  # noqa: S314
     updated_element = root.find(".//atom:entry/atom:updated", NAMESPACES)
     assert updated_element is not None
     assert updated_element.text is not None
