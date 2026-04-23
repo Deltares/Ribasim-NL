@@ -218,15 +218,15 @@ basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[19608, "geometry"]
 
 
 model.move_node(1686, hydroobject_gdf.at[19566, "geometry"].boundary.geoms[1])
-model.merge_basins(basin_id=2426, to_basin_id=1696, are_connected=True)
-model.merge_basins(basin_id=2460, to_basin_id=1696, are_connected=True)
-model.merge_basins(basin_id=1648, to_basin_id=1696, are_connected=True)
+model.merge_basins(node_id=2426, to_node_id=1696, are_connected=True)
+model.merge_basins(node_id=2460, to_node_id=1696, are_connected=True)
+model.merge_basins(node_id=1648, to_node_id=1696, are_connected=True)
 
-model.merge_basins(basin_id=1696, to_basin_id=2453, are_connected=True)
+model.merge_basins(node_id=1696, to_node_id=2453, are_connected=True)
 
-model.merge_basins(basin_id=2453, to_basin_id=1686, are_connected=True)
-model.merge_basins(basin_id=1719, to_basin_id=1686, are_connected=True)
-model.merge_basins(basin_id=1858, to_basin_id=1686, are_connected=True)
+model.merge_basins(node_id=2453, to_node_id=1686, are_connected=True)
+model.merge_basins(node_id=1719, to_node_id=1686, are_connected=True)
+model.merge_basins(node_id=1858, to_node_id=1686, are_connected=True)
 
 model.remove_node(1532, remove_links=True)
 model.remove_node(722, remove_links=True)
@@ -308,18 +308,18 @@ model.link.add(outlet_node, model.level_boundary[50])
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399931763
 
 # Samenvoegen Westerveldse Aa
-model.merge_basins(basin_id=1592, to_basin_id=1645, are_connected=True)
-model.merge_basins(basin_id=1593, to_basin_id=1645, are_connected=True)
+model.merge_basins(node_id=1592, to_node_id=1645, are_connected=True)
+model.merge_basins(node_id=1593, to_node_id=1645, are_connected=True)
 
-model.merge_basins(basin_id=1645, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2567, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2303, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2549, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2568, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2572, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2374, to_basin_id=1585, are_connected=True)
+model.merge_basins(node_id=1645, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2567, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2303, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2549, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2568, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2572, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2374, to_node_id=1585, are_connected=True)
 
-model.merge_basins(basin_id=2559, to_basin_id=2337, are_connected=False)
+model.merge_basins(node_id=2559, to_node_id=2337, are_connected=False)
 
 
 # %%

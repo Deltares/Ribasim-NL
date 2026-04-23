@@ -434,12 +434,12 @@ if "fid" in missing_gdf.columns:
 # %% merge_basins
 for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
     are_connected = True if pd.isna(row.connected) else row.connected
-    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
 for row in internal_basin_edits_gdf[mask].itertuples():
     are_connected = True if pd.isna(row.connected) else row.connected
-    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 # %% add and connect nodes
 for row in internal_basin_edits_gdf[internal_basin_edits_gdf.add_object.notna()].itertuples():
@@ -609,7 +609,7 @@ merge_pairs = [
 for basin_id, to_basin_id in merge_pairs:
     model.merge_basins(
         basin_id=basin_id,
-        to_basin_id=to_basin_id,
+        to_node_id=to_basin_id,
         are_connected=True,
     )
 
@@ -696,7 +696,7 @@ model.node.df.loc[
 df = gpd.read_file(hydamo_gpkg, layer="stuw")
 geometry = df.set_index("code").at["261HTE", "geometry"]
 
-model.connect_basins(from_basin_id=1280, to_basin_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
+model.connect_basins(from_basin_id=1280, to_node_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]

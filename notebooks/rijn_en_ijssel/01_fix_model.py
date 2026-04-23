@@ -223,8 +223,8 @@ model.fix_unassigned_basin_area()
 
 
 # %% merge basins
-model.merge_basins(basin_id=944, to_basin_id=1028)
-model.merge_basins(basin_id=788, to_basin_id=1150)
+model.merge_basins(node_id=944, to_node_id=1028)
+model.merge_basins(node_id=788, to_node_id=1150)
 # %%
 # Sanitize node_table
 for node_id in model.tabulated_rating_curve.node.df.index:

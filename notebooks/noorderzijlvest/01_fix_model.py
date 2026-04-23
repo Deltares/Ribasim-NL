@@ -157,26 +157,26 @@ for action in [
         method(**kwargs)
 
 
-model.merge_basins(basin_id=1231, to_basin_id=1280)
-model.merge_basins(basin_id=1179, to_basin_id=1184)
-model.merge_basins(basin_id=1184, to_basin_id=1280)
-model.merge_basins(basin_id=1034, to_basin_id=1280)
-model.merge_basins(basin_id=1279, to_basin_id=1182)
-model.merge_basins(basin_id=1181, to_basin_id=1182)
-model.merge_basins(basin_id=1408, to_basin_id=1182)
-model.merge_basins(basin_id=1028, to_basin_id=1378)
-model.merge_basins(basin_id=1373, to_basin_id=1378)
-model.merge_basins(basin_id=1032, to_basin_id=1182)
+model.merge_basins(node_id=1231, to_node_id=1280)
+model.merge_basins(node_id=1179, to_node_id=1184)
+model.merge_basins(node_id=1184, to_node_id=1280)
+model.merge_basins(node_id=1034, to_node_id=1280)
+model.merge_basins(node_id=1279, to_node_id=1182)
+model.merge_basins(node_id=1181, to_node_id=1182)
+model.merge_basins(node_id=1408, to_node_id=1182)
+model.merge_basins(node_id=1028, to_node_id=1378)
+model.merge_basins(node_id=1373, to_node_id=1378)
+model.merge_basins(node_id=1032, to_node_id=1182)
 
 # # Van Starkenborghkanaal mergen Manning knopen weg!
-model.merge_basins(basin_id=1223, to_basin_id=1307)
-model.merge_basins(basin_id=1307, to_basin_id=1244)
-model.merge_basins(basin_id=1244, to_basin_id=1186)
-model.merge_basins(basin_id=1292, to_basin_id=1186)
-model.merge_basins(basin_id=1088, to_basin_id=1186)
+model.merge_basins(node_id=1223, to_node_id=1307)
+model.merge_basins(node_id=1307, to_node_id=1244)
+model.merge_basins(node_id=1244, to_node_id=1186)
+model.merge_basins(node_id=1292, to_node_id=1186)
+model.merge_basins(node_id=1088, to_node_id=1186)
 
-model.merge_basins(basin_id=1144, to_basin_id=1124)
-model.merge_basins(basin_id=1077, to_basin_id=1124)
+model.merge_basins(node_id=1144, to_node_id=1124)
+model.merge_basins(node_id=1077, to_node_id=1124)
 
 
 # %% assign Basin / Area using KWKuit

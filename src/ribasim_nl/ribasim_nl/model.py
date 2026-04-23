@@ -1,5 +1,4 @@
 # %%
-import warnings
 from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar, Literal
@@ -1023,20 +1022,10 @@ class Model(ribasim.Model):
 
     def merge_basins(
         self,
-        basin_id: int | None = None,
         node_id: int | None = None,
         to_node_id: int | None = None,
-        to_basin_id: int | None = None,
         are_connected=True,
     ) -> None:
-        if basin_id is not None:
-            warnings.warn("basin_id is deprecated, use node_id instead", DeprecationWarning, stacklevel=2)
-            node_id = basin_id
-
-        if to_basin_id is not None:
-            warnings.warn("to_basin_id is deprecated, use to_node_id instead", DeprecationWarning, stacklevel=2)
-            to_node_id = to_basin_id
-
         assert self.basin.node is not None
         assert self.basin.node.df is not None
         if node_id not in self.basin.node.df.index:
