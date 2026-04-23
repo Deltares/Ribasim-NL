@@ -67,7 +67,7 @@ outlet_data = outlet.Static(flow_rate=[100])
 # Verwijderen link met 0m lengte
 model.remove_node(2434, remove_links=True)
 model.remove_node(1308, remove_links=True)
-model.merge_basins(basin_id=2396, to_basin_id=1669, are_connected=False)
+model.merge_basins(node_id=2396, to_node_id=1669, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426151899
 
@@ -121,7 +121,7 @@ model.link.add(outlet_node, model.basin[1452])
 # Corrigeren Panheelsebeek
 model.remove_node(node_id=940, remove_links=True)
 model.reverse_link(link_id=211)
-model.merge_basins(basin_id=2465, to_basin_id=1340, are_connected=False)
+model.merge_basins(node_id=2465, to_node_id=1340, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426443778
 
@@ -266,7 +266,7 @@ for row in add_basin_area_gdf.itertuples():
 selection_df = basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()]
 for row in selection_df.itertuples():
     are_connected = True if pd.isna(row.connected) else row.connected
-    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 # %% reverse links
 
@@ -411,7 +411,7 @@ merge_pairs = [
 for basin_id, to_basin_id in merge_pairs:
     model.merge_basins(
         basin_id=basin_id,
-        to_basin_id=to_basin_id,
+        to_node_id=to_basin_id,
         are_connected=True,
     )
 
