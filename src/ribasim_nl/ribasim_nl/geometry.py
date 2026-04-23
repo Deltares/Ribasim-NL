@@ -224,7 +224,7 @@ def split_line(
     point: Point,
     *,
     tolerance: float = 0.1,
-) -> tuple[LineString, ...]:
+) -> tuple[LineString] | tuple[LineString, LineString]:
     """Split a line into two lines based on a point.
 
     As the built-in `shapely.ops.split` is not designed to do this splitting, its use should be avoided.
@@ -238,7 +238,7 @@ def split_line(
 
     Returns
     -------
-        tuple[LineString, ...]: a tuple of one or two LineString-objects
+        tuple[LineString] | tuple[LineString, LineString]: a tuple of one or two LineString-objects
     """
     # point is too far from the line: no splitting
     if point.distance(line) > tolerance:
