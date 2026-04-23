@@ -567,7 +567,7 @@ ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=pump_co
 # # there are some duplicates in the discrete control? Remove them
 # control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 # dup_control = []
-# all_nodes = ribasim_model.node_table().df[["node_type"]]
+# all_nodes = ribasim_model.node.df[["node_type"]]
 # for to_node_id, group in control.groupby("to_node_id"):
 #     if len(group) == 1:
 #         continue

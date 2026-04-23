@@ -78,7 +78,7 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, buffer_distance):
 
     # Build lookup table
     coupling_df = rwzis_combined[["meta_rwzi_code", "couple_to_basin_id"]].dropna()
-    coupling_lookup = dict(zip(coupling_df.meta_rwzi_code, coupling_df.couple_to_basin_id))
+    coupling_lookup = dict(zip(coupling_df.meta_rwzi_code, coupling_df.couple_to_basin_id, strict=True))
 
     # Niet gekoppelde rwzis
     unmatched_rwzi_df = rwzis_combined[rwzis_combined["couple_to_basin_id"].isna()][["meta_rwzi_code", "geometry"]]
@@ -129,7 +129,7 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     # 1. terminal naar junction
     terminals = rwzi_coupled_model.terminal.node.df[rwzi_coupled_model.terminal.node.df["meta_rwzi_code"].notna()]
 
-    for node_id, row in terminals.iterrows():
+    for node_id, _row in terminals.iterrows():
         if verbose:
             print(f"Converteer terminal {node_id} naar junction")
         rwzi_coupled_model.update_node(node_id, "Junction", data=[])

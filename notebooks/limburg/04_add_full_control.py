@@ -84,7 +84,7 @@ def add_discharge_supply_nodes(
         model,
         node_ids=list(discharge_supply_nodes.keys()),
     )
-    node_types = model.node_table().df["node_type"]
+    node_types = model.node.df["node_type"]
 
     # demand parameters
     summer_season_start: tuple[int, int] = (4, 1)
@@ -286,7 +286,7 @@ level_supply_nodes = [
     445,  # Aanvoerleiding Vredepeel
 ]
 
-double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes.keys()]
+double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes]
 if double_defined:
     raise ValueError(f"these nodes are labelled as q-supply and level-supply {double_defined}")
 

@@ -10,7 +10,7 @@ from ribasim_nl import CloudStorage, Model
 LOG = logging.getLogger(__name__)
 
 
-def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:
+def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:  # noqa: B008
     """Get profile tables
 
     :param water_authority: water authority

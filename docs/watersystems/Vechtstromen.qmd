@@ -3,101 +3,111 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT)
 
 ## Systeembeschrijving
-![Systeembeschrijving Vechtstromen](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/Vechtstromen.svg)
+![Systeembeschrijving Vechtstromen](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/Vechtstromen.svg){.lightbox}
 
 Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuur.
+`Overijsselsch Kanaal (Kanaal Almelo–Haandrik)` is in de figuur afgekort als `Kanaal Almelo– Haandrik`.
 
 ### Watersysteem
 
-### Waterbeheer droge perioden
-Als in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit het `Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)` via Sluis Aadorp (maximaal 10 m3/s)
+# Waterbeheer droge perioden hoofdsysteem
 
-ingelaten in het `Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)`. Buiten deze inlaatperiode stroomt er geen water vanuit het Twentekanaal naar het Kanaal Almelo – de Haandrik.
+Als in droge perioden het peil van de Vecht te laag is wordt er water ingelaten vanuit de Twentekanalen naar het `Kanaal Almelo–Haandrik` via `Sluis Aadorp` (maximaal 10 m3/s). Bij lage afvoeren van de Vecht vanuit Duitsland wordt via `kanaal Almelo-Haandrik` dit water verder doorgevoerd naar het `Coevorden-Vecht kanaal` en het `Stieltjeskanaal`.  Buiten deze inlaatperiode stroomt er geen water vanuit het `Twentekanaal` naar het `Kanaal Almelo - Haandrik`.
+Ook kan er via het `Alte Picardiekanaal` vanuit Duitsland water worden ingelaten.
 
-Ook bij de Stieltjeskanaalsluis naar de Verlengde Hoogeveensche Vaart kan water worden ingelaten.
+Bij `inlaatwerk Hancate` wordt water doorgevoerd naar Salland in droge perioden, max 5.7m3/s. Het kan met een maximale capaciteit van 5 tot 7 m3/s. Deze capaciteit is nog nooit benut, normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s.
 
-De inlaten Vroomshoop en Hammervlier – Geerdijk worden alleen ’s zomers gebruikt voor het
-inlaten van water. Het water wordt dan ingelaten vanuit het Kanaal Almelo – de Haandrik.
-Verder is er voor de droge perioden een waterakkoord gesloten met Waterschap Groot Salland.
-Water wordt dan indien mogelijk vanuit het Twentekanaal via Kanaal Almelo – de Haandrik (ook
-Overijssels Kanaal genoemd) naar Salland doorgevoerd. Het doorvoeren naar Salland kan met
-een maximale capaciteit van 5 tot 7 m3/s. Normaal gesproken wordt water doorgevoerd met een maximale capaciteit van 1 tot 3 m3/s.
+Verder wordt er in het noorden water ingelaten via de `Verlengde Hoogeveenschevaart` dat vanaf de Noordschutsluis (WDOD) max 6.86m3/s met pompen kan aanvoeren.
+Via de `Verlengde Hoogeveenschevaart`wordt water doorgevoerd naar Waterschap Hunze en Aa’s via `inlaat Hunze en Aa`, als er onvoldoende verhang gerealiseerd is in de `Verlengde Hoogeveensche Vaart`.
 
-Vanuit de `Dinkel` wordt alleen water het gebied ingelaten als er voldoende water in de `Dinkel` aanwezig is. Het water van de Dinkel dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.
+Ook via het `Oranjekanaal` wordt water ingelaten via  `gemaal Orveltersluis` vanuit WDOD (max 1.34m3/s).
 
-Het `Banisgemaal` is een in- en uitlaatgemaal bij Almelo. Bij hoogwater op het
-`Lateraalkanaal`, wordt het `Banisgemaal` gebruikt om het `Lateraalkanaal` te ontlasten. Het water wordt dan door het gemaal op de zijtak van het `Twentekanaal` geloosd. Het gemaal heeft een maximale capaciteit van 10 m3/s. In de zomerperiode wordt water vanuit de zijtak via het inlaatwerk in het `Banisgemaal` van het `Twentekanaal` in het `Lateraalkanaal` gelaten. Dit gebeurt met een maximale capaciteit van 0.43 m3/s.
+De `Dinkel` kan water inlaten als er voldoende water in de `Dinkel` aanwezig is. Het water van de `Dinkel` dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.
 
+# Aanvoergebieden
 
-`Stokkumerflier` is ook een in- en uitlaatpunt. Het water wordt uitgemalen op het `Twentekanaal`
-met een maximale capaciteit van 2.29 m3/s. De inlaat van water gebeurt met een maximale capaciteit van 0.42 m3/s. Er wordt ook water ingelaten vanuit het `Twentekanaal` via `Herikervlier`, `Oude Poelsbeek` en `Oude Bolscherbeek`.
+## Schipbeek
+`Aanvoergemaal Stokkumervlier` laat water direct in vanuit het `Twentekanaal` en voert het via een onderleider door naar aanvoergebied `Boven Regge`
+Via inlaat `Oude Boven Regge` en `Diepenheimse Molenbeek` wordt water in het zuiden van het aanvoergebied ingelaten vanuit Schipbeek.
 
-Inlaatschuif `Hammerflier` en inlaatschuif `Vriezenveense Veenkanaal` laten water in vanuit
-`Overijsselsch Kanaal (Kanaal Almelo – de Haandrik)`. De maximale inlaatcapaciteiten zijn onbekend. Het water dat bij
-Hammerflier wordt ingelaten wordt gebruikt ter compensatie van de grondwateronttrekking
-door het WMO in Hammerflier. Het niet geïnfiltreerde water wordt via de Regge afgevoerd naar
-de Overijsselse Vecht.
+## Oude Bolscherbeek
+Via inlaat `Oude Boscherbeek` wordt water ingevlaten naar aanvoergebied Bolscherbeek
 
-### Peelkanaal
+## Boven Regge
+De inlaten `Herikervlier`, `aanvoergemaal Stokkumervlier` en `Oude Poelsbeek` laten water in direct vanuit het `Twentekanaal`. Stokkumervlier kan ook water uitmalen op het `Twentekanaal (kanaal Zutphen-Enschede)` met een maximale capaciteit van 2.29 m3/s.
 
-**Afvoer:**
-- Via het `Afleidingskanaal` wordt het water afgevoerd via de Molenbeek (Waterschap Aa en Maas) naar de `Maas`
+`Inlaat Vroomshoop`, `inlaat Linderveld Vroomshoop`, `Twicklervaart`, `oude Hagmolenbeek` en `inlaat Hammerflier` laten water in vanuit het `Kanaal Almelo–Haandrik`.
+- Water dat bij `Hammerflier` wordt ingelaten wordt gebruikt ter compensatie van de grondwateronttrekking door het WMO in `Hammerflier`. Het niet geïnfiltreerde water wordt via de Regge afgevoerd naar de `Overijsselse Vecht`.
+- Via `inlaat Vroomshoop` wordt water doorgevoerd via het `Kanaal Almelo–Haandrik` naar het beheergebied van WDOD via `Inlaatwerk Hancate`.
+- Via `inlaat Linderveld Vroomshoop` wordt water aangevoerd naar de Linderbeek.
+- Water uit het Overijsselsch kanaal kan via `aanvoergemaal Linderveld Vroomshoop` via een onderleider onder de `Linderbeek` gepompt worden om het stroomgebied Linderbeek van water te voorzien (ten westen van Vroomshoop).
 
-**Aanvoer:**
-- Via `Verdeelwerk De Halte` wordt een deel van het aangevoerde water naar het aanvoergebied  `Peelkanaal` geleid.
-- Een deel van het water gaat via verschillende inlaten naar Aa en Maas (aanvoergebied `Peelscheloop` `Bakelse AA` en `Maaskant-Oost`)
+- Via inlaat `Twicklerveld Delden` wordt water direct vanuit het `Twentekanaal (kanaal Zutphen-Enschede)` ingelaten. Daarnaast wordt via `kanaal Almelo Nordhorn` via inlaat Banis water aangevoerd. Via de `Doorbraak` wordt het water onder het `Twentekanaal (Zijkanaal naar Almelo)` verder aangevoerd richting de `Beneden Regge`.
 
-### Helenavaart
+## Lateraalkanaal
+Via `aanvoergemaal Hedeman` en `inlaat Banis` wordt water ingelaten vanuit het `Kanaal Almelo-Nordhorn`  Via `Inlaat Banis Almelo` wordt het water via het `Lateraalkanaal` over verschillende inlaten verdeeld. Het `Lateraalkanaal` stroomt onder het `Overijsselsch Kanaal (Kanaal Almelo-De Haandrik)` door naar de `Veeneleiding` waar ook diverse inlaten zijn.
 
-**Afvoer:**
-- Via de Oostrumsche beek en de Groote Molenbeek naar de Maas
+## De Pollen
+??
 
-**Aanvoer**
-- De aanvoer via Katsberg, naar `gemaal Helenveen` en een inlaat naar aanvoergebied `Helenaveen` en `Verdeelwerk de Halte`.
+## Vriezenveen
+Via inlaat `Vriezenveensche Veenkam` wordt water ingelaten vanuit `Kanaal Almelo–Haandrik` naar het `Vrienzenveensche Veenkanaal`. Dit kanaal voert het water door naar het `Nieuwe Stroomkanaal` van waaruit het via diverse inlaten het gebied ingelaten.
 
-### Beringe
+## Overrijsselsche Vecht
+De `Overijsselsche Vecht` wordt grotendeels in droge tijden grotendeels van water voorzien via de `Beneden Regge`, via inlaat `Alte Picardi` en via het `Kanaal Almelo–Haandrik`. Er komt nauwelijks water van de `Overijsselsche Vecht` in het `Kanaal Almelo–Haandrik`, behalve als de waterstand op de Vecht te hoog wordt.
 
-**Afvoer:**
-- Grooste deel van de afvoer via de Everlose beek en de Broekhuizer Molenbeek en de Kwistbeek naar de `Maas`
+## Dooze
+Via inlaat Fortwijk aan het `Nieuwe Stroomkanaal` wordt water ingelaten. En verder via Ittrebecker See????
 
-**Aanvoer**
-- Via de `Noordervaart` kan water ingelaten worden via `gemaal Beringe`
+## Overijsselsch Kanaal noord
+Via verschillende inlaten wordt water ingelaten vanuit het `Kanaal Almelo–Haandrik`.
 
-### Eendlossing
+## Braambergersloot
+Via inlaat `Bisschop`(WDOD) en `inlaat Zuidwolder Waterlossing` (WDOD) wordt in dit gebied water ingelaten Daarnaast zittten er vanuit het `Kanaal Almelo–Haandrik`. Daarnaast via `inlaaschuif Zwinderse kanaal` en via `inlaatstuw Geesbrug` wordt er vanuit het de `Verlengde Hoogeveensche Vaart` water ingelaten.
 
-**Afvoer:**
-- Direct naar de `Zuid-Willemsvaart`
+## Coevorden-Zwinderen
+Coevorden wordt via diverse inlaten aan Kanaal Coevorden-Zwinderen van water voorzien. In het noorden van centrum Coevorden water water ingelaten via inlaat `Hemelweg` vanuit het ` Kanaal Coevorden-Zwinderen`.
 
-**Aanvoer**
-- Via inlaat de `Eendlossing` vanaf de `Zuid-Willemsvaart`
+## Schoonebeek
+Via de Verlengde Hoogeveensche Vaart die water aanvoert naar het Stieltjeskanaal en Dommerskanaal wordt water via diverse inlaten ingelaten. Daarnaast wordt 0,12 m3/s doorgevoerd ten behoeve van het Bargerveen (provincie Drenthe).
 
-### Nederweert Hoverlossing
+## Nieuwe Drostendiep
+Via diverse inlaten aan de Verlengde Hoogeveensche Vaart wordt water ingelaten in het `Nieuwe Drostendiep`. Bij inlaat de Klenke wordt aangevoerd via Kwel vanuit Kelenckerveld.
 
-**Afvoer:**
-- Naar de `Zuid-Willemsvaart` via Aa en Maas
+## Oranjekanaal
+Vanuit gemaal Orveltersluis wordt water ingelaten vanuit WDOD naar het `Oranjekanaal` ingelaten.
 
-**Aanvoer**
-- Via inlaat Nederweert Hoverlossing vanaf de `Zuid-Willemsvaart`
-- Vanaf aanvoergebied `Nederweert Hoverlossing` wordt water doorgevoerd naar Aa en Maas (aanvoergebied Someren)
+## Oosterhesselen
+Via de `Verlengde Hoogeveensche Vaart` wordt water ingelaten via inlaat `Albring`.
 
-### Oude Graaf
+## Geesbrug
+Via de `Verlengde Hoogeveensche Vaart` wordt water ingelaten via inlaat `Geesbrug`.
 
-**Afvoer:**
-- Via de `uitlaat Sterkselsche Aa` wordt het doorgevoerd naar waterschap de Dommel
+## Oosterwijk
+??
 
-**Aanvoer:**
-- Via inlaten vanaf de `Zuid-Willemsvaart`
+## Dinkel
+Vanuit de `Dinkel` wordt alleen water het gebied ingelaten als er voldoende water in de `Dinkel` aanwezig is. Het water van de `Dinkel` dat Nederland uitgaat moet minimaal evenveel zijn als het water dat Nederland inkomt. Hieraan is een minimum gesteld van 0.30 m3/s.
 
-### Tungelroysche beek
+# Waterbeheer natte periode hoofdsysteem:
+De Verlengde Hoogeveensche Vaart staat in verbinding met het Oranjekanaal, het Stieltjeskanaal, het Kanaal Coevorden – Zwinderen en de Hoogeveensche Vaart. De `Verlengde Hoogeveensche Vaart` bestaat uit twee panden. Dit is een pand van `Oranjesluis` tot aan de `Ericasluis` en een pand van de `Ericasluis` naar de `Noordscheschutsluis` (WDOD). De panden hebben een peil van respectievelijk NAP +15.80 m en NAP +12.9 m. De Verlengde Hoogeveensche Vaart heeft naast de verbinding met de Hoogeveensche Vaart nog twee afvoerpunten. Dit zijn de `Stieltjeskanaalsluis` en de `Zwindersluis`. De `Zwindersluis` wordt pas bij een extreme afvoer gebruikt als afvoerpunt. Het water wordt dan afgevoerd naar het `Kanaal Coevorden – Zwinderen`. In de zomerperiode gaat in principe al het water naar `Noordscheschut`. Pas als bij de `Noordscheschut` de spuicapaciteit niet voldoende is, wordt het water gespuid via de sluis bij het `Stieltjeskanaal`.
 
-**Afvoer:**
-- via de Neerbeek en de Tungelroysche beek naar de `Maas`
+Het `Coevorden – Vechtkanaal` is de verbinding tussen de stadswateren van Coevorden en de `Overijsselsche Vecht`. De `Coevordensluis` kan het `Coevorden – Vechtkanaal` afsluiten van de `Overijsselsche Vecht`. Onder normale omstandigheden is de sluis open en loost het `Coevorden – Vechtkanaal` op de `Overijsselsche Vecht`. Bij een toenemende waterstand zal de stromingsrichting omdraaien en stroomt het water vanaf de Vecht op het `Coevorden – Vechtkanaal`. Als dit zich voordoet, wordt de `Coevordensluis` gesloten. Om de afwatering van het Coevorden – Vechtkanaal te continueren kan de `Overijsselse Stuw` tussen het Coevorden – Vechtkanaal opengezet worden.
+De `Drentse Stuw` verdeeld het `Afwateringskanaal` in een boven en beneden pand. Bij hoogwater ontvangt het beneden pand van het Afwateringskanaal ook water van het `Coevorden – Vechtkanaal`.
 
-**Aanvoer:**
-- Via inlaten vanaf de `Zuid-Willemsvaart`
+Het `Afwateringskanaal`, het `Coevorden – Vechtkanaal`, `Ommerkanaal` en het `Kanaal Almelo–Haandrik` zijn verbonden met de Overijsselse Vecht. In de `Overijsselse Vecht` liggen zes stuwen. Dit zijn de `Haandrik`, `Hardenberg`, `Mariënberg`, `Junne`, Vilsteren (WDOD) en Vechterweerd (WDOD). Als de waterstand hoger wordt dan de hoogte van de stuwen, overstromen de stuwen. Er is dus geen maximale afvoer capaciteit in de Vecht. De afvoer van het `Kanaal Almelo–Haandrik` naar de Vecht vindt theoretisch plaats via `Sluis de Haandrik`. In principe is deze sluis het gehele jaar open. In werkelijkheid wordt er nauwelijks water via de Haandrik Sluis naar de Vecht gestuurd. Het water stroomt vanuit het `Kanaal Almelo–Haandrik` via `Aflaatschuif Prinsen` naar het `Marienberg Vechtkanaal` naar de `Overijsselsche Vecht`. Dit gebeurt met een maximale capaciteit van 11 m3/s.
 
-### Rogge
-- Via inlaten vanaf de `Zwartwaterlossing`
+Het water van de `Regge` stroomt onder vrij verval naar de `Overijsselsche Vecht`. Bij het `verdeelwerk Vroomshoop` komen de `Veeneleiding`, de in- en uitlaat zijtak `Kanaal Almelo–Haandrik`, de `Linderbeek` en het `Overijssels Kanaal` samen. Het verdeelwerk en inlaatsysteem zijn geautomatiseerd. In normale omstandigheden wordt het water van de Veeneleiding afgevoerd op de `Linderbeek`, die weer water afvoert via de `Regge` naar de `Overrijselsche Vecht`. Als de `Veeneleiding` een afvoer overschrijdt van 3.0 m3/s, dan wordt het meerdere hiervan afgevoerd naar het `Overijssels Kanaal`.
+
+Bij hoogwater in het `Overijssels Kanaal`, benedenstrooms van Sluis4 in het gebied van
+waterschap Groot Salland, stort water uit het `Overijssels Kanaal` over in de Beneden Regge
+
+Het `Banisgemaal` is een uitlaatgemaal bij Almelo. Bij hoogwater op het`Lateraalkanaal`, wordt het `Banisgemaal` gebruikt om het `Lateraalkanaal` te ontlasten. Het water wordt dan door het gemaal op de zijtak van het `Twentekanaal` geloosd. Het gemaal heeft een maximale capaciteit van 10 m3/s.
+
+Vanuit Duitsland komt de `Dinkel` Nederland binnen. Het water verlaat Nederland ook weer via de `Dinkel`,
+deze watert uiteindelijk af in de Duitse Vecht. Bij piekafvoeren verdeelt het verdeelwerk bij
+Dinkel de afvoer van de Boven Dinkel over de Beneden `Dinkel` en het `Omleidingskanaal`. Het
+water uit het `Omleidingskanaal` komt uiteindelijk weer op de Beneden `Dinkel.`
 
 
 ## Capaciteiten
@@ -105,29 +115,8 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 
 | naam                       | code       |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
 |:---------------------------|:-----------|----------:|:----------|-----------------:|----------------:|
-| Achterste Moost            | D_25958    |       410 | inlaat    |            0.02  |               0 |
-| Eendlossing                | S_97698    |       772 | inlaat    |            0.02  |               0 |
-| Gemaal Beringe             | G_27621    |       583 | inlaat    |            0.65  |               0 |
-| Gemaal Helenaveen          | G_27616    |       590 | inlaat    |            0.35  |               0 |
-| Houtstraatlossing          | D_14965    |       351 | inlaat    |            0.05  |               0 |
-| Hushoverbeek               | D_281344   |      2502 | inlaat    |            0.05  |               0 |
-| Inlaat Evertsoord          | S_97322    |       604 | inlaat    |            0.35  |               0 |
-| Inlaat Groote Moost        | S_98847    |       236 | inlaat    |            0.09  |               0 |
-| Inlaat Hulsenlossing       |            |      1223 | inlaat    |            0.03  |               0 |
-| Inlaat Rietbeek            | S_98409    |       599 | inlaat    |            0.12  |               0 |
-| Inlaat Weteringbeek        | S_98009    |       731 | inlaat    |            0.125 |               0 |
-| Kampershoek                |            |      2503 | inlaat    |            0.05  |               0 |
-| Katsberg                   | S_282001   |       238 | doorlaat  |            4.7   |               0 |
-| Klein Leukerbeek           | W_153168_0 |      1119 | inlaat    |            0.08  |               0 |
-| Nederweerter Hovenlossing  | D_23657    |       534 | inlaat    |            0.02  |               0 |
-| Nederweerter Riet          | D_25545    |       464 | inlaat    |            0.05  |               0 |
-| Oude Graaf                 |            |      1136 | inlaat    |            0.05  |               0 |
-| Roeven                     | S_97840    |      2501 | inlaat    |            0.01  |               0 |
-| Snepheiderbeek             | D_23544    |       411 | inlaat    |            0.05  |               0 |
-| Uitlaat Sterkselsch kanaal | S_97873    |       748 | uitlaat   |            0     |              20 |
-| Verdeelwerk de Halte       | S_97735    |       773 | inlaat    |            4.7   |               0 |
-| Waatskampoplossing         | S_97872    |       598 | inlaat    |            0.01  |               0 |
-| Zwartwaterlossing          | D_294341   |       230 | inlaat    |            0.05  |               0 |
+| A                          | D_25958    |       410 | inlaat    |            0.02  |               0 |
+
 
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd).

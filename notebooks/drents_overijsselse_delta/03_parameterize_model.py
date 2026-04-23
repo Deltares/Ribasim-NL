@@ -61,7 +61,7 @@ joined = gpd.sjoin(outlet_gdf, inlaten_gdf, how="inner", predicate="intersects")
 if joined.empty:
     print("Geen intersectie gevonden tussen buffered outlet-punten en inlaten-lijnen.")
 else:
-    for node_id, row in joined.iterrows():
+    for node_id, _row in joined.iterrows():
         model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, ["meta_categorie"]] = "Inlaat"
 
 node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()

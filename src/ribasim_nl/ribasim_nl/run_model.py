@@ -68,12 +68,15 @@ def run(
 
     with proc:
         assert proc.stdout is not None
+        # Reconfigure stdout to replace unencodable characters (e.g. cp1252 on Windows)
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(errors="replace")
         was_simulating = False
         computation_time = None
         term_width = shutil.get_terminal_size((80, 20)).columns
         for line in proc.stdout:
             if "Simulating" in line:
-                print("", end="\r")
+                print(end="\r")
                 print("\r" + " " * term_width, end="\r")  # Clear current line
                 print(line.rstrip(), end="\r")  # Allow progress bar to stay on one line
                 was_simulating = True

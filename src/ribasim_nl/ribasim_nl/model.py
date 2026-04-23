@@ -202,7 +202,7 @@ class Model(ribasim.Model):
         ribasim_log = self.results_path / "ribasim.log"
         if not ribasim_log.exists():
             return None  # model has never been run
-        with open(ribasim_log, encoding="utf-8") as src:
+        with ribasim_log.open(encoding="utf-8") as src:
             for line in src:
                 if "Computation time" in line:
                     computation_time = parse_computation_time(line)
@@ -437,8 +437,10 @@ class Model(ribasim.Model):
                 )
 
     def update_node(
-        self, node_id, node_type, data: list[object] | None = None, node_properties: dict[str, object] = {}
+        self, node_id, node_type, data: list[object] | None = None, node_properties: dict[str, object] | None = None
     ) -> None:
+        if node_properties is None:
+            node_properties = {}
         assert self.node.df is not None
         existing_node_type = self.node.df.at[node_id, "node_type"]
 
@@ -451,7 +453,7 @@ class Model(ribasim.Model):
         node_dict["node_id"] = node_id
 
         # remove node from all tables
-        for attr in table.model_fields.keys():
+        for attr in table.model_fields:
             df = getattr(table, attr).df
             if df is not None:
                 if "node_id" in df.columns:
@@ -487,7 +489,7 @@ class Model(ribasim.Model):
         ctrl_type: Literal["DiscreteControl", "PidControl"] = "DiscreteControl",
         node_geom: Point | None = None,
         node_offset: int = 100,
-        node_properties: dict[str, object] = {},
+        node_properties: dict[str, object] | None = None,
     ) -> None:
         """Add a control_node to the network
 
@@ -511,6 +513,8 @@ class Model(ribasim.Model):
 
         """
         # define node
+        if node_properties is None:
+            node_properties = {}
         if node_geom is None:
             if isinstance(to_node_id, list):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
@@ -589,7 +593,7 @@ class Model(ribasim.Model):
 
     def add_basin(self, node_id, geometry, tables=None, **kwargs) -> None:
         # define node properties
-        if "name" in kwargs.keys():
+        if "name" in kwargs:
             name = kwargs["name"]
             kwargs.pop("name")
         else:
@@ -684,7 +688,7 @@ class Model(ribasim.Model):
 
     def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs) -> None:
         # define node properties
-        if "name" in kwargs.keys():
+        if "name" in kwargs:
             name = kwargs["name"]
             kwargs.pop("name")
         else:
@@ -766,7 +770,7 @@ class Model(ribasim.Model):
             raise ValueError(f"Node_id {node_id} is not a basin")
 
         # check geometry and promote to mulitpolygon
-        if not geometry.geom_type == "MultiPolygon":
+        if geometry.geom_type != "MultiPolygon":
             if geometry.geom_type == "Polygon":
                 geometry = MultiPolygon([geometry])
             else:
@@ -819,13 +823,10 @@ class Model(ribasim.Model):
         basin_node_id = self.basin.area.df.at[distance_to_model_df.idxmin(), "node_id"]
 
         # check if distance isn't too large
-        if max_distance is not None:
-            if distance_to_model_df.min() > max_distance:
-                raise (
-                    Exception(
-                        f"Closest basin {basin_node_id} further than {max_distance} from geometry: {distance_to_model_df.min()}"
-                    )
-                )
+        if max_distance is not None and distance_to_model_df.min() > max_distance:
+            raise Exception(
+                f"Closest basin {basin_node_id} further than {max_distance} from geometry: {distance_to_model_df.min()}"
+            )
 
         return self.basin[basin_node_id]
 
@@ -870,10 +871,7 @@ class Model(ribasim.Model):
         assert self.node.df is not None
         assert self.link.df is not None
         node_df = self.node.df
-        if link_ids is not None:
-            df = self.link.df[self.link.df.index.isin(link_ids)]
-        else:
-            df = self.link.df
+        df = self.link.df[self.link.df.index.isin(link_ids)] if link_ids is not None else self.link.df
 
         for row in df.itertuples():
             from_point = Point(node_df.at[row.from_node_id, "geometry"].x, node_df.at[row.from_node_id, "geometry"].y)
@@ -1032,11 +1030,11 @@ class Model(ribasim.Model):
         are_connected=True,
     ) -> None:
         if basin_id is not None:
-            warnings.warn("basin_id is deprecated, use node_id instead", DeprecationWarning)
+            warnings.warn("basin_id is deprecated, use node_id instead", DeprecationWarning, stacklevel=2)
             node_id = basin_id
 
         if to_basin_id is not None:
-            warnings.warn("to_basin_id is deprecated, use to_node_id instead", DeprecationWarning)
+            warnings.warn("to_basin_id is deprecated, use to_node_id instead", DeprecationWarning, stacklevel=2)
             to_node_id = to_basin_id
 
         assert self.basin.node is not None
@@ -1255,7 +1253,11 @@ class Model(ribasim.Model):
         # on tuples we can easily check duplicates irrespective of order
         duplicated_links = pd.Series(
             list(
-                zip(np.minimum(df["from_node_id"], df["to_node_id"]), np.maximum(df["from_node_id"], df["to_node_id"]))
+                zip(
+                    np.minimum(df["from_node_id"], df["to_node_id"]),
+                    np.maximum(df["from_node_id"], df["to_node_id"]),
+                    strict=True,
+                )
             ),
             index=df.index,
         ).duplicated(keep=False)

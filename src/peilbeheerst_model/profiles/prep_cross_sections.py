@@ -12,7 +12,7 @@ from ribasim_nl import CloudStorage
 LOG = logging.getLogger(__name__)
 
 
-def get_basins(water_authority: str, cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
+def get_basins(water_authority: str, cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:  # noqa: B008
     """Get geospatial data of basins.
 
     :param water_authority: name of water authority
@@ -29,7 +29,10 @@ def get_basins(water_authority: str, cloud: CloudStorage = CloudStorage()) -> gp
 
 
 def points2lines_general(
-    basins: gpd.GeoDataFrame, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0
+    basins: gpd.GeoDataFrame,
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
+    *,
+    buffer: float = 0,
 ) -> gpd.GeoDataFrame:
     """General translation from (x,y,z)-points to (x,y)-lines.
 
@@ -57,7 +60,7 @@ def points2lines_general(
     return lines
 
 
-def points2lines_agv(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
+def points2lines_agv(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:  # noqa: B008
     """Generation of measurements to cross-sectional profiles for Amstel, Gooi en Vecht.
 
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
@@ -73,7 +76,7 @@ def points2lines_agv(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
     return lines
 
 
-def points2lines_delfland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
+def points2lines_delfland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:  # noqa: B008
     """Generation of measurements to cross-sectional profiles for Delfland.
 
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
@@ -95,7 +98,7 @@ def points2lines_delfland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFr
     return out
 
 
-def points2lines_rivierenland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:
+def points2lines_rivierenland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame:  # noqa: B008
     """Generation of measurements to cross-sectional profiles for Rivierenland.
 
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
@@ -110,7 +113,7 @@ def points2lines_rivierenland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDa
     return lines
 
 
-def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer: float = 0) -> gpd.GeoDataFrame:
+def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer: float = 0) -> gpd.GeoDataFrame:  # noqa: B008
     """Generation of measurements to cross-sectional profiles for Scheldestromen.
 
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
@@ -131,7 +134,7 @@ def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer:
     return out
 
 
-def points2lines_zzl(cloud: CloudStorage = CloudStorage(), *, epsg: int = 28992) -> gpd.GeoDataFrame:
+def points2lines_zzl(cloud: CloudStorage = CloudStorage(), *, epsg: int = 28992) -> gpd.GeoDataFrame:  # noqa: B008
     """Get and process cross-sectional profiles for Zuiderzeeland.
 
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
@@ -155,7 +158,7 @@ def points2lines_zzl(cloud: CloudStorage = CloudStorage(), *, epsg: int = 28992)
     return out
 
 
-def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0) -> gpd.GeoDataFrame:
+def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, buffer: float = 0) -> gpd.GeoDataFrame:  # noqa: B008
     """Get cross-sectional profiles for a given water authority.
 
     :param water_authority: name of water authority
@@ -187,7 +190,7 @@ def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, 
 
 def export_to_cloud(
     water_authority: str,
-    cloud: CloudStorage = CloudStorage(),
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
     *,
     buffer: float = 0,
     sync: bool = True,

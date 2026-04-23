@@ -16,6 +16,8 @@ from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model
 
+logger = logging.getLogger(__name__)
+
 # %% get input data
 cloud = CloudStorage()
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
@@ -37,7 +39,7 @@ cloud.synchronize(filepaths=[zinfo_influentdebieten_path, db_file, rwzi_ligging_
 starttime = "2017-01-01"
 endtime = "2020-01-01"
 time_range = pd.date_range(start=starttime, end=endtime, freq="D")
-logging.info(f"Setting up Ribasim-RWZI model between {starttime} and {endtime} in {model_dir}.")
+logger.info(f"Setting up Ribasim-RWZI model between {starttime} and {endtime} in {model_dir}.")
 
 model = Model(
     starttime=starttime,
@@ -70,18 +72,18 @@ def process_zinfo_quantity_data(file_path, starttime, endtime):
     duplicates = df[df.duplicated(subset=["time", "RWZI_ids"], keep=False)]
     if not duplicates.empty:
         print(duplicates["time"][0:25])
-        logging.info(
+        logger.info(
             "Duplicate entries found for RWZI: %s",
             duplicates.sort_values(by=["time", "RWZI_ids"])["RWZI_ids"].unique(),
         )
 
     df_summed = df.groupby(["time", "RWZI_ids"])["debiet_m3d"].sum().reset_index()
-    logging.info("Duplicates are summed over the day \n")
+    logger.info("Duplicates are summed over the day \n")
 
     df_pivot = df_summed.pivot(index="time", columns="RWZI_ids", values="debiet_m3d")
     df_pivot.reset_index(inplace=True)
 
-    logging.info("Zinfo data: \n %s", df_pivot.head())
+    logger.info("Zinfo data: \n %s", df_pivot.head())
 
     RWZI_ids = df_summed["RWZI_ids"].unique()
     return df_pivot, RWZI_ids
@@ -100,7 +102,7 @@ def load_rwzi_geodata(filepath):
         GeoDataFrame: Loaded RWZI spatial data.
     """
     gdf = gpd.read_file(filepath)
-    logging.info(f"Loaded RWZI GeoDataFrame with {len(gdf)} records from {filepath}")
+    logger.info(f"Loaded RWZI GeoDataFrame with {len(gdf)} records from {filepath}")
     return gdf
 
 
@@ -142,7 +144,7 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     """
     # Extract all unique RWZI names
     rwzi_all_names = rwzi_gdf["Naam rwzi"].unique()
-    logging.info(f"Total unique RWZI names found: {len(rwzi_all_names)}")
+    logger.info(f"Total unique RWZI names found: {len(rwzi_all_names)}")
 
     # Split RWZI GeoDataFrame into included and excluded based on Zinfo
     gdf_rwzi_zinfo_incl = rwzi_gdf[rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)]
@@ -154,15 +156,15 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     rwzi_names_zinfo_excl = gdf_rwzi_zinfo_excl["Naam rwzi"].unique()
     rwzi_RwziCode_zinfo_excl = gdf_rwzi_zinfo_excl["RwziCode"].unique()
 
-    logging.info(
+    logger.info(
         f"RWZIs with Zinfo data: {len(rwzi_names_zinfo_incl)} names, {len(rwzi_codeist_zinfo_incl)} Codeist IDs"
     )
-    logging.info(
+    logger.info(
         f"RWZIs without Zinfo data: {len(rwzi_names_zinfo_excl)} names, {len(rwzi_RwziCode_zinfo_excl)} RwziCodes"
     )
 
     # Map Codeist to RWZI name for renaming columns
-    codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"]))
+    codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"], strict=True))
 
     # Rename columns
     df_Zinfo_influentdebieten_renamed = df_Zinfo_influentdebieten.rename(
@@ -172,12 +174,12 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     # Filter columns: only "time" + RWZI names with data
     rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time", *list(rwzi_names_zinfo_incl)]]
 
-    logging.info(
+    logger.info(
         "Zinfo DataFrame with renamed columns: %s",
         df_Zinfo_influentdebieten_renamed.head(),
     )
 
-    logging.info("Filtered RWZI flow data with common RWZIs: %s", rwzi_flow_data.head())
+    logger.info("Filtered RWZI flow data with common RWZIs: %s", rwzi_flow_data.head())
 
     return rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl
 
@@ -196,7 +198,7 @@ def process_rws_quantity_data(db_file, gdf_excluded):
     -------
         DataFrame: gemiddelde dagafvoeren van de RWZI's die niet in de Zinfo database zitten.
     """
-    logging.info("Connecting to Access database...")
+    logger.info("Connecting to Access database...")
     conn_str = (
         r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
         f"DBQ={db_file};"
@@ -207,7 +209,7 @@ def process_rws_quantity_data(db_file, gdf_excluded):
     conn = pyodbc.connect(conn_str)
     df_belasting = pd.read_sql("SELECT * FROM Belasting", conn)
     conn.close()
-    logging.info("Database connection closed.")
+    logger.info("Database connection closed.")
 
     # Filter for parameter code '085' (corresponding with RWZI discharge)
     df_afvoeren = df_belasting[df_belasting["ParameterCode"] == "085"]
@@ -226,10 +228,10 @@ def process_rws_quantity_data(db_file, gdf_excluded):
     df_afvoeren_pivot.reset_index(inplace=True)
     df_afvoeren_pivot["time"] = pd.to_datetime(df_afvoeren_pivot["time"])
 
-    logging.info("Distributing annual values evenly across daily time series...")
+    logger.info("Distributing annual values evenly across daily time series...")
     daily_dataframes = []
 
-    for idx, row in df_afvoeren_pivot.iterrows():
+    for _idx, row in df_afvoeren_pivot.iterrows():
         year = row["time"].year
         start_of_year = pd.Timestamp(f"{year}-01-01")
         end_of_year = pd.Timestamp(f"{year}-12-31")
@@ -253,7 +255,7 @@ def process_rws_quantity_data(db_file, gdf_excluded):
     # Average duplicate dates, just in case
     df_daily_values = df_daily_values.groupby("time").mean(numeric_only=True).reset_index()
 
-    logging.info("Finished processing excluded RWZI flow data.")
+    logger.info("Finished processing excluded RWZI flow data.")
     return df_daily_values
 
 
@@ -298,14 +300,13 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         if flow_rates is None:
             skipped_rwzis.append(rwzi_name)
 
-            logging.info(f"Skipping RWZI '{rwzi_name}' due to missing flow data.")
+            logger.info(f"Skipping RWZI '{rwzi_name}' due to missing flow data.")
             continue
 
         # Identify and remove NaN values, store the removed time steps
         nan_mask = flow_rates.isna()
         removed_times = rwzi_flow_data_all.time[nan_mask]
-        for t in removed_times:
-            removed_timesteps.append((rwzi_name, t))
+        removed_timesteps.extend((rwzi_name, t) for t in removed_times)
 
         # Filter out NaN values and keep only valid flow data
         valid_mask = ~flow_rates.isna()
@@ -316,7 +317,7 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         # TODO should we create the FlowBoundary but with static 0.0 flow_rate?
         if valid_flow_rates.empty:
             skipped_rwzis.append(rwzi_name)
-            logging.info(f"No valid data remaining for RWZI '{rwzi_name}'. Skipping.")
+            logger.info(f"No valid data remaining for RWZI '{rwzi_name}'. Skipping.")
             continue
 
         # Normalize the time
@@ -343,17 +344,17 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
                 ],
             )
             flow_boundary_nodes[rwzi_name] = flow_boundary_node
-            logging.info(f"Created flow boundary for RWZI '{rwzi_name}' at ({x_coord}, {y_coord})")
+            logger.info(f"Created flow boundary for RWZI '{rwzi_name}' at ({x_coord}, {y_coord})")
 
         except Exception as e:
-            logging.error(f"Failed to create flow boundary for RWZI '{rwzi_name}': {e}")
+            logger.error(f"Failed to create flow boundary for RWZI '{rwzi_name}': {e}")
 
     # Log the removed time steps due to NaN values
     removed_counts = Counter(rwzi for rwzi, _ in removed_timesteps)
     if removed_counts:
-        logging.info("\nRemoved time steps due to NaN values:")
+        logger.info("\nRemoved time steps due to NaN values:")
         for rwzi, count in removed_counts.items():
-            logging.info(f"RWZI: {rwzi}, Skipped Time Steps: {count}")
+            logger.info(f"RWZI: {rwzi}, Skipped Time Steps: {count}")
 
     # Return the collected data
     return flow_boundary_nodes, skipped_rwzis, removed_timesteps
@@ -389,7 +390,7 @@ def create_terminal_nodes_from_gdf(rwzi_gdf, rwzi_flow_data_all, skipped_rwzis, 
         terminal_node_name = f"{rwzi_name}_out"
 
         if rwzi_name in skipped_rwzis:
-            logging.info(f"Skipping RWZI '{rwzi_name}' due to missing data.")
+            logger.info(f"Skipping RWZI '{rwzi_name}' due to missing data.")
             continue
 
         try:
@@ -405,13 +406,13 @@ def create_terminal_nodes_from_gdf(rwzi_gdf, rwzi_flow_data_all, skipped_rwzis, 
                 )
             )
             terminal_nodes[terminal_node_name] = terminal_node
-            logging.info(
+            logger.info(
                 f"Created terminal node for outlet of RWZI '{rwzi_name}' "
                 f"at ({x_outlet}, {y_outlet}) with name '{terminal_node_name}'."
             )
             node_id_counter += 1
         except Exception as e:
-            logging.error(f"Error creating terminal node for RWZI '{rwzi_name}': {e}")
+            logger.error(f"Error creating terminal node for RWZI '{rwzi_name}': {e}")
     return terminal_nodes, node_id_counter
 
 
@@ -438,9 +439,9 @@ def connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_node
 
             # Connect the flow boundary to the terminal node
             model.link.add(flow_boundary_node, terminal_node, name=f"{rwzi_name}_link")
-            logging.info(f"Connected flow boundary '{rwzi_name}' to terminal '{terminal_node_name}'")
+            logger.info(f"Connected flow boundary '{rwzi_name}' to terminal '{terminal_node_name}'")
         else:
-            logging.warning(f"Terminal node '{terminal_node_name}' not found for RWZI '{rwzi_name}'.")
+            logger.warning(f"Terminal node '{terminal_node_name}' not found for RWZI '{rwzi_name}'.")
 
 
 # %% load and process data
@@ -455,7 +456,7 @@ rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl = process_rwzi_zinfo_da
 
 # Extract all unique RWZI names
 rwzi_all_names = rwzi_gdf["Naam rwzi"].unique()
-logging.info(f"Total unique RWZI names found: {len(rwzi_all_names)}")
+logger.info(f"Total unique RWZI names found: {len(rwzi_all_names)}")
 
 # Split RWZI GeoDataFrame into those included and excluded in Zinfo data
 is_in_zinfo = rwzi_gdf["Codeist"].isin(RWZI_ids_zinfo)
@@ -471,11 +472,11 @@ rwzi_names_zinfo_excl = gdf_rwzi_zinfo_excl["Naam rwzi"].unique()
 rwzi_RwziCode_zinfo_excl = gdf_rwzi_zinfo_excl["RwziCode"].unique()
 
 # Logging summary
-logging.info(f"RWZIs with Zinfo data: {len(rwzi_names_zinfo_incl)} names, {len(rwzi_codeist_zinfo_incl)} Codeist IDs")
-logging.info(f"RWZIs without Zinfo data: {len(rwzi_names_zinfo_excl)} names, {len(rwzi_RwziCode_zinfo_excl)} RwziCodes")
+logger.info(f"RWZIs with Zinfo data: {len(rwzi_names_zinfo_incl)} names, {len(rwzi_codeist_zinfo_incl)} Codeist IDs")
+logger.info(f"RWZIs without Zinfo data: {len(rwzi_names_zinfo_excl)} names, {len(rwzi_RwziCode_zinfo_excl)} RwziCodes")
 
 # Rename DataFrame columns: map Codeist to actual RWZI names
-codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"]))
+codeist_to_name = dict(zip(gdf_rwzi_zinfo_incl["Codeist"], gdf_rwzi_zinfo_incl["Naam rwzi"], strict=True))
 
 df_Zinfo_influentdebieten_renamed = df_Zinfo_influentdebieten.rename(
     columns={col: codeist_to_name.get(col, col) for col in df_Zinfo_influentdebieten.columns if col != "time"}
@@ -514,7 +515,7 @@ SECONDS_PER_DAY = 24 * 3600
 rwzi_flow_data_all.loc[:, rwzi_flow_data_all.columns != "time"] /= SECONDS_PER_DAY
 
 # Log result
-logging.info("Combined RWZI flow data to m3/s")
+logger.info("Combined RWZI flow data to m3/s")
 print(rwzi_flow_data_all)
 
 

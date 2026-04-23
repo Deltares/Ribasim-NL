@@ -78,7 +78,7 @@ class SetDynamicForcing:
         cell_area = abs((xll_coords[1] - xll_coords[0]) * (yll_coords[1] - yll_coords[0]))
         nodeids = basins["node_id"].tolist()
         prepared_geoms = [(nodeids[i], prep(geom)) for i, geom in enumerate(basins.geometry)]
-        node_geoms = dict(zip(nodeids, basins.geometry))
+        node_geoms = dict(zip(nodeids, basins.geometry, strict=True))
 
         height = len(yll_coords)
         width = len(xll_coords)
