@@ -420,3 +420,16 @@ stages:
       md5: 18ace1cf5984acb585efc3bf7e680d42.dir
       size: 22462646
       nfiles: 2
+  delfland:
+    cmd: uv run src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
+      hash: md5
+      md5: fd7c47213b7f6f0186c3e8f0c60feb25
+      size: 19288
+    outs:
+    - path: data/Delfland/modellen/Delfland_parameterized
+      hash: md5
+      md5: 48947d01d0e63bb1b5d4f524a8cc9fd0.dir
+      size: 10902489
+      nfiles: 3

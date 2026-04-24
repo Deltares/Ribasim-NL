@@ -6,6 +6,66 @@ stages:
     outs:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
     frozen: true
+  delfland:
+    cmd: uv run src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
+    outs:
+      - data/Delfland/modellen/Delfland_parameterized
+  amstel_gooi_en_vecht:
+    cmd: uv run src/peilbeheerst_model/Parametrize/AmstelGooienVecht_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/AmstelGooienVecht_parametrize.py
+    outs:
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized
+  hollands_noorderkwartier:
+    cmd: uv run src/peilbeheerst_model/Parametrize/HollandsNoorderkwartier_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/HollandsNoorderkwartier_parametrize.py
+    outs:
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
+  hollandse_delta:
+    cmd: uv run src/peilbeheerst_model/Parametrize/HollandseDelta_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/HollandseDelta_parametrize.py
+    outs:
+      - data/HollandseDelta/modellen/HollandseDelta_parameterized
+  rijnland:
+    cmd: uv run src/peilbeheerst_model/Parametrize/Rijnland_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/Rijnland_parametrize.py
+    outs:
+      - data/Rijnland/modellen/Rijnland_parameterized
+  rivierenland:
+    cmd: uv run src/peilbeheerst_model/Parametrize/Rivierenland_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/Rivierenland_parametrize.py
+    outs:
+      - data/Rivierenland/modellen/Rivierenland_parameterized
+  scheldestromen:
+    cmd: uv run src/peilbeheerst_model/Parametrize/Scheldestromen_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/Scheldestromen_parametrize.py
+    outs:
+      - data/Scheldestromen/modellen/Scheldestromen_parameterized
+  schieland_en_de_krimpenerwaard:
+    cmd: uv run src/peilbeheerst_model/Parametrize/SchielandendeKrimpenerwaard_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/SchielandendeKrimpenerwaard_parametrize.py
+    outs:
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
+  wetterskip_fryslan:
+    cmd: uv run src/peilbeheerst_model/Parametrize/WetterskipFryslan_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/WetterskipFryslan_parametrize.py
+    outs:
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
+  zuiderzeeland:
+    cmd: uv run src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
+    deps:
+      - src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
+    outs:
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
   rijkswaterstaat:
     cmd:
       - uv run notebooks/rijkswaterstaat/2_basins.py
