@@ -58,7 +58,6 @@ def run(
 
     proc = subprocess.Popen(
         args,
-        cwd=toml_path.parent.as_posix(),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=1,
