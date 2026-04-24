@@ -695,7 +695,7 @@ model.node.df.loc[
 df = gpd.read_file(hydamo_gpkg, layer="stuw")
 geometry = df.set_index("code").at["261HTE", "geometry"]
 
-model.connect_basins(from_basin_id=1280, to_node_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
+model.connect_basins(from_basin_id=1280, to_basin_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
