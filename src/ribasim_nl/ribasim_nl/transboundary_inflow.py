@@ -37,8 +37,8 @@ def fix_date_string(date_str: str | pd.Timestamp) -> pd.Timestamp:
 
 def import_transboundary_inflow(
     transboundary_data_path: Path,
-    start_time: pd.Timestamp,
-    stop_time: pd.Timestamp,
+    start_time: pd.Timestamp | datetime,
+    stop_time: pd.Timestamp | datetime,
     model: Model,
 ) -> dict[str, pd.DataFrame]:
     """Import transboundary inflow data from an Excel file.
