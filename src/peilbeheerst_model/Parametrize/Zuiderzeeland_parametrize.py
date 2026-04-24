@@ -74,7 +74,7 @@ cloud.synchronize(
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
-work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
+work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
 ribasim_gpkg = work_dir.joinpath("database.gpkg")
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 

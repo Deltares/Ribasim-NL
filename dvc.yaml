@@ -6,6 +6,25 @@ stages:
     outs:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
     frozen: true
+  peelbeheerst:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd: 
+        uv run src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+      deps:
+        - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+      outs:
+        - data/${item}/modellen/${item}_parameterized
   rijkswaterstaat:
     cmd:
       - uv run notebooks/rijkswaterstaat/2_basins.py

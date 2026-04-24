@@ -76,7 +76,7 @@ cloud.synchronize(
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 # set paths to the TEMP working directory
-work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
+work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
 ribasim_gpkg = work_dir.joinpath("database.gpkg")
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
@@ -345,14 +345,6 @@ ribasim_param.validate_basin_area(ribasim_model)
 # check target levels at manning nodes
 ribasim_param.validate_manning_basins(ribasim_model)
 
-# insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
-# ribasim_param.insert_standard_profile(
-#     ribasim_model,
-#     unknown_streefpeil=unknown_streefpeil,
-#     regular_percentage=regular_percentage,
-#     boezem_percentage=boezem_percentage,
-#     depth_profile=2,
-# )
 # TODO: Replace standard profile by determined profiles (and add storing basins where applicable)
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
