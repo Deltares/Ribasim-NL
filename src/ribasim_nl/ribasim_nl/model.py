@@ -1265,6 +1265,3 @@ class Model(ribasim.Model):
         # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")
-        # Our large models benefit from specialization, default to using it
-        if "specialize" not in self.solver.model_fields_set:
-            self.solver.specialize = True

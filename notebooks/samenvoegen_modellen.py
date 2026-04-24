@@ -225,4 +225,6 @@ for idx, model_spec in enumerate(model_specs):
 print("write lhm model")
 ribasim_toml = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
 if lhm_model is not None:
+    # Models this large benefit from specialization
+    lhm_model.solver.specialize = True
     lhm_model.write(ribasim_toml)
