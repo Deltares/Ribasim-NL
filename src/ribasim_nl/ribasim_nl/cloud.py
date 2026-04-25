@@ -46,7 +46,7 @@ HIDDEN_DIRS = ["D-HYDRO modeldata"]  # somehow this dir-name still exists :-(
 
 def is_dir(item: str) -> bool:
     """Check if path suggests a directory (even if it doesn't exist yet)"""
-    return Path(item).suffix == ""
+    return "." not in item
 
 
 @dataclass

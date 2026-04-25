@@ -124,7 +124,7 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(r"AaenMaas/verwerkt/sturing/aanvoergebieden.gpkg")
 aanvoerpunten_shp = cloud.joinpath(
-    r"AaenMaas\verwerkt\1_ontvangen_data\wateraanvoer_27-2-2026\wateraanvoersysteem_WAM.shp"
+    "AaenMaas/verwerkt/1_ontvangen_data/wateraanvoer_27-2-2026/wateraanvoersysteem_WAM.shp"
 )
 
 cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, aanvoerpunten_shp])
@@ -251,7 +251,7 @@ discharge_supply_nodes = {
     int(row.node_id): {"summer": row.summer, "winter": row.winter} for row in discharge_supply_df.itertuples()
 }
 
-discharge_supply_df.to_file(cloud.joinpath(r"AaenMaas\verwerkt\sturing\aanvoerpunten.gpkg"))
+discharge_supply_df.to_file(cloud.joinpath("AaenMaas/verwerkt/sturing/aanvoerpunten.gpkg"))
 
 
 # add level supply nodes, no flow-demand-node, but discrete control on downstream basin level

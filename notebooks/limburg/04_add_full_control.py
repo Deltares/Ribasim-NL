@@ -24,7 +24,7 @@ from ribasim_nl import CloudStorage, Model
 # Globale settings
 
 MODEL_EXEC: bool = True  # execute model run
-AUTHORITY: str = "limburg"
+AUTHORITY: str = "Limburg"
 SHORT_NAME: str = "limburg"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
