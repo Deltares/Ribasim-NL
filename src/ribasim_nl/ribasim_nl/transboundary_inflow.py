@@ -156,6 +156,10 @@ def add_transboundary_inflow(model: Model, dict_flow: dict[str, pd.DataFrame]) -
     dict_flow : dict[str, pd.DataFrame]
         Per-location DataFrames with columns 'time', 'flow_rate' and 'node_id'.
     """
+    if not dict_flow:
+        logger.info("No transboundary inflow data matched for this model; skipping.")
+        return
+
     flowboundaries = model.flow_boundary.node.df.name  # pyrefly: ignore[missing-attribute]
     df_flowboundaries_time = pd.concat(dict_flow.values(), axis=0)
 
