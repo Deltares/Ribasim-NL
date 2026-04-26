@@ -5,7 +5,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
+from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
@@ -48,7 +48,6 @@ network_validator = NetworkValidator(model)
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -434,12 +433,12 @@ if "fid" in missing_gdf.columns:
 # %% merge_basins
 for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
     are_connected = True if pd.isna(row.connected) else row.connected
-    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
 for row in internal_basin_edits_gdf[mask].itertuples():
     are_connected = True if pd.isna(row.connected) else row.connected
-    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 # %% add and connect nodes
 for row in internal_basin_edits_gdf[internal_basin_edits_gdf.add_object.notna()].itertuples():
@@ -608,8 +607,8 @@ merge_pairs = [
 
 for basin_id, to_basin_id in merge_pairs:
     model.merge_basins(
-        basin_id=basin_id,
-        to_basin_id=to_basin_id,
+        node_id=basin_id,
+        to_node_id=to_basin_id,
         are_connected=True,
     )
 
@@ -743,7 +742,7 @@ for row in model.flow_boundary.node.df.itertuples():
     )
 
     # remove old links and add 2 new
-    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry, as_multilinestring=False)
+    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
 

@@ -82,7 +82,7 @@ def flagged_hydro_objects(
     col_flag: str,
     *,
     val_flag: typing.Any = True,
-    layer_hydro_objects: str = "hydroobjects",
+    layer_hydro_objects: str | None = "hydroobjects",
     export_profile_tables: bool = True,
     sync: bool = True,
     overwrite: bool = False,

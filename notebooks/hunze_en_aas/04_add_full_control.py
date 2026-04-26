@@ -191,12 +191,11 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    result = model.run()
+    model.run()
     """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
     successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the
     outlets on 'aanvoer' instead of the more suitable 'afvoer'. This should no longer be a problem once the next step of
     adding `ContinuousControl`-nodes is implemented.
     """
 
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()

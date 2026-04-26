@@ -86,12 +86,10 @@ def split_hydro_objects(
         line: shapely.LineString = hydro_objects.geometry.iloc[i]
         if isinstance(line, shapely.MultiLineString):
             new_lines = tuple(
-                itertools.chain.from_iterable(
-                    geometry.split_line(_line, p, tolerance=buffer, as_multilinestring=False) for _line in line.geoms
-                )
+                itertools.chain.from_iterable(geometry.split_line(_line, p, tolerance=buffer) for _line in line.geoms)
             )
         else:
-            new_lines = geometry.split_line(line, p, tolerance=buffer, as_multilinestring=False)
+            new_lines = geometry.split_line(line, p, tolerance=buffer)
         hydro_objects.loc[i, "geometry"] = shapely.MultiLineString(new_lines)
 
     hydro_objects = hydro_objects.explode()

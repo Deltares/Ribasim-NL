@@ -485,7 +485,7 @@ class Network:
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
             # add links
             self.graph.remove_edge(node_from, node_to)
-            split_result = split_line(link_geometry, node_geometry, as_multilinestring=False)
+            split_result = split_line(link_geometry, node_geometry)
             if len(split_result) == 1:
                 if self.verbose:
                     logger.warning(f"Splitting link: {link_id} resulted in a single LineString)")

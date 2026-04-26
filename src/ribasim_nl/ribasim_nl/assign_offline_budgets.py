@@ -38,7 +38,7 @@ def _crop_to_gdf(da: "xr.DataArray | xr.Dataset", gdf: gpd.GeoDataFrame) -> Data
 
 def _compute_budgets_per_basin(budgets: xr.Dataset, basin_mask: xr.DataArray, nodata=-999) -> pd.DataFrame:
     """Sum all modflow budgets per basin_id over a basin_mask."""
-    print(f"∑ budgets {list(budgets.data_vars)} rasters to basins")
+    print(f"sum budgets {list(budgets.data_vars)} rasters to basins")
 
     if basin_mask.dims != ("x", "y"):
         basin_mask = basin_mask.transpose("x", "y")

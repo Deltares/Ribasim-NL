@@ -687,7 +687,7 @@ model.link.add(
 
 # Samenvoegen basin-knopen Overijsselse Vecht & Coevorden Vechtkanaal
 for basin_id in [1845, 2244, 2006, 1846]:
-    model.merge_basins(basin_id=basin_id, to_basin_id=2222)
+    model.merge_basins(node_id=basin_id, to_node_id=2222)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391666745
 
@@ -703,7 +703,7 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1879, ["geometry"]] = Mul
 
 # merge basins 2186, 2173, 2022, 1611, 2185 in basin 1902
 for basin_id in [2186, 2173, 2022, 1611, 2185]:
-    model.merge_basins(basin_id=basin_id, to_basin_id=1902)
+    model.merge_basins(node_id=basin_id, to_node_id=1902)
 
 # verplaats 1902 iets bovenstrooms
 model.move_node(1902, hydroobject_gdf.at[6615, "geometry"].boundary.geoms[1])
@@ -727,11 +727,11 @@ model.link.add(model.manning_resistance[1058], model.basin[1590])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391672700
 
 # Merge basin 2176 in 1605
-model.merge_basins(basin_id=2176, to_basin_id=1605)
+model.merge_basins(node_id=2176, to_node_id=1605)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391726774
 # Merge basins 2206 in 1518
-model.merge_basins(basin_id=2206, to_basin_id=1518, are_connected=False)
+model.merge_basins(node_id=2206, to_node_id=1518, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391734144
 # dood takje uit Overijsselse Vecht
@@ -741,12 +741,12 @@ model.remove_node(1294, remove_links=True)
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391740603
 
 # Merge basin 2225 met 2304
-model.merge_basins(basin_id=2225, to_node_id=2304)
+model.merge_basins(node_id=2225, to_node_id=2304)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391815016
 
 # Wetteringe als laterale inflow
-model.merge_basins(basin_id=2231, to_node_id=1853)
+model.merge_basins(node_id=2231, to_node_id=1853)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391750536
 
@@ -761,7 +761,7 @@ model.link.add(model.basin[1442], model.pump[665])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391820198
 
 # Merge basin 2232 in 1591
-model.merge_basins(basin_id=2232, to_basin_id=1591)
+model.merge_basins(node_id=2232, to_node_id=1591)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391825301
 
@@ -771,7 +771,7 @@ model.update_node(2236, "LevelBoundary", data=[level_data])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391829471
 
 # Merge basin 2246 en 1419
-model.merge_basins(basin_id=2246, to_basin_id=1419)
+model.merge_basins(node_id=2246, to_node_id=1419)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391946915
 
@@ -816,68 +816,68 @@ model.link.add(
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391984234
 
 # Merge basin 2261 in basin 1698
-model.merge_basins(basin_id=2261, to_node_id=1698)
+model.merge_basins(node_id=2261, to_node_id=1698)
 # model.remove_node(390, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391995841
 
 # Merge basin 2260 met basin 1645
-model.merge_basins(basin_id=2260, to_node_id=1645)
+model.merge_basins(node_id=2260, to_node_id=1645)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392010526
 # Merge basin 2220 met basin 1371
-model.merge_basins(basin_id=2220, to_node_id=1371, are_connected=False)
+model.merge_basins(node_id=2220, to_node_id=1371, are_connected=False)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392017041
 
 # Kanaal Almelo Nordhorn bij Almelo
-model.merge_basins(basin_id=2219, to_node_id=1583, are_connected=False)
-model.merge_basins(basin_id=2209, to_node_id=1583, are_connected=False)
+model.merge_basins(node_id=2219, to_node_id=1583, are_connected=False)
+model.merge_basins(node_id=2209, to_node_id=1583, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392022887
 
 # Merge basin 2203 met 2227
-model.merge_basins(basin_id=2203, to_node_id=2227, are_connected=False)
+model.merge_basins(node_id=2203, to_node_id=2227, are_connected=False)
 model.remove_node(1219, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392026739
 
 # Merge basin 2014 met 2144
-model.merge_basins(basin_id=2014, to_node_id=2144)
+model.merge_basins(node_id=2014, to_node_id=2144)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392030268
 
 # Merge basin 1696 met 1411
-model.merge_basins(basin_id=1696, to_node_id=1411)
+model.merge_basins(node_id=1696, to_node_id=1411)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392037263
 
 # Merge basin 2264 met 1459
-model.merge_basins(basin_id=2264, to_node_id=1459)
+model.merge_basins(node_id=2264, to_node_id=1459)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392043973
 
 # Merge basin 2212 en 2310
-model.merge_basins(basin_id=2212, to_node_id=2310)
+model.merge_basins(node_id=2212, to_node_id=2310)
 poly = model.basin.area.df.at[59, "geometry"].union(model.basin.area.df.set_index("node_id").at[2310, "geometry"])
 model.basin.area.df.loc[model.basin.area.df.node_id == 2310, ["geometry"]] = MultiPolygon([poly])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392048684
 
 # Merge basin 2253 in basin 2228
-model.merge_basins(basin_id=2253, to_node_id=2228)
+model.merge_basins(node_id=2253, to_node_id=2228)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392052379
 
 # Merge basin 2221 in basin 1634
-model.merge_basins(basin_id=2221, to_node_id=1634)
+model.merge_basins(node_id=2221, to_node_id=1634)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392076634
 
 # Verbinding rondwaterleiding / Lennelwaterleiding herstellen
-model.merge_basins(basin_id=1859, to_node_id=2235, are_connected=False)
+model.merge_basins(node_id=1859, to_node_id=2235, are_connected=False)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382572457
 
@@ -1161,10 +1161,10 @@ merge_to_node = [
 ]
 
 for basin_id, node_id in merge_to_node:
-    model.merge_basins(basin_id=basin_id, to_node_id=node_id)
+    model.merge_basins(node_id=basin_id, to_node_id=node_id)
 
 # Special case (not connected)
-model.merge_basins(basin_id=2254, to_node_id=1493, are_connected=False)
+model.merge_basins(node_id=2254, to_node_id=1493, are_connected=False)
 
 # --- Remove unnecessary nodes ---
 nodes_to_remove = [
@@ -1267,7 +1267,7 @@ merge_to_basin = [
 ]
 
 for basin_id, target_basin_id in merge_to_basin:
-    model.merge_basins(basin_id=basin_id, to_basin_id=target_basin_id)
+    model.merge_basins(node_id=basin_id, to_node_id=target_basin_id)
 
 # --- Reverse link directions ---
 for link_id in [1171, 1173, 1343, 1475]:
