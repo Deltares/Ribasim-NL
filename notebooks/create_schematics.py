@@ -42,8 +42,27 @@ OFFSETS = {
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["DrentsOverijsselseDelta"]
+AUTHORITIES = ["ValleienVeluwe"]
 ADD_TOP10_NL = {
+    "ValleienVeluwe": [
+        "Apeldoornsch Kanaal",
+        "IJssel",
+        "Grote Wetering",
+        "Nieuwe Wetering",
+        "Terwoldsche Wetering",
+        "Eem",
+        "Valleikanaal",
+        "Eemmeer",
+        "Nijkerkernauw",
+        "Veluwemeer",
+        "Drontermeer",
+        "Reevediep",
+        "Gooimeer",
+        "Eem",
+        "Laak",
+        "Toevoerkanaal",
+        "Bottenstrank",
+    ],
     "DrentsOverijsselseDelta": [
         "Overijsselsch Kanaal (Zijkanaal Lemelerveld-Raalte-Deventer)",
         "Basiskanaal",

@@ -6,6 +6,25 @@
 ## Systeembeschrijving
 ![Systeembeschrijving Vallei en Veluwe](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/ValleienVeluwe.svg){.lightbox}
 
+Het Valleikanaal is het grootste water in het gebied. Vanuit de Nederrijn wordt water ingelaten bij
+inlaat Grebbesluis (Grebbeberg). Alleen in de zomer wordt water ingelaten voor doorspoeling ten behoeve van de waterkwaliteit.
+
+De inlaatpunten bij Dieren en Terwolde voorzien een groot deel van het Apeldoorns Kanaal en de IJsselvallei van water. Bij lage IJsselafvoeren en hoge temperaturen komt de waterkwaliteit van de IJssel en het inlaten van water onder druk.
+
+De polders in het noorden van het gebied worden van water voorzien vanuit de Eem. Deze staat in open verbinding met de Randmeren (Eemmeer). Het peil van de randmeren is van invloed op de
+uitlaatcapaciteit. Inlaten vindt plaats bij de poldergemalen langs de Eem en het Eemmeer. Het betreft 10 poldergemalen. Naast de inlaten bij de gemalen wordt vanuit de Eem op vier plaatsen water ingelaten.
+
+Het grootste deel van het beheersgebied van waterschap Vallei en Eem kent geen
+wateraanvoermogelijkheden. Alleen de gebieden vlak langs het Valleikanaal en de polders in het
+noorden kunnen van water worden voorzien. De flanken van de Utrechtse Heuvelrug in het westen
+en de Veluwe in het oosten zijn voor water afhankelijk van de neerslag en van de mogelijkheid om
+water vast te houden.
+
+In droge perioden wordt vooral water ingelaten vanuit de Nederrijn en het Eemmeer. Dit gebeurt
+niet constant, er wordt gekeken naar de waterbehoefte in het gebied.
+
+## Weteringen
+In het overwegend open gebied van de Noordelijke IJsselvallei ligt het gebied van de weteringen. De weteringen wateren af van zuid naar noord, waarna ze nabij Wapenveld samenkomen en via gemaal Veluwe uitstromen in de IJssel. Het waterpeil en de afvoer is hier gecontroleerd. Het brongebied van de weteringen ligt tussen Apeldoorn, Voorst/Twello. Dit is een kwetsbare kwaliteit waar zorgvuldig mee moet worden omgegaan. De waterscheiding tussen de Noordelijke en Zuidelijke IJsselvallei is de Appense Dijk.
 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
@@ -14,3 +33,4 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
 - [Documentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
+- [BOP 2022-207: Kracht en kwetsbaarheid IJsselvallei](https://bovi2050.nl/kracht-en-kwetsbaarheid-ijsselvallei/)
