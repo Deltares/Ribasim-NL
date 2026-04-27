@@ -190,6 +190,10 @@ stages:
       md5: 1f5f9fec3504d16bff8f3767dde2db63.dir
       size: 48750774
       nfiles: 2
+    - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
+      hash: md5
+      md5: e99d7be6f871e5178d6a1f15e489be67
+      size: 3731456
   rijn_en_ijssel:
     cmd:
     - uv run notebooks/rijn_en_ijssel/01_fix_model.py

@@ -179,6 +179,8 @@ for authority in authorities:
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
             model.run()
+            model.update_state()
+            model.basin.state.write()
 
             # DELWAQ(!)
             if compute_fractions:
