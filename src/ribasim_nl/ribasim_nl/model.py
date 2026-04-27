@@ -210,7 +210,7 @@ class Model(ribasim.Model):
 
     def run(self, **kwargs) -> RunSpecs:
         """Run your Ribasim model"""
-        result = run(self.filepath, **kwargs)
+        result = run(self.toml_path, **kwargs)
         # reset cached results so they are re-read from (possibly new) filepath
         self._basin_results = None
         self._basin_outstate = None
