@@ -210,7 +210,13 @@ class Model(ribasim.Model):
 
     def run(self, **kwargs) -> RunSpecs:
         """Run your Ribasim model"""
-        return run(self.filepath, **kwargs)
+        result = run(self.toml_path, **kwargs)
+        # reset cached results so they are re-read from (possibly new) filepath
+        self._basin_results = None
+        self._basin_outstate = None
+        self._flow_results = None
+        self._link_results = None
+        return result
 
     def update_state(self, time_stamp: pd.Timestamp | None = None) -> None:
         """Update basin.state with results or final basin_state (outstate)
@@ -218,9 +224,16 @@ class Model(ribasim.Model):
         Args:
             time_stamp (pd.Timestamp | None, optional): Timestamp in results to update basin.state with . Defaults to None.
         """
-        if not self.valid_state():
-            self.run()
-
+        if not self.results_path.exists():
+            raise ValueError(
+                f"Results directory does not exist for model at {self.filepath}. "
+                "Run the model first to produce results."
+            )
+        if not self.basin_outstate.filepath.exists():
+            raise ValueError(
+                f"basin_state.nc not found at {self.basin_outstate.filepath}. "
+                "The model run may have failed before writing output state."
+            )
         if time_stamp is None:
             df = self.basin_outstate.df
         else:
@@ -228,25 +241,13 @@ class Model(ribasim.Model):
             df.reset_index(inplace=True, drop=True)
         df.index += 1
         df.index.name = "fid"
+
+        basin_node_df = self.basin.node.df
+        assert basin_node_df is not None
+        if set(df["node_id"]) != set(basin_node_df.index):  # type: ignore[arg-type]
+            raise ValueError("Basin ID mismatch, cannot use results as model state.")
+
         self.basin.state.df = df
-
-    def valid_state(self):
-        # only valid if results_path exists
-        valid_state = self.results_path.exists()
-
-        # only valid when states-file exists
-        if valid_state:
-            valid_state = self.basin_outstate.filepath.exists()
-
-            # only valid when length of state equals length of nodes
-            if valid_state:
-                valid_state = len(self.basin.node.df) == len(self.basin_outstate.df)
-
-                # only valid when all node_ids in basin.node.df are in outstate
-                if valid_state:
-                    valid_state = self.basin.node.df.index.isin(self.basin_outstate.df["node_id"]).all()
-
-        return valid_state
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
     def _upstream_nodes(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None) -> set[int]:
@@ -1265,6 +1266,3 @@ class Model(ribasim.Model):
         # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")
-        # Our large models benefit from specialization, default to using it
-        if "specialize" not in self.solver.model_fields_set:
-            self.solver.specialize = True

@@ -5,7 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from networkx import all_shortest_paths, shortest_path
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
+from ribasim.nodes import basin, level_boundary, outlet, pump
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.junctions import junctionify
@@ -68,7 +68,6 @@ network.to_file(cloud.joinpath(authority, "verwerkt/network.gpkg"))
 
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -370,7 +369,7 @@ for row in model.flow_boundary.node.df.itertuples():
     )
 
     # remove old links and add 2 new
-    left_link_geometry, right_link_geometry = list(split_line(link_geometry, outlet_node_geometry).geoms)
+    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
 

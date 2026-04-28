@@ -44,11 +44,6 @@ WATER_AUTHORITIES = [
 HIDDEN_DIRS = ["D-HYDRO modeldata"]  # somehow this dir-name still exists :-(
 
 
-def is_dir(item: str) -> bool:
-    """Check if path suggests a directory (even if it doesn't exist yet)"""
-    return Path(item).suffix == ""
-
-
 @dataclass
 class ModelVersion:
     model: str
@@ -185,12 +180,24 @@ class CloudStorage:
         list[str]
             List of all content directories in a specified path
         """
+        items, _ = self._propfind(url)
+        return items
+
+    def _propfind(self, url: str) -> tuple[list[str], set[str]]:
+        """PROPFIND on a WebDAV URL, returning all item names and the subset that are directories.
+
+        Returns
+        -------
+        tuple[list[str], set[str]]
+            (all item names, set of names that are directories/collections)
+        """
         headers = {"Depth": "1", "Content-Type": "application/xml"}
 
         xml_data = """
         <D:propfind xmlns:D="DAV:">
         <D:prop>
             <D:displayname />
+            <D:resourcetype />
         </D:prop>
         </D:propfind>
         """
@@ -203,13 +210,22 @@ class CloudStorage:
         xml_tree = ElementTree.fromstring(response.text)  # noqa: S314
         namespaces = {"D": "DAV:"}
         excluded_content = ["..", Path(url).name, *HIDDEN_DIRS]
-        content = [
-            elem.text
-            for elem in xml_tree.findall(".//D:displayname", namespaces=namespaces)
-            if elem.text is not None and elem.text not in excluded_content  # Exclude the parent directory
-        ]
 
-        return content
+        items: list[str] = []
+        dir_names: set[str] = set()
+
+        for resp in xml_tree.findall(".//D:response", namespaces):
+            name_elem = resp.find(".//D:displayname", namespaces)
+            if name_elem is None or name_elem.text is None or name_elem.text in excluded_content:
+                continue
+            name = name_elem.text
+            items.append(name)
+            # A <D:collection/> child inside <D:resourcetype> means it's a directory
+            resourcetype = resp.find(".//D:resourcetype", namespaces)
+            if resourcetype is not None and resourcetype.find("D:collection", namespaces) is not None:
+                dir_names.add(name)
+
+        return items, dir_names
 
     def dirs(self, *args: str) -> list[str]:
         """List sub-directories in a directory
@@ -229,9 +245,9 @@ class CloudStorage:
         list[str]
             List of directories in a specified path
         """
-        content = self.content(self.joinurl(*args))
+        _, dir_names = self._propfind(self.joinurl(*args))
 
-        return [item for item in content if is_dir(item)]
+        return list(dir_names)
 
     def create_dir(self, *args: str) -> None:
         if args:
@@ -249,7 +265,7 @@ class CloudStorage:
     def download_content(self, url: str, overwrite: bool = settings.overwrite_files_from_cloud) -> None:
         """Download content of a directory recursively."""
         # get all content (files and directories from url)
-        content = self.content(url)
+        content, dir_names = self._propfind(url)
 
         # iterate over content
         for item in content:
@@ -257,7 +273,7 @@ class CloudStorage:
             relative_url = self.relative_url(item_url)
             path = self.data_dir.joinpath(relative_url)
             # if it is a directory we (re)create it (if it doesn't exist)
-            if is_dir(item):
+            if item in dir_names:
                 if overwrite and path.exists():  # remove if we want to overwrite
                     shutil.rmtree(path)
                 logger.info(f"making dir {path}")

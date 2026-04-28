@@ -472,7 +472,7 @@ for authority in AUTHORITIES:
     # get Top10NL
     if authority in ADD_TOP10_NL:
         df = gpd.read_file(
-            cloud.joinpath(r"Basisgegevens\Top10NL\top10nl_Compleet.gpkg"),
+            cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg"),
             layer="top10nl_waterdeel_vlak",
             bbox=mask_box.bounds,
         )

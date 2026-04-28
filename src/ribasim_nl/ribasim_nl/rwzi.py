@@ -10,7 +10,7 @@ import geopandas as gpd
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 
-from ribasim_nl import Model, concat, prefix_index
+from ribasim_nl import Model, concat
 
 logger = logging.getLogger(__name__)
 
@@ -155,21 +155,21 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
-def merge_rwzi_model(
-    base_model, rwzi_model_path, buffer_distance: int = 20, prefix_id: int = 999, verbose: bool = True
-):
+def merge_rwzi_model(base_model, rwzi_model_path, buffer_distance: int = 20, verbose: bool = False):
     """
     Merge an RWZI model into a base model.
 
-    Reads the RWZI model, prefixes its indices, concatenates it with the base model,
-    couples RWZI terminals to basins, removes unmatched RWZIs, and converts terminals to junctions.
+    1. Reads the RWZI model.
+    2. Concatenates it with the base model.
+    3. Couples RWZI terminals to basins.
+    4. Removes unmatched RWZIs.
+    5. Converts terminals to junctions.
 
     Parameters
     ----------
         base_model (Model): The base Ribasim model to merge into.
         rwzi_model_path (Path): Path to the RWZI model toml file.
         buffer_distance (float): Buffer distance in meters for spatial coupling.
-        prefix_id (int): Prefix ID for the RWZI model nodes.
         verbose (bool): Whether to print progress info.
 
     Returns
@@ -179,13 +179,7 @@ def merge_rwzi_model(
     rwzi_model = Model.read(rwzi_model_path)
     logger.info("RWZI model loaded")
 
-    try:
-        rwzi_model = prefix_index(model=rwzi_model, prefix_id=prefix_id)
-    except KeyError as e:
-        logger.info("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
-        raise e
-
-    rwzi_coupled_model = concat([base_model, rwzi_model], keep_original_index=True)
+    rwzi_coupled_model = concat([base_model, rwzi_model])
 
     coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance)
     rwzi_coupled_model, _stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=verbose)

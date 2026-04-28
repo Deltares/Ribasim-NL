@@ -159,18 +159,6 @@ def find_toml_path(model_dir: Path) -> Path:
     return tomls[0]
 
 
-def read_and_prepare_model(model_path: Path) -> Model:
-    model = Model.read(model_path)
-    if not model.basin_outstate.filepath.exists():
-        print("run model to update state")
-        model.write(model_path)  # forced migration
-        result = model.run()
-        if result.exit_code != 0:
-            raise Exception("model won't run successfully!")
-    model.update_state()
-    return model
-
-
 def process_model_spec(
     idx: int, model_spec: dict[str, Any], lhm_model: Model | None, write_toml: Path | None = None
 ) -> Model | None:
@@ -179,14 +167,10 @@ def process_model_spec(
     print(f"{model_spec['authority']} - {model_spec['model']}")
     model_dir = get_model_dir(model_spec)
     model_path = find_toml_path(model_dir)
-    model = read_and_prepare_model(model_path)
+    model = Model.read(model_path)
     model.node.df["meta_waterbeheerder"] = model_spec["authority"]
-    try:
-        # TODO reduce max_digits back to 4 after fixing #364
-        model = prefix_index(model=model, max_digits=7, prefix_id=waterbeheercode[model_spec["authority"]])
-    except KeyError as e:
-        print("Remove model results (and retry) if a node_id in Basin / state is not in node-table.")
-        raise e
+    # TODO reduce max_digits back to 4 after fixing #364
+    model = prefix_index(model=model, max_digits=5, prefix_id=waterbeheercode[model_spec["authority"]])
     if lhm_model is None:
         lhm_model = model
     else:
@@ -225,4 +209,6 @@ for idx, model_spec in enumerate(model_specs):
 print("write lhm model")
 ribasim_toml = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
 if lhm_model is not None:
+    # Models this large benefit from specialization
+    lhm_model.solver.specialize = True
     lhm_model.write(ribasim_toml)
