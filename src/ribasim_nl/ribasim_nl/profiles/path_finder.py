@@ -8,6 +8,7 @@ Ribasim.
 
 import itertools
 import logging
+import typing
 
 import geopandas as gpd
 import momepy
@@ -123,7 +124,10 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
     :raises AssertionError: if `MultiLineString`-objects remain after union-exploding the hydro-objects
     """
     # redraw hydro-objects
-    union_objects = gpd.GeoDataFrame(geometry=[*hydro_objects.force_2d().union_all().geoms], crs=hydro_objects.crs)
+    union_objects = gpd.GeoDataFrame(
+        geometry=[*typing.cast(shapely.MultiLineString, hydro_objects.force_2d().union_all()).geoms],
+        crs=hydro_objects.crs,
+    )
     assert len(union_objects[union_objects.geometry.type == "MultiLineString"]) == 0, (
         "No MultiLineString-objects allowed"
     )
