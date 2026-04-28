@@ -415,4 +415,4 @@ def label_flow_hydro_objects(
     """
     routing_edges = [data["geometry"] for nodes in flow_routes for data in graph.get_edge_data(*nodes).values()]
     indices = hydro_objects[hydro_objects.geometry.isin(routing_edges)].index.values
-    return indices
+    return (*indices,)
