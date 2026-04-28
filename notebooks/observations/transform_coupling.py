@@ -19,43 +19,26 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 # paths:
-base = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel")
+base = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
-# Draaien vanuit de uitgangskoppeltabel op basis van alle nieuw aangeleverde metingen en feedback
-# loc_ref_koppeltabel = cloud.joinpath(base, "Koppeltabel_uitgangspunt.xlsx")
+loc_ref_koppeltabel = cloud.joinpath(base, "final_koppeltabel_v28_04_2026.xlsx")
 
-# loc_ref_koppeltabel = cloud.joinpath(base, "Transformed_koppeltabel_versie1_Feedback_Verwerkt_HydroLogic.xlsx")
-loc_ref_koppeltabel = cloud.joinpath(
-    base, "Transformed_koppeltabel_versie_lhm_ctwq_compat_Feedback_Verwerkt_HydroLogic.xlsx"
-)
+waterboard = "Limburg"
+waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
 
-
-# paths:
-#!TODO: Nog niet mogelijk om lhm-coupled model op GC in te lezen
-# met huidige ribasim dev versie
-
-rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
-latest_lhm_version = sorted(
-    [i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", "")
+latest_model_version = sorted(
+    [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
 )[-1]
-model_folder = cloud.joinpath("Rijkswaterstaat/modellen", latest_lhm_version.path_string)
+
+model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
 
 
 # Filteren of gebruiken we een gekoppeld model:
-filter_waterschappen = False
-
-# Filteren voor een enkel waterschap:
-# waterschapsnaam = ["Delfland"]
-
-# Filteren voor meerdere waterschappen:
-# waterschapsnaam = ['AmstelGooienVecht',
-#                    'Rijnland', 'StichtseRijnlanden', 'Delfland',
-#  'SchielandendeKrimpenerwaard', 'HollandseDelta', 'Rijkswaterstaat']
-
-waterschapsnaam = None
+filter_waterschappen = True
+waterschapsnaam = ["Limburg"]
 
 # toml_naam = "lhm-coupled.toml"
-toml_naam = "lhm_ctwq.toml"
+toml_naam = "limburg.toml"
 
 
 # Als we wel een geometry hadden opgeslagen in de input koppeltabel, maar we kunnen in de buurt in het nieuwe model
@@ -71,16 +54,15 @@ nieuwe_suggestie_als_oude_geometry_ontbreekt = True
 # eerste_tabel = True
 eerste_tabel = False
 
-versie = "lhm_ctwq_compat"
+versie = f"{latest_model_version.path_string}"
+
 wegschrijven_nieuwe_tabel = cloud.joinpath(base, f"Transformed_koppeltabel_versie_{versie}.xlsx")
 
 # synchronize paths
 cloud.synchronize([base, model_folder])
 
-#!TODO: weghalen als lhm-coupled met huidige ribasim versie kan worden ingelezen
-# model_folder_temporary = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_werkend\lhm_coupled"
-model_folder_temporary = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_2017\lhm_ctwq_compat"
-
+model = Model.read(Path(model_folder) / toml_naam)  # Aangepast van lhm.toml
+links = model.link.df
 
 # %% functions
 
@@ -296,7 +278,10 @@ def LaadKoppeltabel(loc_koppeltabel, eerste_tabel=False):
 
 # Import koppeltabel met meest recent verwerkte feedback van waterschappen
 
-koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=eerste_tabel)
+# koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=eerste_tabel)
+koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=False)
+filter_waterschappen = True
+waterschapsnaam = ["Limburg"]
 
 # Als we op waterschappen willen filteren:
 if filter_waterschappen:
@@ -309,13 +294,7 @@ if filter_waterschappen:
     ]
 
 
-# %% import model
-
-# model = Model.read(os.path.join(model_folder, toml_naam)) # Aangepast van lhm.toml
-
-model = Model.read(Path(model_folder_temporary) / toml_naam)  # Aangepast van lhm.toml
-
-links = model.link.df
+# %%
 
 
 def combine_nodes_from_model(model, node_types):
@@ -400,14 +379,20 @@ buffer_range_links = np.arange(0, 600, 1).tolist()
 
 # Met een gecombineerd model kunnen we de meta_link_id_waterbeheerder wel meenemen
 
+# link_columns = [
+#     "from_node_id",
+#     "to_node_id",
+#     "link_id",
+#     "meta_link_id_waterbeheerder",
+#     "geometry",
+# ]
+
 link_columns = [
     "from_node_id",
     "to_node_id",
     "link_id",
-    "meta_link_id_waterbeheerder",
     "geometry",
 ]
-
 
 koppeling_spatial = spatial_match(
     shape_koppeling_path=gdf_koppeling,
@@ -418,15 +403,13 @@ koppeling_spatial = spatial_match(
     link_columns=link_columns,
     apply_mapping=False,
     write_buffer_shp=False,
-    output_buffer_shapefile=cloud.joinpath(
-        base, "suggestie_automatische_koppeling", f"Buffers_match_metingen_v{versie}.gpkg"
-    ),
-    # output_buffer_shapefile=os.path.join(loc_model, "Koppeltabellen updaten", "suggestie_automatische_koppeling", "Buffers_match_metingen.shp")
-    #!!TODO: uploaden naar de cloud op de juiste manier
-    cloud_sync=cloud,
+    output_buffer_shapefile=None,
+    cloud_sync=False,
     filter_waterschappen=filter_waterschappen,
     lijst_filter_waterschappen=waterschapsnaam,
+    print_logging=False,
 )
+
 
 # %%
 
@@ -434,7 +417,19 @@ koppeling_spatial = spatial_match(
 
 # Wegschrijven van de koppeltabel die automatisch gemaakt wordt op basis van de geometry van de meetpunten
 
-path_excel = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.xlsx")
+# path_excel = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.xlsx")
+
+# koppeling_spatial.to_excel(path_excel, index=False)
+# cloud.upload_file(path_excel)
+
+
+# koppeling_spatial.set_crs(epsg=28992, inplace=True)
+
+# path_gpkg = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.gpkg")
+# koppeling_spatial.to_file(path_gpkg, driver="GPKG")
+# cloud.upload_file(path_gpkg)
+
+path_excel = Path(base, f"Automatische_spatialmatch_v{versie}.xlsx")
 
 koppeling_spatial.to_excel(path_excel, index=False)
 cloud.upload_file(path_excel)
@@ -442,7 +437,7 @@ cloud.upload_file(path_excel)
 
 koppeling_spatial.set_crs(epsg=28992, inplace=True)
 
-path_gpkg = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.gpkg")
+path_gpkg = Path(base, f"Automatische_spatialmatch_v{versie}.gpkg")
 koppeling_spatial.to_file(path_gpkg, driver="GPKG")
 cloud.upload_file(path_gpkg)
 
@@ -494,6 +489,10 @@ else:
     # Initialize new_* columns
     for col in new_cols:
         koppeltabel[col] = None
+
+
+nieuwe_suggestie_als_oude_geometry_ontbreekt = True
+
 
 # %%
 # ---------------------------------------------

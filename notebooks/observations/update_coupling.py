@@ -14,7 +14,6 @@
 # %%
 # Packages
 import ast
-import os
 from pathlib import Path
 
 import pandas as pd
@@ -36,6 +35,7 @@ def update_koppeltabel_with_feedback(
     remove_meetreeksc=None,
     partij=None,
     add_new_data=False,
+    transformed_koppeltabel=False,
 ):
     """
     Updates the input koppeltabel based on the feedback koppeltabel, removes rows based on the specified MeetreeksC values, and saves the result.
@@ -62,6 +62,9 @@ def update_koppeltabel_with_feedback(
 
     excel_specifieke_bewerking = feedback_koppeltabel[["Waterschap", "MeetreeksC", "Aan/Af", "Specifiek"]].copy()
 
+    # Ensure Specifiek is string (column may be fully empty/NaN)
+    excel_specifieke_bewerking["Specifiek"] = excel_specifieke_bewerking["Specifiek"].astype(str).replace("nan", "")
+
     excel_specifieke_bewerking = excel_specifieke_bewerking[excel_specifieke_bewerking["Specifiek"] != "verwijderen"]
 
     # 2. Remove substring "fout schematisatie" but keep row
@@ -69,7 +72,10 @@ def update_koppeltabel_with_feedback(
         excel_specifieke_bewerking["Specifiek"].str.replace("fout schematisatie", "", regex=False).str.strip()
     )
 
-    path_specifiek_bewerking = cloud_sync.joinpath(output_path, f"Specifiek_bewerking_versie{versie}.xlsx")
+    if cloud_sync:
+        path_specifiek_bewerking = cloud_sync.joinpath(output_path, f"Specifiek_bewerking_versie{versie}.xlsx")
+    else:
+        path_specifiek_bewerking = Path(output_path) / f"Specifiek_bewerking_versie{versie}.xlsx"
 
     excel_specifieke_bewerking.to_excel(path_specifiek_bewerking, index=False)
 
@@ -102,7 +108,7 @@ def update_koppeltabel_with_feedback(
 
     # input_koppeltabel = update_specifiek_column(input_koppeltabel, feedback_koppeltabel)
 
-    # Add missing columns from feedback_koppeltabel to input_koppeltabel
+    # Add missing columns
     # Toevoegen als we een model voor een specifiek waterschaps model draaien
     # Dan is deze info niet aanwezig tov van een samengevoegd model
     missing_columns = set(input_koppeltabel.columns) - set(feedback_koppeltabel.columns)
@@ -139,13 +145,13 @@ def update_koppeltabel_with_feedback(
                     ast.literal_eval(link_ids) if isinstance(link_ids, str) and link_ids.startswith("[") else [link_ids]
                 )
 
-            from_node_ids, to_node_ids, link_ids = [], [], []
+            from_node_ids, to_node_ids, meta_link_ids = [], [], []
 
             for link_id in link_ids:
                 link_data = links_model[links_model["link_id"] == link_id]
+
                 if not link_data.empty:
                     # Alleen toevoegen als de kolom bestaat
-
                     if "from_node_id" in link_data.columns:
                         from_node_ids.extend(link_data["from_node_id"].tolist())
 
@@ -153,7 +159,7 @@ def update_koppeltabel_with_feedback(
                         to_node_ids.extend(link_data["to_node_id"].tolist())
 
                     if "meta_link_id_waterbeheerder" in link_data.columns:
-                        link_ids.extend(link_data["meta_link_id_waterbeheerder"].tolist())
+                        meta_link_ids.extend(link_data["meta_link_id_waterbeheerder"].tolist())
 
             from_node_geometries = [search_geometry_nodes(lhm_model, node_id) for node_id in from_node_ids]
             to_node_geometries = [search_geometry_nodes(lhm_model, node_id) for node_id in to_node_ids]
@@ -161,15 +167,27 @@ def update_koppeltabel_with_feedback(
             to_node_types = [search_type_nodes(lhm_model, node_id) for node_id in to_node_ids]
 
             # Update columns in input koppeltabel
-            input_koppeltabel.at[input_index, "new_link_id"] = link_ids or None
 
-            input_koppeltabel.at[input_index, "new_from_node_geometry"] = from_node_geometries or None
+            #!TODO: Omdat we met een eerste koppeltabel werken
 
-            input_koppeltabel.at[input_index, "new_to_node_geometry"] = to_node_geometries or None
+            if transformed_koppeltabel:
+                input_koppeltabel.at[input_index, "new_link_id"] = link_ids or None
+                input_koppeltabel.at[input_index, "new_from_node_geometry"] = from_node_geometries or None
+                input_koppeltabel.at[input_index, "new_to_node_geometry"] = to_node_geometries or None
+                input_koppeltabel.at[input_index, "new_from_node_types"] = from_node_types or None
+                input_koppeltabel.at[input_index, "new_to_node_types"] = to_node_types or None
 
-            input_koppeltabel.at[input_index, "new_from_node_types"] = from_node_types or None
+                # node id from and to niet opgeslagen
 
-            input_koppeltabel.at[input_index, "new_to_node_types"] = to_node_types or None
+            else:
+                input_koppeltabel.at[input_index, "link_id"] = link_ids or None
+                input_koppeltabel.at[input_index, "from_node_geometry"] = from_node_geometries or None
+                input_koppeltabel.at[input_index, "to_node_geometry"] = to_node_geometries or None
+                input_koppeltabel.at[input_index, "from_node_types"] = from_node_types or None
+                input_koppeltabel.at[input_index, "to_node_types"] = to_node_types or None
+
+                input_koppeltabel.at[input_index, "from_node_id"] = from_node_ids or None
+                input_koppeltabel.at[input_index, "to_node_id"] = to_node_ids or None
 
             # Als we een update doen dan ook de status en de match_nodes aanpassen als we
             input_koppeltabel.at[input_index, "status"] = "Updated obv feedback"
@@ -180,8 +198,8 @@ def update_koppeltabel_with_feedback(
         input_koppeltabel = input_koppeltabel[~input_koppeltabel["MeetreeksC"].isin(remove_meetreeksc)]
 
     # Generate output file name
-    _folder, filename = os.path.split(input_koppeltabel_path)
-    basename, ext = Path(filename).stem, Path(filename).suffix
+    input_path = Path(input_koppeltabel_path)
+    basename, ext = input_path.stem, input_path.suffix
     base_without_feedback = basename.split("_Feedback")[0]
 
     if partij:
@@ -189,11 +207,10 @@ def update_koppeltabel_with_feedback(
     else:
         new_filename = f"{base_without_feedback}_Feedback_Verwerkt{ext}"
 
-    if cloud_sync:
-        opslaan_path = cloud_sync.joinpath(output_path, new_filename)
+    opslaan_path = cloud_sync.joinpath(output_path, new_filename) if cloud_sync else Path(output_path) / new_filename
 
     # Welke columns behouden we:
-    if not keep_all_columns:
+    if not keep_all_columns and columns_to_keep is not None:
         input_koppeltabel = input_koppeltabel[columns_to_keep]
 
     # # Sort the updated koppeltabel alphabetically by "Waterschap"
