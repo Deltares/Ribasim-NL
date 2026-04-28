@@ -231,7 +231,7 @@ def main(
     elif patch_network:
         hydro_objects = path_finder.fully_connected_network(hydro_objects, buffer=patch_buffer)
         if crossings is not None:
-            hydro_objects = path_finder.split_hydro_objects(hydro_objects, crossings, buffer=split_buffer)
+            hydro_objects = path_finder.split_hydro_objects(hydro_objects, crossings, tolerance=split_buffer)
     else:
         hydro_objects = (
             gpd.GeoDataFrame(geometry=[hydro_objects.union_all()], crs=hydro_objects.crs)

@@ -67,31 +67,30 @@ def simplify_geodata(
 
 
 def split_hydro_objects(
-    hydro_objects: gpd.GeoDataFrame, split_locations: gpd.GeoDataFrame, *, buffer: float = 1e-2
+    hydro_objects: gpd.GeoDataFrame, split_locations: gpd.GeoDataFrame, *, tolerance: float = 1e-2
 ) -> gpd.GeoDataFrame:
     """Split the hydro-objects at point-locations, enforcing node-locations on the graph.
 
     :param hydro_objects: geospatial data of hydro-objects
     :param split_locations: geospatial data of locations where to enforce a split in the hydro-objects
-
-    :type hydro_objects: geopandas.GeoDataFrame
-    :type split_locations: geopandas.GeoDataFrame
+    :param tolerance: tolerance of distance from point to line, defaults to 0.01
 
     :return: split hydro-objects
-    :rtype: geopandas.GeoDataFrame
     """
     hydro_objects["geometry"] = hydro_objects.force_2d()
-    points = split_locations.sjoin(hydro_objects, predicate="dwithin", distance=buffer, rsuffix="line")
+    points = split_locations.sjoin(hydro_objects, predicate="dwithin", distance=tolerance, rsuffix="line")
 
     for p, i in tqdm.tqdm(points[["geometry", "index_line"]].values, "Splitting hydro-objects"):
         line: shapely.LineString = hydro_objects.geometry.iloc[i]
         if isinstance(line, shapely.MultiLineString):
             new_lines = tuple(
-                itertools.chain.from_iterable(geometry.split_line(_line, p, tolerance=buffer) for _line in line.geoms)
+                itertools.chain.from_iterable(
+                    geometry.split_line(_line, p, tolerance=tolerance) for _line in line.geoms
+                )
             )
         else:
-            new_lines = geometry.split_line(line, p, tolerance=buffer)
-        hydro_objects.loc[i, "geometry"] = shapely.MultiLineString(new_lines)
+            new_lines = geometry.split_line(line, p, tolerance=tolerance)
+        hydro_objects.at[i, "geometry"] = shapely.MultiLineString(new_lines)  # type: ignore[assignment]
 
     hydro_objects = hydro_objects.explode()
     hydro_objects = hydro_objects[hydro_objects.length > 0].reset_index(drop=True)
@@ -112,14 +111,8 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
 
     :param hydro_objects: geospatial data of hydro-objects
     :param buffer: buffer-radius near endpoints within which other hydro-objects are connected, defaults to 1e-2
-    :param reset_multi_index: reset multi-indexing to single-indexing, defaults to True
-
-    :type hydro_objects: geopandas.GeoDataFrame
-    :type buffer: float, optional
-    :type reset_multi_index: bool, optional
 
     :return: fully connected network of hydro-objects
-    :rtype: geopandas.GeoDataFrame
 
     :raises AssertionError: if `MultiLineString`-objects remain after union-exploding the hydro-objects
     """
@@ -167,7 +160,7 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
             line = union_objects.geometry.iloc[index]
             _line = [*line.coords]
             _line[0 if is_start else -1] = snap_points[i]
-            union_objects.loc[index, "geometry"] = shapely.LineString(_line)
+            union_objects.at[index, "geometry"] = shapely.LineString(_line)  # type: ignore[assignment]
 
     # return modified hydro-objects
     return union_objects
