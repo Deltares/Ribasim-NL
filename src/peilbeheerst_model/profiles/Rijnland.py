@@ -11,4 +11,5 @@ if __name__ == "__main__":
         export_profile_tables=True,
         export_intermediate_output=True,
         fn_water_bodies=fn_water_bodies,
+        col_wb_depth="DIEPTE",
     )
