@@ -1,15 +1,22 @@
 # %%
 
+import logging
 from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
+from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
 
 from ribasim_nl import Model, Network
+
+logger = logging.getLogger(__name__)
+
+# reverse lookup: prefix -> authority name
+_prefix_to_authority = {v: k for k, v in waterbeheercode.items()}
 
 # Constants
 SNAP_DISTANCE = 20
@@ -259,6 +266,25 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
         # we check if coupling is overruled
         if boundary_node_id in forced_coupling:
             couple_with_basin_id = forced_coupling[boundary_node_id]
+            if couple_with_basin_id not in model.node.df.index:
+                # determine the authority that owns the missing target node
+                target_prefix = couple_with_basin_id // 10**5
+                target_authority = _prefix_to_authority.get(target_prefix)
+                included_authorities = set(model.node.df["meta_waterbeheerder"].dropna().unique())
+                if target_authority and target_authority not in included_authorities:
+                    logger.warning(
+                        "Forced coupling target %d (%s) not in model (authority not included), skipping %s.",
+                        couple_with_basin_id,
+                        target_authority,
+                        boundary_node,
+                    )
+                else:
+                    raise KeyError(
+                        f"Forced coupling target {couple_with_basin_id} not found in model, "
+                        f"but its authority '{target_authority}' is included. "
+                        f"Check forced_coupling for boundary node {boundary_node_id}."
+                    )
+                continue
         else:
             # Check whether there are very close LB from the other authority
             lb_neighbors = model.level_boundary.node.df[

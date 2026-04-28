@@ -270,7 +270,6 @@ for _idx, geometry in enumerate(geoseries):
 # %% Verplaats boundary ruimtelijk van Vugtherstuw (afvoerpijl juiste richting in schematics, cosmetisch!)
 
 new_geom = Point(148523.8, 410424.6)
-model.level_boundary.node.df.at[28, "geometry"] = new_geom
 model.node.df.at[9, "geometry"] = new_geom
 
 model.remove_link(from_node_id=627, to_node_id=9, remove_disconnected_nodes=False)
