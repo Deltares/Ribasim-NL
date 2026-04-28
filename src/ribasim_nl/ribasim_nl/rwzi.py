@@ -176,9 +176,13 @@ def merge_rwzi_model(base_model, rwzi_model_path, buffer_distance: int = 20, ver
     -------
         Model: The merged model with RWZI nodes coupled to basins.
     """
+    # load RWZI model
     rwzi_model = Model.read(rwzi_model_path)
     logger.info("RWZI model loaded")
 
+    # add meta_categorie = RWZI so we can discriminate between other (buitenlandse aanvoer) boundaries
+    assert rwzi_model.node.df is not None
+    rwzi_model.node.df.loc[rwzi_model.node.df.node_type == "FlowBoundary", "meta_categorie"] = "RWZI"
     rwzi_coupled_model = concat([base_model, rwzi_model])
 
     coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance)
