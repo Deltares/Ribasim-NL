@@ -9,7 +9,10 @@ Will create per authority:
 - verwerkt//sturing//watersysteem.gpkg -> all layers to create the schematic
 - verwerkt//sturing//afvoertabel.md -> table with Ribasim flow capacity in supply\\demand
 
-SVG images can created based on the watersysteem.gpkg using QGIS.
+SVG images can created
+
+
+ based on the watersysteem.gpkg using QGIS.
 An example QGIS project can be found on the [CloudStorage](https://deltares.thegood.cloud/f/238548) (limited access)
 """  # noqa: D301
 
@@ -36,6 +39,7 @@ ARROW_LENGTH = {
     "DrentsOverijsselseDelta": 2000,
     "HunzeenAas": 1400,
     "RijnenIJssel": 1400,
+    "ValleienVeluwe": 1400,
 }
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
@@ -62,6 +66,18 @@ ADD_TOP10_NL = {
         "Laak",
         "Toevoerkanaal",
         "Bottenstrank",
+        "Wolderwijd",
+        "Nuldernauw",
+        "Markermeer",
+        "Vossemeer",
+        "Ketelmeer",
+        "Kattendiep",
+        "Keteldiep",
+        "Neder-Rijn",
+        "Gooiergracht",
+        "IJmeer",
+        "IJsselmeer",
+        "Lek",
     ],
     "DrentsOverijsselseDelta": [
         "Overijsselsch Kanaal (Zijkanaal Lemelerveld-Raalte-Deventer)",
