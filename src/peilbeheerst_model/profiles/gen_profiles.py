@@ -19,6 +19,7 @@ def main(
     overwrite: bool = False,
     export_intermediate_output: bool = False,
     fn_water_bodies: gpd.GeoDataFrame | None = None,
+    **kwargs,
 ) -> None:
     """Execute profile table generator.
 
@@ -36,6 +37,7 @@ def main(
         overwrite the determined representative depths per hydro-object, defaults to None
         When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
         by the depth value(s) in `water_bodies`.
+    :param kwargs: (additional) optional arguments passed on to `.run.main()`
     """
     # sync with the GoodCloud
     cloud = CloudStorage()
@@ -68,6 +70,7 @@ def main(
         fn_bgt=fn_bgt,
         wd_intermediate_output=wd_int,
         water_bodies=gdf_water_bodies,
+        **kwargs,
     )
 
     # export profile table
