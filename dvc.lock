@@ -406,14 +406,22 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 56b17e993ceea69654a82dcca037aa48.dir
-      size: 797286582
+      md5: 47e3fc956d7f56f77e20ae41f988a76b.dir
+      size: 785432758
       nfiles: 2
+    - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
+      hash: md5
+      md5: 481bcdd74b3bd4dbfed545d962eb1e24
+      size: 3731456
+    - path: notebooks/koppelen_modellen.py
+      hash: md5
+      md5: 9bee9ea1408d3ad43ac4b6bb88e131d6
+      size: 23953
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 1ae76d740571c78bc79570b883d7114e.dir
-      size: 551502555
+      md5: 1ccd0cca1067ce35fb0cdd57b5f00099.dir
+      size: 550216411
       nfiles: 4
   rwzi:
     cmd: uv run notebooks/create_rwzi_model.py

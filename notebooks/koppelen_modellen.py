@@ -419,6 +419,24 @@ def fix_basin_profiles(model: Model) -> None:
                 model.basin.profile.df.loc[(mask[mask]).index[0], "level"] = min_level - MIN_BASIN_OUTLET_DIFF
 
 
+def remove_invalid_topology_nodes(model: Model) -> None:
+    """Remove nodes with invalid flow/control topology and clean up their control references."""
+    for link_type in ["flow", "control"]:
+        invalid_topology = model.invalid_topology_at_node(link_type=link_type)
+        while not invalid_topology.empty:
+            for node_id, row in invalid_topology.iterrows():
+                logger.warning(
+                    "Invalid %s topology at node %d (%s): %s — removing node.",
+                    link_type,
+                    node_id,
+                    row["node_type"],
+                    row["exception"],
+                )
+                replace_listen_node_id(model, node_id, None)
+                model.remove_node(node_id, remove_links=True)
+            invalid_topology = model.invalid_topology_at_node(link_type=link_type)
+
+
 def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> None:
     """Save the model and create output files.
 
@@ -567,4 +585,5 @@ toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
 model, network, basin_areas_df = initialize_models(toml_file)
 all_link_table = process_boundary_nodes(model, network, basin_areas_df)
 fix_basin_profiles(model)
+remove_invalid_topology_nodes(model)
 save_model_and_outputs(model, all_link_table, toml_file)
