@@ -254,7 +254,7 @@ def _bgt_path(cloud: CloudStorage, water_authority: str) -> Path:
 def _int_output_path(cloud: CloudStorage, water_authority: str, export: bool) -> Path | None:
     """Absolute folder-path (GoodCloud) for intermediate output.
 
-    If intermediate output is not exported, no path is returned (None). This translates in the `run.main(..)`-function
+    If intermediate output is not exported, no path is returned (None). This translates in the `run.main(...)`-function
     to not exporting the intermediate output.
 
     :param cloud: the GoodCloud
