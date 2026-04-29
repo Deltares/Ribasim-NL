@@ -6,10 +6,62 @@ import pandas as pd
 from ribasim import Model
 from ribasim.schemas import BasinConcentrationSchema, FlowBoundaryConcentrationSchema, LevelBoundaryConcentrationSchema
 
+RENAME_MAP = {"buitenland": "Buitenland", "buitenlandse aanvoer": "Buitenland"}
+
+
+def sort_lhm_fractions(items: list[str]) -> list[str]:
+    """
+    Sort LHM fraction labels according to a custom order.
+
+    The sorting rules are:
+    - A predefined set of items is placed at the top (`top_order`)
+    - A predefined set of items is placed at the bottom (`lower_order`)
+    - All remaining items are placed in between, preserving their original order
+    - Items not present in the input are ignored
+    - Duplicate items are removed while preserving the first occurrence
+
+    Parameters
+    ----------
+    items : List[str]
+        List of LHM fraction labels to be sorted.
+
+    Returns
+    -------
+    List[str]
+        Sorted list of LHM fraction labels following the custom ordering rules.
+
+    Notes
+    -----
+    The function preserves the relative order of items that are not explicitly
+    defined in `top_order` or `lower_order`.
+    """
+    # --- Remove duplicates while preserving original order ---
+    items = list(dict.fromkeys(items))
+
+    # --- Items that should always appear at the top (in this order) ---
+    top_order = ["Initial", "Drainage (primair)", "Drainage (secundair)", "RWZI"]
+
+    # --- Items that should always appear at the bottom (in this order) ---
+    lower_order = ["Buitenland", "Maaiveld", "Neerslag"]
+
+    result: list[str] = []
+
+    # --- Add top-priority items (only if they exist in the input) ---
+    result += [x for x in top_order if x in items]
+
+    # --- Add all remaining items that are not explicitly ordered ---
+    mentioned = set(top_order + lower_order)
+    result += [x for x in items if x not in mentioned]
+
+    # --- Add bottom-priority items (only if they exist in the input) ---
+    result += [x for x in lower_order if x in items]
+
+    return result
+
 
 def get_lhm_fractions(model: Model) -> list[str]:
     """
-    Extract LHM fractions from different concentration tables in the model.
+    Extract LHM fractions from different concentration tables in the model and sort for consistent plotting.
 
     This function collects all substances marked as LHM fractions from:
     - Basin concentrations
@@ -48,7 +100,7 @@ def get_lhm_fractions(model: Model) -> list[str]:
         fractions += list(level_fractions)
 
     # --- Return combined list ---
-    return fractions
+    return sort_lhm_fractions(fractions)
 
 
 def assign_lhm_fractions(
@@ -83,11 +135,6 @@ def assign_lhm_fractions(
     -------
     None, all concentration tables are made in place
     """
-
-    def smart_capitalize(value: str) -> str:
-        """Capitalize words unless they already start with an uppercase letter."""
-        return " ".join(word if word[:1].isupper() else word.capitalize() for word in str(value).split())
-
     # get all defaults
     if secondary_values is None:
         secondary_values = {"bergend"}
@@ -170,7 +217,7 @@ def assign_lhm_fractions(
         columns={"meta_categorie": "substance"}
     )
 
-    flow_boundary_df["substance"] = flow_boundary_df["substance"].apply(smart_capitalize)
+    flow_boundary_df["substance"] = flow_boundary_df["substance"].replace(RENAME_MAP)
     flow_boundary_df["concentration"] = 1.0
     flow_boundary_df["time"] = time
     flow_boundary_df["meta_lhm_fraction"] = True
@@ -187,7 +234,7 @@ def assign_lhm_fractions(
         columns={"meta_couple_authority": "substance"}
     )
 
-    level_boundary_df["substance"] = level_boundary_df["substance"].apply(smart_capitalize)
+    level_boundary_df["substance"] = level_boundary_df["substance"].replace(RENAME_MAP)
     level_boundary_df["concentration"] = 1.0
     level_boundary_df["time"] = time
     level_boundary_df["meta_lhm_fraction"] = True
