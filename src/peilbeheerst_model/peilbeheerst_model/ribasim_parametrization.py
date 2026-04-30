@@ -2727,8 +2727,8 @@ def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx
 
         :return: connector- and (created) LevelBoundary-nodes
         """
-        _c_type = ribasim_model.node.df.loc[ribasim_model.node.df.index == c_id, "NodeType"]
-        _c_node: ribasim.geometry.node.NodeData = getattr(ribasim_model, _c_type.lower())[c_id]
+        (_c_type,) = ribasim_model.node.df.loc[ribasim_model.node.df.index == c_id, "NodeType"]
+        _c_node = getattr(ribasim_model, _c_type.lower())[c_id]
         _lb_node = ribasim_model.level_boundary.add(
             ribasim.Node(geometry=Point(_c_node.geometry.x + dx, _c_node.geometry.y + dy)),
             [ribasim.nodes.level_boundary.Static(level=[level])],
@@ -2745,13 +2745,16 @@ def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx
             ribasim_model.level_boundary.static.df["node_id"] == i, "level"
         ]
         # > towards LevelBoundary
-        connector_node_ids = flow_table.loc[flow_table["to_node_id"] == i, "from_node_id"]
-        for ci in connector_node_ids:
+        c_node_ids = flow_table.loc[flow_table["to_node_id"] == i, "from_node_id"]
+        logger.info(
+            f"Replacing 'multi-connected' LevelBoundary {i} by {len(c_node_ids)} 'single-connected' LevelBoundary-nodes"
+        )
+        for ci in c_node_ids:
             c_node, lb_node = new_lb_node(ci, i_level)
             ribasim_model.link.add(c_node, lb_node)
         # > from LevelBoundary
-        connector_node_ids = flow_table.loc[flow_table["from_node_id"] == i, "to_node_id"]
-        for ci in connector_node_ids:
+        c_node_ids = flow_table.loc[flow_table["from_node_id"] == i, "to_node_id"]
+        for ci in c_node_ids:
             c_node, lb_node = new_lb_node(ci, i_level)
             ribasim_model.link.add(lb_node, c_node)
         # > remove "old" LevelBoundary
