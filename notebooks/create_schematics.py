@@ -46,7 +46,7 @@ OFFSETS = {
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["ValleienVeluwe"]
+AUTHORITIES = ["DrentsOverijsselseDelta"]
 ADD_TOP10_NL = {
     "ValleienVeluwe": [
         "Apeldoornsch Kanaal",
@@ -94,7 +94,6 @@ ADD_TOP10_NL = {
         "Ommerkanaal",
         "Ketelmeer",
         "Reevediep",
-        "Nieuwe Kanaal",
         "Meppelerdiep",
         "Hoogeveensche Vaart",
         "Drentsche Hoofdvaart",
@@ -103,12 +102,14 @@ ADD_TOP10_NL = {
         "Verlengde Hoogeveensche Vaart",
         "Oude Vaart",
         "Wold Aa",
-        "Oude Diep",
         "Beilervaart",
         "Noord-Willemskanaal",
         "Oranjekanaal",
         "Dolderkanaal",
         "Vollenhoverkanaal",
+        "Linthorst-Homankanaal",
+        "Ruiner Aa",
+        "Dedemsvaart",
     ],
     "Vechtstromen": [
         "Maas",

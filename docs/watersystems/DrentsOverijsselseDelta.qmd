@@ -11,51 +11,58 @@ Hieronder is de sturing van de aanvoergebieden beschreven uit bovenstaande figuu
 
 # Waterbeheer droge perioden hoofdsysteem
 
-Het Meppelerdiep is verbonden met de Hoogeveensche Vaart, de Drentsche Hoofdvaart en het Zwarte Water. Water kan ingelaten worden naar de Hoogeveensche Vaart via de Rogatsluis en naar de Drentsche Hoofdvaart via de Paradijssluis.
+Het `Meppelerdiep` is verbonden met de `Hoogeveensche Vaart`, de `Drentsche Hoofdvaart` en het `Zwarte Water`. Water kan ingelaten worden naar de `Hoogeveensche Vaart` via de `Rogatsluis` en naar de `Drentsche Hoofdvaart` via de `Paradijssluis`.
 
-Het water wordt via Ankersmit uit de IJssel naar het Overijssels Kanaal (Zijkannaal Lemelerveld-Raalte-Deventer) aangevoerd. In principe komt dit water niet verder dan een dam ten noorden van Raalte.
+Het water wordt via `Ankersmit` uit de `IJssel` naar het `Overijssels Kanaal (Zijkannaal Lemelerveld-Raalte-Deventer)` aangevoerd. In principe komt dit water niet verder dan een dam ten noorden van Raalte.
 
-Vanuit het Zwarte Water wordt bij Westerveld water aangevoerd naar de Soestwetering.
+Vanuit het `Zwarte Water` wordt bij `Westerveld` water aangevoerd naar de `Soestwetering`.
 
-Verder wordt vanuit de Twentekanalen via het Overijssels Kanaal, de Overijsselse Vecht en het Ommerskanaal water ingelaten. Dit is vastgelegd in het Waterakkoord Twentekanalen/Overijsselse Vecht.
+Verder wordt vanuit de `Twentekanalen` via het `Overijssels Kanaal`, de `Overijsselse Vecht` en het `Ommerskanaal` water ingelaten. Dit is vastgelegd in het Waterakkoord Twentekanalen/Overijsselse Vecht.
 
 # Aanvoergebieden
 
 ## Boezem Noordwest
-Het gebied Boezem Noordwest Overijssel wordt van water voorzien door de inlaat bij gemaal Stroink.
+Het gebied Boezem Noordwest wordt van water voorzien door de inlaat bij gemaal `Stroink`.
 
 ## Drentse Hoofdvaart
-Via de Paradijssluis wordt water ingelaten vanuit het Meppelerdiep naar de Drentsche Hoofdvaart. De Drentsche Hoofdvaart loopt van het Meppelerdiep tot aan het Noord - Willemskanaal. De Drentsche Hoofdvaart is verdeeld in zes panden. Deze panden worden gescheiden door sluizen. Tussen de panden vindt water transport plaats via sluizen en pompen. De sluizen zijn gezien van de Paradijssluis naar het Noord-Willemskanaal; de Paradijssluis, de Haveltersluis, de Uffeltersluis, de Dieversluis, de Haarsluis en de Veenesluis.
+Via de `Paradijssluis` wordt water ingelaten vanuit het `Meppelerdiep` naar de `Drentsche Hoofdvaart`. De `Drentsche Hoofdvaart` loopt van het `Meppelerdiep` tot aan het `Noord-Willemskanaal`. De `Drentsche Hoofdvaart` is verdeeld in zes panden. Deze panden worden gescheiden door sluizen. Tussen de panden vindt water transport plaats via sluizen en pompen. De sluizen zijn gezien van de Paradijssluis naar het Noord-Willemskanaal; de `Paradijssluis`, de `Haveltersluis`, de `Uffeltersluis`, de `Dieversluis`, de `Haarsluis` en de `Veenesluis`. Het pand benedenstrooms van `Haarsluis` staat in open verbinding met de Beilervaart waarna het bij aanvoergemaal de Holthe verder naar de `Hoogeveensche Vaart` kan worden aangevoerd indien daar tekorten zijn.
+
+## Wold Aa
+Via de `Wold Aa` wordt water via aanvoergemaal `Blijdenstein` ingelaten waarna het via verschillende aanvoergemalen verder wordt opgemalen, met als laatste aanvoergemaal `Oldenhave`
 
 ## Hoogeveensche Vaart
-Via de Rogatsluis wordt water ingelaten vanuit het Meppelerdiep naar de Hoogeveensche Vaart. De Hoogeveensche Vaart bestaat uit vier panden. Deze panden zijn gescheiden door sluizen. Dit zijn gezien van de Verlengde Hoogeveensche Vaart naar het Meppelerdiep; de Noordscheschutsluis, de Nieuwebrugsluis, de Ossesluis en de Rogatsluis.
+Via de `Rogatsluis` wordt water ingelaten vanuit het `Meppelerdiep` naar de `Hoogeveensche Vaart`. De `Hoogeveensche Vaart` bestaat uit vier panden. Deze panden zijn gescheiden door sluizen. Dit zijn gezien van de Verlengde Hoogeveensche Vaart naar het `Meppelerdiep`; de `Noordscheschutsluis`, de `Nieuwebrugsluis`, de `Ossesluis` en de `Rogatsluis`.
+In het oosten van aanvoergebied `Hoogeveensche Vaart` liggen diverse doorlaten vanuit Vechtstromen.
 
 ## Ankersmit
-Via aanvoergemaal Ankersmit wordt water via de IJssel aangevoerd naar het Overijssels Kanaal. In werkelijkheid komt dit water niet verder dan een dam ten noorden van Raalte.
+Via aanvoergemaal `Ankersmit` wordt water via de `IJssel` aangevoerd naar het `Overijssels Kanaal`. In werkelijkheid komt dit water niet verder dan een dam ten noorden van Raalte.
 
 ## Overijssels Kanaal
-Aanvoergebied Overijssels Kanaal wordt aangevoerd vanuit het Overijssels Kanaal via Hancate (Vechtstromen).
+Aanvoergebied `Overijssels Kanaal` wordt aangevoerd vanuit het `Overijssels Kanaal` via `Hancate` (Vechtstromen).
 
 ## Westerveld
-Via een inlaat bij Westerveld wordt water aangevoerd vanuit het Zwarte Water naar de Soestwetering. Via Westerveld kan ook water worden uitgelaten op het Zwarte water
+Via inlaat `Westerveld` wordt water aangevoerd vanuit het `Zwarte Water` naar de Soestwetering.
+
+## Dedemsvaart
+Via het `Galgenrak` wordt water ingelaten naar de Demdemsvaart. Aan de Demdesvaart liggen diverse inlaten om het aangevoerde water over het aanvoergebied te verdelen.
 
 ## Vecht-Twentekanalen
-Via het Ommerkanaal wordt het water ingelaten bij Langewijk Emsland1 en 2 in het aanvoergebied Vecht-Twentekanalen. Verder zitten er nog divese inlaten aan de Overrijselse Vecht die dit gebied van water voorzien.
+Via het `Ommerkanaal` wordt het water ingelaten bij `Langewijk Emsland1 en 2` in het aanvoergebied `Vecht-Twentekanalen`. Verder zitten er nog divese inlaten aan de `Overrijselse Vecht` die dit gebied van water voorzien.
 
 ## IJsselmeergebied
-Het Ijsselmeergebied wordt van water voorzien door diverse inlaten aan de IJssel, het Zwartemeer/Zwarte Water en het Meppelerdiep.
+Het `Ijsselmeergebied` wordt van water voorzien door diverse inlaten aan de `IJssel`, het `Zwartemeer`/`Zwarte Water` en het `Meppelerdiep`.
 
 # Waterbeheer natte periode hoofdsysteem:
-In natte perioden wordt het water in Groot Salland afgevoerd naar de IJssel, het Zwarte Water/ Zwarte Meer en de Veluwse Randmeren. Het grootste deel van het gebied watert onder vrij verval af.
+In natte perioden wordt het water in Groot Salland afgevoerd naar de `IJssel`, het `Zwarte Water`/ `Zwarte Meer` en de `Veluwse Randmeren`. Het grootste deel van het gebied watert onder vrij verval af.
 
-Het noordelijk gebied van Drentse Overijsselse Delta wordt bemalen door twee belangrijke gemalen. Dit zijn gemaal Stroink en het gemaal Zedemuden. Gemaal Stroink watert het westelijk deel van het beheersgebied af op het Vollenhovermeer, gemaal Zedemuden watert via de Drentsche Kanalen het oostelijke deel van het beheersgebied af op het Zwarte Water.
+Het noordelijk gebied van Drentse Overijsselse Delta wordt bemalen door twee belangrijke gemalen. Dit zijn gemaal `Stroink` en het gemaal `Zedemuden`. Gemaal `Stroink` watert het westelijk deel van het beheersgebied af op het `Vollenhovermeer`. Gemaal `Zedemuden` watert via de `Drentsche Kanalen` het oostelijke deel van het beheersgebied af op het `Zwarte Water`.
 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
 | naam                       | code       |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
 |:---------------------------|:-----------|----------:|:----------|-----------------:|----------------:|
-| A                          | D_25958    |       410 | inlaat    |            0.02  |               0 |
+
 
 Kunstwerk capaciteit sluis (m3/s) capaciteit pompen (m3/s)
 Noordscheschutsluis 11 6.9
