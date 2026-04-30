@@ -4,7 +4,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/3Q2eGKqwpqdLkE8)
 
 ## Systeembeschrijving
-![Systeembeschrijving Hunze en Aas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/HunzeenAas.svg)
+![Systeembeschrijving Hunze en Aas](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/HunzeenAas.svg){.lightbox}
 
 ### Hoofdsysteem
 Water wordt aan de zuidzijde aangevoerd vanuit waterschap Vechtstromen via de verlengde `Hoogeveensche Vaart`. Aan de noordzijde vindt aanvoer plaats via `aanvoergemaal Dorkwerd` vanuit waterschap Noorderzijlvest (via Gaarkuiken en Lemmer vanuit het IJsselmeer).

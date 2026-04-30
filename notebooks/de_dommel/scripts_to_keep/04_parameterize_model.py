@@ -92,36 +92,35 @@ if not profile_gpkg.exists():
 
     data = []
     for profiel_id, df in profielpunt_gdf.groupby(PROFIEL_ID_COLUMN):
-        if not df.empty:
-            if profiel_id in profiellijn_gdf.index:
-                lowest_point = df.at[df[PROFIEL_HOOGTE_COLUMN].idxmin(), "geometry"]
-                containing_area_df = area_df[area_df.contains(lowest_point)]
-                if (not containing_area_df.empty) | (len(containing_area_df) > 1):
-                    area_poly = containing_area_df.iloc[0].geometry
-                    print(profiel_id)
-                    profiel_geom = profiellijn_gdf.at[profiel_id, "geometry"]
-                    breedte = profiellijn_gdf.at[profiel_id, PROFIEL_BREEDTE_COLUMN]
-                    profiel_geom = profiel_geom.intersection(area_poly)
-                    if isinstance(profiel_geom, MultiLineString):
-                        geoms = [i for i in profiel_geom.geoms if hydroobject_gdf.intersects(i).any()]
-                    else:
-                        geoms = [profiel_geom]
+        if not df.empty and profiel_id in profiellijn_gdf.index:
+            lowest_point = df.at[df[PROFIEL_HOOGTE_COLUMN].idxmin(), "geometry"]
+            containing_area_df = area_df[area_df.contains(lowest_point)]
+            if (not containing_area_df.empty) | (len(containing_area_df) > 1):
+                area_poly = containing_area_df.iloc[0].geometry
+                print(profiel_id)
+                profiel_geom = profiellijn_gdf.at[profiel_id, "geometry"]
+                breedte = profiellijn_gdf.at[profiel_id, PROFIEL_BREEDTE_COLUMN]
+                profiel_geom = profiel_geom.intersection(area_poly)
+                if isinstance(profiel_geom, MultiLineString):
+                    geoms = [i for i in profiel_geom.geoms if hydroobject_gdf.intersects(i).any()]
+                else:
+                    geoms = [profiel_geom]
 
-                    bodemhoogte = df[PROFIEL_HOOGTE_COLUMN].min()
-                    insteekhoogte = df[PROFIEL_HOOGTE_COLUMN].max()
-                    waterlijnhoogte = df[df.within(area_poly)][PROFIEL_HOOGTE_COLUMN].max()
+                bodemhoogte = df[PROFIEL_HOOGTE_COLUMN].min()
+                insteekhoogte = df[PROFIEL_HOOGTE_COLUMN].max()
+                waterlijnhoogte = df[df.within(area_poly)][PROFIEL_HOOGTE_COLUMN].max()
 
-                    data += [
-                        {
-                            "profiel_id": profiel_id,
-                            "bodemhoogte": bodemhoogte,
-                            "insteekhoogte": insteekhoogte,
-                            "waterlijnhoogte": waterlijnhoogte,
-                            "breedte": breedte,
-                            "geometry": geom,
-                        }
-                        for geom in geoms
-                    ]
+                data += [
+                    {
+                        "profiel_id": profiel_id,
+                        "bodemhoogte": bodemhoogte,
+                        "insteekhoogte": insteekhoogte,
+                        "waterlijnhoogte": waterlijnhoogte,
+                        "breedte": breedte,
+                        "geometry": geom,
+                    }
+                    for geom in geoms
+                ]
 
     profile_df = gpd.GeoDataFrame(data, crs=profielpunt_gdf.crs)
     profile_df = profile_df[~profile_df.is_empty]
@@ -149,10 +148,7 @@ def get_area_and_profile(node_id):
     if area_geometry is None:
         links_select_df = model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)]
         selected_profiles_df = profile_df[profile_df.intersects(links_select_df.union_all())]
-        if selected_profiles_df.empty:
-            width = 2
-        else:
-            width = selected_profiles_df.length.mean()
+        width = 2 if selected_profiles_df.empty else selected_profiles_df.length.mean()
         area_geometry = links_select_df.buffer(width / 2).union_all()
 
     # select profile
@@ -219,7 +215,7 @@ for row in model.node.df[model.node.df.meta_object_type == "stuw"].itertuples():
 
     # get upstream, if at flowboundary downstream profile
     basin_node_id = model.upstream_node_id(node_id)
-    if not model.node.df.at[basin_node_id, "node_type"] == "Basin":
+    if model.node.df.at[basin_node_id, "node_type"] != "Basin":
         basin_node_id = model.downstream_node_id(node_id)
 
     profile = profile_df.set_index("profiel_id").loc[model.node.df.at[basin_node_id, "meta_profile_id"]]
@@ -275,7 +271,7 @@ for row in model.node.df[model.node.df.meta_object_type == "duikersifonhevel"].i
 
     # get upstream, if at flowboundary downstream profile
     basin_node_id = model.upstream_node_id(node_id)
-    if not model.node.df.at[basin_node_id, "node_type"] == "Basin":
+    if model.node.df.at[basin_node_id, "node_type"] != "Basin":
         basin_node_id = model.downstream_node_id(node_id)
 
     profile = profile_df.set_index("profiel_id").loc[model.node.df.at[basin_node_id, "meta_profile_id"]]
@@ -312,10 +308,7 @@ for row in model.node.df[model.node.df.meta_object_type == "duikersifonhevel"].i
     # get shape
     shape = kdu[KDU_SHAPE_COLUMN]
 
-    if pd.isna(shape):
-        shape = "rectangle"
-    else:
-        shape = KDU_SHAPE_MAP[shape]
+    shape = "rectangle" if pd.isna(shape) else KDU_SHAPE_MAP[shape]
 
     # update model
     data = get_tabulated_rating_curve(
@@ -409,7 +402,7 @@ for row in model.node.df[model.node.df.node_type == "Outlet"].itertuples():
 
     # get upstream, if at flowboundary downstream profile
     basin_node_id = model.upstream_node_id(node_id)
-    if not model.node.df.at[basin_node_id, "node_type"] == "Basin":
+    if model.node.df.at[basin_node_id, "node_type"] != "Basin":
         basin_node_id = model.downstream_node_id(node_id)
 
     profile = profile_df.set_index("profiel_id").loc[model.node.df.at[basin_node_id, "meta_profile_id"]]

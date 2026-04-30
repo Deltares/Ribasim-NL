@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import geopandas as gpd
@@ -11,7 +10,7 @@ cloud = CloudStorage()
 # Ensure the directory for post_processed_path exists
 authority = "WetterskipFryslan"
 post_processed_dir = Path(cloud.joinpath(authority, "verwerkt/Data_postprocessed"))
-os.makedirs(post_processed_dir, exist_ok=True)
+post_processed_dir.mkdir(parents=True, exist_ok=True)
 
 # Define the full path for the GeoPackage file
 post_processed_path = post_processed_dir / f"{authority}.gpkg"
@@ -36,7 +35,7 @@ def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
 
 
 def store_data(waterschap, output_gpkg_path):
-    for key in waterschap.keys():
+    for key in waterschap:
         waterschap[str(key)].to_file(output_gpkg_path, layer=str(key), driver="GPKG")
 
 
@@ -113,7 +112,7 @@ others = gdf[~gdf["polder"].isin(["Boezem", "Boezem_to_merge"])].copy()
 merged_boezems = []
 
 # For each boezem_to_merge, find ONE boezem it touches
-for idx, row in to_merge.iterrows():
+for _idx, row in to_merge.iterrows():
     # Create a temporary buffer to enlarge geometry slightly
     buffered_geom = row.geometry.buffer(1)
 
@@ -262,7 +261,7 @@ variables = ["aggregation_area", "peilgebied", "stuw", "gemaal", "duikersifonhev
 for var in variables:
     temp = Wetterskip[var]
 
-    for column in temp.keys():
+    for column in temp:
         if column in ["globalid", "code"]:
             temp_column = temp[column]
 

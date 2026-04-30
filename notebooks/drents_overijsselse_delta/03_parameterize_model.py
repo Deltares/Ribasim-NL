@@ -61,7 +61,7 @@ joined = gpd.sjoin(outlet_gdf, inlaten_gdf, how="inner", predicate="intersects")
 if joined.empty:
     print("Geen intersectie gevonden tussen buffered outlet-punten en inlaten-lijnen.")
 else:
-    for node_id, row in joined.iterrows():
+    for node_id, _row in joined.iterrows():
         model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, ["meta_categorie"]] = "Inlaat"
 
 node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()
@@ -87,13 +87,13 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "flow_rate"] 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "meta_categorie"] = "Inlaat"
 model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 385, "flow_rate"] = 1.0
-model.merge_basins(basin_id=1763, to_basin_id=1764, are_connected=False)
-model.merge_basins(basin_id=2474, to_basin_id=2185, are_connected=False)
-model.merge_basins(basin_id=2011, to_basin_id=2008, are_connected=True)
-model.merge_basins(basin_id=56, to_basin_id=59, are_connected=True)
-model.merge_basins(basin_id=1681, to_basin_id=1717, are_connected=True)
-model.merge_basins(basin_id=2348, to_basin_id=1756, are_connected=False)
-model.merge_basins(basin_id=2192, to_basin_id=2194, are_connected=False)
+model.merge_basins(node_id=1763, to_node_id=1764, are_connected=False)
+model.merge_basins(node_id=2474, to_node_id=2185, are_connected=False)
+model.merge_basins(node_id=2011, to_node_id=2008, are_connected=True)
+model.merge_basins(node_id=56, to_node_id=59, are_connected=True)
+model.merge_basins(node_id=1681, to_node_id=1717, are_connected=True)
+model.merge_basins(node_id=2348, to_node_id=1756, are_connected=False)
+model.merge_basins(node_id=2192, to_node_id=2194, are_connected=False)
 
 
 # %%

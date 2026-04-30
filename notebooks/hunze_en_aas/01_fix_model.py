@@ -4,7 +4,7 @@ import inspect
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, tabulated_rating_curve
+from ribasim.nodes import basin, level_boundary, outlet, tabulated_rating_curve
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -36,7 +36,6 @@ ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="
 
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [

@@ -196,7 +196,7 @@ basin = shapely.union_all(
     ]
 )
 polygons = geometry.split_basin(basin, split_line_string)
-for basin_id, polygon in zip(basin_ids, polygons.geoms):
+for basin_id, polygon in zip(basin_ids, polygons.geoms, strict=True):
     ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = polygon
 
 # change unknown streefpeilen to a default streefpeil
@@ -729,15 +729,9 @@ ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
 run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+ribasim_model.update_state()
+ribasim_model.basin.state.write()
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
-
-# write model
-ribasim_param.write_ribasim_model_GoodCloud(
-    ribasim_model=ribasim_model,
-    work_dir=work_dir,
-    waterschap=waterschap,
-    include_results=True,
-)

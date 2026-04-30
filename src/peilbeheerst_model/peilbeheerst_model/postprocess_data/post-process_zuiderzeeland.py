@@ -50,7 +50,7 @@ gdf_hws = gpd.read_file(hws_path)
 gdf_buffer = gpd.read_file(buffer_path)
 
 
-Zuiderzeeland["peilgebied"].globalid.is_unique
+assert Zuiderzeeland["peilgebied"].globalid.is_unique
 
 
 # ## Select waterschap boundaries and clip hws layer
@@ -98,18 +98,11 @@ Zuiderzeeland["peilgebied"]
 # Add occurence to geodataframe
 peilgebieden_cat = []
 
-for index, row in Zuiderzeeland["peilgebied"].iterrows():
-    if "LVA.01" in row.code:
+for _index, row in Zuiderzeeland["peilgebied"].iterrows():
+    if "LVA.01" in row.code or "3.01" in row.code:
         peilgebieden_cat.append(1)
         print("yes")
-    elif "3.01" in row.code:
-        peilgebieden_cat.append(1)
-        print("yes")
-    elif "LAGE AFDELING" in row.code:
-        print("yes")
-        peilgebieden_cat.append(1)
-
-    elif "HOGE AFDELING" in row.code:
+    elif "LAGE AFDELING" in row.code or "HOGE AFDELING" in row.code:
         print("yes")
         peilgebieden_cat.append(1)
 
@@ -196,9 +189,9 @@ if remove_cat_2:
 # ## Store output
 
 
-Zuiderzeeland["peilgebied"].globalid.is_unique
+assert Zuiderzeeland["peilgebied"].globalid.is_unique
 
 
-for key in Zuiderzeeland.keys():
+for key in Zuiderzeeland:
     print(key)
     Zuiderzeeland[str(key)].to_file(f"{output_folder}/{waterschap2}.gpkg", layer=str(key), driver="GPKG")

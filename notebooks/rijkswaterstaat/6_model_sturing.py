@@ -50,7 +50,7 @@ def read_qq_curve(kwk_df):
 def read_kwk_properties(kwk_df):
     properties = kwk_df[0:12][["Eigenschap", "Waarde"]].dropna().set_index("Eigenschap")["Waarde"]
 
-    if "Kunstwerkcode" in properties.keys():
+    if "Kunstwerkcode" in properties:
         properties["Kunstwerkcode"] = str(properties["Kunstwerkcode"])
     return properties
 
@@ -64,7 +64,7 @@ def read_flow_kwargs(kwk_properties, include_crest_level=True):
     }
 
     kwargs = kwk_properties.rename(mapper).to_dict()
-    if "flow_rate" in kwargs.keys():
+    if "flow_rate" in kwargs:
         kwargs["max_flow_rate"] = kwargs["flow_rate"]
     kwargs = {
         k: [v]

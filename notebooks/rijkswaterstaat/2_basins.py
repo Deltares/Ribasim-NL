@@ -52,10 +52,7 @@ for name, df in watervlak_diss_gdf[watervlak_diss_gdf.categorie == "nationaal ho
     # dissolve touching polygons (magic!)
     geometry = df.geometry.buffer(0.1).union_all().buffer(-0.1)
     # make sure we have a list of single polygons
-    if isinstance(geometry, MultiPolygon):
-        geometries = list(geometry.geoms)
-    else:
-        geometries = [geometry]  # that is 1 Polygon
+    geometries = list(geometry.geoms) if isinstance(geometry, MultiPolygon) else [geometry]
     # add to data
     data["geometry"] += geometries
     data["naam"] += [name] * len(geometries)
@@ -79,11 +76,11 @@ for line in merge_lines_gdf.itertuples():
     try:
         idx_from = basins_gdf[basins_gdf.contains(point_from)].index[0]
     except IndexError:
-        raise ValueError(f"line with index {line.Index} does not start in a polygon")
+        raise IndexError(f"line with index {line.Index} does not start in a polygon") from None
     try:
         idx_to = basins_gdf[basins_gdf.contains(point_to)].index[0]
     except IndexError:
-        raise ValueError(f"line with index {line.Index} does not end in a polygon")
+        raise IndexError(f"line with index {line.Index} does not end in a polygon") from None
     if idx_from == idx_to:
         print(f"line with index {line.Index} is contained within a polygon")
     basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].union_all()
@@ -172,7 +169,7 @@ for row in basins_gdf.itertuples():
             invert_level = elevation_df.streefpeil.max()
             bottom_level = elevation_df.bodemhoogte.min()
             if bottom_level > invert_level:
-                raise ValueError(f"bottom_level > invert_level: {bottom_level} > {invert_level}")
+                raise ValueError(f"bottom_level > invert_level: {bottom_level} > {invert_level}") from None
             bottom_area = row.geometry.buffer(-((invert_level - bottom_level) * 2)).area
 
             df = pd.DataFrame(

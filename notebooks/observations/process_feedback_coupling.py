@@ -1,5 +1,6 @@
 # %%
 import os
+from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -25,12 +26,12 @@ locatie_koppeltabellen = cloud.joinpath("Basisgegevens/resultaatvergelijking/kop
 # model_folder = cloud.joinpath("Rijkswaterstaat/modellen", latest_lhm_version.path_string)
 
 
-model_folder_temporary = os.path.join(
-    r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_werkend\lhm_coupled", "lhm-coupled.toml"
+model_folder_temporary = (
+    Path(r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_werkend\lhm_coupled") / "lhm-coupled.toml"
 )
 
-model_folder_temporary = os.path.join(
-    r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_2017\lhm_ctwq_compat", "lhm_ctwq.toml"
+model_folder_temporary = (
+    Path(r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_2017\lhm_ctwq_compat") / "lhm_ctwq.toml"
 )
 
 lhm_model = Model.read(filepath=model_folder_temporary)
@@ -159,7 +160,7 @@ updated_koppeltabel = update_koppeltabel_with_feedback(
 # path
 output_path = locatie_koppeltabellen
 folder, filename = os.path.split(input_koppeltabel_path)
-basename, ext = os.path.splitext(filename)
+basename, ext = Path(filename).stem, Path(filename).suffix
 base_without_feedback = basename.split("_Feedback")[0]
 new_filename = f"{base_without_feedback}_Feedback_Verwerkt_{partij}{ext}"
 path_recente_koppeltabel = cloud.joinpath(output_path, new_filename)

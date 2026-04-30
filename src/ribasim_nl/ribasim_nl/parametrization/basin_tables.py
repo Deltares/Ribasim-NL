@@ -52,11 +52,13 @@ def update_basin_static(
 
 def update_basin_profile(
     model: Model,
-    percentages_map: dict[str, int] = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2},
+    percentages_map: dict[str, int] | None = None,
     default_percentage: int = 10,
     profile_depth: int = 3,
 ) -> None:
     # read profile from basin-table
+    if percentages_map is None:
+        percentages_map = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2}
     assert model.basin.area.df is not None
     profile = model.basin.area.df.copy()
 

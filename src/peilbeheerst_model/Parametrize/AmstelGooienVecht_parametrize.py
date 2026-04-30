@@ -1,18 +1,16 @@
 """Parameterisation of water board: Amstel, Gooi en Vecht."""
 
 import datetime
-import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim import Node
+from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -25,7 +23,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -87,8 +85,8 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
 # create work_dir/parameterized
-parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-os.makedirs(parameterized, exist_ok=True)
+parameterized = work_dir / f"{waterschap}_parameterized/"
+parameterized.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -391,7 +389,6 @@ to_supply = (
     338,
     348,
     390,
-    417,
     425,
     435,
     450,
@@ -445,26 +442,23 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
+# # Add flushing data
+# flush = Flushing(
+#     ribasim_model,
+#     lhm_flushing_path="AmstelGooienVecht/aangeleverd/Na_levering/AmstelGooienVecht_doorspoeling.gpkg",
+#     flushing_layer="AmstelGooienVecht_flushing",
+#     flushing_id="flushing_id",
+#     flushing_col="doorsp_mmj",
+# )
+# _, df_demand = flush.add_flushing()
+# from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
+
 add_controllers_to_connector_nodes(
     model=ribasim_model,
     node_functions_df=from_to_node_function_table,
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
-
-# Add flushing data
-flush = Flushing(
-    ribasim_model,
-    lhm_flushing_path="AmstelGooienVecht/aangeleverd/Na_levering/AmstelGooienVecht_doorspoeling.gpkg",
-    flushing_layer="AmstelGooienVecht_flushing",
-    flushing_id="flushing_id",
-    flushing_col="doorsp_mmj",
-)
-
-_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
-for row in df_demand[df_demand.demand_type == "flow"].itertuples():
-    from_to_node_function_table.at[row.nid, "function"] = "flushing"
-    from_to_node_function_table.at[row.nid, "demand_flow_rate"] = row.demand
 
 # add increased flushing at the location of Zeesluis
 from_to_node_function_table.loc[from_to_node_function_table.index == zeesluis_node_id, "demand"] = 5  # 5 m3/s
@@ -495,11 +489,10 @@ ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=pump_co
     pump_copy, on="node_id", how="left"
 )
 
-# FIXME: Avoid using `ribasim_model.node_table()` (deprecated)
 # there are some duplicates in the discrete control? Remove them
 control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 dup_control = []
-all_nodes = ribasim_model.node_table().df[["node_type"]]
+all_nodes = ribasim_model.node.df[["node_type"]]
 for to_node_id, group in control.groupby("to_node_id"):
     if len(group) == 1:
         continue
@@ -622,16 +615,10 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-ribasim_param.tqdm_subprocess(["ribasim", ribasim_work_dir_model_toml], print_other=False, suffix="init")
+run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+ribasim_model.update_state()
+ribasim_model.basin.state.write()
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
-
-# write model
-ribasim_param.write_ribasim_model_GoodCloud(
-    ribasim_model=ribasim_model,
-    work_dir=work_dir,
-    waterschap=waterschap,
-    include_results=True,
-)

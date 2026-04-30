@@ -31,19 +31,53 @@ ARROW_LENGTH = {
     "Noorderzijlvest": 1200,
     "AaenMaas": 1600,
     "Limburg": 1400,
-    "DeDommel": 1400,
+    "DeDommel": 1200,
     "Vechtstromen": 1400,
+    "DrentsOverijsselseDelta": 2000,
     "HunzeenAas": 1400,
+    "RijnenIJssel": 1400,
 }
 OFFSETS = {
     "AaenMaas": {"xmin": 3000, "ymin": 6000, "ymax": 5000},
     "Noorderzijlvest": {"xmin": 20000, "ymin": 4500, "ymax": -7000},
     "StichtseRijnlanden": {"xmin": 3000, "ymin": 2000, "ymax": 1000, "xmax": 1000},
 }
-AUTHORITIES = ["HunzeenAas"]
+AUTHORITIES = ["DrentsOverijsselseDelta"]
 ADD_TOP10_NL = {
+    "DrentsOverijsselseDelta": [
+        "Overijsselsch Kanaal (Zijkanaal Lemelerveld-Raalte-Deventer)",
+        "Basiskanaal",
+        "IJssel",
+        "Soestwetering",
+        "Overijsselsch Kanaal",
+        "Zwarte Water",
+        "Overijsselsche Vecht",
+        "Reest",
+        "De Reest",
+        "Zwarte Meer",
+        "Wold Aa",
+        "Ommerkanaal",
+        "Ketelmeer",
+        "Reevediep",
+        "Nieuwe Kanaal",
+        "Meppelerdiep",
+        "Hoogeveensche Vaart",
+        "Drentsche Hoofdvaart",
+        "Omgelegde Hoogeveense Vaart",
+        "Omgelegde Hoogeveensche Vaart",
+        "Verlengde Hoogeveensche Vaart",
+        "Oude Vaart",
+        "Wold Aa",
+        "Oude Diep",
+        "Beilervaart",
+        "Noord-Willemskanaal",
+        "Oranjekanaal",
+        "Dolderkanaal",
+        "Vollenhoverkanaal",
+    ],
     "Vechtstromen": [
         "Maas",
+        "Mariënberg Vechtkanaal",
         "Twentekanaal (Zijkanaal naar Almelo)",
         "Twentekanaal (Kanaal Zutphen-Enschede)",
         "Nieuwe Graven",
@@ -53,6 +87,7 @@ ADD_TOP10_NL = {
         "Loolee",
         "Doorbraak",
         "Bornsche Beek",
+        "Veenleiding",
         "Oude Bornsche Beek",
         "Hagmolenbeek",
         "Bolscherbeek",
@@ -343,6 +378,29 @@ ADD_TOP10_NL = {
         "Oude Eemskanaal",
         "Ter Apel-kanaal",
     ],
+    "RijnenIJssel": [
+        "Twentekanaal (Kanaal Zutphen-Enschede)",
+        "IJssel",
+        "Schipbeek",
+        "Eefse Beek",
+        "Dortherbeek",
+        "Berkel",
+        "Oude Rijn",
+        "Bolksbeek",
+        "Grote Waterleiding",
+        "Oude IJssel",
+        "Veengoot",
+        "Grote Beek",
+        "Pannerdenschkanaal",
+        "Neder-Rijn",
+        "Bijlandsch Kanaal",
+        "Boven-Rijn",
+        "Slinge",
+        "Boven Slinge",
+        "Keizersbeek",
+        "Bielheimerbeek",
+        "Aa-strang",
+    ],
 }
 
 
@@ -359,7 +417,7 @@ def fix_geometry(geometry):
         return Polygon(geometry.exterior)
 
 
-def generate_mask_box(polygon: Polygon, offsets: dict["str", int]) -> Polygon:
+def generate_mask_box(polygon: Polygon, offsets: dict[str, int]) -> Polygon:
     xmin, ymin, xmax, ymax = polygon.bounds
     xmin -= offsets.get("xmin", 5000)
     ymin -= offsets.get("ymin", 5000)
@@ -412,9 +470,9 @@ for authority in AUTHORITIES:
     gpd.GeoSeries([poly_mask], crs=28992).to_file(system_gpkg, layer="mask")
 
     # get Top10NL
-    if authority in ADD_TOP10_NL.keys():
+    if authority in ADD_TOP10_NL:
         df = gpd.read_file(
-            cloud.joinpath(r"Basisgegevens\Top10NL\top10nl_Compleet.gpkg"),
+            cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg"),
             layer="top10nl_waterdeel_vlak",
             bbox=mask_box.bounds,
         )

@@ -66,7 +66,7 @@ dependencies = [
 
 [tool.uv.sources]
 # ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "32534d99b27a1d6b73a34c9b1451f974542a81bc", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "07344fcf4b856e3de5c79cb7e66179e895c8ab67", subdirectory = "python/ribasim" }
 # ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 bokeh_helpers = { workspace = true }
 hydamo = { workspace = true }
@@ -85,7 +85,24 @@ line-length = 120
 
 [tool.ruff.lint]
 # See https://docs.astral.sh/ruff/rules/
-select = ["D", "E", "F", "NPY", "PD", "C4", "I", "UP", "RUF"]
+select = [
+    "B",
+    "C4",
+    "D",
+    "E",
+    "F",
+    "FURB",
+    "I",
+    "LOG",
+    "NPY",
+    "PD",
+    "PERF",
+    "PTH",
+    "RUF",
+    "S",
+    "SIM",
+    "UP",
+]
 ignore = [
     "D1",
     "D400",
@@ -101,6 +118,9 @@ ignore = [
     "PD011",
     "PD013",
     "PD015",
+    "S101",  # assert used pervasively for data validation in this modeling project
+    "S603",  # subprocess calls to known commands (uv, ribasim, dvc)
+    "S607",  # partial executable paths for known commands
 ]
 fixable = ["ALL"]
 

@@ -56,6 +56,27 @@ def test_source(cloud):
         assert source in available_sources
 
 
+def test_propfind_distinguishes_dirs_and_files(cloud):
+    """Test that _propfind correctly identifies directories vs files using WebDAV resourcetype.
+
+    The LHM zarr store 'LHM_433_budget.zip' is a directory (not a zip file), and zarr metadata
+    files like '.zgroup' and '.zmetadata' are files (not directories). The old heuristic based on
+    file extensions got both of these wrong.
+    """
+    url = cloud.joinurl("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    items, dir_names = cloud._propfind(url)
+
+    # zarr dotfiles must be recognized as files, not directories
+    zarr_dotfiles = {".zgroup", ".zmetadata", ".zattrs"}
+    for dotfile in zarr_dotfiles & set(items):
+        assert dotfile not in dir_names, f"{dotfile} should be a file, not a directory"
+
+    # data variable subdirectories (e.g. bdgriv_sys1) should be directories
+    for item in items:
+        if item.startswith("bdg"):
+            assert item in dir_names, f"{item} should be a directory"
+
+
 def test_models(cloud):
     # check if we can find uploaded models
     models = cloud.uploaded_models("Rijkswaterstaat")
@@ -65,8 +86,8 @@ def test_models(cloud):
 def test_settings():
     assert isinstance(settings, Settings)
 
-    os.environ["RIBASIM_NL_CLOUD_PASS"] = "test"
+    os.environ["RIBASIM_NL_CLOUD_PASS"] = "test"  # noqa: S105
     nsettings = Settings(_env_file="foo.env", ribasim_home=Path("custom_ribasim"))
     assert nsettings.ribasim_home == Path("custom_ribasim")
     assert nsettings.ribasim_nl_data_dir == Path("data")
-    assert nsettings.ribasim_nl_cloud_pass == "test"
+    assert nsettings.ribasim_nl_cloud_pass == "test"  # noqa: S105

@@ -10,8 +10,9 @@ install:
     uv tool install prek
     uv tool install ruff
     uv tool install dvc[s3,webdav]
-    uv run dvc pull
     uv run prek install -f
+    uv run dvc pull
+
 
 repro:
   uv run dvc repro

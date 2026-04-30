@@ -21,6 +21,8 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+
+
 parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
@@ -139,10 +141,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] < 30:
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] < 30 else None
     levels += [level]
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -174,10 +173,7 @@ for node_id in node_ids:
 
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] < 30:  # 🔹 Drempelwaarde voor max peil
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] < 30 else None  # Drempelwaarde voor max peil
     else:
         level = None
 
@@ -265,10 +261,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] < 30:
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] < 30 else None
     levels += [level]
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -293,7 +286,9 @@ ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
 
 # Keep only those that exist in min_upstream_level
 valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
-streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid_ds.values, valid_ds.index)))
+streefpeil = min_upstream_level.loc[valid_ds.values].rename(
+    index=dict(zip(valid_ds.values, valid_ds.index, strict=True))
+)
 streefpeil = streefpeil.groupby(streefpeil.index).min()
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"

@@ -32,6 +32,35 @@ model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, precipitation_mm_per_day=1)
 
+
+# fixes:
+# Gemaal Westerveld is een inlaat gemaal en een uitlaat ernaast, dus richting omdraaien evt takken toevoegen
+for link_id in [
+    938,
+    2963,
+    2962,
+    2144,
+]:
+    model.reverse_link(link_id=link_id)
+
+# fixes:
+# Basin 1653 is verkeerd, overlapping met 1583!
+
+# De Haar #553 verkeerde richting, dus omdraaien
+
+# De Heuvel # 617 verkeerde riching, dus omdraaien
+
+# Outlet Zedemuden moet kunnen inlaten, dus richting omdraaien evt takken toevoegen
+for link_id in [
+    3087,
+    3088,
+]:
+    model.reverse_link(link_id=link_id)
+
+# Toevoegen inlaat bij Stroink #547: Overleggen!
+# Buitenpolder achter Kuine #701 kan niet worden aangevoerd?
+# Wordt de Reest #1930 gevoed door Ommerkanaal (Lutterhoofddiep? 1m3/s)
+
 # alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
 update_levels = model.basin_outstate.df.set_index("node_id")["level"]
 basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
@@ -222,6 +251,5 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()

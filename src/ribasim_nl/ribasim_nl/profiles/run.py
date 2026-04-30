@@ -1,8 +1,8 @@
 """Definition of profiles per water authority."""
 
 import logging
-import pathlib
 import typing
+from pathlib import Path
 
 import geopandas as gpd
 import momepy
@@ -46,9 +46,9 @@ def main(
     /,
     *,
     hydrotope_table: ht.HydrotopeTable,
-    cloud: CloudStorage = CloudStorage(),
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: None = None,
-    wd_intermediate_output: pathlib.Path | None = None,
+    wd_intermediate_output: Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
@@ -61,9 +61,9 @@ def main(
     /,
     *,
     hydrotope_table: ht.HydrotopeTable,
-    cloud: CloudStorage = CloudStorage(),
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: str,
-    wd_intermediate_output: pathlib.Path | None = None,
+    wd_intermediate_output: Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
@@ -71,9 +71,9 @@ def main(
 def main(
     *data: gpd.GeoDataFrame,
     hydrotope_table: ht.HydrotopeTable,
-    cloud: CloudStorage = CloudStorage(),
+    cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: str | None = None,
-    wd_intermediate_output: pathlib.Path | None = None,
+    wd_intermediate_output: Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Full profile-generating workflow.
@@ -164,7 +164,7 @@ def main(
     # > simplification of geometries: removing duplicates
     simplify_geometries: bool = kwargs.get("simplify_geometries", True)
     # > BGT-data
-    fn_bgt: pathlib.Path | str | None = kwargs.get("fn_bgt")
+    fn_bgt: Path | str | None = kwargs.get("fn_bgt")
     bgt_buffer: float = kwargs.get("bgt_buffer", 0.1)
     bgt_full_coverage: bool = kwargs.get("bgt_full_coverage", True)
     # > network patching
@@ -428,7 +428,7 @@ def _validate_hydro_objects_main_routing(hydro_objects: gpd.GeoDataFrame, col: s
             raise ValueError(msg)
 
 
-def _get_bgt_data(fn_bgt: pathlib.Path | str | None, basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def _get_bgt_data(fn_bgt: Path | str | None, basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Get BGT-data.
 
     Define the geospatial filter for the BGT-data based on the convex hull of the basins. This ensures that all basins
@@ -443,7 +443,7 @@ def _get_bgt_data(fn_bgt: pathlib.Path | str | None, basins: gpd.GeoDataFrame) -
     geo_filter = typing.cast(shapely.Polygon, shapely.MultiPolygon(basins.convex_hull.values).convex_hull)  # pyrefly: ignore[bad-argument-type]
     if fn_bgt is None:
         return bgt.download_bgt_water(geo_filter=geo_filter)
-    fn_bgt = pathlib.Path(fn_bgt)
+    fn_bgt = Path(fn_bgt)
     return bgt.get_water_surfaces(fn_bgt.parent, fn=fn_bgt.name, geo_filter=geo_filter, write=True)
 
 
@@ -474,7 +474,7 @@ def _label_main_routing_from_network(
     crossings: gpd.GeoDataFrame,
     buffer: float,
     internal: bool,
-    wd: pathlib.Path | None,
+    wd: Path | None,
 ) -> set[int]:
     """Labelling of main-route based on shortest path(s) between crossings.
 
@@ -492,7 +492,7 @@ def _label_main_routing_from_network(
     :type crossings: geopandas.GeoDataFrame
     :type buffer: float
     :type internal: bool
-    :type wd: pathlib.Path | None
+    :type wd: Path | None
 
     :return: hydro-objects indices to label as main route
     :rtype: set[int]
@@ -504,7 +504,7 @@ def _label_main_routing_from_network(
     error_collector: list[int] = []
 
     # find main routes per basin
-    for node_id, basin in zip(basins["node_id"].values, basins.geometry.values):
+    for node_id, basin in zip(basins["node_id"].values, basins.geometry.values, strict=True):
         # data selections
         subset_hydro_objects = hydro_objects[hydro_objects.intersects(basin)]
         subset_crossings = path_finder.select_crossings(basin, crossings, buffer=buffer, internal=internal)

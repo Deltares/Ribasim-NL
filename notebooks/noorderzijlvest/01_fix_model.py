@@ -5,7 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from networkx import all_shortest_paths, shortest_path
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
+from ribasim.nodes import basin, level_boundary, outlet, pump
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.junctions import junctionify
@@ -68,7 +68,6 @@ network.to_file(cloud.joinpath(authority, "verwerkt/network.gpkg"))
 
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -157,26 +156,26 @@ for action in [
         method(**kwargs)
 
 
-model.merge_basins(basin_id=1231, to_basin_id=1280)
-model.merge_basins(basin_id=1179, to_basin_id=1184)
-model.merge_basins(basin_id=1184, to_basin_id=1280)
-model.merge_basins(basin_id=1034, to_basin_id=1280)
-model.merge_basins(basin_id=1279, to_basin_id=1182)
-model.merge_basins(basin_id=1181, to_basin_id=1182)
-model.merge_basins(basin_id=1408, to_basin_id=1182)
-model.merge_basins(basin_id=1028, to_basin_id=1378)
-model.merge_basins(basin_id=1373, to_basin_id=1378)
-model.merge_basins(basin_id=1032, to_basin_id=1182)
+model.merge_basins(node_id=1231, to_node_id=1280)
+model.merge_basins(node_id=1179, to_node_id=1184)
+model.merge_basins(node_id=1184, to_node_id=1280)
+model.merge_basins(node_id=1034, to_node_id=1280)
+model.merge_basins(node_id=1279, to_node_id=1182)
+model.merge_basins(node_id=1181, to_node_id=1182)
+model.merge_basins(node_id=1408, to_node_id=1182)
+model.merge_basins(node_id=1028, to_node_id=1378)
+model.merge_basins(node_id=1373, to_node_id=1378)
+model.merge_basins(node_id=1032, to_node_id=1182)
 
 # # Van Starkenborghkanaal mergen Manning knopen weg!
-model.merge_basins(basin_id=1223, to_basin_id=1307)
-model.merge_basins(basin_id=1307, to_basin_id=1244)
-model.merge_basins(basin_id=1244, to_basin_id=1186)
-model.merge_basins(basin_id=1292, to_basin_id=1186)
-model.merge_basins(basin_id=1088, to_basin_id=1186)
+model.merge_basins(node_id=1223, to_node_id=1307)
+model.merge_basins(node_id=1307, to_node_id=1244)
+model.merge_basins(node_id=1244, to_node_id=1186)
+model.merge_basins(node_id=1292, to_node_id=1186)
+model.merge_basins(node_id=1088, to_node_id=1186)
 
-model.merge_basins(basin_id=1144, to_basin_id=1124)
-model.merge_basins(basin_id=1077, to_basin_id=1124)
+model.merge_basins(node_id=1144, to_node_id=1124)
+model.merge_basins(node_id=1077, to_node_id=1124)
 
 
 # %% assign Basin / Area using KWKuit
@@ -219,10 +218,7 @@ for node_id in model.basin.node.df.index:
     network._graph.nodes[network_basin_node]["node_id"] = node_id
 
     upstream_node_ids = model.upstream_node_id(node_id)
-    if isinstance(upstream_node_ids, pd.Series):
-        upstream_node_ids = upstream_node_ids.to_list()
-    else:
-        upstream_node_ids = [upstream_node_ids]
+    upstream_node_ids = upstream_node_ids.to_list() if isinstance(upstream_node_ids, pd.Series) else [upstream_node_ids]
 
     downstream_node_ids = model.downstream_node_id(node_id)
     if isinstance(downstream_node_ids, pd.Series):
@@ -373,7 +369,7 @@ for row in model.flow_boundary.node.df.itertuples():
     )
 
     # remove old links and add 2 new
-    left_link_geometry, right_link_geometry = list(split_line(link_geometry, outlet_node_geometry).geoms)
+    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
 

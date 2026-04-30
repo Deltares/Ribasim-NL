@@ -567,7 +567,7 @@ ribasim_model.pump.static.df = ribasim_model.pump.static.df.drop(columns=pump_co
 # # there are some duplicates in the discrete control? Remove them
 # control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 # dup_control = []
-# all_nodes = ribasim_model.node_table().df[["node_type"]]
+# all_nodes = ribasim_model.node.df[["node_type"]]
 # for to_node_id, group in control.groupby("to_node_id"):
 #     if len(group) == 1:
 #         continue
@@ -680,15 +680,9 @@ ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
 run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+ribasim_model.update_state()
+ribasim_model.basin.state.write()
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
-
-# write model
-ribasim_param.write_ribasim_model_GoodCloud(
-    ribasim_model=ribasim_model,
-    work_dir=work_dir,
-    waterschap=waterschap,
-    include_results=True,
-)

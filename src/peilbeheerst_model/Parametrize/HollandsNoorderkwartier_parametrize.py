@@ -1,7 +1,6 @@
 """Parameterisation of water board: Hollands Noorderkwartier."""
 
 import datetime
-import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -87,8 +86,8 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
 # create work_dir/parameterized
-parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-os.makedirs(parameterized, exist_ok=True)
+parameterized = work_dir / f"{waterschap}_parameterized/"
+parameterized.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -371,7 +370,6 @@ to_flow_control = (
     701,
     741,
     758,
-    781,
     848,
     902,
     987,
@@ -411,9 +409,7 @@ to_supply = (
     499,
     531,
     549,
-    588,
     627,
-    670,
     695,
     700,
     712,
@@ -603,15 +599,9 @@ ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
 run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+ribasim_model.update_state()
+ribasim_model.basin.state.write()
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
-
-# write model
-ribasim_param.write_ribasim_model_GoodCloud(
-    ribasim_model=ribasim_model,
-    work_dir=work_dir,
-    waterschap=waterschap,
-    include_results=True,
-)

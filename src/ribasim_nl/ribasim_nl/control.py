@@ -117,9 +117,11 @@ def _target_level(
                     target_level = model.level_boundary.time.df.set_index("node_id").loc[[node_id], "level"].min()
 
             # read from static-table exist and node_id is in it
-            elif model.level_boundary.static.df is not None:
-                if node_id in model.level_boundary.static.df["node_id"].values:
-                    target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].min()
+            elif (
+                model.level_boundary.static.df is not None
+                and node_id in model.level_boundary.static.df["node_id"].values
+            ):
+                target_level = model.level_boundary.static.df.set_index("node_id").loc[[node_id], "level"].min()
 
             if (not allow_missing) and (target_level is None):
                 msg = f"Listen node: {node_id} not found in LevelBoundary.Time or LevelBoundary.Static table"
@@ -265,10 +267,8 @@ def add_and_connect_discrete_control_node(
 def get_node_table_with_from_to_node_ids(
     model: Model,
     node_ids: list[int] | None = None,
-    node_types: list[Literal["Pump", "Outlet", "ManningResistance", "TabulatedRatingCurve", "LinearResistance"]] = [
-        "Outlet",
-        "Pump",
-    ],
+    node_types: list[Literal["Pump", "Outlet", "ManningResistance", "TabulatedRatingCurve", "LinearResistance"]]
+    | None = None,
     max_iter=20,
 ) -> gpd.GeoDataFrame:
     """Get a node_df from selected connector-nodes, including upstream and downstream non-Junction type node_ids.
@@ -294,6 +294,8 @@ def get_node_table_with_from_to_node_ids(
         GeoDataFrame with node info including from_node_id and to_node_id
     """
     # add from_node_id and to_node_id to node_select_df
+    if node_types is None:
+        node_types = ["Outlet", "Pump"]
     _df = _read_link_table(model=model, link_type="flow")
     _from_node_id = _df.set_index("to_node_id")["from_node_id"]
     _to_node_id = _df.set_index("from_node_id")["to_node_id"]
@@ -397,7 +399,7 @@ def add_control_functions_to_connector_nodes(
                 except KeyError:
                     raise ValueError(
                         f'flushing node dict value should be {{"summer": float, "winter": float}}, got {value}'
-                    )
+                    ) from None
 
             else:
                 raise ValueError(
@@ -436,7 +438,7 @@ def add_control_functions_to_connector_nodes(
         )
 
     # check on flushing nodes
-    missing_flushing_nodes = [i for i in flushing_nodes.keys() if i not in all_nodes]
+    missing_flushing_nodes = [i for i in flushing_nodes if i not in all_nodes]
     if missing_flushing_nodes:
         raise ValueError(
             f"user-defined `flushing_nodes.keys()` not found in outflow+inflow+internal nodes: {missing_flushing_nodes}"
@@ -515,9 +517,9 @@ def add_control_functions_to_connector_nodes(
 def get_control_nodes_position_from_supply_area(
     model: Model,
     polygon: Polygon,
-    exclude_nodes: list[int] = [],
-    control_node_types: list[Literal["Outlet", "Pump"]] = ["Outlet", "Pump"],
-    ignore_intersecting_links: list[int] = [],
+    exclude_nodes: list[int] | None = None,
+    control_node_types: list[Literal["Outlet", "Pump"]] | None = None,
+    ignore_intersecting_links: list[int] | None = None,
 ) -> gpd.GeoDataFrame:
     """Get control nodes with nodes position relative to a supply area defined by a polygon.
 
@@ -553,6 +555,12 @@ def get_control_nodes_position_from_supply_area(
         In case intersecting links are found that are not managed by a node_type defined in `control_node_types`
     """
     # fix polygon, get exterior and polygonize so we won't miss anythin within area
+    if ignore_intersecting_links is None:
+        ignore_intersecting_links = []
+    if control_node_types is None:
+        control_node_types = ["Outlet", "Pump"]
+    if exclude_nodes is None:
+        exclude_nodes = []
     exterior = polygon.exterior
     polygon = Polygon(exterior)
 
@@ -1252,7 +1260,7 @@ def add_controllers_to_supply_area(
     level_difference_threshold: float = 0.02,
     flow_control_nodes: list[int] | None = None,
     exclude_nodes: list[int] | None = None,
-    control_node_types: list[Literal["Pump", "Outlet"]] = ["Pump", "Outlet"],
+    control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
     add_supply_nodes: bool = False,
@@ -1311,6 +1319,8 @@ def add_controllers_to_supply_area(
     gpd.GeoDataFrame
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand` for verification
     """
+    if control_node_types is None:
+        control_node_types = ["Pump", "Outlet"]
     flow_control_nodes = flow_control_nodes or []
     exclude_nodes = exclude_nodes or []
 

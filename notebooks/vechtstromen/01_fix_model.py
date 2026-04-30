@@ -687,7 +687,7 @@ model.link.add(
 
 # Samenvoegen basin-knopen Overijsselse Vecht & Coevorden Vechtkanaal
 for basin_id in [1845, 2244, 2006, 1846]:
-    model.merge_basins(basin_id=basin_id, to_basin_id=2222)
+    model.merge_basins(node_id=basin_id, to_node_id=2222)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391666745
 
@@ -703,7 +703,7 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1879, ["geometry"]] = Mul
 
 # merge basins 2186, 2173, 2022, 1611, 2185 in basin 1902
 for basin_id in [2186, 2173, 2022, 1611, 2185]:
-    model.merge_basins(basin_id=basin_id, to_basin_id=1902)
+    model.merge_basins(node_id=basin_id, to_node_id=1902)
 
 # verplaats 1902 iets bovenstrooms
 model.move_node(1902, hydroobject_gdf.at[6615, "geometry"].boundary.geoms[1])
@@ -727,11 +727,11 @@ model.link.add(model.manning_resistance[1058], model.basin[1590])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391672700
 
 # Merge basin 2176 in 1605
-model.merge_basins(basin_id=2176, to_basin_id=1605)
+model.merge_basins(node_id=2176, to_node_id=1605)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391726774
 # Merge basins 2206 in 1518
-model.merge_basins(basin_id=2206, to_basin_id=1518, are_connected=False)
+model.merge_basins(node_id=2206, to_node_id=1518, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391734144
 # dood takje uit Overijsselse Vecht
@@ -741,12 +741,12 @@ model.remove_node(1294, remove_links=True)
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391740603
 
 # Merge basin 2225 met 2304
-model.merge_basins(basin_id=2225, to_node_id=2304)
+model.merge_basins(node_id=2225, to_node_id=2304)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391815016
 
 # Wetteringe als laterale inflow
-model.merge_basins(basin_id=2231, to_node_id=1853)
+model.merge_basins(node_id=2231, to_node_id=1853)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391750536
 
@@ -761,7 +761,7 @@ model.link.add(model.basin[1442], model.pump[665])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391820198
 
 # Merge basin 2232 in 1591
-model.merge_basins(basin_id=2232, to_basin_id=1591)
+model.merge_basins(node_id=2232, to_node_id=1591)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391825301
 
@@ -771,7 +771,7 @@ model.update_node(2236, "LevelBoundary", data=[level_data])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391829471
 
 # Merge basin 2246 en 1419
-model.merge_basins(basin_id=2246, to_basin_id=1419)
+model.merge_basins(node_id=2246, to_node_id=1419)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391946915
 
@@ -816,68 +816,68 @@ model.link.add(
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391984234
 
 # Merge basin 2261 in basin 1698
-model.merge_basins(basin_id=2261, to_node_id=1698)
+model.merge_basins(node_id=2261, to_node_id=1698)
 # model.remove_node(390, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391995841
 
 # Merge basin 2260 met basin 1645
-model.merge_basins(basin_id=2260, to_node_id=1645)
+model.merge_basins(node_id=2260, to_node_id=1645)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392010526
 # Merge basin 2220 met basin 1371
-model.merge_basins(basin_id=2220, to_node_id=1371, are_connected=False)
+model.merge_basins(node_id=2220, to_node_id=1371, are_connected=False)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392017041
 
 # Kanaal Almelo Nordhorn bij Almelo
-model.merge_basins(basin_id=2219, to_node_id=1583, are_connected=False)
-model.merge_basins(basin_id=2209, to_node_id=1583, are_connected=False)
+model.merge_basins(node_id=2219, to_node_id=1583, are_connected=False)
+model.merge_basins(node_id=2209, to_node_id=1583, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392022887
 
 # Merge basin 2203 met 2227
-model.merge_basins(basin_id=2203, to_node_id=2227, are_connected=False)
+model.merge_basins(node_id=2203, to_node_id=2227, are_connected=False)
 model.remove_node(1219, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392026739
 
 # Merge basin 2014 met 2144
-model.merge_basins(basin_id=2014, to_node_id=2144)
+model.merge_basins(node_id=2014, to_node_id=2144)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392030268
 
 # Merge basin 1696 met 1411
-model.merge_basins(basin_id=1696, to_node_id=1411)
+model.merge_basins(node_id=1696, to_node_id=1411)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392037263
 
 # Merge basin 2264 met 1459
-model.merge_basins(basin_id=2264, to_node_id=1459)
+model.merge_basins(node_id=2264, to_node_id=1459)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392043973
 
 # Merge basin 2212 en 2310
-model.merge_basins(basin_id=2212, to_node_id=2310)
+model.merge_basins(node_id=2212, to_node_id=2310)
 poly = model.basin.area.df.at[59, "geometry"].union(model.basin.area.df.set_index("node_id").at[2310, "geometry"])
 model.basin.area.df.loc[model.basin.area.df.node_id == 2310, ["geometry"]] = MultiPolygon([poly])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392048684
 
 # Merge basin 2253 in basin 2228
-model.merge_basins(basin_id=2253, to_node_id=2228)
+model.merge_basins(node_id=2253, to_node_id=2228)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392052379
 
 # Merge basin 2221 in basin 1634
-model.merge_basins(basin_id=2221, to_node_id=1634)
+model.merge_basins(node_id=2221, to_node_id=1634)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392076634
 
 # Verbinding rondwaterleiding / Lennelwaterleiding herstellen
-model.merge_basins(basin_id=1859, to_node_id=2235, are_connected=False)
+model.merge_basins(node_id=1859, to_node_id=2235, are_connected=False)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382572457
 
@@ -934,7 +934,7 @@ holes_df = holes_df[~holes_df.index.isin([10, 22, 29, 32, 38, 39, 41])]
 
 drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
 
-for idx, geometry in enumerate(holes_df):
+for _idx, geometry in enumerate(holes_df):
     # select drainage-area
     drainage_area_select = drainage_areas_df[drainage_areas_df.contains(geometry.buffer(-10))]
     if not drainage_area_select.empty:
@@ -1132,120 +1132,147 @@ for action in actions:
 
 # remove unassigned basin area
 model.remove_unassigned_basin_area()
-# %% some customs
-# remove unassigned basin area
+# %% Custom model adjustments
+
+# --- Redirect links (fix connectivity) ---
 model.redirect_link(link_id=89, to_node_id=1561)
 model.redirect_link(link_id=1989, from_node_id=2333)
 model.redirect_link(link_id=1990, from_node_id=2333)
-model.merge_basins(basin_id=2115, to_node_id=1405)
-model.merge_basins(basin_id=1378, to_node_id=1431)
-model.merge_basins(basin_id=2211, to_node_id=1727)
-model.merge_basins(basin_id=1538, to_node_id=33)
-model.merge_basins(basin_id=1963, to_node_id=1518)
-model.merge_basins(basin_id=2245, to_node_id=1818)
-model.merge_basins(basin_id=2026, to_node_id=1818)
-model.merge_basins(basin_id=1412, to_node_id=2107)
-model.merge_basins(basin_id=1592, to_node_id=1765)
-model.merge_basins(basin_id=1765, to_node_id=1817)
-model.merge_basins(basin_id=2159, to_node_id=1890)
-model.merge_basins(basin_id=1654, to_node_id=2163)
-model.merge_basins(basin_id=2254, to_node_id=1493, are_connected=False)
-# model.merge_basins(basin_id=1604, to_node_id=1890)
-model.merge_basins(basin_id=1628, to_node_id=2143)
-model.merge_basins(basin_id=1821, to_node_id=2143)
-model.merge_basins(basin_id=2144, to_node_id=2143)
-model.merge_basins(basin_id=2116, to_node_id=1730)
-model.merge_basins(basin_id=2177, to_node_id=1730)
-model.remove_node(node_id=619, remove_links=True)
-model.remove_node(node_id=660, remove_links=True)
-model.remove_node(node_id=698, remove_links=True)
-model.remove_node(node_id=1243, remove_links=True)
-model.remove_node(node_id=1242, remove_links=True)
-model.remove_node(node_id=1252, remove_links=True)
-model.remove_node(node_id=836, remove_links=True)
-model.remove_node(node_id=80, remove_links=True)
-model.remove_node(node_id=265, remove_links=True)
-model.remove_node(node_id=126, remove_links=True)
-model.remove_node(166, remove_links=True)
-model.remove_node(313, remove_links=True)
-model.remove_node(393, remove_links=True)
-model.remove_node(146, remove_links=True)
-model.remove_node(835, remove_links=True)
-model.remove_node(1370, remove_links=True)
-model.remove_node(358, remove_links=True)
-model.remove_node(188, remove_links=True)
-model.remove_node(219, remove_links=True)
-model.remove_node(345, remove_links=True)
-model.remove_node(654, remove_links=True)
-model.remove_node(1045, remove_links=True)
-model.remove_node(125, remove_links=True)
-model.remove_node(601, remove_links=True)
-model.remove_node(121, remove_links=True)
-model.remove_node(590, remove_links=True)
-model.remove_node(624, remove_links=True)
-model.remove_node(573, remove_links=True)
-model.remove_node(570, remove_links=True)
-model.remove_node(657, remove_links=True)
-model.remove_node(652, remove_links=True)
-model.remove_node(633, remove_links=True)
-model.remove_node(178, remove_links=True)
-model.remove_node(319, remove_links=True)
-model.remove_node(395, remove_links=True)
-model.remove_node(114, remove_links=True)
-model.remove_node(442, remove_links=True)
-model.remove_node(562, remove_links=True)
-model.remove_node(438, remove_links=True)
-model.remove_node(167, remove_links=True)
-model.remove_node(561, remove_links=True)
-model.remove_node(456, remove_links=True)
-model.remove_node(673, remove_links=True)
-model.remove_node(1128, remove_links=True)
-model.merge_basins(basin_id=1488, to_basin_id=1834)
-model.merge_basins(basin_id=1848, to_basin_id=2158)
-model.merge_basins(basin_id=1891, to_basin_id=2158)
-model.merge_basins(basin_id=1994, to_basin_id=2158)
-model.merge_basins(basin_id=1648, to_basin_id=1826)
-model.merge_basins(basin_id=1826, to_node_id=1843)
-model.merge_basins(basin_id=1646, to_basin_id=1513)
-model.merge_basins(basin_id=1897, to_basin_id=1678)
-model.merge_basins(basin_id=2181, to_basin_id=1678)
-model.merge_basins(basin_id=1678, to_basin_id=1700)
-model.merge_basins(basin_id=1876, to_basin_id=1633)
-model.merge_basins(basin_id=2187, to_basin_id=1873)
-model.merge_basins(basin_id=2174, to_basin_id=1873)
-model.merge_basins(basin_id=1875, to_basin_id=1879)
-model.merge_basins(basin_id=1908, to_basin_id=1879)
-model.merge_basins(basin_id=1902, to_basin_id=1879)
-model.merge_basins(basin_id=1441, to_basin_id=1879)
-model.merge_basins(basin_id=1957, to_basin_id=1879)
-model.merge_basins(basin_id=1717, to_basin_id=1528)
-model.merge_basins(basin_id=1995, to_basin_id=1442)
-model.merge_basins(basin_id=2262, to_basin_id=1431)
-model.merge_basins(basin_id=1853, to_basin_id=1852)
-model.merge_basins(basin_id=2137, to_basin_id=2138)
-model.merge_basins(basin_id=1819, to_basin_id=2138)
-model.merge_basins(basin_id=33, to_basin_id=1377)
-model.merge_basins(basin_id=1560, to_basin_id=1478)
-model.merge_basins(basin_id=2228, to_basin_id=2121)
-model.merge_basins(basin_id=2050, to_basin_id=1812)
-model.merge_basins(basin_id=1811, to_basin_id=1812)
-model.merge_basins(basin_id=1386, to_basin_id=2157)
-model.merge_basins(basin_id=2307, to_basin_id=2157)
-model.merge_basins(basin_id=1610, to_basin_id=1454)
-model.merge_basins(basin_id=1664, to_basin_id=1588)
-model.merge_basins(basin_id=2234, to_basin_id=1418)
-model.merge_basins(basin_id=2317, to_basin_id=1700)
-model.merge_basins(basin_id=1982, to_basin_id=1431)
-model.merge_basins(basin_id=1589, to_basin_id=1431)
 
-model.remove_node(413, remove_links=True)
-model.remove_node(842, remove_links=True)
-model.remove_node(463, remove_links=True)
-model.remove_node(341, remove_links=True)
-model.remove_node(235, remove_links=True)
-model.merge_basins(basin_id=1584, to_basin_id=1817)
-model.merge_basins(basin_id=1817, to_basin_id=2135)
-model.merge_basins(basin_id=1588, to_basin_id=1561)
+# --- Merge basins to nodes ---
+merge_to_node = [
+    (2115, 1405),
+    (1378, 1431),
+    (2211, 1727),
+    (1538, 33),
+    (1963, 1518),
+    (2245, 1818),
+    (2026, 1818),
+    (1412, 2107),
+    (1592, 1765),
+    (1765, 1817),
+    (2159, 1890),
+    (1654, 2163),
+    (1628, 2143),
+    (1821, 2143),
+    (2144, 2143),
+    (2116, 1730),
+    (2177, 1730),
+]
+
+for basin_id, node_id in merge_to_node:
+    model.merge_basins(node_id=basin_id, to_node_id=node_id)
+
+# Special case (not connected)
+model.merge_basins(node_id=2254, to_node_id=1493, are_connected=False)
+
+# --- Remove unnecessary nodes ---
+nodes_to_remove = [
+    619,
+    660,
+    698,
+    1243,
+    1242,
+    1252,
+    836,
+    80,
+    265,
+    126,
+    166,
+    313,
+    393,
+    146,
+    835,
+    1370,
+    358,
+    188,
+    219,
+    345,
+    654,
+    1045,
+    125,
+    601,
+    121,
+    590,
+    624,
+    573,
+    570,
+    657,
+    652,
+    633,
+    178,
+    319,
+    395,
+    114,
+    442,
+    562,
+    438,
+    167,
+    561,
+    456,
+    673,
+    1128,
+    413,
+    842,
+    463,
+    341,
+    235,
+]
+
+for node_id in nodes_to_remove:
+    model.remove_node(node_id=node_id, remove_links=True)
+
+# --- Merge basins
+merge_to_basin = [
+    (1488, 1834),
+    (1848, 2158),
+    (1891, 2158),
+    (1994, 2158),
+    (1648, 1826),
+    (1646, 1513),
+    (1897, 1678),
+    (2181, 1678),
+    (1678, 1700),
+    (1876, 1633),
+    (2187, 1873),
+    (2174, 1873),
+    (1875, 1879),
+    (1908, 1879),
+    (1902, 1879),
+    (1441, 1879),
+    (1957, 1879),
+    (1717, 1528),
+    (1995, 1442),
+    (2262, 1431),
+    (1853, 1852),
+    (2137, 2138),
+    (1819, 2138),
+    (33, 1377),
+    (1560, 1478),
+    (2228, 2121),
+    (2050, 1812),
+    (1811, 1812),
+    (1386, 2157),
+    (2307, 2157),
+    (1610, 1454),
+    (1664, 1588),
+    (2234, 1418),
+    (2317, 1700),
+    (1982, 1431),
+    (1589, 1431),
+    (1584, 1817),
+    (1817, 2135),
+    (1588, 1561),
+    (1826, 1843),
+]
+
+for basin_id, target_basin_id in merge_to_basin:
+    model.merge_basins(node_id=basin_id, to_node_id=target_basin_id)
+
+# --- Reverse link directions ---
+for link_id in [1171, 1173, 1343, 1475]:
+    model.reverse_link(link_id=link_id)
+
 # %%
 
 # sanitize node-table

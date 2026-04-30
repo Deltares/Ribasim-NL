@@ -78,6 +78,7 @@ bin/
 *.log
 *.lyr
 *.msg
+*.out
 *.cst
 *.zip
 *.txt

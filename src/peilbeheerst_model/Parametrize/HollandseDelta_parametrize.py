@@ -1,7 +1,6 @@
 """Parameterisation of water board: Hollandse Delta."""
 
 import datetime
-import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -34,7 +33,7 @@ if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
 MIXED_CONDITIONS_DESIGN_P = 12
-MIXED_CONDITIONS_DESIGN_E = 2
+MIXED_CONDITIONS_DESIGN_E = 4
 
 # model settings
 waterschap = "HollandseDelta"
@@ -84,8 +83,8 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
 # create work_dir/parameterized
-parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-os.makedirs(parameterized, exist_ok=True)
+parameterized = work_dir / f"{waterschap}_parameterized/"
+parameterized.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -114,7 +113,7 @@ processor = RibasimFeedbackProcessor(
     ribasim_base_model_toml,
     work_dir,
     FeedbackFormulier_LOG_path,
-    use_validation=False,
+    use_validation=True,
 )
 processor.run()
 
@@ -585,11 +584,47 @@ ribasim_model.link.add(pump_node, ribasim_model.basin[491])
 ribasim_model.link.add(ribasim_model.basin[491], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
-# # add LB to "lonely" pumps
-# level_boundary_node = ribasim_model.level_boundary.add(
-#     Node(geometry=Point(93535, 434810)), [level_boundary.Static(level=[default_level])]
-# )
-# ribasim_model.link.add(level_boundary_node, ribasim_model.pump[1403])
+# Pump/Outlet without LB
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(93607, 434789)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(93610, 434789)), [pump.Static(flow_rate=[20])])
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[2])
+
+# complex situation: Inlaat van Palandt
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(74124, 419410)), [level_boundary.Static(level=[default_level])]
+)
+# > Inlaat van Palandt I
+pump_node = ribasim_model.pump.add(Node(geometry=Point(74047, 419343)), [pump.Static(flow_rate=[20])])
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[546])
+# > Inlaat van Palandt II
+pump_node = ribasim_model.pump.add(Node(geometry=Point(74047, 419343)), [pump.Static(flow_rate=[20])])
+ribasim_model.link.add(level_boundary_node, pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[54])
+
+# missing Outlets (adjacent to Pumps)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(106575, 418823)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(106615, 418823)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[273])
+
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(105338, 418523)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(105288, 418523)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[84])
 
 # Changed direction of two pumps: See updated feedback form.
 ribasim_param.change_pump_func(ribasim_model, 1082, "aanvoer", 1)
@@ -749,6 +784,7 @@ to_drain = (
     1956,
     2034,
     2055,
+    2103,
     2206,
     2290,
     2302,
@@ -761,9 +797,9 @@ to_flow_control = (
     840,
     841,
     846,
+    917,
     1004,
     1058,
-    1066,
     1098,
     1154,
     1168,
@@ -780,7 +816,6 @@ to_flow_control = (
     1577,
     1688,
     1706,
-    1726,
     1758,
     1860,
     1876,
@@ -806,6 +841,7 @@ to_supply = (
     1540,
     1595,
     1723,
+    1726,
     1757,
     1794,
     1815,
@@ -835,6 +871,7 @@ to_supply = (
     2572,
     2738,
     2750,
+    2763,
 )
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -1003,15 +1040,9 @@ if not ribasim_model.use_validation:
 
 # run model
 run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+ribasim_model.update_state()
+ribasim_model.basin.state.write()
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
-
-# write model
-ribasim_param.write_ribasim_model_GoodCloud(
-    ribasim_model=ribasim_model,
-    work_dir=work_dir,
-    waterschap=waterschap,
-    include_results=True,
-)

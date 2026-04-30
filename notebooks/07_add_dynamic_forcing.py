@@ -7,7 +7,15 @@ from ribasim.delwaq import generate, parse, run_delwaq
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model, settings
+from ribasim_nl import (
+    CloudStorage,
+    Model,
+    SetDynamicForcing,
+    add_transboundary_inflow,
+    import_transboundary_inflow,
+    merge_rwzi_model,
+    settings,
+)
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
@@ -16,6 +24,8 @@ write_budgets: bool = True  # write mfms_budgets.arrow for later verification
 assign_fractions: bool = False  # compute (sub-) fractions from budgets-table
 compute_fractions: bool = False
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
+transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
+cloud.synchronize(filepaths=[transboundary_data_path])
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
 primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
@@ -151,6 +161,10 @@ for authority in authorities:
                 model, cloud, starttime, endtime, assign_fractions, fraction_prefix=waterbeheercode[authority]
             )
 
+            # add transboundary inflow
+            dict_flow = import_transboundary_inflow(transboundary_data_path, starttime, endtime, model)
+            add_transboundary_inflow(model, dict_flow)
+
             # merge RWZI model
             model = merge_rwzi_model(model, rwzi_model_path)
 
@@ -165,21 +179,23 @@ for authority in authorities:
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
             model.run()
+            model.update_state()
+            model.basin.state.write()
 
             # DELWAQ(!)
             if compute_fractions:
                 # generate DELWAQ model
                 delwaq_dir = model.toml_path.with_name("delwaq")
-                print(f"🗀 generate DELWAQ model in {delwaq_dir}")
+                print(f"generate DELWAQ model in {delwaq_dir}")
                 graph, substances = generate(model, output_path=delwaq_dir)
 
                 # run DELWAQ model
-                print("⚙️ run DELWAQ")
+                print("run DELWAQ")
                 run_delwaq(
                     model_dir=delwaq_dir,
                     d3d_home=settings.d3d_home,
                 )
 
                 # parse DELWAQ results in model
-                print("📖 parse DELWAQ results in Ribasim-model")
+                print("parse DELWAQ results in Ribasim-model")
                 parse(model, graph, substances, output_folder=delwaq_dir)
