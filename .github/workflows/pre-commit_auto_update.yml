@@ -6,6 +6,8 @@ on:
   # on demand
 
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   auto-update:
     runs-on: ubuntu-latest
