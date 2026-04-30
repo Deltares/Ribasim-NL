@@ -1,15 +1,22 @@
 # %%
 
+import logging
 from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
+from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
 
 from ribasim_nl import Model, Network
+
+logger = logging.getLogger(__name__)
+
+# reverse lookup: prefix -> authority name
+_prefix_to_authority = {v: k for k, v in waterbeheercode.items()}
 
 # Constants
 SNAP_DISTANCE = 20
@@ -259,6 +266,25 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
         # we check if coupling is overruled
         if boundary_node_id in forced_coupling:
             couple_with_basin_id = forced_coupling[boundary_node_id]
+            if couple_with_basin_id not in model.node.df.index:
+                # determine the authority that owns the missing target node
+                target_prefix = couple_with_basin_id // 10**5
+                target_authority = _prefix_to_authority.get(target_prefix)
+                included_authorities = set(model.node.df["meta_waterbeheerder"].dropna().unique())
+                if target_authority and target_authority not in included_authorities:
+                    logger.warning(
+                        "Forced coupling target %d (%s) not in model (authority not included), skipping %s.",
+                        couple_with_basin_id,
+                        target_authority,
+                        boundary_node,
+                    )
+                else:
+                    raise KeyError(
+                        f"Forced coupling target {couple_with_basin_id} not found in model, "
+                        f"but its authority '{target_authority}' is included. "
+                        f"Check forced_coupling for boundary node {boundary_node_id}."
+                    )
+                continue
         else:
             # Check whether there are very close LB from the other authority
             lb_neighbors = model.level_boundary.node.df[
@@ -391,6 +417,24 @@ def fix_basin_profiles(model: Model) -> None:
             if min_level < basin.level.iloc[0]:
                 print(f"Lowering basin {upstream_basin_id} profile {min_level}.")
                 model.basin.profile.df.loc[(mask[mask]).index[0], "level"] = min_level - MIN_BASIN_OUTLET_DIFF
+
+
+def remove_invalid_topology_nodes(model: Model) -> None:
+    """Remove nodes with invalid flow/control topology and clean up their control references."""
+    for link_type in ["flow", "control"]:
+        invalid_topology = model.invalid_topology_at_node(link_type=link_type)
+        while not invalid_topology.empty:
+            for node_id, row in invalid_topology.iterrows():
+                logger.warning(
+                    "Invalid %s topology at node %d (%s): %s — removing node.",
+                    link_type,
+                    node_id,
+                    row["node_type"],
+                    row["exception"],
+                )
+                replace_listen_node_id(model, node_id, None)
+                model.remove_node(node_id, remove_links=True)
+            invalid_topology = model.invalid_topology_at_node(link_type=link_type)
 
 
 def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> None:
@@ -541,4 +585,5 @@ toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
 model, network, basin_areas_df = initialize_models(toml_file)
 all_link_table = process_boundary_nodes(model, network, basin_areas_df)
 fix_basin_profiles(model)
+remove_invalid_topology_nodes(model)
 save_model_and_outputs(model, all_link_table, toml_file)

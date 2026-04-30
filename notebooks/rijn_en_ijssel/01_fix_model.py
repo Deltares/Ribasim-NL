@@ -246,6 +246,14 @@ model.node.df.loc[model.pump.node.df.index[model.pump.node.df["meta_categorie"].
     "hoofdwater"
 )
 
+# opruimen rondom inlaat schipbeek
+for node_id in [305, 307, 308, 309]:  # we hebben echt maar 1 sifon nodig
+    model.remove_node(node_id, remove_links=True)
+
+model.reverse_direction_at_node(node_id=654)  # inlaat schipbeek is verkeerd-om getekend
+model.merge_basins(node_id=1090, to_node_id=1419)  # zandvang weg, zodat we gemakkelijker kunnen inlaten bij Boven-Regge
+
+
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = pd.concat(
     [
