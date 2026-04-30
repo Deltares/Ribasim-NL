@@ -97,49 +97,60 @@ class SplitBasins:
         assert model.link.df is not None
         assert model.node.df is not None
         assert model.basin.area.df is not None
-        connector_node_ids_from_original_basin = model.link.df.loc[
-            model.link.df.from_node_id == basin_node_id_to_split, "to_node_id"
-        ]
 
-        # determine closest distance from the connector nodes to the new basins and redirect the connectors to the closest new basin
-        for connector_node_id in connector_node_ids_from_original_basin:
-            connector_node_geometry = typing.cast(
-                BaseGeometry, model.node.df.at[connector_node_id, "geometry"]
-            )  # pyrefly
+        for connector_column, basin_column in [("to_node_id", "from_node_id"), ("from_node_id", "to_node_id")]:
+            connector_node_ids_from_original_basin = model.link.df.loc[
+                model.link.df[basin_column] == basin_node_id_to_split, connector_column
+            ].dropna()
 
-            closest_basin_node_id = None
-            closest_distance = float("inf")
+            # determine closest distance from the connector nodes to the new basins and redirect the connectors to the closest new basin
+            for connector_node_id in connector_node_ids_from_original_basin:
+                connector_node_id = int(connector_node_id)
+                connector_node_geometry = typing.cast(
+                    BaseGeometry, model.node.df.at[connector_node_id, "geometry"]
+                )  # pyrefly
 
-            # loop through each splitted basin part to determine the shortest distance
-            for new_basin_node_id in newly_created_basins:
-                new_basin_geometry = model.basin.area.df.loc[
-                    model.basin.area.df.node_id == new_basin_node_id,
-                    "geometry",
-                ].iloc[0]
-                new_basin_geometry = typing.cast(BaseGeometry, new_basin_geometry)  # pyrefly
+                closest_basin_node_id = None
+                closest_distance = float("inf")
 
-                distance = connector_node_geometry.distance(new_basin_geometry)
+                # loop through each splitted basin part to determine the shortest distance
+                for new_basin_node_id in newly_created_basins:
+                    new_basin_geometry = model.basin.area.df.loc[
+                        model.basin.area.df.node_id == new_basin_node_id,
+                        "geometry",
+                    ].iloc[0]
+                    new_basin_geometry = typing.cast(BaseGeometry, new_basin_geometry)  # pyrefly
 
-                # overwrite the closest distance and basin node_id
-                if distance < closest_distance:
-                    closest_distance = distance
-                    closest_basin_node_id = new_basin_node_id
+                    distance = connector_node_geometry.distance(new_basin_geometry)
 
-            print(f"Redirecting connector node {connector_node_id} to basin node {closest_basin_node_id}")
-            # redirect the connector node administratively to the closest new basin by changing the from_node_id in the link table
-            mask = (model.link.df.from_node_id == basin_node_id_to_split) & (
-                model.link.df.to_node_id == connector_node_id
-            )
-            model.link.df.loc[mask, "from_node_id"] = closest_basin_node_id
+                    # overwrite the closest distance and basin node_id
+                    if distance < closest_distance:
+                        closest_distance = distance
+                        closest_basin_node_id = new_basin_node_id
 
-            # redirect the connector node spatially to the closest new basin by changing the geometry of the connector node to the representative point of the closest new basin
-            # retrieve the point geomeries to create a straight line between them
-            geometry_connector_node = typing.cast(Point, model.node.df.at[connector_node_id, "geometry"])  # pyrefly
-            geometry_basin_node = typing.cast(Point, model.node.df.at[closest_basin_node_id, "geometry"])  # pyrefly
+                print(f"Redirecting connector node {connector_node_id} to basin node {closest_basin_node_id}")
+                if closest_basin_node_id is None:
+                    raise ValueError(f"No closest basin found for connector node {connector_node_id}.")
 
-            # create a straight line between the connector node and the closest new basin
-            new_geometry = LineString([geometry_basin_node, geometry_connector_node])
-            model.link.df.loc[mask, "geometry"] = new_geometry  # pyrefly: ignore[unsupported-operation]
+                # redirect the connector node administratively to the closest new basin
+                mask = (model.link.df[basin_column] == basin_node_id_to_split) & (
+                    model.link.df[connector_column] == connector_node_id
+                )
+                model.link.df.loc[mask, basin_column] = closest_basin_node_id
+
+                # redirect the connector node spatially to the closest new basin by changing the geometry of the connector node to the representative point of the closest new basin
+                # retrieve the point geomeries to create a straight line between them
+                geometry_connector_node = typing.cast(Point, model.node.df.at[connector_node_id, "geometry"])  # pyrefly
+                geometry_basin_node = typing.cast(Point, model.node.df.at[closest_basin_node_id, "geometry"])  # pyrefly
+
+                # create a straight line between the connector node and the closest new basin
+                line_points = (
+                    [geometry_basin_node, geometry_connector_node]
+                    if basin_column == "from_node_id"
+                    else [geometry_connector_node, geometry_basin_node]
+                )
+                new_geometry = LineString(line_points)
+                model.link.df.loc[mask, "geometry"] = new_geometry  # pyrefly: ignore[unsupported-operation]
         return model
 
     def create_new_basins(self, model: Model, splitted_basin_gdf: gpd.GeoDataFrame, basin_node_id_to_split: int):
