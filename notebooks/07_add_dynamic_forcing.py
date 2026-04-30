@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ribasim.delwaq import generate, parse, run_delwaq
 from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 
 from ribasim_nl import (
@@ -21,8 +22,9 @@ cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
 endtime = datetime(2018, 1, 1)
 write_budgets: bool = True  # write mfms_budgets.arrow for later verification
-assign_fractions: bool = False  # compute (sub-) fractions from budgets-table
-compute_fractions: bool = False
+assign_budget_fractions: bool = False  # compute (sub-) fractions from budgets-table
+add_lhm_fractions: bool = True
+compute_fractions: bool = True
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
 cloud.synchronize(filepaths=[transboundary_data_path])
@@ -41,7 +43,7 @@ secondary_budgets: set[str] = {
 surface_runoff_budgets: set[str] = {"bdgqrun"}
 
 
-def add_forcing(model, cloud, starttime, endtime, assign_fractions, fraction_prefix):
+def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix):
 
     # sync files so we're good to go!
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
@@ -66,7 +68,7 @@ def add_forcing(model, cloud, starttime, endtime, assign_fractions, fraction_pre
         primary_budgets=primary_budgets,
         secondary_budgets=secondary_budgets,
         surface_runoff_budgets=surface_runoff_budgets,
-        assign_fractions=assign_fractions,
+        assign_fractions=assign_budget_fractions,
         fraction_prefix=fraction_prefix,
     )  # budgets_df is used to compute basin_fractions
     return budgets_df
@@ -158,7 +160,7 @@ for authority in authorities:
 
             # add forcing
             budgets_df = add_forcing(
-                model, cloud, starttime, endtime, assign_fractions, fraction_prefix=waterbeheercode[authority]
+                model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix=waterbeheercode[authority]
             )
 
             # add transboundary inflow
@@ -167,6 +169,10 @@ for authority in authorities:
 
             # merge RWZI model
             model = merge_rwzi_model(model, rwzi_model_path)
+
+            # add LHM fractions
+            if add_lhm_fractions:
+                assign_lhm_fractions(model)
 
             # Avoid large databases by writing some tables to NetCDF
             # TODO add flow_boundary after we can run core versions with
@@ -198,4 +204,4 @@ for authority in authorities:
 
                 # parse DELWAQ results in model
                 print("parse DELWAQ results in Ribasim-model")
-                parse(model, graph, substances, output_folder=delwaq_dir)
+                parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
