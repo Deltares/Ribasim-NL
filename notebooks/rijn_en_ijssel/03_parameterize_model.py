@@ -48,6 +48,19 @@ node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"]
 mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+
+# %% capaciteit inlaten
+model.pump.static.df.loc[model.pump.static.df.node_id == 654, "flow_rate"] = 1.4  # schipbeek
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 120, "flow_rate"] = 1.3  # lochem
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 90, "flow_rate"] = 0.6  # herkel
+
+
+# %% wat basin-peilen zetten n.a.v. full control-checks
+model.basin.area.df.loc[model.basin.area.df.node_id == 1068, "meta_streefpeil"] = 8.55
+model.basin.area.df.loc[model.basin.area.df.node_id == 777, "meta_streefpeil"] = 26.406666666666666
+model.basin.area.df.loc[model.basin.area.df.node_id == 1085, "meta_streefpeil"] = 5.5
+model.basin.area.df.loc[model.basin.area.df.node_id == 793, "meta_streefpeil"] = 10.7
+
 # %%
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")

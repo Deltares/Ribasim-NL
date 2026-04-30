@@ -251,7 +251,7 @@ for node_id in [305, 307, 308, 309]:  # we hebben echt maar 1 sifon nodig
     model.remove_node(node_id, remove_links=True)
 
 model.reverse_direction_at_node(node_id=654)  # inlaat schipbeek is verkeerd-om getekend
-model.merge_basins(node_id=1090, to_node_id=1419)  # zandvang weg, zodat we gemakkelijker kunnen inlaten bij Boven-Regge
+model.merge_basins(node_id=1090, to_node_id=797)  # zandvang weg, zodat we gemakkelijker kunnen inlaten bij Boven-Regge
 
 
 # name-column contains the code we want to keep, meta_name the name we want to have
@@ -288,6 +288,31 @@ model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
 downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
 model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
+
+# edits n.a.v. review control (script 4)
+model.reverse_direction_at_node(node_id=609)  # gebied Schipbeek: dit moet een uitlaat zijn
+model.remove_node(node_id=319, remove_links=True)  # gebied Lochem: vistrap naast verdeelwerk
+model.remove_node(node_id=199, remove_links=True)  # rest: Afvoer deelgebied (zonnepanelen?)
+model.remove_node(
+    node_id=543, remove_links=True
+)  # rest: Extra afvoer (verkeerd-om getekend), maar hoofdafvoer gaat via Kievekampsbrug (388)
+model.remove_node(node_id=526, remove_links=True)  # rest: Direct aan secundair gebied, hoofdafvoer loopt via 423
+model.remove_node(node_id=559, remove_links=True)  # rest: Secundair gebied, hoofdtak loopt over 564 (Erfkamerlingschap)
+model.remove_node(node_id=637, remove_links=True)  # rest: Gemaal Dunoweg voor nu eruit
+model.remove_node(
+    node_id=541, remove_links=True
+)  # rode bollen: zorgt voor lek, secundaire manning waterloop in gestuwd gebied
+model.merge_basins(node_id=791, to_node_id=786)  # rode bollen: juist streefpeil bij aflaatwerk nabij inlaat
+model.remove_node(node_id=1290, remove_links=True)  # rode bollen: deze is voor secundair gebied van basin 786
+model.remove_node(
+    node_id=541, remove_links=True
+)  # rode bollen: Knoop 541 verwijdered, dit lijkt een lek te zijn via een secundaire waterloop
+model.remove_node(
+    node_id=323, remove_links=True
+)  # rode bollen: 323 kan worden opgeheven, zodat afwatering via 1679 loopt
+model.remove_node(
+    node_id=387, remove_links=True
+)  # rode bollen: 387 kan worden opgeheven, is een stuw in een kwelsloot met een hoger peil
 
 sanitize_node_table(
     model,
