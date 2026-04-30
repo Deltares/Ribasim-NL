@@ -183,7 +183,7 @@ def merge_rwzi_model(base_model, rwzi_model_path, buffer_distance: int = 20, ver
 
     # add meta_categorie = RWZI so we can discriminate between other (buitenlandse aanvoer) boundaries
     assert rwzi_model.node.df is not None
-    rwzi_model.node.df.loc[rwzi_model.flow_boundary.df.index, "meta_categorie"] = "RWZI"
+    rwzi_model.node.df.loc[rwzi_model.node.df.node_type == "FlowBoundary", "meta_categorie"] = "RWZI"
 
     # index rwzi model with nodes >1 higher than of base model
     node_start = base_model.node.df.index.max() + 1
