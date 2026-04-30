@@ -3,10 +3,12 @@
 # https://github.com/Deltares/Ribasim-NL/issues/554
 
 import typing
+from itertools import combinations
 
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
+from ribasim.nodes import manning_resistance
 from shapely.geometry import LineString, Point
 from shapely.geometry.base import BaseGeometry
 
@@ -28,21 +30,64 @@ class SplitBasins:
 
     def run(self):
 
-        # implement the newly splitted basins in the model
+        # implement the newly splitted basins in the model as new basins, without any connection (yet)
         test_model, newly_created_basins = self.create_new_basins(
             model=self.model,
             splitted_basin_gdf=self.splitted_basin_gdf,
             basin_node_id_to_split=self.basin_node_id_to_split,
         )
 
-        # redirect the connector nodes to the new basins
+        # redirect the connector nodes to the splitted basins
         test_model = self.redirect_connectors_to_new_basins(
             model=test_model,
             basin_node_id_to_split=self.basin_node_id_to_split,
             newly_created_basins=newly_created_basins,
         )
 
+        # connect the newly created basins with each other using MR
+        test_model = self.add_manning_nodes_between_splitted_basins(
+            model=test_model,
+            basin_node_id_to_split=self.basin_node_id_to_split,
+            newly_created_basins=newly_created_basins,
+        )
+
+        # delete the original basin from the model
+        test_model.remove_node(self.basin_node_id_to_split, False)
         return test_model
+
+    def add_manning_nodes_between_splitted_basins(
+        self, model: Model, basin_node_id_to_split: int, newly_created_basins: list[int]
+    ):
+
+        # only manning nodes have to be added between basins which touch each other
+        # find the touching parts, determine the node_ids of the basins that touch each other and determine the centroid of the touching part where the manning node will be added
+        assert model.basin.area.df is not None
+
+        basin_area = model.basin.area.df.loc[model.basin.area.df.node_id.isin(newly_created_basins)]
+        basin_area = basin_area.dissolve(by="node_id")
+
+        manning_data = manning_resistance.Static(length=[1000], manning_n=[0.04], profile_width=[10], profile_slope=[3])
+
+        for from_basin_id, to_basin_id in combinations(newly_created_basins, 2):
+            from_basin_geometry = typing.cast(BaseGeometry, basin_area.at[from_basin_id, "geometry"])
+            to_basin_geometry = typing.cast(BaseGeometry, basin_area.at[to_basin_id, "geometry"])
+
+            if not from_basin_geometry.touches(to_basin_geometry):
+                continue
+
+            touching_geometry = from_basin_geometry.boundary.intersection(to_basin_geometry.boundary)
+            if touching_geometry.is_empty:
+                continue
+
+            # create Manning node at the centroid of the touching geometry and connect it to the two basins
+            manning_node = model.manning_resistance.add(
+                Node(geometry=touching_geometry.centroid),
+                tables=[manning_data],
+            )
+            model.link.add(model.basin[from_basin_id], manning_node)
+            model.link.add(manning_node, model.basin[to_basin_id])
+
+        return model
 
     def redirect_connectors_to_new_basins(
         self, model: Model, basin_node_id_to_split: int, newly_created_basins: list[int]
