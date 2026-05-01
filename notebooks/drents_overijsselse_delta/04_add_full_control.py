@@ -158,7 +158,7 @@ ignore_intersecting_links: list[int] = []
 flushing_nodes = {}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [181, 604]
+drain_nodes = [181, 530, 604]
 
 # handmatig opgegeven supply nodes (inlaten)
 supply_nodes = []
@@ -206,7 +206,7 @@ drain_nodes = []
 supply_nodes = [552]
 
 # handmatig opgegeven flow_control_nodes
-flow_control_nodes = []
+flow_control_nodes = [1088, 193]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -521,7 +521,7 @@ add_controllers_to_supply_area(
 
 # %% add all remaining inlets/outlets
 
-flow_control_nodes = [227, 1317, 2662, 2666, 2664]
+flow_control_nodes = [125, 227, 1317, 2662, 2666, 2664]
 
 supply_nodes = [
     1246,
@@ -657,6 +657,7 @@ supply_nodes = [
     3110,
     212,
     597,
+    775,
 ]
 
 
