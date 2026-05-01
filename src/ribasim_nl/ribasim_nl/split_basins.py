@@ -9,7 +9,7 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import manning_resistance
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, MultiLineString, Point
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl import Model
@@ -79,15 +79,25 @@ class SplitBasins:
             if touching_geometry.is_empty:
                 continue
 
-            # create Manning node at the centroid of the touching geometry and connect it to the two basins
-            manning_node = model.manning_resistance.add(
-                Node(geometry=touching_geometry.centroid),
-                tables=[manning_data],
-            )
-            model.link.add(model.basin[from_basin_id], manning_node)
-            model.link.add(manning_node, model.basin[to_basin_id])
+            # create Manning node at the centroid of each touching face and connect it to the two basins
+            for touching_face in self._touching_faces(touching_geometry):
+                manning_node = model.manning_resistance.add(
+                    Node(geometry=touching_face.centroid),
+                    tables=[manning_data],
+                )
+                model.link.add(model.basin[from_basin_id], manning_node)
+                model.link.add(manning_node, model.basin[to_basin_id])
 
         return model
+
+    def _touching_faces(self, geometry: BaseGeometry) -> list[BaseGeometry]:
+        if isinstance(geometry, LineString):
+            return [geometry]
+
+        if isinstance(geometry, MultiLineString):
+            return list(geometry.geoms)
+
+        return []
 
     def redirect_connectors_to_new_basins(
         self, model: Model, basin_node_id_to_split: int, newly_created_basins: list[int]
