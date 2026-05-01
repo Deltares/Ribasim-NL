@@ -22,93 +22,73 @@ To continue with the following steps, make the root of the repository your worki
 cd Ribasim-NL
 ```
 
-## Setting up uv
+## Setting up Pixi
 
-First, set up uv as described in the [uv documentation](https://docs.astral.sh/uv/getting-started/installation/).
+First, install Pixi as described in the [Pixi documentation](https://pixi.sh/latest/#installation).
 
-We require at least uv version v0.9.3, but generally recommend the latest release.
-Check the version with `uv --version`, update with `uv self update`.
 
-Then set up the environment by running the following command.
 
-```sh
-uv sync
-```
-
-This command automatically installs all required Python packages for development.
-These will not conflict with any pre-installed applications, as uv creates an isolated virtual environment.
-You can run Python scripts using `uv run path/to/script.py` or activate the environment with `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows).
-
-The first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter.
-Open the command box with {{< kbd Ctrl+Shift+P >}} ({{< kbd Cmd+Shift+P >}} on macOS) and run `Python: Select Interpreter`.
-Select the Python interpreter in the `.venv` folder that uv created.
-Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
-
-If you encounter issues related to uv dependencies, it might help to clean your uv environment with `uv clean`, followed by `uv sync`.
-
-## Install just
-
-We use [just](https://just.systems/) as a command runner.
-Our justfile uses [Nushell](https://www.nushell.sh/) as its shell, so you need to install Nushell first before you can run just recipes.
-
-Set up the full development environment with:
+Then set up the full development environment by running:
 
 ```sh
-uvx --from rust-just just install
+pixi run install
 ```
 
-This installs all required tools (`just`, `prek`, `ruff`, `dvc`), syncs Python dependencies, pulls data, and installs git hooks.
-After the initial setup, you can also run `just install` directly since `just` is now on your PATH.
+This installs git hooks and pulls data.
+You can run Python scripts using `pixi run python path/to/script.py`.
+
+The first time you open the Ribasim-NL repo in Visual Studio Code, the [pixi-code](https://github.com/renan-r-santos/pixi-code) extension should automatically detect the Pixi environment and configure the Python interpreter.
+
+If you encounter issues, try running `pixi clean`and running `pixi install` again.
 
 ## Git hooks
 
 We use [prek](https://prek.j178.dev/) instead of pre-commit for git hooks.
-It is installed as part of `just install`, but you can also install it manually:
+It is installed as part of `pixi run install`, but you can also install hooks manually:
 
 ```sh
-uv tool install prek
-prek install
+pixi run prek install -f
 ```
 
 To run all hooks on all files manually:
 
 ```sh
-just check
+pixi run check
 ```
 
 To skip the slower DVC hooks and only run Python linting, formatting, and type checking:
 
 ```sh
-just pycheck
+pixi run pycheck
 ```
 
 ## Co-development with Ribasim
 
-Ribasim-NL pins to a specific Ribasim version in the `pyproject.toml`.
+Ribasim-NL pins to a specific Ribasim version in `pixi.toml`.
 Generally this will be the latest release.
 During development sometimes you may want to test out the latest unreleased development version of Ribasim.
 
-To do so, open `pyproject.toml` in your editor.
-Find the `[tool.uv.sources]` section and uncomment or add the git source like below:
+To do so, open `pixi.toml` in your editor.
+Find the `[pypi-dependencies]` section and change the ribasim git source:
 
 ```toml
-[tool.uv.sources]
+[pypi-dependencies]
 ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
 ```
 
-You can change the branch name if needed, or use a specific commit with for example `rev = "0075d4a"`.
+You can change the branch name if needed, or use a specific commit with `rev = "0075d4a"`.
 
 If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub.
 This can be done using this syntax:
 
 ```toml
-[tool.uv.sources]
+[pypi-dependencies]
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 ```
 
 This path will work if you clone Ribasim next to Ribasim-NL.
 
-After you are done modifying `pyproject.toml`, you can run `uv sync` to ensure the dependencies are installed.
+After you are done modifying `pixi.toml`, run `pixi install` to ensure the dependencies are installed.
 
 For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/dev/).
 

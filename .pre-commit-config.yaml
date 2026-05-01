@@ -39,7 +39,7 @@ repos:
       - id: ruff-check
         name: ruff check
         description: Lint Python code and auto-fix issues
-        entry: uv run ruff check --force-exclude
+        entry: pixi run ruff check --force-exclude
         args: [--fix, --exit-non-zero-on-fix]
         language: system
         types_or: [python, pyi, jupyter]
@@ -47,14 +47,14 @@ repos:
       - id: ruff-format
         name: ruff format
         description: Format Python code
-        entry: uv run ruff format --force-exclude
+        entry: pixi run ruff format --force-exclude
         language: system
         types_or: [python, pyi, jupyter]
         require_serial: true
       - id: nbstripout
         name: nbstripout
         description: Strip Jupyter notebook outputs
-        entry: uv run nbstripout
+        entry: pixi run nbstripout
         language: system
         types: [jupyter]
   - repo: https://github.com/google/yamlfmt
@@ -66,6 +66,6 @@ repos:
     hooks:
       - id: pyrefly-check
         name: Pyrefly (type checking)
-        entry: uv run pyrefly check
+        entry: pixi run pyrefly check
         pass_filenames: false
         language: system

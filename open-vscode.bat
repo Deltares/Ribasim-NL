@@ -1,8 +1,3 @@
-REM make sure python env in sync with uv.lock
-call uv sync
-
-REM activate env
-call .\\.venv\\Scripts\\activate.bat
-
-REM open using ribasim python release
-code . | exit
+REM open VS Code with pixi environment
+REM Recommend installing pixi-code extension: https://github.com/renan-r-santos/pixi-code
+pixi run code . | exit

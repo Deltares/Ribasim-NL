@@ -1,6 +1,6 @@
 stages:
   bathymetry:
-    cmd: uv run notebooks/rijkswaterstaat/1_bathymetrie.py
+    cmd: pixi run python notebooks/rijkswaterstaat/1_bathymetrie.py
     deps:
       - notebooks/rijkswaterstaat/1_bathymetrie.py
     outs:
@@ -8,14 +8,14 @@ stages:
     frozen: true
   rijkswaterstaat:
     cmd:
-      - uv run notebooks/rijkswaterstaat/2_basins.py
-      - uv run notebooks/rijkswaterstaat/3_netwerk.py
-      - uv run notebooks/rijkswaterstaat/4_kunstwerken.py
-      - uv run notebooks/rijkswaterstaat/5_model_netwerk.py
-      - uv run notebooks/rijkswaterstaat/6_model_sturing.py
-      - uv run notebooks/rijkswaterstaat/7_model_onttrekkingen.py
-      - uv run notebooks/rijkswaterstaat/8a_update_state.py
-      - uv run notebooks/rijkswaterstaat/8b_update_bc.py
+      - pixi run python notebooks/rijkswaterstaat/2_basins.py
+      - pixi run python notebooks/rijkswaterstaat/3_netwerk.py
+      - pixi run python notebooks/rijkswaterstaat/4_kunstwerken.py
+      - pixi run python notebooks/rijkswaterstaat/5_model_netwerk.py
+      - pixi run python notebooks/rijkswaterstaat/6_model_sturing.py
+      - pixi run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+      - pixi run python notebooks/rijkswaterstaat/8a_update_state.py
+      - pixi run python notebooks/rijkswaterstaat/8b_update_bc.py
     deps:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
       - data/Rijkswaterstaat/modellen/rwzi
@@ -38,10 +38,10 @@ stages:
       vechtstromen: Vechtstromen
     do:
       cmd:
-        - uv run notebooks/${key}/_preprocess_profielen.py
-        - uv run notebooks/${key}/01_fix_model.py
-        - uv run notebooks/${key}/02_prepare_model.py
-        - uv run notebooks/${key}/03_parameterize_model.py
+        - pixi run python notebooks/${key}/_preprocess_profielen.py
+        - pixi run python notebooks/${key}/01_fix_model.py
+        - pixi run python notebooks/${key}/02_prepare_model.py
+        - pixi run python notebooks/${key}/03_parameterize_model.py
       deps:
         - notebooks/${key}/_preprocess_profielen.py
         - notebooks/${key}/01_fix_model.py
@@ -64,8 +64,8 @@ stages:
       vechtstromen: Vechtstromen
     do:
       cmd:
-        - uv run notebooks/${key}/04_add_full_control.py
-        - uv run notebooks/05_add_bergend.py ${item}
+        - pixi run python notebooks/${key}/04_add_full_control.py
+        - pixi run python notebooks/05_add_bergend.py ${item}
       deps:
         - notebooks/${key}/04_add_full_control.py
         - notebooks/05_add_bergend.py
@@ -86,7 +86,7 @@ stages:
       vallei_en_veluwe: ValleienVeluwe
       vechtstromen: Vechtstromen
     do:
-      cmd: uv run notebooks/07_add_dynamic_forcing.py ${item}
+      cmd: pixi run python notebooks/07_add_dynamic_forcing.py ${item}
       deps:
         - notebooks/07_add_dynamic_forcing.py
         - data/${item}/modellen/${item}_bergend_model
@@ -94,13 +94,13 @@ stages:
       outs:
         - data/${item}/modellen/${item}_dynamic_model
   rwzi:
-    cmd: uv run notebooks/create_rwzi_model.py
+    cmd: pixi run python notebooks/create_rwzi_model.py
     deps:
       - notebooks/create_rwzi_model.py
     outs:
       - data/Rijkswaterstaat/modellen/rwzi
   samenvoegen:
-    cmd: uv run notebooks/samenvoegen_modellen.py
+    cmd: pixi run python notebooks/samenvoegen_modellen.py
     deps:
       - notebooks/samenvoegen_modellen.py
       - data/Rijkswaterstaat/modellen/hws_transient
@@ -128,7 +128,7 @@ stages:
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
   koppelen:
-    cmd: uv run notebooks/koppelen_modellen.py
+    cmd: pixi run python notebooks/koppelen_modellen.py
     deps:
       - notebooks/koppelen_modellen.py
       - data/Rijkswaterstaat/modellen/lhm_parts
