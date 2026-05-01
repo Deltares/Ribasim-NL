@@ -1284,3 +1284,155 @@ stages:
       md5: 1659d53f10273b946a314f5df6ef853b.dir
       size: 68407716
       nfiles: 4
+  peilbeheerst@delfland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
+      hash: md5
+      md5: f4a4086de19ced4bed5d65b97b7a3f9a
+      size: 18742
+    outs:
+    - path: data/Delfland/modellen/Delfland_parameterized
+      hash: md5
+      md5: 9e9fafcf5ddcf236d136dba4bf465c37.dir
+      size: 11964264
+      nfiles: 3
+  peilbeheerst@amstel_gooi_en_vecht:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/AmstelGooienVecht_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/AmstelGooienVecht_parametrize.py
+      hash: md5
+      md5: 215c58debe68a435a42935e9887e41f0
+      size: 23450
+    outs:
+    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized
+      hash: md5
+      md5: 0b950e37c58a54b759f8476f6ab1fff2.dir
+      size: 13412984
+      nfiles: 3
+  peilbeheerst@hollands_noorderkwartier:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/HollandsNoorderkwartier_parametrize.py
+    deps:
+    - path:
+        src/peilbeheerst_model/Parametrize/HollandsNoorderkwartier_parametrize.py
+      hash: md5
+      md5: bd6a06f6c4058c72fe5e3f8f77b35ed5
+      size: 20234
+    outs:
+    - path:
+        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
+      hash: md5
+      md5: 0ee71cc4f085b712dc98dc4a5ab46041.dir
+      size: 11129871
+      nfiles: 3
+  peilbeheerst@hollandse_delta:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/HollandseDelta_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/HollandseDelta_parametrize.py
+      hash: md5
+      md5: 0d2ba56548731f117db9cb157138523f
+      size: 43146
+    outs:
+    - path: data/HollandseDelta/modellen/HollandseDelta_parameterized
+      hash: md5
+      md5: 1a4c2492dfb861b3c5a92b456fae41f4.dir
+      size: 7359603
+      nfiles: 3
+  peilbeheerst@rijnland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/Parametrize/Rijnland_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/Rijnland_parametrize.py
+      hash: md5
+      md5: 49191edf1be1bb32a5f0176efd725211
+      size: 16525
+    outs:
+    - path: data/Rijnland/modellen/Rijnland_parameterized
+      hash: md5
+      md5: 32e74061a65d273168b8ad7431280b7b.dir
+      size: 32296630
+      nfiles: 3
+  peilbeheerst@rivierenland:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/Rivierenland_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/Rivierenland_parametrize.py
+      hash: md5
+      md5: e0adb9c0122673860e08fe17dd46b4f3
+      size: 24927
+    outs:
+    - path: data/Rivierenland/modellen/Rivierenland_parameterized
+      hash: md5
+      md5: d96bb2b8c3857097f3134c77f504b000.dir
+      size: 21869820
+      nfiles: 3
+  peilbeheerst@scheldestromen:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/Scheldestromen_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/Scheldestromen_parametrize.py
+      hash: md5
+      md5: 70d9b9a7fe259ec167fb951563bca672
+      size: 19317
+    outs:
+    - path: data/Scheldestromen/modellen/Scheldestromen_parameterized
+      hash: md5
+      md5: 0567f3e36995d992a299719b8d11ccc1.dir
+      size: 4258753
+      nfiles: 3
+  peilbeheerst@schieland_en_de_krimpenerwaard:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/SchielandendeKrimpenerwaard_parametrize.py
+    deps:
+    - path:
+        src/peilbeheerst_model/Parametrize/SchielandendeKrimpenerwaard_parametrize.py
+      hash: md5
+      md5: 402da6a20afa2a9a509259dcb04ffb1f
+      size: 26654
+    outs:
+    - path:
+        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
+      hash: md5
+      md5: 6ad2a9513627a13df90bac74908640e1.dir
+      size: 3420586
+      nfiles: 3
+  peilbeheerst@wetterskip_fryslan:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/WetterskipFryslan_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/WetterskipFryslan_parametrize.py
+      hash: md5
+      md5: 8be4f0613f535cdfbc3aa3a85a5e03ff
+      size: 34400
+    outs:
+    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
+      hash: md5
+      md5: 646cf7dca0d2a9927df16e33fcd1d99d.dir
+      size: 33954335
+      nfiles: 3
+  peilbeheerst@zuiderzeeland:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
+      hash: md5
+      md5: 05d57b545bdc91cc79de2ec8151b9bc6
+      size: 37641
+    outs:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
+      hash: md5
+      md5: 9aeae5ae80d255549527a170f2a0d768.dir
+      size: 13571322
+      nfiles: 3

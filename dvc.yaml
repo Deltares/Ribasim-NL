@@ -6,7 +6,7 @@ stages:
     outs:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
     frozen: true
-  peelbeheerst:
+  peilbeheerst:
     foreach:
       delfland: Delfland
       amstel_gooi_en_vecht: AmstelGooienVecht
@@ -20,7 +20,7 @@ stages:
       zuiderzeeland: Zuiderzeeland
     do:
       cmd:
-        - uv run src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+        - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py
       deps:
         - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
       outs:
