@@ -155,7 +155,7 @@ baseline = "baseline.json"
 After fixing existing type errors, regenerate the baseline to remove the fixed entries:
 
 ```sh
-uv run pyrefly check --update-baseline
+pixi run pyrefly check --update-baseline
 ```
 
 If you introduce code that triggers new errors (e.g. from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command.

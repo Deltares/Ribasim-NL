@@ -72,12 +72,10 @@ cloud.synchronize(
     ]
 )
 
-# # refresh only the feedback form from cloud
+# refresh only the feedback form from cloud
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
-# set paths to the TEMP working directory
-work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
-ribasim_gpkg = work_dir.joinpath("database.gpkg")
+work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
@@ -351,21 +349,6 @@ ribasim_model.node.df.loc[ribasim_model.tabulated_rating_curve.node.df.index, "m
     ribasim_model.tabulated_rating_curve.node.df.index
 )
 ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ribasim_model.pump.node.df.index
-
-# # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
-# ribasim_param.insert_standard_profile(
-#     ribasim_model,
-#     unknown_streefpeil=unknown_streefpeil,
-#     regular_percentage=regular_percentage,
-#     boezem_percentage=boezem_percentage,
-#     depth_profile=2,
-# )
-#
-# add_storage_basins = AddStorageBasins(
-#     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
-# )
-#
-# add_storage_basins.create_bergende_basins()
 
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
