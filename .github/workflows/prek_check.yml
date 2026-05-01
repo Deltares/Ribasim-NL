@@ -1,0 +1,26 @@
+name: Prek
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prek:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
+        with:
+          pixi-version: "latest"
+      - name: Fix baseline paths for Linux
+        # Workaround: baseline.json is generated on Windows with backslash paths.
+        # Remove after https://github.com/facebook/pyrefly/pull/3007 is released and baseline is regenerated.
+        if: runner.os == 'Linux'
+        run: sed -i 's|\\\\|/|g' baseline.json
+      - name: Install prek hooks
+        run: pixi run prek install -f
+      - name: Run prek on all files
+        run: pixi run check

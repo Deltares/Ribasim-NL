@@ -51,6 +51,8 @@ bin/
 *.arrow
 *.gpkg
 *.toml
+!pixi.toml
+!pyproject.toml
 *.qgz
 *.dbf
 *.xlsx
