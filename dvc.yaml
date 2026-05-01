@@ -123,16 +123,16 @@ stages:
     deps:
       - notebooks/samenvoegen_modellen.py
       - data/Rijkswaterstaat/modellen/hws_transient
-      # - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
-      # - data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized
-      # - data/Delfland/modellen/Delfland_parameterized
-      # - data/Rijnland/modellen/Rijnland_parameterized
-      # - data/Rivierenland/modellen/Rivierenland_parameterized
-      # - data/Scheldestromen/modellen/Scheldestromen_parameterized
-      # - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
-      # - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
-      # - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
-      # - data/HollandseDelta/modellen/HollandseDelta_parameterized
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized
+      - data/Delfland/modellen/Delfland_parameterized
+      - data/Rijnland/modellen/Rijnland_parameterized
+      - data/Rivierenland/modellen/Rivierenland_parameterized
+      - data/Scheldestromen/modellen/Scheldestromen_parameterized
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
+      - data/HollandseDelta/modellen/HollandseDelta_parameterized
       - data/AaenMaas/modellen/AaenMaas_dynamic_model
       - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       - data/DeDommel/modellen/DeDommel_dynamic_model
