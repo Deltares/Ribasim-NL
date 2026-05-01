@@ -1,9 +1,8 @@
-"""Split basins in the Ribasim model based on linestrings"""
-
-# https://github.com/Deltares/Ribasim-NL/issues/554
+"""Split basins in a Ribasim model based on pre-split basin polygons."""
 
 import typing
 from itertools import combinations
+from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -14,22 +13,25 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl import Model
 
+# https://github.com/Deltares/Ribasim-NL/issues/554
+
 
 class SplitBasins:
+    """Replace one basin by pre-split basin polygons and reconnect its links."""
+
     def __init__(
         self,
         model: Model,
-        splitted_basin_gdf: gpd.GeoDataFrame,
+        splitted_basin_path: str | Path,
         basin_node_id_to_split: int,
-        # hydroobjects: gpd.GeoDataFrame,
     ):
+        """Initialize splitter from a path to a polygon layer with the split basin parts."""
         self.model = model
-        self.splitted_basin_gdf = splitted_basin_gdf
+        self.splitted_basin_gdf = gpd.read_file(splitted_basin_path)
         self.basin_node_id_to_split = basin_node_id_to_split
-        # self.hydroobjects = hydroobjects
 
     def run(self):
-
+        """Run the full split workflow and return the updated model."""
         # implement the newly splitted basins in the model as new basins, without any connection (yet)
         test_model, newly_created_basins = self.create_new_basins(
             model=self.model,
@@ -58,7 +60,7 @@ class SplitBasins:
     def add_manning_nodes_between_splitted_basins(
         self, model: Model, basin_node_id_to_split: int, newly_created_basins: list[int]
     ):
-
+        """Add ManningResistance nodes between split basin polygons that share a boundary face. A ManningResistance node is added at the centroid of the shared boundary face and connected to the two basins with links. This ensures that water can flow between the newly created basins. They are added on each face. This may be redundant, but this will improve recognizability of the model and is not expected to cause performance issues, since the number of basins that are split and the number of shared faces is expected to be low."""
         # only manning nodes have to be added between basins which touch each other
         # find the touching parts, determine the node_ids of the basins that touch each other and determine the centroid of the touching part where the manning node will be added
         assert model.basin.area.df is not None
@@ -91,10 +93,13 @@ class SplitBasins:
         return model
 
     def _touching_faces(self, geometry: BaseGeometry) -> list[BaseGeometry]:
-        if isinstance(geometry, LineString):
+        """Return line geometries representing shared basin boundary faces."""
+        if isinstance(geometry, LineString):  # single line string
             return [geometry]
 
-        if isinstance(geometry, MultiLineString):
+        if isinstance(
+            geometry, MultiLineString
+        ):  # multiple line strings, e.g. in case of multiple touching faces between two basins
             return list(geometry.geoms)
 
         return []
@@ -102,7 +107,7 @@ class SplitBasins:
     def redirect_connectors_to_new_basins(
         self, model: Model, basin_node_id_to_split: int, newly_created_basins: list[int]
     ):
-
+        """Redirect links connected to the original basin to the nearest new split basin."""
         # find all connectors that are connected to the original basin
         assert model.link.df is not None
         assert model.node.df is not None
@@ -164,7 +169,7 @@ class SplitBasins:
         return model
 
     def create_new_basins(self, model: Model, splitted_basin_gdf: gpd.GeoDataFrame, basin_node_id_to_split: int):
-
+        """Create basin nodes and basin tables for each supplied split basin polygon."""
         # store the newly created basins for later use
         newly_created_basins = []
 
@@ -192,6 +197,7 @@ class SplitBasins:
         return self.model, newly_created_basins
 
     def _copy_basin_tables(self, original_node_id: int, new_node_id: int):
+        """Copy all existing basin table rows from the original basin to a new basin node id."""
         for table in [
             self.model.basin.profile,
             self.model.basin.static,
