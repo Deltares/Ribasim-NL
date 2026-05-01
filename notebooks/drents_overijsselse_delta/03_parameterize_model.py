@@ -94,6 +94,8 @@ model.merge_basins(node_id=56, to_node_id=59, are_connected=True)
 model.merge_basins(node_id=1681, to_node_id=1717, are_connected=True)
 model.merge_basins(node_id=2348, to_node_id=1756, are_connected=False)
 model.merge_basins(node_id=2192, to_node_id=2194, are_connected=False)
+model.merge_basins(node_id=2574, to_node_id=2030, are_connected=True)
+model.merge_basins(node_id=2030, to_node_id=1721, are_connected=True)
 
 
 # %%

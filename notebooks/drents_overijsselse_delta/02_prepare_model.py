@@ -1,5 +1,4 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import pandas as pd
@@ -32,9 +31,9 @@ peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/extra d
 hydamo_wm_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/HyDAMO_WM_20230720.gpkg")
 meppelerdiep_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/meppelerdiep.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
-model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
+# model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_path, hydamo_wm_gpkg, meppelerdiep_gpkg, model_edits_aanvoer_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_path, hydamo_wm_gpkg, meppelerdiep_gpkg])
 cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
@@ -75,35 +74,6 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 # %%
 # %% Quick fix basins
-
-actions = [
-    "remove_basin_area",
-    #    "remove_node",
-    #    "remove_link",
-    "add_basin",
-    "add_basin_area",
-    # "update_basin_area",
-    # "merge_basins",
-    # "reverse_link",
-    # "move_node",
-    "connect_basins",
-    #   "update_node",
-    "redirect_link",
-]
-actions = [i for i in actions if i in gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()]
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
-
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1389, "flow_rate"] = 0.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2609, "flow_rate"] = 0.1
