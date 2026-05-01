@@ -19,43 +19,26 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 
 # paths:
-base = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel")
+base = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
-# Draaien vanuit de uitgangskoppeltabel op basis van alle nieuw aangeleverde metingen en feedback
-# loc_ref_koppeltabel = cloud.joinpath(base, "Koppeltabel_uitgangspunt.xlsx")
+loc_ref_koppeltabel = cloud.joinpath(base, "final_koppeltabel_v28_04_2026.xlsx")
 
-# loc_ref_koppeltabel = cloud.joinpath(base, "Transformed_koppeltabel_versie1_Feedback_Verwerkt_HydroLogic.xlsx")
-loc_ref_koppeltabel = cloud.joinpath(
-    base, "Transformed_koppeltabel_versie_lhm_ctwq_compat_Feedback_Verwerkt_HydroLogic.xlsx"
-)
+waterboard = "Limburg"
+waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
 
-
-# paths:
-#!TODO: Nog niet mogelijk om lhm-coupled model op GC in te lezen
-# met huidige ribasim dev versie
-
-rws_model_versions = cloud.uploaded_models(authority="Rijkswaterstaat")
-latest_lhm_version = sorted(
-    [i for i in rws_model_versions if i.model == "lhm_coupled"], key=lambda x: getattr(x, "sorter", "")
+latest_model_version = sorted(
+    [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
 )[-1]
-model_folder = cloud.joinpath("Rijkswaterstaat/modellen", latest_lhm_version.path_string)
+
+model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
 
 
 # Filteren of gebruiken we een gekoppeld model:
-filter_waterschappen = False
-
-# Filteren voor een enkel waterschap:
-# waterschapsnaam = ["Delfland"]
-
-# Filteren voor meerdere waterschappen:
-# waterschapsnaam = ['AmstelGooienVecht',
-#                    'Rijnland', 'StichtseRijnlanden', 'Delfland',
-#  'SchielandendeKrimpenerwaard', 'HollandseDelta', 'Rijkswaterstaat']
-
-waterschapsnaam = None
+filter_waterschappen = True
+waterschapsnaam = ["Limburg"]
 
 # toml_naam = "lhm-coupled.toml"
-toml_naam = "lhm_ctwq.toml"
+toml_naam = "limburg.toml"
 
 
 # Als we wel een geometry hadden opgeslagen in de input koppeltabel, maar we kunnen in de buurt in het nieuwe model
@@ -71,16 +54,15 @@ nieuwe_suggestie_als_oude_geometry_ontbreekt = True
 # eerste_tabel = True
 eerste_tabel = False
 
-versie = "lhm_ctwq_compat"
+versie = f"{latest_model_version.path_string}"
+
 wegschrijven_nieuwe_tabel = cloud.joinpath(base, f"Transformed_koppeltabel_versie_{versie}.xlsx")
 
 # synchronize paths
 cloud.synchronize([base, model_folder])
 
-#!TODO: weghalen als lhm-coupled met huidige ribasim versie kan worden ingelezen
-# model_folder_temporary = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_werkend\lhm_coupled"
-model_folder_temporary = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_2017\lhm_ctwq_compat"
-
+model = Model.read(Path(model_folder) / toml_naam)  # Aangepast van lhm.toml
+links = model.link.df
 
 # %% functions
 
@@ -296,7 +278,10 @@ def LaadKoppeltabel(loc_koppeltabel, eerste_tabel=False):
 
 # Import koppeltabel met meest recent verwerkte feedback van waterschappen
 
-koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=eerste_tabel)
+# koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=eerste_tabel)
+koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=False)
+filter_waterschappen = True
+waterschapsnaam = ["Limburg"]
 
 # Als we op waterschappen willen filteren:
 if filter_waterschappen:
@@ -309,13 +294,7 @@ if filter_waterschappen:
     ]
 
 
-# %% import model
-
-# model = Model.read(os.path.join(model_folder, toml_naam)) # Aangepast van lhm.toml
-
-model = Model.read(Path(model_folder_temporary) / toml_naam)  # Aangepast van lhm.toml
-
-links = model.link.df
+# %%
 
 
 def combine_nodes_from_model(model, node_types):
@@ -408,6 +387,12 @@ link_columns = [
     "geometry",
 ]
 
+# link_columns = [
+#     "from_node_id",
+#     "to_node_id",
+#     "link_id",
+#     "geometry",
+# ]
 
 koppeling_spatial = spatial_match(
     shape_koppeling_path=gdf_koppeling,
@@ -418,15 +403,13 @@ koppeling_spatial = spatial_match(
     link_columns=link_columns,
     apply_mapping=False,
     write_buffer_shp=False,
-    output_buffer_shapefile=cloud.joinpath(
-        base, "suggestie_automatische_koppeling", f"Buffers_match_metingen_v{versie}.gpkg"
-    ),
-    # output_buffer_shapefile=os.path.join(loc_model, "Koppeltabellen updaten", "suggestie_automatische_koppeling", "Buffers_match_metingen.shp")
-    #!!TODO: uploaden naar de cloud op de juiste manier
-    cloud_sync=cloud,
+    output_buffer_shapefile=None,
+    cloud_sync=False,
     filter_waterschappen=filter_waterschappen,
     lijst_filter_waterschappen=waterschapsnaam,
+    print_logging=False,
 )
+
 
 # %%
 
@@ -434,7 +417,19 @@ koppeling_spatial = spatial_match(
 
 # Wegschrijven van de koppeltabel die automatisch gemaakt wordt op basis van de geometry van de meetpunten
 
-path_excel = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.xlsx")
+# path_excel = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.xlsx")
+
+# koppeling_spatial.to_excel(path_excel, index=False)
+# cloud.upload_file(path_excel)
+
+
+# koppeling_spatial.set_crs(epsg=28992, inplace=True)
+
+# path_gpkg = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.gpkg")
+# koppeling_spatial.to_file(path_gpkg, driver="GPKG")
+# cloud.upload_file(path_gpkg)
+
+path_excel = Path(base, f"Automatische_spatialmatch_v{versie}.xlsx")
 
 koppeling_spatial.to_excel(path_excel, index=False)
 cloud.upload_file(path_excel)
@@ -442,7 +437,7 @@ cloud.upload_file(path_excel)
 
 koppeling_spatial.set_crs(epsg=28992, inplace=True)
 
-path_gpkg = cloud.joinpath(base, "suggestie_automatische_koppeling", f"Automatische_spatialmatch_v{versie}.gpkg")
+path_gpkg = Path(base, f"Automatische_spatialmatch_v{versie}.gpkg")
 koppeling_spatial.to_file(path_gpkg, driver="GPKG")
 cloud.upload_file(path_gpkg)
 
@@ -462,6 +457,7 @@ previous_cols = [
     "previous_from_node_types",
     "previous_to_node_types",
     "previous_link_id",
+    "previous_meta_link_id_waterbeheerder",
 ]
 
 new_cols = [
@@ -470,6 +466,7 @@ new_cols = [
     "new_from_node_types",
     "new_to_node_types",
     "new_link_id",
+    "new_meta_link_id_waterbeheerder",
     "opmerking_transform",
 ]
 
@@ -491,9 +488,38 @@ else:
         "link_id": "previous_link_id",
     }
     koppeltabel = koppeltabel.rename(columns={k: v for k, v in rename_map.items() if k in koppeltabel.columns})
-    # Initialize new_* columns
-    for col in new_cols:
+
+# Ensure all previous_* and new_* columns exist (handles first run with new columns)
+for col in previous_cols + new_cols:
+    if col not in koppeltabel.columns:
         koppeltabel[col] = None
+
+
+nieuwe_suggestie_als_oude_geometry_ontbreekt = True
+
+
+def _to_int_meta(val):
+    """Convert a float or list of floats from meta_link_id_waterbeheerder to int, NaN → None."""
+    import ast
+
+    if isinstance(val, str):
+        val = val.strip()
+        if val.startswith("[") and val.endswith("]"):
+            try:
+                val = ast.literal_eval(val)
+            except (ValueError, SyntaxError):
+                return None
+        else:
+            try:
+                val = float(val)
+            except ValueError:
+                return None
+    if isinstance(val, list):
+        return [None if (v is None or (isinstance(v, float) and pd.isna(v))) else int(v) for v in val]
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return None
+    return int(val)
+
 
 # %%
 # ---------------------------------------------
@@ -527,6 +553,11 @@ for index, row in koppeltabel.iterrows():
 
         koppeltabel.at[index, "new_link_id"] = koppeling_spatial.loc[index, "link_id"]
 
+        if "meta_link_id_waterbeheerder" in koppeling_spatial.columns:
+            koppeltabel.at[index, "new_meta_link_id_waterbeheerder"] = _to_int_meta(
+                koppeling_spatial.loc[index, "meta_link_id_waterbeheerder"]
+            )
+
         if koppeling_spatial.at[index, "link_id"] is None:
             koppeltabel.loc[index, "opmerking_transform"] = (
                 "Geen originele koppeling en geen spatial koppeling gevonden met nieuwe model"
@@ -543,10 +574,21 @@ for index, row in koppeltabel.iterrows():
         from_nodes_id = []
         to_nodes_id = []
         link_id = []
-        # meta_link_id_waterbeheerder = []
+        meta_link_id_waterbeheerder = []
         opmerking_transform = []
 
         # loop per rij over de verschillende links (combi van from en to nodes)
+
+        lengths = {
+            "prev_from_geom": len(prev_from_geom) if prev_from_geom else 0,
+            "prev_to_geom": len(prev_to_geom) if prev_to_geom else 0,
+            "prev_from_types": len(prev_from_types) if prev_from_types else 0,
+            "prev_to_types": len(prev_to_types) if prev_to_types else 0,
+        }
+        if len(set(lengths.values())) > 1:
+            print(f"Inconsistente lengtes bij index {index} ({row.get('MeetreeksC')}): {lengths}")
+            koppeltabel.at[index, "opmerking_transform"] = f"Overgeslagen: inconsistente data lengtes {lengths}"
+            continue
 
         for from_node, to_node, from_type, to_type in zip(
             prev_from_geom, prev_to_geom, prev_from_types, prev_to_types, strict=True
@@ -619,7 +661,7 @@ for index, row in koppeltabel.iterrows():
                     from_nodes_id.append(None)
                     to_nodes_id.append(None)
                     link_id.append(None)
-                    # meta_link_id_waterbeheerder.append(None)
+                    meta_link_id_waterbeheerder.append(None)
                     opmerking_transform.append(",geen match gevonden,")
 
                     continue
@@ -676,7 +718,12 @@ for index, row in koppeltabel.iterrows():
                 to_nodes_id.append(to_node_id)
 
                 link_id.append(int(found_link_id))
-                # print(link_id)
+
+                if "meta_link_id_waterbeheerder" in found_link.columns:
+                    val = found_link["meta_link_id_waterbeheerder"].iloc[0]
+                    meta_link_id_waterbeheerder.append(None if pd.isna(val) else int(val))
+                else:
+                    meta_link_id_waterbeheerder.append(None)
 
                 opmerking_transform.append("found match" + message)
 
@@ -686,7 +733,6 @@ for index, row in koppeltabel.iterrows():
                 found_nodes_all_types is None or found_nodes_all_types.empty
             ):
                 print("geen match gevonden: ", index, node_to_match, node_type_to_match)
-                # from_nodes_geom = []
                 from_nodes_geom.append(None)
                 to_nodes_geom.append(None)
                 from_node_types.append(None)
@@ -694,7 +740,7 @@ for index, row in koppeltabel.iterrows():
                 from_nodes_id.append(None)
                 to_nodes_id.append(None)
                 link_id.append(None)
-                # meta_link_id_waterbeheerder.append(None)
+                meta_link_id_waterbeheerder.append(None)
                 opmerking_transform.append(",geen match gevonden,")
 
                 continue
@@ -704,6 +750,7 @@ for index, row in koppeltabel.iterrows():
         koppeltabel.at[index, "new_from_node_types"] = from_node_types
         koppeltabel.at[index, "new_to_node_types"] = to_node_types
         koppeltabel.at[index, "new_link_id"] = link_id
+        koppeltabel.at[index, "new_meta_link_id_waterbeheerder"] = meta_link_id_waterbeheerder
         koppeltabel.at[index, "opmerking_transform"] = opmerking_transform
 
         # Als we wel een geometry hadden opgeslagen in de input koppeltabel, maar we kunnen in de buurt in het nieuwe model
@@ -733,6 +780,11 @@ for index, row in koppeltabel.iterrows():
 
                 koppeltabel.at[index, "new_link_id"] = koppeling_spatial.loc[index, "link_id"]
 
+                if "meta_link_id_waterbeheerder" in koppeling_spatial.columns:
+                    koppeltabel.at[index, "new_meta_link_id_waterbeheerder"] = _to_int_meta(
+                        koppeling_spatial.loc[index, "meta_link_id_waterbeheerder"]
+                    )
+
                 if koppeling_spatial.at[index, "link_id"] is None:
                     koppeltabel.loc[index, "opmerking_transform"] = (
                         "Geen originele koppeling en geen spatial koppeling gevonden met nieuwe model"
@@ -752,6 +804,26 @@ for index, row in koppeltabel.iterrows():
 # Wegschrijven koppeltabel
 ##########################
 
+column_order = [
+    "Waterschap",
+    "MeetreeksC",
+    "Aan/Af",
+    "previous_from_node_geometry",
+    "previous_to_node_geometry",
+    "previous_from_node_types",
+    "previous_to_node_types",
+    "previous_meta_link_id_waterbeheerder",
+    "previous_link_id",
+    "new_from_node_geometry",
+    "new_to_node_geometry",
+    "new_from_node_types",
+    "new_to_node_types",
+    "new_meta_link_id_waterbeheerder",
+    "new_link_id",
+    "geometry",
+    "opmerking_transform",
+]
+koppeltabel = koppeltabel[[c for c in column_order if c in koppeltabel.columns]]
 
 #!!TODO: uploaden naar de cloud op de juiste manier
 

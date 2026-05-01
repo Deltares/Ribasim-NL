@@ -167,7 +167,67 @@ def search_type_nodes(lhm_model, node_id):
 #####################################################################################
 
 
-def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name):
+# def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name):
+#     """
+#     Filter connector nodes and links for a specific waterboard.
+
+#     Parameters
+#     ----------
+#     - lhm_model (Model): The Ribasim model containing connector nodes and links.
+#     - connector_nodes (list): List of connector nodes to process.
+#     - links_gdf (GeoDataFrame): GeoDataFrame containing links with geometry and node IDs.
+#     - waterboard_name (str): Name of the waterboard to filter data for.
+
+#     Returns
+#     -------
+#     - filtered_connector_gdfs (dict): Dictionary of filtered connector GeoDataFrames for each node.
+#     - region_links (GeoDataFrame): Filtered links GeoDataFrame for the specified waterboard.
+#     """
+#     filtered_connector_gdfs = {}
+
+#     # Filter connector nodes for the specified waterboard
+#     for node_name in connector_nodes:
+#         attr = getattr(lhm_model, node_name, None)
+#         if attr and hasattr(attr, "node") and hasattr(attr.node, "df"):
+#             connector_df = attr.node.df
+#             if "geometry" in connector_df.columns and "meta_waterbeheerder" in connector_df.columns:
+#                 # Filter the connector_df by the current waterboard if information is available
+#                 if not connector_df["meta_waterbeheerder"].isna().all():
+#                     filtered_connector_gdf = connector_df[connector_df["meta_waterbeheerder"] == waterboard_name]
+
+#                     if not filtered_connector_gdf.empty:
+#                         filtered_connector_gdf = filtered_connector_gdf.reset_index()
+
+#                     else:
+#                         # met het lhm_ctwq_compat is in meta_waterbeheerder
+#                         # alleen "Rijkswaterstaat", we zoeken dus niet meer binnen de
+#                         # specfieke waterschaps nodes en linkjes.
+
+#                         filtered_connector_gdf = connector_df.reset_index()
+
+#                     filtered_connector_gdfs[node_name] = filtered_connector_gdf
+
+#                 else:
+#                     filtered_connector_gdfs[node_name] = connector_df.reset_index()
+#             else:
+#                 filtered_connector_gdfs[node_name] = gpd.GeoDataFrame()  # Empty GeoDataFrame if missing columns
+
+# # Filter links for the specified waterboard
+# region_links = gpd.GeoDataFrame()
+# for node_name, filtered_connector_df in filtered_connector_gdfs.items():
+#     if not filtered_connector_df.empty:
+#         # Check for links connected to the nodes in this connector_df
+#         node_ids = filtered_connector_df["node_id"].unique()
+#         links_to = links_gdf[links_gdf["to_node_id"].isin(node_ids)]
+#         links_from = links_gdf[links_gdf["from_node_id"].isin(node_ids)]
+
+#         # Concatenate these links into the regional links_gdf
+#         region_links = pd.concat([region_links, links_to, links_from]).drop_duplicates()
+
+#     return filtered_connector_gdfs, region_links
+
+
+def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name, print_logging=False):
     """
     Filter connector nodes and links for a specific waterboard.
 
@@ -185,44 +245,79 @@ def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name
     """
     filtered_connector_gdfs = {}
 
-    # Filter connector nodes for the specified waterboard
+    # -----------------------------
+    # Filter connector nodes
+    # -----------------------------
     for node_name in connector_nodes:
         attr = getattr(lhm_model, node_name, None)
-        if attr and hasattr(attr, "node") and hasattr(attr.node, "df"):
-            connector_df = attr.node.df
-            if "geometry" in connector_df.columns and "meta_waterbeheerder" in connector_df.columns:
-                # Filter the connector_df by the current waterboard if information is available
-                if not connector_df["meta_waterbeheerder"].isna().all():
-                    filtered_connector_gdf = connector_df[connector_df["meta_waterbeheerder"] == waterboard_name]
 
-                    if not filtered_connector_gdf.empty:
-                        filtered_connector_gdf = filtered_connector_gdf.reset_index()
+        if not (attr and hasattr(attr, "node") and hasattr(attr.node, "df")):
+            if print_logging:
+                print(f"{node_name}: geen geldige node.df gevonden → leeg resultaat")
+            filtered_connector_gdfs[node_name] = gpd.GeoDataFrame()
+            continue
 
-                    else:
-                        # met het lhm_ctwq_compat is in meta_waterbeheerder
-                        # alleen "Rijkswaterstaat", we zoeken dus niet meer binnen de
-                        # specfieke waterschaps nodes en linkjes.
+        connector_df = attr.node.df
 
-                        filtered_connector_gdf = connector_df.reset_index()
+        # Geometry is required
+        if "geometry" not in connector_df.columns:
+            if print_logging:
+                print(f"{node_name}: geen 'geometry' kolom → overslaan")
+            filtered_connector_gdfs[node_name] = gpd.GeoDataFrame()
+            continue
 
-                    filtered_connector_gdfs[node_name] = filtered_connector_gdf
+        # -----------------------------
+        # Filtering logic
+        # -----------------------------
+        if "meta_waterbeheerder" in connector_df.columns:
+            if not connector_df["meta_waterbeheerder"].isna().all():
+                filtered = connector_df[connector_df["meta_waterbeheerder"] == waterboard_name]
 
-                else:
-                    filtered_connector_gdfs[node_name] = connector_df.reset_index()
+                if filtered.empty:
+                    if print_logging:
+                        print(f"{node_name}: geen matches voor '{waterboard_name}' → fallback naar alle nodes")
+                    filtered = connector_df
+
             else:
-                filtered_connector_gdfs[node_name] = gpd.GeoDataFrame()  # Empty GeoDataFrame if missing columns
+                if print_logging:
+                    print(f"{node_name}: 'meta_waterbeheerder' leeg → geen filtering toegepast")
+                filtered = connector_df
 
-    # Filter links for the specified waterboard
-    region_links = gpd.GeoDataFrame()
-    for filtered_connector_df in filtered_connector_gdfs.values():
-        if not filtered_connector_df.empty:
-            # Check for links connected to the nodes in this connector_df
-            node_ids = filtered_connector_df["node_id"].unique()
-            links_to = links_gdf[links_gdf["to_node_id"].isin(node_ids)]
-            links_from = links_gdf[links_gdf["from_node_id"].isin(node_ids)]
+        else:
+            if print_logging:
+                print(f"{node_name}: 'meta_waterbeheerder' ontbreekt → geen filtering toegepast")
+            filtered = connector_df
 
-            # Concatenate these links into the regional links_gdf
-            region_links = pd.concat([region_links, links_to, links_from]).drop_duplicates()
+        filtered_connector_gdfs[node_name] = filtered.reset_index()
+
+    # -----------------------------
+    # Filter links
+    # -----------------------------
+    region_links_list = []
+
+    for node_name, filtered_connector_df in filtered_connector_gdfs.items():
+        if filtered_connector_df.empty:
+            continue
+
+        if "node_id" not in filtered_connector_df.columns:
+            if print_logging:
+                print(f"{node_name}: geen 'node_id' kolom → links worden overgeslagen")
+            continue
+
+        node_ids = filtered_connector_df["node_id"].unique()
+
+        links_to = links_gdf[links_gdf["to_node_id"].isin(node_ids)]
+        links_from = links_gdf[links_gdf["from_node_id"].isin(node_ids)]
+
+        region_links_list.append(links_to)
+        region_links_list.append(links_from)
+
+    if region_links_list:
+        region_links = pd.concat(region_links_list).drop_duplicates()
+    else:
+        if print_logging:
+            print("Geen links gevonden voor de geselecteerde nodes")
+        region_links = gpd.GeoDataFrame()
 
     return filtered_connector_gdfs, region_links
 
@@ -270,8 +365,10 @@ def filter_connector_nodes_and_links_aan_af(filtered_connector_gdfs, region_link
     filtered_region_links = region_links.copy()
 
     for key, connector_gdf in filtered_connector_gdfs.items():
+        connector_gdf_original = connector_gdf.copy()
+
         if connector_gdf.empty:
-            filtered_connector_gdfs_new[key] = connector_gdf
+            filtered_connector_gdfs_new[key] = connector_gdf_original
             continue
 
         # Check if the static table for this connector exists and contains "meta_func_afvoer"
@@ -294,7 +391,11 @@ def filter_connector_nodes_and_links_aan_af(filtered_connector_gdfs, region_link
                 connector_gdf = connector_gdf[connector_gdf["node_id"].isin(valid_node_ids)]
 
         # Update the filtered_connector_gdfs with the newly filtered GeoDataFrame
-        filtered_connector_gdfs_new[key] = connector_gdf
+        # Check, soms is de meta_func_afvoer niet ingevuld, dit geeft issues met juiste koppeling
+        if connector_gdf.empty:
+            filtered_connector_gdfs_new[key] = connector_gdf_original
+        else:
+            filtered_connector_gdfs_new[key] = connector_gdf
 
     # Filter the region_links based on the updated filtered_connector_gdfs
     # lijst maken van alle
@@ -356,9 +457,11 @@ def match_with_connector_nodes(row, filtered_connector_gdfs, region_links, buffe
 
                     # Handle "Aan/Afvoer" logic
                     if row["Aan/Af"] == "Aanvoer":
-                        links = region_links[region_links["to_node_id"].isin(nearby_connectors["node_id"])]
-                    elif row["Aan/Af"] == "Afvoer":
+                        # links = region_links[region_links["to_node_id"].isin(nearby_connectors["node_id"])]
                         links = region_links[region_links["from_node_id"].isin(nearby_connectors["node_id"])]
+                    elif row["Aan/Af"] == "Afvoer":
+                        # links = region_links[region_links["from_node_id"].isin(nearby_connectors["node_id"])]
+                        links = region_links[region_links["to_node_id"].isin(nearby_connectors["node_id"])]
                     else:
                         links = gpd.GeoDataFrame()  # Empty if "Aan/Af" is missing
 
@@ -448,6 +551,7 @@ def spatial_match(
     cloud_sync=None,
     filter_waterschappen=False,
     lijst_filter_waterschappen=None,
+    print_logging=False,
 ):
     """
     Perform spatial matching between measurement points and connector nodes or links.
@@ -517,8 +621,8 @@ def spatial_match(
     ):
         # if idx == 1:
 
-        # print(idx)
-        # print(row)
+        #     print(idx)
+        #     print(row)
 
         match_found = False
         matched_nodes = []
@@ -526,7 +630,7 @@ def spatial_match(
 
         # Use the filter_for_waterboard function
         filtered_connector_gdfs, region_links = filter_for_waterboard(
-            lhm_model, connector_nodes, links_gdf, row["Waterschap"]
+            lhm_model, connector_nodes, links_gdf, row["Waterschap"], print_logging
         )
 
         # Filter region_links to include only "flow" links
