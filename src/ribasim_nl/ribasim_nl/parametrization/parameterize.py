@@ -18,6 +18,7 @@ class Parameterize(BaseModel):
     precipitation_mm_per_day: int | None = None
     evaporation_mm_per_day: int | None = None
     max_pump_flow_rate: float | None = None
+    canal_width: float = 5
 
     def run(self, **kwargs) -> None:
         print("Start Parameterize.run()")
@@ -73,7 +74,7 @@ class Parameterize(BaseModel):
         print("  ManningResistance bijgewerkt.")
 
         print("Update Basin-profiel en -state...")
-        update_primary_basin_profiles(model=self.model)
+        update_primary_basin_profiles(model=self.model, buffer_distance=self.canal_width / 2)
         update_basin_state(model=self.model)
         update_basin_static(
             model=self.model,

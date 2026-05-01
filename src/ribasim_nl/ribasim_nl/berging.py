@@ -180,7 +180,44 @@ def read_resampled(
     return src.read(band, window=window, out_shape=out_shape, resampling=Resampling.nearest).astype(float)
 
 
-def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0) -> None:
+def basin_link_buffer_area(model: Model, node_id, buffer_distance=2.5):
+    """
+    Berekent het oppervlak van een buffer rond alle links van/naar een basin.
+
+    Parameters
+    ----------
+    model : ribasim.Model
+    node_id : int
+        Basin node_id.
+    buffer_distance : float
+        Bufferafstand in CRS-eenheden, bijvoorbeeld meters bij EPSG:28992.
+
+    Returns
+    -------
+    float
+        Oppervlak van de unary-union buffer.
+    """
+    links = model.link.df
+
+    assert links is not None
+    mask = (links["from_node_id"] == node_id) | (links["to_node_id"] == node_id)
+
+    basin_links = links.loc[mask]
+
+    if basin_links.empty:
+        return 0.0
+
+    geom = basin_links.geometry.dropna()
+
+    if geom.empty:
+        return 0.0
+
+    buffered_union = geom.buffer(buffer_distance).union_all()
+
+    return buffered_union.area
+
+
+def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0, buffer_distance=2.5) -> None:
     """Surface water area of primary basin based on primair_oppervalktewater in LHM4.3
 
     The average of resampled surface water percentage raster is mulitplied by polygon.area
@@ -191,6 +228,8 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         Polygon of the basin
     sample_res : int, optional
         Resolution in which LHM raster is read under the basin.polygon, by default 25
+    buffer_distance: float, optional
+        Buffer distance around connected links
 
     Returns
     -------
@@ -206,6 +245,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         area_fraction: float,
         min_fraction: float = 0.001,
         min_area: float = 999.0,
+        buffer_distance: float = 2.5,
     ) -> pd.DataFrame:
         level = np.array([target_level - depth - 0.1, target_level - depth, target_level]).round(2)
         profile_node_ids = [node_id] * 3
@@ -216,9 +256,12 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
             comment = ["default: 0.1m2", "default: 1% oppervlak", "default: 1% oppervlak"]
         else:
             sw_area = area_fraction * polygon.area
-            comment = [None, None, None]
+            comment = ["default: 0.1m2", "%LHM * oppervlak", "%LHM * oppervlak"]
 
         # if smaller than min_area we set to min_area
+        min_area = max(
+            (min_area, basin_link_buffer_area(model=model, node_id=node_id, buffer_distance=buffer_distance))
+        )
         if sw_area < min_area:
             area = np.array([0.1, min_area, min_area]).round(1)
             comment = [
@@ -290,7 +333,13 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
             area_fraction = np.nan if values.size == 0 or np.all(np.isnan(values)) else float(np.nanmean(values))
 
             basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = round(area_fraction * 100, 1)
-            profile = ah_df(node_id=basin_id, polygon=polygon, target_level=target_level, area_fraction=area_fraction)
+            profile = ah_df(
+                node_id=basin_id,
+                polygon=polygon,
+                target_level=target_level,
+                area_fraction=area_fraction,
+                buffer_distance=buffer_distance,
+            )
             percentage = round(profile.area.max() / polygon.area * 100, 1)
             basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = percentage
             profiles += [profile]

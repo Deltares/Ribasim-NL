@@ -31,8 +31,17 @@ model = Model.read(ribasim_toml)
 
 start_time = time.time()
 # %%
+# %% wat basin-peilen zetten n.a.v. full control-checks
+model.basin.area.df.loc[model.basin.area.df.node_id == 1068, "meta_streefpeil"] = 8.55
+model.basin.area.df.loc[model.basin.area.df.node_id == 777, "meta_streefpeil"] = 26.406666666666666
+model.basin.area.df.loc[model.basin.area.df.node_id == 1085, "meta_streefpeil"] = 5.5
+model.basin.area.df.loc[model.basin.area.df.node_id == 793, "meta_streefpeil"] = 10.7
+model.basin.area.df.loc[model.basin.area.df.node_id == 857, "meta_streefpeil"] = 11.60
+
 # parameterize
-model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
+model.parameterize(
+    static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg, canal_width=10
+)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
 
@@ -53,13 +62,6 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 model.pump.static.df.loc[model.pump.static.df.node_id == 654, "flow_rate"] = 1.4  # schipbeek
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 120, "flow_rate"] = 1.3  # lochem
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 90, "flow_rate"] = 0.6  # herkel
-
-
-# %% wat basin-peilen zetten n.a.v. full control-checks
-model.basin.area.df.loc[model.basin.area.df.node_id == 1068, "meta_streefpeil"] = 8.55
-model.basin.area.df.loc[model.basin.area.df.node_id == 777, "meta_streefpeil"] = 26.406666666666666
-model.basin.area.df.loc[model.basin.area.df.node_id == 1085, "meta_streefpeil"] = 5.5
-model.basin.area.df.loc[model.basin.area.df.node_id == 793, "meta_streefpeil"] = 10.7
 
 # %%
 # Write model

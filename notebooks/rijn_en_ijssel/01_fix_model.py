@@ -298,6 +298,7 @@ model.remove_node(
 )  # rest: Extra afvoer (verkeerd-om getekend), maar hoofdafvoer gaat via Kievekampsbrug (388)
 model.remove_node(node_id=526, remove_links=True)  # rest: Direct aan secundair gebied, hoofdafvoer loopt via 423
 model.remove_node(node_id=559, remove_links=True)  # rest: Secundair gebied, hoofdtak loopt over 564 (Erfkamerlingschap)
+model.remove_node(node_id=569, remove_links=True)  # rest: Secundair gebied, hoofdtak loopt over 121 (eefde aflaatwerk)
 model.remove_node(node_id=637, remove_links=True)  # rest: Gemaal Dunoweg voor nu eruit
 model.remove_node(
     node_id=541, remove_links=True
@@ -313,6 +314,7 @@ model.remove_node(
 model.remove_node(
     node_id=387, remove_links=True
 )  # rode bollen: 387 kan worden opgeheven, is een stuw in een kwelsloot met een hoger peil
+
 
 sanitize_node_table(
     model,
