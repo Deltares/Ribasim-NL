@@ -19,8 +19,8 @@ stages:
       wetterskip_fryslan: WetterskipFryslan
       zuiderzeeland: Zuiderzeeland
     do:
-      cmd: 
-        uv run src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+      cmd:
+        - uv run src/peilbeheerst_model/Parametrize/${item}_parametrize.py
       deps:
         - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
       outs:
