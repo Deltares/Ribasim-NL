@@ -1258,7 +1258,7 @@ def add_controllers_to_connector_nodes(
 
 def add_controllers_to_supply_area(
     model: Model,
-    polygon: Polygon,
+    polygon: Polygon | MultiPolygon,
     ignore_intersecting_links: list[int],
     drain_nodes: list[int],
     flushing_nodes: dict[int, float | dict[str, float]],
@@ -1293,7 +1293,7 @@ def add_controllers_to_supply_area(
     ----------
     model : Model
         Ribasim Model
-    polygon : Polygon
+    polygon : Polygon | MultiPolygon
         Polygon of supply area
     ignore_intersecting_links : list[int]
         Optional list of links that can be ignored in producing outflow or inflow control nodes.
