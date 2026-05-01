@@ -457,9 +457,11 @@ def match_with_connector_nodes(row, filtered_connector_gdfs, region_links, buffe
 
                     # Handle "Aan/Afvoer" logic
                     if row["Aan/Af"] == "Aanvoer":
-                        links = region_links[region_links["to_node_id"].isin(nearby_connectors["node_id"])]
-                    elif row["Aan/Af"] == "Afvoer":
+                        # links = region_links[region_links["to_node_id"].isin(nearby_connectors["node_id"])]
                         links = region_links[region_links["from_node_id"].isin(nearby_connectors["node_id"])]
+                    elif row["Aan/Af"] == "Afvoer":
+                        # links = region_links[region_links["from_node_id"].isin(nearby_connectors["node_id"])]
+                        links = region_links[region_links["to_node_id"].isin(nearby_connectors["node_id"])]
                     else:
                         links = gpd.GeoDataFrame()  # Empty if "Aan/Af" is missing
 

@@ -379,20 +379,20 @@ buffer_range_links = np.arange(0, 600, 1).tolist()
 
 # Met een gecombineerd model kunnen we de meta_link_id_waterbeheerder wel meenemen
 
-# link_columns = [
-#     "from_node_id",
-#     "to_node_id",
-#     "link_id",
-#     "meta_link_id_waterbeheerder",
-#     "geometry",
-# ]
-
 link_columns = [
     "from_node_id",
     "to_node_id",
     "link_id",
+    "meta_link_id_waterbeheerder",
     "geometry",
 ]
+
+# link_columns = [
+#     "from_node_id",
+#     "to_node_id",
+#     "link_id",
+#     "geometry",
+# ]
 
 koppeling_spatial = spatial_match(
     shape_koppeling_path=gdf_koppeling,
@@ -457,6 +457,7 @@ previous_cols = [
     "previous_from_node_types",
     "previous_to_node_types",
     "previous_link_id",
+    "previous_meta_link_id_waterbeheerder",
 ]
 
 new_cols = [
@@ -465,6 +466,7 @@ new_cols = [
     "new_from_node_types",
     "new_to_node_types",
     "new_link_id",
+    "new_meta_link_id_waterbeheerder",
     "opmerking_transform",
 ]
 
@@ -486,12 +488,37 @@ else:
         "link_id": "previous_link_id",
     }
     koppeltabel = koppeltabel.rename(columns={k: v for k, v in rename_map.items() if k in koppeltabel.columns})
-    # Initialize new_* columns
-    for col in new_cols:
+
+# Ensure all previous_* and new_* columns exist (handles first run with new columns)
+for col in previous_cols + new_cols:
+    if col not in koppeltabel.columns:
         koppeltabel[col] = None
 
 
 nieuwe_suggestie_als_oude_geometry_ontbreekt = True
+
+
+def _to_int_meta(val):
+    """Convert a float or list of floats from meta_link_id_waterbeheerder to int, NaN → None."""
+    import ast
+
+    if isinstance(val, str):
+        val = val.strip()
+        if val.startswith("[") and val.endswith("]"):
+            try:
+                val = ast.literal_eval(val)
+            except (ValueError, SyntaxError):
+                return None
+        else:
+            try:
+                val = float(val)
+            except ValueError:
+                return None
+    if isinstance(val, list):
+        return [None if (v is None or (isinstance(v, float) and pd.isna(v))) else int(v) for v in val]
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return None
+    return int(val)
 
 
 # %%
@@ -526,6 +553,11 @@ for index, row in koppeltabel.iterrows():
 
         koppeltabel.at[index, "new_link_id"] = koppeling_spatial.loc[index, "link_id"]
 
+        if "meta_link_id_waterbeheerder" in koppeling_spatial.columns:
+            koppeltabel.at[index, "new_meta_link_id_waterbeheerder"] = _to_int_meta(
+                koppeling_spatial.loc[index, "meta_link_id_waterbeheerder"]
+            )
+
         if koppeling_spatial.at[index, "link_id"] is None:
             koppeltabel.loc[index, "opmerking_transform"] = (
                 "Geen originele koppeling en geen spatial koppeling gevonden met nieuwe model"
@@ -542,10 +574,21 @@ for index, row in koppeltabel.iterrows():
         from_nodes_id = []
         to_nodes_id = []
         link_id = []
-        # meta_link_id_waterbeheerder = []
+        meta_link_id_waterbeheerder = []
         opmerking_transform = []
 
         # loop per rij over de verschillende links (combi van from en to nodes)
+
+        lengths = {
+            "prev_from_geom": len(prev_from_geom) if prev_from_geom else 0,
+            "prev_to_geom": len(prev_to_geom) if prev_to_geom else 0,
+            "prev_from_types": len(prev_from_types) if prev_from_types else 0,
+            "prev_to_types": len(prev_to_types) if prev_to_types else 0,
+        }
+        if len(set(lengths.values())) > 1:
+            print(f"Inconsistente lengtes bij index {index} ({row.get('MeetreeksC')}): {lengths}")
+            koppeltabel.at[index, "opmerking_transform"] = f"Overgeslagen: inconsistente data lengtes {lengths}"
+            continue
 
         for from_node, to_node, from_type, to_type in zip(
             prev_from_geom, prev_to_geom, prev_from_types, prev_to_types, strict=True
@@ -618,7 +661,7 @@ for index, row in koppeltabel.iterrows():
                     from_nodes_id.append(None)
                     to_nodes_id.append(None)
                     link_id.append(None)
-                    # meta_link_id_waterbeheerder.append(None)
+                    meta_link_id_waterbeheerder.append(None)
                     opmerking_transform.append(",geen match gevonden,")
 
                     continue
@@ -675,7 +718,12 @@ for index, row in koppeltabel.iterrows():
                 to_nodes_id.append(to_node_id)
 
                 link_id.append(int(found_link_id))
-                # print(link_id)
+
+                if "meta_link_id_waterbeheerder" in found_link.columns:
+                    val = found_link["meta_link_id_waterbeheerder"].iloc[0]
+                    meta_link_id_waterbeheerder.append(None if pd.isna(val) else int(val))
+                else:
+                    meta_link_id_waterbeheerder.append(None)
 
                 opmerking_transform.append("found match" + message)
 
@@ -685,7 +733,6 @@ for index, row in koppeltabel.iterrows():
                 found_nodes_all_types is None or found_nodes_all_types.empty
             ):
                 print("geen match gevonden: ", index, node_to_match, node_type_to_match)
-                # from_nodes_geom = []
                 from_nodes_geom.append(None)
                 to_nodes_geom.append(None)
                 from_node_types.append(None)
@@ -693,7 +740,7 @@ for index, row in koppeltabel.iterrows():
                 from_nodes_id.append(None)
                 to_nodes_id.append(None)
                 link_id.append(None)
-                # meta_link_id_waterbeheerder.append(None)
+                meta_link_id_waterbeheerder.append(None)
                 opmerking_transform.append(",geen match gevonden,")
 
                 continue
@@ -703,6 +750,7 @@ for index, row in koppeltabel.iterrows():
         koppeltabel.at[index, "new_from_node_types"] = from_node_types
         koppeltabel.at[index, "new_to_node_types"] = to_node_types
         koppeltabel.at[index, "new_link_id"] = link_id
+        koppeltabel.at[index, "new_meta_link_id_waterbeheerder"] = meta_link_id_waterbeheerder
         koppeltabel.at[index, "opmerking_transform"] = opmerking_transform
 
         # Als we wel een geometry hadden opgeslagen in de input koppeltabel, maar we kunnen in de buurt in het nieuwe model
@@ -732,6 +780,11 @@ for index, row in koppeltabel.iterrows():
 
                 koppeltabel.at[index, "new_link_id"] = koppeling_spatial.loc[index, "link_id"]
 
+                if "meta_link_id_waterbeheerder" in koppeling_spatial.columns:
+                    koppeltabel.at[index, "new_meta_link_id_waterbeheerder"] = _to_int_meta(
+                        koppeling_spatial.loc[index, "meta_link_id_waterbeheerder"]
+                    )
+
                 if koppeling_spatial.at[index, "link_id"] is None:
                     koppeltabel.loc[index, "opmerking_transform"] = (
                         "Geen originele koppeling en geen spatial koppeling gevonden met nieuwe model"
@@ -751,6 +804,26 @@ for index, row in koppeltabel.iterrows():
 # Wegschrijven koppeltabel
 ##########################
 
+column_order = [
+    "Waterschap",
+    "MeetreeksC",
+    "Aan/Af",
+    "previous_from_node_geometry",
+    "previous_to_node_geometry",
+    "previous_from_node_types",
+    "previous_to_node_types",
+    "previous_meta_link_id_waterbeheerder",
+    "previous_link_id",
+    "new_from_node_geometry",
+    "new_to_node_geometry",
+    "new_from_node_types",
+    "new_to_node_types",
+    "new_meta_link_id_waterbeheerder",
+    "new_link_id",
+    "geometry",
+    "opmerking_transform",
+]
+koppeltabel = koppeltabel[[c for c in column_order if c in koppeltabel.columns]]
 
 #!!TODO: uploaden naar de cloud op de juiste manier
 

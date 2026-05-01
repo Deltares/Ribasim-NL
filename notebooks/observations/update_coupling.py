@@ -144,6 +144,7 @@ def update_koppeltabel_with_feedback(
                 link_ids = (
                     ast.literal_eval(link_ids) if isinstance(link_ids, str) and link_ids.startswith("[") else [link_ids]
                 )
+            link_ids = [int(v) for v in link_ids]
 
             from_node_ids, to_node_ids, meta_link_ids = [], [], []
 
@@ -159,7 +160,13 @@ def update_koppeltabel_with_feedback(
                         to_node_ids.extend(link_data["to_node_id"].tolist())
 
                     if "meta_link_id_waterbeheerder" in link_data.columns:
-                        meta_link_ids.extend(link_data["meta_link_id_waterbeheerder"].tolist())
+                        meta_link_ids.extend(
+                            None if pd.isna(v) else int(v) for v in link_data["meta_link_id_waterbeheerder"]
+                        )
+                else:
+                    from_node_ids.append(None)
+                    to_node_ids.append(None)
+                    meta_link_ids.append(None)
 
             from_node_geometries = [search_geometry_nodes(lhm_model, node_id) for node_id in from_node_ids]
             to_node_geometries = [search_geometry_nodes(lhm_model, node_id) for node_id in to_node_ids]
@@ -171,23 +178,37 @@ def update_koppeltabel_with_feedback(
             #!TODO: Omdat we met een eerste koppeltabel werken
 
             if transformed_koppeltabel:
-                input_koppeltabel.at[input_index, "new_link_id"] = link_ids or None
-                input_koppeltabel.at[input_index, "new_from_node_geometry"] = from_node_geometries or None
-                input_koppeltabel.at[input_index, "new_to_node_geometry"] = to_node_geometries or None
-                input_koppeltabel.at[input_index, "new_from_node_types"] = from_node_types or None
-                input_koppeltabel.at[input_index, "new_to_node_types"] = to_node_types or None
+                input_koppeltabel.at[input_index, "new_link_id"] = str(link_ids) if link_ids else None
+                input_koppeltabel.at[input_index, "new_from_node_geometry"] = (
+                    str(from_node_geometries) if from_node_geometries else None
+                )
+                input_koppeltabel.at[input_index, "new_to_node_geometry"] = (
+                    str(to_node_geometries) if to_node_geometries else None
+                )
+                input_koppeltabel.at[input_index, "new_from_node_types"] = (
+                    str(from_node_types) if from_node_types else None
+                )
+                input_koppeltabel.at[input_index, "new_to_node_types"] = str(to_node_types) if to_node_types else None
 
-                # node id from and to niet opgeslagen
+                if meta_link_ids:
+                    input_koppeltabel.at[input_index, "new_meta_link_id_waterbeheerder"] = str(meta_link_ids)
 
             else:
-                input_koppeltabel.at[input_index, "link_id"] = link_ids or None
-                input_koppeltabel.at[input_index, "from_node_geometry"] = from_node_geometries or None
-                input_koppeltabel.at[input_index, "to_node_geometry"] = to_node_geometries or None
-                input_koppeltabel.at[input_index, "from_node_types"] = from_node_types or None
-                input_koppeltabel.at[input_index, "to_node_types"] = to_node_types or None
+                input_koppeltabel.at[input_index, "link_id"] = str(link_ids) if link_ids else None
+                input_koppeltabel.at[input_index, "from_node_geometry"] = (
+                    str(from_node_geometries) if from_node_geometries else None
+                )
+                input_koppeltabel.at[input_index, "to_node_geometry"] = (
+                    str(to_node_geometries) if to_node_geometries else None
+                )
+                input_koppeltabel.at[input_index, "from_node_types"] = str(from_node_types) if from_node_types else None
+                input_koppeltabel.at[input_index, "to_node_types"] = str(to_node_types) if to_node_types else None
 
-                input_koppeltabel.at[input_index, "from_node_id"] = from_node_ids or None
-                input_koppeltabel.at[input_index, "to_node_id"] = to_node_ids or None
+                input_koppeltabel.at[input_index, "from_node_id"] = str(from_node_ids) if from_node_ids else None
+                input_koppeltabel.at[input_index, "to_node_id"] = str(to_node_ids) if to_node_ids else None
+
+                if meta_link_ids:
+                    input_koppeltabel.at[input_index, "meta_link_id_waterbeheerder"] = str(meta_link_ids)
 
             # Als we een update doen dan ook de status en de match_nodes aanpassen als we
             input_koppeltabel.at[input_index, "status"] = "Updated obv feedback"
@@ -212,6 +233,27 @@ def update_koppeltabel_with_feedback(
     # Welke columns behouden we:
     if not keep_all_columns and columns_to_keep is not None:
         input_koppeltabel = input_koppeltabel[columns_to_keep]
+
+    column_order = [
+        "Waterschap",
+        "MeetreeksC",
+        "Aan/Af",
+        "previous_from_node_geometry",
+        "previous_to_node_geometry",
+        "previous_from_node_types",
+        "previous_to_node_types",
+        "previous_meta_link_id_waterbeheerder",
+        "previous_link_id",
+        "new_from_node_geometry",
+        "new_to_node_geometry",
+        "new_from_node_types",
+        "new_to_node_types",
+        "new_meta_link_id_waterbeheerder",
+        "new_link_id",
+        "geometry",
+        "status",
+    ]
+    input_koppeltabel = input_koppeltabel[[c for c in column_order if c in input_koppeltabel.columns]]
 
     # # Sort the updated koppeltabel alphabetically by "Waterschap"
     # if 'Waterschap' in input_koppeltabel.columns:

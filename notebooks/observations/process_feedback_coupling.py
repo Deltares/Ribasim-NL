@@ -65,11 +65,13 @@ columns_to_keep = [
     "previous_from_node_types",
     "previous_to_node_types",
     "previous_link_id",
+    "previous_meta_link_id_waterbeheerder",
     "new_from_node_geometry",
     "new_to_node_geometry",
     "new_from_node_types",
     "new_to_node_types",
     "new_link_id",
+    "new_meta_link_id_waterbeheerder",
     "status",
 ]
 
