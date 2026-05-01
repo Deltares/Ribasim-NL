@@ -68,9 +68,7 @@ node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "I
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_flow_rate"] = 0.1
 
 # %%
-model.update_node(node_id=1401, node_type="Outlet")
-model.reverse_link(link_id=894)
-model.reverse_link(link_id=1983)
+
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "min_upstream_level"] = -2.6
 model.pump.static.df.loc[model.pump.static.df.node_id == 600, "min_upstream_level"] = 4.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 601, "min_upstream_level"] = 4.0
@@ -87,15 +85,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "flow_rate"] 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "meta_categorie"] = "Inlaat"
 model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 385, "flow_rate"] = 1.0
-model.merge_basins(node_id=1763, to_node_id=1764, are_connected=False)
-model.merge_basins(node_id=2474, to_node_id=2185, are_connected=False)
-model.merge_basins(node_id=2011, to_node_id=2008, are_connected=True)
-model.merge_basins(node_id=56, to_node_id=59, are_connected=True)
-model.merge_basins(node_id=1681, to_node_id=1717, are_connected=True)
-model.merge_basins(node_id=2348, to_node_id=1756, are_connected=False)
-model.merge_basins(node_id=2192, to_node_id=2194, are_connected=False)
-model.merge_basins(node_id=2574, to_node_id=2030, are_connected=True)
-model.merge_basins(node_id=2030, to_node_id=1721, are_connected=True)
 
 
 # %%

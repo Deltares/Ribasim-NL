@@ -309,7 +309,6 @@ model.link.add(outlet_node, model.level_boundary[50])
 # Samenvoegen Westerveldse Aa
 model.merge_basins(node_id=1592, to_node_id=1645, are_connected=True)
 model.merge_basins(node_id=1593, to_node_id=1645, are_connected=True)
-
 model.merge_basins(node_id=1645, to_node_id=1585, are_connected=True)
 model.merge_basins(node_id=2567, to_node_id=1585, are_connected=True)
 model.merge_basins(node_id=2303, to_node_id=1585, are_connected=True)
@@ -317,7 +316,6 @@ model.merge_basins(node_id=2549, to_node_id=1585, are_connected=True)
 model.merge_basins(node_id=2568, to_node_id=1585, are_connected=True)
 model.merge_basins(node_id=2572, to_node_id=1585, are_connected=True)
 model.merge_basins(node_id=2374, to_node_id=1585, are_connected=True)
-
 model.merge_basins(node_id=2559, to_node_id=2337, are_connected=False)
 
 
@@ -465,7 +463,7 @@ for link_id in [634, 1846]:
     model.reverse_link(link_id=link_id)
 
 # 't Vosje #571 is een inlaat
-for link_id in [634, 1717]:
+for link_id in [2830, 1717]:
     model.reverse_link(link_id=link_id)
 
 # 't Katje #562 is een inlaat
@@ -475,6 +473,27 @@ for link_id in [1710, 3006]:
 # 't Raasje #563 is een inlaat
 for link_id in [958, 1711]:
     model.reverse_link(link_id=link_id)
+
+
+# fixes vistrap eruit
+model.remove_node(1414, remove_links=True)
+model.remove_node(1441, remove_links=True)
+
+model.update_node(node_id=1401, node_type="Outlet")
+model.reverse_link(link_id=894)
+model.reverse_link(link_id=1983)
+
+model.merge_basins(node_id=1763, to_node_id=1764, are_connected=False)
+model.merge_basins(node_id=2474, to_node_id=2185, are_connected=False)
+model.merge_basins(node_id=2011, to_node_id=2008, are_connected=True)
+model.merge_basins(node_id=56, to_node_id=59, are_connected=True)
+model.merge_basins(node_id=1681, to_node_id=1717, are_connected=True)
+model.merge_basins(node_id=2348, to_node_id=1756, are_connected=False)
+model.merge_basins(node_id=2192, to_node_id=2194, are_connected=False)
+model.merge_basins(node_id=2574, to_node_id=2030, are_connected=True)
+model.merge_basins(node_id=2030, to_node_id=1721, are_connected=True)
+
+model.remove_link(from_node_id=281, to_node_id=2554)
 
 # remove unassigned basin area
 model.fix_unassigned_basin_area()
