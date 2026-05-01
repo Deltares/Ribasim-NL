@@ -1,0 +1,130 @@
+---
+title: "Split basins based on pre-split basin polygons"
+---
+
+Workflow for replacing one Ribasim basin by multiple smaller basin polygons and reconnecting the surrounding model network.
+The implementation lives in [`src/ribasim_nl/ribasim_nl/split_basins.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/split_basins.py).
+
+## Purpose
+
+This workflow is used after a Ribasim model has already been built and before the model is written or further parameterized.
+It replaces a basin by multiple smaller basins and reconnects the links, which may be useful for convergence improvements or an improved water quality schematisation.
+The script does this by:
+
+1. creating new basin nodes from pre-split basin polygons,
+2. redirecting existing connector links from the original basin to the nearest new basin, and
+3. adding ManningResistance nodes between new basins that share a boundary.
+
+## How to run
+
+This workflow is intended to be run from a water board parametrization script:
+
+1. Prepare a polygon layer with the split basin parts.
+   Each polygon represents one new basin area that will replace the original basin. This can easily be done using QGIS.
+2. Set the path to this layer in the parametrization script.
+3. Create a `SplitBasins` object with:
+   - the Ribasim model,
+   - the path to the split basin polygons,
+   - the `node_id` of the basin that must be replaced.
+4. Run `splitter.run()` and assign the returned model back to the model variable.
+
+For example:
+
+```python
+splitter = SplitBasins(
+    model=ribasim_model,
+    splitted_basin_path=splitted_basin_16_path,
+    basin_node_id_to_split=16,
+)
+ribasim_model = splitter.run()
+```
+
+## Inputs
+
+The script expects at least the following inputs to be available:
+
+- a Ribasim model,
+- a polygon layer containing the pre-split basin parts,
+- the `node_id` of the original basin that will be replaced,
+- existing basin tables for the original basin, such as:
+  - `model.basin.profile`
+  - `model.basin.static`
+  - `model.basin.time`
+  - `model.basin.state`
+  - `model.basin.area`
+- existing links between the original basin and connector nodes.
+
+## Main steps
+
+### 1. Read the split basin polygons
+
+The `SplitBasins` class reads the supplied polygon layer. The geometry of this polygon is used as the new splitted basin areas.
+The original basin geometry is not cut by the script itself; the basin parts must already be prepared as this is a more practical approach, mainly when splitting the basin into many smaller basins or when the basin has an awkward / large shape.
+
+### 2. Create new basin nodes
+
+For each polygon in the split basin layer, the script creates a new basin nodes for each splitted basin. The node geometry is placed at the polygon representative point.
+
+The basin table rows of the original basin are copied to each new basin node to retain the (meta)data.
+This includes available rows in:
+
+- `model.basin.profile`
+- `model.basin.static`
+- `model.basin.time`
+- `model.basin.state`
+- `model.basin.area`
+
+After copying, the geometry in `model.basin.area.df` is replaced by the corresponding split basin polygon. Note that the user may need to update the profile and static/time table, as the surface area of the polygons has changed.
+
+### 3. Redirect existing connectors
+
+The script searches `model.link.df` for links connected to the original basin.
+For each connected node, it determines which new split basin polygon is nearest to the connector node geometry.
+The link is then redirected administratively by replacing the original basin `node_id` with the nearest new basin `node_id`.
+
+The link geometry is also updated.
+A new straight `LineString` is created between the connector node and the representative point of the selected new basin.
+
+### 4. Add ManningResistance nodes between split basins
+
+The new basin polygons are compared pairwise.
+When two new basins touch, the script determines their shared boundary face.
+For each shared face, a ManningResistance node is added at the centroid of that face.
+
+The ManningResistance node is connected as:
+
+1. from the first new basin to the ManningResistance node,
+2. from the ManningResistance node to the second new basin.
+
+The current default ManningResistance static values are:
+
+- `length`: `1000`
+- `manning_n`: `0.04`
+- `profile_width`: `10`
+- `profile_slope`: `3`
+
+This results in multiple manning nodes when there are multiple face, which is done on purpose as otherwise it may look like water doesn't flow between open water bodies.
+
+### 5. Remove the original basin
+
+After the new basins have been created and connected, the original basin is removed.
+The updated model is returned by `splitter.run()`.
+
+## Important assumptions
+
+This workflow assumes:
+
+- the split basin polygon layer fully represents the area that should replace the original basin,
+- the split basin polygons have valid geometries,
+- connector nodes are spatially close to the split basin part they should connect to,
+- copied basin table values are appropriate for every new basin part,
+- ManningResistance nodes are sufficient to represent exchange between adjacent split basin parts.
+
+## Output
+
+The main outputs are:
+
+- an updated Ribasim model without the original basin node,
+- new basin nodes and basin area geometries for each split basin polygon,
+- existing connector links redirected to the nearest new basin,
+- ManningResistance nodes and links between adjacent split basin parts.
