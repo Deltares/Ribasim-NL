@@ -57,15 +57,12 @@ repos:
         entry: pixi run nbstripout
         language: system
         types: [jupyter]
+      - id: pyrefly-check
+        name: Pyrefly (type checking)
+        entry: pixi run typecheck
+        pass_filenames: false
+        language: system
   - repo: https://github.com/google/yamlfmt
     rev: v0.21.0
     hooks:
       - id: yamlfmt
-  - repo: https://github.com/facebook/pyrefly-pre-commit
-    rev: 0.63.1
-    hooks:
-      - id: pyrefly-check
-        name: Pyrefly (type checking)
-        entry: pixi run pyrefly check
-        pass_filenames: false
-        language: system

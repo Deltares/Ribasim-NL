@@ -75,6 +75,7 @@ pandas-stubs = ">=3"
 xlwings = ">=0.33"
 
 [tasks]
+typecheck = "pyrefly check"
 install = "prek install -f && dvc pull"
 repro = "dvc repro --keep-going && prek run"
 check = "prek run --all-files"
