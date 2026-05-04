@@ -1,11 +1,14 @@
 # %%
-from ribasim_nl import CloudStorage, Model
+from ribasim.delwaq import generate, parse, run_delwaq
+
+from ribasim_nl import CloudStorage, Model, settings
 
 cloud = CloudStorage()
 
 FIND_POST_FIXES = ["dynamic_model"]
-SELECTION = ["StichtseRijnlanden"]
+SELECTION = ["RijnenIJssel"]
 INCLUDE_RESULTS = True
+RUN_DELWAQ: bool = True
 
 
 def get_model_dir(authority, post_fix):
@@ -39,6 +42,23 @@ for authority in authorities:
         print("simulating...")
         result = model.run()
         assert result.exit_code == 0
+
+        # run DELWAQ
+        if RUN_DELWAQ:
+            delwaq_dir = model.toml_path.with_name("delwaq")
+            print(f"generate DELWAQ model in {delwaq_dir}")
+            graph, substances = generate(model, output_path=delwaq_dir)
+
+            # run DELWAQ model
+            print("run DELWAQ")
+            run_delwaq(
+                model_dir=delwaq_dir,
+                d3d_home=settings.d3d_home,
+            )
+
+            # parse DELWAQ results in model
+            print("parse DELWAQ results in Ribasim-model")
+            parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
 
         # create version and upload
         print("uploading...")

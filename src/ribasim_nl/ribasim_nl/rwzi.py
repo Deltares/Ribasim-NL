@@ -11,6 +11,7 @@ import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 
 from ribasim_nl import Model, concat
+from ribasim_nl.reset_index import reset_index
 
 logger = logging.getLogger(__name__)
 
@@ -176,10 +177,19 @@ def merge_rwzi_model(base_model, rwzi_model_path, buffer_distance: int = 20, ver
     -------
         Model: The merged model with RWZI nodes coupled to basins.
     """
+    # load RWZI model
     rwzi_model = Model.read(rwzi_model_path)
     logger.info("RWZI model loaded")
 
-    rwzi_coupled_model = concat([base_model, rwzi_model])
+    # add meta_categorie = RWZI so we can discriminate between other (buitenlandse aanvoer) boundaries
+    assert rwzi_model.node.df is not None
+    rwzi_model.node.df.loc[rwzi_model.node.df.node_type == "FlowBoundary", "meta_categorie"] = "RWZI"
+
+    # index rwzi model with nodes >1 higher than of base model
+    node_start = base_model.node.df.index.max() + 1
+    link_start = base_model.link.df.index.max() + 1
+    rwzi_model = reset_index(rwzi_model, node_start=node_start, link_start=link_start)
+    rwzi_coupled_model = concat([base_model, rwzi_model], keep_original_index=True)
 
     coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance)
     rwzi_coupled_model, _stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=verbose)

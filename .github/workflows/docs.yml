@@ -2,12 +2,14 @@ name: Docs
 on:
   push:
     branches: [main]
-    paths-ignore: [".teamcity/**"]
   pull_request:
   merge_group:
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+permissions:
+  contents: read
 jobs:
   publish:
     name: Docs
@@ -19,7 +21,7 @@ jobs:
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Propagate git credentials for v6
         run: |
           # Propagate git credentials to worktrees (required for actions/checkout@v6)
@@ -29,33 +31,21 @@ jobs:
             CRED_PATH=$(git config get --path includeIf.gitdir:"${GIT_DIR}".path)
             git config set --path includeIf.gitdir:"${GIT_DIR}/worktrees/*".path "${CRED_PATH}"
           fi
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
+      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
         with:
-          version: 1.8.25
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version-file: ".python-version"
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.11.7"
-      - name: Install the project
-        run: uv sync --locked
+          pixi-version: "latest"
       - name: Check Quarto installation and all engines
-        run: uv run quarto check all
+        run: pixi run quarto check all
       - name: Build API documentation
-        run: uv run quartodoc build
+        run: pixi run quartodoc build
         working-directory: docs
       - name: Clean up API documentation file
         run: rm docs/objects.json
       - name: Render Quarto Project
-        run: uv run quarto render docs --to html --execute
+        run: pixi run quarto render docs --to html --execute
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
-        run: uv run quarto publish gh-pages --no-render --no-prompt --no-browser
+        run: pixi run quarto publish gh-pages --no-render --no-prompt --no-browser
         working-directory: docs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PRE_COMMIT_ALLOW_NO_CONFIG: "1"

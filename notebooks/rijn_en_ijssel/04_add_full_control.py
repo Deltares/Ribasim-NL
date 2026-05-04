@@ -2,6 +2,7 @@
 import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 from peilbeheerst_model import ribasim_parametrization
@@ -141,6 +142,11 @@ node_ids = model.outlet.static.df[model.outlet.static.df["meta_name"].str.contai
 ].to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_downstream_level"] += 0.02
 # %%
+
+# %% Junctionfy(!)
+
+# %% Junctionfy(!)
+model = junctionify(model)
 
 # write model
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
