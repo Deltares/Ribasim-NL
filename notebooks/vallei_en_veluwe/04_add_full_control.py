@@ -37,7 +37,7 @@ update_basin_static(model=model, evaporation_mm_per_day=1)
 #  changing conditions (e.g., 1/3 precipitation, 2/3 evaporation).
 # set forcing conditions
 
-# fixes
+# TODO fixes
 # 256 moet een inlaat zijn
 # 237 moet ook een inlaat zijn, link toevoegen
 # 462 moet ook een inlaat zijn, link toevoegen
