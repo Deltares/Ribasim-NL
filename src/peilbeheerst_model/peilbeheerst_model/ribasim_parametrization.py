@@ -2723,6 +2723,10 @@ def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx
     def to_snake_case(node_type: str) -> str:
         """Convert PascalCase to snake_case.
 
+        Node-types in the node-table are formatted as PascalCase. However, to get the node-table consisting of the
+        specific node-type from the Ribasim-model, the node-type should be formatted as snake_case. This string-format
+        conversion facilitates this dynamic use of the node-type in a robust manner.
+
         :param node_type: PascalCase-formatted node type
 
         :return: snake_case-formatted node type
@@ -2751,24 +2755,28 @@ def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx
 
     # re-assign LevelBoundary-nodes
     for i in lb_node_ids:
+        # > extract node-data
         (i_level,) = ribasim_model.level_boundary.static.df.loc[
             ribasim_model.level_boundary.static.df["node_id"] == i, "level"
         ]
-        # > towards LevelBoundary
-        c_node_ids = flow_table.loc[flow_table["to_node_id"] == i, "from_node_id"]
+        c_node_ids = {
+            "to_lb": flow_table.loc[flow_table["to_node_id"] == i, "from_node_id"],
+            "from_lb": flow_table.loc[flow_table["from_node_id"] == i, "to_node_id"],
+        }
+        n_to_add = sum(len(v) for v in c_node_ids.values())
         logger.info(
-            f"Replacing 'multi-connected' LevelBoundary {i} by {len(c_node_ids)} 'single-connected' LevelBoundary-nodes"
+            f"Replacing 'multi-connected' LevelBoundary {i} by {n_to_add} 'single-connected' LevelBoundary-nodes"
         )
-        for ci in c_node_ids:
+        # > remove "old" LevelBoundary
+        ribasim_model.remove_node(i, True)
+        # > towards LevelBoundary
+        for ci in c_node_ids["to_lb"]:
             c_node, lb_node = new_lb_node(ci, i_level)
             ribasim_model.link.add(c_node, lb_node)
         # > from LevelBoundary
-        c_node_ids = flow_table.loc[flow_table["from_node_id"] == i, "to_node_id"]
-        for ci in c_node_ids:
+        for ci in c_node_ids["from_lb"]:
             c_node, lb_node = new_lb_node(ci, i_level)
             ribasim_model.link.add(lb_node, c_node)
-        # > remove "old" LevelBoundary
-        ribasim_model.remove_node(i, True)
 
     # return the updated model
     return ribasim_model
