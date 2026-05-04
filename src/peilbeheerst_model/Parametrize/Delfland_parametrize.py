@@ -86,9 +86,6 @@ ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 work_dir.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
-# basin area percentage
-# regular_percentage = 10
-# boezem_percentage = 90
 unknown_streefpeil = (
     0.00012345  # we need a streefpeil to create the profiles, Q(h)-relations, and af- and aanslag peil for pumps
 )
@@ -184,7 +181,7 @@ inlaat_pump.append(pump_node.node_id)
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
 
-ribasim_model.node._update_used_ids()  # pyrefly: ignore[not-callable]
+_ = ribasim_model.node._update_used_ids  # pyrefly: ignore[not-callable]
 ribasim_model.merge_basins(node_id=115, to_node_id=9, are_connected=False)
 ribasim_model.merge_basins(node_id=116, to_node_id=13, are_connected=False)
 ribasim_model.merge_basins(node_id=73, to_node_id=10, are_connected=True)
