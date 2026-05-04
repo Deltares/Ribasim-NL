@@ -208,9 +208,3 @@ for authority in authorities:
                 # parse DELWAQ results in model
                 print("parse DELWAQ results in Ribasim-model")
                 parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
-
-
-# %%
-# for node_id in model.node.df[model.node.df.meta_categorie == "bergend"].index.values:
-#     model.remove_node(node_id=node_id, remove_links=True)
-# %%

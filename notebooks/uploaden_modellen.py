@@ -8,7 +8,7 @@ cloud = CloudStorage()
 FIND_POST_FIXES = ["dynamic_model"]
 SELECTION = ["RijnenIJssel"]
 INCLUDE_RESULTS = True
-RUN_DELWAQ: bool = False
+RUN_DELWAQ: bool = True
 
 
 def get_model_dir(authority, post_fix):
