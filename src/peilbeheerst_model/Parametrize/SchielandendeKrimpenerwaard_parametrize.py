@@ -76,6 +76,8 @@ cloud.synchronize(
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
+work_dir.mkdir(parents=True, exist_ok=True)
+
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
