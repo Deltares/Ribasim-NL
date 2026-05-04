@@ -5,8 +5,6 @@ environments:
     - url: https://conda.anaconda.org/conda-forge/
     indexes:
     - https://pypi.org/simple
-    options:
-      pypi-prerelease-mode: if-necessary-or-explicit
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
@@ -2398,6 +2396,7 @@ packages:
   - bokeh>=3.0
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
+  editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/boto3-1.43.0-pyhd8ed1ab_0.conda
   sha256: 17f739967f206da6a23ab73f740f17e83f5125fea6c212d5542b23a606efd0ba
   md5: c0587e9421bbe4660b9483a101895ef7
@@ -5122,6 +5121,7 @@ packages:
   - geopandas
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
+  editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/hydra-core-1.3.2-pyhd8ed1ab_1.conda
   sha256: 40b4469bd65e0156de1136ae8b265f5d2d72f14b8d431e009836d59438339ee8
   md5: a189dd36bcaaf4c7647deb2dcb4e1b05
@@ -10698,6 +10698,7 @@ packages:
   - tqdm
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
+  editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/pexpect-4.9.0-pyhd8ed1ab_1.conda
   sha256: 202af1de83b585d36445dc1fda94266697341994d1a3328fabde4989e1b3d07a
   md5: d0d408b1f18883a944376da5cf8101ea
@@ -12450,6 +12451,7 @@ packages:
   - geopandas
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
+  editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/rich-15.0.0-pyhcf101f3_0.conda
   sha256: 3d6ba2c0fcdac3196ba2f0615b4104e532525ffa1335b50a2878be5ff488814a
   md5: 0242025a3c804966bf71aa04eee82f66
