@@ -8,8 +8,9 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import manning_resistance
-from shapely.geometry import LineString, MultiLineString, Point
+from shapely.geometry import GeometryCollection, LineString, MultiLineString, Point
 from shapely.geometry.base import BaseGeometry
+from shapely.ops import linemerge, unary_union
 
 from ribasim_nl import Model
 
@@ -24,11 +25,13 @@ class SplitBasins:
         model: Model,
         splitted_basin_path: str | Path,
         basin_node_id_to_split: int,
+        geometry_tolerance: float = 1.0,
     ):
         """Initialize splitter from a path to a polygon layer with the split basin parts."""
         self.model = model
         self.splitted_basin_gdf = gpd.read_file(splitted_basin_path)
         self.basin_node_id_to_split = basin_node_id_to_split
+        self.geometry_tolerance = geometry_tolerance
 
     def run(self):
         """Run the full split workflow and return the updated model."""
@@ -70,37 +73,113 @@ class SplitBasins:
 
         manning_data = manning_resistance.Static(length=[1000], manning_n=[0.04], profile_width=[10], profile_slope=[3])
 
+        print(
+            f"Split basin {basin_node_id_to_split}: checking ManningResistance connections for {newly_created_basins}"
+        )
         for from_basin_id, to_basin_id in combinations(newly_created_basins, 2):
             from_basin_geometry = typing.cast(BaseGeometry, basin_area.at[from_basin_id, "geometry"])
             to_basin_geometry = typing.cast(BaseGeometry, basin_area.at[to_basin_id, "geometry"])
 
-            if not from_basin_geometry.touches(to_basin_geometry):
-                continue
-
+            touches = from_basin_geometry.touches(to_basin_geometry)
             touching_geometry = from_basin_geometry.boundary.intersection(to_basin_geometry.boundary)
+            touching_faces = self._touching_faces(touching_geometry)
+            shared_face_length = sum(touching_face.length for touching_face in touching_faces)
+            overlap_area = from_basin_geometry.intersection(to_basin_geometry).area
+            # ``touches`` can be False for geometries that share linework but have tiny topology artefacts.
+            # Accept those cases when there is a real shared face and the area overlap is negligible.
+            within_tolerance = (
+                shared_face_length > self.geometry_tolerance
+                and overlap_area <= self.geometry_tolerance * self.geometry_tolerance
+            )
+
+            print(
+                f"Split basin {basin_node_id_to_split}: pair {from_basin_id}-{to_basin_id}: "
+                f"touches={touches}, distance={from_basin_geometry.distance(to_basin_geometry):.6f}, "
+                f"relate={from_basin_geometry.relate(to_basin_geometry)}, "
+                f"boundary_intersection={touching_geometry.geom_type}, "
+                f"empty={touching_geometry.is_empty}, length={touching_geometry.length:.6f}, "
+                f"faces={len(touching_faces)}, overlap_area={overlap_area:.6f}, "
+                f"within_tolerance={within_tolerance}"
+            )
+
+            if not touches and not within_tolerance:
+                if not touching_geometry.is_empty:
+                    print(
+                        f"Split basin {basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
+                        "because touches=False and the shared boundary is outside the geometry tolerance."
+                    )
+                continue
+            if not touches and within_tolerance:
+                print(
+                    f"Split basin {basin_node_id_to_split}: accepting pair {from_basin_id}-{to_basin_id} "
+                    f"using geometry_tolerance={self.geometry_tolerance}."
+                )
+
             if touching_geometry.is_empty:
+                print(
+                    f"Split basin {basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
+                    "because the boundary intersection is empty."
+                )
                 continue
 
             # create Manning node at the centroid of each touching face and connect it to the two basins
-            for touching_face in self._touching_faces(touching_geometry):
+            if not touching_faces:
+                print(
+                    f"Split basin {basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
+                    f"because boundary intersection type {touching_geometry.geom_type} is not handled."
+                )
+                continue
+
+            for touching_face in touching_faces:
                 manning_node = model.manning_resistance.add(
                     Node(geometry=touching_face.centroid),
                     tables=[manning_data],
                 )
                 model.link.add(model.basin[from_basin_id], manning_node)
                 model.link.add(manning_node, model.basin[to_basin_id])
+                print(
+                    f"Split basin {basin_node_id_to_split}: added ManningResistance "
+                    f"between {from_basin_id}-{to_basin_id} at {touching_face.centroid.wkt}"
+                )
 
         return model
 
-    def _touching_faces(self, geometry: BaseGeometry) -> list[BaseGeometry]:
+    def _touching_faces(self, geometry: BaseGeometry) -> list[LineString]:
         """Return line geometries representing shared basin boundary faces."""
-        if isinstance(geometry, LineString):  # single line string
+        # Boundary intersections can contain empty lines or non-line geometry; only linework can become a face.
+        line_geometries = [
+            line_geometry for line_geometry in self._line_geometries(geometry) if line_geometry.length > 0
+        ]
+        if not line_geometries:
+            return []
+
+        if len(line_geometries) == 1:
+            return line_geometries
+
+        # Merge connected line fragments so one continuous face gets one ManningResistance node,
+        # while clearly separated faces remain separate.
+        # This avoids adding multiple ManningResistance nodes on the same face in case of minor topology artefacts that cause linework to be split into multiple fragments.
+        unioned_geometry = unary_union(line_geometries)
+        if isinstance(unioned_geometry, LineString):
+            merged_geometry = unioned_geometry
+        else:
+            merged_geometry = linemerge(MultiLineString(self._line_geometries(unioned_geometry)))
+        return self._line_geometries(merged_geometry)
+
+    def _line_geometries(self, geometry: BaseGeometry) -> list[LineString]:
+        """Return all line geometries contained in a geometry."""
+        if geometry.is_empty:
+            return []
+
+        if isinstance(geometry, LineString):
             return [geometry]
 
-        if isinstance(
-            geometry, MultiLineString
-        ):  # multiple line strings, e.g. in case of multiple touching faces between two basins
-            return list(geometry.geoms)
+        if isinstance(geometry, MultiLineString | GeometryCollection):
+            return [
+                line_geometry
+                for sub_geometry in geometry.geoms
+                for line_geometry in self._line_geometries(typing.cast(BaseGeometry, sub_geometry))
+            ]
 
         return []
 
@@ -193,6 +272,11 @@ class SplitBasins:
             self.model.basin.area.df.loc[self.model.basin.area.df.node_id == new_node_id, "geometry"] = geometry  # pyrefly: ignore[unsupported-operation]
 
             newly_created_basins.append(new_node_id)
+            print(
+                f"Split basin {basin_node_id_to_split}: created basin {new_node_id} "
+                f"from split feature node_id={getattr(new_basin, 'node_id', None)}, "
+                f"meta_node_id={getattr(new_basin, 'meta_node_id', None)}"
+            )
 
         return self.model, newly_created_basins
 
