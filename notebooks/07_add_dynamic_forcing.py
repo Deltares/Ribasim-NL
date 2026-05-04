@@ -24,7 +24,8 @@ endtime = datetime(2018, 1, 1)
 write_budgets: bool = True  # write mfms_budgets.arrow for later verification
 assign_budget_fractions: bool = False  # compute (sub-) fractions from budgets-table
 add_lhm_fractions: bool = True
-compute_fractions: bool = True
+compute_fractions: bool = False
+run_model: bool = False
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
 cloud.synchronize(filepaths=[transboundary_data_path])
@@ -75,6 +76,7 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 
 
 FIND_POST_FIXES = ["bergend_model"]
+# FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
 SELECTION: set = {"RijnenIJssel"}
 INCLUDE_RESULTS = False
@@ -150,8 +152,7 @@ for authority in authorities:
             model.update_state()
 
             # add categorie to basin / state
-            # pyrefly: ignore[missing-attribute]
-            series = model.basin.node.df["meta_categorie"]
+            series = model.basin.node.df["meta_categorie"]  # type: ignore
             uncategorized_basins = series[series.isna()].index.values
             if len(uncategorized_basins) > 0:
                 print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
@@ -184,9 +185,11 @@ for authority in authorities:
             model.write(dst_toml_file)
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
-            model.run()
-            model.update_state()
-            model.basin.state.write()
+
+            if run_model:
+                model.run()
+                model.update_state()
+                model.basin.state.write()
 
             # DELWAQ(!)
             if compute_fractions:
@@ -205,3 +208,9 @@ for authority in authorities:
                 # parse DELWAQ results in model
                 print("parse DELWAQ results in Ribasim-model")
                 parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
+
+
+# %%
+# for node_id in model.node.df[model.node.df.meta_categorie == "bergend"].index.values:
+#     model.remove_node(node_id=node_id, remove_links=True)
+# %%

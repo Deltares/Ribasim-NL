@@ -33,6 +33,16 @@ aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergeb
 # Read data
 model = Model.read(ribasim_toml)
 
+# alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
+# En als flow_rate niet bekend is de flow
+model.outlet.static.df.max_flow_rate = 30.0
+model.outlet.static.df.flow_rate = 30.0
+model.pump.static.df.max_flow_rate = 30.0
+
+# capaciteit inlaten
+model.pump.static.df.loc[model.pump.static.df.node_id == 654, "flow_rate"] = 1.4  # schipbeek
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 120, "flow_rate"] = 1.3  # lochem
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 90, "flow_rate"] = 0.6  # herkel
 
 # markeer inlaten
 model.node.df[IS_SUPPLY_NODE_COLUMN] = False

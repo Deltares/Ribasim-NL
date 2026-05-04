@@ -59,5 +59,3 @@ for authority in authorities:
             model.write(dst_toml_file)
             result = model.run()
             assert result.exit_code == 0
-
-# %%

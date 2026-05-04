@@ -1,6 +1,6 @@
 # %%
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -14,7 +14,7 @@ from rasterio.features import geometry_mask
 from rasterio.windows import Window, from_bounds
 from rasterstats import zonal_stats
 from ribasim import Node
-from ribasim.nodes import basin, tabulated_rating_curve
+from ribasim.nodes import basin, outlet, tabulated_rating_curve
 from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
@@ -437,6 +437,67 @@ def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> ta
     return tabulated_rating_curve.Static(level=df.level, flow_rate=df.flow_rate)
 
 
+def simplify_area_level_df(
+    df: pd.DataFrame,
+    level_col: str = "level",
+    area_col: str = "area",
+    max_points: int = 5,
+) -> pd.DataFrame:
+    """Simplify an area-level curve while preserving endpoints, area extrema, and the most important bend points.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame with level and area columns.
+    level_col, area_col : str
+        Column names for level and area.
+    max_points : int
+        Maximum number of points to retain.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Simplified DataFrame with at most `max_points` rows.
+    """
+    if len(df) <= max_points:
+        return df.copy()
+
+    xy = df[[level_col, area_col]].to_numpy(float)
+
+    keep = {
+        0,
+        len(df) - 1,
+        int(np.argmin(xy[:, 1])),
+        int(np.argmax(xy[:, 1])),
+    }
+
+    while len(keep) < max_points:
+        best_i = None
+        best_d = -1.0
+
+        for i0, i1 in zip(sorted(keep)[:-1], sorted(keep)[1:], strict=False):
+            if i1 <= i0 + 1:
+                continue
+
+            a, b = xy[i0], xy[i1]
+            v = b - a
+            w = xy[i0 + 1 : i1] - a
+
+            denom = np.hypot(v[0], v[1])
+            d = np.linalg.norm(w, axis=1) if denom == 0 else np.abs(v[0] * w[:, 1] - v[1] * w[:, 0]) / denom
+            j = int(np.argmax(d))
+            if d[j] > best_d:
+                best_d = float(d[j])
+                best_i = i0 + 1 + j
+
+        if best_i is None:
+            break
+
+        keep.add(best_i)
+
+    return df.iloc[sorted(keep)].copy()
+
+
 def get_basin_profile(
     basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res: int = 25
 ) -> basin.Profile:
@@ -526,6 +587,7 @@ def get_basin_profile(
                 mask = ah_df.area <= 1
                 ah_df.loc[mask, ["area"]] = 1
                 ah_df.loc[mask, ["comment"]] = "oppervlak >= 1m2 gezet"
+                ah_df = simplify_area_level_df(ah_df)
 
                 if ah_df.empty:
                     ah_df = default_ah_df()
@@ -536,10 +598,17 @@ def get_basin_profile(
 
 
 class VdGaastBerging:
-    def __init__(self, model: Model, cloud: CloudStorage, use_add_api: bool = True) -> None:
+    def __init__(
+        self,
+        model: Model,
+        cloud: CloudStorage,
+        use_add_api: bool = True,
+        connector_node_type: Literal["Outlet", "TabulatedRatingCurve"] = "TabulatedRatingCurve",
+    ) -> None:
         self.model = model
         self.cloud = cloud
         self.use_add_api = use_add_api
+        self.connector_node_type = connector_node_type
 
         # check and add rasters paths
         lhm_raster_file = self.cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
@@ -566,9 +635,13 @@ class VdGaastBerging:
             basin_row = basin_area_df.loc[basin_id]
             basin_polygon = basin_row.geometry
 
+            if any(pd.isna(getattr(basin_row, i)) for i in ["ghg", "glg", "ma"]):
+                raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
+
             # define storage basin data
             max_level = basin_area_df.at[basin_id, "maaiveld_max"]
             min_level = basin_area_df.at[basin_id, "maaiveld_min"]
+
             if min_level == max_level:
                 min_level -= 0.1
             basin_profile = get_basin_profile(
@@ -577,10 +650,14 @@ class VdGaastBerging:
                 min_level=min_level,
                 lhm_raster_file=self.lhm_raster_file,
             )
+            assert basin_profile.df is not None
             oppervlaktewater_percentage = round(basin_profile.df.area.max() / basin_polygon.area * 100, 1)
+            ini_level = (
+                max((basin_profile.df.level.min(), basin_row["meta_streefpeil"])) + 0.01
+            )  # 1cm above target-level/bottom-level
             data = [
                 basin_profile,
-                basin.State(level=[basin_profile.df.level.min() + 0.1]),
+                basin.State(level=[ini_level]),
                 basin.Area(geometry=[basin_polygon], meta_oppervlaktewater_percentage=[oppervlaktewater_percentage]),
             ]
 
@@ -593,19 +670,24 @@ class VdGaastBerging:
             basin_node = model.basin.add(node=node, tables=data)
 
             # add connector
-            if any(pd.isna(getattr(basin_row, i)) for i in ["ghg", "glg", "ma"]):
-                raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
-            else:
-                # get tabulated rating curve data
-                data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
 
-                # connect storage basin with basin with a tabulated rating curve
-                model.add_and_connect_node(
-                    basin_node.node_id,
-                    to_basin_id=basin_id,
-                    geometry=Point(row.geometry.x + 5, row.geometry.y),
-                    node_type="TabulatedRatingCurve",
-                    tables=data,
-                    use_add_api=self.use_add_api,
-                    meta_categorie="bergend",
+            # get data for TabulatedRatingCurve or Outlet
+            if self.connector_node_type == "TabulatedRatingCurve":
+                data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
+            elif self.connector_node_type == "Outlet":
+                data = [outlet.Static(flow_rate=[basin_row.ma], min_upstream_level=[ini_level])]
+            else:
+                raise NotImplementedError(
+                    f"connector_node_type {self.connector_node_type} is not implemented, only 'Outlet' or 'TabulatedRatingCurve' can be selected."
                 )
+
+            # connect storage basin with basin with a tabulated rating curve
+            model.add_and_connect_node(
+                basin_node.node_id,
+                to_basin_id=basin_id,
+                geometry=Point(row.geometry.x + 5, row.geometry.y),
+                node_type=self.connector_node_type,
+                tables=data,
+                use_add_api=self.use_add_api,
+                meta_categorie="bergend",
+            )
