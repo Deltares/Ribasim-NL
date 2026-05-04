@@ -9,10 +9,7 @@ Will create per authority:
 - verwerkt//sturing//watersysteem.gpkg -> all layers to create the schematic
 - verwerkt//sturing//afvoertabel.md -> table with Ribasim flow capacity in supply\\demand
 
-SVG images can created
-
-
- based on the watersysteem.gpkg using QGIS.
+SVG images can be created based on the watersysteem.gpkg using QGIS.
 An example QGIS project can be found on the [CloudStorage](https://deltares.thegood.cloud/f/238548) (limited access)
 """  # noqa: D301
 

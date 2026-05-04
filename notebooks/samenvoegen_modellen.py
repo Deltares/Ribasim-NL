@@ -14,19 +14,18 @@ data_dir = settings.ribasim_nl_data_dir
 write_intermediate_models: bool = False
 
 # Remove any model from this list to skip it
-# TODO when enabling more models, also add them to samenvoegen deps in dvc.yaml
 INCLUDE_MODELS: list[str] = [
     "Rijkswaterstaat",
-    # "AmstelGooienVecht",
-    # "Delfland",
-    # "HollandsNoorderkwartier",
-    # "HollandseDelta",
-    # "Rijnland",
-    # "Rivierenland",
-    # "Scheldestromen",
-    # "SchielandendeKrimpenerwaard",
-    # "WetterskipFryslan",
-    # "Zuiderzeeland",
+    "AmstelGooienVecht",
+    "Delfland",
+    "HollandsNoorderkwartier",
+    "HollandseDelta",
+    "Rijnland",
+    "Rivierenland",
+    "Scheldestromen",
+    "SchielandendeKrimpenerwaard",
+    "WetterskipFryslan",
+    "Zuiderzeeland",
     "AaenMaas",
     "BrabantseDelta",
     "DeDommel",
