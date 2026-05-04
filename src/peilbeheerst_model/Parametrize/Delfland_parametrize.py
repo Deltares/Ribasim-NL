@@ -82,9 +82,8 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
-# create work_dir/parameterized
-parameterized = work_dir / f"{waterschap}_parameterized/"
-parameterized.mkdir(parents=True, exist_ok=True)
+# # create work_dir/parameterized
+work_dir.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
 # basin area percentage
