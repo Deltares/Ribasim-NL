@@ -18,7 +18,7 @@ class Parameterize(BaseModel):
     precipitation_mm_per_day: int | None = None
     evaporation_mm_per_day: int | None = None
     max_pump_flow_rate: float | None = None
-    canal_width: float = 5
+    canal_width: float = 10
 
     def run(self, **kwargs) -> None:
         print("Start Parameterize.run()")
