@@ -1,6 +1,6 @@
 # %%
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -14,7 +14,7 @@ from rasterio.features import geometry_mask
 from rasterio.windows import Window, from_bounds
 from rasterstats import zonal_stats
 from ribasim import Node
-from ribasim.nodes import basin, outlet, tabulated_rating_curve
+from ribasim.nodes import basin, tabulated_rating_curve
 from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
@@ -603,12 +603,10 @@ class VdGaastBerging:
         model: Model,
         cloud: CloudStorage,
         use_add_api: bool = True,
-        connector_node_type: Literal["Outlet", "TabulatedRatingCurve"] = "TabulatedRatingCurve",
     ) -> None:
         self.model = model
         self.cloud = cloud
         self.use_add_api = use_add_api
-        self.connector_node_type = connector_node_type
 
         # check and add rasters paths
         lhm_raster_file = self.cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
@@ -672,21 +670,14 @@ class VdGaastBerging:
             # add connector
 
             # get data for TabulatedRatingCurve or Outlet
-            if self.connector_node_type == "TabulatedRatingCurve":
-                data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
-            elif self.connector_node_type == "Outlet":
-                data = [outlet.Static(flow_rate=[basin_row.ma], min_upstream_level=[ini_level])]
-            else:
-                raise NotImplementedError(
-                    f"connector_node_type {self.connector_node_type} is not implemented, only 'Outlet' or 'TabulatedRatingCurve' can be selected."
-                )
+            data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
 
             # connect storage basin with basin with a tabulated rating curve
             model.add_and_connect_node(
                 basin_node.node_id,
                 to_basin_id=basin_id,
                 geometry=Point(row.geometry.x + 5, row.geometry.y),
-                node_type=self.connector_node_type,
+                node_type="TabulatedRatingCurve",
                 tables=data,
                 use_add_api=self.use_add_api,
                 meta_categorie="bergend",
