@@ -65,6 +65,8 @@ class RibasimFeedbackProcessor:
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
 
+        self.log_filename.parent.mkdir(parents=True, exist_ok=True)
+
         logging.basicConfig(
             filename=self.log_filename,
             level=logging.DEBUG,
