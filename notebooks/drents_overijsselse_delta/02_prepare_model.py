@@ -31,7 +31,6 @@ peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/extra d
 hydamo_wm_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/HyDAMO_WM_20230720.gpkg")
 meppelerdiep_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/meppelerdiep.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
-# model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
 cloud.synchronize(filepaths=[peilgebieden_path, hydamo_wm_gpkg, meppelerdiep_gpkg])
 cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)

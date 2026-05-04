@@ -965,7 +965,7 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [81, 919, 920, 366, 452, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1016]
+drain_nodes = [81, 919, 920, 366, 452, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1016, 1067]
 
 # handmatig opgegeven supply nodes (inlaten)
 

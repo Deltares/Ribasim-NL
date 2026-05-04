@@ -87,6 +87,16 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 385, "flow_rate"] = 1.0
 
 
+# Overijsels kanaal (Ankersmit)
+node_ids = [1761, 2008, 2229, 2247]
+model.basin.area.df.loc[model.basin.area.df.node_id.isin(node_ids), "meta_streefpeil"] = 5.75
+
+node_ids = [1721]
+model.basin.area.df.loc[model.basin.area.df.node_id.isin(node_ids), "meta_streefpeil"] = 8.35
+# set basin-state op meta-streefpeil
+model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+
+
 # %%
 
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index

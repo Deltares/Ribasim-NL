@@ -474,6 +474,8 @@ for link_id in [1710, 3006]:
 for link_id in [958, 1711]:
     model.reverse_link(link_id=link_id)
 
+# make outlets from manning
+outlet_ids = [804]
 
 # fixes vistrap eruit
 model.remove_node(1414, remove_links=True)
@@ -491,7 +493,6 @@ model.merge_basins(node_id=1681, to_node_id=1717, are_connected=True)
 model.merge_basins(node_id=2348, to_node_id=1756, are_connected=False)
 model.merge_basins(node_id=2192, to_node_id=2194, are_connected=False)
 model.merge_basins(node_id=2574, to_node_id=2030, are_connected=True)
-model.merge_basins(node_id=2030, to_node_id=1721, are_connected=True)
 
 model.remove_link(from_node_id=281, to_node_id=2554)
 
