@@ -150,6 +150,10 @@ ribasim_model.link.add(ribasim_model.basin[22], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[27])
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
 
+# re-define LevelBoundary-nodes connecting to HDSR, which are closer to the connector-nodes,
+#  and thereby result in better coupling of the sub-models
+ribasim_param.reassign_level_boundaries(ribasim_model, {141, 145})
+
 # (re)set 'meta_node_id'-values
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
