@@ -67,14 +67,14 @@ which should be executed prior to running any of the [`<water-authority>.py`](ht
 This way, the measured cross-sections are preprocessed so they are presented as `LINESTRING Z`-objects.
 Preprocessing of the measured cross-sections must be done per water authority:
 ```bash
-uv run src/peilbeheerst_model/profiles/prep_cross_sections.py <water-authority>
+pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py <water-authority>
 ```
 This call has to be done only once per water authority
 (or when changes are made to the data sources and/or source code).
 
 Subsequently, the profile tables (_doorgaand_ and _bergend_) are generated/updated per water authority as well:
 ```bash
-uv run src/peilbeheerst_model/profiles/<water-authority>.py
+pixi run python src/peilbeheerst_model/profiles/<water-authority>.py
 ```
 Again, this call has to be done only once per water authority
 (or when changes are mode to the data sources and/or source code).

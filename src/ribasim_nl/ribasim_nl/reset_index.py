@@ -24,7 +24,7 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
     assert model.node.df is not None
     for node_type in model.node.df.node_type.unique():
         ribasim_node = model.get_component(node_type)
-        for attr in ribasim_node.model_fields:
+        for attr in ribasim_node.__class__.model_fields:
             table = getattr(ribasim_node, attr)
             try:
                 if table.df is not None:
@@ -137,7 +137,7 @@ def reset_index(
 
         if not ((link_start == link_id_min) and (expected_length == len(model.link.df))):
             # create a re-index for links
-            model.link.df.index = pd.Index([i + node_start for i in range(len(link_ids))], name="link_id")
+            model.link.df.index = pd.Index([i + link_start for i in range(len(link_ids))], name="link_id")
 
         # keep original index if
         if original_index_postfix is not None:
