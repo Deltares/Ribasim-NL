@@ -136,12 +136,14 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
             if converging:
                 model.link.add(
                     from_node=junction,
-                    to_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),  # pyrefly: ignore[bad-argument-type]
+                    # pyrefly: ignore[bad-argument-type]
+                    to_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),
                     geometry=common_linestring,
                 )
             else:
                 model.link.add(
-                    from_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),  # pyrefly: ignore[bad-argument-type]
+                    # pyrefly: ignore[bad-argument-type]
+                    from_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),
                     to_node=junction,
                     geometry=common_linestring,
                 )
