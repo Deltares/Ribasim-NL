@@ -26,56 +26,46 @@ class SplitBasins:
         splitted_basin_path: str | Path,
         basin_node_id_to_split: int,
         geometry_tolerance: float = 1.0,
+        printing: bool = False,
     ):
         """Initialize splitter from a path to a polygon layer with the split basin parts."""
         self.model = model
         self.splitted_basin_gdf = gpd.read_file(splitted_basin_path)
         self.basin_node_id_to_split = basin_node_id_to_split
         self.geometry_tolerance = geometry_tolerance
+        self.printing = printing
 
     def run(self):
         """Run the full split workflow and return the updated model."""
         # implement the newly splitted basins in the model as new basins, without any connection (yet)
-        model, newly_created_basins = self.create_new_basins(
-            model=self.model,
-            splitted_basin_gdf=self.splitted_basin_gdf,
-            basin_node_id_to_split=self.basin_node_id_to_split,
-        )
+        newly_created_basins = self.create_new_basins()
 
         # redirect the connector nodes to the splitted basins
-        model = self.redirect_connectors_to_new_basins(
-            model=model,
-            basin_node_id_to_split=self.basin_node_id_to_split,
-            newly_created_basins=newly_created_basins,
-        )
+        self.redirect_connectors_to_new_basins(newly_created_basins=newly_created_basins)
 
         # connect the newly created basins with each other using MR
-        model = self.add_manning_nodes_between_splitted_basins(
-            model=model,
-            basin_node_id_to_split=self.basin_node_id_to_split,
-            newly_created_basins=newly_created_basins,
-        )
+        self.add_manning_nodes_between_splitted_basins(newly_created_basins=newly_created_basins)
 
         # delete the original basin from the model
-        model.remove_node(self.basin_node_id_to_split, False)
-        return model
+        self.model.remove_node(self.basin_node_id_to_split, False)
+        return self.model
 
-    def add_manning_nodes_between_splitted_basins(
-        self, model: Model, basin_node_id_to_split: int, newly_created_basins: list[int]
-    ):
+    def add_manning_nodes_between_splitted_basins(self, newly_created_basins: list[int]):
         """Add ManningResistance nodes between split basin polygons that share a boundary face. A ManningResistance node is added at the centroid of the shared boundary face and connected to the two basins with links. This ensures that water can flow between the newly created basins. They are added on each face. This may be redundant, but this will improve recognizability of the model and is not expected to cause performance issues, since the number of basins that are split and the number of shared faces is expected to be low."""
         # only manning nodes have to be added between basins which touch each other
         # find the touching parts, determine the node_ids of the basins that touch each other and determine the centroid of the touching part where the manning node will be added
-        assert model.basin.area.df is not None
+        assert self.model.basin.area.df is not None
 
-        basin_area = model.basin.area.df.loc[model.basin.area.df.node_id.isin(newly_created_basins)]
+        basin_area = self.model.basin.area.df.loc[self.model.basin.area.df.node_id.isin(newly_created_basins)]
         basin_area = basin_area.dissolve(by="node_id")
 
         manning_data = manning_resistance.Static(length=[1000], manning_n=[0.04], profile_width=[10], profile_slope=[3])
 
-        print(
-            f"Split basin {basin_node_id_to_split}: checking ManningResistance connections for {newly_created_basins}"
-        )
+        if self.printing:
+            print(
+                f"Split basin {self.basin_node_id_to_split}: "
+                f"checking ManningResistance connections for {newly_created_basins}"
+            )
         for from_basin_id, to_basin_id in combinations(newly_created_basins, 2):
             from_basin_geometry = typing.cast(BaseGeometry, basin_area.at[from_basin_id, "geometry"])
             to_basin_geometry = typing.cast(BaseGeometry, basin_area.at[to_basin_id, "geometry"])
@@ -92,57 +82,61 @@ class SplitBasins:
                 and overlap_area <= self.geometry_tolerance * self.geometry_tolerance
             )
 
-            print(
-                f"Split basin {basin_node_id_to_split}: pair {from_basin_id}-{to_basin_id}: "
-                f"touches={touches}, distance={from_basin_geometry.distance(to_basin_geometry):.6f}, "
-                f"relate={from_basin_geometry.relate(to_basin_geometry)}, "
-                f"boundary_intersection={touching_geometry.geom_type}, "
-                f"empty={touching_geometry.is_empty}, length={touching_geometry.length:.6f}, "
-                f"faces={len(touching_faces)}, overlap_area={overlap_area:.6f}, "
-                f"within_tolerance={within_tolerance}"
-            )
+            if self.printing:
+                print(
+                    f"Split basin {self.basin_node_id_to_split}: pair {from_basin_id}-{to_basin_id}: "
+                    f"touches={touches}, distance={from_basin_geometry.distance(to_basin_geometry):.6f}, "
+                    f"relate={from_basin_geometry.relate(to_basin_geometry)}, "
+                    f"boundary_intersection={touching_geometry.geom_type}, "
+                    f"empty={touching_geometry.is_empty}, length={touching_geometry.length:.6f}, "
+                    f"faces={len(touching_faces)}, overlap_area={overlap_area:.6f}, "
+                    f"within_tolerance={within_tolerance}"
+                )
 
             if not touches and not within_tolerance:
-                if not touching_geometry.is_empty:
+                if self.printing and not touching_geometry.is_empty:
                     print(
-                        f"Split basin {basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
+                        f"Split basin {self.basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
                         "because touches=False and the shared boundary is outside the geometry tolerance."
                     )
                 continue
-            if not touches and within_tolerance:
+            if self.printing and not touches and within_tolerance:
                 print(
-                    f"Split basin {basin_node_id_to_split}: accepting pair {from_basin_id}-{to_basin_id} "
+                    f"Split basin {self.basin_node_id_to_split}: accepting pair {from_basin_id}-{to_basin_id} "
                     f"using geometry_tolerance={self.geometry_tolerance}."
                 )
 
             if touching_geometry.is_empty:
-                print(
-                    f"Split basin {basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
-                    "because the boundary intersection is empty."
-                )
+                if self.printing:
+                    print(
+                        f"Split basin {self.basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
+                        "because the boundary intersection is empty."
+                    )
                 continue
 
             # create Manning node at the centroid of each touching face and connect it to the two basins
             if not touching_faces:
-                print(
-                    f"Split basin {basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
-                    f"because boundary intersection type {touching_geometry.geom_type} is not handled."
-                )
+                if self.printing:
+                    print(
+                        f"Split basin {self.basin_node_id_to_split}: skipping pair {from_basin_id}-{to_basin_id} "
+                        f"because boundary intersection type {touching_geometry.geom_type} is not handled."
+                    )
                 continue
 
             for touching_face in touching_faces:
-                manning_node = model.manning_resistance.add(
+                manning_node = self.model.manning_resistance.add(
                     Node(geometry=touching_face.centroid),
                     tables=[manning_data],
                 )
-                model.link.add(model.basin[from_basin_id], manning_node)
-                model.link.add(manning_node, model.basin[to_basin_id])
-                print(
-                    f"Split basin {basin_node_id_to_split}: added ManningResistance "
-                    f"between {from_basin_id}-{to_basin_id} at {touching_face.centroid.wkt}"
-                )
+                self.model.link.add(self.model.basin[from_basin_id], manning_node)
+                self.model.link.add(manning_node, self.model.basin[to_basin_id])
+                if self.printing:
+                    print(
+                        f"Split basin {self.basin_node_id_to_split}: added ManningResistance "
+                        f"between {from_basin_id}-{to_basin_id} at {touching_face.centroid.wkt}"
+                    )
 
-        return model
+        return self.model
 
     def _touching_faces(self, geometry: BaseGeometry) -> list[LineString]:
         """Return line geometries representing shared basin boundary faces."""
@@ -183,25 +177,23 @@ class SplitBasins:
 
         return []
 
-    def redirect_connectors_to_new_basins(
-        self, model: Model, basin_node_id_to_split: int, newly_created_basins: list[int]
-    ):
+    def redirect_connectors_to_new_basins(self, newly_created_basins: list[int]):
         """Redirect links connected to the original basin to the nearest new split basin."""
         # find all connectors that are connected to the original basin
-        assert model.link.df is not None
-        assert model.node.df is not None
-        assert model.basin.area.df is not None
+        assert self.model.link.df is not None
+        assert self.model.node.df is not None
+        assert self.model.basin.area.df is not None
 
         for connector_column, basin_column in [("to_node_id", "from_node_id"), ("from_node_id", "to_node_id")]:
-            connector_node_ids_from_original_basin = model.link.df.loc[
-                model.link.df[basin_column] == basin_node_id_to_split, connector_column
+            connector_node_ids_from_original_basin = self.model.link.df.loc[
+                self.model.link.df[basin_column] == self.basin_node_id_to_split, connector_column
             ].dropna()
 
             # determine closest distance from the connector nodes to the new basins and redirect the connectors to the closest new basin
             for connector_node_id in connector_node_ids_from_original_basin:
                 connector_node_id = int(connector_node_id)
                 connector_node_geometry = typing.cast(
-                    BaseGeometry, model.node.df.at[connector_node_id, "geometry"]
+                    BaseGeometry, self.model.node.df.at[connector_node_id, "geometry"]
                 )  # pyrefly
 
                 closest_basin_node_id = None
@@ -209,8 +201,8 @@ class SplitBasins:
 
                 # loop through each splitted basin part to determine the shortest distance
                 for new_basin_node_id in newly_created_basins:
-                    new_basin_geometry = model.basin.area.df.loc[
-                        model.basin.area.df.node_id == new_basin_node_id,
+                    new_basin_geometry = self.model.basin.area.df.loc[
+                        self.model.basin.area.df.node_id == new_basin_node_id,
                         "geometry",
                     ].iloc[0]
                     new_basin_geometry = typing.cast(BaseGeometry, new_basin_geometry)  # pyrefly
@@ -222,20 +214,25 @@ class SplitBasins:
                         closest_distance = distance
                         closest_basin_node_id = new_basin_node_id
 
-                print(f"Redirecting connector node {connector_node_id} to basin node {closest_basin_node_id}")
+                if self.printing:
+                    print(f"Redirecting connector node {connector_node_id} to basin node {closest_basin_node_id}")
                 if closest_basin_node_id is None:
                     raise ValueError(f"No closest basin found for connector node {connector_node_id}.")
 
                 # redirect the connector node administratively to the closest new basin
-                mask = (model.link.df[basin_column] == basin_node_id_to_split) & (
-                    model.link.df[connector_column] == connector_node_id
+                mask = (self.model.link.df[basin_column] == self.basin_node_id_to_split) & (
+                    self.model.link.df[connector_column] == connector_node_id
                 )
-                model.link.df.loc[mask, basin_column] = closest_basin_node_id
+                self.model.link.df.loc[mask, basin_column] = closest_basin_node_id
 
                 # redirect the connector node spatially to the closest new basin by changing the geometry of the connector node to the representative point of the closest new basin
                 # retrieve the point geomeries to create a straight line between them
-                geometry_connector_node = typing.cast(Point, model.node.df.at[connector_node_id, "geometry"])  # pyrefly
-                geometry_basin_node = typing.cast(Point, model.node.df.at[closest_basin_node_id, "geometry"])  # pyrefly
+                geometry_connector_node = typing.cast(
+                    Point, self.model.node.df.at[connector_node_id, "geometry"]
+                )  # pyrefly
+                geometry_basin_node = typing.cast(
+                    Point, self.model.node.df.at[closest_basin_node_id, "geometry"]
+                )  # pyrefly
 
                 # create a straight line between the connector node and the closest new basin
                 line_points = (
@@ -244,26 +241,26 @@ class SplitBasins:
                     else [geometry_connector_node, geometry_basin_node]
                 )
                 new_geometry = LineString(line_points)
-                model.link.df.loc[mask, "geometry"] = new_geometry  # pyrefly: ignore[unsupported-operation]
-        return model
+                self.model.link.df.loc[mask, "geometry"] = new_geometry  # pyrefly: ignore[unsupported-operation]
+        return self.model
 
-    def create_new_basins(self, model: Model, splitted_basin_gdf: gpd.GeoDataFrame, basin_node_id_to_split: int):
+    def create_new_basins(self):
         """Create basin nodes and basin tables for each supplied split basin polygon."""
         # store the newly created basins for later use
         newly_created_basins = []
 
         # loop through the splitted basin gdf and create new basins in the model for each geometry (which has been splitted)
-        for new_basin in splitted_basin_gdf.itertuples():
+        for new_basin in self.splitted_basin_gdf.itertuples():
             geometry = typing.cast(BaseGeometry, new_basin.geometry)  # avoid pyrefly error
-            new_node_id = model.next_node_id
-            model.basin.add(
+            new_node_id = self.model.next_node_id
+            self.model.basin.add(
                 Node(node_id=new_node_id, geometry=geometry.representative_point()),
                 tables=[],
             )
 
             # copy all tables (including its metadata) to the new basin. Replace the basin geometry in the next step.
             self._copy_basin_tables(
-                original_node_id=basin_node_id_to_split,
+                original_node_id=self.basin_node_id_to_split,
                 new_node_id=new_node_id,
             )
 
@@ -272,13 +269,14 @@ class SplitBasins:
             self.model.basin.area.df.loc[self.model.basin.area.df.node_id == new_node_id, "geometry"] = geometry  # pyrefly: ignore[unsupported-operation]
 
             newly_created_basins.append(new_node_id)
-            print(
-                f"Split basin {basin_node_id_to_split}: created basin {new_node_id} "
-                f"from split feature node_id={getattr(new_basin, 'node_id', None)}, "
-                f"meta_node_id={getattr(new_basin, 'meta_node_id', None)}"
-            )
+            if self.printing:
+                print(
+                    f"Split basin {self.basin_node_id_to_split}: created basin {new_node_id} "
+                    f"from split feature node_id={getattr(new_basin, 'node_id', None)}, "
+                    f"meta_node_id={getattr(new_basin, 'meta_node_id', None)}"
+                )
 
-        return self.model, newly_created_basins
+        return newly_created_basins
 
     def _copy_basin_tables(self, original_node_id: int, new_node_id: int):
         """Copy all existing basin table rows from the original basin to a new basin node id."""
