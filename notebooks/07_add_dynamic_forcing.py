@@ -25,7 +25,6 @@ write_budgets: bool = True  # write mfms_budgets.arrow for later verification
 assign_budget_fractions: bool = False  # compute (sub-) fractions from budgets-table
 add_lhm_fractions: bool = True
 compute_fractions: bool = False
-run_model: bool = False
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
 cloud.synchronize(filepaths=[transboundary_data_path])
@@ -185,11 +184,9 @@ for authority in authorities:
             model.write(dst_toml_file)
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
-
-            if run_model:
-                model.run()
-                model.update_state()
-                model.basin.state.write()
+            model.run()
+            model.update_state()
+            model.basin.state.write()
 
             # DELWAQ(!)
             if compute_fractions:
