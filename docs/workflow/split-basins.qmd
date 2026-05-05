@@ -25,7 +25,8 @@ This workflow is intended to be run from a water board parametrization script:
 3. Create a `SplitBasins` object with:
    - the Ribasim model,
    - the path to the split basin polygons,
-   - the `node_id` of the basin that must be replaced.
+   - the `node_id` of the basin that must be replaced,
+   - optionally, a `geometry_tolerance` for small geometry mismatches. The default is `1.0`.
 4. Run `splitter.run()` and assign the returned model back to the model variable.
 
 For example:
@@ -35,6 +36,7 @@ splitter = SplitBasins(
     model=ribasim_model,
     splitted_basin_path=splitted_basin_16_path,
     basin_node_id_to_split=16,
+    geometry_tolerance=1.0,
 )
 ribasim_model = splitter.run()
 ```
@@ -46,6 +48,7 @@ The script expects at least the following inputs to be available:
 - a Ribasim model,
 - a polygon layer containing the pre-split basin parts,
 - the `node_id` of the original basin that will be replaced,
+- optionally, a `geometry_tolerance` to accept small geometry mismatches when detecting shared basin boundaries. The default is `1.0`,
 - existing basin tables for the original basin, such as:
   - `model.basin.profile`
   - `model.basin.static`
@@ -89,6 +92,7 @@ A new straight `LineString` is created between the connector node and the repres
 
 The new basin polygons are compared pairwise.
 When two new basins touch, the script determines their shared boundary face.
+If polygons do not strictly touch because of small topology artefacts, the script can still accept the pair when there is a clear shared boundary within the `geometry_tolerance`.
 For each shared face, a ManningResistance node is added at the centroid of that face.
 
 The ManningResistance node is connected as:
@@ -103,7 +107,8 @@ The current default ManningResistance static values are:
 - `profile_width`: `10`
 - `profile_slope`: `3`
 
-This results in multiple manning nodes when there are multiple face, which is done on purpose as otherwise it may look like water doesn't flow between open water bodies.
+This results in multiple manning nodes when there are multiple faces, which is done on purpose as otherwise it may look like water doesn't flow between open water bodies.
+Small line fragments on the same continuous face are merged first, so they do not create unnecessary extra ManningResistance nodes.
 
 ### 5. Remove the original basin
 
