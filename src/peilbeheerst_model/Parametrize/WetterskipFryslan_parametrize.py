@@ -61,7 +61,10 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 gaarkeuken_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaarkeuken.gpkg")
+
+splitted_basin_6_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_6.gpkg")
 splitted_basin_16_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_16.gpkg")
+splitted_basin_21_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_21.gpkg")
 
 # cloud.synchronize(
 #     filepaths=[
@@ -74,7 +77,9 @@ splitted_basin_16_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/O
 #         meteo_path,
 #         profiles_path,
 #         gaarkeuken_path,
+#         splitted_basin_6_path,
 #         splitted_basin_16_path,
+#         splitted_basin_21_path,
 #     ]
 # )
 
@@ -490,18 +495,39 @@ for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
-# split basins to improve model convergence
-splitter = SplitBasins(
-    model=ribasim_model,
-    splitted_basin_path=splitted_basin_16_path,
-    basin_node_id_to_split=16,
-)
-ribasim_model = splitter.run()
+# convert all boundary nodes to LevelBoundaries
+ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
+ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
+
+# add outlet
+ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
+# loop through all splitted basins
+for splitted_basin_path, basin_id in zip(
+    [splitted_basin_6_path, splitted_basin_16_path, splitted_basin_21_path], [6, 16, 21], strict=True
+):
+    # split basins to improve model convergence
+    splitter = SplitBasins(
+        model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
+    )
+    ribasim_model = splitter.run()
 
 ribasim_model.write(ribasim_work_dir_model_toml)
 
+ribasim_model.use_validation = False
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
+ribasim_model.write(ribasim_work_dir_model_toml)
 
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)
+
+# Migrate meta_categorie from the state to the node table as this prior is completely filled
+basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
+basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
+    ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
+    left_index=True,
+    right_on="node_id",
+    how="left",
+)
+ribasim_model.node.df.loc[basin_node_mask, "meta_categorie"] = basin_node_meta.set_index("node_id")["meta_categorie"]
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -535,10 +561,6 @@ else:
     }
     ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
-# convert all boundary nodes to LevelBoundaries
-ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
-ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
-
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
@@ -546,9 +568,6 @@ if MIXED_CONDITIONS:
     )
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
-
-# add outlet
-ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 inlaat_structures += [3685]  # add some more outlets (created due to FB, hence not in FF)
 

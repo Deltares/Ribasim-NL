@@ -20,6 +20,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
+from ribasim_nl.split_basins import SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -60,6 +61,7 @@ aanvoer_path = cloud.joinpath(
 )
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
+splitted_basin_3_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_3.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -71,6 +73,7 @@ cloud.synchronize(
         aanvoer_path,
         meteo_path,
         profiles_path,
+        splitted_basin_3_path,
     ]
 )
 
@@ -250,7 +253,30 @@ for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
 #
 # add_storage_basins.create_bergende_basins()
 
+# convert all boundary nodes to LevelBoundaries
+ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
+ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
+
+# add outlet
+ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
+# split basins to improve model convergence
+splitter = SplitBasins(model=ribasim_model, splitted_basin_path=splitted_basin_3_path, basin_node_id_to_split=3)
+ribasim_model = splitter.run()
+
+ribasim_model.write(ribasim_work_dir_model_toml)
+
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+
+# Migrate meta_categorie from the state to the node table as this prior is completely filled
+basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
+basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
+    ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
+    left_index=True,
+    right_on="node_id",
+    how="left",
+)
+ribasim_model.node.df.loc[basin_node_mask, "meta_categorie"] = basin_node_meta.set_index("node_id")["meta_categorie"]
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -286,10 +312,6 @@ else:
 # reset pump capacity for each pump
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
-# convert all boundary nodes to LevelBoundaries
-ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
-ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
-
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
@@ -297,9 +319,6 @@ if MIXED_CONDITIONS:
     )
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
-
-# add outlet
-ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # prepare 'aanvoergebieden'
 # fmt: off
