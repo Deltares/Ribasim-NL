@@ -36,29 +36,29 @@ class SplitBasins:
     def run(self):
         """Run the full split workflow and return the updated model."""
         # implement the newly splitted basins in the model as new basins, without any connection (yet)
-        test_model, newly_created_basins = self.create_new_basins(
+        model, newly_created_basins = self.create_new_basins(
             model=self.model,
             splitted_basin_gdf=self.splitted_basin_gdf,
             basin_node_id_to_split=self.basin_node_id_to_split,
         )
 
         # redirect the connector nodes to the splitted basins
-        test_model = self.redirect_connectors_to_new_basins(
-            model=test_model,
+        model = self.redirect_connectors_to_new_basins(
+            model=model,
             basin_node_id_to_split=self.basin_node_id_to_split,
             newly_created_basins=newly_created_basins,
         )
 
         # connect the newly created basins with each other using MR
-        test_model = self.add_manning_nodes_between_splitted_basins(
-            model=test_model,
+        model = self.add_manning_nodes_between_splitted_basins(
+            model=model,
             basin_node_id_to_split=self.basin_node_id_to_split,
             newly_created_basins=newly_created_basins,
         )
 
         # delete the original basin from the model
-        test_model.remove_node(self.basin_node_id_to_split, False)
-        return test_model
+        model.remove_node(self.basin_node_id_to_split, False)
+        return model
 
     def add_manning_nodes_between_splitted_basins(
         self, model: Model, basin_node_id_to_split: int, newly_created_basins: list[int]
