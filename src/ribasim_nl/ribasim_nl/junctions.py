@@ -41,7 +41,7 @@ def find_common_linestring(
             coords_j = coords_list[j]
             # Find how many coordinates they share from the start (end of original)
             common_length = 0
-            for coord_i, coord_j in zip(coords_i, coords_j, strict=True):
+            for coord_i, coord_j in zip(coords_i, coords_j, strict=False):
                 if coord_i == coord_j:
                     common_length += 1
                 else:
