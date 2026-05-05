@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +17,7 @@ import shapely
 import tqdm.auto as tqdm
 import xarray as xr
 from ribasim.nodes import continuous_control
+from ribasim_nl.case_conversions import pascal_to_snake_case
 from shapely.geometry import LineString, Point
 
 from peilbeheerst_model import supply
@@ -2720,19 +2720,6 @@ def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx
     :return: updated Ribasim model
     """
 
-    def to_snake_case(node_type: str) -> str:
-        """Convert PascalCase to snake_case.
-
-        Node-types in the node-table are formatted as PascalCase. However, to get the node-table consisting of the
-        specific node-type from the Ribasim-model, the node-type should be formatted as snake_case. This string-format
-        conversion facilitates this dynamic use of the node-type in a robust manner.
-
-        :param node_type: PascalCase-formatted node type
-
-        :return: snake_case-formatted node type
-        """
-        return re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", node_type).lower()
-
     def new_lb_node(c_id: int, level: float) -> tuple[ribasim.geometry.node.NodeData, ribasim.geometry.node.NodeData]:
         """Add new LevelBoundary-node near the existing connector node.
 
@@ -2742,7 +2729,7 @@ def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx
         :return: connector- and (created) LevelBoundary-nodes
         """
         (_c_type,) = ribasim_model.node.df.loc[ribasim_model.node.df.index == c_id, "node_type"]
-        _c_node = getattr(ribasim_model, to_snake_case(_c_type))[c_id]
+        _c_node = getattr(ribasim_model, pascal_to_snake_case(_c_type))[c_id]
         _lb_node = ribasim_model.level_boundary.add(
             ribasim.Node(geometry=Point(_c_node.geometry.x + dx, _c_node.geometry.y + dy)),
             [ribasim.nodes.level_boundary.Static(level=[level])],
