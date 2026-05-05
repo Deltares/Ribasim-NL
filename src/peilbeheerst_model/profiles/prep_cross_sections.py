@@ -24,7 +24,9 @@ def get_basins(water_authority: str, cloud: CloudStorage = CloudStorage()) -> gp
     :return: basin data
     :rtype: geopandas.GeoDataFrame
     """
-    fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "database.gpkg")
+    fn_basins = cloud.joinpath(
+        water_authority, "modellen", f"{water_authority}_parameterized", "input", "database.gpkg"
+    )
     return gpd.read_file(fn_basins, layer="Basin / area")
 
 
@@ -215,7 +217,7 @@ def export_to_cloud(
         cloud.download_basisgegevens(["profielen"], overwrite=overwrite)
 
     # working directories
-    folders = water_authority, "verwerkt", "profielen", "intermediate"
+    folders = water_authority, "verwerkt", "cross_sections"
     src = cloud.joinpath(*folders)
 
     # re-preprocess cross-sections
@@ -225,7 +227,6 @@ def export_to_cloud(
 
     # ensure existence of working directories
     src.mkdir(parents=True, exist_ok=True)
-    cloud.create_dir(*folders[:-1])
     cloud.create_dir(*folders)
 
     # get data

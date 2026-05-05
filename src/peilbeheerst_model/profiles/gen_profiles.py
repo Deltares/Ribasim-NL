@@ -173,7 +173,12 @@ def _read_basins(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
     :return: basin dataset (polygons)
     """
     fn = cloud.joinpath(
-        water_authority, "verwerkt", "Work_dir", f"{water_authority}_parameterized", "input", "database.gpkg"
+        # water_authority, "verwerkt", "Work_dir", f"{water_authority}_parameterized", "input", "database.gpkg"
+        water_authority,
+        "modellen",
+        f"{water_authority}_parameterized",
+        "input",
+        "database.gpkg",
     )
     gdf = gpd.read_file(fn, layer="Basin / area")
     return gdf[gdf["node_id"] == gdf["meta_node_id"]]
@@ -187,7 +192,7 @@ def _read_cross_sections(cloud: CloudStorage, water_authority: str) -> gpd.GeoDa
 
     :return: cross-section dataset (lines)
     """
-    fn = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
+    fn = cloud.joinpath(water_authority, "verwerkt", "cross_sections", "lines_z.gpkg")
     return gpd.read_file(fn)
 
 

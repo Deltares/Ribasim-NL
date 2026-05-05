@@ -25,6 +25,46 @@ stages:
         - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
       outs:
         - data/${item}/modellen/${item}_parameterized
+  cross_sections:
+    foreach:
+      - AmstelGooienVecht
+      - Delfland
+      - HollandseDelta
+      - HollandsNoorderkwartier
+      - Rijnland
+      - Rivierenland
+      - Scheldestromen
+      - SchielandendeKrimpenerwaard
+      - WetterskipFryslan
+      - Zuiderzeeland
+    do:
+      cmd: pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py ${item} --no-sync
+      deps:
+        - src/peilbeheerst_model/profiles/prep_cross_sections.py
+        - data/${item}/modellen/${item}_parameterized
+      outs:
+        - data/${item}/verwerkt/cross_sections
+  profile:
+    foreach:
+      - AmstelGooienVecht
+      - Delfland
+      - HollandseDelta
+      - HollandsNoorderkwartier
+      - Rijnland
+      - Rivierenland
+      - Scheldestromen
+      - SchielandendeKrimpenerwaard
+      - WetterskipFryslan
+      - Zuiderzeeland
+    do:
+      cmd: pixi run python src/peilbeheerst_model/profiles/${item}.py
+      deps:
+        - src/peilbeheerst_model/profiles/${item}.py
+        - src/ribasim_nl/ribasim_nl/profiles
+        - data/${item}/modellen/${item}_parameterized
+        - data/${item}/verwerkt/cross_sections
+      outs:
+        - data/${item}/verwerkt/profielen
   rijkswaterstaat:
     cmd:
       - pixi run python notebooks/rijkswaterstaat/2_basins.py
