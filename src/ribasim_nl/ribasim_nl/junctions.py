@@ -33,7 +33,7 @@ def find_common_linestring(
 
     # Build sparse adjacency matrix of overlap lengths between linestrings
     n = len(linestrings)
-    overlap_lengths = {}
+    overlap_lengths: dict[tuple[int, int], int] = {}
 
     for i in range(n):
         for j in range(i + 1, n):
@@ -53,9 +53,9 @@ def find_common_linestring(
                 overlap_lengths[(i, j)] = common_length
 
     # Process overlaps to find groups of overlapping linestrings
-    groups = {}
+    groups: dict[int, int] = {}
     group_id = 0
-    lengths = {}
+    lengths: dict[int, int] = {}
     for (i, j), length in overlap_lengths.items():
         # New common group
         if i not in groups and j not in groups:
@@ -82,7 +82,7 @@ def find_common_linestring(
                 del lengths[gid_to_remove]
 
     # Create common linestrings and mapping
-    common_linestrings = []
+    common_linestrings: list[shapely.LineString] = []
     linestring_mapping: list[int | None] = [None] * len(linestrings)
     stripped_linestrings = list(linestrings).copy()
     linestrings_list = list(linestrings)
@@ -113,7 +113,7 @@ def find_common_linestring(
 
 
 def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True) -> list[int]:
-    assert model.link.df is not None
+    assert model.link.df is not None  # suppressing type-checking None option for .df
     junction_ids = []
     field = "to_node_id" if converging else "from_node_id"
     grouped_links = links.groupby(field)
