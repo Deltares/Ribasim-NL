@@ -26,7 +26,8 @@ This workflow is intended to be run from a water board parametrization script:
    - the Ribasim model,
    - the path to the split basin polygons,
    - the `node_id` of the basin that must be replaced,
-   - optionally, a `geometry_tolerance` for small geometry mismatches. The default is `1.0`.
+   - optionally, a `geometry_tolerance` for small geometry mismatches. The default is `1.0`,
+   - optionally, `printing=True` to print extra information while splitting. The default is `False`.
 4. Run `splitter.run()` and assign the returned model back to the model variable.
 
 For example:
@@ -37,6 +38,7 @@ splitter = SplitBasins(
     splitted_basin_path=splitted_basin_16_path,
     basin_node_id_to_split=16,
     geometry_tolerance=1.0,
+    printing=False,
 )
 ribasim_model = splitter.run()
 ```
@@ -49,6 +51,7 @@ The script expects at least the following inputs to be available:
 - a polygon layer containing the pre-split basin parts,
 - the `node_id` of the original basin that will be replaced,
 - optionally, a `geometry_tolerance` to accept small geometry mismatches when detecting shared basin boundaries. The default is `1.0`,
+- optionally, `printing=True` to print extra information while splitting,
 - existing basin tables for the original basin, such as:
   - `model.basin.profile`
   - `model.basin.static`
