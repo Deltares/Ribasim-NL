@@ -24,7 +24,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -63,20 +63,20 @@ gaarkeuken_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaarkeuken
 
 cloud.synchronize(
     filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        meteo_path,
+        # ribasim_base_model_dir,
+        # FeedbackFormulier_path,
+        # ws_grenzen_path,
+        # RWS_grenzen_path,
+        # qlr_path,
+        # aanvoer_path,
+        # meteo_path,
         profiles_path,
-        gaarkeuken_path,
+        # gaarkeuken_path,
     ]
 )
 
-# refresh only the feedback form from cloud
-cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+# # refresh only the feedback form from cloud
+# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
@@ -770,6 +770,8 @@ assign = AssignAuthorities(
 )
 ribasim_model = assign.assign_authorities()
 
+# add junctions
+ribasim_model = junctionify(ribasim_model)
 
 # set numerical settings
 # write model output

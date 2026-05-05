@@ -23,7 +23,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -61,13 +61,13 @@ profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
 cloud.synchronize(
     filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        meteo_path,
+        # ribasim_base_model_dir,
+        # FeedbackFormulier_path,
+        # ws_grenzen_path,
+        # RWS_grenzen_path,
+        # qlr_path,
+        # aanvoer_path,
+        # meteo_path,
         profiles_path,
     ]
 )
@@ -658,6 +658,9 @@ assign = AssignAuthorities(
     custom_nodes=None,
 )
 ribasim_model = assign.assign_authorities()
+
+# add junctions
+ribasim_model = junctionify(ribasim_model)
 
 # set numerical settings
 # write model output
