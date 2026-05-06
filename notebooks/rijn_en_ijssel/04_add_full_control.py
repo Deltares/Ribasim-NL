@@ -26,7 +26,7 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergebieden.gpkg")
-# cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
+cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 
 
 # %%
