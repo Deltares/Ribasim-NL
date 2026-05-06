@@ -173,21 +173,6 @@ ribasim_param.validate_basin_area(ribasim_model)
 # check streefpeilen at manning nodes
 ribasim_param.validate_manning_basins(ribasim_model)
 
-# # insert standard profiles to each basin: these are [depth_profiles] meter deep, defined from the streefpeil
-# ribasim_param.insert_standard_profile(
-#     ribasim_model,
-#     unknown_streefpeil=unknown_streefpeil,
-#     regular_percentage=regular_percentage,
-#     boezem_percentage=boezem_percentage,
-#     depth_profile=2,
-# )
-#
-# add_storage_basins = AddStorageBasins(
-#     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
-# )
-#
-# add_storage_basins.create_bergende_basins()
-
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)

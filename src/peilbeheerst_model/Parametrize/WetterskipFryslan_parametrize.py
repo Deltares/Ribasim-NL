@@ -516,7 +516,6 @@ ribasim_model.use_validation = True
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 ribasim_model.write(ribasim_work_dir_model_toml)
 
-
 # Migrate meta_categorie from the state to the node table as this prior is completely filled
 basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
 basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
