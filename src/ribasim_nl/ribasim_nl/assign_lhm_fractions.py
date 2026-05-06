@@ -39,7 +39,7 @@ def sort_lhm_fractions(items: list[str]) -> list[str]:
     items = list(dict.fromkeys(items))
 
     # --- Items that should always appear at the top (in this order) ---
-    top_order = ["Initial", "Drainage (hoofdwater/doorgaand)", "Drainage (bergend)", "RWZI"]
+    top_order = ["Initial", "Drainage (doorgaand)", "Drainage (bergend)", "RWZI"]
 
     # --- Items that should always appear at the bottom (in this order) ---
     lower_order = ["Buitenland", "Maaiveld", "Neerslag"]
@@ -172,7 +172,7 @@ def assign_lhm_fractions(
             {
                 "node_id": primary_basin_node_ids,
                 "time": [time] * len(primary_basin_node_ids),
-                "substance": ["Drainage (hoofdwater/doorgaand)"] * len(primary_basin_node_ids),
+                "substance": ["Drainage (doorgaand)"] * len(primary_basin_node_ids),
                 "drainage": [1.0] * len(primary_basin_node_ids),
                 "precipitation": [0.0] * len(primary_basin_node_ids),
                 "surface_runoff": [0.0] * len(primary_basin_node_ids),
