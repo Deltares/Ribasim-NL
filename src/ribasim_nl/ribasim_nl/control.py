@@ -189,14 +189,17 @@ def validate_nodes_on_reversed_direction(
         """remove reverses and order on key"""
         seen = set()
         result = []
+
         for d in reversed_nodes:
             ((k, v),) = d.items()
             pair = tuple(sorted((k, v)))
             if pair not in seen:
                 seen.add(pair)
-                result.append({k: v})
+                result.append({pair[0]: pair[1]})  # genormaliseerd opslaan
+
         raise ValueError(
-            f"Found {len(result)} connector-node pairs with reversed flow-directions: {reversed_nodes} in set marked as category {node_function}"
+            f"Found {len(result)} unique connector-node pairs with reversed flow-directions: "
+            f"{result} in set marked as category {node_function}"
         )
 
 
@@ -1263,7 +1266,7 @@ def add_controllers_to_supply_area(
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
-    add_supply_nodes: bool = False,
+    add_supply_nodes: bool = True,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 

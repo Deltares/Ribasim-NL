@@ -435,8 +435,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
-      size: 22462646
+      md5: 47b7e670a049fb8a65ab0f813d1def9c.dir
+      size: 22462618
       nfiles: 2
   parameterized@aa_en_maas:
     cmd:
@@ -653,16 +653,16 @@ stages:
     deps:
     - path: notebooks/rijn_en_ijssel/01_fix_model.py
       hash: md5
-      md5: 16a82b53d42eaaaad74ad5de3423dae3
-      size: 11416
+      md5: 5e7241080110724df5d0b6d5afc072c8
+      size: 13481
     - path: notebooks/rijn_en_ijssel/02_prepare_model.py
       hash: md5
       md5: a3cdf631a50a295a6bede62b945453ec
       size: 8108
     - path: notebooks/rijn_en_ijssel/03_parameterize_model.py
       hash: md5
-      md5: 1deb5d4a7b0c264fec8b39f6f366a718
-      size: 2116
+      md5: b34d9bbee8d4303e158ef28c4900a6bb
+      size: 2629
     - path: notebooks/rijn_en_ijssel/_preprocess_profielen.py
       hash: md5
       md5: d091ad9f37ee2c5ddddd1b652cd9c9f9
@@ -670,8 +670,8 @@ stages:
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
       hash: md5
-      md5: 927222a8d8bfcd7a239913edacc90e51.dir
-      size: 4714645
+      md5: f1f6e45619876f3cfc8d6a135ed710c0.dir
+      size: 4694165
       nfiles: 2
   parameterized@stichtse_rijnlanden:
     cmd:
@@ -938,22 +938,22 @@ stages:
     deps:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
       hash: md5
-      md5: 927222a8d8bfcd7a239913edacc90e51.dir
-      size: 4714645
+      md5: f1f6e45619876f3cfc8d6a135ed710c0.dir
+      size: 4694165
       nfiles: 2
     - path: notebooks/05_add_bergend.py
       hash: md5
-      md5: fd9532a531999e063ab177b954de7c70
-      size: 1699
+      md5: 1dffab3eacceff6ce50e0980ba7261ee
+      size: 1697
     - path: notebooks/rijn_en_ijssel/04_add_full_control.py
       hash: md5
-      md5: d5611fa3eb985891f853adf726e9afdc
-      size: 5708
+      md5: bafe4b52ed61c7c34b61088615c1ea16
+      size: 6212
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_bergend_model
       hash: md5
-      md5: 008da894e26fd3bc2d421db2b2282ce4.dir
-      size: 9044117
+      md5: 6607b7acff6cb03739bc6626742a2112.dir
+      size: 7458965
       nfiles: 2
   bergend@stichtse_rijnlanden:
     cmd:
@@ -1197,23 +1197,23 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: 18ace1cf5984acb585efc3bf7e680d42.dir
-      size: 22462646
+      md5: 47b7e670a049fb8a65ab0f813d1def9c.dir
+      size: 22462618
       nfiles: 2
     - path: data/RijnenIJssel/modellen/RijnenIJssel_bergend_model
       hash: md5
-      md5: 008da894e26fd3bc2d421db2b2282ce4.dir
-      size: 9044117
+      md5: 6607b7acff6cb03739bc6626742a2112.dir
+      size: 7458965
       nfiles: 2
     - path: notebooks/07_add_dynamic_forcing.py
       hash: md5
-      md5: 18fede6e7a45023461c6a7aac4d195bf
-      size: 7043
+      md5: a5248565db608045d6dc29d1363602a3
+      size: 7307
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: e9a120eb5289231acc5b999aad306115.dir
-      size: 25662196
+      md5: 4be7b4bb2f13ee22bccfb69dc0e6f58e.dir
+      size: 24201572
       nfiles: 4
   dynamic@stichtse_rijnlanden:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py StichtseRijnlanden

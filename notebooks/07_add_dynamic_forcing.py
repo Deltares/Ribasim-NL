@@ -75,8 +75,9 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 
 
 FIND_POST_FIXES = ["bergend_model"]
+# FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"AaenMaas"}
+SELECTION: set = {"RijnenIJssel"}
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -150,8 +151,7 @@ for authority in authorities:
             model.update_state()
 
             # add categorie to basin / state
-            # pyrefly: ignore[missing-attribute]
-            series = model.basin.node.df["meta_categorie"]
+            series = model.basin.node.df["meta_categorie"]  # type: ignore
             uncategorized_basins = series[series.isna()].index.values
             if len(uncategorized_basins) > 0:
                 print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
