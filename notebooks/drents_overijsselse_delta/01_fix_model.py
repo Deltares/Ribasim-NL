@@ -346,10 +346,10 @@ actions = [
     "update_node",
     "add_basin_area",
     "update_basin_area",
-    "redirect_link",
-    "reverse_link",
     "deactivate_node",
     "move_node",
+    "redirect_link",
+    "reverse_link",
     "remove_node",
     "connect_basins",
 ]
@@ -357,22 +357,131 @@ actions = [
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
 for action in actions:
     print(action)
-    # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+
     if "order" in df.columns:
         df.sort_values("order", inplace=True)
+
     for row in df.itertuples():
-        # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+        try:
+            method(**kwargs)
+        except Exception:
+            print(f"Failed action: {action}")
+            print(kwargs)
+            print("NaN link index rows:")
+            print(model.link.df[model.link.df.index.isna()])
+            raise
+
+# fixes:
+# Gemaal Westerveld is een inlaat gemaal en een uitlaat ernaast, dus richting omdraaien evt takken toevoegen
+for link_id in [
+    938,
+    2963,
+    2962,
+    2144,
+]:
+    model.reverse_link(link_id=link_id)
+
+# De Heuvel # 617 verkeerde riching, dus omdraaien
+for link_id in [1003, 1516]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet Zedemuden moet kunnen inlaten, dus richting omdraaien evt takken toevoegen
+for link_id in [
+    3087,
+    3088,
+]:
+    model.reverse_link(link_id=link_id)
+
+# node #968 aanvoer
+for link_id in [1175, 2832]:
+    model.reverse_link(link_id=link_id)
+
+# node #832 aanvoer
+for link_id in [2407, 2831]:
+    model.reverse_link(link_id=link_id)
+
+# Reest gevoed door Ommerskanaal (Lutterhoofddiep 1m3/s)
+for link_id in [1865, 2854]:
+    model.reverse_link(link_id=link_id)
+
+# De Haar is aanvoer
+for link_id in [954, 2113]:
+    model.reverse_link(link_id=link_id)
+
+# Outlets richting omdraaien, zijn inlaten!
+for link_id in [512, 585, 747, 1916, 1260, 2111, 1347, 1941]:
+    model.reverse_link(link_id=link_id)
+
+# Blijdestein moet ook aanvoeren
+# Outlets richting omdraaien, zijn inlaten!
+for link_id in [897, 2063]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet 1011 is een inlaat
+# Outlet richting omdraaien, zijn inlaten!
+for link_id in [1212, 2195]:
+    model.reverse_link(link_id=link_id)
+
+# Duinersteeg aantal Slagen
+model.update_node(node_id=1402, node_type="Outlet")
+# Outlets richting omdraaien, zijn inlaten!
+for link_id in [1193, 2880]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet Tussen de Diepen node #1035 richting omdraaien, is inlaat
+for link_id in [2271, 2910]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet Lokbrug node #1081 richting omdraaien, is inlaat
+for link_id in [745, 2218]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet Haarsluis node #1338 richting omdraaien, is inlaat
+for link_id in [1201, 2591]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet O-36-16_A_2 node #1242 richting omdraaien, is inlaat
+for link_id in [1297, 1773]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet node #952 richting omdraaien, is inlaat
+for link_id in [1154, 1915]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet node #1242 richting omdraaien, is inlaat
+for link_id in [1773]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet node #1227 richting omdraaien, is inlaat
+for link_id in [822, 2076]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet node #984 richting omdraaien, is inlaat
+for link_id in [634, 1846]:
+    model.reverse_link(link_id=link_id)
+
+# 't Vosje #571 is een inlaat
+for link_id in [634, 1717]:
+    model.reverse_link(link_id=link_id)
+
+# 't Katje #562 is een inlaat
+for link_id in [1710, 3006]:
+    model.reverse_link(link_id=link_id)
+
+# 't Raasje #563 is een inlaat
+for link_id in [958, 1711]:
+    model.reverse_link(link_id=link_id)
 
 # remove unassigned basin area
 model.fix_unassigned_basin_area()
 model.remove_unassigned_basin_area()
 
 model = reset_static_tables(model)
+
 
 # %%
 
