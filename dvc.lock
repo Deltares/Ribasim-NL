@@ -1436,3 +1436,50 @@ stages:
       md5: 4f9f665141228372376447ea96454269.dir
       size: 13439157
       nfiles: 2
+  cross_sections@Rijnland:
+    cmd: pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Rijnland --no-sync
+    deps:
+    - path: data/Rijnland/modellen/Rijnland_parameterized
+      hash: md5
+      md5: 1e0d68ed2ede66994c7503f6ac244053.dir
+      size: 31609013
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 09abc4463ea12d2c401058c2daff1f02
+      size: 10689
+    outs:
+    - path: data/Rijnland/verwerkt/cross_sections
+      hash: md5
+      md5: 9c966d9d07ab7643681262b53e1b5b7e.dir
+      size: 23691264
+      nfiles: 1
+  profile@Rijnland:
+    cmd: pixi run python src/peilbeheerst_model/profiles/Rijnland.py
+    deps:
+    - path: data/Rijnland/modellen/Rijnland_parameterized
+      hash: md5
+      md5: 1e0d68ed2ede66994c7503f6ac244053.dir
+      size: 31609013
+      nfiles: 2
+    - path: data/Rijnland/verwerkt/cross_sections
+      hash: md5
+      md5: 9c966d9d07ab7643681262b53e1b5b7e.dir
+      size: 23691264
+      nfiles: 1
+    - path: src/peilbeheerst_model/profiles/Rijnland.py
+      hash: md5
+      md5: e359d88730eef662567b91f3f3b32ee0
+      size: 296
+    - path: src/ribasim_nl/ribasim_nl/profiles
+      hash: md5
+      md5: f01cb4884f38550aa83fd828e9b1eaba.dir
+      size: 97589
+      nfiles: 9
+    outs:
+    - path: data/Rijnland/verwerkt/profielen
+      hash: md5
+      md5: 7048894524d5646bdf006d25753ee1e2.dir
+      size: 969941042
+      nfiles: 6

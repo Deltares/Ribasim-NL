@@ -15,7 +15,7 @@ if __name__ == "__main__":
         "aangeleverd/Na_levering/Oplevering_Scheldestromen_20240328/Oplevering_20240328.gpkg",
         "categorieoppwaterlichaam",
         val_flag="primair",
-        sync=False,
+        sync=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )
