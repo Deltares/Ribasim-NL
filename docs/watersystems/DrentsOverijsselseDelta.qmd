@@ -79,6 +79,10 @@ Haarsluis 12 5.8
 Veenesluis 13 5.9
 Sluis Peelo 15 geen gemaal
 
+De Verlengde Hoogeveensche
+Vaart bestaat uit twee panden. Dit is een pand van Bladderswijk tot aan de Ericasluis en een pand
+van de Ericasluis naar de Noordscheschutsluis. De panden hebben een peil van respectievelijk
+NAP+15.80 m en NAP+12.9 m.
 ## Bronnen
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd).
 

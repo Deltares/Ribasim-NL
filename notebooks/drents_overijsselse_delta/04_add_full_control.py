@@ -16,7 +16,7 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 
-EXCLUDE_NODES = {}
+EXCLUDE_NODES = {527, 528}
 
 # %%
 # Definieren paden en syncen met cloud
@@ -70,35 +70,73 @@ for link_id in [1041, 2280]:
 for link_id in [2992, 2093]:
     model.reverse_link(link_id=link_id)
 
-# node #1444 richting omdraaien, is inlaat, zit niet op exacte plaats :-(
+# node #1444 richting omdraaien, is inlaat
 for link_id in [1244, 1581]:
     model.reverse_link(link_id=link_id)
 
-# node #1444 richting omdraaien, is inlaat, zit niet op exacte plaats :-(
 for link_id in [2944, 2273, 2940, 1158]:
     model.reverse_link(link_id=link_id)
 
-
-# node #1444 richting omdraaien, is inlaat, zit niet op exacte plaats :-(
 for link_id in [2445, 1165]:
     model.reverse_link(link_id=link_id)
 
+for link_id in [368]:
+    model.redirect_link(link_id, to_node_id=2638)
 
-# make outlets from manning
-outlet_ids = [1418, 1419, 1428, 1433, 1444, 1448, 1452, 1462, 1488, 1466, 1459, 1513, 1522, 1550]
+for link_id in [364]:
+    model.redirect_link(link_id, to_node_id=2554)
+
+# node #829: aanvoergemaal  richting omdraaien
+for link_id in [75, 2415]:
+    model.reverse_link(link_id=link_id)
+
+# node #1265: inlaat  richting omdraaien
+for link_id in [2958, 1635]:
+    model.reverse_link(link_id=link_id)
+
+# node #1265: inlaat  richting omdraaien
+for link_id in [2956, 210]:
+    model.reverse_link(link_id=link_id)
+
+# inlaat  richting omdraaien
+for link_id in [291, 1619]:
+    model.reverse_link(link_id=link_id)
+
+# node #820: inlaat  richting omdraaien
+for link_id in [294, 2402]:
+    model.reverse_link(link_id=link_id)
+
+# node #433: uitlaat richting omdraaien
+for link_id in [805, 1971]:
+    model.reverse_link(link_id=link_id)
+
+# node #1423: uitlaat richting omdraaien
+for link_id in [1046, 2610]:
+    model.reverse_link(link_id=link_id)
+
+# make outlet nodes
+outlet_ids = [1418, 1419, 1428, 1433, 1444, 1448, 1452, 1460, 1462, 1488, 1466, 1459, 1513, 1548, 1522, 1550]
 
 for node_id in dict.fromkeys(outlet_ids):
     model.update_node(node_id=node_id, node_type="Outlet")
 
-# make manning from outlet
-outlet_ids = [1083]
+# make manning nodes
+outlet_ids = [859, 1083]
 
 for node_id in dict.fromkeys(outlet_ids):
     model.update_node(node_id=node_id, node_type="ManningResistance")
 
+# make pump nodes
+# node_id: 742= gemaal Eelerberg
+# node_id: 829= gemaal Haarsche Maten
+# node_id: 906= gemaal Oude Wetering
+# node_id: 414= gemaal Marswetering
+# node_id: 414= gemaal Middenraai Veenveld
+outlet_ids = [195, 346, 742, 829, 906, 414, 1423]
 
-# Oude Wetering #906 is een gemaal
-model.update_node(node_id=906, node_type="Pump")
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="Pump")
+
 
 # Outlet Zedemuden moet kunnen inlaten, dus richting omdraaien evt takken toevoegen
 for link_id in [
@@ -116,6 +154,8 @@ model.remove_node(1229, remove_links=True)
 model.remove_node(266, remove_links=True)
 model.remove_node(268, remove_links=True)
 model.remove_node(523, remove_links=True)
+model.remove_node(275, remove_links=True)
+model.remove_node(275, remove_links=True)
 
 # Streefpeil te laag
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 959, "min_upstream_level"] = 11.0
@@ -124,77 +164,97 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1238, "min_upstream
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 544, "min_upstream_level"] = -0.2
 
 model.merge_basins(node_id=1970, to_node_id=1990, are_connected=True)
+model.merge_basins(node_id=2294, to_node_id=1949, are_connected=True)
 # Manning moet outlet zijn
 model.update_node(node_id=1468, node_type="Outlet")
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1468, "min_upstream_level"] = 2.63
 
+# Westerveld
+model.update_node(node_id=1104, node_type="ManningResistance")
+model.update_node(node_id=3127, node_type="ManningResistance")
+model.update_node(node_id=885, node_type="ManningResistance")
+
 
 flow_control_nodes = [
+    119,
+    133,
     153,
     154,
+    173,
     226,
     227,
     241,
     242,
+    243,
+    244,
     247,
     248,
     285,
     344,
+    350,
     385,
     401,
+    414,
     427,
+    423,
+    442,
     605,
     610,
     937,
+    938,
+    1115,
+    1152,
     1263,
     1317,
+    1414,
     2662,
     2664,
     2666,
     125,
-    938,
     1088,
     193,
-    1462,
+    198,
+    199,
+    3136,
 ]
 
 # Houd deze lange data-lijsten compact; formatters klappen ze anders uit naar een node-id per regel.
 # fmt: off
 supply_nodes = [
-    152, 195,192, 196, 212, 213, 216, 219,233,282, 284, 288,
+    152, 195,192, 196, 206,212, 213, 216, 219,206,233,282, 284, 288,
     332, 334, 346, 370, 464, 503,508, 511,545, 548, 550,552,
-    562, 563, 564, 570, 571, 579, 597,607, 615, 617,631,
+    562, 563, 564, 570, 571, 579, 597,604,607, 615, 617,631,
     632, 633, 634, 636, 637, 638, 640, 645, 647, 648,
-    650, 652, 660, 665, 669, 676, 686, 693, 694, 699,
+    650, 651,652, 660, 665, 669, 676, 686, 693, 694, 699,
     704, 706, 708, 712, 713, 715, 723, 726, 741,748, 753,
-    758, 759, 760, 775, 783,786,787, 800, 801,813, 816,823, 832, 846,868,
+    758, 759, 760, 775, 783,786,787, 800, 801,813, 816,823,829, 832, 861,846,868,
     878, 894,896, 898,902,906, 918,920, 933, 936, 949, 951, 954,
     965, 968, 969, 972, 976, 977,983, 987, 1002,1009, 1012, 1024,
     1025, 1034, 1035, 1045,1047, 1050, 1054, 1056, 1058,1059, 1068, 1074,
-    1077, 1078, 1086, 1109,1115, 1132, 1141, 1142, 1182, 1187, 1188,
-    1190,1196, 1199, 1202,1203,1207, 1209, 1217, 1221, 1289,1231, 1238, 1243, 1246,
-    1260, 1261, 1262, 1273, 1278,1279, 1283,1291, 1294, 1302, 1303, 1307,
-    1312,1325, 1332, 1344, 1391, 1401,1418, 1452,1473, 2650, 2652, 2653, 2657,
+    1077, 1078, 1086, 1103, 1109, 1132, 1141, 1142, 1182, 1187, 1188,
+    1190,1196, 1199, 1202,1203,1207, 1209,1211, 1213,1214,1217, 1221, 1289,1231, 1238, 1243, 1246,
+    1255, 1260, 1261, 1262, 1273, 1278,1279, 1283,1291, 1294, 1302, 1303, 1307,
+    1312,1325, 1332, 1336,1344, 1391, 1401,1418,1423,1444, 1452,1473, 2650, 2652, 2653, 2657,
     2658, 2659, 2662, 2665, 2667, 3110, 3116, 3118, 3119, 3122,
     3124, 3125, 3126,
 ]
 
 
 drain_nodes = [
-    111, 113, 116, 122,137,143,144,145, 150, 152,157, 159,161,165,169, 170, 173,174,177,181, 186, 190,197,
-    201,202,208,210, 211,218,221,232,234, 239,246,251, 265, 267,271, 276,293,295, 296, 297, 300,304,305, 307,311,
+    111, 113, 116, 122,137,143,144,145, 150, 152,157, 159,161,165,168,169, 170,171, 173,174,177,181, 183, 186, 190,197,
+    201,202,205,208,210, 211,218,221,232,234, 239,246,251,252, 265, 267,271, 276,293,295, 296, 297, 300,304,305, 307,311,
     315, 322, 324, 325, 333,337, 347,351, 352, 361, 362, 366,368,369,
-    375,377, 378, 387, 394,395,398, 405,406, 418,421, 422, 428,431,437,438, 444, 445,
+    375,377, 378,382, 387, 394,395,398, 405,406, 418,421, 422, 428,431,437,438, 444, 445,
     446,447, 451, 454, 456,461,468, 469, 473,475, 476,481, 486, 487,489, 490,493,
-    501, 505,515, 521, 529, 534, 541, 550, 565, 580,582,591,
-    583, 584,586, 587, 588, 590, 596, 599, 604, 608, 609,614,616,623, 624,625, 630,642,
+    501, 503,505,515, 521, 529, 534, 541, 550, 565, 580,582,591,
+    583, 584,586, 587, 588, 590, 596, 599, 608, 609,614,616,623, 624,625, 630,642,
     643, 646, 649,653,654, 657, 659,664,666, 671, 672, 674, 679, 680,
-    688, 690, 697, 698, 700, 701,732, 771,774,777, 780,794, 802,815,816,841, 849,852,
-    859, 873,884,886,893,909,922,932, 942, 953, 955,958,983, 986, 1007, 1017,1028, 1049,
-    1052, 1066, 1091,1094, 1096, 1100, 1101, 1103, 1113,1125, 1129, 1140, 1148,1150,1154,1155,1156,
+    688, 690, 697, 698, 700, 701,732, 771,774,777, 780,794, 802,815,816,841, 849,851,852,854,
+    859, 873,884,886,893,900,909,919,922,932, 942, 953, 955,958,971,983, 986, 1007, 1017,1028, 1033,1049,
+    1052, 1066, 1091,1094, 1096, 1100, 1101, 1113,1125, 1129, 1140, 1148,1150,1154,1155,1156,
     1159, 1173, 1175, 1186, 1189, 1193, 1210,1215, 1216, 1219, 1225, 1226,1233,
-    1234, 1259,1264, 1268, 1271, 1293, 1318, 1323,1346, 1350, 1360,
-    1366, 1368, 1369,1337,1372, 1373,1379,1380, 1381,1386,1394, 1395,1406, 1409, 1410, 1448,1459,1482, 3128,3153,3156,
+    1234, 1259,1264, 1268, 1269, 1271, 1293, 1318, 1323,1346, 1350, 1360,
+    1366, 1368, 1369,1337,1372, 1373,1379,1380, 1381,1386,1394, 1395,1406, 1409, 1410,1428, 1448,1459,1460,1462,1482, 3128,3153,3156,
     3106,3430, 3567,
 ]
 # fmt: on
@@ -481,7 +541,7 @@ polygon = aanvoergebieden_df.loc[["Dedemsvaart"], "geometry"].union_all()
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [1680, 1094, 1274, 2164, 2344]
+ignore_intersecting_links: list[int] = [287, 2453, 1680, 1094, 1274, 2164, 2344]
 
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
@@ -647,6 +707,8 @@ add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
 )
+# Holthe max down_stream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren
+model.pump.static.df.loc[model.pump.static.df.node_id == 648, "max_downstream_level"] -= 0.1
 
 # %%
 # %% Junctionfy(!)

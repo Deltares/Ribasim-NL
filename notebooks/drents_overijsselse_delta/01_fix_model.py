@@ -477,6 +477,9 @@ for link_id in [958, 1711]:
 # make outlets from manning
 outlet_ids = [804]
 
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="ManningResistance")
+
 # fixes vistrap eruit
 model.remove_node(1414, remove_links=True)
 model.remove_node(1441, remove_links=True)
@@ -493,7 +496,6 @@ model.merge_basins(node_id=1681, to_node_id=1717, are_connected=True)
 model.merge_basins(node_id=2348, to_node_id=1756, are_connected=False)
 model.merge_basins(node_id=2192, to_node_id=2194, are_connected=False)
 model.merge_basins(node_id=2574, to_node_id=2030, are_connected=True)
-model.merge_basins(node_id=2030, to_node_id=1721, are_connected=True)
 
 model.remove_link(from_node_id=281, to_node_id=2554)
 
