@@ -1534,6 +1534,7 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
 
     # merge the functions to the from_to_node_table for both outlets and pumps
     outlet_pumps = pd.concat([outlet_nodes, pump_nodes])
+    from_to_node_table = from_to_node_table.drop(columns=["meta_categorie"], errors="ignore")
     from_to_node_table = from_to_node_table.merge(
         outlet_pumps,
         left_index=True,

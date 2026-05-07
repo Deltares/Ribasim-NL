@@ -19,6 +19,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
+from ribasim_nl.split_basins import SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -60,6 +61,10 @@ aanvoer_path = cloud.joinpath(
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
+splitted_basin_2_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_2.gpkg")
+splitted_basin_9_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_9.gpkg")
+splitted_basin_10_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_10.gpkg")
+
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
@@ -70,6 +75,9 @@ cloud.synchronize(
         aanvoer_path,
         meteo_path,
         profiles_path,
+        splitted_basin_2_path,
+        splitted_basin_9_path,
+        splitted_basin_10_path,
     ]
 )
 
@@ -222,7 +230,37 @@ ribasim_param.validate_basin_area(ribasim_model)
 # check streefpeilen at manning nodes
 ribasim_param.validate_manning_basins(ribasim_model)
 
+# convert all boundary nodes to LevelBoundaries
+ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
+ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
+
+# add outlet
+ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
+for splitted_basin_path, basin_id in zip(
+    [splitted_basin_2_path, splitted_basin_9_path, splitted_basin_10_path], [2, 9, 10], strict=True
+):
+    # split basins to improve model convergence
+    splitter = SplitBasins(
+        model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
+    )
+    ribasim_model = splitter.run()
+
+ribasim_model.write(ribasim_work_dir_model_toml)
+
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)  # , min_area=100
+
+# Migrate meta_categorie from the state to the node table as this prior is completely filled
+basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
+basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
+    ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
+    left_index=True,
+    right_on="node_id",
+    how="left",
+)
+ribasim_model.node.df.loc[basin_node_mask, "meta_categorie"] = basin_node_meta.set_index("node_id")["meta_categorie"]
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -256,10 +294,6 @@ else:
     }
     ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
-# convert all boundary nodes to LevelBoundaries
-ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
-ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
-
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
@@ -267,9 +301,6 @@ if MIXED_CONDITIONS:
     )
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
-
-# add outlet
-ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
@@ -289,12 +320,11 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
-
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 # manual adjustments to control settings
-to_supply = 167, 371, 239, 223, 306, 525, 377, 150, 224, 468, 163, 201, 475
+to_supply = 167, 371, 239, 223, 258, 306, 525, 377, 150, 224, 468, 163, 201, 475
 set_node_functions(from_to_node_function_table, to_supply=to_supply)
 
 outlet_copy = ribasim_model.outlet.static.df[
