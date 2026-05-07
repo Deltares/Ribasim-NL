@@ -6,42 +6,12 @@ stages:
     outs:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
     frozen: true
-  peilbeheerst:
-    foreach:
-      delfland: Delfland
-      amstel_gooi_en_vecht: AmstelGooienVecht
-      hollands_noorderkwartier: HollandsNoorderkwartier
-      hollandse_delta: HollandseDelta
-      rijnland: Rijnland
-      rivierenland: Rivierenland
-      scheldestromen: Scheldestromen
-      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
-      wetterskip_fryslan: WetterskipFryslan
-      zuiderzeeland: Zuiderzeeland
-    do:
-      cmd:
-        - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py
-      deps:
-        - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
-      outs:
-        - data/${item}/modellen/${item}_parameterized
-  rijkswaterstaat:
-    cmd:
-      - pixi run python notebooks/rijkswaterstaat/2_basins.py
-      - pixi run python notebooks/rijkswaterstaat/3_netwerk.py
-      - pixi run python notebooks/rijkswaterstaat/4_kunstwerken.py
-      - pixi run python notebooks/rijkswaterstaat/5_model_netwerk.py
-      - pixi run python notebooks/rijkswaterstaat/6_model_sturing.py
-      - pixi run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
-      - pixi run python notebooks/rijkswaterstaat/8a_update_state.py
-      - pixi run python notebooks/rijkswaterstaat/8b_update_bc.py
+  rwzi:
+    cmd: pixi run python notebooks/create_rwzi_model.py
     deps:
-      - data/Rijkswaterstaat/verwerkt/bathymetrie
-      - data/Rijkswaterstaat/modellen/rwzi
-      - notebooks/rijkswaterstaat
+      - notebooks/create_rwzi_model.py
     outs:
-      - data/Rijkswaterstaat/modellen/hws_transient
-      - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
+      - data/Rijkswaterstaat/modellen/rwzi
   parameterized:
     foreach:
       aa_en_maas: AaenMaas
@@ -112,12 +82,42 @@ stages:
         - data/Rijkswaterstaat/modellen/rwzi
       outs:
         - data/${item}/modellen/${item}_dynamic_model
-  rwzi:
-    cmd: pixi run python notebooks/create_rwzi_model.py
+  peilbeheerst:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+      deps:
+        - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+      outs:
+        - data/${item}/modellen/${item}_parameterized
+  rijkswaterstaat:
+    cmd:
+      - pixi run python notebooks/rijkswaterstaat/2_basins.py
+      - pixi run python notebooks/rijkswaterstaat/3_netwerk.py
+      - pixi run python notebooks/rijkswaterstaat/4_kunstwerken.py
+      - pixi run python notebooks/rijkswaterstaat/5_model_netwerk.py
+      - pixi run python notebooks/rijkswaterstaat/6_model_sturing.py
+      - pixi run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+      - pixi run python notebooks/rijkswaterstaat/8a_update_state.py
+      - pixi run python notebooks/rijkswaterstaat/8b_update_bc.py
     deps:
-      - notebooks/create_rwzi_model.py
-    outs:
+      - data/Rijkswaterstaat/verwerkt/bathymetrie
       - data/Rijkswaterstaat/modellen/rwzi
+      - notebooks/rijkswaterstaat
+    outs:
+      - data/Rijkswaterstaat/modellen/hws_transient
+      - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
   samenvoegen:
     cmd: pixi run python notebooks/samenvoegen_modellen.py
     deps:
