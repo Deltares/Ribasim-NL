@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Level controlled – Ribasim-NL</title>
+<title>Split basins based on pre-split basin polygons – Ribasim-NL</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -19,6 +19,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -128,7 +163,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/split-basins.html">Split basins based on pre-split basin polygons</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -148,7 +183,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link active">
+  <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Level controlled</span></a>
   </div>
 </li>
@@ -166,7 +201,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
+  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
   </div>
 </li>
@@ -187,15 +222,33 @@ ul.task-list li input[type="checkbox"] {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose">Purpose</a></li>
+  <li><a href="#how-to-run" id="toc-how-to-run" class="nav-link" data-scroll-target="#how-to-run">How to run</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#main-steps" id="toc-main-steps" class="nav-link" data-scroll-target="#main-steps">Main steps</a>
+  <ul class="collapse">
+  <li><a href="#read-the-split-basin-polygons" id="toc-read-the-split-basin-polygons" class="nav-link" data-scroll-target="#read-the-split-basin-polygons">1. Read the split basin polygons</a></li>
+  <li><a href="#create-new-basin-nodes" id="toc-create-new-basin-nodes" class="nav-link" data-scroll-target="#create-new-basin-nodes">2. Create new basin nodes</a></li>
+  <li><a href="#redirect-existing-connectors" id="toc-redirect-existing-connectors" class="nav-link" data-scroll-target="#redirect-existing-connectors">3. Redirect existing connectors</a></li>
+  <li><a href="#add-manningresistance-nodes-between-split-basins" id="toc-add-manningresistance-nodes-between-split-basins" class="nav-link" data-scroll-target="#add-manningresistance-nodes-between-split-basins">4. Add ManningResistance nodes between split basins</a></li>
+  <li><a href="#remove-the-original-basin" id="toc-remove-the-original-basin" class="nav-link" data-scroll-target="#remove-the-original-basin">5. Remove the original basin</a></li>
+  </ul></li>
+  <li><a href="#important-assumptions" id="toc-important-assumptions" class="nav-link" data-scroll-target="#important-assumptions">Important assumptions</a></li>
+  <li><a href="#output" id="toc-output" class="nav-link" data-scroll-target="#output">Output</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Level controlled</h1>
+<h1 class="title">Split basins based on pre-split basin polygons</h1>
 </div>
 
 
@@ -212,19 +265,131 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model"><code>src/peilbeheerst_model</code></a>. The paths below are relative to this path.</p>
+<p>Workflow for replacing one Ribasim basin by multiple smaller basin polygons and reconnecting the surrounding model network. The implementation lives in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/split_basins.py"><code>src/ribasim_nl/ribasim_nl/split_basins.py</code></a>.</p>
+<section id="purpose" class="level2">
+<h2 class="anchored" data-anchor-id="purpose">Purpose</h2>
+<p>This workflow is used after a Ribasim model has already been built and before the model is written or further parameterized. It replaces a basin by multiple smaller basins and reconnects the links, which may be useful for convergence improvements or an improved water quality schematisation. The script does this by:</p>
 <ol type="1">
-<li>Run the preprocessing scripts. One script per water board, path: <code>peilbeheerst_model/preprocess_data/</code></li>
-<li>Run the postprocessing script. One script per water board, path: <code>peilbeheerst_model/postprocess_data/</code></li>
-<li>Run the crossings script. One script, path: <code>01_parse_crossings.ipynb</code>. Moving to one script per water board under <code>peilbeheerst_model/parse_crossings/</code>.</li>
-<li>Run shortest paths scripts. One script per water board, path: <code>Shortest_path/</code></li>
-<li>Run crossings to Ribasim script. One script, all water boards are below each other, path: <code>02_crossings_to_ribasim_notebook.ipynb</code>. Moving to one script per water board under <code>peilbeheerst_model/crossings_to_ribasim/</code>.</li>
-<li>Run parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: <code>Parametrize/AmstelGooienVecht_parametrize.ipynb</code></li>
+<li>creating new basin nodes from pre-split basin polygons,</li>
+<li>redirecting existing connector links from the original basin to the nearest new basin, and</li>
+<li>adding ManningResistance nodes between new basins that share a boundary.</li>
 </ol>
-<p>We originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as <code>AmstelGooienVecht_parametrize.ipynb</code>.</p>
-<p>Finally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.</p>
+</section>
+<section id="how-to-run" class="level2">
+<h2 class="anchored" data-anchor-id="how-to-run">How to run</h2>
+<p>This workflow is intended to be run from a water board parametrization script:</p>
+<ol type="1">
+<li>Prepare a polygon layer with the split basin parts. Each polygon represents one new basin area that will replace the original basin. This can easily be done using QGIS.</li>
+<li>Set the path to this layer in the parametrization script.</li>
+<li>Create a <code>SplitBasins</code> object with:
+<ul>
+<li>the Ribasim model,</li>
+<li>the path to the split basin polygons,</li>
+<li>the <code>node_id</code> of the basin that must be replaced,</li>
+<li>optionally, a <code>geometry_tolerance</code> for small geometry mismatches. The default is <code>1.0</code>,</li>
+<li>optionally, <code>printing=True</code> to print extra information while splitting. The default is <code>False</code>.</li>
+</ul></li>
+<li>Run <code>splitter.run()</code> and assign the returned model back to the model variable.</li>
+</ol>
+<p>For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>splitter <span class="op">=</span> SplitBasins(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    model<span class="op">=</span>ribasim_model,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    splitted_basin_path<span class="op">=</span>splitted_basin_16_path,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    basin_node_id_to_split<span class="op">=</span><span class="dv">16</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    geometry_tolerance<span class="op">=</span><span class="fl">1.0</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    printing<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>ribasim_model <span class="op">=</span> splitter.run()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="inputs" class="level2">
+<h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
+<p>The script expects at least the following inputs to be available:</p>
+<ul>
+<li>a Ribasim model,</li>
+<li>a polygon layer containing the pre-split basin parts,</li>
+<li>the <code>node_id</code> of the original basin that will be replaced,</li>
+<li>optionally, a <code>geometry_tolerance</code> to accept small geometry mismatches when detecting shared basin boundaries. The default is <code>1.0</code>,</li>
+<li>optionally, <code>printing=True</code> to print extra information while splitting,</li>
+<li>existing basin tables for the original basin, such as:
+<ul>
+<li><code>model.basin.profile</code></li>
+<li><code>model.basin.static</code></li>
+<li><code>model.basin.time</code></li>
+<li><code>model.basin.state</code></li>
+<li><code>model.basin.area</code></li>
+</ul></li>
+<li>existing links between the original basin and connector nodes.</li>
+</ul>
+</section>
+<section id="main-steps" class="level2">
+<h2 class="anchored" data-anchor-id="main-steps">Main steps</h2>
+<section id="read-the-split-basin-polygons" class="level3">
+<h3 class="anchored" data-anchor-id="read-the-split-basin-polygons">1. Read the split basin polygons</h3>
+<p>The <code>SplitBasins</code> class reads the supplied polygon layer. The geometry of this polygon is used as the new splitted basin areas. The original basin geometry is not cut by the script itself; the basin parts must already be prepared as this is a more practical approach, mainly when splitting the basin into many smaller basins or when the basin has an awkward / large shape.</p>
+</section>
+<section id="create-new-basin-nodes" class="level3">
+<h3 class="anchored" data-anchor-id="create-new-basin-nodes">2. Create new basin nodes</h3>
+<p>For each polygon in the split basin layer, the script creates a new basin nodes for each splitted basin. The node geometry is placed at the polygon representative point.</p>
+<p>The basin table rows of the original basin are copied to each new basin node to retain the (meta)data. This includes available rows in:</p>
+<ul>
+<li><code>model.basin.profile</code></li>
+<li><code>model.basin.static</code></li>
+<li><code>model.basin.time</code></li>
+<li><code>model.basin.state</code></li>
+<li><code>model.basin.area</code></li>
+</ul>
+<p>After copying, the geometry in <code>model.basin.area.df</code> is replaced by the corresponding split basin polygon. Note that the user may need to update the profile and static/time table, as the surface area of the polygons has changed.</p>
+</section>
+<section id="redirect-existing-connectors" class="level3">
+<h3 class="anchored" data-anchor-id="redirect-existing-connectors">3. Redirect existing connectors</h3>
+<p>The script searches <code>model.link.df</code> for links connected to the original basin. For each connected node, it determines which new split basin polygon is nearest to the connector node geometry. The link is then redirected administratively by replacing the original basin <code>node_id</code> with the nearest new basin <code>node_id</code>.</p>
+<p>The link geometry is also updated. A new straight <code>LineString</code> is created between the connector node and the representative point of the selected new basin.</p>
+</section>
+<section id="add-manningresistance-nodes-between-split-basins" class="level3">
+<h3 class="anchored" data-anchor-id="add-manningresistance-nodes-between-split-basins">4. Add ManningResistance nodes between split basins</h3>
+<p>The new basin polygons are compared pairwise. When two new basins touch, the script determines their shared boundary face. If polygons do not strictly touch because of small topology artefacts, the script can still accept the pair when there is a clear shared boundary within the <code>geometry_tolerance</code>. For each shared face, a ManningResistance node is added at the centroid of that face.</p>
+<p>The ManningResistance node is connected as:</p>
+<ol type="1">
+<li>from the first new basin to the ManningResistance node,</li>
+<li>from the ManningResistance node to the second new basin.</li>
+</ol>
+<p>The current default ManningResistance static values are:</p>
+<ul>
+<li><code>length</code>: <code>1000</code></li>
+<li><code>manning_n</code>: <code>0.04</code></li>
+<li><code>profile_width</code>: <code>10</code></li>
+<li><code>profile_slope</code>: <code>3</code></li>
+</ul>
+<p>This results in multiple manning nodes when there are multiple faces, which is done on purpose as otherwise it may look like water doesn’t flow between open water bodies. Small line fragments on the same continuous face are merged first, so they do not create unnecessary extra ManningResistance nodes.</p>
+</section>
+<section id="remove-the-original-basin" class="level3">
+<h3 class="anchored" data-anchor-id="remove-the-original-basin">5. Remove the original basin</h3>
+<p>After the new basins have been created and connected, the original basin is removed. The updated model is returned by <code>splitter.run()</code>.</p>
+</section>
+</section>
+<section id="important-assumptions" class="level2">
+<h2 class="anchored" data-anchor-id="important-assumptions">Important assumptions</h2>
+<p>This workflow assumes:</p>
+<ul>
+<li>the split basin polygon layer fully represents the area that should replace the original basin,</li>
+<li>the split basin polygons have valid geometries,</li>
+<li>connector nodes are spatially close to the split basin part they should connect to,</li>
+<li>copied basin table values are appropriate for every new basin part,</li>
+<li>ManningResistance nodes are sufficient to represent exchange between adjacent split basin parts.</li>
+</ul>
+</section>
+<section id="output" class="level2">
+<h2 class="anchored" data-anchor-id="output">Output</h2>
+<p>The main outputs are:</p>
+<ul>
+<li>an updated Ribasim model without the original basin node,</li>
+<li>new basin nodes and basin area geometries for each split basin polygon,</li>
+<li>existing connector links redirected to the nearest new basin,</li>
+<li>ManningResistance nodes and links between adjacent split basin parts.</li>
+</ul>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

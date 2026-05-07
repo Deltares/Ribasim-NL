@@ -859,6 +859,278 @@
     ]
   },
   {
+    "objectID": "workflow/split-basins.html",
+    "href": "workflow/split-basins.html",
+    "title": "Split basins based on pre-split basin polygons",
+    "section": "",
+    "text": "Workflow for replacing one Ribasim basin by multiple smaller basin polygons and reconnecting the surrounding model network. The implementation lives in src/ribasim_nl/ribasim_nl/split_basins.py.",
+    "crumbs": [
+      "Workflows",
+      "Split basins based on pre-split basin polygons"
+    ]
+  },
+  {
+    "objectID": "workflow/split-basins.html#purpose",
+    "href": "workflow/split-basins.html#purpose",
+    "title": "Split basins based on pre-split basin polygons",
+    "section": "Purpose",
+    "text": "Purpose\nThis workflow is used after a Ribasim model has already been built and before the model is written or further parameterized. It replaces a basin by multiple smaller basins and reconnects the links, which may be useful for convergence improvements or an improved water quality schematisation. The script does this by:\n\ncreating new basin nodes from pre-split basin polygons,\nredirecting existing connector links from the original basin to the nearest new basin, and\nadding ManningResistance nodes between new basins that share a boundary.",
+    "crumbs": [
+      "Workflows",
+      "Split basins based on pre-split basin polygons"
+    ]
+  },
+  {
+    "objectID": "workflow/split-basins.html#how-to-run",
+    "href": "workflow/split-basins.html#how-to-run",
+    "title": "Split basins based on pre-split basin polygons",
+    "section": "How to run",
+    "text": "How to run\nThis workflow is intended to be run from a water board parametrization script:\n\nPrepare a polygon layer with the split basin parts. Each polygon represents one new basin area that will replace the original basin. This can easily be done using QGIS.\nSet the path to this layer in the parametrization script.\nCreate a SplitBasins object with:\n\nthe Ribasim model,\nthe path to the split basin polygons,\nthe node_id of the basin that must be replaced,\noptionally, a geometry_tolerance for small geometry mismatches. The default is 1.0,\noptionally, printing=True to print extra information while splitting. The default is False.\n\nRun splitter.run() and assign the returned model back to the model variable.\n\nFor example:\nsplitter = SplitBasins(\n    model=ribasim_model,\n    splitted_basin_path=splitted_basin_16_path,\n    basin_node_id_to_split=16,\n    geometry_tolerance=1.0,\n    printing=False,\n)\nribasim_model = splitter.run()",
+    "crumbs": [
+      "Workflows",
+      "Split basins based on pre-split basin polygons"
+    ]
+  },
+  {
+    "objectID": "workflow/split-basins.html#inputs",
+    "href": "workflow/split-basins.html#inputs",
+    "title": "Split basins based on pre-split basin polygons",
+    "section": "Inputs",
+    "text": "Inputs\nThe script expects at least the following inputs to be available:\n\na Ribasim model,\na polygon layer containing the pre-split basin parts,\nthe node_id of the original basin that will be replaced,\noptionally, a geometry_tolerance to accept small geometry mismatches when detecting shared basin boundaries. The default is 1.0,\noptionally, printing=True to print extra information while splitting,\nexisting basin tables for the original basin, such as:\n\nmodel.basin.profile\nmodel.basin.static\nmodel.basin.time\nmodel.basin.state\nmodel.basin.area\n\nexisting links between the original basin and connector nodes.",
+    "crumbs": [
+      "Workflows",
+      "Split basins based on pre-split basin polygons"
+    ]
+  },
+  {
+    "objectID": "workflow/split-basins.html#main-steps",
+    "href": "workflow/split-basins.html#main-steps",
+    "title": "Split basins based on pre-split basin polygons",
+    "section": "Main steps",
+    "text": "Main steps\n\n1. Read the split basin polygons\nThe SplitBasins class reads the supplied polygon layer. The geometry of this polygon is used as the new splitted basin areas. The original basin geometry is not cut by the script itself; the basin parts must already be prepared as this is a more practical approach, mainly when splitting the basin into many smaller basins or when the basin has an awkward / large shape.\n\n\n2. Create new basin nodes\nFor each polygon in the split basin layer, the script creates a new basin nodes for each splitted basin. The node geometry is placed at the polygon representative point.\nThe basin table rows of the original basin are copied to each new basin node to retain the (meta)data. This includes available rows in:\n\nmodel.basin.profile\nmodel.basin.static\nmodel.basin.time\nmodel.basin.state\nmodel.basin.area\n\nAfter copying, the geometry in model.basin.area.df is replaced by the corresponding split basin polygon. Note that the user may need to update the profile and static/time table, as the surface area of the polygons has changed.\n\n\n3. Redirect existing connectors\nThe script searches model.link.df for links connected to the original basin. For each connected node, it determines which new split basin polygon is nearest to the connector node geometry. The link is then redirected administratively by replacing the original basin node_id with the nearest new basin node_id.\nThe link geometry is also updated. A new straight LineString is created between the connector node and the representative point of the selected new basin.\n\n\n4. Add ManningResistance nodes between split basins\nThe new basin polygons are compared pairwise. When two new basins touch, the script determines their shared boundary face. If polygons do not strictly touch because of small topology artefacts, the script can still accept the pair when there is a clear shared boundary within the geometry_tolerance. For each shared face, a ManningResistance node is added at the centroid of that face.\nThe ManningResistance node is connected as:\n\nfrom the first new basin to the ManningResistance node,\nfrom the ManningResistance node to the second new basin.\n\nThe current default ManningResistance static values are:\n\nlength: 1000\nmanning_n: 0.04\nprofile_width: 10\nprofile_slope: 3\n\nThis results in multiple manning nodes when there are multiple faces, which is done on purpose as otherwise it may look like water doesn’t flow between open water bodies. Small line fragments on the same continuous face are merged first, so they do not create unnecessary extra ManningResistance nodes.\n\n\n5. Remove the original basin\nAfter the new basins have been created and connected, the original basin is removed. The updated model is returned by splitter.run().",
+    "crumbs": [
+      "Workflows",
+      "Split basins based on pre-split basin polygons"
+    ]
+  },
+  {
+    "objectID": "workflow/split-basins.html#important-assumptions",
+    "href": "workflow/split-basins.html#important-assumptions",
+    "title": "Split basins based on pre-split basin polygons",
+    "section": "Important assumptions",
+    "text": "Important assumptions\nThis workflow assumes:\n\nthe split basin polygon layer fully represents the area that should replace the original basin,\nthe split basin polygons have valid geometries,\nconnector nodes are spatially close to the split basin part they should connect to,\ncopied basin table values are appropriate for every new basin part,\nManningResistance nodes are sufficient to represent exchange between adjacent split basin parts.",
+    "crumbs": [
+      "Workflows",
+      "Split basins based on pre-split basin polygons"
+    ]
+  },
+  {
+    "objectID": "workflow/split-basins.html#output",
+    "href": "workflow/split-basins.html#output",
+    "title": "Split basins based on pre-split basin polygons",
+    "section": "Output",
+    "text": "Output\nThe main outputs are:\n\nan updated Ribasim model without the original basin node,\nnew basin nodes and basin area geometries for each split basin polygon,\nexisting connector links redirected to the nearest new basin,\nManningResistance nodes and links between adjacent split basin parts.",
+    "crumbs": [
+      "Workflows",
+      "Split basins based on pre-split basin polygons"
+    ]
+  },
+  {
+    "objectID": "workflow/level-controlled.html",
+    "href": "workflow/level-controlled.html",
+    "title": "Level controlled",
+    "section": "",
+    "text": "Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under src/peilbeheerst_model. The paths below are relative to this path.\n\nRun the preprocessing scripts. One script per water board, path: peilbeheerst_model/preprocess_data/\nRun the postprocessing script. One script per water board, path: peilbeheerst_model/postprocess_data/\nRun the crossings script. One script, path: 01_parse_crossings.ipynb. Moving to one script per water board under peilbeheerst_model/parse_crossings/.\nRun shortest paths scripts. One script per water board, path: Shortest_path/\nRun crossings to Ribasim script. One script, all water boards are below each other, path: 02_crossings_to_ribasim_notebook.ipynb. Moving to one script per water board under peilbeheerst_model/crossings_to_ribasim/.\nRun parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: Parametrize/AmstelGooienVecht_parametrize.ipynb\n\nWe originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as AmstelGooienVecht_parametrize.ipynb.\nFinally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.",
+    "crumbs": [
+      "Workflows",
+      "Level controlled"
+    ]
+  },
+  {
+    "objectID": "workflow/gravity-controlled.html",
+    "href": "workflow/gravity-controlled.html",
+    "title": "Gravity controlled",
+    "section": "",
+    "text": "Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in src/ribasim_nl.\nUnder notebooks you’ll find 4 scripts per water authority, e.g. notebooks\\aa_en_maas, you can run in sequence. These are also run in sequence in main.py.\n\n01_fix_model.py will “fix” the GIS-models supplied by Sweco in the directories {authority}_2024_6_3 to valid Ribasim-models in the directory {authority}_fix_model\n02_prepare_model.pywill read {authority}_fix_model and add levels and flow_rate to the model and a static_data.xlsx that can be reviewed. The model will be written as {authority}_prepare_model\n03_parameterized_model.py will read {authority}_prepare_model and static_data.xlsx to a model {authority}_parameterized_model\n04_add_full_control.py adds control.\n\nIn this step control-nodes will get one of these 4 functions: - drain: outlet draining an area - supply: inlet supplying an area - flow_control: flow through an area in supply (drought) and drain conditions - flushing: an outlet with a specific flow to be maintained at any conditions (supply or drain)\nExplanation of a node’s function in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:\n\n\n\n\n\n\n\n\n\n\nfunction\nstate determined by\nflow_rate @ supply-state\nflow_rate @ drain-state\nNodes added\n\n\n\n\nsupply\ndownstream level\ncapacity [m3/s]\n0 [m3/s]\nDiscreteControl\n\n\ndrain\nupstream level\n0 [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflow control\nupstream & downstream level\ncapacity [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflushing\nupstream level & node flow_rate\ndemand [m3/s]\ncapacity [m3/s]\nDiscreteControl + FlowDemand\n\n\n\nSteps 5, 6 and 7 are shared between water authorities, and live directly beneath the notebooks directory.\n\n05_add_bergend.py adds VdGaast-based storage basins (input = models are from script 4)\n06_add_synthetic_forcing.py adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5\n07_add_dynamic_forcing.py adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5\n\nFinally uploaden_modellen.py uploads all models produced by script 7.",
+    "crumbs": [
+      "Workflows",
+      "Gravity controlled"
+    ]
+  },
+  {
+    "objectID": "workflow/profile-generation.html",
+    "href": "workflow/profile-generation.html",
+    "title": "Profile generation",
+    "section": "",
+    "text": "The generation of representative profiles is mainly relevant for water quality simulations. The profiles – represented by \\(A(h)\\)-relations – largely determine the retention time of water in a basin, where the distinction between doorgaand and bergend is crucial: doorgaand represents flowing water bodies, while bergend represents stagnant water bodies.\nThese profiles also form the basis for the coupling with the groundwater modelling.\n\nProfile generation workflow\nProfiles are generated per water authority, as (1) data sources are available per water authority, and (2) data sources are formatted differently per water authority.\nPrior to generating the profiles, the data is preprocessed:\n\nPreprocessing of data sources, which includes generating LINESTRING Z-objects of measured cross-sections, removing duplicate hydro-objects, repairing hydro-objects along HyDAMO-standards, downloading BGT-data from their web-API.\n\nSubsequently, the following steps are executed on a per-basin basis:\n\nSelect relevant hydro-objects and crossings (i.e., within a basin);\nGenerate graph (or network) from hydro-objects (using networkx);\nDetermine the shortest path(s) between crossings, which separates the hydro-objects as doorgaand versus bergend;\nCouple BGT-polygons to hydro-objects (non-intersecting BGT-polygons will be classified as bergend at a later stage);\nEstimate representative width per hydro-object based on coupled BGT-polygon’s surface area and circumference;\nEstimate representative depth per hydro-object based on width and hydrotope (using a look-up table);\nUpdate representative depth of hydro-objects labelled as doorgaand using measured cross-sections, if available;\nDefine a trapezoidal cross-sectional profile using the representative width and depth (and a slope of \\(1:3\\), default);\nDefine the \\(A(h)\\)-relation for doorgaand and bergend separately using the length of the hydro-objects;\nCorrect the \\(A(h)\\)-relation of bergend by including non-intersecting BGT-polygons’ surface areas (as preluded to in 5.);\nWrite two basin profile tables with \\(A(h)\\)-relations: one for doorgaand, and one for bergend.\n\n\n\nProfile generation code\nThe profile generation is coded as standalone and intended to be executed prior to model generation, ideally once. Therefore, all relevant code is grouped inside a profiles-module:\n\nsource-code: src/ribasim_nl/ribasim_nl/profiles, and\nimplementation-code: src/peilbeheerst_model/profiles.\n\nThis results in the following structures:\n\nFor the source-code:\n\nsrc/ribasim_nl/ribasim_nl/profiles/\n -  __init__.py\n -  &lt;source-code&gt;.py\n\nFor the implementation-code:\n\nsrc/peilbeheerst_model/profiles/\n -  __init__.py\n -  prep_cross_sections.py\n -  &lt;water-authority&gt;.py\nAs part of the implementation code, there is the preprocessing of cross-sections (prep_cross_sections.py), which should be executed prior to running any of the &lt;water-authority&gt;.py scripts. This way, the measured cross-sections are preprocessed so they are presented as LINESTRING Z-objects. Preprocessing of the measured cross-sections must be done per water authority:\npixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py &lt;water-authority&gt;\nThis call has to be done only once per water authority (or when changes are made to the data sources and/or source code).\nSubsequently, the profile tables (doorgaand and bergend) are generated/updated per water authority as well:\npixi run python src/peilbeheerst_model/profiles/&lt;water-authority&gt;.py\nAgain, this call has to be done only once per water authority (or when changes are mode to the data sources and/or source code).",
+    "crumbs": [
+      "Workflows",
+      "Profile generation"
+    ]
+  },
+  {
+    "objectID": "reference/CloudStorage.html",
+    "href": "reference/CloudStorage.html",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "CloudStorage(\n    data_dir=settings.ribasim_nl_data_dir,\n    user=RIBASIM_NL_CLOUD_USER,\n    url=BASE_URL,\n    password=settings.ribasim_nl_cloud_pass,\n)\nConnect a local ’data_dir` to cloud-storage.\n\n\n\n\n\nName\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)\n\n\n\n\n\n\n\n\n\nName\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = CloudStorage()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=None, overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(\n    url,\n    overwrite=settings.overwrite_files_from_cloud,\n)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\nbool\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\nbool\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
+  },
+  {
+    "objectID": "reference/CloudStorage.html#attributes",
+    "href": "reference/CloudStorage.html#attributes",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)"
+  },
+  {
+    "objectID": "reference/CloudStorage.html#methods",
+    "href": "reference/CloudStorage.html#methods",
+    "title": "CloudStorage",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = CloudStorage()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=None, overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(\n    url,\n    overwrite=settings.overwrite_files_from_cloud,\n)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\nbool\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\nbool\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
+  },
+  {
+    "objectID": "reference/read_style.html",
+    "href": "reference/read_style.html",
+    "title": "read_style",
+    "section": "",
+    "text": "read_style(style_path)\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\nExample ‘http://mrcc.com/qgis.dtd -&gt;’‘http://mrcc.com/qgis.dtd’’\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nstyle_path\nPath\nPath to sld-file\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
+  },
+  {
+    "objectID": "reference/read_style.html#parameters",
+    "href": "reference/read_style.html#parameters",
+    "title": "read_style",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nstyle_path\nPath\nPath to sld-file\nrequired"
+  },
+  {
+    "objectID": "reference/read_style.html#returns",
+    "href": "reference/read_style.html#returns",
+    "title": "read_style",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
+  },
+  {
+    "objectID": "reference/ExtendedGeoDataFrame.html",
+    "href": "reference/ExtendedGeoDataFrame.html",
+    "title": "ExtendedGeoDataFrame",
+    "section": "",
+    "text": "ExtendedGeoDataFrame(\n    validation_schema=None,\n    geotype=None,\n    layer_name='',\n    required_columns=None,\n    logger=logging,\n    *args,\n    **kwargs,\n)\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\n\n\n\nName\nDescription\n\n\n\n\ncopy\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.copy(deep=True)\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\nThis method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndeep\nbool\nMake a deep copy, including a copy of the data and the indices. With deep=False neither the indices nor the data are copied.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nExtendedGeoDataFrame\nCopy of ExtendedGeoDataFrame.\n\n\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes=None,\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/ExtendedGeoDataFrame.html#methods",
+    "href": "reference/ExtendedGeoDataFrame.html#methods",
+    "title": "ExtendedGeoDataFrame",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\ncopy\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.copy(deep=True)\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\nThis method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndeep\nbool\nMake a deep copy, including a copy of the data and the indices. With deep=False neither the indices nor the data are copied.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nExtendedGeoDataFrame\nCopy of ExtendedGeoDataFrame.\n\n\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes=None,\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/find_nearest_branch.html",
+    "href": "reference/find_nearest_branch.html",
+    "title": "find_nearest_branch",
+    "section": "",
+    "text": "find_nearest_branch(branches, geometries, method='overall', maxdist=5)\nDetermine nearest branch for each geometry.\nThe nearest branch can be found by finding t from both ends (ends) or the nearest branch from the geometry as a whole (overall), the centroid (centroid), or intersecting (intersect).\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5"
+  },
+  {
+    "objectID": "reference/find_nearest_branch.html#parameters",
+    "href": "reference/find_nearest_branch.html#parameters",
+    "title": "find_nearest_branch",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5"
+  },
+  {
+    "objectID": "reference/add_styles_to_geopackage.html",
+    "href": "reference/add_styles_to_geopackage.html",
+    "title": "add_styles_to_geopackage",
+    "section": "",
+    "text": "add_styles_to_geopackage(gpkg_path)\nAdd styles to a HyDAMO GeoPackage\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\nPath\nPath to HyDAMO GeoPackage\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/add_styles_to_geopackage.html#parameters",
+    "href": "reference/add_styles_to_geopackage.html#parameters",
+    "title": "add_styles_to_geopackage",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\nPath\nPath to HyDAMO GeoPackage\nrequired"
+  },
+  {
+    "objectID": "reference/add_styles_to_geopackage.html#returns",
+    "href": "reference/add_styles_to_geopackage.html#returns",
+    "title": "add_styles_to_geopackage",
+    "section": "",
+    "text": "Name\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/HyDAMO.html",
+    "href": "reference/HyDAMO.html",
+    "title": "HyDAMO",
+    "section": "",
+    "text": "HyDAMO(version='2.2', schemas_path=SCHEMAS_DIR, ignored_layers=None)\nDefinition of the HyDAMO datamodel.\n\n\n\n\n\nName\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values=None,\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/HyDAMO.html#methods",
+    "href": "reference/HyDAMO.html#methods",
+    "title": "HyDAMO",
+    "section": "",
+    "text": "Name\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values=None,\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
+  },
+  {
+    "objectID": "reference/index.html",
+    "href": "reference/index.html",
+    "title": "API Reference",
+    "section": "",
+    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\n\n\n\n\n\n\nRibasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
+  },
+  {
+    "objectID": "reference/index.html#hydamo",
+    "href": "reference/index.html#hydamo",
+    "title": "API Reference",
+    "section": "",
+    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’."
+  },
+  {
+    "objectID": "reference/index.html#ribasim-nl",
+    "href": "reference/index.html#ribasim-nl",
+    "title": "API Reference",
+    "section": "",
+    "text": "Ribasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
+  },
+  {
+    "objectID": "reference/possibly_intersecting.html",
+    "href": "reference/possibly_intersecting.html",
+    "title": "possibly_intersecting",
+    "section": "",
+    "text": "possibly_intersecting(dataframebounds, geometry, buffer=0)\nEfficiently determine possibly intersecting geometries using a bounding box.\nFinding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
+  },
+  {
+    "objectID": "reference/possibly_intersecting.html#parameters",
+    "href": "reference/possibly_intersecting.html#parameters",
+    "title": "possibly_intersecting",
+    "section": "",
+    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
+  },
+  {
+    "objectID": "workflow/couple.html",
+    "href": "workflow/couple.html",
+    "title": "Coupling",
+    "section": "",
+    "text": "To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.\nThis procedure assumes there’s a meta_couple_authority column in the LevelBoundary / Static table, which is currently the case for (at least) the level controlled models.\n\nEnsure all models have a meta_couple_authority.\n\n\nnotebooks/samenvoegen_modellen.py\nFirst we determine which models we want to couple. Currently this is tested for Rijkswaterstaat, AmstelGooienVecht, Rijnland, HollandseDelta, Delfland, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g. 80 for Rijkswaterstaat. This will result in an lhm model.\n\n\nnotebooks/koppelen_modellen.py\nSecondly, we can use this lhm model to actually couple the individual models in there. To do so, each LevelBoundary with a filled in meta_couple_authority in their Static table is replaced by another node from the meta_couple_authoritys model.\nThere are several combinations possible:\n\nConnector | LevelBoundary replaced by Connector | Basin\nThe easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the Basin / area polygon). This will relink the connector node (i.e. an Outlet) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the Basin instead.\nFor the Rijkswaterstaat Basins, the new link follows the Rijkswataerstaat/verwerkt/netwerk.gpkg topology, instead of a direct line.\n\n\nOutlet | LevelBoundary . LevelBoundary | Outlet replaced by Outlet\nIn some cases, especially when coupling between two waterboards, there are two LevelBoundarys close to one another, which are treated as duplicates.\n\n\nOther connections\nThere are several other coupling connections that could happen which require further attention:\n\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Pump\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Outlet\nFix Control nodes when merging duplicates\nInvestigate whether other connections happen\n\nCurrently these cases are automatically handled as the Connector | Basin, which leaves duplicate Connector Nodes in place, and might duplicate a flow.",
+    "crumbs": [
+      "Workflows",
+      "Coupling"
+    ]
+  },
+  {
+    "objectID": "workflow/main-watersystem.html",
+    "href": "workflow/main-watersystem.html",
+    "title": "Main watersystem",
+    "section": "",
+    "text": "All files are in notebooks/rijkswaterstaat are numbered in order of execution.\n\n1_bathymetrie.py\nIn this script we merge data from Baseline (version j23_6-v1, non-public) with grids from bathymetrie-Nederland to one 5x5m GeoTiff.\nWe combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column baseline.\n\n\n\n\n\n\nBathymetry mask\n\n\n\n\n\n\n\nBathymetry\n\n\n\n\n\n\n\n2_basins.py\nWe derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of 1_bathymetry.py we write a CSV-file with a Basin profile.\n\n\n3_netwerk.py\nWe derive a ribasim_nl.Network (not a Ribasim network yet!) we can use to build a model_network with 5_model_netwerk.py. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from 2_basins.py as a network node will be put at the intersect of a Basin-polygon and the network.\n\n\n4_kunstwerken.py\nWe combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (model_netwerk.py).\n\n\n5_model_netwerk.py\nWe combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a .\\modellen\\hws_netwerk\\hws.toml file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.\n\n\n6_model_sturing.py\nWe take the model of 5 (.\\modellen\\hws_netwerk\\hws.toml), add control and write it to (.\\modellen\\hws_sturing\\hws.toml)\n\n\n7_model_onttrekkingen.py\nWe take the model of 6 (.\\modellen\\hws_sturing\\hws.toml), add drinking water, industry and energy demands. Then we add junctions and write it to (.\\modellen\\hws_demand\\hws.toml)\n\n\n8 update bc, state, etc.\nScripts to provide boundary/initial conditions to the model in .\\modellen\\hws_demand\\hws.toml and write it in another location.",
+    "crumbs": [
+      "Workflows",
+      "Main watersystem"
+    ]
+  },
+  {
     "objectID": "workflow/scale-outlets-pumps.html",
     "href": "workflow/scale-outlets-pumps.html",
     "title": "Scale max flow rates outlets and pumps based on design events",
@@ -933,201 +1205,6 @@
     "crumbs": [
       "Workflows",
       "Scale max flow rates outlets and pumps based on design events"
-    ]
-  },
-  {
-    "objectID": "workflow/main-watersystem.html",
-    "href": "workflow/main-watersystem.html",
-    "title": "Main watersystem",
-    "section": "",
-    "text": "All files are in notebooks/rijkswaterstaat are numbered in order of execution.\n\n1_bathymetrie.py\nIn this script we merge data from Baseline (version j23_6-v1, non-public) with grids from bathymetrie-Nederland to one 5x5m GeoTiff.\nWe combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column baseline.\n\n\n\n\n\n\nBathymetry mask\n\n\n\n\n\n\n\nBathymetry\n\n\n\n\n\n\n\n2_basins.py\nWe derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of 1_bathymetry.py we write a CSV-file with a Basin profile.\n\n\n3_netwerk.py\nWe derive a ribasim_nl.Network (not a Ribasim network yet!) we can use to build a model_network with 5_model_netwerk.py. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from 2_basins.py as a network node will be put at the intersect of a Basin-polygon and the network.\n\n\n4_kunstwerken.py\nWe combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (model_netwerk.py).\n\n\n5_model_netwerk.py\nWe combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a .\\modellen\\hws_netwerk\\hws.toml file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.\n\n\n6_model_sturing.py\nWe take the model of 5 (.\\modellen\\hws_netwerk\\hws.toml), add control and write it to (.\\modellen\\hws_sturing\\hws.toml)\n\n\n7_model_onttrekkingen.py\nWe take the model of 6 (.\\modellen\\hws_sturing\\hws.toml), add drinking water, industry and energy demands. Then we add junctions and write it to (.\\modellen\\hws_demand\\hws.toml)\n\n\n8 update bc, state, etc.\nScripts to provide boundary/initial conditions to the model in .\\modellen\\hws_demand\\hws.toml and write it in another location.",
-    "crumbs": [
-      "Workflows",
-      "Main watersystem"
-    ]
-  },
-  {
-    "objectID": "workflow/couple.html",
-    "href": "workflow/couple.html",
-    "title": "Coupling",
-    "section": "",
-    "text": "To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.\nThis procedure assumes there’s a meta_couple_authority column in the LevelBoundary / Static table, which is currently the case for (at least) the level controlled models.\n\nEnsure all models have a meta_couple_authority.\n\n\nnotebooks/samenvoegen_modellen.py\nFirst we determine which models we want to couple. Currently this is tested for Rijkswaterstaat, AmstelGooienVecht, Rijnland, HollandseDelta, Delfland, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g. 80 for Rijkswaterstaat. This will result in an lhm model.\n\n\nnotebooks/koppelen_modellen.py\nSecondly, we can use this lhm model to actually couple the individual models in there. To do so, each LevelBoundary with a filled in meta_couple_authority in their Static table is replaced by another node from the meta_couple_authoritys model.\nThere are several combinations possible:\n\nConnector | LevelBoundary replaced by Connector | Basin\nThe easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the Basin / area polygon). This will relink the connector node (i.e. an Outlet) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the Basin instead.\nFor the Rijkswaterstaat Basins, the new link follows the Rijkswataerstaat/verwerkt/netwerk.gpkg topology, instead of a direct line.\n\n\nOutlet | LevelBoundary . LevelBoundary | Outlet replaced by Outlet\nIn some cases, especially when coupling between two waterboards, there are two LevelBoundarys close to one another, which are treated as duplicates.\n\n\nOther connections\nThere are several other coupling connections that could happen which require further attention:\n\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Pump\nCreate a coupling for Pump | LevelBoundary . LevelBoundary | Outlet\nFix Control nodes when merging duplicates\nInvestigate whether other connections happen\n\nCurrently these cases are automatically handled as the Connector | Basin, which leaves duplicate Connector Nodes in place, and might duplicate a flow.",
-    "crumbs": [
-      "Workflows",
-      "Coupling"
-    ]
-  },
-  {
-    "objectID": "reference/possibly_intersecting.html",
-    "href": "reference/possibly_intersecting.html",
-    "title": "possibly_intersecting",
-    "section": "",
-    "text": "possibly_intersecting(dataframebounds, geometry, buffer=0)\nEfficiently determine possibly intersecting geometries using a bounding box.\nFinding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
-  },
-  {
-    "objectID": "reference/possibly_intersecting.html#parameters",
-    "href": "reference/possibly_intersecting.html#parameters",
-    "title": "possibly_intersecting",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ndataframebounds\nnumpy.array\n\nrequired\n\n\ngeometry\nshapely.geometry.Polygon\n\nrequired"
-  },
-  {
-    "objectID": "reference/index.html",
-    "href": "reference/index.html",
-    "title": "API Reference",
-    "section": "",
-    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\n\n\n\n\n\n\nRibasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
-  },
-  {
-    "objectID": "reference/index.html#hydamo",
-    "href": "reference/index.html#hydamo",
-    "title": "API Reference",
-    "section": "",
-    "text": "The HyDAMO class represents the HyDAMO data model.\n\n\n\nHyDAMO\nDefinition of the HyDAMO datamodel.\n\n\nExtendedGeoDataFrame\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\nfind_nearest_branch\nDetermine nearest branch for each geometry.\n\n\npossibly_intersecting\nEfficiently determine possibly intersecting geometries using a bounding box.\n\n\nadd_styles_to_geopackage\nAdd styles to a HyDAMO GeoPackage\n\n\nread_style\nTo make style-text sql-compatible, we need to replace single ’ to ’’."
-  },
-  {
-    "objectID": "reference/index.html#ribasim-nl",
-    "href": "reference/index.html#ribasim-nl",
-    "title": "API Reference",
-    "section": "",
-    "text": "Ribasim-NL code.\n\n\n\nCloudStorage\nConnect a local ’data_dir` to cloud-storage."
-  },
-  {
-    "objectID": "reference/HyDAMO.html",
-    "href": "reference/HyDAMO.html",
-    "title": "HyDAMO",
-    "section": "",
-    "text": "HyDAMO(version='2.2', schemas_path=SCHEMAS_DIR, ignored_layers=None)\nDefinition of the HyDAMO datamodel.\n\n\n\n\n\nName\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values=None,\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/HyDAMO.html#methods",
-    "href": "reference/HyDAMO.html#methods",
-    "title": "HyDAMO",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\nfrom_geopackage\nInitialize HyDAMO class from GeoPackage\n\n\nget\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\ninit_datamodel\nInitialize DataModel from self.schemas_path.\n\n\nset_data\nSet data to a HyDAMO object-layer.\n\n\nto_geopackage\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\nHyDAMO.from_geopackage(\n    file_path,\n    version='2.2',\n    check_columns=True,\n    check_geotype=True,\n)\nInitialize HyDAMO class from GeoPackage\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string to the hydamo GeoPackage\nrequired\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nhydamo\nHyDAMO\nHyDAMO object initialized with content of GeoPackage\n\n\n\n\n\n\n\nHyDAMO.get(layer, global_id)\nGet a DataFrame row (feature) providing a layer an global_id.\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nlayer\nstr\nDESCRIPTION.\nrequired\n\n\nglobal_id\nstr\nDESCRIPTION.\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nTYPE\nDESCRIPTION.\n\n\n\n\n\n\n\nHyDAMO.init_datamodel()\nInitialize DataModel from self.schemas_path.\n\n\n\nHyDAMO.set_data(\n    gdf,\n    layer,\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_values=None,\n)\nSet data to a HyDAMO object-layer.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nlayer\nTYPE\nHyDAMO layer to be set\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nHyDAMO.to_geopackage(file_path, use_schema=True)\nWrite HyDAMO object to a GeoPackage.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nfile_path\npath - string\nPath-string where the file should be written to\nrequired\n\n\nuse_schema\nbool\nUse the schema to specify column-properties The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/add_styles_to_geopackage.html",
-    "href": "reference/add_styles_to_geopackage.html",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "add_styles_to_geopackage(gpkg_path)\nAdd styles to a HyDAMO GeoPackage\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\nPath\nPath to HyDAMO GeoPackage\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/add_styles_to_geopackage.html#parameters",
-    "href": "reference/add_styles_to_geopackage.html#parameters",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\ngpkg_path\nPath\nPath to HyDAMO GeoPackage\nrequired"
-  },
-  {
-    "objectID": "reference/add_styles_to_geopackage.html#returns",
-    "href": "reference/add_styles_to_geopackage.html#returns",
-    "title": "add_styles_to_geopackage",
-    "section": "",
-    "text": "Name\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/find_nearest_branch.html",
-    "href": "reference/find_nearest_branch.html",
-    "title": "find_nearest_branch",
-    "section": "",
-    "text": "find_nearest_branch(branches, geometries, method='overall', maxdist=5)\nDetermine nearest branch for each geometry.\nThe nearest branch can be found by finding t from both ends (ends) or the nearest branch from the geometry as a whole (overall), the centroid (centroid), or intersecting (intersect).\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5"
-  },
-  {
-    "objectID": "reference/find_nearest_branch.html#parameters",
-    "href": "reference/find_nearest_branch.html#parameters",
-    "title": "find_nearest_branch",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nbranches\ngeopandas.GeoDataFrame\nGeodataframe with branches\nrequired\n\n\ngeometries\ngeopandas.GeoDataFrame\nGeodataframe with geometries to snap\nrequired\n\n\nmethod\n\nMethod for determine branch\n'overall'\n\n\nmaxdist\n\nMaximum distance for finding nearest geometry\n5"
-  },
-  {
-    "objectID": "reference/ExtendedGeoDataFrame.html",
-    "href": "reference/ExtendedGeoDataFrame.html",
-    "title": "ExtendedGeoDataFrame",
-    "section": "",
-    "text": "ExtendedGeoDataFrame(\n    validation_schema=None,\n    geotype=None,\n    layer_name='',\n    required_columns=None,\n    logger=logging,\n    *args,\n    **kwargs,\n)\nA GeoPandas GeoDataFrame with extended properties and methods.\n\n\n\n\n\nName\nDescription\n\n\n\n\ncopy\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.copy(deep=True)\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\nThis method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndeep\nbool\nMake a deep copy, including a copy of the data and the indices. With deep=False neither the indices nor the data are copied.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nExtendedGeoDataFrame\nCopy of ExtendedGeoDataFrame.\n\n\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes=None,\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/ExtendedGeoDataFrame.html#methods",
-    "href": "reference/ExtendedGeoDataFrame.html#methods",
-    "title": "ExtendedGeoDataFrame",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\ncopy\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\n\n\ndelete_all\nEmpty the dataframe\n\n\nset_data\nSet data to the ExtendedGeoDataFrame.\n\n\nsnap_to_branch\nSnap the geometries to the branch.\n\n\n\n\n\nExtendedGeoDataFrame.copy(deep=True)\nMake a copy of this ExtendedGeoDataFrame object’s indices and data.\nThis method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ndeep\nbool\nMake a deep copy, including a copy of the data and the indices. With deep=False neither the indices nor the data are copied.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nExtendedGeoDataFrame\nCopy of ExtendedGeoDataFrame.\n\n\n\n\n\n\n\nExtendedGeoDataFrame.delete_all()\nEmpty the dataframe\n\n\n\nExtendedGeoDataFrame.set_data(\n    gdf,\n    layer='',\n    index_col=None,\n    check_columns=True,\n    check_geotype=True,\n    extra_attributes=None,\n)\nSet data to the ExtendedGeoDataFrame.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\ngdf\nGeoDataFrame\nGeoDataFrame with a HyDAMO object-layer\nrequired\n\n\nindex_col\nstr\nColumn to be used as index. The default is None.\nNone\n\n\ncheck_columns\nbool\nCheck if all required columns are present in the GeoDataFrame. The default is True.\nTrue\n\n\ncheck_geotype\nbool\nCheck if the geometry is of the required type. The default is True.\nTrue\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone.\n\n\n\n\n\n\n\n\nExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist=5)\nSnap the geometries to the branch.\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nbranches\nGeoDataFrame\nGeoDataFrame with branches\nrequired\n\n\nsnap_method\nstr\nOptions for snapping\nrequired\n\n\nmaxdist\nfloat\nThe maximal distance for snapping. The default is 5.\n5\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nNone."
-  },
-  {
-    "objectID": "reference/read_style.html",
-    "href": "reference/read_style.html",
-    "title": "read_style",
-    "section": "",
-    "text": "read_style(style_path)\nTo make style-text sql-compatible, we need to replace single ’ to ’’.\nExample ‘http://mrcc.com/qgis.dtd -&gt;’‘http://mrcc.com/qgis.dtd’’\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nstyle_path\nPath\nPath to sld-file\nrequired\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
-  },
-  {
-    "objectID": "reference/read_style.html#parameters",
-    "href": "reference/read_style.html#parameters",
-    "title": "read_style",
-    "section": "",
-    "text": "Name\nType\nDescription\nDefault\n\n\n\n\nstyle_path\nPath\nPath to sld-file\nrequired"
-  },
-  {
-    "objectID": "reference/read_style.html#returns",
-    "href": "reference/read_style.html#returns",
-    "title": "read_style",
-    "section": "",
-    "text": "Name\nType\nDescription\n\n\n\n\n\nstr\nstyle-string for SQL"
-  },
-  {
-    "objectID": "reference/CloudStorage.html",
-    "href": "reference/CloudStorage.html",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "CloudStorage(\n    data_dir=settings.ribasim_nl_data_dir,\n    user=RIBASIM_NL_CLOUD_USER,\n    url=BASE_URL,\n    password=settings.ribasim_nl_cloud_pass,\n)\nConnect a local ’data_dir` to cloud-storage.\n\n\n\n\n\nName\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)\n\n\n\n\n\n\n\n\n\nName\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = CloudStorage()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=None, overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(\n    url,\n    overwrite=settings.overwrite_files_from_cloud,\n)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\nbool\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\nbool\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
-  },
-  {
-    "objectID": "reference/CloudStorage.html#attributes",
-    "href": "reference/CloudStorage.html#attributes",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\nauth\nAuth tuple for requests\n\n\nsource_data\nList of all source_data (directories) in sub-folder ’Basisgegevens`.\n\n\nwater_authorities\nList of all water authorities (directories)"
-  },
-  {
-    "objectID": "reference/CloudStorage.html#methods",
-    "href": "reference/CloudStorage.html#methods",
-    "title": "CloudStorage",
-    "section": "",
-    "text": "Name\nDescription\n\n\n\n\ncontent\nList all content in a directory\n\n\ndirs\nList sub-directories in a directory\n\n\ndownload_aangeleverd\nDownload all files in folder ‘aangeleverd’\n\n\ndownload_all\nDownload all files for authority.\n\n\ndownload_basisgegevens\nDownload sources in the folder ‘Basisgegevens’\n\n\ndownload_content\nDownload content of a directory recursively.\n\n\ndownload_verwerkt\nDownload all files in folder ‘verwerkt’\n\n\nupload_content\nUpload content of a directory recursively.\n\n\nupload_model\nUpload a model to a water authority\n\n\nupload_verwerkt\nUpload all files in folder ‘verwerkt’\n\n\nuploaded_models\nGet all model versions uploaded for an authority\n\n\n\n\n\nCloudStorage.content(url)\nList all content in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = CloudStorage()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of all content directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.dirs(*args)\nList sub-directories in a directory\nUser can specify a path to the directory with additional arguments.\n\n\n&gt;&gt;&gt; cloud = Cloud()\n&gt;&gt;&gt; cloud.dirs()\n    [\"AaenMaas\", \"AmselGooienVecht\", ...]\n&gt;&gt;&gt; cloud.dirs(\"AaenMaas\")\n    [\"aangeleverd\", \"modellen\", \"verwerkt\"]\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nlist[str]\nList of directories in a specified path\n\n\n\n\n\n\n\nCloudStorage.download_aangeleverd(authority, overwrite=False)\nDownload all files in folder ‘aangeleverd’\n\n\n\nCloudStorage.download_all(authority, overwrite=False)\nDownload all files for authority.\n\n\n\nCloudStorage.download_basisgegevens(bronnen=None, overwrite=True)\nDownload sources in the folder ‘Basisgegevens’\n\n\n\nCloudStorage.download_content(\n    url,\n    overwrite=settings.overwrite_files_from_cloud,\n)\nDownload content of a directory recursively.\n\n\n\nCloudStorage.download_verwerkt(authority, overwrite=False)\nDownload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.upload_content(dir_path, overwrite=False)\nUpload content of a directory recursively.\n\n\n\nCloudStorage.upload_model(\n    authority,\n    model,\n    include_results=False,\n    include_plots=False,\n)\nUpload a model to a water authority\n\n\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\nauthority\nstr\nWater authority to upload a model for\nrequired\n\n\nmodel\nstr\nname of the model (directory) to upload\nrequired\n\n\ninclude_results\nbool\nto include results dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\ninclude_plots\nbool\nto include plots dir in upload; yes/no = True/False. defaults to False.\nFalse\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\n\nValueError\nIf model does not exist locally\n\n\n\n\n\n\n\nCloudStorage.upload_verwerkt(authority, overwrite=False)\nUpload all files in folder ‘verwerkt’\n\n\n\nCloudStorage.uploaded_models(authority)\nGet all model versions uploaded for an authority"
-  },
-  {
-    "objectID": "workflow/profile-generation.html",
-    "href": "workflow/profile-generation.html",
-    "title": "Profile generation",
-    "section": "",
-    "text": "The generation of representative profiles is mainly relevant for water quality simulations. The profiles – represented by \\(A(h)\\)-relations – largely determine the retention time of water in a basin, where the distinction between doorgaand and bergend is crucial: doorgaand represents flowing water bodies, while bergend represents stagnant water bodies.\nThese profiles also form the basis for the coupling with the groundwater modelling.\n\nProfile generation workflow\nProfiles are generated per water authority, as (1) data sources are available per water authority, and (2) data sources are formatted differently per water authority.\nPrior to generating the profiles, the data is preprocessed:\n\nPreprocessing of data sources, which includes generating LINESTRING Z-objects of measured cross-sections, removing duplicate hydro-objects, repairing hydro-objects along HyDAMO-standards, downloading BGT-data from their web-API.\n\nSubsequently, the following steps are executed on a per-basin basis:\n\nSelect relevant hydro-objects and crossings (i.e., within a basin);\nGenerate graph (or network) from hydro-objects (using networkx);\nDetermine the shortest path(s) between crossings, which separates the hydro-objects as doorgaand versus bergend;\nCouple BGT-polygons to hydro-objects (non-intersecting BGT-polygons will be classified as bergend at a later stage);\nEstimate representative width per hydro-object based on coupled BGT-polygon’s surface area and circumference;\nEstimate representative depth per hydro-object based on width and hydrotope (using a look-up table);\nUpdate representative depth of hydro-objects labelled as doorgaand using measured cross-sections, if available;\nDefine a trapezoidal cross-sectional profile using the representative width and depth (and a slope of \\(1:3\\), default);\nDefine the \\(A(h)\\)-relation for doorgaand and bergend separately using the length of the hydro-objects;\nCorrect the \\(A(h)\\)-relation of bergend by including non-intersecting BGT-polygons’ surface areas (as preluded to in 5.);\nWrite two basin profile tables with \\(A(h)\\)-relations: one for doorgaand, and one for bergend.\n\n\n\nProfile generation code\nThe profile generation is coded as standalone and intended to be executed prior to model generation, ideally once. Therefore, all relevant code is grouped inside a profiles-module:\n\nsource-code: src/ribasim_nl/ribasim_nl/profiles, and\nimplementation-code: src/peilbeheerst_model/profiles.\n\nThis results in the following structures:\n\nFor the source-code:\n\nsrc/ribasim_nl/ribasim_nl/profiles/\n -  __init__.py\n -  &lt;source-code&gt;.py\n\nFor the implementation-code:\n\nsrc/peilbeheerst_model/profiles/\n -  __init__.py\n -  prep_cross_sections.py\n -  &lt;water-authority&gt;.py\nAs part of the implementation code, there is the preprocessing of cross-sections (prep_cross_sections.py), which should be executed prior to running any of the &lt;water-authority&gt;.py scripts. This way, the measured cross-sections are preprocessed so they are presented as LINESTRING Z-objects. Preprocessing of the measured cross-sections must be done per water authority:\npixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py &lt;water-authority&gt;\nThis call has to be done only once per water authority (or when changes are made to the data sources and/or source code).\nSubsequently, the profile tables (doorgaand and bergend) are generated/updated per water authority as well:\npixi run python src/peilbeheerst_model/profiles/&lt;water-authority&gt;.py\nAgain, this call has to be done only once per water authority (or when changes are mode to the data sources and/or source code).",
-    "crumbs": [
-      "Workflows",
-      "Profile generation"
-    ]
-  },
-  {
-    "objectID": "workflow/gravity-controlled.html",
-    "href": "workflow/gravity-controlled.html",
-    "title": "Gravity controlled",
-    "section": "",
-    "text": "Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in src/ribasim_nl.\nUnder notebooks you’ll find 4 scripts per water authority, e.g. notebooks\\aa_en_maas, you can run in sequence. These are also run in sequence in main.py.\n\n01_fix_model.py will “fix” the GIS-models supplied by Sweco in the directories {authority}_2024_6_3 to valid Ribasim-models in the directory {authority}_fix_model\n02_prepare_model.pywill read {authority}_fix_model and add levels and flow_rate to the model and a static_data.xlsx that can be reviewed. The model will be written as {authority}_prepare_model\n03_parameterized_model.py will read {authority}_prepare_model and static_data.xlsx to a model {authority}_parameterized_model\n04_add_full_control.py adds control.\n\nIn this step control-nodes will get one of these 4 functions: - drain: outlet draining an area - supply: inlet supplying an area - flow_control: flow through an area in supply (drought) and drain conditions - flushing: an outlet with a specific flow to be maintained at any conditions (supply or drain)\nExplanation of a node’s function in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:\n\n\n\n\n\n\n\n\n\n\nfunction\nstate determined by\nflow_rate @ supply-state\nflow_rate @ drain-state\nNodes added\n\n\n\n\nsupply\ndownstream level\ncapacity [m3/s]\n0 [m3/s]\nDiscreteControl\n\n\ndrain\nupstream level\n0 [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflow control\nupstream & downstream level\ncapacity [m3/s]\ncapacity [m3/s]\nDiscreteControl\n\n\nflushing\nupstream level & node flow_rate\ndemand [m3/s]\ncapacity [m3/s]\nDiscreteControl + FlowDemand\n\n\n\nSteps 5, 6 and 7 are shared between water authorities, and live directly beneath the notebooks directory.\n\n05_add_bergend.py adds VdGaast-based storage basins (input = models are from script 4)\n06_add_synthetic_forcing.py adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5\n07_add_dynamic_forcing.py adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5\n\nFinally uploaden_modellen.py uploads all models produced by script 7.",
-    "crumbs": [
-      "Workflows",
-      "Gravity controlled"
-    ]
-  },
-  {
-    "objectID": "workflow/level-controlled.html",
-    "href": "workflow/level-controlled.html",
-    "title": "Level controlled",
-    "section": "",
-    "text": "Workflow for deriving level controlled (peilbeheerst) regional models. All code can be found under src/peilbeheerst_model. The paths below are relative to this path.\n\nRun the preprocessing scripts. One script per water board, path: peilbeheerst_model/preprocess_data/\nRun the postprocessing script. One script per water board, path: peilbeheerst_model/postprocess_data/\nRun the crossings script. One script, path: 01_parse_crossings.ipynb. Moving to one script per water board under peilbeheerst_model/parse_crossings/.\nRun shortest paths scripts. One script per water board, path: Shortest_path/\nRun crossings to Ribasim script. One script, all water boards are below each other, path: 02_crossings_to_ribasim_notebook.ipynb. Moving to one script per water board under peilbeheerst_model/crossings_to_ribasim/.\nRun parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: Parametrize/AmstelGooienVecht_parametrize.ipynb\n\nWe originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as AmstelGooienVecht_parametrize.ipynb.\nFinally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.",
-    "crumbs": [
-      "Workflows",
-      "Level controlled"
     ]
   },
   {
