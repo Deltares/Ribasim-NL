@@ -27,9 +27,9 @@ from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
-MIXED_CONDITIONS: bool = True
+MIXED_CONDITIONS: bool = False
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -82,6 +82,8 @@ cloud.synchronize(
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
+work_dir.mkdir(parents=True, exist_ok=True)
+
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
@@ -153,6 +155,10 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(88284, 469447)), [pump.St
 ribasim_model.link.add(ribasim_model.basin[22], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[27])
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
+
+# re-define LevelBoundary-nodes connecting to HDSR, which are closer to the connector-nodes,
+#  and thereby result in better coupling of the sub-models
+ribasim_param.reassign_level_boundaries(ribasim_model, {141, 145})
 
 # (re)set 'meta_node_id'-values
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:

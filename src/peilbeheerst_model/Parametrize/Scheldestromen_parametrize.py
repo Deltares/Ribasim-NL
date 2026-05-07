@@ -26,9 +26,9 @@ from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
-MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+MIXED_CONDITIONS: bool = False
+DYNAMIC_CONDITIONS: bool = True
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -77,14 +77,11 @@ cloud.synchronize(
 
 work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
 work_dir.mkdir(parents=True, exist_ok=True)
+
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
-
-# # create work_dir/parameterized
-# parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-# os.makedirs(parameterized, exist_ok=True)
 
 # define variables and model
 # basin area percentage
