@@ -24,9 +24,9 @@ from shapely import Point
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
-MIXED_CONDITIONS: bool = True
+MIXED_CONDITIONS: bool = False
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True

@@ -25,9 +25,9 @@ from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
-MIXED_CONDITIONS: bool = True
+MIXED_CONDITIONS: bool = False
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -180,7 +180,7 @@ inlaat_pump.append(pump_node.node_id)
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
 
-_ = ribasim_model.node._update_used_ids  # pyrefly: ignore[not-callable]
+ribasim_model.node._update_used_ids()  # pyrefly: ignore[not-callable]
 ribasim_model.merge_basins(node_id=115, to_node_id=9, are_connected=False)
 ribasim_model.merge_basins(node_id=116, to_node_id=13, are_connected=False)
 ribasim_model.merge_basins(node_id=73, to_node_id=10, are_connected=True)

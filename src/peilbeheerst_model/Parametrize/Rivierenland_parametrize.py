@@ -26,7 +26,7 @@ from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry, settings
 
 AANVOER_CONDITIONS: bool = True
-MIXED_CONDITIONS: bool = True
+MIXED_CONDITIONS: bool = False
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 
