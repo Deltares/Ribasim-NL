@@ -137,7 +137,7 @@ stages:
       - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       - data/DeDommel/modellen/DeDommel_dynamic_model
       - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
-      - data/HunzeenAas/modellen/HunzeenAas_dynamic_model
+      # - data/HunzeenAas/modellen/HunzeenAas_dynamic_model
       - data/Limburg/modellen/Limburg_dynamic_model
       - data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       - data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
