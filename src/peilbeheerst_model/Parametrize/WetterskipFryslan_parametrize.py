@@ -84,7 +84,7 @@ cloud.synchronize(
 )
 
 # refresh only the feedback form from cloud
-# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")

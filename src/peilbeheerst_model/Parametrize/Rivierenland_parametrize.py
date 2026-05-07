@@ -29,7 +29,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry, setting
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -155,15 +155,15 @@ ribasim_model.merge_basins(node_id=220, to_node_id=219, are_connected=True)
 gaten = gpd.read_file(gaten_path)
 
 # fix hole Wijchen
-Wijchen = gaten.loc[gaten.meta_name == "Wijchen"]
+wijchen = gaten.loc[gaten.meta_name == "Wijchen"]
 basin_195 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 195]
-merged_geom = basin_195.geometry.iloc[0].union(Wijchen.geometry.union_all())
+merged_geom = basin_195.geometry.iloc[0].union(wijchen.geometry.union_all())
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 195, "geometry"] = merged_geom
 
 # fix hole Vennen
-Vennen = gaten.loc[gaten.meta_name == "Vennen"]
+vennen = gaten.loc[gaten.meta_name == "Vennen"]
 basin_241 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 241]
-merged_geom = basin_241.geometry.iloc[0].union(Vennen.geometry.union_all())
+merged_geom = basin_241.geometry.iloc[0].union(vennen.geometry.union_all())
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 241, "geometry"] = merged_geom
 
 # redefine basins #66 & #69
@@ -657,11 +657,11 @@ ribasim_model.outlet.static.df.loc[
 # add fixed max flow rate for inlaat Kuijk
 ribasim_model.outlet.static.df.loc[
     ribasim_model.outlet.static.df["node_id"] == inlaat_Kuijk, ["max_flow_rate", "meta_known_flow_rate"]
-] = [20, True]
+] = [20.0, True]
 
 # fix pumps from Linge to ARK
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 1025, "max_flow_rate"] = 8
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "max_flow_rate"] = 16
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 1025, "max_flow_rate"] = 8.0
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "max_flow_rate"] = 16.0
 
 ribasim_model, from_to_node_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
@@ -682,7 +682,7 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
 )
 
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "flow_rate"] = (
-    8  # average flow rate in the winter
+    8.0  # average flow rate in the winter
 )
 
 
