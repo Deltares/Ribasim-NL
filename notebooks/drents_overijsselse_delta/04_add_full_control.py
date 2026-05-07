@@ -9,7 +9,7 @@ from peilbeheerst_model import ribasim_parametrization
 from ribasim_nl import CloudStorage, Model, check_basin_level
 
 # execute model run
-MODEL_EXEC: bool = False
+MODEL_EXEC: bool = True
 
 # model settings
 AUTHORITY: str = "DrentsOverijsselseDelta"
@@ -32,34 +32,6 @@ model = Model.read(ribasim_toml)
 original_model = model.model_copy(deep=True)
 update_basin_static(model=model, precipitation_mm_per_day=1)
 
-
-# fixes:
-# Gemaal Westerveld is een inlaat gemaal en een uitlaat ernaast, dus richting omdraaien evt takken toevoegen
-for link_id in [
-    938,
-    2963,
-    2962,
-    2144,
-]:
-    model.reverse_link(link_id=link_id)
-
-# fixes:
-# Basin 1653 is verkeerd, overlapping met 1583!
-
-# De Haar #553 verkeerde richting, dus omdraaien
-
-# De Heuvel # 617 verkeerde riching, dus omdraaien
-
-# Outlet Zedemuden moet kunnen inlaten, dus richting omdraaien evt takken toevoegen
-for link_id in [
-    3087,
-    3088,
-]:
-    model.reverse_link(link_id=link_id)
-
-# Toevoegen inlaat bij Stroink #547: Overleggen!
-# Buitenpolder achter Kuine #701 kan niet worden aangevoerd?
-# Wordt de Reest #1930 gevoed door Ommerkanaal (Lutterhoofddiep? 1m3/s)
 
 # alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
 update_levels = model.basin_outstate.df.set_index("node_id")["level"]
@@ -183,59 +155,12 @@ node_ids_duikers = model.outlet.static.df[model.outlet.static.df["meta_code"].st
 ].to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids_duikers), "max_flow_rate"] = 0.1
 
-# fixes vistrap eruit
-model.remove_node(1414, remove_links=True)
-model.remove_node(1441, remove_links=True)
 
-# fixes flow_rate sluis max 0.1m3/s
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 523, "max_flow_rate"] = 0.0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 538, "max_flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1280, "max_flow_rate"] = 0.1  # Inlaat
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1361, "max_flow_rate"] = 0.0  # Sluis
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2607, "max_flow_rate"] = 0.1  # Sluis
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2604, "max_flow_rate"] = 0.0  # check met hysterese
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 544, "max_flow_rate"] = 0.0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1089, "max_downstream_level"] = pd.NA
 # Streefpeil te laag
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 959, "min_upstream_level"] = 11.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 971, "min_upstream_level"] = 11.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1238, "min_upstream_level"] = 11.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 544, "min_upstream_level"] = -0.2
-
-# Afvoer outlets en pumpen geen downstream waterlevel bij waterloop Paraduisslijs, basin levels kloppen niet
-model.pump.static.df.loc[model.pump.static.df.node_id == 2594, "max_downstream_level"] = pd.NA
-model.pump.static.df.loc[model.pump.static.df.node_id == 2595, "max_downstream_level"] = pd.NA
-model.pump.static.df.loc[model.pump.static.df.node_id == 646, "max_downstream_level"] = pd.NA
-model.pump.static.df.loc[model.pump.static.df.node_id == 664, "max_downstream_level"] = pd.NA
-model.pump.static.df.loc[model.pump.static.df.node_id == 680, "max_downstream_level"] = pd.NA
-model.pump.static.df.loc[model.pump.static.df.node_id == 1101, "max_downstream_level"] = pd.NA
-
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1382, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 541, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 454, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1081, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 932, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1219, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 387, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 490, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 519, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1066, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1286, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 988, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 445, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 520, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1036, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 543, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 926, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 446, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1368, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 521, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 953, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1325, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 464, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1406, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 515, "max_downstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 965, "max_downstream_level"] = pd.NA
 
 
 # Manning moet outlet zijn

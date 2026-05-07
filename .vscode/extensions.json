@@ -3,7 +3,6 @@
         "charliermarsh.ruff",
         "meta.pyrefly",
         "ms-python.python",
-        "nefrob.vscode-just-syntax",
         "njpwerner.autodocstring",
         "quarto.quarto",
         "renan-r-santos.pixi-code"
