@@ -234,8 +234,8 @@ def full_bgt_coverage(
         profiles_exp.loc[profiles_exp["area"] < min_valid_area, "area"] = 0
 
     # area multiplication factor
-    factor = (bgt_basin.area - df_areas["total_area"]) / df_areas["total_area"]
-    profiles_exp["area"] *= factor[profiles_exp["node_id"]].values
+    factor = ((bgt_basin.area - df_areas["total_area"]) / df_areas["total_area"]).clip(lower=0)
+    profiles_exp["area"] *= 1 + factor[profiles_exp["node_id"]].to_numpy(dtype=float)
     profiles_exp["area"] = np.maximum(profiles_exp["area"], margin)
     profiles_exp = profiles_exp.dropna(subset="area")
 

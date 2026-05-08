@@ -4,7 +4,6 @@ import datetime
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
-import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -27,8 +26,8 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
-RESCALE_FLOW_CAPACITIES: bool = False
+DYNAMIC_CONDITIONS: bool = True
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -77,14 +76,12 @@ cloud.synchronize(
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
+work_dir.mkdir(parents=True, exist_ok=True)
+
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
-
-# create work_dir/parameterized
-parameterized = work_dir / f"{waterschap}_parameterized/"
-parameterized.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -297,9 +294,10 @@ if DYNAMIC_CONDITIONS:
 
     # Add dynamic groundwater
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    precipitation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
+    evaporation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
+    cloud.synchronize(filepaths=[lhm_budget_path, precipitation_path, evaporation_path], overwrite=False)
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    if offline_budgets.lhm_budget_path.exists():
-        offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:

@@ -180,7 +180,44 @@ def read_resampled(
     return src.read(band, window=window, out_shape=out_shape, resampling=Resampling.nearest).astype(float)
 
 
-def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0) -> None:
+def basin_link_buffer_area(model: Model, node_id, buffer_distance=2.5):
+    """
+    Berekent het oppervlak van een buffer rond alle links van/naar een basin.
+
+    Parameters
+    ----------
+    model : ribasim.Model
+    node_id : int
+        Basin node_id.
+    buffer_distance : float
+        Bufferafstand in CRS-eenheden, bijvoorbeeld meters bij EPSG:28992.
+
+    Returns
+    -------
+    float
+        Oppervlak van de unary-union buffer.
+    """
+    links = model.link.df
+
+    assert links is not None
+    mask = (links["from_node_id"] == node_id) | (links["to_node_id"] == node_id)
+
+    basin_links = links.loc[mask]
+
+    if basin_links.empty:
+        return 0.0
+
+    geom = basin_links.geometry.dropna()
+
+    if geom.empty:
+        return 0.0
+
+    buffered_union = geom.buffer(buffer_distance).union_all()
+
+    return buffered_union.area
+
+
+def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0, buffer_distance=2.5) -> None:
     """Surface water area of primary basin based on primair_oppervalktewater in LHM4.3
 
     The average of resampled surface water percentage raster is mulitplied by polygon.area
@@ -191,6 +228,8 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         Polygon of the basin
     sample_res : int, optional
         Resolution in which LHM raster is read under the basin.polygon, by default 25
+    buffer_distance: float, optional
+        Buffer distance around connected links
 
     Returns
     -------
@@ -206,6 +245,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         area_fraction: float,
         min_fraction: float = 0.001,
         min_area: float = 999.0,
+        buffer_distance: float = 2.5,
     ) -> pd.DataFrame:
         level = np.array([target_level - depth - 0.1, target_level - depth, target_level]).round(2)
         profile_node_ids = [node_id] * 3
@@ -216,9 +256,12 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
             comment = ["default: 0.1m2", "default: 1% oppervlak", "default: 1% oppervlak"]
         else:
             sw_area = area_fraction * polygon.area
-            comment = [None, None, None]
+            comment = ["default: 0.1m2", "%LHM * oppervlak", "%LHM * oppervlak"]
 
         # if smaller than min_area we set to min_area
+        min_area = max(
+            (min_area, basin_link_buffer_area(model=model, node_id=node_id, buffer_distance=buffer_distance))
+        )
         if sw_area < min_area:
             area = np.array([0.1, min_area, min_area]).round(1)
             comment = [
@@ -290,7 +333,13 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
             area_fraction = np.nan if values.size == 0 or np.all(np.isnan(values)) else float(np.nanmean(values))
 
             basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = round(area_fraction * 100, 1)
-            profile = ah_df(node_id=basin_id, polygon=polygon, target_level=target_level, area_fraction=area_fraction)
+            profile = ah_df(
+                node_id=basin_id,
+                polygon=polygon,
+                target_level=target_level,
+                area_fraction=area_fraction,
+                buffer_distance=buffer_distance,
+            )
             percentage = round(profile.area.max() / polygon.area * 100, 1)
             basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = percentage
             profiles += [profile]
@@ -388,6 +437,67 @@ def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> ta
     return tabulated_rating_curve.Static(level=df.level, flow_rate=df.flow_rate)
 
 
+def simplify_area_level_df(
+    df: pd.DataFrame,
+    level_col: str = "level",
+    area_col: str = "area",
+    max_points: int = 5,
+) -> pd.DataFrame:
+    """Simplify an area-level curve while preserving endpoints, area extrema, and the most important bend points.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame with level and area columns.
+    level_col, area_col : str
+        Column names for level and area.
+    max_points : int
+        Maximum number of points to retain.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Simplified DataFrame with at most `max_points` rows.
+    """
+    if len(df) <= max_points:
+        return df.copy()
+
+    xy = df[[level_col, area_col]].to_numpy(float)
+
+    keep = {
+        0,
+        len(df) - 1,
+        int(np.argmin(xy[:, 1])),
+        int(np.argmax(xy[:, 1])),
+    }
+
+    while len(keep) < max_points:
+        best_i = None
+        best_d = -1.0
+
+        for i0, i1 in zip(sorted(keep)[:-1], sorted(keep)[1:], strict=False):
+            if i1 <= i0 + 1:
+                continue
+
+            a, b = xy[i0], xy[i1]
+            v = b - a
+            w = xy[i0 + 1 : i1] - a
+
+            denom = np.hypot(v[0], v[1])
+            d = np.linalg.norm(w, axis=1) if denom == 0 else np.abs(v[0] * w[:, 1] - v[1] * w[:, 0]) / denom
+            j = int(np.argmax(d))
+            if d[j] > best_d:
+                best_d = float(d[j])
+                best_i = i0 + 1 + j
+
+        if best_i is None:
+            break
+
+        keep.add(best_i)
+
+    return df.iloc[sorted(keep)].copy()
+
+
 def get_basin_profile(
     basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res: int = 25
 ) -> basin.Profile:
@@ -477,6 +587,7 @@ def get_basin_profile(
                 mask = ah_df.area <= 1
                 ah_df.loc[mask, ["area"]] = 1
                 ah_df.loc[mask, ["comment"]] = "oppervlak >= 1m2 gezet"
+                ah_df = simplify_area_level_df(ah_df)
 
                 if ah_df.empty:
                     ah_df = default_ah_df()
@@ -487,7 +598,12 @@ def get_basin_profile(
 
 
 class VdGaastBerging:
-    def __init__(self, model: Model, cloud: CloudStorage, use_add_api: bool = True) -> None:
+    def __init__(
+        self,
+        model: Model,
+        cloud: CloudStorage,
+        use_add_api: bool = True,
+    ) -> None:
         self.model = model
         self.cloud = cloud
         self.use_add_api = use_add_api
@@ -517,9 +633,13 @@ class VdGaastBerging:
             basin_row = basin_area_df.loc[basin_id]
             basin_polygon = basin_row.geometry
 
+            if any(pd.isna(getattr(basin_row, i)) for i in ["ghg", "glg", "ma"]):
+                raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
+
             # define storage basin data
             max_level = basin_area_df.at[basin_id, "maaiveld_max"]
             min_level = basin_area_df.at[basin_id, "maaiveld_min"]
+
             if min_level == max_level:
                 min_level -= 0.1
             basin_profile = get_basin_profile(
@@ -528,10 +648,14 @@ class VdGaastBerging:
                 min_level=min_level,
                 lhm_raster_file=self.lhm_raster_file,
             )
+            assert basin_profile.df is not None
             oppervlaktewater_percentage = round(basin_profile.df.area.max() / basin_polygon.area * 100, 1)
+            ini_level = (
+                max((basin_profile.df.level.min(), basin_row["meta_streefpeil"])) + 0.01
+            )  # 1cm above target-level/bottom-level
             data = [
                 basin_profile,
-                basin.State(level=[basin_profile.df.level.min() + 0.1]),
+                basin.State(level=[ini_level]),
                 basin.Area(geometry=[basin_polygon], meta_oppervlaktewater_percentage=[oppervlaktewater_percentage]),
             ]
 
@@ -544,19 +668,17 @@ class VdGaastBerging:
             basin_node = model.basin.add(node=node, tables=data)
 
             # add connector
-            if any(pd.isna(getattr(basin_row, i)) for i in ["ghg", "glg", "ma"]):
-                raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
-            else:
-                # get tabulated rating curve data
-                data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
 
-                # connect storage basin with basin with a tabulated rating curve
-                model.add_and_connect_node(
-                    basin_node.node_id,
-                    to_basin_id=basin_id,
-                    geometry=Point(row.geometry.x + 5, row.geometry.y),
-                    node_type="TabulatedRatingCurve",
-                    tables=data,
-                    use_add_api=self.use_add_api,
-                    meta_categorie="bergend",
-                )
+            # get data for TabulatedRatingCurve or Outlet
+            data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
+
+            # connect storage basin with basin with a tabulated rating curve
+            model.add_and_connect_node(
+                basin_node.node_id,
+                to_basin_id=basin_id,
+                geometry=Point(row.geometry.x + 5, row.geometry.y),
+                node_type="TabulatedRatingCurve",
+                tables=data,
+                use_add_api=self.use_add_api,
+                meta_categorie="bergend",
+            )

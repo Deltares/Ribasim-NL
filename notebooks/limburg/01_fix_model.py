@@ -418,6 +418,7 @@ model.remove_node(1314, remove_links=True)
 model.remove_node(611, remove_links=True)
 model.remove_node(1118, remove_links=True)
 model.remove_node(1173, remove_links=True)
+model.remove_node(127, remove_links=True)  # remove FlowBoundary connected to LevelBoundary at Tungelroyse beek
 
 # %% remove nodes
 

@@ -25,6 +25,7 @@ website:
         - workflow/level-controlled.qmd
         - workflow/gravity-controlled.qmd
         - workflow/scale-outlets-pumps.qmd
+        - workflow/split-basins.qmd
         - workflow/couple.qmd
         - workflow/profile-generation.qmd
     - title: "Watersystems"
