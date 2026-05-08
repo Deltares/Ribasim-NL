@@ -96,11 +96,24 @@ class AssignOfflineBudgets:
             budgets = Path(budgets)
             if not budgets.exists():
                 raise FileNotFoundError(
-                    f"You can't compute budgets if you don't have the zarr_budgets in a zip-file: {budgets}"
+                    f"You can't compute budgets if you don't have the budgets in a Zarr store: {budgets}"
                     "Download a copy"
                     "Alternatively go to: https://github.com/Deltares/Ribasim-NL/blob/main/scripts/add_lhm_budgets/get_data_LHM_run.py to see how you can create one."
                 )
         self.budgets = budgets
+        self.surface_runoff_budget_keys: set[str] = {"bdgqrun_m3d"}
+        self.secondary_budget_keys: set[str] = {
+            "bdgriv_sys2",
+            "bdgriv_sys3",
+            "bdgriv_sys6",
+            "bdgdrn_sys1",
+            "bdgdrn_sys2",
+            "bdgdrn_sys3",
+            "bdgpssw_m3d",
+        }
+        self.primary_budget_keys: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
+        self.secondary_labels: set[str] = {"bergend"}
+        self.primary_labels: set[str] = {"hoofdwater", "doorgaand"}
 
     def compute_budgets(
         self,
@@ -180,28 +193,20 @@ class AssignOfflineBudgets:
             Model and with MODFLOW-MetaSWAP budgets per node_id and timestamp. These can be used for verification and/or to compute fraction tracer/concentrations
         """
         # Synchronize LHM budget and model files
-        if surface_runoff_budgets is None:
-            surface_runoff_budgets = {"bdgqrunm3"}
-        if secondary_budgets is None:
-            secondary_budgets = {
-                "bdgriv_sys2",
-                "bdgriv_sys3",
-                "bdgriv_sys6",
-                "bdgdrn_sys1",
-                "bdgdrn_sys2",
-                "bdgdrn_sys3",
-                "bdgpsswm3",
-            }
-        if primary_budgets is None:
-            primary_budgets = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
-        if secondary_values is None:
-            secondary_values = {"bergend"}
-        if primary_values is None:
-            primary_values = {"hoofdwater", "doorgaand"}
+        if surface_runoff_budgets is not None:
+            self.surface_runoff_budget_keys = surface_runoff_budgets
+        if secondary_budgets is not None:
+            self.secondary_budget_keys = secondary_budgets
+        if primary_budgets is not None:
+            self.primary_budget_keys = primary_budgets
+        if secondary_values is not None:
+            self.secondary_labels = secondary_values
+        if primary_values is not None:
+            self.primary_labels = primary_values
         print("read and validate budgets and model")
         budgets, model = self._sync_files(model)  # read model and budgets form zarr-store
         self._validate_budgets(
-            budgets, primary_budgets, secondary_budgets, surface_runoff_budgets
+            budgets, self.primary_budget_keys, self.secondary_budget_keys, self.surface_runoff_budget_keys
         )  # check if all data-variables are present
 
         # Split into primary and secondary basin definition
@@ -214,7 +219,6 @@ class AssignOfflineBudgets:
             primary_values=primary_values,
             secondary_values=secondary_values,
         )
-
         print("rasterize basins to masks")
         primary_basin_mask = imod.prepare.rasterize(
             primary_basin_definition,
@@ -230,11 +234,10 @@ class AssignOfflineBudgets:
             fill=-999,
             dtype=np.int32,
         )
-
         print("compute budgets per basin")
         primary_budgets_df = (
             _compute_budgets_per_basin(
-                _crop_to_gdf(budgets[list(primary_budgets)], primary_basin_definition),
+                _crop_to_gdf(budgets[list(self.primary_budget_keys)], primary_basin_definition),
                 primary_basin_mask,
             )
             / 86400
@@ -242,7 +245,10 @@ class AssignOfflineBudgets:
 
         secondary_budgets_df = (
             _compute_budgets_per_basin(
-                _crop_to_gdf(budgets[list(secondary_budgets | surface_runoff_budgets)], secondary_basin_definition),
+                _crop_to_gdf(
+                    budgets[list(self.secondary_budget_keys | self.surface_runoff_budget_keys)],
+                    secondary_basin_definition,
+                ),
                 secondary_basin_mask,
             )
             / 86400
@@ -253,7 +259,13 @@ class AssignOfflineBudgets:
         budgets_df = pd.concat([primary_budgets_df, secondary_budgets_df]).sort_index()
 
         # sum all budgets (columns) and create drainage and infiltration series
-        summed_budgets = pd.Series(budgets_df[list(primary_budgets | secondary_budgets)].sum(axis=1))
+        # Group-sum to ensure unique (node_id, time) index before mapping
+        summed_budgets = pd.Series(
+            budgets_df[list(self.primary_budget_keys | self.secondary_budget_keys)]
+            .groupby(level=["node_id", "time"])
+            .sum()
+            .sum(axis=1)
+        )
         drainage = summed_budgets.clip(
             upper=0
         ).abs()  # all <0 is drainage. Take absolute its a positive term in RIBASIM
@@ -261,7 +273,12 @@ class AssignOfflineBudgets:
             lower=0
         )  # alles > 0 (infiltratie is in modflow, ontrekking uit ribasim, maar in ribasim positief teken)
         surface_runoff = (
-            pd.Series(budgets_df[list(surface_runoff_budgets)].sum(axis=1)).clip(upper=0).abs()
+            budgets_df[list(self.surface_runoff_budget_keys)]
+            .groupby(level=["node_id", "time"])
+            .sum()
+            .sum(axis=1)
+            .clip(upper=0)
+            .abs()
         )  # assume surface_runoff can't be <0 in RIBASIM. And negative budgets in MODFLOW-MetaSWAP are positive terms in Ribasim
 
         # update basin drainage and infiltration
@@ -280,9 +297,9 @@ class AssignOfflineBudgets:
             assign_fractions_from_budgets(
                 model=model,
                 budgets_df=budgets_df,
-                primary_budgets=primary_budgets,
-                secondary_budgets=secondary_budgets,
-                surface_runoff_budgets=surface_runoff_budgets,
+                primary_budgets=self.primary_budget_keys,
+                secondary_budgets=self.secondary_budget_keys,
+                surface_runoff_budgets=self.surface_runoff_budget_keys,
                 primary_basin_ids=primary_basin_ids,
                 secondary_basin_ids=secondary_basin_ids,
                 prefix=fraction_prefix,
@@ -341,33 +358,41 @@ class AssignOfflineBudgets:
             surface_runoff_budgets -= missing
 
     def _transpose_basin_definition_polygons(
-        self,
-        basin_definition_in: gpd.GeoDataFrame,
-        basin_definition_out: gpd.GeoDataFrame,
-    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-        """Returns basin_definition_out with the index of basin_definition_in for polygons that intersect.
+        self, basin_definition_primary: gpd.GeoDataFrame, basin_definition_secundary: gpd.GeoDataFrame
+    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
+        """
+        Returns basin_difinition_out with index of basin_definition_in that intersect the basin_definition_out polygons
 
-        Parameters
-        ----------
-        basin_definition_in : gpd.GeoDataFrame
-            Basin definition with (multi)polygons.
-        basin_definition_out : gpd.GeoDataFrame
-            Basin definition with (multi)polygons.
+        Args:
+            basin_definition_primary (gpd.GeoDataFrame): Basin definition with (multi) polygons
+            basin_definition_secundary (gpd.GeoDataFrame): Basin definition with (multi) polygons
 
         Returns
         -------
-        tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]
-            - Basin definition with updated index based on intersections.
-            - Basin definition containing polygons without any intersection.
+            tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]: basin_definition_secundary geometry with primary based index, Basin definition with
+            polygons without any intersection for primary and secundary basins
         """
-        tree = shapely.STRtree(basin_definition_out["geometry"])
-        index_in, index_out = tree.query(basin_definition_in.representative_point(), predicate="intersects")
-        index_in = basin_definition_in.index[index_in]
-        index_out = basin_definition_out.index[index_out]
-        index_undifined = basin_definition_out.index[~np.isin(basin_definition_out.index, index_out)]
-        basin_definition_undifined = basin_definition_out.loc[index_undifined]
-        basin_definition_out = basin_definition_out.loc[index_out]
-        return basin_definition_out.set_index([index_in]), basin_definition_undifined
+        tree = shapely.STRtree(basin_definition_secundary["geometry"])
+        index_in, index_out = tree.query(basin_definition_primary.representative_point(), predicate="intersects")
+        index_in = basin_definition_primary.index[index_in]
+        index_out = basin_definition_secundary.index[index_out]
+        # evaluate non-matching items
+        # secondary basins with non matching primary basins
+        index_undefined_secundary = basin_definition_secundary.index[
+            ~np.isin(basin_definition_secundary.index, index_out)
+        ]
+        undefined_secondary_basins = basin_definition_secundary.loc[index_undefined_secundary]
+        # primary basins with non matching secundary basins
+        # strategy: add to output df (fall true logic), and add to undefined output argument
+        index_undefined_primary = basin_definition_primary.index[~np.isin(basin_definition_primary.index, index_in)]
+        undefined_primary_basins = basin_definition_primary.loc[index_undefined_primary]
+        # prepare main output df
+        basin_definition_secundary = basin_definition_secundary.loc[index_out]
+        basin_definition_secundary = basin_definition_secundary.set_index([index_in])
+        basin_definition_primary_out = pd.concat(
+            [basin_definition_secundary, basin_definition_primary.loc[index_undefined_primary]]
+        )
+        return basin_definition_primary_out, undefined_primary_basins, undefined_secondary_basins
 
     def _fill_basin_definition_from_points(
         self,
@@ -494,9 +519,9 @@ class AssignOfflineBudgets:
         """
         # optionally get basin_metacol from other basin_subtype
         if secondary_values is None:
-            secondary_values = {"bergend"}
+            secondary_values = self.secondary_labels
         if primary_values is None:
-            primary_values = {"hoofdwater", "doorgaand"}
+            primary_values = self.primary_labels
         assert ribasim_model.basin.node is not None
         assert ribasim_model.basin.node.df is not None
         if basin_metacol in ribasim_model.basin.node.df.columns:
@@ -528,14 +553,17 @@ class AssignOfflineBudgets:
             secondary_values=secondary_values,
         )
 
-        # transpose primairy basins to secondary basin definition to get rid of the narrow polygons
-        basin_definition_primair_polygon, basin_definition_undifined = self._transpose_basin_definition_polygons(
-            basin_definition_primair, basin_definition_secondair
+        # transpose primary basins to secondary basin definition to get rid of the narrow polygons
+        basin_definition_primair_polygon, basin_definition_undefined_primair, basin_definition_undefined_secundair = (
+            self._transpose_basin_definition_polygons(basin_definition_primair, basin_definition_secondair)
         )
+        if not basin_definition_undefined_primair.empty:
+            # Add undefined primary elements to secondary basins so secondary budgets will also be assigned
+            basin_definition_secondair = pd.concat([basin_definition_secondair, basin_definition_undefined_primair])
 
         # fill empty basins based on pip for secondary nodes
         basin_definition_primair_points = self._fill_basin_definition_from_points(
-            basin_definition_undifined, nodes[nodes[basin_metacol].isin(primary_values)]
+            basin_definition_undefined_secundair, nodes[nodes[basin_metacol].isin(primary_values)]
         )
         if not basin_definition_primair_points.empty:
             basin_definition_primair = pd.concat([basin_definition_primair_polygon, basin_definition_primair_points])
@@ -556,3 +584,226 @@ class AssignOfflineBudgets:
 
         if exception:
             raise ValueError(f"{basin_metacol}{exception}")
+
+    def plot_assign_validation(self, model: Model | Path | str, path: Path | str | None = None):
+        """Validate if all budget cells are assigned to a basin and plot the assignment
+
+        Parameters
+        ----------
+        model : Model | Path | str
+            Ribasim model or path to ribasim.toml
+        path : Path | str | None, optional
+            Directory path to save the control plot. If None, no plot is saved.
+        """
+        budgets, model = self._sync_files(model=model)  # read model and budgets from zarr-store
+        if path is not None:
+            path = Path(path)
+        primary_basin_definition, secondary_basin_definition = self._split_basin_definitions(ribasim_model=model)
+        primary_basin_mask = imod.prepare.rasterize(
+            primary_basin_definition,
+            column="node_id",
+            like=_crop_to_gdf(budgets["bdgriv_sys1"].isel(time=0, drop=True), primary_basin_definition),
+            fill=-999,
+            dtype=np.int32,
+        )
+        secondary_basin_mask = imod.prepare.rasterize(
+            secondary_basin_definition,
+            column="node_id",
+            like=_crop_to_gdf(budgets["bdgriv_sys1"].isel(time=0, drop=True), secondary_basin_definition),
+            fill=-999,
+            dtype=np.int32,
+        )
+        basin_definition = gpd.GeoDataFrame(pd.concat([primary_basin_definition, secondary_basin_definition]))
+        # split basin_definition by meta_categorie of Ribasim model itself, to keep original nod_id's
+        assert model.basin.node is not None
+        assert model.basin.node.df is not None
+        nodes = gpd.GeoDataFrame(
+            {
+                "node_id": model.basin.node.df.index,
+                "geometry": model.basin.node.df["geometry"],
+                "meta_categorie": model.basin.node.df["meta_categorie"],
+            }
+        ).set_index("node_id", drop=True)
+        basin_definition = basin_definition.set_index("node_id", drop=False)
+        basin_bergend = basin_definition.loc[nodes["meta_categorie"] == "bergend"]
+        basin_rest = basin_definition.loc[nodes["meta_categorie"] != "bergend"]
+
+        self._plot_assign_validation(
+            budgets=budgets,
+            basin_definition=basin_definition,
+            basin_rest=basin_rest,
+            basin_bergend=basin_bergend,
+            primary_basin_definition=primary_basin_definition,
+            secondary_basin_definition=secondary_basin_definition,
+            primary_basin_mask=primary_basin_mask,
+            secondary_basin_mask=secondary_basin_mask,
+            path=path,
+        )
+
+    def _plot_assign_validation(
+        self,
+        budgets,
+        basin_definition: gpd.GeoDataFrame,
+        basin_rest: gpd.GeoDataFrame,
+        basin_bergend: gpd.GeoDataFrame,
+        primary_basin_definition: gpd.GeoDataFrame,
+        secondary_basin_definition: gpd.GeoDataFrame,
+        primary_basin_mask,
+        secondary_basin_mask,
+        path: Path | None = None,
+    ):
+        # plot imports
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import BoundaryNorm, ListedColormap
+        from matplotlib.patches import Patch
+
+        xmin, ymin, xmax, ymax = primary_basin_definition.total_bounds
+        # sum over time to get all active nodes
+        primary_sum = sum(
+            budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load()
+            for v in self.primary_budget_keys
+        )
+        secondary_sum = sum(
+            budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load()
+            for v in self.secondary_budget_keys
+        )
+        runoff_sum = sum(
+            budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load()
+            for v in self.surface_runoff_budget_keys
+        )
+        # map to node_id of basins — crop masks to the same bbox first so all arrays share coordinates
+        primary_mask_cropped = primary_basin_mask.where(primary_basin_mask != -999).sel(
+            x=slice(xmin, xmax), y=slice(ymax, ymin)
+        )
+        secondary_mask_cropped = secondary_basin_mask.where(secondary_basin_mask != -999).sel(
+            x=slice(xmin, xmax), y=slice(ymax, ymin)
+        )
+        primary_node_id = primary_mask_cropped * xr.where(primary_sum != 0.0, 1, np.nan)
+        secondary_node_id = secondary_mask_cropped * xr.where(secondary_sum != 0.0, 1, np.nan)
+        runoff_node_id = secondary_mask_cropped * xr.where(runoff_sum != 0.0, 1, np.nan)
+
+        # check for unassigned budget cells: cells where budget is active but mask is nodata (-999)
+        missed_primary = xr.where(
+            (primary_basin_mask.sel(x=slice(xmin, xmax), y=slice(ymax, ymin)) == -999) & (primary_sum != 0.0),
+            1,
+            np.nan,
+        )
+        missed_secondary = xr.where(
+            (secondary_basin_mask.sel(x=slice(xmin, xmax), y=slice(ymax, ymin)) == -999) & (secondary_sum != 0.0),
+            1,
+            np.nan,
+        )
+        missed_runoff = xr.where(
+            (secondary_basin_mask.sel(x=slice(xmin, xmax), y=slice(ymax, ymin)) == -999) & (runoff_sum != 0.0),
+            1,
+            np.nan,
+        )
+
+        # make red/green grids based solely on missed_* and active budget cells
+        # green (1) = budget active and assigned to a basin
+        # red   (2) = budget active but outside any basin (missed)
+        # NaN       = no budget activity
+        active_primary = xr.where(primary_sum != 0.0, 1.0, np.nan)
+        active_secondary = xr.where(secondary_sum != 0.0, 1.0, np.nan)
+        active_runoff = xr.where(runoff_sum != 0.0, 1.0, np.nan)
+
+        combined_primary = xr.where(missed_primary == 1, 2.0, xr.where(active_primary == 1, 1.0, np.nan))
+        combined_secondary = xr.where(missed_secondary == 1, 2.0, xr.where(active_secondary == 1, 1.0, np.nan))
+        combined_runoff = xr.where(missed_runoff == 1, 2.0, xr.where(active_runoff == 1, 1.0, np.nan))
+
+        # plot
+        _, axes = plt.subplots(2, 5, figsize=(30, 12))
+        # shared color mapping based on unique node_ids
+        all_node_ids = np.sort(basin_definition["node_id"].unique())
+        n = len(all_node_ids)
+        # Build a colormap with exactly one unique color per node_id
+        base_colors = plt.colormaps["hsv"](np.linspace(0, 1, n, endpoint=False))
+        node_cmap = ListedColormap(base_colors)
+        node_norm = BoundaryNorm(np.append(all_node_ids - 0.5, all_node_ids[-1] + 0.5), node_cmap.N)
+        # plot the first four plots; from polygon definition to gridded primary + secondary masks
+        for gdf, ax, title in zip(
+            [
+                basin_rest,
+                basin_bergend,
+                primary_basin_definition,
+                secondary_basin_definition,
+            ],
+            [axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]],
+            [
+                "Primair basin polygon",
+                "Secondary basin polygon",
+                "Gridded primary mask",
+                "Gridded secondary mask",
+            ],
+            strict=True,
+        ):
+            gdf.plot(
+                column="node_id",
+                ax=ax,
+                cmap=node_cmap,
+                norm=node_norm,
+                legend=False,
+            )
+            # Overlay basin boundaries
+            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)
+            ax.set_title(f"{title} - node_id")
+        # Row 0 cols 2-4: budget grids mapped to node_id
+        for da, ax, title in zip(
+            [primary_node_id, secondary_node_id, runoff_node_id],
+            [axes[0, 2], axes[0, 3], axes[0, 4]],
+            ["Primary LHM budgets - node_id", "Secondary LHM budgets - node_id", "Runoff LHM budgets - node_id"],
+            strict=True,
+        ):
+            da.plot(ax=ax, cmap=node_cmap, norm=node_norm, add_colorbar=False)
+            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)
+            ax.set_title(title)
+            ax.set_aspect("equal")
+        # red-green control grids
+        cmap_combined = ListedColormap(
+            [(0.0, 0.5, 0.0, 1.0), (1.0, 0.0, 0.0, 1.0), (0.0, 0.0, 0.0, 0.0)]
+        )  # green=OK, red=missed, transparent=inactive
+        cmap_combined.set_bad(color=(0, 0, 0, 0))  # NaN as transparent
+        norm_combined = BoundaryNorm([0.5, 1.5, 2.5, 3.5], cmap_combined.N)
+        legend_handles = [
+            Patch(facecolor="green", edgecolor="k", label="assigned (OK)"),
+            Patch(facecolor="red", edgecolor="k", label="missed (unassigned)"),
+        ]
+        # Row 1 cols 2-4: assignment check grids
+        for da, ax, title in zip(
+            [combined_primary, combined_secondary, combined_runoff],
+            [axes[1, 2], axes[1, 3], axes[1, 4]],
+            ["Primary: green=OK, red=missed", "Secondary: green=OK, red=missed", "Runoff: green=OK, red=missed"],
+            strict=True,
+        ):
+            da.plot(ax=ax, cmap=cmap_combined, norm=norm_combined, add_colorbar=False)
+            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)
+            ax.set_title(title)
+            ax.set_aspect("equal")
+            ax.legend(handles=legend_handles, loc="upper right")
+        plt.tight_layout()
+        # Add group labels above the two sets of plots
+        # Left group: columns 0-1 (basin polygon definitions), right group: columns 2-4 (gridded budget checks)
+        fig = plt.gcf()
+        fig.text(
+            0.21,
+            1.01,
+            "Basin polygon definitions",
+            ha="center",
+            va="bottom",
+            fontsize=13,
+            fontweight="bold",
+            bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightyellow", "edgecolor": "grey"},
+        )
+        fig.text(
+            0.68,
+            1.01,
+            "Gridded LHM budget assignment check",
+            ha="center",
+            va="bottom",
+            fontsize=13,
+            fontweight="bold",
+            bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightblue", "edgecolor": "grey"},
+        )
+        if path is not None:
+            plt.savefig(path, bbox_inches="tight")
+        plt.close()
