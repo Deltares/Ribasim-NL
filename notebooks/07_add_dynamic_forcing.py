@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import xarray as xr
 from ribasim.delwaq import generate, parse, run_delwaq
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
@@ -49,13 +50,14 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update")
     cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
 
-    # Open zarr budgets (shared between forcing and offline budgets)
-    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
+    # Open zarr budgets, select time range early to reduce data volume
+    budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
+    offline_budgets = AssignOfflineBudgets(budgets)
 
     # compute meteo forcing from zarr precipitation (and evaporation when available)
     forcing = SetDynamicForcing(
         model=model,
-        budgets=offline_budgets.budgets,
+        budgets=budgets,
         startdate=starttime,
         enddate=endtime,
     )

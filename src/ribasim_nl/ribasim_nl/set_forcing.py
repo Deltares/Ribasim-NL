@@ -50,7 +50,7 @@ class SetDynamicForcing:
         enddate: str,
     ) -> None:
         self.model = model
-        self.budgets = budgets.sel(time=slice(np.datetime64(startdate), np.datetime64(enddate)))
+        self.budgets = budgets
         self.startdate = startdate
         self.enddate = enddate
 
