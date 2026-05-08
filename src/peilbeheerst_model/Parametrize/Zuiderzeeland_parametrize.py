@@ -598,8 +598,6 @@ if DYNAMIC_CONDITIONS:
     evaporation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
     cloud.synchronize(filepaths=[lhm_budget_path, precipitation_path, evaporation_path], overwrite=False)
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    # if offline_budgets.lhm_budget_path.exists():
-    #     offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
