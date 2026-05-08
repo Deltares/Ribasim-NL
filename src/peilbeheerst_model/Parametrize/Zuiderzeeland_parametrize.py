@@ -19,7 +19,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
-from ribasim_nl.split_basins import SplitBasins
+from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
@@ -556,6 +556,7 @@ ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
 # loop through all splitted basins
+node_cache = NodeMetaCache(ribasim_model)
 for splitted_basin_path, basin_id in zip(
     [splitted_basin_16_path, splitted_basin_31_path, splitted_basin_73_path], [16, 31, 73], strict=True
 ):
@@ -565,20 +566,12 @@ for splitted_basin_path, basin_id in zip(
     )
     ribasim_model = splitter.run()
 
+node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
+del node_cache
 
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
-
-# Migrate meta_categorie from the state to the node table as this prior is completely filled
-basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
-basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
-    ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
-    left_index=True,
-    right_on="node_id",
-    how="left",
-)
-ribasim_model.node.df.loc[basin_node_mask, "meta_categorie"] = basin_node_meta.set_index("node_id")["meta_categorie"]
 
 # set forcing
 if DYNAMIC_CONDITIONS:
