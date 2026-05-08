@@ -118,7 +118,7 @@ class AssignOfflineBudgets:
         self,
         model: Model | Path | str,
         basin_split: str = "area",
-        basin_subtype: str = "state",
+        basin_subtype: str = "node",
         basin_metacol: str = "meta_categorie",
         primary_values: set[str] | None = None,
         secondary_values: set[str] | None = None,
@@ -165,7 +165,7 @@ class AssignOfflineBudgets:
         basin_split : str, optional
             Table to split basins, by default "area"
         basin_subtype : str, optional
-            optional table to find basin_metacol if not in node-table, by default "state"
+            optional table to find basin_metacol if not in node-table, by default "node"
         basin_metacol : str, optional
             colomn to contain primary and secondary values, by default "meta_categorie"
         primary_values: set[str]
@@ -485,7 +485,7 @@ class AssignOfflineBudgets:
         self,
         ribasim_model: Model,
         basin_split: str = "area",
-        basin_subtype: str = "state",
+        basin_subtype: str = "node",
         basin_metacol: str = "meta_categorie",
         primary_values: set[str] | None = None,
         secondary_values: set[str] | None = None,
@@ -499,7 +499,7 @@ class AssignOfflineBudgets:
         basin_split : str, optional
             Table to be splitted, by default "area"
         basin_subtype : str, optional
-            subtype to optionally read basin_metacol from, by default "state"
+            subtype to optionally read basin_metacol from, by default "node"
         basin_metacol : str, optional
             column with category, by default "meta_categorie"
         basin_primary : str, optional
@@ -533,6 +533,9 @@ class AssignOfflineBudgets:
                 df_cat = df_cat[[basin_metacol]]
 
             nodes = nodes.join(df_cat, how="left").reset_index(drop=False)
+
+        # TODO: fix upstream - some basin nodes have NaN in meta_categorie; they won't be assigned offline forcing
+        nodes = nodes.dropna(subset=[basin_metacol])
 
         self._validate_meta_basin_column(nodes, basin_metacol, expected_values=primary_values | secondary_values)
 

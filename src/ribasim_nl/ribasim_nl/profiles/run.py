@@ -18,7 +18,6 @@ LOG = logging.getLogger(__name__)
 _KNOWN_KWARGS: set[str] = {
     "debug",
     "epsg",
-    "filter_basins",
     "target_levels",
     "create_depth_profile_lines",
     "kw_make_depth_profile",
@@ -155,7 +154,6 @@ def main(
     # optional arguments
     debug: bool = kwargs.get("debug", False)
     epsg: int = kwargs.get("epsg", 28992)
-    filter_basins: bool = kwargs.get("filter_basins", True)
     # > target levels
     target_levels: gpd.GeoDataFrame = kwargs.get("target_levels", data[0])
     # > generation of depth profile lines
@@ -203,14 +201,6 @@ def main(
     if main_route_from_hydro_objects:
         assert col_ho_main_route is not None
         _validate_hydro_objects_main_routing(hydro_objects, col_ho_main_route, val_ho_main_route)
-
-    # filter basins
-    if filter_basins:
-        basins = basins[basins["node_id"] == basins["meta_node_id"]]
-
-    # filter basins
-    if filter_basins:
-        basins = basins[basins["node_id"] == basins["meta_node_id"]]
 
     # creating depth profile-lines
     if create_depth_profile_lines and cross_sections is not None:

@@ -2444,7 +2444,11 @@ def clean_tables(ribasim_model: Model, waterschap: str) -> None:
 
     # section below as asked by D2HYDRO
 
-    # #add category in the .node table
+    # add category in the .node table
+    if "meta_categorie" in ribasim_model.node.df.columns:
+        # return  # skip column creation if already present
+        ribasim_model.node.df = ribasim_model.node.df.drop(columns=["meta_categorie"])
+
     basin_node = ribasim_model.basin.node.df.merge(
         right=ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
         how="left",
