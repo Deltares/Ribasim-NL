@@ -96,7 +96,7 @@ class AssignOfflineBudgets:
             budgets = Path(budgets)
             if not budgets.exists():
                 raise FileNotFoundError(
-                    f"You can't compute budgets if you don't have the zarr_budgets in a zip-file: {budgets}"
+                    f"You can't compute budgets if you don't have the budgets in a Zarr store: {budgets}"
                     "Download a copy"
                     "Alternatively go to: https://github.com/Deltares/Ribasim-NL/blob/main/scripts/add_lhm_budgets/get_data_LHM_run.py to see how you can create one."
                 )

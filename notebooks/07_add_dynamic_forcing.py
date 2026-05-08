@@ -147,8 +147,6 @@ for authority in authorities:
 
         if check_build(dst_toml_file):
             model = Model.read(toml_file)
-            # update state so we start smooth/empty
-            model.update_state()
 
             # add categorie to basin / state
             series = model.basin.node.df["meta_categorie"]  # type: ignore
