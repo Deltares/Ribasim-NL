@@ -161,9 +161,8 @@ def _sync(cloud: CloudStorage, water_authority: str, overwrite: bool, *extra_fil
     cloud.download_verwerkt(water_authority, overwrite=overwrite)
     cloud.download_basisgegevens(["Hydrotypen"], overwrite=overwrite)
     for f in extra_file:
-        if f is None:
-            continue
-        cloud.download_file(cloud.joinurl(water_authority, f))
+        if f is not None:
+            cloud.download_file(cloud.joinurl(water_authority, f))
     print(f"\rSynced with the GoodCloud: {water_authority}")
 
 
@@ -175,9 +174,14 @@ def _read_basins(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
 
     :return: basin dataset (polygons)
     """
+    # read data
     fn = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "input", "database.gpkg")
-    gdf = gpd.read_file(fn, layer="Basin / area")
-    return gdf[gdf["node_id"] == gdf["meta_node_id"]]
+    nodes = gpd.read_file(fn, layer="Node", fid_as_index=True, use_arrow=True)
+    basins = gpd.read_file(fn, layer="Basin / area")
+
+    # exclude storing basins
+    non_storing = nodes[nodes["meta_categorie"] != "bergend"].index
+    return basins[basins["node_id"].isin(non_storing)]
 
 
 def _read_cross_sections(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
