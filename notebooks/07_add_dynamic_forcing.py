@@ -41,7 +41,7 @@ secondary_budgets: set[str] = {
     "bdgdrn_sys3",
     "bdgpssw",
 }
-surface_runoff_budgets: set[str] = {"bdgqrun"}
+surface_runoff_budgets: set[str] = {"bdgqrun_m3d"}
 
 
 def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix):

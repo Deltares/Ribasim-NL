@@ -1,6 +1,5 @@
 """Assign offline MODFLOW-MetaSWAP budgets (LHM zarr or local IDF files) to Ribasim Basin nodes."""
 
-import warnings
 from pathlib import Path
 
 import geopandas as gpd
@@ -178,10 +177,10 @@ class AssignOfflineBudgets:
              by default {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
         secondary_budgets : set[str], optional
             set of budgets that are to be summed to secondary drainage/infiltration,
-             by default {"bdgriv_sys2", "bdgriv_sys3", "bdgriv_sys6", "bdgdrn_sys1", "bdgdrn_sys2", "bdgdrn_sys3", "bdgpsswm3"}
+             by default {"bdgriv_sys2", "bdgriv_sys3", "bdgriv_sys6", "bdgdrn_sys1", "bdgdrn_sys2", "bdgdrn_sys3", "bdgpssw_m3d"}
         surface_runoff_budgets: set[str], optional
             set of budgets that are to be summed to secondary surface_runoff
-             by default {"bdgqrunm3"}
+             by default {"bdgqrun_m3d"}
         assign_fractions: bool, optional
              if True, fractions from budgets will be calculated and assigned to model.basin.concentration.df, default False
         fraction_prefix: str, optional
@@ -347,15 +346,9 @@ class AssignOfflineBudgets:
         missing = expected - set(budgets.data_vars)
 
         if missing:
-            # TODO: turn back into a ValueError once LHM_433_budget.zip contains all expected variables
-            # see https://github.com/Deltares/Ribasim-NL/issues/510
-            warnings.warn(
-                f"budgets {missing} not supplied in budgets-file. Please check {self.budgets} with your values for `primary_budgets`, `secondary_budgets` and `surface_runoff_budgets`. Missing budgets will be skipped.",
-                stacklevel=2,
+            raise ValueError(
+                f"budgets {missing} not supplied in budgets-file. Please check {self.budgets}",
             )
-            primary_budgets -= missing
-            secondary_budgets -= missing
-            surface_runoff_budgets -= missing
 
     def _transpose_basin_definition_polygons(
         self, basin_definition_primary: gpd.GeoDataFrame, basin_definition_secundary: gpd.GeoDataFrame
