@@ -413,6 +413,9 @@ ribasim_model.node.df.loc[ribasim_model.tabulated_rating_curve.node.df.index, "m
 )
 ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ribasim_model.pump.node.df.index
 
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing

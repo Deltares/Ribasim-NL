@@ -344,7 +344,9 @@ ribasim_param.validate_basin_area(ribasim_model)
 # check target levels at manning nodes
 ribasim_param.validate_manning_basins(ribasim_model)
 
-# TODO: Replace standard profile by determined profiles (and add storing basins where applicable)
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
