@@ -206,7 +206,7 @@ class AssignOfflineBudgets:
         print("read and validate budgets and model")
         budgets, model = self._sync_files(model)  # read model and budgets form zarr-store
         self._validate_budgets(
-            budgets, primary_budgets, secondary_budgets, surface_runoff_budgets
+            budgets, self.primary_budget_keys, self.secondary_budget_keys, self.surface_runoff_budget_keys
         )  # check if all data-variables are present
 
         # Split into primary and secondary basin definition
@@ -381,7 +381,7 @@ class AssignOfflineBudgets:
         index_undifined_secundary = basin_definition_secundary.index[
             ~np.isin(basin_definition_secundary.index, index_out)
         ]
-        undifined_secondary_basins = basin_definition_primary.loc[index_undifined_secundary]
+        undifined_secondary_basins = basin_definition_secundary.loc[index_undifined_secundary]
         # primary basins with non matching secundary basins
         # strategy: add to output df (fall true logic), and add to undifined output argument
         index_undifined_primary = basin_definition_primary.index[~np.isin(basin_definition_primary.index, index_in)]
@@ -519,9 +519,9 @@ class AssignOfflineBudgets:
         """
         # optionally get basin_metacol from other basin_subtype
         if secondary_values is None:
-            secondary_values = {"bergend"}
+            secondary_values = self.secondary_labels
         if primary_values is None:
-            primary_values = {"hoofdwater", "doorgaand"}
+            primary_values = self.primary_labels
         assert ribasim_model.basin.node is not None
         assert ribasim_model.basin.node.df is not None
         if basin_metacol in ribasim_model.basin.node.df.columns:
