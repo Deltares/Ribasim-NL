@@ -294,3 +294,33 @@ class SplitBasins:
             rows = table.df.loc[table.df.node_id == original_node_id].copy()
             rows["node_id"] = new_node_id
             table.df = pd.concat([table.df, rows], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+
+
+class NodeMetaCache:
+    """Caching of 'meta_categorie'-data"""
+
+    def __init__(self, model: Model):
+        """Store the 'meta_categorie' as a series (node ID as index)."""
+        self.meta_category = self.get_meta_category(model)
+
+    @staticmethod
+    def get_meta_category(model: Model) -> pd.Series:
+        """Get the 'meta_categorie'-data."""
+        assert model.node.df is not None
+        nodes = model.node.df.copy(deep=True)
+        return nodes["meta_categorie"]
+
+    def set_meta_category(self, model: Model, fill_nan: bool = True) -> Model:
+        """(Re)set the 'meta_category'-data.
+
+        Optionally set all non-cached 'meta_categorie'-data to 'doorgaand' (default).
+        """
+        assert model.node.df is not None
+        nodes = model.node.df
+        nodes["meta_categorie"] = self.meta_category.copy(deep=True)
+        if fill_nan:
+            nodes.loc[nodes["node_type"] == "Basin", "meta_categorie"] = nodes.loc[
+                nodes["node_type"] == "Basin", "meta_categorie"
+            ].fillna("doorgaand")
+        model.node.df = nodes.copy()  # pyrefly: ignore[bad-assignment]
+        return model
