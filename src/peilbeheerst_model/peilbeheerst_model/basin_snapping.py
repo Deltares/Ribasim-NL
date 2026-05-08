@@ -67,7 +67,7 @@ def node_to_hydro_object(
     valid = out["hydro"].notna()
     original_nodes = out.loc[valid, "geometry"]
     snapped_nodes = original_nodes.combine(out.loc[valid, "hydro"], lambda point, line: nearest_points(point, line)[1])
-    distances = original_nodes.distance(snapped_nodes)
+    distances = original_nodes.distance(snapped_nodes.set_crs(nodes.crs))
 
     # maximum relocation distance
     if max_distance is not None:
