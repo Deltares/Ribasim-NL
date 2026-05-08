@@ -6,6 +6,7 @@ import warnings
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
+from peilbeheerst_model.basin_snapping import link_to_hydro_object, node_to_hydro_object_from_file
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -23,7 +24,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, settings
+from ribasim_nl import CloudStorage, Model, Network, SetDynamicForcing, junctionify, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -445,6 +446,10 @@ ribasim_model = assign.assign_authorities()
 
 # add junctions
 ribasim_model = junctionify(ribasim_model)
+fn = profiles_path / "intermediate" / "int_output.gpkg"
+ribasim_model = node_to_hydro_object_from_file(ribasim_model, fn, layer="hydro-objects", main_route_only=False)
+network = Network.from_lines_gpkg(fn, layer="hydro-objects")
+ribasim_model = link_to_hydro_object(ribasim_model, network, ("Basin", "ManningResistance", "Outlet", "Pump"))
 
 # set numerical settings
 # write model output
