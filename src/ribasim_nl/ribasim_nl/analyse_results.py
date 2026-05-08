@@ -3,9 +3,12 @@
 
 import ast
 import operator
+from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
+import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 import numpy as np
 import openpyxl
@@ -18,8 +21,12 @@ from shapely import wkt
 from ribasim_nl import CloudStorage
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.html_viewer import CreateHTMLViewer
+from ribasim_nl.model import Model
 
-# from aquo import waterbeheercode
+try:
+    from ribasim_nl.assign_lhm_fractions import get_lhm_fractions
+except ImportError:
+    get_lhm_fractions = None  # type: ignore[assignment]
 
 
 def _sanitize_filename(name: str) -> str:
@@ -112,9 +119,12 @@ def ReadOutputFile(
         DataFrame met kolommen ``time``, ``link_id`` (of vergelijkbaar) en waarden,
         altijd op dagresolutie wanneer ``resample_to_daily=True``.
     """
-    possible_filetypes = ["basin", "flow", "control", "solver_stats", "basin_state"]
+    possible_filetypes = ["basin", "flow", "control", "solver_stats", "basin_state", "concentration"]
     if filetype.lower() not in possible_filetypes:
         raise ValueError(f"{filetype} not available. Choose one of the following: {possible_filetypes}")
+
+    if filetype.lower() == "concentration" and output_is_feather:
+        raise ValueError("'concentration' is alleen beschikbaar als NetCDF. Gebruik output_is_nc=True.")
 
     if output_is_feather and output_is_nc:
         raise ValueError("Both output_is_feather and output_is_nc are True. Choose only one.")
@@ -409,6 +419,8 @@ def GetStatisticsComparison(combined_df: pd.DataFrame) -> dict:
                 "RMSE",
                 "MAE",
                 "RelBias",
+                "mean_sim",
+                "mean_obs",
                 "KGE",
                 "P10_obs",
                 "P10_sim",
@@ -445,6 +457,8 @@ def GetStatisticsComparison(combined_df: pd.DataFrame) -> dict:
         stats["RelBias"] = float((np.mean(model_output) - mean_obs) / mean_obs * 100)
     else:
         stats["RelBias"] = np.nan
+    stats["mean_sim"] = float(np.mean(model_output))
+    stats["mean_obs"] = float(mean_obs)
 
     # --- KGE (Kling-Gupta Efficiency) ---
     r = float(np.corrcoef(targets, model_output)[0, 1]) if np.std(targets) > 0 and np.std(model_output) > 0 else np.nan
@@ -466,55 +480,47 @@ def GetStatisticsComparison(combined_df: pd.DataFrame) -> dict:
     return stats
 
 
-# ── Module-niveau constanten (gebruikt door meerdere functies) ────────────────
-
-CRITERIA_GRENZEN: dict[str, dict] = {
-    "Bias": {"Goed": 10.0, "Matig": 15.0},
-    "NSE": {"Goed": 0.5},
-    "KGE": {"Goed": 0.6},
-    "P10": {"Goed": 25.0, "Matig": 30.0},
-    "P25": {"Goed": 10.0, "Matig": 15.0},
-    "P75": {"Goed": 10.0, "Matig": 15.0},
-    "P90": {"Goed": 25.0, "Matig": 30.0},
-}
-
-BEOOR_KLEUREN = {
+# Interne kleurentabel voor Excel-opmaak (PatternFill-objecten worden eenmalig aangemaakt)
+_BEOOR_KLEUREN = {
     "Goed": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),
     "Matig": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"),
     "Onvoldoende": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),
     "n.v.t.": PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid"),
 }
 
-CRITERIA_GROEPEN: dict[str, dict] = {
-    "Bias": {"kolommen": ["Beoor_Bias_dec"], "min_goed": 1},
-    "NSE_KGE": {"kolommen": ["Beoor_NSE_dec", "Beoor_KGE_dec"], "min_goed": 1},
-    "Percentielen": {"kolommen": ["Beoor_P10_dec", "Beoor_P25_dec", "Beoor_P75_dec", "Beoor_P90_dec"], "min_goed": 4},
-}
 
-MIN_GROEPEN_VOLDOEN = 2
-DREMPEL_HWS = 75.0
-DREMPEL_REGIONAAL = 50.0
-HWS_WATERSCHAP = "Rijkswaterstaat"
-
-
-def BeoordeelCriteria(stats: dict) -> dict:
+def BeoordeelCriteria(stats: dict, criteria_grenzen: dict | None = None) -> dict:
     """Beoordeelt de statistieken op basis van de KRW-toetsingscriteria.
 
     Parameters
     ----------
     stats
         Dictionary met statistieken zoals teruggegeven door GetStatisticsComparison.
+    criteria_grenzen
+        Grenswaarden per criterium. Standaard KRW-drempelwaarden worden gebruikt als
+        None wordt meegegeven.
 
     Returns
     -------
     dict met per criterium de beoordeling: 'Goed', 'Matig', 'Onvoldoende' of 'n.v.t.'
     """
+    if criteria_grenzen is None:
+        criteria_grenzen = {
+            "Bias": {"Goed": 10.0, "Matig": 15.0},
+            "NSE": {"Goed": 0.5},
+            "KGE": {"Goed": 0.6},
+            "P10": {"Goed": 25.0, "Matig": 30.0},
+            "P25": {"Goed": 10.0, "Matig": 15.0},
+            "P75": {"Goed": 10.0, "Matig": 15.0},
+            "P90": {"Goed": 25.0, "Matig": 30.0},
+        }
+
     beoordeling = {}
 
     def _beoordeel(waarde, criterium, hoger_is_beter=False):
         if waarde is None or np.isnan(waarde):
             return "n.v.t."
-        grenzen = CRITERIA_GRENZEN[criterium]
+        grenzen = criteria_grenzen[criterium]
         if hoger_is_beter:
             return "Goed" if waarde > grenzen["Goed"] else "Onvoldoende"
         else:
@@ -604,7 +610,7 @@ def SaveTimeseries(
         dec_df.to_excel(writer, sheet_name="Decade", index=False)
 
 
-def _KleureerBeoordelingen(ws, df: pd.DataFrame) -> None:
+def _KleureerBeoordelingen(ws, df: pd.DataFrame, beoor_kleuren: dict | None = None) -> None:
     """Kleurt de beoordelingskolommen (kolommen die 'Beoor_' bevatten) in het worksheet.
 
     Parameters
@@ -613,12 +619,16 @@ def _KleureerBeoordelingen(ws, df: pd.DataFrame) -> None:
         openpyxl worksheet object.
     df
         DataFrame waaruit het worksheet is aangemaakt (voor kolomindexen).
+    beoor_kleuren
+        Kleurentabel voor Excel-opmaak. Standaard: interne ``_BEOOR_KLEUREN``.
     """
+    if beoor_kleuren is None:
+        beoor_kleuren = _BEOOR_KLEUREN
     beoor_cols = [i + 1 for i, col in enumerate(df.columns) if col.startswith("Beoor_")]
     for row_idx in range(2, ws.max_row + 1):  # rij 1 = header
         for col_idx in beoor_cols:
             cell = ws.cell(row=row_idx, column=col_idx)
-            kleur = BEOOR_KLEUREN.get(cell.value, BEOOR_KLEUREN["n.v.t."])
+            kleur = beoor_kleuren.get(cell.value, beoor_kleuren["n.v.t."])
             cell.fill = kleur
 
 
@@ -626,21 +636,27 @@ def BerekenModelEindbeoordeling(
     validatie_xlsx: str | Path,
     output_xlsx: str | Path | None = None,
     periode: str = "totaal",
+    criteria_groepen: dict | None = None,
+    min_groepen_voldoen: int = 2,
+    drempel_hws: float = 75.0,
+    drempel_regionaal: float = 50.0,
+    hws_waterschap: str = "Rijkswaterstaat",
+    beoor_kleuren: dict | None = None,
 ) -> pd.DataFrame:
     """Leest de weggeschreven Validatie_criteria.xlsx en berekent de eindbeoordeling.
 
     Werkt op de decade-beoordelingskolommen (Beoor_*_dec) die per waterschap-sheet
     aanwezig zijn. De criteria zijn gegroepeerd in drie overkoepelende groepen
-    (zie CRITERIA_GROEPEN):
+    (``criteria_groepen``):
 
     - Bias         : RelBias_dec
     - NSE/KGE      : NSE_dec en/of KGE_dec  (Goed als ≥ 1 Goed)
     - Percentielen : P10, P25, P75, P90      (Goed als ≥ 2 van 4 Goed)
 
-    Een locatie 'voldoet' als MIN_GROEPEN_VOLDOEN (standaard 2) van de 3 groepen Goed zijn.
+    Een locatie 'voldoet' als ``min_groepen_voldoen`` (standaard 2) van de 3 groepen Goed zijn.
     Het model is 'Geschikt' als het % voldoende locaties de drempel haalt:
-    - DREMPEL_HWS voor sheet "Rijkswaterstaat" (hoofdwatersysteem)
-    - DREMPEL_REGIONAAL voor overige sheets
+    - ``drempel_hws`` voor sheet ``hws_waterschap`` (hoofdwatersysteem)
+    - ``drempel_regionaal`` voor overige sheets
 
     Parameters
     ----------
@@ -650,11 +666,35 @@ def BerekenModelEindbeoordeling(
         Optioneel uitvoerpad voor een nieuwe Excel met de eindbeoordeling.
     periode
         Rij-filter op de kolom 'Periode'; standaard 'totaal'.
+    criteria_groepen
+        Groepdefinities met kolommen en min_goed per groep.
+    min_groepen_voldoen
+        Minimaal aantal groepen dat 'Goed' moet zijn voor een locatie om te voldoen.
+    drempel_hws
+        Minimaal % voldoende locaties voor het hoofdwatersysteem.
+    drempel_regionaal
+        Minimaal % voldoende locaties voor regionale waterschappen.
+    hws_waterschap
+        Naam van het HWS-sheet (krijgt strengere drempel).
+    beoor_kleuren
+        Kleurentabel voor Excel-opmaak. Standaard: interne ``_BEOOR_KLEUREN``.
 
     Returns
     -------
     pd.DataFrame met de eindbeoordeling per waterschap + samenvattingsrijen.
     """
+    if criteria_groepen is None:
+        criteria_groepen = {
+            "Bias": {"kolommen": ["Beoor_Bias_dec"], "min_goed": 1},
+            "NSE_KGE": {"kolommen": ["Beoor_NSE_dec", "Beoor_KGE_dec"], "min_goed": 1},
+            "Percentielen": {
+                "kolommen": ["Beoor_P10_dec", "Beoor_P25_dec", "Beoor_P75_dec", "Beoor_P90_dec"],
+                "min_goed": 4,
+            },
+        }
+    if beoor_kleuren is None:
+        beoor_kleuren = _BEOOR_KLEUREN
+
     # Open de validatie-Excel zonder alle sheets tegelijk in geheugen te laden
     xl = pd.ExcelFile(validatie_xlsx)
     detail_rijen: list[dict] = []
@@ -662,12 +702,12 @@ def BerekenModelEindbeoordeling(
 
     # Vertaaltabel van beoordelingswaarden naar Excel-opvulkleuren
     _kleur_map = {
-        "Geschikt": BEOOR_KLEUREN["Goed"],
-        "Ongeschikt": BEOOR_KLEUREN["Onvoldoende"],
-        "Ja": BEOOR_KLEUREN["Goed"],
-        "Nee": BEOOR_KLEUREN["Onvoldoende"],
-        "Goed": BEOOR_KLEUREN["Goed"],
-        "Onvoldoende": BEOOR_KLEUREN["Onvoldoende"],
+        "Geschikt": beoor_kleuren["Goed"],
+        "Ongeschikt": beoor_kleuren["Onvoldoende"],
+        "Ja": beoor_kleuren["Goed"],
+        "Nee": beoor_kleuren["Onvoldoende"],
+        "Goed": beoor_kleuren["Goed"],
+        "Onvoldoende": beoor_kleuren["Onvoldoende"],
     }
 
     # ── Stap 1: doorloop elke waterschap-sheet ────────────────────────────────
@@ -682,23 +722,23 @@ def BerekenModelEindbeoordeling(
             continue
 
         # Rijkswaterstaat krijgt een strengere drempel dan regionale waterschappen
-        is_hws = sheet == HWS_WATERSCHAP
-        drempel = DREMPEL_HWS if is_hws else DREMPEL_REGIONAAL
+        is_hws = sheet == hws_waterschap
+        drempel = drempel_hws if is_hws else drempel_regionaal
         n_voldoet = 0
 
         # ── Stap 2: beoordeel elke locatie ───────────────────────────────────
         for _, rij in df_p.iterrows():
             groep_beoor: dict[str, str] = {}
-            for groep, cfg in CRITERIA_GROEPEN.items():
+            for groep, cfg in criteria_groepen.items():
                 # Alleen kolommen meenemen die ook echt in de sheet aanwezig zijn
                 aanwezig = [k for k in cfg["kolommen"] if k in df_p.columns]
                 n_goed = sum(rij.get(k, "n.v.t.") == "Goed" for k in aanwezig)
                 # Groep is "Goed" als het minimum aantal "Goed"-kolommen is gehaald
                 groep_beoor[groep] = "Goed" if (aanwezig and n_goed >= cfg["min_goed"]) else "Onvoldoende"
 
-            # Locatie voldoet als minimaal MIN_GROEPEN_VOLDOEN van de 3 groepen "Goed" zijn
+            # Locatie voldoet als minimaal min_groepen_voldoen van de 3 groepen "Goed" zijn
             n_groepen_goed = sum(v == "Goed" for v in groep_beoor.values())
-            voldoet = n_groepen_goed >= MIN_GROEPEN_VOLDOEN
+            voldoet = n_groepen_goed >= min_groepen_voldoen
             if voldoet:
                 n_voldoet += 1
 
@@ -737,7 +777,7 @@ def BerekenModelEindbeoordeling(
     df_det = pd.DataFrame(detail_rijen)
 
     # ── Stap 4: voeg totaalrijen toe voor HWS en Regionaal als geheel ────────
-    for type_naam, type_drempel in [("HWS", DREMPEL_HWS), ("Regionaal", DREMPEL_REGIONAAL)]:
+    for type_naam, type_drempel in [("HWS", drempel_hws), ("Regionaal", drempel_regionaal)]:
         sub = df_sam[df_sam["Type"] == type_naam]
         if sub.empty:
             continue
@@ -780,8 +820,8 @@ def BerekenModelEindbeoordeling(
             # Notitieregel met de gebruikte instellingen voor reproduceerbaarheid
             ws.cell(row=ws.max_row + 2, column=1).value = (
                 f"Instellingen: periode={periode}  |  tijdreeks=decade  |  "
-                f"min. groepen voldoen={MIN_GROEPEN_VOLDOEN}/3  |  "
-                f"drempel HWS={DREMPEL_HWS}%  |  drempel regionaal={DREMPEL_REGIONAAL}%"
+                f"min. groepen voldoen={min_groepen_voldoen}/3  |  "
+                f"drempel HWS={drempel_hws}%  |  drempel regionaal={drempel_regionaal}%"
             )
 
             # Sheet 2: per locatie de drie groepsbeoordelingen en of de locatie voldoet
@@ -801,7 +841,9 @@ def BerekenModelEindbeoordeling(
     return df_sam
 
 
-def ExportToExcel(results_excel: dict, output_path: str | Path) -> None:
+def ExportToExcel(
+    results_excel: dict, output_path: str | Path, criteria_grenzen: dict | None, beoor_kleuren: dict | None = None
+) -> None:
     """Schrijft per waterschap een sheet naar een Excel-bestand.
 
     Bevat alle statistieken en beoordelingen voor dag- en decadewaarden,
@@ -834,12 +876,12 @@ def ExportToExcel(results_excel: dict, output_path: str | Path) -> None:
                         return round(float(val), 3) if not np.isnan(val) else np.nan
 
                     beoor_d = (
-                        BeoordeelCriteria(stats_d)
+                        BeoordeelCriteria(stats_d, criteria_grenzen)
                         if stats_d is not None
                         else dict.fromkeys(["NSE", "KGE", "Bias", "P10", "P25", "P75", "P90"], "n.v.t.")
                     )
                     beoor_dc = (
-                        BeoordeelCriteria(stats_dc)
+                        BeoordeelCriteria(stats_dc, criteria_grenzen)
                         if stats_dc is not None
                         else dict.fromkeys(["NSE", "KGE", "Bias", "P10", "P25", "P75", "P90"], "n.v.t.")
                     )
@@ -893,7 +935,7 @@ def ExportToExcel(results_excel: dict, output_path: str | Path) -> None:
 
             # Kleurcodering op beoordelingskolommen
             ws = writer.sheets[sheet_name]
-            _KleureerBeoordelingen(ws, df_sheet)
+            _KleureerBeoordelingen(ws, df_sheet, beoor_kleuren=beoor_kleuren)
 
             # Kolombreedte automatisch aanpassen
             for col_idx, col_name in enumerate(df_sheet.columns, start=1):
@@ -901,12 +943,118 @@ def ExportToExcel(results_excel: dict, output_path: str | Path) -> None:
                 ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = min(max_len + 2, 30)
 
 
+def _PlotAndSaveFractie(
+    combined_df: pd.DataFrame,
+    concentration_path: Path | None,
+    basin_node_id: int,
+    tracers: list[str] | None,
+    fig_name: str,
+    waterschap: str,
+    output_folder: Path,
+) -> str | None:
+    """Gecombineerd figuur: gestapelde fracties (boven) + Ribasim+meting tijdreeks (onder).
+
+    De twee panelen delen de x-as zodat pieken direct te correleren zijn met de
+    bijdragende fracties. Opgeslagen in {output_folder}/{waterschap}/{fig_name}_fractie.png.
+
+    Returns HTML img-tag string voor gebruik in popup, of None als er geen fractie
+    data beschikbaar is voor dit basin.
+    """
+    if concentration_path is None:
+        return None
+    ds = xr.open_dataset(concentration_path)
+    table = ds.to_dataframe().reset_index()
+    ds.close()
+
+    table = table[table["node_id"] == basin_node_id]
+    if tracers is not None:
+        table = table[table["substance"].isin(tracers)]
+
+    if len(table) == 0:
+        return None
+
+    groups = table.groupby("substance")
+    available = [t for t in (tracers or sorted(table["substance"].unique())) if t in groups.groups]
+    stack = {k: groups.get_group(k)["concentration"].to_numpy() for k in available}
+    key = next(iter(stack))
+    frac_time = groups.get_group(key)["time"]
+
+    font = "Arial"
+    _halo = [pe.withStroke(linewidth=5, foreground="black")]
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    # Gestapelde fracties op linker y-as
+    ax.stackplot(frac_time, list(stack.values()), labels=list(stack.keys()), alpha=0.75)
+    ax.plot(frac_time, np.sum(list(stack.values()), axis=0), c="black", lw=1.8, label="_totaal")
+    ax.set_ylabel("Fractie [-]", fontdict={"fontsize": 13, "fontname": font, "fontweight": "bold"})
+    ax.set_ylim(0, 1.05)
+    ax.grid(True, color="#555555", alpha=0.5, linewidth=0.7)
+    ax.set_title(f"{fig_name} — Basin {basin_node_id}", fontsize=11, fontweight="bold", wrap=True)
+    ax.tick_params(axis="both", labelsize=11)
+    for lbl in ax.get_xticklabels() + ax.get_yticklabels():
+        lbl.set_fontweight("bold")
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+
+    # Debiet lijnen op rechter y-as; witte halo voorkomt verwarring met fractie-kleuren
+    ax2 = ax.twinx()
+    ax2.plot(
+        combined_df["time"],
+        combined_df["flow_rate"],
+        label="Ribasim",
+        color="tab:blue",
+        linewidth=2.5,
+        zorder=5,
+        path_effects=_halo,
+    )
+    if "sum" in combined_df.columns and not combined_df["sum"].isna().all():
+        ax2.plot(
+            combined_df["time"],
+            combined_df["sum"],
+            label="Meting",
+            color="tab:orange",
+            linewidth=2.8,
+            zorder=5,
+            path_effects=_halo,
+        )
+    ax2.set_ylabel("Debiet [m$^3$/s]", fontdict={"fontsize": 13, "fontname": font, "fontweight": "bold"})
+    ax2.tick_params(axis="y", labelsize=11)
+    for lbl in ax2.get_yticklabels():
+        lbl.set_fontweight("bold")
+
+    # Gecombineerde legenda buiten de plotruimte (onder), zodat overlap met data
+    # structureel onmogelijk is — twinx-lijnen worden niet meegenomen door loc="best"
+    handles1, labels1 = ax.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(
+        handles1 + handles2,
+        labels1 + labels2,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.20),
+        ncol=8,
+        prop={"family": font, "weight": "bold", "size": 10},
+        frameon=True,
+    )
+    fig.subplots_adjust(bottom=0.20)
+
+    fig_name_clean = _sanitize_filename(fig_name)
+    fig_folder = output_folder / waterschap
+    fig_folder.mkdir(parents=True, exist_ok=True)
+    fname = fig_name_clean + "_fractie.png"
+    fig.savefig(fig_folder / fname, bbox_inches="tight", dpi=150)
+    plt.close(fig)
+
+    return f'<img src="../figures_fracties/{waterschap}/{fname}" width=400 height=300>'
+
+
 def CompareOutputMeasurements(
     loc_koppeltabel,
     loc_specifics,
     meas_folder,
     model_folder,
+    toml_file: str,
     filetype="flow",
+    criteria_grenzen: dict | None = None,
+    beoor_kleuren: dict | None = None,
     apply_for_water_authority: str | None = None,
     save_results_combined: bool = False,
     output_is_feather: bool = True,
@@ -933,11 +1081,19 @@ def CompareOutputMeasurements(
     save_results_combined
         Optional boolean to check if all the results are to be written to a single layer in a geopackage instead of
         one per water authority. Defaults to False
+    model
+        Optioneel geladen ribasim.Model object voor het genereren van gecombineerde
+        fractie+tijdreeks plots. Vereist dat concentration.nc aanwezig is in
+        model.results_path. Locaties met meerdere links of zonder bereikbaar Basin
+        worden automatisch overgeslagen. Als None (standaard) worden geen fractie
+        plots aangemaakt.
 
     Returns
     -------
     The function returns nothing, but saves the results in .png figures, geopackages,
     tijdsreeksen per meetlocatie en een Excel-bestand met criteria en beoordelingen.
+    Als model is opgegeven en concentration.nc beschikbaar is, wordt ook
+    Fractie_locaties.gpkg geschreven.
 
     """
     koppeltabel = LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority=apply_for_water_authority)
@@ -952,9 +1108,38 @@ def CompareOutputMeasurements(
 
     measurements = LoadMeasurements(meas_folder)
 
+    # ── Fractie plots setup (optioneel, vereist model met concentration.nc) ──────
+    print("Inlezen model...")
+    model = Model.read(Path(model_folder) / toml_file)
+
+    _frac_available = False
+    _concentration_path = None
+    _tracers = None
+    _frac_fig_folder = Path(model_folder) / "results" / "figures_fracties"
+    if model is not None:
+        try:
+            _concentration_path = Path(model.results_path) / "concentration.nc"
+            _frac_available = _concentration_path.exists()
+            if not _frac_available:
+                print(f"concentration.nc niet gevonden: {_concentration_path}. Fractie plots overgeslagen.")
+        except AttributeError:
+            print("model.results_path niet beschikbaar. Fractie plots overgeslagen.")
+        if _frac_available and get_lhm_fractions is not None:
+            try:
+                _tracers = get_lhm_fractions(model)
+                print(f"LHM tracers geladen ({len(_tracers)}): {_tracers}")
+            except Exception as exc:
+                print(f"get_lhm_fractions mislukt ({exc}). Standaard tracers worden gebruikt.")
+
     results_measurements: dict[str, dict[str, list[object]]] = {}
     results_measurements_decade: dict[str, dict[str, list[object]]] = {}
     results_excel = {}  # voor het Excel-criteriabestand
+
+    # Aparte lijst voor fractie locaties (los van de validatie geopackages)
+    _fractie_records: list[dict] = []
+
+    # Pre-bouw graph voor O(1) basin-traversal in de loop hieronder
+    _model_graph: dict | None = _build_model_graph(model) if model is not None else None
 
     # Get the unique link ids
     unique_links = get_unique(koppeltabel["link_id_parsed"])
@@ -1108,9 +1293,38 @@ def CompareOutputMeasurements(
             fig_name=fig_name,
             bron_meting=bron_meting,
             output_folder=Path(model_folder, "results", "figures"),
+            criteria_grenzen=criteria_grenzen,
         )
         fig_name_clean = _sanitize_filename(fig_name)
         pop_up_figure = f'<img src="../figures/{waterschap}/{fig_name_clean}.png" width=400 height=300>'
+
+        # Fractie plot (optioneel — enkelvoudige link + model vereist)
+        if _frac_available and isinstance(link, int):
+            fractie_basin_node_id = _find_basin_for_link(model, link, _graph=_model_graph)
+            if fractie_basin_node_id is not None:
+                pop_up_fractie = _PlotAndSaveFractie(
+                    combined_df=combined_df,
+                    concentration_path=_concentration_path,
+                    basin_node_id=fractie_basin_node_id,
+                    tracers=_tracers,
+                    fig_name=fig_name,
+                    waterschap=waterschap,
+                    output_folder=_frac_fig_folder,
+                )
+                if pop_up_fractie is not None:
+                    _fractie_records.append(
+                        {
+                            "MeetreeksC": existing_measurements[0],
+                            "Waterschap": waterschap,
+                            "Aan/Af": meetlocaties_link.iloc[0]["Aan/Af"],
+                            "link_id": link,
+                            "basin_node_id": fractie_basin_node_id,
+                            "figure_path": pop_up_fractie,
+                            "geometry": meetlocaties_link.iloc[0]["geometry_parsed"],
+                        }
+                    )
+            else:
+                print(f"    Geen Basin bereikbaar voor link {link} — fractieplot overgeslagen")
 
         # Save the resulting statistics per measurement
         for key, val in [
@@ -1142,6 +1356,7 @@ def CompareOutputMeasurements(
             fig_name=fig_name_dec,
             bron_meting=bron_meting,
             output_folder=Path(model_folder) / "results" / "figures",
+            criteria_grenzen=criteria_grenzen,
         )
         fig_name_dec_clean = _sanitize_filename(fig_name) + "_decade"
         pop_up_figure_dec = f'<img src="../figures/{waterschap}/{fig_name_dec_clean}.png" width=400 height=300>'
@@ -1211,8 +1426,16 @@ def CompareOutputMeasurements(
 
     # Schrijf het Excel-criteriabestand weg
     excel_path = Path(model_folder) / "results" / "Validatie_criteria.xlsx"
-    ExportToExcel(results_excel, excel_path)
+    ExportToExcel(results_excel, excel_path, criteria_grenzen=criteria_grenzen, beoor_kleuren=beoor_kleuren)
     print(f"Criteria Excel opgeslagen: {excel_path}")
+
+    # ── Schrijf Fractie_locaties.gpkg met alleen locaties waarvoor een fractieplot is gemaakt ──
+    if _frac_available and _fractie_records:
+        frac_gdf = gpd.GeoDataFrame(_fractie_records, geometry="geometry")
+        frac_gdf.set_crs(epsg=28992, inplace=True)
+        frac_gpkg = Path(model_folder) / "results" / "Fractie_locaties.gpkg"
+        frac_gdf.to_file(frac_gpkg, layer="fractie_locaties")
+        print(f"Fractie locaties geopackage opgeslagen: {frac_gpkg} ({len(_fractie_records)} locaties)")
 
 
 def ConvertToDecade(combined_df_results):
@@ -1294,7 +1517,7 @@ def LoadMeasurements(meas_folder) -> dict[str, pd.DataFrame]:
     return measurements
 
 
-def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_folder):
+def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_folder, criteria_grenzen):
     """Plots data from a pd.DataFrame, adds statistical information, and saves the plot as an image in a specified folder.
 
     Parameters
@@ -1330,7 +1553,7 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
     def _fmt(val, decimals=3):
         return f"{round(val, decimals)}" if val is not None and not np.isnan(val) else "n.v.t."
 
-    beoordeling = BeoordeelCriteria(stats)
+    beoordeling = BeoordeelCriteria(stats, criteria_grenzen)
 
     fig = plt.figure(figsize=(11, 5))
     gs = fig.add_gridspec(1, 2, width_ratios=[4, 1.1], wspace=0.20)
@@ -1373,7 +1596,7 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
         lbl.set_fontweight("bold")
     lines = [model_line, meas_line, model_cum_line, meas_cum_line]
     labels = [line.get_label() for line in lines]
-    ax.legend(lines, labels, prop={"family": font}, fontsize=10, loc="best")
+    ax.legend(lines, labels, prop={"family": font}, fontsize=13, loc="best")
 
     # ── Statistieken-panel rechts ─────────────────────────────────────────────
     ax_leg.add_patch(
@@ -1438,14 +1661,22 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
     for sleutel, label, fmt in [
         ("NSE", "NSE", ".2f"),
         ("KGE", "KGE", ".2f"),
-        ("RelBias", "Bias", ".1f"),
     ]:
         val = stats.get(sleutel)
         val_str = f"{val:{fmt}}" if val is not None and not np.isnan(val) else "n.v.t."
-        beoor = beoordeling.get("Bias" if sleutel == "RelBias" else sleutel, "n.v.t.")
+        beoor = beoordeling.get(sleutel, "n.v.t.")
         kleur = _BEOOR_KLEUR.get(beoor, "gray")
-        eenheid = " %" if sleutel == "RelBias" else ""
-        _regel(f"{label}: {val_str}{eenheid}", suffix=beoor, suffix_kleur=kleur)
+        _regel(f"{label}: {val_str}", suffix=beoor, suffix_kleur=kleur)
+
+    bias_val = stats.get("RelBias")
+    bias_str = f"{bias_val:.1f}" if bias_val is not None and not np.isnan(bias_val) else "n.v.t."
+    mean_sim_val = stats.get("mean_sim")
+    mean_obs_val = stats.get("mean_obs")
+    mean_sim_str = f"{mean_sim_val:.2f}" if mean_sim_val is not None and not np.isnan(mean_sim_val) else "n.v.t."
+    mean_obs_str = f"{mean_obs_val:.2f}" if mean_obs_val is not None and not np.isnan(mean_obs_val) else "n.v.t."
+    beoor_bias = beoordeling.get("Bias", "n.v.t.")
+    kleur_bias = _BEOOR_KLEUR.get(beoor_bias, "gray")
+    _regel(f"Bias: {bias_str} % ({mean_sim_str}/{mean_obs_str})", suffix=beoor_bias, suffix_kleur=kleur_bias)
 
     y -= SEP
 
@@ -1549,35 +1780,866 @@ def ExtraInfoToevoegenAllData(
     print("ExtraInfoToevoegenAllData voltooid.")
 
 
+def _build_model_graph(model) -> dict:
+    """Bouw eenmalig O(1)-opzoekstructuren voor link/node traversal.
+
+    Dient éénmalig aangeroepen te worden vóór een loop over meerdere links, zodat
+    elke aanroep van _find_basin_for_link O(1) dictionary-lookups gebruikt in plaats
+    van O(n) DataFrame-scans.
+
+    Returns
+    -------
+    dict met sleutels:
+        node_type_map  - node_id  → node_type (str)
+        inflow_count   - node_id  → aantal instromen (int)
+        upstream_map   - to_node_id   → from_node_id
+        downstream_map - from_node_id → to_node_id
+        link_endpoints - link_id  → (from_node_id, to_node_id)
+    """
+    from collections import Counter
+
+    links_df = model.link.df
+    if links_df.index.name == "link_id":
+        links_df = links_df.reset_index()
+
+    from_ids = links_df["from_node_id"].astype(int)
+    to_ids = links_df["to_node_id"].astype(int)
+    link_ids = links_df["link_id"].astype(int)
+
+    node_type_map: dict[int, str] = {}
+    try:
+        nodes_df = model.node.df
+        if nodes_df is not None and "node_type" in nodes_df.columns:
+            if nodes_df.index.name == "node_id":
+                node_type_map = nodes_df["node_type"].astype(str).to_dict()
+            elif "node_id" in nodes_df.columns:
+                node_type_map = dict(
+                    zip(nodes_df["node_id"].astype(int), nodes_df["node_type"].astype(str), strict=False)
+                )
+    except AttributeError:
+        pass
+
+    return {
+        "node_type_map": node_type_map,
+        "inflow_count": dict(Counter(to_ids)),
+        "upstream_map": dict(zip(to_ids, from_ids, strict=False)),
+        "downstream_map": dict(zip(from_ids, to_ids, strict=False)),
+        "link_endpoints": dict(zip(link_ids, zip(from_ids, to_ids, strict=False), strict=False)),
+    }
+
+
+def _find_basin_for_link(model, link_id: int, max_hops: int = 20, _graph: dict | None = None) -> int | None:
+    """Zoek het Basin knooppunt dat hoort bij een link_id.
+
+    Loopt eerst stroomopwaarts (via from_node_id) totdat een Basin gevonden is of een
+    Junction aangetroffen wordt. Bij een Junction of mislukking wordt stroomafwaarts
+    gezocht (via to_node_id van de originele link). Een Junction stroomafwaarts
+    betekent dat geen Basin gevonden kan worden → returns None.
+
+    Parameters
+    ----------
+    _graph
+        Pre-gebouwde opzoekstructuren van _build_model_graph. Als None wordt het
+        graph éénmalig intern aangemaakt (handig voor losse aanroepen, maar gebruik
+        _build_model_graph vóór een loop voor O(1) performance per aanroep).
+    """
+    if _graph is None:
+        _graph = _build_model_graph(model)
+
+    node_type_map = _graph["node_type_map"]
+    inflow_count = _graph["inflow_count"]
+    upstream_map = _graph["upstream_map"]
+    downstream_map = _graph["downstream_map"]
+    link_endpoints = _graph["link_endpoints"]
+
+    if link_id not in link_endpoints:
+        return None
+    orig_from, orig_to = link_endpoints[link_id]
+
+    # Stroomopwaarts: begin bij from_node_id
+    node_id = orig_from
+    visited: set[int] = set()
+    for _ in range(max_hops):
+        if node_id in visited:
+            break
+        visited.add(node_id)
+        node_type = node_type_map.get(node_id)
+        if node_type is None:
+            break
+        if node_type == "Basin":
+            return node_id
+        if node_type == "Junction" and inflow_count.get(node_id, 0) > 1:
+            break
+        node_id = upstream_map.get(node_id)
+        if node_id is None:
+            break
+
+    # Stroomafwaarts: begin bij to_node_id van originele link
+    node_id = orig_to
+    visited = set()
+    for _ in range(max_hops):
+        if node_id in visited:
+            break
+        visited.add(node_id)
+        node_type = node_type_map.get(node_id)
+        if node_type is None:
+            break
+        if node_type == "Basin":
+            return node_id
+        if node_type == "Junction":
+            return None
+        node_id = downstream_map.get(node_id)
+        if node_id is None:
+            break
+
+    return None
+
+
 # %%
+###################################################################################
+###################################################################################
+###################################################################################
+###################################################################################
+#                   LHM 4.1-vergelijking
+#    Codes voor aparte analyse van Ribasim uitvoer en LHM 4.1 vergelijking
+#    Hiervoor draaien we eerst de standaard nabewerking.
+###################################################################################
+###################################################################################
+###################################################################################
+
+
+def _lhm41_laad_decade_tijdreeks(ts_root: str | Path, waterschap: str, fig_name_clean: str) -> pd.DataFrame | None:
+    path = Path(ts_root) / waterschap / f"{fig_name_clean}.xlsx"
+    if not path.exists():
+        print(f"  Tijdreeks niet gevonden: {path}")
+        return None
+    df = pd.read_excel(path, sheet_name="Decade")
+    df = df.iloc[:, :3].copy()
+    df.columns = ["Datum", "meting", "Ribasim"]
+    df["Datum"] = pd.to_datetime(df["Datum"])
+    df["meting"] = pd.to_numeric(df["meting"], errors="coerce")
+    df["Ribasim"] = pd.to_numeric(df["Ribasim"], errors="coerce")
+    return df
+
+
+def _lhm41_laad_csv(lhm41_folder: str | Path, csv_naam: str, LHM41_TEKEN_CORRECTIE: dict | None) -> pd.DataFrame | None:
+    path = Path(lhm41_folder) / csv_naam
+    if not path.exists():
+        print(f"  LHM 4.1 CSV niet gevonden: {path}")
+        return None
+    df = pd.read_csv(path, sep=None, engine="python")
+    df = df.iloc[:, :2].copy()
+    df.columns = ["Datum", "LHM41"]
+    df["Datum"] = pd.to_datetime(df["Datum"])
+    df["LHM41"] = pd.to_numeric(df["LHM41"], errors="coerce")
+    if LHM41_TEKEN_CORRECTIE is not None:
+        factor = LHM41_TEKEN_CORRECTIE.get(csv_naam)
+        if factor is not None:
+            df["LHM41"] *= factor
+            print(f"  Tekencorrectie toegepast op {csv_naam} (factor: {factor})")
+    return df
+
+
+def _lhm41_bereken_p95_klasse(
+    measurements: dict,
+    meetreeks_c: str,
+    aan_af: str,
+    threshold: float = 5.0,
+) -> str:
+    meas_df = measurements["afvoer_dag"] if aan_af in ("Afvoer", "Aan&Af") else measurements["aanvoer_dag"]
+    if meetreeks_c not in meas_df.columns:
+        return "geen_data"
+    serie = meas_df[meetreeks_c].dropna()
+    if len(serie) == 0:
+        return "geen_data"
+    q05 = serie.quantile(0.05)
+    q95 = serie.quantile(0.95)
+    return ">=5" if (abs(q05) >= threshold or abs(q95) >= threshold) else "<5"
+
+
+def _lhm41_bereken_p95_klasse_som(
+    measurements: dict,
+    locs: list,
+    threshold: float = 5.0,
+) -> str:
+    aan_af = locs[0]["Aan/Af"]
+    meas_df = measurements["afvoer_dag"] if aan_af in ("Afvoer", "Aan&Af") else measurements["aanvoer_dag"]
+
+    series_list = []
+    for loc in locs:
+        col = loc["MeetreeksC"]
+        if col in meas_df.columns:
+            series_list.append(meas_df[col].rename(col))
+
+    if not series_list:
+        return "geen_data"
+
+    combined = pd.concat(series_list, axis=1).dropna()
+    if combined.empty:
+        return "geen_data"
+
+    som = combined.sum(axis=1)
+    q05 = som.quantile(0.05)
+    q95 = som.quantile(0.95)
+    return ">=5" if (abs(q05) >= threshold or abs(q95) >= threshold) else "<5"
+
+
+def _lhm41_cum_afwijking_jaarlijks(
+    df: pd.DataFrame,
+    col_model: str,
+    col_obs: str,
+    zomer: bool = False,
+) -> dict:
+    leeg = {"per_jaar": {}, "gemiddeld": np.nan, "totaal": np.nan}
+
+    d = df.copy()
+    if zomer:
+        d = d[d["Datum"].dt.month.between(4, 9)]
+    if d.empty:
+        return leeg
+
+    d["jaar"] = d["Datum"].dt.year
+    afwijkingen_per_jaar = {}
+
+    for jaar, grp in d.groupby("jaar"):
+        grp_geldig = grp.dropna(subset=[col_obs])
+        if grp_geldig.empty:
+            continue
+        laatste_datum = grp_geldig["Datum"].max()
+        grp_tot_einde = grp[grp["Datum"] <= laatste_datum]
+
+        cum_obs = grp_tot_einde[col_obs].fillna(0).sum()
+        cum_mod = grp_tot_einde[col_model].fillna(0).sum()
+
+        if abs(cum_obs) > 0:
+            afwijkingen_per_jaar[int(str(jaar))] = round(abs(1 - cum_mod / cum_obs) * 100, 1)
+
+    waarden = list(afwijkingen_per_jaar.values())
+    gemiddeld = float(np.nanmean(waarden)) if waarden else np.nan
+
+    d_geldig = d.dropna(subset=[col_obs])
+    if not d_geldig.empty:
+        laatste_datum_totaal = d_geldig["Datum"].max()
+        d_tot_einde = d[d["Datum"] <= laatste_datum_totaal]
+        cum_obs_tot = d_tot_einde[col_obs].fillna(0).sum()
+        cum_mod_tot = d_tot_einde[col_model].fillna(0).sum()
+        totaal = round(abs(1 - cum_mod_tot / cum_obs_tot) * 100, 1) if abs(cum_obs_tot) > 0 else np.nan
+    else:
+        totaal = np.nan
+
+    return {"per_jaar": afwijkingen_per_jaar, "gemiddeld": gemiddeld, "totaal": totaal}
+
+
+def _lhm41_bereken_statistieken(
+    df: pd.DataFrame,
+    col_model: str,
+    col_obs: str,
+) -> dict:
+    df_stats = df.rename(columns={col_model: "flow_rate", col_obs: "sum", "Datum": "time"})
+
+    stats_per_periode = GetStatisticsPerPeriod(df_stats)
+    stats = dict(stats_per_periode["totaal"])
+
+    nse_per_jaar = {
+        jaar: s["NSE"]
+        for jaar, s in stats_per_periode.items()
+        if jaar != "totaal" and s is not None and not np.isnan(s.get("NSE", np.nan))
+    }
+    stats["NSE_per_jaar"] = nse_per_jaar
+
+    cum_jaar = _lhm41_cum_afwijking_jaarlijks(df, col_model, col_obs, zomer=False)
+    cum_zomer = _lhm41_cum_afwijking_jaarlijks(df, col_model, col_obs, zomer=True)
+
+    stats["CumJaar"] = cum_jaar["gemiddeld"]
+    stats["CumJaar_totaal"] = cum_jaar["totaal"]
+    stats["CumJaar_per_jaar"] = cum_jaar["per_jaar"]
+    stats["CumZomer"] = cum_zomer["gemiddeld"]
+    stats["CumZomer_totaal"] = cum_zomer["totaal"]
+    stats["CumZomer_per_jaar"] = cum_zomer["per_jaar"]
+
+    return stats
+
+
+def _lhm41_toets_locaties(
+    stats_lijst: list[dict],
+    categorie: str,
+    p95_klasse: str,
+    criteria_lhm41: dict,
+) -> list[dict]:
+    criteria = criteria_lhm41.get((categorie, p95_klasse), [])
+    rijen = []
+    for type_stat, drempel, pct_vereist, label in criteria:
+        waarden = [s[type_stat] for s in stats_lijst if not np.isnan(s.get(type_stat, np.nan))]
+        n_totaal = len(waarden)
+        if n_totaal == 0:
+            rijen.append(
+                {
+                    "Criterium": label,
+                    "N": 0,
+                    "N_voldoet": 0,
+                    "Pct_voldoet": np.nan,
+                    "Pct_vereist": pct_vereist,
+                    "Beoordeling": "n.v.t.",
+                }
+            )
+            continue
+        n_voldoet = sum(v > drempel for v in waarden) if type_stat == "NSE" else sum(v < drempel for v in waarden)
+        pct = n_voldoet / n_totaal * 100
+        rijen.append(
+            {
+                "Criterium": label,
+                "N": n_totaal,
+                "N_voldoet": n_voldoet,
+                "Pct_voldoet": round(pct, 1),
+                "Pct_vereist": pct_vereist,
+                "Beoordeling": "Goed" if pct >= pct_vereist else "Onvoldoende",
+            }
+        )
+    return rijen
+
+
+def _lhm41_stats_regels(
+    stats_rib: dict, stats_lhm: dict, categorie: str, p95_klasse: str, criteria_lhm41: dict
+) -> list[dict]:
+    criteria = criteria_lhm41.get((categorie, p95_klasse), [])
+
+    def _beoordeling(waarde: float, type_stat: str, drempel: float) -> tuple[str, str]:
+        if np.isnan(waarde):
+            return "n.b.", "gray"
+        voldoet = waarde > drempel if type_stat == "NSE" else waarde < drempel
+        return ("Voldoet", "#2a7a2a") if voldoet else ("Voldoet niet", "#c0392b")
+
+    regels = []
+    regels.append(
+        {"text": f"Categorie: {categorie}  |  P95: {p95_klasse} m³/s", "color": None, "bold": True, "indent": False}
+    )
+    regels.append({"text": "", "color": None, "bold": False, "indent": False})
+
+    for type_stat, drempel, pct_vereist, label in criteria:
+        rib_val = stats_rib.get(type_stat, np.nan)
+        lhm_val = stats_lhm.get(type_stat, np.nan)
+        rib_str = f"{rib_val:.1f}" if not np.isnan(rib_val) else "n.b."
+        lhm_str = f"{lhm_val:.1f}" if not np.isnan(lhm_val) else "n.b."
+        rib_label, rib_kleur = _beoordeling(rib_val, type_stat, drempel)
+        lhm_label, lhm_kleur = _beoordeling(lhm_val, type_stat, drempel)
+
+        regels.append({"text": f"{label}  (norm ≥{pct_vereist}% loc.)", "color": None, "bold": False, "indent": False})
+        regels.append(
+            {
+                "text": f"  Ribasim:  {rib_str}",
+                "color": None,
+                "bold": False,
+                "indent": True,
+                "suffix": rib_label,
+                "suffix_color": rib_kleur,
+            }
+        )
+        regels.append(
+            {
+                "text": f"  LHM 4.1:  {lhm_str}",
+                "color": None,
+                "bold": False,
+                "indent": True,
+                "suffix": lhm_label,
+                "suffix_color": lhm_kleur,
+            }
+        )
+        regels.append({"text": "", "color": None, "bold": False, "indent": False})
+
+    for sleutel, label in [("NSE", "NSE totaal")]:
+        if not any(c[0] == sleutel for c in criteria):
+            rib_val = stats_rib.get(sleutel, np.nan)
+            lhm_val = stats_lhm.get(sleutel, np.nan)
+            rib_str = f"{rib_val:.2f}" if not np.isnan(rib_val) else "n.b."
+            lhm_str = f"{lhm_val:.2f}" if not np.isnan(lhm_val) else "n.b."
+            regels.append({"text": label, "color": None, "bold": False, "indent": False})
+            regels.append(
+                {
+                    "text": f"  Ribasim: {rib_str}   LHM 4.1: {lhm_str}",
+                    "color": "dimgray",
+                    "bold": False,
+                    "indent": True,
+                }
+            )
+            regels.append({"text": "", "color": None, "bold": False, "indent": False})
+
+    return regels
+
+
+def _lhm41_plot_vergelijking(
+    df_merged: pd.DataFrame,
+    titel: str,
+    output_folder: str | Path,
+    fig_naam: str,
+    stats_rib: dict | None = None,
+    stats_lhm: dict | None = None,
+    categorie: str = "",
+    p95_klasse: str = "",
+    criteria_lhm41: dict | None = None,
+) -> None:
+    if criteria_lhm41 is None:
+        criteria_lhm41 = {}
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
+
+    MULTIPLIER = 10 * 86400
+    font = "Arial"
+
+    datum = df_merged["Datum"]
+    meting = df_merged["meting_som"]
+    ribasim = df_merged["Ribasim_som"]
+    lhm41 = df_merged["LHM41"]
+
+    cum_meting = meting.fillna(0).cumsum() * MULTIPLIER / 1_000_000
+    cum_ribasim = ribasim.fillna(0).cumsum() * MULTIPLIER / 1_000_000
+    cum_lhm41 = lhm41.fillna(0).cumsum() * MULTIPLIER / 1_000_000
+
+    heeft_stats = stats_rib is not None and stats_lhm is not None
+    fig_breedte = 12 if heeft_stats else 8
+
+    fig = plt.figure(figsize=(fig_breedte, 7))
+    if heeft_stats:
+        gs = fig.add_gridspec(2, 2, width_ratios=[3, 1.8], hspace=0.15, wspace=0.12)
+        ax_dec = fig.add_subplot(gs[0, 0])
+        ax_cum = fig.add_subplot(gs[1, 0], sharex=ax_dec)
+        ax_leg = fig.add_subplot(gs[:, 1])
+        ax_leg.axis("off")
+    else:
+        gs = fig.add_gridspec(2, 1, hspace=0.15)
+        ax_dec = fig.add_subplot(gs[0])
+        ax_cum = fig.add_subplot(gs[1], sharex=ax_dec)
+
+    fig.suptitle(titel, fontname=font, fontsize=12, fontweight="bold", wrap=True)
+
+    ax_dec.plot(datum, meting, label="Meting", color="tab:orange", linewidth=2.0)
+    ax_dec.plot(datum, ribasim, label="Ribasim", color="tab:blue", linewidth=2.0)
+    ax_dec.plot(datum, lhm41, label="LHM 4.1", color="tab:green", linewidth=2.0, linestyle="--")
+    ax_dec.set_ylabel("Debiet [m³/s]", fontdict={"fontsize": 12, "fontname": font, "fontweight": "bold"})
+    ax_dec.legend(fontsize=10, loc="upper right")
+    ax_dec.grid(True, linewidth=0.5)
+    ax_dec.tick_params(axis="both", labelsize=11)
+    for lbl in ax_dec.get_xticklabels() + ax_dec.get_yticklabels():
+        lbl.set_fontweight("bold")
+
+    ax_cum.plot(datum, cum_meting, label="Meting cum.", color="tab:orange", linewidth=2.0)
+    ax_cum.plot(datum, cum_ribasim, label="Ribasim cum.", color="tab:blue", linewidth=2.0)
+    ax_cum.plot(datum, cum_lhm41, label="LHM 4.1 cum.", color="tab:green", linewidth=2.0, linestyle="--")
+    ax_cum.set_ylabel("Cum. debiet [Mm³]", fontdict={"fontsize": 12, "fontname": font, "fontweight": "bold"})
+    ax_cum.legend(fontsize=10, loc="upper left")
+    ax_cum.grid(True, linewidth=0.5)
+    ax_cum.tick_params(axis="x", rotation=45, labelsize=11)
+    ax_cum.tick_params(axis="y", labelsize=11)
+    for lbl in ax_cum.get_xticklabels() + ax_cum.get_yticklabels():
+        lbl.set_fontweight("bold")
+
+    if heeft_stats:
+        regels = _lhm41_stats_regels(stats_rib, stats_lhm, categorie, p95_klasse, criteria_lhm41)
+        ax_leg.add_patch(
+            plt.matplotlib.patches.FancyBboxPatch(
+                (0.02, 0.02),
+                0.96,
+                0.96,
+                transform=ax_leg.transAxes,
+                boxstyle="round,pad=0.02",
+                facecolor="whitesmoke",
+                edgecolor="lightgray",
+                linewidth=0.8,
+                zorder=0,
+            )
+        )
+        LINE_HEIGHT = 0.050
+        VERDICT_STEP = 0.020
+        GAP_AFTER = 0.030
+        y = 0.96
+
+        for regel in regels:
+            tekst = regel["text"]
+            kleur = regel["color"] or "black"
+            suffix = regel.get("suffix")
+            suffix_kleur = regel.get("suffix_color", "black")
+            ax_leg.text(
+                0.06,
+                y,
+                tekst,
+                transform=ax_leg.transAxes,
+                fontsize=10.5,
+                fontfamily=font,
+                color=kleur,
+                fontweight="bold",
+                verticalalignment="top",
+                clip_on=True,
+            )
+            y -= LINE_HEIGHT
+            if suffix:
+                ax_leg.text(
+                    0.08,
+                    y,
+                    suffix,
+                    transform=ax_leg.transAxes,
+                    fontsize=10.5,
+                    fontfamily=font,
+                    color=suffix_kleur,
+                    fontweight="bold",
+                    verticalalignment="top",
+                    clip_on=True,
+                )
+                y -= VERDICT_STEP
+                y -= GAP_AFTER
+
+    fig.savefig(Path(output_folder) / f"{fig_naam}.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _lhm41_kleur_toetsing(ws, df: pd.DataFrame) -> None:
+    if "Beoordeling" not in df.columns:
+        return
+    col_idx = df.columns.tolist().index("Beoordeling") + 1
+    for row_idx in range(2, ws.max_row + 1):
+        cell = ws.cell(row=row_idx, column=col_idx)
+        cell.fill = _BEOOR_KLEUREN.get(cell.value, _BEOOR_KLEUREN["n.v.t."])
+
+
+def AnalyseLHM41Vergelijking(
+    gpkg_koppellaag: str | Path,
+    layer_naam: str,
+    model_folder: str | Path,
+    meas_folder: str | Path,
+    lhm41_folder: str | Path,
+    criteria_lhm41: dict | None = None,
+    output_path: str | Path | None = None,
+    LHM41_TEKEN_CORRECTIE: dict | None = None,
+) -> None:
+    """Voert de LHM 4.1-vergelijkingsanalyse uit en schrijft een criteria-Excel weg.
+
+    Parameters
+    ----------
+    gpkg_koppellaag
+        Pad naar de geopackage met de koppellaag.
+    layer_naam
+        Naam van de laag in de geopackage (bijv. ``'koppeling_lhm4_1_reeksen'``).
+    model_folder
+        Map van het Ribasim-model; tijdreeksen worden gelezen uit
+        ``{model_folder}/results/tijdreeksen/``.
+    meas_folder
+        Map met de meetbestanden (Metingen_aanvoer/afvoer_dag_totaal.csv).
+    lhm41_folder
+        Map met de LHM 4.1 decade CSV-bestanden.
+    criteria_lhm41
+        Toetsingscriteria per (categorie, P95-klasse). Standaard: _CRITERIA_LHM41_DEFAULT.
+    output_path
+        Pad voor het output-Excel. Standaard:
+        ``{model_folder}/results/Validatie_criteria_lhm4_1.xlsx``.
+    LHM41_TEKEN_CORRECTIE
+        Tekencorrectie per CSV-bestandsnaam. Standaard: geen correcties.
+    """
+    _CRITERIA_LHM41_DEFAULT = {
+        ("Afvoer", ">=5"): [
+            ("NSE", 0.2, 80, "NSE > 0.2"),
+            ("NSE", 0.5, 60, "NSE > 0.5"),
+            ("CumJaar", 25, 80, "Cum. jaarafvoer dif. < 25%"),
+        ],
+        ("Afvoer", "<5"): [
+            ("NSE", 0.2, 80, "NSE > 0.2"),
+            ("NSE", 0.5, 60, "NSE > 0.5"),
+            ("CumJaar", 33, 80, "Cum. jaarafvoer dif. < 33%"),
+        ],
+        ("Aanvoer", ">=5"): [
+            ("NSE", 0.2, 80, "NSE > 0.2"),
+            ("NSE", 0.5, 60, "NSE > 0.5"),
+            ("CumZomer", 25, 80, "Cum. zomer aanvoer dif. < 25%"),
+        ],
+        ("Aanvoer", "<5"): [
+            ("NSE", 0.2, 80, "NSE > 0.2"),
+            ("NSE", 0.5, 60, "NSE > 0.5"),
+            ("CumZomer", 50, 80, "Cum. zomer aanvoer dif. < 50%"),
+        ],
+    }
+
+    if criteria_lhm41 is None:
+        criteria_lhm41 = _CRITERIA_LHM41_DEFAULT
+    if output_path is None:
+        output_path = Path(model_folder) / "results" / "Validatie_criteria_lhm4_1.xlsx"
+
+    ts_root = Path(model_folder) / "results" / "tijdreeksen"
+
+    # ── 1. Laad koppellaag ────────────────────────────────────────────────────
+    print("Laden koppellaag...")
+    gdf = gpd.read_file(gpkg_koppellaag, layer=layer_naam)
+    ontbrekend = {"MeetreeksC", "Aan/Af", "Waterschap", "LHM_4_1_csv"} - set(gdf.columns)
+    if ontbrekend:
+        raise ValueError(f"Kolommen ontbreken in koppellaag: {ontbrekend}")
+    print(f"  {len(gdf)} rijen geladen.")
+
+    # ── 2. Laad metingen voor P95-classificatie ───────────────────────────────
+    print("Laden metingen...")
+    measurements = LoadMeasurements(meas_folder)
+
+    # ── 3. Per locatie: decade-tijdreeks + statistieken Ribasim vs. meting ───
+    print("Berekenen statistieken per locatie (Ribasim vs. meting)...")
+    locatie_resultaten = []
+
+    # Mapping
+    _LHM41_AANAF_NAAR_CATEGORIE = {
+        "Afvoer": "Afvoer",
+        "Aanvoer": "Aanvoer",
+        "Aan&Af": "Afvoer",
+    }
+
+    for _, rij in gdf.iterrows():
+        meetreeks_c = rij["MeetreeksC"]
+        aan_af = rij["Aan/Af"]
+        waterschap = rij["Waterschap"]
+        lhm41_csv = rij["LHM_4_1_csv"]
+        categorie = _LHM41_AANAF_NAAR_CATEGORIE.get(aan_af, "Afvoer")
+        p95_klasse = _lhm41_bereken_p95_klasse(measurements, meetreeks_c, aan_af)
+        fig_name = _sanitize_filename(meetreeks_c)
+
+        df_dec = _lhm41_laad_decade_tijdreeks(ts_root, waterschap, fig_name)
+        if df_dec is None or df_dec.dropna(subset=["meting", "Ribasim"]).empty:
+            print(f"  Geen bruikbare decade-data voor {meetreeks_c}, overgeslagen.")
+            continue
+
+        stats_rib = _lhm41_bereken_statistieken(df_dec, "Ribasim", "meting")
+
+        locatie_resultaten.append(
+            {
+                "MeetreeksC": meetreeks_c,
+                "Waterschap": waterschap,
+                "Aan/Af": aan_af,
+                "Categorie": categorie,
+                "P95_klasse": p95_klasse,
+                "LHM_4_1_csv": lhm41_csv,
+                "df_dec": df_dec,
+                "stats_rib": stats_rib,
+            }
+        )
+
+    print(f"  {len(locatie_resultaten)} locaties verwerkt.")
+
+    # ── 4. Groepeer op LHM_4_1_csv: sommeer + vergelijk met LHM 4.1 ─────────
+    print("Berekenen statistieken per groep (LHM 4.1 vs. meting)...")
+    groep_resultaten: list[dict[str, Any]] = []
+
+    groepen: dict[str, list] = defaultdict(list)
+    for loc in locatie_resultaten:
+        csv_naam = str(loc["LHM_4_1_csv"]).strip()
+        if csv_naam and csv_naam.lower() != "nan":
+            groepen[csv_naam].append(loc)
+
+    for csv_naam, locs in groepen.items():
+        datum_index = locs[0]["df_dec"]["Datum"].values
+        rib_som = np.zeros(len(datum_index))
+        met_som = np.zeros(len(datum_index))
+        has_meting = np.zeros(len(datum_index), dtype=bool)
+
+        for loc in locs:
+            df_i = loc["df_dec"].set_index("Datum").reindex(datum_index)
+            rib_som += df_i["Ribasim"].fillna(0).values
+            met_som += df_i["meting"].fillna(0).values
+            has_meting |= df_i["meting"].notna().values
+
+        df_som = pd.DataFrame(
+            {
+                "Datum": datum_index,
+                "Ribasim_som": rib_som,
+                "meting_som": np.where(has_meting, met_som, np.nan),
+            }
+        )
+
+        df_lhm = _lhm41_laad_csv(lhm41_folder, csv_naam, LHM41_TEKEN_CORRECTIE)
+        if df_lhm is None:
+            continue
+        df_merged = df_som.merge(df_lhm, on="Datum", how="left")
+
+        categorie = locs[0]["Categorie"]
+        p95_klasse = _lhm41_bereken_p95_klasse_som(measurements, locs)
+        if len(locs) > 1:
+            individueel = [loc_["P95_klasse"] for loc_ in locs]
+            if any(k != p95_klasse for k in individueel):
+                namen = [loc_["MeetreeksC"] for loc_ in locs]
+                print(
+                    f"  P95-klasse gewijzigd na optelling voor {csv_naam}: "
+                    f"individueel {individueel} → gecombineerd '{p95_klasse}' "
+                    f"({', '.join(namen)})"
+                )
+        stats_lhm = _lhm41_bereken_statistieken(df_merged, "LHM41", "meting_som")
+        stats_rib_groep = _lhm41_bereken_statistieken(df_merged, "Ribasim_som", "meting_som")
+
+        fig_naam = _sanitize_filename(Path(csv_naam).stem)
+        titel = ", ".join(loc_["MeetreeksC"] for loc_ in locs)
+        fig_folder = Path(model_folder) / "results" / "figures_lhm4_1_vergelijking"
+        _lhm41_plot_vergelijking(
+            df_merged,
+            titel,
+            fig_folder,
+            fig_naam,
+            stats_rib=stats_rib_groep,
+            stats_lhm=stats_lhm,
+            categorie=categorie,
+            p95_klasse=p95_klasse,
+            criteria_lhm41=criteria_lhm41,
+        )
+
+        groep_resultaten.append(
+            {
+                "LHM_4_1_csv": csv_naam,
+                "MeetreeksC": ", ".join(loc_["MeetreeksC"] for loc_ in locs),
+                "Waterschap": locs[0]["Waterschap"],
+                "Categorie": categorie,
+                "P95_klasse": p95_klasse,
+                "fig_naam": fig_naam,
+                "locs": locs,
+                "stats_rib": stats_rib_groep,
+                "stats_lhm": stats_lhm,
+            }
+        )
+
+    print(f"  {len(groep_resultaten)} groepen verwerkt.")
+
+    # ── 5. Toetsing per (Categorie, P95_klasse) ───────────────────────────────
+    print("Evalueren toetsingscriteria...")
+
+    def _maak_toetsing_df(resultaten: list, stats_sleutel: str, criteria_lhm41: dict) -> pd.DataFrame:
+        per_cat: dict[tuple, list] = defaultdict(list)
+        for res in resultaten:
+            per_cat[(res["Categorie"], res["P95_klasse"])].append(res[stats_sleutel])
+        rijen = []
+        for (cat, klasse), stats_lijst in sorted(per_cat.items()):
+            rijen.extend(
+                {"Categorie": cat, "P95_klasse": klasse, **tr}
+                for tr in _lhm41_toets_locaties(stats_lijst, cat, klasse, criteria_lhm41)
+            )
+        return pd.DataFrame(rijen) if rijen else pd.DataFrame()
+
+    df_toets_rib = _maak_toetsing_df(groep_resultaten, "stats_rib", criteria_lhm41)
+    df_toets_lhm = _maak_toetsing_df(groep_resultaten, "stats_lhm", criteria_lhm41)
+
+    # ── 6. Statistieken-overzicht ─────────────────────────────────────────────
+    def _stats_rij(s: dict, prefix: str) -> dict:
+        rij = {
+            f"{prefix}_NSE": round(s.get("NSE", np.nan), 3),
+            f"{prefix}_RelBias": round(s.get("RelBias", np.nan), 1),
+            f"{prefix}_CumJaar_gem": round(s.get("CumJaar", np.nan), 1),
+            f"{prefix}_CumJaar_totaal": round(s.get("CumJaar_totaal", np.nan), 1),
+            f"{prefix}_CumZomer_gem": round(s.get("CumZomer", np.nan), 1),
+            f"{prefix}_CumZomer_totaal": round(s.get("CumZomer_totaal", np.nan), 1),
+        }
+        for jaar, nse in sorted(s.get("NSE_per_jaar", {}).items()):
+            rij[f"{prefix}_NSE_{jaar}"] = round(nse, 3)
+        for jaar, afwijk in sorted(s.get("CumJaar_per_jaar", {}).items()):
+            rij[f"{prefix}_CumJaar_{jaar}"] = round(afwijk, 1)
+        for jaar, afwijk in sorted(s.get("CumZomer_per_jaar", {}).items()):
+            rij[f"{prefix}_CumZomer_{jaar}"] = round(afwijk, 1)
+        return rij
+
+    df_locaties = pd.DataFrame(
+        [
+            {
+                "LHM_4_1_csv": g["LHM_4_1_csv"],
+                "MeetreeksC": g["MeetreeksC"],
+                "Waterschap": g["Waterschap"],
+                "Categorie": g["Categorie"],
+                "P95_klasse": g["P95_klasse"],
+                **_stats_rij(g["stats_rib"], "Rib"),
+            }
+            for g in groep_resultaten
+        ]
+    )
+
+    df_groepen = pd.DataFrame(
+        [
+            {
+                "LHM_4_1_csv": g["LHM_4_1_csv"],
+                "MeetreeksC": g["MeetreeksC"],
+                "Categorie": g["Categorie"],
+                "P95_klasse": g["P95_klasse"],
+                **_stats_rij(g["stats_lhm"], "LHM41"),
+            }
+            for g in groep_resultaten
+        ]
+    )
+
+    # ── 7. Schrijf Excel ──────────────────────────────────────────────────────
+    print(f"Schrijven Excel: {output_path}")
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        if not df_locaties.empty:
+            df_locaties.to_excel(writer, sheet_name="Statistieken_Ribasim", index=False)
+        if not df_groepen.empty:
+            df_groepen.to_excel(writer, sheet_name="Statistieken_LHM41", index=False)
+        if not df_toets_rib.empty:
+            df_toets_rib.to_excel(writer, sheet_name="Toetsing_Ribasim", index=False)
+            _lhm41_kleur_toetsing(writer.sheets["Toetsing_Ribasim"], df_toets_rib)
+        if not df_toets_lhm.empty:
+            df_toets_lhm.to_excel(writer, sheet_name="Toetsing_LHM41", index=False)
+            _lhm41_kleur_toetsing(writer.sheets["Toetsing_LHM41"], df_toets_lhm)
+
+    # ── 8. GeoPackage wegschrijven voor HTML-viewer ───────────────────────────
+    print("GeoPackage wegschrijven voor HTML-viewer...")
+    geom_lookup = {row["MeetreeksC"]: row.geometry for _, row in gdf.iterrows() if row.geometry is not None}
+
+    gpkg_records = []
+    for res in groep_resultaten:
+        geom = None
+        for loc in res["locs"]:
+            geom = geom_lookup.get(loc["MeetreeksC"])
+            if geom is not None:
+                break
+        if geom is None:
+            continue
+
+        fig_naam = res["fig_naam"]
+        s_rib = res["stats_rib"]
+        s_lhm = res["stats_lhm"]
+
+        def _r(val, dec=2):
+            return round(float(val), dec) if val is not None and not np.isnan(float(val)) else None
+
+        gpkg_records.append(
+            {
+                "koppelinfo": res["MeetreeksC"],
+                "MeetreeksC": res["MeetreeksC"],
+                "Waterschap": res["Waterschap"],
+                "Categorie": res["Categorie"],
+                "P95_klasse": res["P95_klasse"],
+                "LHM_4_1_csv": res["LHM_4_1_csv"],
+                "NSE_rib": _r(s_rib.get("NSE")),
+                "CumJaar_rib": _r(s_rib.get("CumJaar"), 1),
+                "CumZomer_rib": _r(s_rib.get("CumZomer"), 1),
+                "RelBias_rib": _r(s_rib.get("RelBias"), 1),
+                "NSE_lhm": _r(s_lhm.get("NSE")),
+                "CumJaar_lhm": _r(s_lhm.get("CumJaar"), 1),
+                "CumZomer_lhm": _r(s_lhm.get("CumZomer"), 1),
+                "RelBias_lhm": _r(s_lhm.get("RelBias"), 1),
+                "figure_path": f'<img src="../figures_lhm4_1_vergelijking/{fig_naam}.png" width=400 height=300>',
+                "geometry": geom,
+            }
+        )
+
+    if gpkg_records:
+        gdf_out = gpd.GeoDataFrame(gpkg_records, geometry="geometry", crs=gdf.crs)
+        gpkg_out = Path(model_folder) / "results" / "Validatie_resultaten_lhm41.gpkg"
+        gdf_out.to_file(gpkg_out, driver="GPKG", layer="lhm41_vergelijking")
+        print(f"  GeoPackage opgeslagen: {gpkg_out} ({len(gdf_out)} groepen)")
+    else:
+        print("  Geen groepen met geometrie gevonden, GeoPackage niet weggeschreven.")
+
+    print("Klaar.")
+
+
+# %%
+
 if __name__ == "__main__":
     ########################################################################################################################################
     # Implementatie lokaal voor testen
-    # base = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\Sync_GoodCloud\Rijkswaterstaat\modellen"
-    # loc_koppeltabel = Path(base) / "lhm_coupled_2025_9_0_test" / "results" / "koppeltabel" / "Transformed_koppeltabel_versie_lhm_coupled_2025_9_0_Feedback_Verwerkt_HydroLogic.xlsx"
-    # loc_specifieke_bewerking = Path(base) / "lhm_coupled_2025_9_0_test" / "results" / "koppeltabel" / "Specifiek_bewerking_versielhm_coupled_2025_9_0.xlsx"
-    # meas_folder = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\Sync_GoodCloud\Landelijk\resultaatvergelijking\meetreeksen"
-
-    # #Nieuwe plot functies even op een kopie testen
-    # model_folder = os.path.join(base, "lhm_coupled_2025_9_0_test")
-    # base = r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\Limburg_2026_4_0 - Copy"
-    # loc_koppeltabel = os.path.join(base, "results", "koppeltabel", "Transformed_koppeltabel_versie_Limburg_HL_test_Feedback_Verwerkt_HydroLogic.xlsx")
-    # loc_specifieke_bewerking = os.path.join(base, "results", "koppeltabel", "Specifiek_bewerking_versieHL_test_Limburg.xlsx")
-    # meas_folder = r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\Sync_GoodCloud\Landelijk\resultaatvergelijking\meetreeksen"
-
-    # #Nieuwe plot functies even op een kopie testen
-    # # model_folder = base
-
-    # model_folder = Path(base) / "lhm_coupled_2025_9_0_test"
-
     cloud = CloudStorage()
     base_koppeltabel = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
     loc_koppeltabel = (
-        base_koppeltabel / "Transformed_koppeltabel_versie_Limburg_2026_4_0_Feedback_Verwerkt_HydroLogic.xlsx"
+        base_koppeltabel / "Transformed_koppeltabel_versie_RijnenIJssel_2026_5_1_Feedback_Verwerkt_HydroLogic.xlsx"
     )
-    loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieLimburg_2026_4_0.xlsx"
-    waterboard = "Limburg"
+    loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieRijnenIJssel_2026_5_1.xlsx"
+    waterboard = "RijnenIJssel"
     waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
 
     latest_model_version = sorted(
@@ -1586,7 +2648,7 @@ if __name__ == "__main__":
 
     model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
     # toml_naam = "lhm-coupled.toml"
-    toml_naam = "limburg.toml"
+    toml_naam = "wrij.toml"
 
     meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen_2026")
 
@@ -1596,10 +2658,81 @@ if __name__ == "__main__":
     # validatie_lhm4_1 = os.path.join(base, "Toetsing LHM 4.1", )
     ########################################################################################################################################
 
+    # ── Toetsingscriteria en drempelwaarden ──────────────────────────────────
+    # Richtwaarden: Goed = enige klasse (geen Matig); anders Onvoldoende.
+    # NSE > 0.4, KGE > 0.5, |Bias| < 15%, P10/P90 binnen ±30%, P25/P75 binnen ±15%.
+    CRITERIA_GRENZEN = {
+        "Bias": {"Goed": 15.0},
+        "NSE": {"Goed": 0.4},
+        "KGE": {"Goed": 0.5},
+        "P10": {"Goed": 30.0},
+        "P25": {"Goed": 15.0},
+        "P75": {"Goed": 15.0},
+        "P90": {"Goed": 30.0},
+    }
+    BEOOR_KLEUREN = {
+        "Goed": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),
+        "Matig": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"),
+        "Onvoldoende": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),
+        "n.v.t.": PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid"),
+    }
+    # 6 kwantitatieve criteria; model voldoet als ≥ MIN_GROEPEN_VOLDOEN ervan "Goed" zijn.
+    # NSE én KGE tellen samen als één criterium (tenminste één moet voldoen).
+    CRITERIA_GROEPEN = {
+        "Bias": {"kolommen": ["Beoor_Bias_dec"], "min_goed": 1},
+        "NSE_KGE": {"kolommen": ["Beoor_NSE_dec", "Beoor_KGE_dec"], "min_goed": 1},
+        "P10": {"kolommen": ["Beoor_P10_dec"], "min_goed": 1},
+        "P25": {"kolommen": ["Beoor_P25_dec"], "min_goed": 1},
+        "P75": {"kolommen": ["Beoor_P75_dec"], "min_goed": 1},
+        "P90": {"kolommen": ["Beoor_P90_dec"], "min_goed": 1},
+    }
+    MIN_GROEPEN_VOLDOEN = 3  # ≥ 3 van de 6 criteria Goed
+    DREMPEL_HWS = 75.0  # HWS: 75% van locaties moet voldoen
+    DREMPEL_REGIONAAL = 50.0  # Regionaal: 50% van locaties moet voldoen
+    HWS_WATERSCHAP = "Rijkswaterstaat"
+
+    # ── LHM 4.1-toetsingscriteria ────────────────────────────────────────────
+    CRITERIA_LHM41 = {
+        ("Afvoer", ">=5"): [
+            ("NSE", 0.2, 80, "NSE > 0.2"),
+            ("NSE", 0.5, 60, "NSE > 0.5"),
+            ("CumJaar", 25, 80, "Cum. jaarafvoer dif. < 25%"),
+        ],
+        ("Afvoer", "<5"): [
+            ("NSE", 0.2, 80, "NSE > 0.2"),
+            ("NSE", 0.5, 60, "NSE > 0.5"),
+            ("CumJaar", 33, 80, "Cum. jaarafvoer dif. < 33%"),
+        ],
+        ("Aanvoer", ">=5"): [
+            ("NSE", 0.2, 80, "NSE > 0.2"),
+            ("NSE", 0.5, 60, "NSE > 0.5"),
+            ("CumZomer", 25, 80, "Cum. zomer aanvoer dif. < 25%"),
+        ],
+        ("Aanvoer", "<5"): [
+            ("NSE", 0.2, 80, "NSE > 0.2"),
+            ("NSE", 0.5, 60, "NSE > 0.5"),
+            ("CumZomer", 50, 80, "Cum. zomer aanvoer dif. < 50%"),
+        ],
+    }
+    # Tekencorrectie per LHM 4.1 CSV-bestand (-1 als tekenconventie verschilt van Ribasim/meting)
+    LHM41_TEKEN_CORRECTIE: dict[str, float] = {
+        "Aanvoer Gemaal Winsemius_LHM_reeks.csv": -1.0,
+    }
+
     RUN_COMPARE = True
     RUN_EXTRA_INFO = True
     RUN_EINDBEOORDELING = True
+    RUN_LHM41 = True
+
     RUN_HTML_VIEWER = True
+    # Dit gaat nog niet ivm hoeveelheid links, polygons en nodes in modellen
+    model_gpkg_in_html = None
+    # Als we ook resultaten vanuit LHM4.1 kunnen we deze laag wel of niet tonen in html viewer
+    #!!!TODO: Draai hiervoor eerst notebooks/observations/analyse_lhm41_vergelijking
+    include_lhm41_html = RUN_LHM41
+    # Als we ook fracties kunnen plotten en tonen in html viewer
+    include_fractie_html = True
+
     RUN_UPLOAD = False
 
     # ── Verwerk meetreeksen, bereken statistieken, schrijf figuren/geopackages/Excel ──
@@ -1609,11 +2742,20 @@ if __name__ == "__main__":
             loc_specifics=loc_specifieke_bewerking,
             meas_folder=meas_folder,
             model_folder=model_folder,
+            toml_file=toml_naam,
             filetype="flow",
+            criteria_grenzen=CRITERIA_GRENZEN,
+            beoor_kleuren=BEOOR_KLEUREN,
             save_results_combined=True,
             output_is_feather=False,
             output_is_nc=True,
             resample_to_daily=True,
+        )
+    else:
+        print(
+            "LET OP: RUN_COMPARE is uitgeschakeld. De overige stappen (RUN_EXTRA_INFO, "
+            "RUN_EINDBEOORDELING, RUN_LHM41, RUN_HTML_VIEWER) vereisen dat "
+            "CompareOutputMeasurements al eerder succesvol is gedraaid."
         )
 
     # ── Voeg debiet_klasse_extreem toe aan bestaande geopackages ──
@@ -1636,34 +2778,64 @@ if __name__ == "__main__":
         BerekenModelEindbeoordeling(
             validatie_xlsx=validatie_xlsx,
             output_xlsx=eindbeoordeling_xlsx,
+            criteria_groepen=CRITERIA_GROEPEN,
+            min_groepen_voldoen=MIN_GROEPEN_VOLDOEN,
+            drempel_hws=DREMPEL_HWS,
+            drempel_regionaal=DREMPEL_REGIONAAL,
+            hws_waterschap=HWS_WATERSCHAP,
+            beoor_kleuren=BEOOR_KLEUREN,
+        )
+
+    # ── LHM 4.1-paden ────────────────────────────────────────────────────────
+    lhm41_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/LHM4_1_reeksen")
+    gpkg_koppellaag = cloud.joinpath(
+        "Basisgegevens/resultaatvergelijking/Koppeltabel_LHM4_1/Koppeltabel_met_toegevoegde_data_v28_04_2026.gpkg"
+    )
+    lhm41_layer_naam = "koppeling_lhm4_1_reeksen"
+    if RUN_LHM41:
+        cloud.synchronize([lhm41_folder, gpkg_koppellaag])
+        AnalyseLHM41Vergelijking(
+            gpkg_koppellaag=gpkg_koppellaag,
+            layer_naam=lhm41_layer_naam,
+            model_folder=model_folder,
+            meas_folder=meas_folder,
+            lhm41_folder=lhm41_folder,
+            criteria_lhm41=CRITERIA_LHM41,
+            LHM41_TEKEN_CORRECTIE=LHM41_TEKEN_CORRECTIE,
         )
 
     # ── HTML-viewer genereren op basis van weggeschreven geopackages ──
     if RUN_HTML_VIEWER:
-        CreateHTMLViewer(model_folder=model_folder, model_gpkg=None, include_lhm41=False)
+        CreateHTMLViewer(
+            model_folder=model_folder,
+            model_gpkg=model_gpkg_in_html,
+            include_lhm41=include_lhm41_html,
+            include_fractie=include_fractie_html,
+        )
         # CreateHTMLViewer(model_folder=model_folder, model_gpkg=None, include_lhm41=True)
 
     # ── Upload resultaten naar de cloud ──
-    if RUN_UPLOAD:
-        results = Path(model_folder) / "results"
-        for gpkg in [
-            "Validatie_resultaten_all.gpkg",
-            "Validatie_resultaten_dec_all.gpkg",
-            "Validatie_resultaten.gpkg",
-            "Validatie_resultaten_dec.gpkg",
-        ]:
-            gpkg_path = results / gpkg
-            if gpkg_path.exists():
-                cloud.upload_file(gpkg_path)
-        for xlsx in ["Validatie_criteria.xlsx", "Eindbeoordeling_model.xlsx"]:
-            xlsx_path = results / xlsx
-            if xlsx_path.exists():
-                cloud.upload_file(xlsx_path)
-        figures_path = results / "figures"
-        if figures_path.exists():
-            cloud.upload_content(figures_path)
-        html_path = results / "Validatieresultaten_HTML"
-        if html_path.exists():
-            cloud.upload_content(html_path)
+    #!TODO: nog niet getest
+    # if RUN_UPLOAD:
+    #     results = Path(model_folder) / "results"
+    #     for gpkg in [
+    #         "Validatie_resultaten_all.gpkg",
+    #         "Validatie_resultaten_dec_all.gpkg",
+    #         "Validatie_resultaten.gpkg",
+    #         "Validatie_resultaten_dec.gpkg",
+    #     ]:
+    #         gpkg_path = results / gpkg
+    #         if gpkg_path.exists():
+    #             cloud.upload_file(gpkg_path)
+    #     for xlsx in ["Validatie_criteria.xlsx", "Eindbeoordeling_model.xlsx"]:
+    #         xlsx_path = results / xlsx
+    #         if xlsx_path.exists():
+    #             cloud.upload_file(xlsx_path)
+    #     figures_path = results / "figures"
+    #     if figures_path.exists():
+    #         cloud.upload_content(figures_path)
+    #     html_path = results / "Validatieresultaten_HTML"
+    #     if html_path.exists():
+    #         cloud.upload_content(html_path)
 
 # %%

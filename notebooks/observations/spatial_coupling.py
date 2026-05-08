@@ -375,7 +375,7 @@ def filter_connector_nodes_and_links_aan_af(filtered_connector_gdfs, region_link
         static_table = getattr(lhm_model, key, None)
         if static_table and hasattr(static_table, "static") and hasattr(static_table.static, "df"):
             static_df = static_table.static.df
-            if "meta_func_afvoer" in static_df.columns:
+            if static_df is not None and "meta_func_afvoer" in static_df.columns:
                 # Determine required filtering logic
                 if aan_af == "Aanvoer":
                     required_func_value = 0

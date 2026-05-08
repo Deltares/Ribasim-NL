@@ -4,6 +4,7 @@ import contextlib
 import json
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -14,6 +15,7 @@ def CreateHTMLViewer(
     output_subfolder: str = "Validatieresultaten_HTML",
     model_gpkg: str | None = None,
     include_lhm41: bool = True,
+    include_fractie: bool = True,
 ) -> None:
     """Maakt een interactieve HTML-viewer (Leaflet) met meetlocaties op een OSM-kaart.
 
@@ -32,6 +34,10 @@ def CreateHTMLViewer(
     include_lhm41
         Als ``True`` (standaard) wordt de LHM 4.1 vergelijkingslaag toegevoegd als
         ``Validatie_resultaten_lhm41.gpkg`` beschikbaar is.
+    include_fractie
+        Als ``True`` (standaard) worden fractie-figuren en het Fractieplot-filter
+        toegevoegd als ``Fractie_locaties.gpkg`` beschikbaar is. Stel in op
+        ``False`` als het model geen concentration.nc uitvoer heeft.
     """
     LEAFLET_VERSION = "1.9.4"
     LEAFLET_JS_URL = f"https://unpkg.com/leaflet@{LEAFLET_VERSION}/dist/leaflet.js"
@@ -124,7 +130,7 @@ def CreateHTMLViewer(
             return None
         return val
 
-    def _gpkg_to_features(gpkg_path: Path) -> list[dict]:
+    def _gpkg_to_features(gpkg_path: Path) -> list[dict[str, Any]]:
         features = []
         for layer in _list_layers(gpkg_path):
             gdf = gpd.read_file(gpkg_path, layer=layer).to_crs(epsg=4326)
@@ -151,16 +157,41 @@ def CreateHTMLViewer(
                 )
         return features
 
-    features_dag = _gpkg_to_features(gpkg_dag) if gpkg_dag.exists() else []
-    features_dec = _gpkg_to_features(gpkg_dec) if gpkg_dec.exists() else []
+    features_dag: list[dict[str, Any]] = _gpkg_to_features(gpkg_dag) if gpkg_dag.exists() else []
+    features_dec: list[dict[str, Any]] = _gpkg_to_features(gpkg_dec) if gpkg_dec.exists() else []
 
     gpkg_lhm41 = results_folder / "Validatie_resultaten_lhm41.gpkg"
-    features_lhm41 = _gpkg_to_features(gpkg_lhm41) if (include_lhm41 and gpkg_lhm41.exists()) else []
+    features_lhm41: list[dict[str, Any]] = (
+        _gpkg_to_features(gpkg_lhm41) if (include_lhm41 and gpkg_lhm41.exists()) else []
+    )
     has_lhm41 = len(features_lhm41) > 0
 
     # Voeg kraan_waterverdeling_nl toe aan alle features op basis van de vaste lijst
     for feat in features_dag + features_dec + features_lhm41:
         feat["properties"]["kraan_waterverdeling_nl"] = "Ja" if _is_kraan(feat["properties"]) else "Nee"
+
+    # ── Fractie figuurpaden koppelen via MeetreeksC ──────────────────────────────
+    _frac_lookup: dict[str, str] = {}
+    if include_fractie:
+        gpkg_fractie = results_folder / "Fractie_locaties.gpkg"
+        if gpkg_fractie.exists():
+            try:
+                frac_gdf = gpd.read_file(gpkg_fractie)
+                for _, row in frac_gdf.iterrows():
+                    meetreeks = str(row.get("MeetreeksC", "") or "")
+                    figure_path = str(row.get("figure_path", "") or "")
+                    if meetreeks and figure_path:
+                        _frac_lookup[meetreeks] = figure_path
+                print(f"  Fractie locaties: {len(_frac_lookup)} locaties gekoppeld")
+            except Exception as e:
+                print(f"  Kon Fractie_locaties.gpkg niet lezen: {e}")
+
+    for feat in features_dag + features_dec:
+        p = feat["properties"]
+        meetreeks = str(p.get("MeetreeksC", "") or "")
+        fp = _frac_lookup.get(meetreeks, "")
+        p["figure_path_fractie"] = fp
+        p["has_fractieplot"] = "Ja" if fp else "Nee"
 
     # ── Cross-referentie dag ↔ decade: figuurpaden + statistieken ───────────────
     dec_props_lookup = {
@@ -510,6 +541,12 @@ def CreateHTMLViewer(
                 <div class="ws-lijst" id="kraan-lijst"></div>
             </div>
 
+            <!-- Filter Fractieplot -->
+            <div class="sectie" id="fractie-sectie" style="display:none">
+                <div class="sectie-titel">Fractieplot</div>
+                <div class="ws-lijst" id="fractie-lijst"></div>
+            </div>
+
             <!-- Achtergrondkaart -->
             <div class="sectie">
                 <div class="sectie-titel">Achtergrondkaart</div>
@@ -622,7 +659,8 @@ function makePopup(p) {
         + '<div class="pop-stat"><b>RMSE</b>'     + fmt(p.RMSE_dec, 3)       + '</div>'
         + '</div>';
     var figs = imgFromTag(p.figure_path_dec, 'Decadewaarden')
-             + imgFromTag(p.figure_path_dag, 'Dagwaarden');
+             + imgFromTag(p.figure_path_dag, 'Dagwaarden')
+             + imgFromTag(p.figure_path_fractie, 'Fractieplot');
     return '<div class="pop-title">' + (p.koppelinfo || '') + '</div>'
          + '<div class="pop-ws">'   + (p.waterschap || '') + '</div>'
          + (linkTxt ? '<div class="pop-meta">' + linkTxt + '</div>' : '')
@@ -855,6 +893,24 @@ alleKraan.forEach(function(val) {
     kraanLijst.appendChild(lbl);
 });
 
+// ── Filter Fractieplot ────────────────────────────────────────────────────────
+var _fractieFilterActief = false;
+var _alleHasFractie = [...new Set(
+    (geojsonDag.features || []).map(function(f) { return f.properties.has_fractieplot || 'Nee'; })
+)];
+if (_alleHasFractie.includes('Ja')) {
+    _fractieFilterActief = true;
+    document.getElementById('fractie-sectie').style.display = '';
+    var fractieLijst = document.getElementById('fractie-lijst');
+    ['Ja', 'Nee'].forEach(function(val) {
+        var lbl = document.createElement('label');
+        lbl.className = 'ws-item';
+        lbl.innerHTML = '<input type="checkbox" value="' + val + '" checked> ' + val;
+        lbl.querySelector('input').addEventListener('change', updateFilter);
+        fractieLijst.appendChild(lbl);
+    });
+}
+
 // ── Gecombineerd filter ───────────────────────────────────────────────────────
 function updateFilter() {
     var gesWs = new Set();
@@ -872,14 +928,20 @@ function updateFilter() {
     }
     var gesKraan = new Set();
     document.querySelectorAll('#kraan-lijst input:checked').forEach(function(cb) { gesKraan.add(cb.value); });
+    var gesFractie = null;
+    if (_fractieFilterActief) {
+        gesFractie = new Set();
+        document.querySelectorAll('#fractie-lijst input:checked').forEach(function(cb) { gesFractie.add(cb.value); });
+    }
 
     [layerDag, layerDec].forEach(function(lyr) {
         lyr.eachLayer(function(marker) {
             var p   = marker.feature.properties;
             var ws  = p.waterschap || '(onbekend)';
             var ok  = gesWs.has(ws)
-                   && (gesP95   === null || gesP95.has(p[P95_COL]))
-                   && (gesAanAf === null || gesAanAf.has(p.aan_af || ''))
+                   && (gesP95    === null || gesP95.has(p[P95_COL]))
+                   && (gesAanAf  === null || gesAanAf.has(p.aan_af || ''))
+                   && (gesFractie === null || gesFractie.has(p.has_fractieplot || 'Nee'))
                    && gesKraan.has(p.kraan_waterverdeling_nl || 'Nee');
             marker.setStyle({opacity: ok ? 1 : 0, fillOpacity: ok ? 0.9 : 0});
             marker.setRadius(ok ? 7 : 0);
@@ -890,8 +952,9 @@ function updateFilter() {
             var p   = marker.feature.properties;
             var ws  = p.Waterschap || '(onbekend)';
             var ok  = gesWs.has(ws)
-                   && (gesP95   === null || gesP95.has(p[P95_COL_LHM]))
-                   && (gesAanAf === null || gesAanAf.has(p.aan_af || ''))
+                   && (gesP95    === null || gesP95.has(p[P95_COL_LHM]))
+                   && (gesAanAf  === null || gesAanAf.has(p.aan_af || ''))
+                   && (gesFractie === null || gesFractie.has(p.has_fractieplot || 'Nee'))
                    && gesKraan.has(p.kraan_waterverdeling_nl || 'Nee');
             marker.setStyle({opacity: ok ? 1 : 0, fillOpacity: ok ? 0.85 : 0});
             marker.setRadius(ok ? 8 : 0);

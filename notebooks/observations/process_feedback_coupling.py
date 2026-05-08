@@ -26,7 +26,7 @@ locatie_koppeltabellen = cloud.joinpath("Basisgegevens/resultaatvergelijking/kop
 #     Path(r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_2017\lhm_ctwq_compat") / "lhm_ctwq.toml"
 # )
 
-waterboard = "Limburg"
+waterboard = "RijnenIJssel"
 waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
 
 latest_model_version = sorted(
@@ -39,10 +39,10 @@ model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.pat
 
 # Filteren of gebruiken we een gekoppeld model:
 filter_waterschappen = True
-waterschapsnaam = ["Limburg"]
+waterschapsnaam = ["RijnenIJssel"]
 
 # toml_naam = "lhm-coupled.toml"
-toml_naam = "limburg.toml"
+toml_naam = "wrij.toml"
 
 # synchronize paths
 # cloud.synchronize([locatie_koppeltabellen, model_folder])
@@ -89,11 +89,13 @@ partij = "HydroLogic"
 # feedback_koppeltabel_path = cloud.joinpath(locatie_koppeltabellen, "Transformed_koppeltabel_versie1_Feedback.xlsx")
 
 # Script met de orginele getransformeerde koppeltabel
-input_koppeltabel_path = cloud.joinpath(locatie_koppeltabellen, "Transformed_koppeltabel_versie_Limburg_2026_4_0.xlsx")
+input_koppeltabel_path = cloud.joinpath(
+    locatie_koppeltabellen, "Transformed_koppeltabel_versie_RijnenIJssel_2026_5_1.xlsx"
+)
 
 # Script waarin de feedback is verwerkt
 feedback_koppeltabel_path = cloud.joinpath(
-    locatie_koppeltabellen, "Transformed_koppeltabel_versie_Limburg_2026_4_0_check.xlsx"
+    locatie_koppeltabellen, "Transformed_koppeltabel_versie_RijnenIJssel_2026_5_1_check.xlsx"
 )
 
 

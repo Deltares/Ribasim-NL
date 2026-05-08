@@ -23,7 +23,7 @@ base = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
 loc_ref_koppeltabel = cloud.joinpath(base, "final_koppeltabel_v28_04_2026.xlsx")
 
-waterboard = "Limburg"
+waterboard = "RijnenIJssel"
 waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
 
 latest_model_version = sorted(
@@ -35,10 +35,10 @@ model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.pat
 
 # Filteren of gebruiken we een gekoppeld model:
 filter_waterschappen = True
-waterschapsnaam = ["Limburg"]
+waterschapsnaam = ["RijnenIJssel"]
 
 # toml_naam = "lhm-coupled.toml"
-toml_naam = "limburg.toml"
+toml_naam = "wrij.toml"
 
 
 # Als we wel een geometry hadden opgeslagen in de input koppeltabel, maar we kunnen in de buurt in het nieuwe model
@@ -281,7 +281,7 @@ def LaadKoppeltabel(loc_koppeltabel, eerste_tabel=False):
 # koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=eerste_tabel)
 koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=False)
 filter_waterschappen = True
-waterschapsnaam = ["Limburg"]
+waterschapsnaam = ["RijnenIJssel"]
 
 # Als we op waterschappen willen filteren:
 if filter_waterschappen:
