@@ -7,11 +7,11 @@ from ribasim.delwaq import generate, parse, run_delwaq
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.set_forcing import SetDynamicForcing
 
 from ribasim_nl import (
     CloudStorage,
     Model,
-    SetDynamicForcing,
     add_transboundary_inflow,
     import_transboundary_inflow,
     merge_rwzi_model,
@@ -46,15 +46,16 @@ surface_runoff_budgets: set[str] = {"bdgqrun"}
 def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix):
 
     # sync files so we're good to go!
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
-    precipitation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
-    evaporation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
-    cloud.synchronize(filepaths=[lhm_budget_path, precipitation_path, evaporation_path], overwrite=False)
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update")
+    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
 
-    # compute forcing
+    # Open zarr budgets (shared between forcing and offline budgets)
+    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
+
+    # compute meteo forcing from zarr precipitation (and evaporation when available)
     forcing = SetDynamicForcing(
         model=model,
-        cloud=cloud,
+        budgets=offline_budgets.budgets,
         startdate=starttime,
         enddate=endtime,
     )
@@ -62,7 +63,6 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
     model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     _, budgets_df = offline_budgets.compute_budgets(
         model,
         primary_budgets=primary_budgets,
