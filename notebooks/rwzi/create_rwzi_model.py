@@ -21,7 +21,6 @@ from ribasim_nl import CloudStorage
 # %% get input data
 cloud = CloudStorage()
 ribasim_toml = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/rwzi.toml")
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # datafiles
 model_dir = cloud.joinpath("Basisgegevens/RWZI/modellen")
@@ -35,9 +34,28 @@ rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geo
 
 cloud.synchronize(filepaths=[zinfo_influentdebieten_path, db_file, rwzi_ligging_path])
 
+# log_file = model_dir / "create_rwzi_model.log"
+log_file = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/create_rwzi_model.log")
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger.handlers.clear()
+
+formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s")
+
+file_handler = logging.FileHandler(log_file, mode="w")
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
+logging.info(f"Logging to: {log_file}")
+
 # %% create empty model
 starttime = "2017-01-01"
-endtime = "2018-01-01"
+endtime = "2020-01-01"
 time_range = pd.date_range(start=starttime, end=endtime, freq="D")
 logging.info(f"Setting up Ribasim-RWZI model between {starttime} and {endtime} in {model_dir}.")
 
@@ -78,12 +96,14 @@ def process_zinfo_quantity_data(file_path, starttime, endtime):
         )
 
     df_summed = df.groupby(["time", "RWZI_ids"])["debiet_m3d"].sum().reset_index()
-    logging.info("Duplicates are summed over the day \n")
+    if len(df_summed) > 0:
+        logging.info("Duplicates are summed over the day \n")
 
     df_pivot = df_summed.pivot(index="time", columns="RWZI_ids", values="debiet_m3d")
     df_pivot.reset_index(inplace=True)
 
-    logging.info("Zinfo data: \n %s", df_pivot.head())
+    print("Zinfo data: \n %s", df_pivot.head())
+    # logging.info("Zinfo data: \n %s", df_pivot.head())
 
     RWZI_ids = df_summed["RWZI_ids"].unique()
     return df_pivot, RWZI_ids
@@ -174,12 +194,12 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     # Filter columns: only "time" + RWZI names with data
     rwzi_flow_data = df_Zinfo_influentdebieten_renamed[["time", *list(rwzi_names_zinfo_incl)]]
 
-    logging.info(
-        "Zinfo DataFrame with renamed columns: %s",
-        df_Zinfo_influentdebieten_renamed.head(),
-    )
+    # logging.info(
+    #    "Zinfo DataFrame with renamed columns: %s",
+    #    df_Zinfo_influentdebieten_renamed.head(),
+    # )
 
-    logging.info("Filtered RWZI flow data with common RWZIs: %s", rwzi_flow_data.head())
+    # logging.info("Filtered RWZI flow data with common RWZIs: %s", rwzi_flow_data.head())
 
     return rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl
 
@@ -279,6 +299,7 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         tuple: (flow_boundary_nodes_dict, skipped_rwzis, removed_timesteps)
     """
     flow_boundary_nodes = {}  # Dictionary to track flow boundary nodes by RWZI name
+    # TODO: write to csv file the list of skipped rwzi's
     skipped_rwzis = []  # List to track skipped RWZIs
     removed_timesteps = []  # List to track removed timesteps due to NaN values
 
@@ -330,12 +351,12 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
                 Node(
                     index + 1,
                     Point(x_coord, y_coord),
-                    # TODO: besluit welke metadata er in het model relevant is (rwzi_code wordt gebruikt in merge)
                     name=rwzi_name,
                     meta_rwzi_codeist=rwzi_codeist,
                     meta_rwzi_code=rwzi_code,
                     meta_rwzi_beheerder_nr=rwzi_beheerder_nr,
                     meta_rwzi_organisatie=rwzi_organisatie,
+                    meta_bnd_type="rwzi",
                 ),
                 [
                     flow_boundary.Time(
@@ -404,6 +425,7 @@ def create_terminal_nodes_from_gdf(rwzi_gdf, rwzi_flow_data_all, skipped_rwzis, 
                     meta_rwzi_code=rwzi_code,
                     meta_rwzi_beheerder_nr=rwzi_beheerder_nr,
                     meta_rwzi_organisatie=rwzi_organisatie,
+                    meta_bnd_type="rwzi",
                 )
             )
             terminal_nodes[terminal_node_name] = terminal_node
@@ -549,9 +571,37 @@ Getest (u kunt simuleren): Nee
 """
 
 print("write rwzi model")
+
+# Logging
+all_rwzi_names = set(rwzi_gdf["Naam rwzi"])
+modelled_rwzi_names = set(flow_boundary_nodes.keys())
+missing_rwzi_names = all_rwzi_names - modelled_rwzi_names
+
+logging.info(f"\n{'=' * 60}")
+logging.info("RWZI COVERAGE REPORT")
+logging.info(f"  Total RWZIs in GeoJSON:     {len(all_rwzi_names)}")
+logging.info(f"  RWZIs written to model:     {len(modelled_rwzi_names)}")
+logging.info(f"  RWZIs missing from model:   {len(missing_rwzi_names)}")
+logging.info(f"{'=' * 60}")
+logging.info("Missing RWZIs:")
+for name in sorted(missing_rwzi_names):
+    logging.info(f"  - {name}")
+logging.info(f"{'=' * 60}\n")
+
 model.write(ribasim_toml)
 cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/readme.md").write_text(readme)
+
+# %% Export GeoJSON with model inclusion flag
+rwzi_gdf_copy = rwzi_gdf.copy()
+rwzi_gdf_copy["in_rwzi_model"] = rwzi_gdf_copy["Naam rwzi"].isin(modelled_rwzi_names)
+
+output_geojson = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/RWZI_coordinates_model_coverage.geojson")
+rwzi_gdf_copy.to_file(output_geojson, driver="GeoJSON")
+
+logging.info(f"GeoJSON with model coverage written to: {output_geojson}")
 
 upload_model = False
 if upload_model:
     cloud.upload_model("Basisgegevens/RWZI", model="rwzi")
+
+print("Done.")
