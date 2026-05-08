@@ -7,7 +7,6 @@ import pathlib
 import typing
 
 import geopandas as gpd
-import numpy as np
 from ribasim_nl.case_conversions import snake_to_pascal_case
 from ribasim_nl.link_geometries import fix_link_geometries
 from shapely.ops import nearest_points, unary_union
@@ -35,12 +34,13 @@ def node_to_hydro_object(
     assert model.node.df is not None
     assert model.basin.area.df is not None
 
+    # copy datasets
+    nodes = typing.cast(gpd.GeoDataFrame, model.node.df.copy(deep=True))
+    areas = typing.cast(gpd.GeoDataFrame, model.basin.area.df.copy(deep=True))
+
     # selection of basin-nodes and -areas
-    nodes = typing.cast(
-        gpd.GeoDataFrame,
-        model.node.df[(model.node.df["node_type"] == "Basin") & (model.node.df["meta_categorie"] != "bergend")],
-    )
-    areas = typing.cast(gpd.GeoDataFrame, model.basin.area.df[model.basin.area.df["node_id"].isin(nodes.index)])
+    nodes = nodes[(nodes["node_type"] == "Basin") & (nodes["meta_categorie"] != "bergend")]
+    areas = areas[areas["node_id"].isin(nodes.index)]
     areas.set_crs(nodes.crs, inplace=True)  # pyrefly: ignore[no-matching-overload]
 
     # selection and grouping of hydro-objects (per basin)
@@ -60,7 +60,8 @@ def node_to_hydro_object(
     ho_merged = ho_basin.groupby("node_id")["geometry"].apply(unary_union).rename("hydro")
 
     # couple grouped hydro-objects to basin-nodes
-    out = nodes.merge(ho_merged, how="left", left_index=True, right_index=True)
+    out = typing.cast(gpd.GeoDataFrame, nodes.merge(ho_merged, how="left", left_index=True, right_index=True))
+    out.set_crs(nodes.crs, inplace=True)  # pyrefly: ignore[no-matching-overload]
 
     # basin-node snapping
     valid = out["hydro"].notna()
@@ -76,13 +77,12 @@ def node_to_hydro_object(
 
     # relocate basin nodes
     out.loc[valid, "geometry"] = snapped_nodes
-    out["snap_distance"] = np.nan
-    out.loc[valid, "snap_distance"] = distances.values
+    out.loc[valid, "snap_distance"] = distances
 
     # update Ribasim model
-    out.set_index("node_id", inplace=True)
-    model.node.df.loc[out.index, "geometry"] = out["geometry"]
-    model.node.df.loc[out.index, "meta_snap_distance"] = out["snap_distance"]
+    tmp = model.node.df.copy()
+    tmp.loc[out.index, "geometry"] = out["geometry"]
+    model.node.df = tmp.copy()  # pyrefly: ignore[bad-assignment]
 
     # return updated Ribasim model
     return model
