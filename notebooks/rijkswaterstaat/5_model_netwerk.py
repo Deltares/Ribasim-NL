@@ -226,7 +226,7 @@ basin_poly_gdf["outlet_data"] = None
 
 
 # %% init model
-model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+model = Model(starttime="2017-01-01", endtime="2020-01-01", crs="EPSG:28992")
 
 
 # %% boundaries bouwen

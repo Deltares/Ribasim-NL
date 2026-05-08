@@ -20,7 +20,7 @@ from ribasim_nl import (
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
-endtime = datetime(2018, 1, 1)
+endtime = datetime(2020, 1, 1)
 write_budgets: bool = True  # write mfms_budgets.arrow for later verification
 assign_budget_fractions: bool = False  # compute (sub-) fractions from budgets-table
 add_lhm_fractions: bool = True
