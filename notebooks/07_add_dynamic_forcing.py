@@ -39,7 +39,7 @@ secondary_budgets: set[str] = {
     "bdgdrn_sys1",
     "bdgdrn_sys2",
     "bdgdrn_sys3",
-    "bdgpssw",
+    "bdgpssw_m3d",
 }
 surface_runoff_budgets: set[str] = {"bdgqrun_m3d"}
 
