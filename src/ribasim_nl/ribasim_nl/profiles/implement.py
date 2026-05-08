@@ -216,6 +216,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     # basin state category ('bergend')
     basin_state["meta_categorie"] = "bergend"
+    basin_node["meta_categorie"] = "bergend"
 
     # move storing basins' location and set Manning's node location
     basin_node["flowing_geometry"] = basin_node["geometry"].copy()
