@@ -205,16 +205,6 @@ del node_cache
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
-# Migrate meta_categorie from the state to the node table as this prior is completely filled
-basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
-basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
-    ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
-    left_index=True,
-    right_on="node_id",
-    how="left",
-)
-ribasim_model.node.df.loc[basin_node_mask, "meta_categorie"] = basin_node_meta.set_index("node_id")["meta_categorie"]
-
 # set forcing
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
