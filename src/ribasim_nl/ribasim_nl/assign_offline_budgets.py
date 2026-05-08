@@ -358,42 +358,41 @@ class AssignOfflineBudgets:
             surface_runoff_budgets -= missing
 
     def _transpose_basin_definition_polygons(
-        self, basin_definition_primairy: gpd.GeoDataFrame, basin_definition_secundairy: gpd.GeoDataFrame
+        self, basin_definition_primary: gpd.GeoDataFrame, basin_definition_secundary: gpd.GeoDataFrame
     ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
         """
-        Retruns basin_difinition_out with index of basin_definition_in that intersect the basin_definition_out polygons
+        Returns basin_difinition_out with index of basin_definition_in that intersect the basin_definition_out polygons
 
         Args:
-            basin_definition_primairy (gpd.GeoDataFrame): Basin definition with (multi) polygons
-            basin_definition_secundairy (gpd.GeoDataFrame): Basin definition with (multi) polygons
+            basin_definition_primary (gpd.GeoDataFrame): Basin definition with (multi) polygons
+            basin_definition_secundary (gpd.GeoDataFrame): Basin definition with (multi) polygons
 
         Returns
         -------
-            tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]: basin_definition_secundairy geometry with primary based index, Basin definition with
-            polygons without any intersection for primairy and secundairy basins
+            tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]: basin_definition_secundary geometry with primary based index, Basin definition with
+            polygons without any intersection for primary and secundary basins
         """
-        basin_definition_primairy_out = basin_definition_secundairy.copy()
-        tree = shapely.STRtree(basin_definition_secundairy["geometry"])
-        index_in, index_out = tree.query(basin_definition_primairy.representative_point(), predicate="intersects")
-        index_in = basin_definition_primairy.index[index_in]
-        index_out = basin_definition_secundairy.index[index_out]
+        tree = shapely.STRtree(basin_definition_secundary["geometry"])
+        index_in, index_out = tree.query(basin_definition_primary.representative_point(), predicate="intersects")
+        index_in = basin_definition_primary.index[index_in]
+        index_out = basin_definition_secundary.index[index_out]
         # evaluate non-matching items
-        # secondary basins with non matching primairy basins
-        index_undifined_secundary = basin_definition_secundairy.index[
-            ~np.isin(basin_definition_secundairy.index, index_out)
+        # secondary basins with non matching primary basins
+        index_undifined_secundary = basin_definition_secundary.index[
+            ~np.isin(basin_definition_secundary.index, index_out)
         ]
-        undifined_secondary_basins = basin_definition_primairy.loc[index_undifined_secundary]
-        # primary basins with non matching secundairy basins
+        undifined_secondary_basins = basin_definition_primary.loc[index_undifined_secundary]
+        # primary basins with non matching secundary basins
         # strategy: add to output df (fall true logic), and add to undifined output argument
-        index_undifined_primairy = basin_definition_primairy.index[~np.isin(basin_definition_primairy.index, index_in)]
-        undifined_primairy_basins = basin_definition_primairy.loc[index_undifined_primairy]
+        index_undifined_primary = basin_definition_primary.index[~np.isin(basin_definition_primary.index, index_in)]
+        undifined_primary_basins = basin_definition_primary.loc[index_undifined_primary]
         # prepare main output df
-        basin_definition_secundairy = basin_definition_secundairy.loc[index_out]
-        basin_definition_secundairy = basin_definition_secundairy.set_index([index_in])
-        basin_definition_primairy_out = pd.concat(
-            [basin_definition_secundairy, basin_definition_primairy.loc[index_undifined_primairy]]
+        basin_definition_secundary = basin_definition_secundary.loc[index_out]
+        basin_definition_secundary = basin_definition_secundary.set_index([index_in])
+        basin_definition_primary_out = pd.concat(
+            [basin_definition_secundary, basin_definition_primary.loc[index_undifined_primary]]
         )
-        return basin_definition_primairy_out, undifined_primairy_basins, undifined_secondary_basins
+        return basin_definition_primary_out, undifined_primary_basins, undifined_secondary_basins
 
     def _fill_basin_definition_from_points(
         self,
@@ -554,7 +553,7 @@ class AssignOfflineBudgets:
             secondary_values=secondary_values,
         )
 
-        # transpose primairy basins to secondary basin definition to get rid of the narrow polygons
+        # transpose primary basins to secondary basin definition to get rid of the narrow polygons
         basin_definition_primair_polygon, basin_definition_undifined_primair, basin_definition_undifined_secundair = (
             self._transpose_basin_definition_polygons(basin_definition_primair, basin_definition_secondair)
         )
@@ -660,7 +659,7 @@ class AssignOfflineBudgets:
 
         xmin, ymin, xmax, ymax = primary_basin_definition.total_bounds
         # sum over time to get all active nodes
-        primairy_sum = sum(
+        primary_sum = sum(
             budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load()
             for v in self.primary_budget_keys
         )
@@ -679,13 +678,13 @@ class AssignOfflineBudgets:
         secondary_mask_cropped = secondary_basin_mask.where(secondary_basin_mask != -999).sel(
             x=slice(xmin, xmax), y=slice(ymax, ymin)
         )
-        primary_node_id = primary_mask_cropped * xr.where(primairy_sum != 0.0, 1, np.nan)
+        primary_node_id = primary_mask_cropped * xr.where(primary_sum != 0.0, 1, np.nan)
         secondary_node_id = secondary_mask_cropped * xr.where(secondary_sum != 0.0, 1, np.nan)
         runoff_node_id = secondary_mask_cropped * xr.where(runoff_sum != 0.0, 1, np.nan)
 
         # check for unassigned budget cells: cells where budget is active but mask is nodata (-999)
-        missed_primairy = xr.where(
-            (primary_basin_mask.sel(x=slice(xmin, xmax), y=slice(ymax, ymin)) == -999) & (primairy_sum != 0.0),
+        missed_primary = xr.where(
+            (primary_basin_mask.sel(x=slice(xmin, xmax), y=slice(ymax, ymin)) == -999) & (primary_sum != 0.0),
             1,
             np.nan,
         )
@@ -704,11 +703,11 @@ class AssignOfflineBudgets:
         # green (1) = budget active and assigned to a basin
         # red   (2) = budget active but outside any basin (missed)
         # NaN       = no budget activity
-        active_primary = xr.where(primairy_sum != 0.0, 1.0, np.nan)
+        active_primary = xr.where(primary_sum != 0.0, 1.0, np.nan)
         active_secondary = xr.where(secondary_sum != 0.0, 1.0, np.nan)
         active_runoff = xr.where(runoff_sum != 0.0, 1.0, np.nan)
 
-        combined_primary = xr.where(missed_primairy == 1, 2.0, xr.where(active_primary == 1, 1.0, np.nan))
+        combined_primary = xr.where(missed_primary == 1, 2.0, xr.where(active_primary == 1, 1.0, np.nan))
         combined_secondary = xr.where(missed_secondary == 1, 2.0, xr.where(active_secondary == 1, 1.0, np.nan))
         combined_runoff = xr.where(missed_runoff == 1, 2.0, xr.where(active_runoff == 1, 1.0, np.nan))
 
@@ -721,7 +720,7 @@ class AssignOfflineBudgets:
         base_colors = plt.colormaps["hsv"](np.linspace(0, 1, n, endpoint=False))
         node_cmap = ListedColormap(base_colors)
         node_norm = BoundaryNorm(np.append(all_node_ids - 0.5, all_node_ids[-1] + 0.5), node_cmap.N)
-        # plot the first four plots; from polygon definition to gridded primairy + secondary masks
+        # plot the first four plots; from polygon definition to gridded primary + secondary masks
         for gdf, ax, title in zip(
             [
                 basin_rest,
@@ -805,5 +804,6 @@ class AssignOfflineBudgets:
             fontweight="bold",
             bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightblue", "edgecolor": "grey"},
         )
-        plt.savefig(path, bbox_inches="tight")
+        if path is not None:
+            plt.savefig(path, bbox_inches="tight")
         plt.close()
