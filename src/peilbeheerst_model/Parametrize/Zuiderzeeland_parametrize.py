@@ -19,6 +19,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
+from ribasim_nl.split_basins import SplitBasins
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
@@ -26,7 +27,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -57,6 +58,10 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/peilgebieden.
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
+splitted_basin_16_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_16.gpkg")
+splitted_basin_31_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_31.gpkg")
+splitted_basin_73_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_73.gpkg")
+
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
@@ -67,6 +72,9 @@ cloud.synchronize(
         aanvoer_path,
         meteo_path,
         profiles_path,
+        splitted_basin_16_path,
+        splitted_basin_31_path,
+        splitted_basin_73_path,
     ]
 )
 
@@ -74,14 +82,12 @@ cloud.synchronize(
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
+work_dir.mkdir(parents=True, exist_ok=True)
+
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
-
-# create work_dir/parameterized
-parameterized = work_dir / f"{waterschap}_parameterized/"
-parameterized.mkdir(parents=True, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -540,8 +546,39 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
+# convert all boundary nodes to LevelBoundaries
+ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
+ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
+
+# add outlet
+ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# loop through all splitted basins
+for splitted_basin_path, basin_id in zip(
+    [splitted_basin_16_path, splitted_basin_31_path, splitted_basin_73_path], [16, 31, 73], strict=True
+):
+    # split basins to improve model convergence
+    splitter = SplitBasins(
+        model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
+    )
+    ribasim_model = splitter.run()
+
+ribasim_model.write(ribasim_work_dir_model_toml)
+
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
+
+# Migrate meta_categorie from the state to the node table as this prior is completely filled
+basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
+basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
+    ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
+    left_index=True,
+    right_on="node_id",
+    how="left",
+)
+ribasim_model.node.df.loc[basin_node_mask, "meta_categorie"] = basin_node_meta.set_index("node_id")["meta_categorie"]
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -557,9 +594,10 @@ if DYNAMIC_CONDITIONS:
 
     # Add dynamic groundwater
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
+    precipitation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
+    evaporation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
+    cloud.synchronize(filepaths=[lhm_budget_path, precipitation_path, evaporation_path], overwrite=False)
     offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    # if offline_budgets.lhm_budget_path.exists():
-    #     offline_budgets._sync_files = lambda model: (xr.open_zarr(str(offline_budgets.lhm_budget_path)), model)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -580,10 +618,6 @@ else:
 # reset pump capacity for each pump
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
-# convert all boundary nodes to LevelBoundaries
-ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
-ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
-
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
@@ -592,8 +626,6 @@ if MIXED_CONDITIONS:
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
 
-# add outlet
-ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 for node in inlaat_structures:
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
 

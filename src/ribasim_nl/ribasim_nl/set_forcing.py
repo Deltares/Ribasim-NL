@@ -10,6 +10,33 @@ from shapely.prepared import prep
 
 from ribasim_nl import CloudStorage, Model
 
+# Makkink to open water evaporation factor, depending on the month of the year (rows)
+# and the decade in the month, starting at day 1, 11, 21 (cols). As used in Mozart.
+EVAP_FACTOR = np.array(
+    [
+        [0.00, 0.50, 0.70],
+        [0.80, 1.00, 1.00],
+        [1.20, 1.30, 1.30],
+        [1.30, 1.30, 1.30],
+        [1.31, 1.31, 1.31],
+        [1.30, 1.30, 1.30],
+        [1.29, 1.27, 1.24],
+        [1.21, 1.19, 1.18],
+        [1.17, 1.17, 1.17],
+        [1.00, 0.90, 0.80],
+        [0.80, 0.70, 0.60],
+        [0.00, 0.00, 0.00],
+    ]
+)
+
+
+def _open_water_factor(times: np.ndarray) -> np.ndarray:
+    """Return an array of open water evaporation factors for each timestep."""
+    ts = pd.DatetimeIndex(times)
+    months = ts.month - 1  # 0-based row index
+    decades = np.where(ts.day < 11, 0, np.where(ts.day < 21, 1, 2))
+    return EVAP_FACTOR[months, decades]
+
 
 class SetDynamicForcing:
     def __init__(
@@ -137,6 +164,9 @@ class SetDynamicForcing:
         precip_data = precip["P"].isel(time=slice(time_indices[0], time_indices[-1] + 1)).load().data
         evp_data = evp["Evaporation"].isel(time=slice(time_indices[0], time_indices[-1] + 1)).load().data
 
+        selected_time = time[mask]
+        evap_factors = _open_water_factor(selected_time)
+
         means: dict[int, dict[str, list[float]]] = {}
         for node_id, pixels in tqdm.tqdm(fraction_map.items(), desc="Extracting meteo per basin"):
             means[node_id] = {}
@@ -149,7 +179,7 @@ class SetDynamicForcing:
             weights = np.array([frac for _, _, frac in pixels])
 
             averaged_P_ms = np.average(values_P, axis=1, weights=weights) / 86400 / 1000
-            averaged_ET_ms = np.average(values_ET, axis=1, weights=weights) / 86400 / 1000 * 1.26
+            averaged_ET_ms = np.average(values_ET, axis=1, weights=weights) / 86400 / 1000 * evap_factors
 
             means[node_id]["prec"] = averaged_P_ms.tolist()
             means[node_id]["evp"] = averaged_ET_ms.tolist()

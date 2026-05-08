@@ -17,7 +17,8 @@ import shapely
 import tqdm.auto as tqdm
 import xarray as xr
 from ribasim.nodes import continuous_control
-from shapely.geometry import LineString
+from ribasim_nl.case_conversions import pascal_to_snake_case
+from shapely.geometry import LineString, Point
 
 from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -2697,4 +2698,72 @@ def remove_non_free_flowing_outlets(
         print(f"Following {len(non_free_flowing_outlets_ids)} non free flowing outlets were removed:")
         print(non_free_flowing_outlets_ids)
 
+    return ribasim_model
+
+
+def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx: float = 50, dy: float = 0) -> Model:
+    """Replace multi-connected LevelBoundary-nodes by single-connected LevelBoundary-nodes.
+
+    Multi-connected LevelBoundary-nodes are farther away from the connected connector-nodes, which can cause snapping
+    issues when sub-models are coupled. Replacing these multi-connected LevelBoundary-nodes by local single-connected
+    LevelBoundary-nodes, these issues are resolved.
+
+    In this function, local copies of the multi-connected LevelBoundary-nodes are created and linked to the connector
+    nodes after which the multi-connected LevelBoundary-nodes are removed, including their links with the connector
+    nodes.
+
+    :param ribasim_model: Ribasim model
+    :param lb_node_ids: node-IDs of LevelBoundary-nodes that are 'multi-connected'
+    :param dx: horizontal distance from connector node to new LevelBoundary-node, defaults to 50.0
+    :param dy: vertical distance from connector node to new LevelBoundary-node, defaults to 0.0
+
+    :return: updated Ribasim model
+    """
+
+    def new_lb_node(c_id: int, level: float) -> tuple[ribasim.geometry.node.NodeData, ribasim.geometry.node.NodeData]:
+        """Add new LevelBoundary-node near the existing connector node.
+
+        :param c_id: node-ID of connector node
+        :param level: water level at LevelBoundary
+
+        :return: connector- and (created) LevelBoundary-nodes
+        """
+        (_c_type,) = ribasim_model.node.df.loc[ribasim_model.node.df.index == c_id, "node_type"]
+        _c_node = getattr(ribasim_model, pascal_to_snake_case(_c_type))[c_id]
+        _lb_node = ribasim_model.level_boundary.add(
+            ribasim.Node(geometry=Point(_c_node.geometry.x + dx, _c_node.geometry.y + dy)),
+            [ribasim.nodes.level_boundary.Static(level=[level])],
+        )
+        return _c_node, _lb_node
+
+    # get Flow-links only
+    assert ribasim_model.link.df is not None
+    flow_table = ribasim_model.link.df[ribasim_model.link.df["link_type"] == "flow"]
+
+    # re-assign LevelBoundary-nodes
+    for i in lb_node_ids:
+        # > extract node-data
+        (i_level,) = ribasim_model.level_boundary.static.df.loc[
+            ribasim_model.level_boundary.static.df["node_id"] == i, "level"
+        ]
+        c_node_ids = {
+            "to_lb": flow_table.loc[flow_table["to_node_id"] == i, "from_node_id"],
+            "from_lb": flow_table.loc[flow_table["from_node_id"] == i, "to_node_id"],
+        }
+        n_to_add = sum(len(v) for v in c_node_ids.values())
+        logger.info(
+            f"Replacing 'multi-connected' LevelBoundary {i} by {n_to_add} 'single-connected' LevelBoundary-nodes"
+        )
+        # > remove "old" LevelBoundary
+        ribasim_model.remove_node(i, True)
+        # > towards LevelBoundary
+        for ci in c_node_ids["to_lb"]:
+            c_node, lb_node = new_lb_node(ci, i_level)
+            ribasim_model.link.add(c_node, lb_node)
+        # > from LevelBoundary
+        for ci in c_node_ids["from_lb"]:
+            c_node, lb_node = new_lb_node(ci, i_level)
+            ribasim_model.link.add(lb_node, c_node)
+
+    # return the updated model
     return ribasim_model
