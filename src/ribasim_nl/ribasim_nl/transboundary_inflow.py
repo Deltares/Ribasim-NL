@@ -28,7 +28,10 @@ def fix_date_string(date_str: str | pd.Timestamp) -> pd.Timestamp:
             base_date = datetime.strptime(date_str.split(" ")[0], "%d-%m-%Y")
             # Add one day, time will be 00:00 of the next day
             return pd.Timestamp(base_date + timedelta(days=1))
-        # Use dayfirst=True to parse dates like "23-06-2017"
+        if isinstance(date_str, str) and date_str[:4].isdigit():
+            # ISO format like "2017-06-23 00:00:00"
+            return pd.to_datetime(date_str)
+        # Day-first format like "23-06-2017"
         return pd.to_datetime(date_str, dayfirst=True)
     except Exception as e:
         logger.warning(f"Date parse error: '{date_str}' -> {e}")
