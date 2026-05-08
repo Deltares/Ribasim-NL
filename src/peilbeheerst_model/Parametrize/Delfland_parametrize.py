@@ -247,6 +247,7 @@ for splitted_basin_path, basin_id in zip(
 
 node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
+del node_cache
 
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)  # , min_area=100

@@ -20,7 +20,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
-from ribasim_nl.split_basins import SplitBasins
+from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -185,8 +185,10 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+ribasim_param.clean_tables(ribasim_model, waterschap)
 
 # loop through all splitted basins
+node_cache = NodeMetaCache(ribasim_model)
 for splitted_basin_path, basin_id in zip(
     [splitted_basin_1_path, splitted_basin_15_path, splitted_basin_22_path], [1, 15, 22], strict=True
 ):
@@ -196,8 +198,11 @@ for splitted_basin_path, basin_id in zip(
     )
     ribasim_model = splitter.run()
 
+node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
+del node_cache
 
+# set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # Migrate meta_categorie from the state to the node table as this prior is completely filled
