@@ -378,21 +378,21 @@ class AssignOfflineBudgets:
         index_out = basin_definition_secundary.index[index_out]
         # evaluate non-matching items
         # secondary basins with non matching primary basins
-        index_undifined_secundary = basin_definition_secundary.index[
+        index_undefined_secundary = basin_definition_secundary.index[
             ~np.isin(basin_definition_secundary.index, index_out)
         ]
-        undifined_secondary_basins = basin_definition_secundary.loc[index_undifined_secundary]
+        undefined_secondary_basins = basin_definition_secundary.loc[index_undefined_secundary]
         # primary basins with non matching secundary basins
-        # strategy: add to output df (fall true logic), and add to undifined output argument
-        index_undifined_primary = basin_definition_primary.index[~np.isin(basin_definition_primary.index, index_in)]
-        undifined_primary_basins = basin_definition_primary.loc[index_undifined_primary]
+        # strategy: add to output df (fall true logic), and add to undefined output argument
+        index_undefined_primary = basin_definition_primary.index[~np.isin(basin_definition_primary.index, index_in)]
+        undefined_primary_basins = basin_definition_primary.loc[index_undefined_primary]
         # prepare main output df
         basin_definition_secundary = basin_definition_secundary.loc[index_out]
         basin_definition_secundary = basin_definition_secundary.set_index([index_in])
         basin_definition_primary_out = pd.concat(
-            [basin_definition_secundary, basin_definition_primary.loc[index_undifined_primary]]
+            [basin_definition_secundary, basin_definition_primary.loc[index_undefined_primary]]
         )
-        return basin_definition_primary_out, undifined_primary_basins, undifined_secondary_basins
+        return basin_definition_primary_out, undefined_primary_basins, undefined_secondary_basins
 
     def _fill_basin_definition_from_points(
         self,
@@ -554,16 +554,16 @@ class AssignOfflineBudgets:
         )
 
         # transpose primary basins to secondary basin definition to get rid of the narrow polygons
-        basin_definition_primair_polygon, basin_definition_undifined_primair, basin_definition_undifined_secundair = (
+        basin_definition_primair_polygon, basin_definition_undefined_primair, basin_definition_undefined_secundair = (
             self._transpose_basin_definition_polygons(basin_definition_primair, basin_definition_secondair)
         )
-        if not basin_definition_undifined_primair.empty:
+        if not basin_definition_undefined_primair.empty:
             # Add undefined primary elements to secondary basins so secondary budgets will also be assigned
-            basin_definition_secondair = pd.concat([basin_definition_secondair, basin_definition_undifined_primair])
+            basin_definition_secondair = pd.concat([basin_definition_secondair, basin_definition_undefined_primair])
 
         # fill empty basins based on pip for secondary nodes
         basin_definition_primair_points = self._fill_basin_definition_from_points(
-            basin_definition_undifined_secundair, nodes[nodes[basin_metacol].isin(primary_values)]
+            basin_definition_undefined_secundair, nodes[nodes[basin_metacol].isin(primary_values)]
         )
         if not basin_definition_primair_points.empty:
             basin_definition_primair = pd.concat([basin_definition_primair_polygon, basin_definition_primair_points])
