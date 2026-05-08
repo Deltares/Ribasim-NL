@@ -277,6 +277,8 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
 # set basin profiles and add storing basins where applicable
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=100)
 
