@@ -57,22 +57,27 @@ class SetDynamicForcing:
     def add(self) -> Model:
         """Compute basin-averaged precipitation and evaporation from LHM zarr and add to model."""
         basins = self.model.basin.area.df
+        assert basins is not None
         basin_definition = basins[["node_id", "geometry"]].copy()
 
+        like = _crop_to_gdf(self.budgets[PRECIPITATION_VAR].isel(time=0, drop=True), basin_definition)
+        assert isinstance(like, xr.DataArray)
         basin_mask = imod.prepare.rasterize(
             basin_definition,
             column="node_id",
-            like=_crop_to_gdf(self.budgets[PRECIPITATION_VAR].isel(time=0, drop=True), basin_definition),
+            like=like,
             fill=-999,
             dtype=np.int32,
         )
 
         # Build precipitation dataset
         precip_ds = _crop_to_gdf(self.budgets[[PRECIPITATION_VAR]], basin_definition)
+        assert isinstance(precip_ds, xr.Dataset)
 
         # Build evaporation dataset: use real data if available, else zeros
         if EVAPORATION_VAR in self.budgets:
             evap_ds = _crop_to_gdf(self.budgets[[EVAPORATION_VAR]], basin_definition)
+            assert isinstance(evap_ds, xr.Dataset)
         else:
             # Placeholder: zeros shaped like precipitation
             evap_da = xr.zeros_like(precip_ds[PRECIPITATION_VAR])
@@ -94,7 +99,7 @@ class SetDynamicForcing:
         cell_counts = pd.Series(counts, index=unique_ids, name="count")
         # Broadcast cell counts to match the MultiIndex (node_id, time)
         node_ids = precip_df.index.get_level_values("node_id")
-        counts_per_row = node_ids.map(cell_counts).values
+        counts_per_row = node_ids.map(cell_counts.to_dict()).values
 
         # Convert summed mm/day -> averaged mm/day -> m/s
         mm_per_day_to_m_per_s = 1 / 86400 / 1000
