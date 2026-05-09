@@ -437,6 +437,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/overrides-7.7.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-26.2-pyhc364b38_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-3.0.2-py313hbfd7664_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.31.1-h27fc3a9_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.31.1-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pandoc-3.6.3-ha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandocfilters-1.5.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pango-1.56.4-hda50119_1.conda
@@ -519,6 +521,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3339-validator-0.1.4-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3986-validator-0.1.1-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3987-syntax-1.1.0-pyhe01879c_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/ribasim-2026.1.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-15.0.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-rst-1.3.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rioxarray-0.22.0-pyhc364b38_0.conda
@@ -575,10 +578,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tornado-6.5.5-py313h07c4f96_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tqdm-4.67.3-pyh8f84b5b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/traitlets-5.14.3-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/typeguard-4.5.1-pyhcf101f3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typer-0.25.1-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing-extensions-4.15.0-h396c80c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing-inspection-0.4.2-pyhcf101f3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing_extensions-4.15.0-pyhcf101f3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/typing_inspect-0.9.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing_utils-0.1.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/typst-0.13.0-h53e704d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
@@ -647,9 +652,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-ng-2.3.3-hceb46e0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/7c/2f/f91e4eee21585ff548e83358332d5632ee49f6b2dcd96cb5dca4e0468951/pandas_stubs-3.0.0.260204-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2c/2d/6ea7cad2c2f0625c4120bef5353ab7cf749141bf1d070011cebb72f68189/pandera-0.31.1-py3-none-any.whl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=07344fcf4b856e3de5c79cb7e66179e895c8ab67#07344fcf4b856e3de5c79cb7e66179e895c8ab67
-      - pypi: https://files.pythonhosted.org/packages/91/88/b55b3117287a8540b76dbdd87733808d4d01c8067a3b339408c250bb3600/typeguard-4.5.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/f1/9d06232c0471d654d42f4bde72a0dc271fd85f196edf14a6ea55048aa26a/types_geopandas-1.1.3.20260408-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/60/1d/870a15630dc37a85aa0364bf623fad6ef9ef7cad14be62a0bab7541839f5/types_networkx-3.6.1.20260408-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/db/9706a034f22eccb30ab9c0d78092da8c1917653ed81bccad9ad1914c412d/types_pycurl-7.45.7.20260408-py3-none-any.whl
@@ -657,7 +659,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/1c/f0/c391068b86abb708882c6d75a08cd7d25b2c7227dab527b3a3685a3c635b/types_pyyaml-6.0.12.20260408-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/90/b8/78fd6c037de4788c040fdd323b3369804400351b7827473920f6c1d03c10/types_requests-2.33.0.20260408-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8e/3d/cbec691f56e71636192a07bf6809f598bed06d869b03b4e2b1ad2f7df032/types_shapely-2.1.0.20260408-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/65/f3/107a22063bf27bdccf2024833d3445f4eea42b2e598abfbd46f6a63b6cb0/typing_inspect-0.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8c/b0/92c170d3d9fd52199b39a3b192f90e84d13cbd20c20b2ae8ba80be93356f/xlwings-0.35.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: ./src/bokeh_helpers
       - pypi: ./src/hydamo
@@ -1014,6 +1015,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/overrides-7.7.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-26.2-pyhc364b38_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-3.0.2-py313h26f5e95_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.31.1-h27fc3a9_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.31.1-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pandoc-3.6.3-h57928b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandocfilters-1.5.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/pango-1.56.4-h13911b6_1.conda
@@ -1094,6 +1097,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3339-validator-0.1.4-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3986-validator-0.1.1-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/rfc3987-syntax-1.1.0-pyhe01879c_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/ribasim-2026.1.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-15.0.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-rst-1.3.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rioxarray-0.22.0-pyhc364b38_0.conda
@@ -1149,10 +1153,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/tornado-6.5.5-py313h5ea7bf4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tqdm-4.67.3-pyha7b4d00_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/traitlets-5.14.3-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/typeguard-4.5.1-pyhcf101f3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typer-0.25.1-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing-extensions-4.15.0-h396c80c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing-inspection-0.4.2-pyhcf101f3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing_extensions-4.15.0-pyhcf101f3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/typing_inspect-0.9.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing_utils-0.1.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/typst-0.13.0-ha073cba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
@@ -1207,9 +1213,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: https://files.pythonhosted.org/packages/7c/2f/f91e4eee21585ff548e83358332d5632ee49f6b2dcd96cb5dca4e0468951/pandas_stubs-3.0.0.260204-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2c/2d/6ea7cad2c2f0625c4120bef5353ab7cf749141bf1d070011cebb72f68189/pandera-0.31.1-py3-none-any.whl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=07344fcf4b856e3de5c79cb7e66179e895c8ab67#07344fcf4b856e3de5c79cb7e66179e895c8ab67
-      - pypi: https://files.pythonhosted.org/packages/91/88/b55b3117287a8540b76dbdd87733808d4d01c8067a3b339408c250bb3600/typeguard-4.5.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/f1/9d06232c0471d654d42f4bde72a0dc271fd85f196edf14a6ea55048aa26a/types_geopandas-1.1.3.20260408-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/60/1d/870a15630dc37a85aa0364bf623fad6ef9ef7cad14be62a0bab7541839f5/types_networkx-3.6.1.20260408-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/db/9706a034f22eccb30ab9c0d78092da8c1917653ed81bccad9ad1914c412d/types_pycurl-7.45.7.20260408-py3-none-any.whl
@@ -1217,7 +1220,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/1c/f0/c391068b86abb708882c6d75a08cd7d25b2c7227dab527b3a3685a3c635b/types_pyyaml-6.0.12.20260408-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/90/b8/78fd6c037de4788c040fdd323b3369804400351b7827473920f6c1d03c10/types_requests-2.33.0.20260408-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8e/3d/cbec691f56e71636192a07bf6809f598bed06d869b03b4e2b1ad2f7df032/types_shapely-2.1.0.20260408-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/65/f3/107a22063bf27bdccf2024833d3445f4eea42b2e598abfbd46f6a63b6cb0/typing_inspect-0.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/91/edb5b7cc0e7ba5ecd9dbf973a461590642f616712c25b91820d48f9e0db0/xlwings-0.35.2-cp313-cp313-win_amd64.whl
       - pypi: ./src/bokeh_helpers
       - pypi: ./src/hydamo
@@ -10452,65 +10454,35 @@ packages:
   requires_dist:
   - numpy>=1.23.5
   requires_python: '>=3.11'
-- pypi: https://files.pythonhosted.org/packages/2c/2d/6ea7cad2c2f0625c4120bef5353ab7cf749141bf1d070011cebb72f68189/pandera-0.31.1-py3-none-any.whl
-  name: pandera
-  version: 0.31.1
-  sha256: f9f1ff4852804e1a181a4cb968e732a492f4b6dbefe051a8c5500da43d5c326d
-  requires_dist:
-  - packaging>=20.0
+- conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.31.1-h27fc3a9_0.conda
+  sha256: 6f38ed60c3ba34c729708701f5a9798dfa396f62c5db704ce2e16aae78b86ed0
+  md5: 33197d0b44a95fa6ea53c04db06a4f94
+  depends:
+  - pandera-base ==0.31.1 pyhcf101f3_0
+  - pandas >=2.1.1
+  - numpy >=1.24.4
+  license: MIT
+  license_family: MIT
+  purls: []
+  size: 4431
+  timestamp: 1777000436203
+- conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.31.1-pyhcf101f3_0.conda
+  sha256: d197f0ad887b9896f118e6bf9604f4ca955de49561b776e9c69b8e7cd4382cca
+  md5: 531ff805a1551c6caaf976d577ea233c
+  depends:
+  - python >=3.10
+  - packaging >=20.0
   - pydantic
   - typeguard
-  - typing-extensions
-  - typing-inspect>=0.6.0
-  - numpy>=1.24.4 ; extra == 'pandas'
-  - pandas>=2.1.1 ; extra == 'pandas'
-  - hypothesis>=6.92.7 ; extra == 'strategies'
-  - scipy ; extra == 'hypotheses'
-  - pyyaml>=5.1 ; extra == 'io'
-  - frictionless<=4.40.8 ; extra == 'frictionless'
-  - pandas-stubs ; extra == 'mypy'
-  - scipy-stubs ; python_full_version >= '3.10' and extra == 'mypy'
-  - fastapi ; extra == 'fastapi'
-  - geopandas ; extra == 'geopandas'
-  - shapely ; extra == 'geopandas'
-  - pyspark[connect]>=3.2.0 ; extra == 'pyspark'
-  - modin ; extra == 'modin'
-  - ray ; extra == 'modin'
-  - dask[dataframe] ; extra == 'modin'
-  - distributed ; extra == 'modin'
-  - modin ; extra == 'modin-ray'
-  - ray ; extra == 'modin-ray'
-  - modin ; extra == 'modin-dask'
-  - dask[dataframe] ; extra == 'modin-dask'
-  - distributed ; extra == 'modin-dask'
-  - dask[dataframe] ; extra == 'dask'
-  - distributed ; extra == 'dask'
-  - ibis-framework>=9.0.0 ; extra == 'ibis'
-  - pyarrow-hotfix ; extra == 'ibis'
-  - polars>=0.20.0 ; extra == 'polars'
-  - xarray>=2024.10.0 ; extra == 'xarray'
-  - numpy>=1.24.4 ; extra == 'xarray'
-  - hypothesis>=6.92.7 ; extra == 'all'
-  - scipy ; extra == 'all'
-  - scipy-stubs ; python_full_version >= '3.10' and extra == 'all'
-  - pyyaml>=5.1 ; extra == 'all'
-  - black ; extra == 'all'
-  - frictionless<=4.40.8 ; extra == 'all'
-  - pyspark[connect]>=3.2.0 ; extra == 'all'
-  - modin ; extra == 'all'
-  - ray ; extra == 'all'
-  - dask[dataframe] ; extra == 'all'
-  - distributed ; extra == 'all'
-  - pandas-stubs ; extra == 'all'
-  - fastapi ; extra == 'all'
-  - geopandas ; extra == 'all'
-  - shapely ; extra == 'all'
-  - ibis-framework>=9.0.0 ; extra == 'all'
-  - pyarrow-hotfix ; extra == 'all'
-  - polars>=0.20.0 ; extra == 'all'
-  - xarray>=2024.10.0 ; extra == 'all'
-  - numpy>=1.24.4 ; extra == 'all'
-  requires_python: '>=3.10'
+  - typing_extensions
+  - typing_inspect >=0.6.0
+  - python
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/pandera?source=hash-mapping
+  size: 230747
+  timestamp: 1777000436203
 - conda: https://conda.anaconda.org/conda-forge/linux-64/pandoc-3.6.3-ha770c72_0.conda
   sha256: a7392b0d5403676b0b3ab9ff09c1e65d8ab9e1c34349bba9be605d76cf622640
   md5: 16ff7c679250dc09f9732aab14408d2c
@@ -12404,44 +12376,31 @@ packages:
   - pkg:pypi/rfc3987-syntax?source=hash-mapping
   size: 22913
   timestamp: 1752876729969
-- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=07344fcf4b856e3de5c79cb7e66179e895c8ab67#07344fcf4b856e3de5c79cb7e66179e895c8ab67
-  name: ribasim
-  version: 2026.1.0
-  requires_dist:
-  - geopandas>=1.0
-  - matplotlib>=3.9
-  - netcdf4>=1.7.1
-  - numpy>=2.0
-  - packaging>=23.0
-  - pandas>=2.2
-  - pandera>=0.25
-  - pyarrow>=17.0
-  - pydantic>=2.0
-  - pyogrio>=0.8
-  - shapely>=2.0
-  - tomli-w>=1.0
-  - tomli>=2.0
-  - xarray>=2023.11
-  - datacompy>=0.16 ; extra == 'all'
-  - jinja2 ; extra == 'all'
-  - networkx ; extra == 'all'
-  - pytest ; extra == 'all'
-  - pytest-cov ; extra == 'all'
-  - pytest-xdist ; extra == 'all'
-  - ribasim-testmodels ; extra == 'all'
-  - teamcity-messages ; extra == 'all'
-  - xugrid ; extra == 'all'
-  - jinja2 ; extra == 'delwaq'
-  - networkx ; extra == 'delwaq'
-  - xugrid ; extra == 'delwaq'
-  - datacompy>=0.16 ; extra == 'diff'
-  - xugrid ; extra == 'netcdf'
-  - pytest ; extra == 'tests'
-  - pytest-cov ; extra == 'tests'
-  - pytest-xdist ; extra == 'tests'
-  - ribasim-testmodels ; extra == 'tests'
-  - teamcity-messages ; extra == 'tests'
-  requires_python: '>=3.12'
+- conda: https://conda.anaconda.org/conda-forge/noarch/ribasim-2026.1.1-pyhd8ed1ab_0.conda
+  sha256: 4bad63571a6e3068badd73b9ce5520a314183e58cfcb7dff9b8924da9eba87e3
+  md5: b4133185b4eb29be97df2e462e871a2d
+  depends:
+  - geopandas >=1.0
+  - matplotlib-base >=3.9
+  - netcdf4 >=1.7.1
+  - numpy >=2.0
+  - packaging >=23.0
+  - pandas >=2.2
+  - pandera >=0.25
+  - pyarrow >=17.0
+  - pydantic >=2.0
+  - pyogrio >=0.8
+  - python >=3.12
+  - shapely >=2.0
+  - tomli >=2.0
+  - tomli-w >=1.0
+  - xarray >=2023.11
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/ribasim?source=hash-mapping
+  size: 671796
+  timestamp: 1778305520284
 - pypi: ./src/ribasim_nl
   name: ribasim-nl
   version: 0.1.0
@@ -13549,14 +13508,23 @@ packages:
   - pkg:pypi/traitlets?source=hash-mapping
   size: 110051
   timestamp: 1733367480074
-- pypi: https://files.pythonhosted.org/packages/91/88/b55b3117287a8540b76dbdd87733808d4d01c8067a3b339408c250bb3600/typeguard-4.5.1-py3-none-any.whl
-  name: typeguard
-  version: 4.5.1
-  sha256: 44d2bf329d49a244110a090b55f5f91aa82d9a9834ebfd30bcc73651e4a8cc40
-  requires_dist:
-  - importlib-metadata>=3.6 ; python_full_version < '3.10'
-  - typing-extensions>=4.14.0
-  requires_python: '>=3.9'
+- conda: https://conda.anaconda.org/conda-forge/noarch/typeguard-4.5.1-pyhcf101f3_1.conda
+  sha256: 3191f16e1effbb16c30b42bc74c37392d3ddc08a8abbd129932755e4698e6e07
+  md5: 7b80dd11eca2644aac219fd17e9cb035
+  depends:
+  - typing_extensions >=4.14.0
+  - python >=3.10
+  - importlib-metadata >=3.6
+  - typing-extensions >=4.10.0
+  - python
+  constrains:
+  - pytest >=7
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/typeguard?source=hash-mapping
+  size: 38565
+  timestamp: 1777304793038
 - conda: https://conda.anaconda.org/conda-forge/noarch/typer-0.25.1-pyhcf101f3_0.conda
   sha256: 18fc3a27bc995318d09142fe16d01ea454e76f377bf8f68db03b8b18f11085ed
   md5: ef114c2eb2ff19f6bf616c81f4710841
@@ -13629,14 +13597,6 @@ packages:
   purls: []
   size: 91383
   timestamp: 1756220668932
-- pypi: https://files.pythonhosted.org/packages/65/f3/107a22063bf27bdccf2024833d3445f4eea42b2e598abfbd46f6a63b6cb0/typing_inspect-0.9.0-py3-none-any.whl
-  name: typing-inspect
-  version: 0.9.0
-  sha256: 9ee6fc59062311ef8547596ab6b955e1b8aa46242d854bfc78f4f6b0eff35f9f
-  requires_dist:
-  - mypy-extensions>=0.3.0
-  - typing-extensions>=3.7.4
-  - typing>=3.7.4 ; python_full_version < '3.5'
 - conda: https://conda.anaconda.org/conda-forge/noarch/typing-inspection-0.4.2-pyhcf101f3_2.conda
   sha256: 8b90d2f19f9458b8c58a55e1fcdc1d90c1603a847a47654d8a454549413ba60a
   md5: 53f5409c5cfd6c5a66417d68e3f0a864
@@ -13662,6 +13622,19 @@ packages:
   - pkg:pypi/typing-extensions?source=hash-mapping
   size: 51692
   timestamp: 1756220668932
+- conda: https://conda.anaconda.org/conda-forge/noarch/typing_inspect-0.9.0-pyhd8ed1ab_1.conda
+  sha256: a3fbdd31b509ff16c7314e8d01c41d9146504df632a360ab30dbc1d3ca79b7c0
+  md5: fa31df4d4193aabccaf09ce78a187faf
+  depends:
+  - mypy_extensions >=0.3.0
+  - python >=3.9
+  - typing_extensions >=3.7.4
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/typing-inspect?source=hash-mapping
+  size: 14919
+  timestamp: 1733845966415
 - conda: https://conda.anaconda.org/conda-forge/noarch/typing_utils-0.1.0-pyhd8ed1ab_1.conda
   sha256: 3088d5d873411a56bf988eee774559335749aed6f6c28e07bf933256afb9eb6c
   md5: f6d7aa696c67756a650e91e15e88223c
