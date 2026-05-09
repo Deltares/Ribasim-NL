@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.parametrization.level_boundary_table import update_level_boundary_static
 
 from ribasim_nl import CloudStorage, Model
 
@@ -87,22 +88,44 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 385, "flow_rate"] = 1.0
 
 
-# Paradijssluis uit waterakkoord
-node_ids = [59, 58, 2150, 2306, 2008, 2113, 2140, 2150]
-model.basin.area.df.loc[model.basin.area.df.node_id.isin(node_ids), "meta_streefpeil"] = 0.23
+basin_level_overrides = [
+    # Paradijssluis ZP peilenkaart
+    ([59, 58, 2150, 2306, 2113, 2140], -0.2),
+    # Haveltersluis ZP peilenkaart
+    ([2105], 1.82),
+    # Ossesluis ZP peilenkaart
+    ([1680], 4.8),
+    # Nieuwebrugsluis ZP peilenkaart
+    ([1772], 11.1),
+    # Smildigersluis ZP peilenkaart
+    ([1747], 13.27),
+    # Zwiggeltersluissluis ZP peilenkaart
+    ([1901], 14.95),
+    # Overijsels kanaal (Ankersmit)
+    ([1761, 2008, 2229, 2247], 5.75),
+    ([1721], 8.35),
+    # Rietberg
+    ([2288], 1.6),
+    # Peilgebied VL169
+    ([1635], 4.95),
+    # BoezemNW
+    ([2580], -0.73),
+    # Bentpolder
+    ([2185], -0.45),
+]
 
-# Overijsels kanaal (Ankersmit)
-node_ids = [1761, 2008, 2229, 2247]
-model.basin.area.df.loc[model.basin.area.df.node_id.isin(node_ids), "meta_streefpeil"] = 5.75
+for node_ids, meta_streefpeil in basin_level_overrides:
+    mask = model.basin.area.df.node_id.isin(node_ids)
+    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
 
-node_ids = [1721]
-model.basin.area.df.loc[model.basin.area.df.node_id.isin(node_ids), "meta_streefpeil"] = 8.35
-
-# Rietberg
-node_ids = [2288]
-model.basin.area.df.loc[model.basin.area.df.node_id.isin(node_ids), "meta_streefpeil"] = 1.6
-# set basin-state op meta-streefpeil
+# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
 model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+
+update_level_boundary_static(
+    model=model,
+    static_data_xlsx=static_data_xlsx,
+    code_column="meta_code_waterbeheerder",
+)
 
 
 # %%
