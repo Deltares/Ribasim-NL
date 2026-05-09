@@ -19,6 +19,7 @@ def main(
     overwrite: bool = False,
     export_intermediate_output: bool = False,
     fn_water_bodies: gpd.GeoDataFrame | None = None,
+    **kwargs,
 ) -> None:
     """Execute profile table generator.
 
@@ -36,6 +37,7 @@ def main(
         overwrite the determined representative depths per hydro-object, defaults to None
         When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
         by the depth value(s) in `water_bodies`.
+    :param kwargs: (additional) optional arguments passed on to `.run.main()`
     """
     # sync with the GoodCloud
     cloud = CloudStorage()
@@ -68,6 +70,7 @@ def main(
         fn_bgt=fn_bgt,
         wd_intermediate_output=wd_int,
         water_bodies=gdf_water_bodies,
+        **kwargs,
     )
 
     # export profile table
@@ -158,9 +161,8 @@ def _sync(cloud: CloudStorage, water_authority: str, overwrite: bool, *extra_fil
     cloud.download_verwerkt(water_authority, overwrite=overwrite)
     cloud.download_basisgegevens(["Hydrotypen"], overwrite=overwrite)
     for f in extra_file:
-        if f is None:
-            continue
-        cloud.download_file(cloud.joinurl(water_authority, f))
+        if f is not None:
+            cloud.download_file(cloud.joinurl(water_authority, f))
     print(f"\rSynced with the GoodCloud: {water_authority}")
 
 
@@ -172,11 +174,14 @@ def _read_basins(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
 
     :return: basin dataset (polygons)
     """
-    fn = cloud.joinpath(
-        water_authority, "verwerkt", "Work_dir", f"{water_authority}_parameterized", "input", "database.gpkg"
-    )
-    gdf = gpd.read_file(fn, layer="Basin / area")
-    return gdf[gdf["node_id"] == gdf["meta_node_id"]]
+    # read data
+    fn = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "input", "database.gpkg")
+    nodes = gpd.read_file(fn, layer="Node", fid_as_index=True, use_arrow=True)
+    basins = gpd.read_file(fn, layer="Basin / area")
+
+    # exclude storing basins
+    non_storing = nodes[nodes["meta_categorie"] != "bergend"].index
+    return basins[basins["node_id"].isin(non_storing)]
 
 
 def _read_cross_sections(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
@@ -251,7 +256,7 @@ def _bgt_path(cloud: CloudStorage, water_authority: str) -> Path:
 def _int_output_path(cloud: CloudStorage, water_authority: str, export: bool) -> Path | None:
     """Absolute folder-path (GoodCloud) for intermediate output.
 
-    If intermediate output is not exported, no path is returned (None). This translates in the `run.main(..)`-function
+    If intermediate output is not exported, no path is returned (None). This translates in the `run.main(...)`-function
     to not exporting the intermediate output.
 
     :param cloud: the GoodCloud

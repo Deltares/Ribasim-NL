@@ -49,6 +49,7 @@ quarto = "1.8.*"
 quartodoc = ">=0.11.1"
 rasterstats = ">=0.20"
 requests = ">=2.32"
+ribasim = "==2026.1.1"
 ruff = ">=0.14"
 seaborn = ">=0.13"
 shapely = ">=2.1"
@@ -64,7 +65,7 @@ bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "07344fcf4b856e3de5c79cb7e66179e895c8ab67", subdirectory = "python/ribasim" }
+# ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "07344fcf4b856e3de5c79cb7e66179e895c8ab67", subdirectory = "python/ribasim" }
 types-geopandas = ">=1.1"
 types-networkx = ">=3.6"
 types-pycurl = ">=7.45"

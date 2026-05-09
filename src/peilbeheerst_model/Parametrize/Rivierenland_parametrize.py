@@ -3,8 +3,10 @@
 import datetime
 import warnings
 
+import geopandas as gpd
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import shapely
+import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -58,6 +60,7 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/Aanvoergebieden_detail.shp")
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
+gaten_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaten.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -69,6 +72,7 @@ cloud.synchronize(
         aanvoer_path,
         meteo_path,
         profiles_path,
+        gaten_path,
     ]
 )
 
@@ -76,14 +80,12 @@ cloud.synchronize(
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
 work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
+work_dir.mkdir(parents=True, exist_ok=True)
+
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
-
-# # create work_dir/parameterized
-# parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-# os.makedirs(parameterized, exist_ok=True)
 
 # define variables and model
 # basin area percentage
@@ -95,7 +97,7 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2017, 1, 1)
-endtime = datetime.datetime(2018, 1, 1)
+endtime = datetime.datetime(2020, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -138,10 +140,30 @@ ribasim_model.merge_basins(node_id=63, to_node_id=97, are_connected=True)
 ribasim_model.merge_basins(node_id=131, to_node_id=119, are_connected=True)
 ribasim_model.merge_basins(node_id=212, to_node_id=210, are_connected=True)
 ribasim_model.merge_basins(node_id=33, to_node_id=1, are_connected=True)
+ribasim_model.merge_basins(node_id=181, to_node_id=162, are_connected=True)
+
+# minor basins in south west of WSRL, which FW and HvdG said to merge
+ribasim_model.merge_basins(node_id=50, to_node_id=56, are_connected=True)
+ribasim_model.merge_basins(node_id=54, to_node_id=56, are_connected=True)
 
 # (too) small basins connected via a Manning-node --> merge basins
 ribasim_model.merge_basins(node_id=226, to_node_id=1, are_connected=True)
 ribasim_model.merge_basins(node_id=220, to_node_id=219, are_connected=True)
+
+# retrieve the two polygons where still holes occur so it can be merged with existing basins
+gaten = gpd.read_file(gaten_path)
+
+# fix hole Wijchen
+wijchen = gaten.loc[gaten.meta_name == "Wijchen"]
+basin_195 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 195]
+merged_geom = basin_195.geometry.iloc[0].union(wijchen.geometry.union_all())
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 195, "geometry"] = merged_geom
+
+# fix hole Vennen
+vennen = gaten.loc[gaten.meta_name == "Vennen"]
+basin_241 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 241]
+merged_geom = basin_241.geometry.iloc[0].union(vennen.geometry.union_all())
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 241, "geometry"] = merged_geom
 
 # redefine basins #66 & #69
 split_line_string = LineString(
@@ -182,6 +204,8 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
     unknown_streefpeil
 )
 
+inlaten = []
+
 # add levelboundary and a pump
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(136538, 422962)), [level_boundary.Static(level=[default_level])]
@@ -192,6 +216,45 @@ ribasim_model.link.add(ribasim_model.basin[154], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 afvoer_pumps.append(pump_node.node_id)
 
+# add an inlaat and LB near Randwijk (gemaal Kuijk which can also water inlaten)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(174570, 440194)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(174615, 440126)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[94])
+
+inlaat_Kuijk = tabulated_rating_curve_node.node_id
+inlaten.append(inlaat_Kuijk)
+
+# add an inlaat and LB at the Nederwaard
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(103305, 433637)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(103334, 433570)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[8])
+
+inlaten.append(tabulated_rating_curve_node.node_id)
+
+# add an inlaat and LB at the Overwaard
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(103401, 433650)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(103446, 433601)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[5])
+inlaten.append(tabulated_rating_curve_node.node_id)
+
 # add gemaal and LB at Pannerlingen
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(198612, 434208)), [level_boundary.Static(level=[default_level])]
@@ -200,6 +263,7 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(198568, 434184)), [pump.S
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[115])
+inlaten.append(pump_node.node_id)
 
 # add a TRC and LB near Groesbeek to Germany
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -350,23 +414,26 @@ ribasim_model.node.df.loc[ribasim_model.tabulated_rating_curve.node.df.index, "m
 )
 ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ribasim_model.pump.node.df.index
 
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # set forcing
 if DYNAMIC_CONDITIONS:
-    # Add dynamic meteo
+    # Add dynamic meteo and groundwater from LHM zarr
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update")
+    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
+    budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
+    offline_budgets = AssignOfflineBudgets(budgets)
+
     forcing = SetDynamicForcing(
         model=ribasim_model,
-        cloud=cloud,
+        budgets=budgets,
         startdate=starttime,
         enddate=endtime,
     )
-
     ribasim_model = forcing.add()
-
-    # Add dynamic groundwater
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
-    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -432,6 +499,8 @@ from_to_node_function_table["demand"] = None
 
 to_drain = (
     303,
+    363,
+    494,
     522,
     525,
     565,
@@ -445,8 +514,8 @@ to_drain = (
     840,
 )
 to_flow_control = (
-    245,
     270,
+    322,
     384,
     386,
     388,
@@ -456,13 +525,18 @@ to_flow_control = (
     879,
 )
 to_supply = (
+    *inlaten,  # add all manually added inlaten
+    245,
     325,
+    338,
     478,
     557,
     566,
     575,
     625,
+    822,
     886,
+    988,
     990,
     999,
     1002,
@@ -582,6 +656,15 @@ ribasim_model.outlet.static.df.loc[
     ribasim_model.outlet.static.df["node_id"].isin(Linge_nodes), "meta_known_flow_rate"
 ] = True
 
+# add fixed max flow rate for inlaat Kuijk
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df["node_id"] == inlaat_Kuijk, ["max_flow_rate", "meta_known_flow_rate"]
+] = [20.0, True]
+
+# fix pumps from Linge to ARK
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 1025, "max_flow_rate"] = 8.0
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "max_flow_rate"] = 16.0
+
 ribasim_model, from_to_node_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
         ribasim_model_path=ribasim_work_dir_model_toml,
@@ -598,6 +681,10 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         simulation_days=365,  # avoid empty basins which causes convergence issues. Lower max_days
         max_exceedance_days=5,
     )
+)
+
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "flow_rate"] = (
+    8.0  # average flow rate in the winter
 )
 
 
