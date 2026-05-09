@@ -215,7 +215,6 @@ pump_max_flow_rate_by_node_id = {
     669: 6.3,  # Dieversluis
     665: 5.8,  # Haarsluis
     631: 5.9,  # Veenesluis
-    652: 1.34,  # Smildersluis
     346: 6.8,  # Noordscheschutsluis
     676: 7.1,  # Nieuwebrugsluis
     694: 7.5,  # Ossesluis
@@ -274,6 +273,10 @@ pump_max_flow_rate_by_node_id = {
     660: 0.97,  # Trijzen
     547: 53.3,  # Afvoergemaal Stroink
     3153: 6.4,  # Aanvoergemaal Stroink
+    648: 3.0,  # Holthe
+    652: 1.5,  # Smildersluis
+    636: 1.3,  # Zwiggeltersluis
+    3192: 16.8,  # Zedemuden
     # Todo: Capaciteiten nog navragen
     # 545: ...,   # Sultansmeer
     # 693: ...,   # Weerwille

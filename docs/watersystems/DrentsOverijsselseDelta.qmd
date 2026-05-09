@@ -60,24 +60,33 @@ Het noordelijk gebied van Drentse Overijsselse Delta wordt bemalen door twee bel
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
-| naam                       | code       |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
-|:---------------------------|:-----------|----------:|:----------|-----------------:|----------------:|
-
-
-Kunstwerk capaciteit sluis (m3/s) capaciteit pompen (m3/s)
-Noordscheschutsluis 11 6.9
-Nieuwebrugsluis 29 7.1
-Ossesluis 29 7.5
-Rogatsluis 43 8.2
-
-Sluis capaciteit sluis (m3/s) capaciteit pompen (m3/s)
-Paradijsssluis 16 6.7
-Haveltersluis 14 6.6
-Uffeltersluis 14 6.3
-Dieversluis 12 6.3
-Haarsluis 12 5.8
-Veenesluis 13 5.9
-Sluis Peelo 15 geen gemaal
+| naam                | code                 |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
+|:--------------------|:---------------------|----------:|:----------|-----------------:|----------------:|
+|                     | Galgenrak (KIN)      |      3199 | inlaat    |             5.75 |            0    |
+| Blijdenstein        | gemaal.101           |       638 | inlaat    |             1.17 |            0    |
+| Dieversluis         | gemaal.21191         |       669 | inlaat    |             6.3  |            0    |
+| Emsland 1           | gemaal.11494         |       601 | inlaat    |             1    |            0    |
+| Emsland 2           | gemaal.11493         |       600 | inlaat    |             0.16 |            0    |
+| Galgenrak           | gemaal.11488         |       596 | uitlaat   |             0    |            5.75 |
+| Gemaal Ankersmit    | gemaal.11472_aanvoer |      1190 | inlaat    |             8.5  |            0    |
+| Haarsluis           | gemaal.21193         |       665 | inlaat    |             5.8  |            0    |
+| Haveltersluis       | gemaal.21189         |       645 | inlaat    |             6.6  |            0    |
+| Holthe              | gemaal.76            |       648 | inlaat    |             3    |            0    |
+| Langewijk           | gemaal.11495         |       602 | inlaat    |             1.06 |            0    |
+| Nieuwebrugsluis     | gemaal.9451          |       676 | inlaat    |             7.1  |            0    |
+| Noordscheschutsluis | gemaal.25694         |       346 | inlaat    |             6.8  |            0    |
+| Oldenhave           | gemaal.108           |       633 | inlaat    |           ?00    |            0    |
+| Ossesluis           | gemaal.21195         |       694 | inlaat    |             7.5  |            0    |
+| Paradijssluis       | gemaal.21188         |       704 | inlaat    |             6.7  |            0    |
+| Rogatsluis          | gemaal.21196         |       647 | inlaat    |             8.2  |            0    |
+| Roggebot            | gemaal.11428         |      1096 | uitlaat   |             0    |            3    |
+| Smildersluis        | gemaal.91            |       652 | inlaat    |             1.5  |            0    |
+| Stroink             | gemaal.19            |       547 | inlaat    |             0    |           53.3  |
+| Uffeltersluis       | gemaal.21190         |       705 | inlaat    |             6.3  |            0    |
+| Veenesluis          | gemaal.21192         |       631 | inlaat    |             5.9  |            0    |
+| Westerveld          | gemaal.11450         |       579 | inlaat    |             1.16 |            0    |
+| Zedemuden           | gemaal.145           |      3192 | uitlaat   |             0    |           16.8  |
+| Zwiggeltersluis     | gemaal.92            |       636 | inlaat    |             1.3  |            0    |
 
 De Verlengde Hoogeveensche
 Vaart bestaat uit twee panden. Dit is een pand van Bladderswijk tot aan de Ericasluis en een pand
