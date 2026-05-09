@@ -62,12 +62,12 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 
 | naam                | code                 |   node_id | functie   |   aanvoer [m3/s] |   afvoer [m3/s] |
 |:--------------------|:---------------------|----------:|:----------|-----------------:|----------------:|
-|                     | Galgenrak (KIN)      |      3199 | inlaat    |             5.75 |            0    |
 | Blijdenstein        | gemaal.101           |       638 | inlaat    |             1.17 |            0    |
 | Dieversluis         | gemaal.21191         |       669 | inlaat    |             6.3  |            0    |
 | Emsland 1           | gemaal.11494         |       601 | inlaat    |             1    |            0    |
 | Emsland 2           | gemaal.11493         |       600 | inlaat    |             0.16 |            0    |
 | Galgenrak           | gemaal.11488         |       596 | uitlaat   |             0    |            5.75 |
+|Galgenrak           |                       |      3199 | inlaat    |             5.75 |            0    |
 | Gemaal Ankersmit    | gemaal.11472_aanvoer |      1190 | inlaat    |             8.5  |            0    |
 | Haarsluis           | gemaal.21193         |       665 | inlaat    |             5.8  |            0    |
 | Haveltersluis       | gemaal.21189         |       645 | inlaat    |             6.6  |            0    |
