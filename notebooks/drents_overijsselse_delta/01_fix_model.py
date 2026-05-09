@@ -610,10 +610,9 @@ model.write(ribasim_toml)
 model.validate_link_source_destination()
 model.report_basin_area()
 model.report_internal_basins()
-# %%
 # %% Test run model
 
-# model = Model.read(ribasim_toml)
-# status_code = model.run()
+model = Model.read(ribasim_toml)
+status_code = model.run()
 
 # assert status_code == 0

@@ -14,6 +14,6 @@
     },
     "python.analysis.typeCheckingMode": "off",
     "autoDocstring.docstringFormat": "numpy",
-    "python-envs.defaultEnvManager": "renan-r-santos.pixi-code:pixi",
-    "python-envs.defaultPackageManager": "renan-r-santos.pixi-code:pixi"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.defaultPackageManager": "ms-python.python:pip"
 }
