@@ -269,6 +269,7 @@ pump_max_flow_rate_by_node_id = {
     605: 0.40,  # Vechterweerd
     195: 0.33,  # Marswetering -> Voorbezinkplas Marswetering
     590: 8.5,  # Ankersmit
+    1190: 8.5,  # Ankersmit
     638: 1.17,  # Blijdenstein
     660: 0.97,  # Trijzen
     547: 53.3,  # Afvoergemaal Stroink
