@@ -85,7 +85,7 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 | Uffeltersluis       | gemaal.21190         |       705 | inlaat    |             6.3  |            0    |
 | Veenesluis          | gemaal.21192         |       631 | inlaat    |             5.9  |            0    |
 | Westerveld          | gemaal.11450         |       579 | inlaat    |             1.16 |            0    |
-| Zedemuden           | gemaal.145           |      3192 | uitlaat   |             0    |           16.8  |
+| Zedemuden           | gemaal.145           |      3192 | uitlaat   |             0    |           127.5  |
 | Zwiggeltersluis     | gemaal.92            |       636 | inlaat    |             1.3  |            0    |
 
 De Verlengde Hoogeveensche

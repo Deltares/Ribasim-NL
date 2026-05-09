@@ -276,7 +276,7 @@ pump_max_flow_rate_by_node_id = {
     648: 3.0,  # Holthe
     652: 1.5,  # Smildersluis
     636: 1.3,  # Zwiggeltersluis
-    3192: 16.8,  # Zedemuden
+    3192: 127.5,  # Zedemuden
     # Todo: Capaciteiten nog navragen
     # 545: ...,   # Sultansmeer
     # 693: ...,   # Weerwille
