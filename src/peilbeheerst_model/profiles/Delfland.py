@@ -7,6 +7,7 @@ if __name__ == "__main__":
         "Delfland",
         "delfland_crossings_v08.gpkg",
         sync=True,
+        overwrite=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

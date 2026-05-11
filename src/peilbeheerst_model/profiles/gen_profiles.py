@@ -173,10 +173,9 @@ def _read_basins(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
     :return: basin dataset (polygons)
     """
     fn = cloud.joinpath(
-        # water_authority, "verwerkt", "Work_dir", f"{water_authority}_parameterized", "input", "database.gpkg"
         water_authority,
         "modellen",
-        f"{water_authority}_parameterized",
+        f"{water_authority}_pre_parameterized",
         "input",
         "database.gpkg",
     )
@@ -292,11 +291,3 @@ def _export_profiles(
         table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
         table.to_csv(fn, index=False)
         print(f"File saved: {fn}")
-
-    # upload files to the GoodCloud
-    print("Uploading to the GoodCloud...", end="", flush=True)
-    cloud.upload_content(wd, overwrite=True)
-    if export_intermediate_output:
-        (wd / "intermediate").mkdir(exist_ok=True)
-        cloud.upload_content(wd / "intermediate", overwrite=True)
-    print("\rFiles uploaded to the GoodCloud")

@@ -11,6 +11,7 @@ if __name__ == "__main__":
         val_flag="hoofdwaterloop",
         layer_hydro_objects=None,
         sync=True,
+        overwrite=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

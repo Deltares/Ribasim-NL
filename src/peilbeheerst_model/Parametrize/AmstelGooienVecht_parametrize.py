@@ -1,6 +1,7 @@
 """Parameterisation of water board: Amstel, Gooi en Vecht."""
 
 import datetime
+import sys
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -279,6 +280,13 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
+
+# Save pre-profile model for DVC profile pipeline
+if "--pre" in sys.argv:
+    pre_param_toml = cloud.joinpath(waterschap, "modellen", f"{waterschap}_pre_parameterized", "ribasim.toml")
+    pre_param_toml.parent.mkdir(parents=True, exist_ok=True)
+    ribasim_model.write(pre_param_toml)
+    raise SystemExit(0)
 
 # set basin profiles and add storing basins where applicable
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=100)

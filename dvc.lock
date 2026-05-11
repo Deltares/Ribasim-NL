@@ -1288,15 +1288,20 @@ stages:
     cmd:
     - pixi run python src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
     deps:
+    - path: data/Delfland/verwerkt/profielen
+      hash: md5
+      md5: 50df904939bd503ed64ed8002d12eb21.dir
+      size: 239884379
+      nfiles: 6
     - path: src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
       hash: md5
-      md5: f4a4086de19ced4bed5d65b97b7a3f9a
-      size: 18742
+      md5: 725a0ec171dee01442fa6b2e1f7d646b
+      size: 19065
     outs:
     - path: data/Delfland/modellen/Delfland_parameterized
       hash: md5
-      md5: fa2f8fea0ac69e02cf7c619dbd88f6bb.dir
-      size: 10879157
+      md5: a04e899a6b64e8c002a9a58b28fc8907.dir
+      size: 11014325
       nfiles: 2
   peilbeheerst@amstel_gooi_en_vecht:
     cmd:
@@ -1426,15 +1431,20 @@ stages:
     - pixi run python
       src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
     deps:
+    - path: data/Zuiderzeeland/verwerkt/profielen
+      hash: md5
+      md5: 06f482ecb8798bfa7c9e4c559191f1f5.dir
+      size: 207861396
+      nfiles: 6
     - path: src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
       hash: md5
-      md5: 05d57b545bdc91cc79de2ec8151b9bc6
-      size: 37641
+      md5: cc4c8e7ab8df643cf28d40d840d3931d
+      size: 37964
     outs:
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
       hash: md5
-      md5: 4f9f665141228372376447ea96454269.dir
-      size: 13439157
+      md5: 0de5fe0b5291e553f59f823388b2805f.dir
+      size: 14999733
       nfiles: 2
   cross_sections@Rijnland:
     cmd: pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
@@ -1482,4 +1492,128 @@ stages:
       hash: md5
       md5: 7048894524d5646bdf006d25753ee1e2.dir
       size: 969941042
+      nfiles: 6
+  peilbeheerst_pre@delfland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
+      --pre
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
+      hash: md5
+      md5: 725a0ec171dee01442fa6b2e1f7d646b
+      size: 19065
+    outs:
+    - path: data/Delfland/modellen/Delfland_pre_parameterized
+      hash: md5
+      md5: b72945afb528a9ddf4aaba1207fcc2f6.dir
+      size: 3711130
+      nfiles: 2
+  cross_sections@Delfland:
+    cmd: pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Delfland --no-sync
+    deps:
+    - path: data/Delfland/modellen/Delfland_pre_parameterized
+      hash: md5
+      md5: b72945afb528a9ddf4aaba1207fcc2f6.dir
+      size: 3711130
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 2040576530b172824691cefa46a1aea1
+      size: 10665
+    outs:
+    - path: data/Delfland/verwerkt/cross_sections
+      hash: md5
+      md5: 48535b4e473183d88e7afcd26e2eaed5.dir
+      size: 12435456
+      nfiles: 1
+  profile@Delfland:
+    cmd: pixi run python src/peilbeheerst_model/profiles/Delfland.py
+    deps:
+    - path: data/Delfland/modellen/Delfland_pre_parameterized
+      hash: md5
+      md5: b72945afb528a9ddf4aaba1207fcc2f6.dir
+      size: 3711130
+      nfiles: 2
+    - path: data/Delfland/verwerkt/cross_sections
+      hash: md5
+      md5: 48535b4e473183d88e7afcd26e2eaed5.dir
+      size: 12435456
+      nfiles: 1
+    - path: src/peilbeheerst_model/profiles/Delfland.py
+      hash: md5
+      md5: 7b9381f1a75595494e7d1f65a6ba145e
+      size: 320
+    - path: src/ribasim_nl/ribasim_nl/profiles
+      hash: md5
+      md5: f01cb4884f38550aa83fd828e9b1eaba.dir
+      size: 97589
+      nfiles: 9
+    outs:
+    - path: data/Delfland/verwerkt/profielen
+      hash: md5
+      md5: 3211ead6f3fd0cc96dec9a7816e21516.dir
+      size: 239883207
+      nfiles: 6
+  peilbeheerst_pre@zuiderzeeland:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py --pre
+    deps:
+    - path: src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
+      hash: md5
+      md5: c3fa4c1e7518ad9709aa41f845dd6024
+      size: 38396
+    outs:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_pre_parameterized
+      hash: md5
+      md5: 8563c8b2e5ef75bb91096570621b345e.dir
+      size: 3948698
+      nfiles: 2
+  cross_sections@Zuiderzeeland:
+    cmd: pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Zuiderzeeland --no-sync
+    deps:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_pre_parameterized
+      hash: md5
+      md5: 8563c8b2e5ef75bb91096570621b345e.dir
+      size: 3948698
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 2040576530b172824691cefa46a1aea1
+      size: 10665
+    outs:
+    - path: data/Zuiderzeeland/verwerkt/cross_sections
+      hash: md5
+      md5: ce048bd3a92e99cd07ac853f34e26875.dir
+      size: 1445888
+      nfiles: 1
+  profile@Zuiderzeeland:
+    cmd: pixi run python src/peilbeheerst_model/profiles/Zuiderzeeland.py
+    deps:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_pre_parameterized
+      hash: md5
+      md5: 8563c8b2e5ef75bb91096570621b345e.dir
+      size: 3948698
+      nfiles: 2
+    - path: data/Zuiderzeeland/verwerkt/cross_sections
+      hash: md5
+      md5: ce048bd3a92e99cd07ac853f34e26875.dir
+      size: 1445888
+      nfiles: 1
+    - path: src/peilbeheerst_model/profiles/Zuiderzeeland.py
+      hash: md5
+      md5: 06212d6a9c5501d5a97869585285ecff
+      size: 604
+    - path: src/ribasim_nl/ribasim_nl/profiles
+      hash: md5
+      md5: f01cb4884f38550aa83fd828e9b1eaba.dir
+      size: 97589
+      nfiles: 9
+    outs:
+    - path: data/Zuiderzeeland/verwerkt/profielen
+      hash: md5
+      md5: ff6391d260d77bf77de498714e2883a0.dir
+      size: 207861685
       nfiles: 6

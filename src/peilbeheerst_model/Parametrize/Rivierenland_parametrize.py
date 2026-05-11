@@ -1,6 +1,7 @@
 """Parameterisation of water board: Rivierenland."""
 
 import datetime
+import sys
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -349,6 +350,13 @@ ribasim_model.node.df.loc[ribasim_model.tabulated_rating_curve.node.df.index, "m
     ribasim_model.tabulated_rating_curve.node.df.index
 )
 ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ribasim_model.pump.node.df.index
+
+# Save pre-profile model for DVC profile pipeline
+if "--pre" in sys.argv:
+    pre_param_toml = cloud.joinpath(waterschap, "modellen", f"{waterschap}_pre_parameterized", "ribasim.toml")
+    pre_param_toml.parent.mkdir(parents=True, exist_ok=True)
+    ribasim_model.write(pre_param_toml)
+    raise SystemExit(0)
 
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 

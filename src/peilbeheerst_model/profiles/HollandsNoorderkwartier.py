@@ -7,6 +7,7 @@ if __name__ == "__main__":
         "HollandsNoorderkwartier",
         "hhnk_crossings_v26.gpkg",
         sync=True,
+        overwrite=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

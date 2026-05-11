@@ -7,6 +7,7 @@ if __name__ == "__main__":
         "SchielandendeKrimpenerwaard",
         "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
         sync=True,
+        overwrite=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

@@ -7,6 +7,7 @@ if __name__ == "__main__":
         "AmstelGooienVecht",
         "agv_crossings_v05.gpkg",
         sync=True,
+        overwrite=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

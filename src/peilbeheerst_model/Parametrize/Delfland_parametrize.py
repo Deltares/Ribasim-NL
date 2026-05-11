@@ -1,6 +1,7 @@
 """Parametrisation of water board: Delfland."""
 
 import datetime
+import sys
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -221,6 +222,13 @@ ribasim_param.validate_basin_area(ribasim_model)
 
 # check streefpeilen at manning nodes
 ribasim_param.validate_manning_basins(ribasim_model)
+
+# Save pre-profile model for DVC profile pipeline
+if "--pre" in sys.argv:
+    pre_param_toml = cloud.joinpath(waterschap, "modellen", f"{waterschap}_pre_parameterized", "ribasim.toml")
+    pre_param_toml.parent.mkdir(parents=True, exist_ok=True)
+    ribasim_model.write(pre_param_toml)
+    raise SystemExit(0)
 
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)  # , min_area=100
 

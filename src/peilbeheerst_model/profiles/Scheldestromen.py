@@ -16,6 +16,7 @@ if __name__ == "__main__":
         "categorieoppwaterlichaam",
         val_flag="primair",
         sync=True,
+        overwrite=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

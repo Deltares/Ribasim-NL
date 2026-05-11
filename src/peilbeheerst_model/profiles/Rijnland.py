@@ -7,6 +7,7 @@ if __name__ == "__main__":
         "Rijnland",
         "rijnland_crossings_v04.gpkg",
         sync=True,
+        overwrite=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

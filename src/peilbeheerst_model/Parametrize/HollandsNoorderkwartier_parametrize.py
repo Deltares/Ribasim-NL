@@ -1,6 +1,7 @@
 """Parameterisation of water board: Hollands Noorderkwartier."""
 
 import datetime
+import sys
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -232,6 +233,13 @@ ribasim_model.merge_basins(node_id=203, to_node_id=21)  # klein gebiedje in duin
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
+
+# Save pre-profile model for DVC profile pipeline
+if "--pre" in sys.argv:
+    pre_param_toml = cloud.joinpath(waterschap, "modellen", f"{waterschap}_pre_parameterized", "ribasim.toml")
+    pre_param_toml.parent.mkdir(parents=True, exist_ok=True)
+    ribasim_model.write(pre_param_toml)
+    raise SystemExit(0)
 
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
 

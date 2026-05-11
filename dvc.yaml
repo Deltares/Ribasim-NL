@@ -6,7 +6,7 @@ stages:
     outs:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
     frozen: true
-  peilbeheerst:
+  peilbeheerst_pre:
     foreach:
       delfland: Delfland
       amstel_gooi_en_vecht: AmstelGooienVecht
@@ -20,11 +20,11 @@ stages:
       zuiderzeeland: Zuiderzeeland
     do:
       cmd:
-        - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+        - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py --pre
       deps:
         - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
       outs:
-        - data/${item}/modellen/${item}_parameterized
+        - data/${item}/modellen/${item}_pre_parameterized
   cross_sections:
     foreach:
       - AmstelGooienVecht
@@ -41,7 +41,7 @@ stages:
       cmd: pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py ${item} --no-sync
       deps:
         - src/peilbeheerst_model/profiles/prep_cross_sections.py
-        - data/${item}/modellen/${item}_parameterized
+        - data/${item}/modellen/${item}_pre_parameterized
       outs:
         - data/${item}/verwerkt/cross_sections
   profile:
@@ -61,10 +61,30 @@ stages:
       deps:
         - src/peilbeheerst_model/profiles/${item}.py
         - src/ribasim_nl/ribasim_nl/profiles
-        - data/${item}/modellen/${item}_parameterized
+        - data/${item}/modellen/${item}_pre_parameterized
         - data/${item}/verwerkt/cross_sections
       outs:
         - data/${item}/verwerkt/profielen
+  peilbeheerst:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+      deps:
+        - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+        - data/${item}/verwerkt/profielen
+      outs:
+        - data/${item}/modellen/${item}_parameterized
   rijkswaterstaat:
     cmd:
       - pixi run python notebooks/rijkswaterstaat/2_basins.py

@@ -7,6 +7,7 @@ if __name__ == "__main__":
         "Rivierenland",
         "wsrl_crossings_v06.gpkg",
         sync=True,
+        overwrite=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )
