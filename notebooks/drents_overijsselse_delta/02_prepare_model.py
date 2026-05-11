@@ -66,12 +66,11 @@ else:
     profiles_df = damo_profiles.process_profiles()
     profiles_df.to_file(profiles_gpkg)
     add_link_profile_ids(model, profiles=damo_profiles)
-    fix_link_geometries(model, network, max_straight_line_ratio=5)
+    fix_link_geometries(model, network, max_straight_line_ratio=2)
     model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
-# %%
 # %% Quick fix basins
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1389, "flow_rate"] = 0.1
@@ -337,43 +336,3 @@ static_data.write()
 
 # write model
 model.write(ribasim_toml)
-
-
-# %%
-# OUTLET
-
-# OUTLET.min_upstream_level
-# # from basin streefpeil
-# static_data.reset_data_frame(node_type="Outlet")
-# min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.outlet.node_id)
-# min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-# min_upstream_level.name = "min_upstream_level"
-# static_data.add_series(node_type="Outlet", series=min_upstream_level)
-
-
-# # %%
-
-# # PUMP
-
-# # PUMP.min_upstream_level
-# # from basin streefpeil
-# static_data.reset_data_frame(node_type="Pump")
-# min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.pump.node_id)
-# min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-# min_upstream_level.name = "min_upstream_level"
-# static_data.add_series(node_type="Pump", series=min_upstream_level)
-
-
-# # %%
-
-# # # BASIN
-# static_data.reset_data_frame(node_type="Basin")
-
-# # %%
-
-# # write
-# static_data.write()
-
-# model.write(ribasim_toml)
-
-# %%
