@@ -534,6 +534,9 @@ class AssignOfflineBudgets:
 
             nodes = nodes.join(df_cat, how="left").reset_index(drop=False)
 
+        # TODO: fix upstream - some basin nodes have NaN in meta_categorie; they won't be assigned offline forcing
+        nodes = nodes.dropna(subset=[basin_metacol])
+
         self._validate_meta_basin_column(nodes, basin_metacol, expected_values=primary_values | secondary_values)
 
         # split based on meta_label in Ribasim model definition
