@@ -75,6 +75,7 @@ cloud.synchronize(
         meteo_path,
         profiles_path,
         splitted_basin_1_path,
+        splitted_basin_15_path,
         splitted_basin_22_path,
     ]
 )
