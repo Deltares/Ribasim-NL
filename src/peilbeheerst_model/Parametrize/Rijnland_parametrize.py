@@ -275,7 +275,9 @@ from_to_node_function_table["demand"] = None
 to_drain = (
     525,
     530,
+    609,
     1096,
+    1179,
     1307,
     1455,
     1456,
@@ -287,7 +289,6 @@ to_flow_control = (
     625,
     963,
     1148,
-    1179,
     1180,
 )
 to_supply = (
