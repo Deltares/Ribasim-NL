@@ -129,6 +129,17 @@ with warnings.catch_warnings():
     ribasim_model = Model.read(ribasim_work_dir_model_toml)
     ribasim_model.set_crs("EPSG:28992")
 
+# because of feedback process, some LevelBoundary static are not removed
+# when node is removed, causing validation to fail since nodes are not in the model.
+# '''ValueError: Node ID validation failed:
+#    LevelBoundary partition (static): unexpected node_ids {819}'''
+## Clean up orphaned LevelBoundary static entries
+if ribasim_model.level_boundary.static.df is not None:
+    lb_node_ids = ribasim_model.node.df[ribasim_model.node.df.node_type == "LevelBoundary"].index
+    ribasim_model.level_boundary.static.df = ribasim_model.level_boundary.static.df[
+        ribasim_model.level_boundary.static.df.node_id.isin(lb_node_ids)
+    ].drop_duplicates(subset="node_id")
+
 # merge the smallest basins together
 ribasim_model.merge_basins(node_id=30, to_node_id=29)  # 4363 m2
 ribasim_model.merge_basins(node_id=66, to_node_id=21)  # 4745 m2
