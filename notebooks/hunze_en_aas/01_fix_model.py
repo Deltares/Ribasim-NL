@@ -215,7 +215,7 @@ model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
 model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 
-
+# N.a.v. eerste gesprek
 sanitize_node_table(
     model,
     meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_gestuwd"],
