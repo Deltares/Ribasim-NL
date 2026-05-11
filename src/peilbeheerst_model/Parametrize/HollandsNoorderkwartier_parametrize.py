@@ -242,6 +242,8 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
 # split basins to improve model convergence
 node_cache = NodeMetaCache(ribasim_model)
 splitter = SplitBasins(model=ribasim_model, splitted_basin_path=splitted_basin_3_path, basin_node_id_to_split=3)
@@ -250,18 +252,10 @@ node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
 del node_cache
 
+# POTENTIAL DVC-BREAK
+
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
-
-# Migrate meta_categorie from the state to the node table as this prior is completely filled
-basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
-basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
-    ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
-    left_index=True,
-    right_on="node_id",
-    how="left",
-)
-ribasim_model.node.df.loc[basin_node_mask, "meta_categorie"] = basin_node_meta.set_index("node_id")["meta_categorie"]
 
 # set forcing
 if DYNAMIC_CONDITIONS:
