@@ -94,5 +94,3 @@ delwaq/
 # Main scripts to run workflows per water authority
 notebooks/*/main.py
 ribasim.env
-.vscode/settings.json
-.vscode/settings.json
