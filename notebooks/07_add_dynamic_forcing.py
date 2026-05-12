@@ -47,7 +47,7 @@ surface_runoff_budgets: set[str] = {"bdgqrun_m3d"}
 def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix):
 
     # sync files so we're good to go!
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update")
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
     cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
 
     # Open zarr budgets, select time range early to reduce data volume

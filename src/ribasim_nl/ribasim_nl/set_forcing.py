@@ -38,7 +38,7 @@ def _open_water_factor(times: np.ndarray) -> np.ndarray:
 
 # Variable names in the LHM zarr store
 PRECIPITATION_VAR = "precipitation_mmd"
-EVAPORATION_VAR = "evaporation_mmd"  # not yet available; zeros used as placeholder
+EVAPORATION_VAR = "makkink_mmd"
 
 
 class SetDynamicForcing:
@@ -74,15 +74,9 @@ class SetDynamicForcing:
         precip_ds = _crop_to_gdf(self.budgets[[PRECIPITATION_VAR]], basin_definition)
         assert isinstance(precip_ds, xr.Dataset)
 
-        # Build evaporation dataset: use real data if available, else zeros
-        if EVAPORATION_VAR in self.budgets:
-            evap_ds = _crop_to_gdf(self.budgets[[EVAPORATION_VAR]], basin_definition)
-            assert isinstance(evap_ds, xr.Dataset)
-        else:
-            # Placeholder: zeros shaped like precipitation
-            evap_da = xr.zeros_like(precip_ds[PRECIPITATION_VAR])
-            evap_da.name = EVAPORATION_VAR
-            evap_ds = evap_da.to_dataset()
+        # Build evaporation dataset
+        evap_ds = _crop_to_gdf(self.budgets[[EVAPORATION_VAR]], basin_definition)
+        assert isinstance(evap_ds, xr.Dataset)
 
         # Compute basin-averaged values (mm/day per basin)
         # _compute_budgets_per_basin sums over cells; divide by cell count to get the mean
