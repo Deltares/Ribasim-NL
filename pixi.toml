@@ -77,7 +77,8 @@ xlwings = ">=0.33"
 
 [tasks]
 typecheck = "pyrefly check"
-install = "prek install -f && dvc pull"
+install-core = "python scripts/install_ribasim_core.py"
+install = { cmd = "prek install -f && dvc pull", depends-on = ["install-core"] }
 repro = "dvc repro --keep-going && prek run"
 check = "prek run --all-files"
 pycheck = "prek run --all-files --skip dvc-pre-commit --skip dvc-pre-push --skip dvc-post-checkout"

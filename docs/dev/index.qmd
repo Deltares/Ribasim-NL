@@ -37,6 +37,8 @@ pixi run install
 This installs git hooks and pulls data.
 You can run Python scripts using `pixi run python path/to/script.py`.
 
+This step also downloads and installs RIBASIM core from GitHub releases to RIBASIM_HOME='bin/ribasim'
+
 The first time you open the Ribasim-NL repo in Visual Studio Code, the [pixi-code](https://github.com/renan-r-santos/pixi-code) extension should automatically detect the Pixi environment and configure the Python interpreter.
 
 If you encounter issues, try running `pixi clean`and running `pixi install` again.
