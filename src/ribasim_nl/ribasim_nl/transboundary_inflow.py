@@ -116,6 +116,13 @@ def import_transboundary_inflow(
             )
             df_inflow[col] = df_inflow[col].fillna(mean_value)
 
+    # Negative inflows are not allowed; clip them to zero and warn per location.
+    cols_with_negative_flow = df_inflow.columns[(df_inflow < 0).any()]
+    for col in cols_with_negative_flow:
+        n_negative = int((df_inflow[col] < 0).sum())
+        logger.warning(f"Location '{col}' contains {n_negative} negative flow_rate value(s); setting them to 0.")
+        df_inflow[col] = df_inflow[col].clip(lower=0)
+
     # Check for remaining NaN values
     assert not df_inflow.isna().any().any(), "There are NaN values remaining!"
 
