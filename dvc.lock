@@ -430,13 +430,13 @@ stages:
     deps:
     - path: notebooks/create_rwzi_model.py
       hash: md5
-      md5: b99e6708f6a4e8e74af8aff5c3275836
-      size: 20134
+      md5: c93986b80bf2fcf0a1db8a95be5aad8a
+      size: 20775
     outs:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: bb4f19a6932feb77ded16685587187e3.dir
-      size: 22462618
+      md5: 9562193cfd37c91c52384260f1c2418a.dir
+      size: 16597146
       nfiles: 2
   parameterized@aa_en_maas:
     cmd:
@@ -1179,18 +1179,20 @@ stages:
       nfiles: 2
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: bb4f19a6932feb77ded16685587187e3.dir
-      size: 22462618
+      md5: 9562193cfd37c91c52384260f1c2418a.dir
+      size: 16597146
       nfiles: 2
     - path: notebooks/07_add_dynamic_forcing.py
       hash: md5
       md5: 2fd0bae144991b66ca45429c4b23143b
       size: 7288
+      md5: 2fd0bae144991b66ca45429c4b23143b
+      size: 7288
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
-      md5: 7a65f2c3ab579e1a27a2006f868c8aa0.dir
-      size: 62613248
+      md5: f9be838ce90b83b2b384f8028ad1a9e4.dir
+      size: 62539520
       nfiles: 4
   dynamic@rijn_en_ijssel:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py RijnenIJssel
