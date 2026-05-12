@@ -2,11 +2,10 @@ from pathlib import Path
 
 import pandas as pd
 from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
-from ribasim_nl.settings import data_dir
 
-from ribasim_nl import Model
+from ribasim_nl import Model, settings
 
-base_path = data_dir
+base_path = settings.ribasim_nl_data_dir
 
 # # Amstel, Gooi en Vecht
 model_characteristics = {
@@ -810,7 +809,7 @@ network.WriteResults(model=model, checks=checks)
 # # Wetterskip
 # %%
 authority = "WetterskipFryslan"
-base_path = data_dir
+base_path = settings.ribasim_nl_data_dir
 
 model_characteristics = {
     # model description
