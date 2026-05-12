@@ -6,3 +6,5 @@
     url = webdavs://deltares.thegood.cloud/remote.php/dav/files/nhi_api/dvc
 ['remote "modeldata"']
     url = webdavs://deltares.thegood.cloud/remote.php/dav/files/nhi_api/Ribasim modeldata
+['remote "minio"']
+    url = s3://ribasim-nl/dvc
