@@ -15,10 +15,11 @@ import numpy as np
 import pandas as pd
 import shapely
 import tqdm.auto as tqdm
+from ribasim_nl.settings import data_dir
 from shapely.geometry import LineString, Point
 from shapely.wkt import dumps
 
-from ribasim_nl import CloudStorage, geometry, settings
+from ribasim_nl import CloudStorage, geometry
 
 cloud = CloudStorage()
 # ### Load Data
@@ -28,7 +29,7 @@ waterschap = "WetterskipFryslan"
 
 # Define crossings file path
 data_path = cloud.joinpath(waterschap, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg")
-base_path = settings.ribasim_nl_data_dir
+base_path = data_dir
 output_path = f"{waterschap}/verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"
 output_path = Path(base_path) / output_path  # add the base path
 
@@ -404,7 +405,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         plt_paths.plot(ax=ax, color="purple", label="shortest paths")
         ax.legend()
         path_figs = (
-            settings.ribasim_nl_data_dir
+            data_dir
             / "WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new"
         )
         plt.savefig(
@@ -436,8 +437,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         for key, value in objects.items():
             # For each GeoDataFrame, save it to a layer in the GeoPackage
             path_gpkg = (
-                settings.ribasim_nl_data_dir
-                / "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg"
+                data_dir / "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg"
             )
             value.to_file(
                 # f"./shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg", layer=key, driver="GPKG"

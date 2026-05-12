@@ -5,6 +5,7 @@ import fiona
 import geopandas as gpd
 import pandas as pd
 import requests
+from ribasim_nl.settings import data_dir
 from shapely.geometry import Point
 
 from hydamo import HyDAMO, code_utils
@@ -22,10 +23,9 @@ warnings.simplefilter("ignore", UserWarning)
 
 
 # environment variables
-DATA_DIR = settings.ribasim_nl_data_dir
+DATA_DIR = data_dir
 RIBASIM_NL_CLOUD_PASS = settings.ribasim_nl_cloud_pass
 
-DATA_DIR = Path(DATA_DIR)
 EXCEL_FILE = r"uitlaten_inlaten.xlsx"
 CRS = 28992
 RIBASIM_NL_CLOUD_USER = "nhi_api"

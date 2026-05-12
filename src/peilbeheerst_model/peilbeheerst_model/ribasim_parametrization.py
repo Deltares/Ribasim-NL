@@ -18,11 +18,12 @@ import tqdm.auto as tqdm
 import xarray as xr
 from ribasim.nodes import continuous_control
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.settings import data_dir
 from shapely.geometry import LineString, Point
 
 from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model, settings
+from ribasim_nl import CloudStorage, Model
 
 logger = logging.getLogger(__name__)
 
@@ -810,7 +811,7 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
     Also clear the directory of modellen/parametereized, as there may be old results in it.
     The log file of the feedback form is not included to avoid cluttering.'
     """
-    destination_path = settings.ribasim_nl_data_dir / waterschap / "modellen" / f"{waterschap}_parameterized/"
+    destination_path = data_dir / waterschap / "modellen" / f"{waterschap}_parameterized/"
 
     # clear the modellen/parameterized dir
     if destination_path.exists():
