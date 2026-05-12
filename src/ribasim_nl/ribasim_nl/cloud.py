@@ -8,6 +8,7 @@ from xml.etree import ElementTree
 
 import requests
 
+from .settings import data_dir as _default_data_dir
 from .settings import settings
 
 logger = logging.getLogger(__name__)
@@ -68,7 +69,7 @@ class ModelVersion:
 class CloudStorage:
     """Connect a local 'data_dir` to cloud-storage."""
 
-    data_dir: Path = settings.ribasim_nl_data_dir
+    data_dir: Path = _default_data_dir
     user: str = RIBASIM_NL_CLOUD_USER
     url: str = BASE_URL
     password: str = field(repr=False, default=settings.ribasim_nl_cloud_pass)
@@ -88,7 +89,7 @@ class CloudStorage:
 
         # check if data_dir is specified and convert to Path
         if self.data_dir is None:
-            raise ValueError("""'data_dir' is None. Provide it or set environment variable RIBASIM_NL_DATA_DIR.""")
+            raise ValueError("'data_dir' is None. Provide it.")
 
         self.data_dir = Path(self.data_dir)
 

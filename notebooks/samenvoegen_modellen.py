@@ -3,12 +3,11 @@ from pathlib import Path
 from typing import Any
 
 from ribasim_nl.aquo import waterbeheercode
-from ribasim_nl.settings import settings
+from ribasim_nl.settings import data_dir
 
 from ribasim_nl import Model, concat, prefix_index
 
 # %%
-data_dir = settings.ribasim_nl_data_dir
 
 # Write intermediate models for debugging or scaling tests
 write_intermediate_models: bool = False

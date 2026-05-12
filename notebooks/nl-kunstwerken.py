@@ -3,6 +3,7 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 import requests
+from ribasim_nl.settings import data_dir
 from shapely.geometry import Point
 
 from ribasim_nl import settings
@@ -16,7 +17,7 @@ from ribasim_nl import settings
 
 
 # environment variables
-DATA_DIR = settings.ribasim_nl_data_dir
+DATA_DIR = data_dir
 RIBASIM_NL_CLOUD_PASS = settings.ribasim_nl_cloud_pass
 
 EXCEL_FILE = r"# Overzicht kunstwerken primaire keringen waterschappen_ET.xlsx"
