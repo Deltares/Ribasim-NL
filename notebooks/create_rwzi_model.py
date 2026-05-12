@@ -9,7 +9,11 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pyodbc
+
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
 from ribasim import Node
 from ribasim.nodes import flow_boundary
 from shapely.geometry import Point
@@ -198,6 +202,10 @@ def process_rws_quantity_data(db_file, gdf_excluded):
     -------
         DataFrame: gemiddelde dagafvoeren van de RWZI's die niet in de Zinfo database zitten.
     """
+    if pyodbc is None:
+        logger.warning("pyodbc is not installed; skipping RWS Access data and continuing with Z-info only.")
+        return pd.DataFrame({"time": pd.Series(dtype="datetime64[ns]")})
+
     logger.info("Connecting to Access database...")
     conn_str = (
         r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
@@ -206,7 +214,17 @@ def process_rws_quantity_data(db_file, gdf_excluded):
 
     rwzi_codes_excl = gdf_excluded["RwziCode"].unique()
 
-    conn = pyodbc.connect(conn_str)
+    try:
+        conn = pyodbc.connect(conn_str)
+    except pyodbc.Error as exc:
+        logger.warning(
+            "Could not open Access database via ODBC (%s). "
+            "Skipping RWS Access data and continuing with Z-info only. "
+            "Install the Microsoft Access ODBC driver to include excluded RWZIs.",
+            exc,
+        )
+        return pd.DataFrame({"time": pd.Series(dtype="datetime64[ns]")})
+
     df_belasting = pd.read_sql("SELECT * FROM Belasting", conn)
     conn.close()
     logger.info("Database connection closed.")
