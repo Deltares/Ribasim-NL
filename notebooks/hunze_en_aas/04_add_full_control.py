@@ -1,7 +1,9 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.control import add_controllers_to_supply_area
+
+# from ribasim_nl.control import  add_controllers_to_uncontrolled_connector_nodes
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
@@ -26,7 +28,7 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergebieden.gpkg")
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
+# cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 
 
 # %%
@@ -52,22 +54,32 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 107, "flow_rate"] = 1.9
 model.pump.static.df.loc[model.pump.static.df.node_id == 330, "flow_rate"] = (
     7.5  # De Bult (Afvoer-capaciteit gelijk aan Küpers!)
 )
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 767, "flow_rate"] = 3.6  # Inlaat Purit
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "flow_rate"] = 0.3  # Inlaat Verl. Hoogeveense Vaart
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2011, "flow_rate"] = 0.3  # Inlaat Verl. Hoogeveense Vaart
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 847, "flow_rate"] = 0.3  # Inlaat Barriereweg
 
 
 # exclude_nodes =
 exclude_nodes = [
     152,  # Dorkswerdersluis (Scheepvaart)
     161,  # Bulsterverlaat (Scheepvaart)
+    174,  # Koppelsluis (Scheepvaart)
 ]
+
+
+model.node.df[IS_SUPPLY_NODE_COLUMN] = False
+mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False, na=False)
+model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
 
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 
 # %%
-# Schipbeek
+# Hoogeveense Vaart
 
-polygon = aanvoergebieden_df.loc[["Schipbeek"], "geometry"].union_all().buffer(1).buffer(-1)
+polygon = aanvoergebieden_df.loc[["Verl. Hoogeveense Vaart"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = []
@@ -76,13 +88,16 @@ ignore_intersecting_links: list[int] = []
 flushing_nodes = {}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [59]
-# 59: Noodoverloop Schipbeek
+drain_nodes = []
+# ###: beschrijving
 
 # handmatig opgegeven supply nodes (inlaten)
-supply_nodes = [654, 479]
-# 654: Gemaal Schipbeek (inlaat Twentekanaal)
-# 479: AF96440002, inlaatduiker (?)
+supply_nodes = []
+# ###: beschrijving
+
+# handmatig flow_control_nodes
+flow_control_nodes = [573]
+# 573: Inlaat Oude Dijk (richting Hunze)
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -92,7 +107,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[306],
+    flow_control_nodes=[],
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -101,12 +116,11 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # En de rest toevoegen
 
-supply_nodes = [437, 438]
-# 437 en 438, voor nu inlaten; verifieren bij Waterschap
+supply_nodes = []
 
-add_controllers_to_uncontrolled_connector_nodes(
-    model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
-)
+# add_controllers_to_uncontrolled_connector_nodes(
+#     model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
+# )
 
 
 # %% Junctionfy!
