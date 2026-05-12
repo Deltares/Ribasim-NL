@@ -175,10 +175,10 @@ for authority in authorities:
                 assign_lhm_fractions(model)
 
             # Avoid large databases by writing some tables to NetCDF
+            # TODO add flow_boundary after we can run core versions with
+            # https://github.com/Deltares/Ribasim/pull/3033
             if model.basin.time.df is not None:
                 model.basin.time.filepath = Path("basin_time.nc")
-            if model.flow_boundary.time.df is not None:
-                model.flow_boundary.time.filepath = Path("flow_boundary_time.nc")
 
             # run model
             model.write(dst_toml_file)
