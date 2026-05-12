@@ -203,9 +203,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>For hosting data Ribasim-NL makes extensive use of this cloud storage: https://deltares.thegood.cloud/. The input data is not open, but the output models are, see the links below. This page explains how the cloud storage is setup and used. For the API docs, see the <a href="./reference/CloudStorage.html">CloudStorage reference</a>.</p>
 <section id="access-configuration" class="level2">
 <h2 class="anchored" data-anchor-id="access-configuration">Access configuration</h2>
-<p>Before you can interact with the cloud storage, you need to configure the access. The section on <a href="./dev/index.html#sec-environment-variables">environment variables</a> documents how to do this. The relevant variable here is:</p>
+<p>Before you can interact with the cloud storage, you need to configure the access. The section on <a href="./dev/index.html#sec-environment-variables">environment variables</a> documents how to do this. The two relevant variables here are:</p>
 <ul>
 <li><code>RIBASIM_NL_CLOUD_PASS</code>: password for the cloud, to be requested at Deltares</li>
+<li><code>RIBASIM_NL_DATA_DIR</code>: directory with your local copy of data in the Ribasim-NL cloud</li>
 </ul>
 <p>The password can currently only be shared among project collaborators since not all input data is public. The output models, both nationwide (folder Rijkswaterstaat) and per water board, are public. Share links for the models are below. Sort on “Modified” to find the latest versions.</p>
 <ul>
