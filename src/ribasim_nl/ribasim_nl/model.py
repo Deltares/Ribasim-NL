@@ -1266,3 +1266,5 @@ class Model(ribasim.Model):
         # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")
+        if self.flow_boundary.time.df is not None:
+            self.flow_boundary.time.filepath = Path("flow_boundary_time.nc")
