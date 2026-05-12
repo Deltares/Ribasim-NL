@@ -14,9 +14,7 @@ print(f"iMOD version: {imod.__version__}")
 
 # inputs
 time_slice = slice(pd.Timestamp("2013-01-01"), pd.Timestamp("2022-12-31"))  # time slice
-# dxy = 250  # # automatisch cell-size bepalt.
 distance = 100_000  # total lateral distance in every chunk (reading optimization)
-
 time_chunk = 365  # chunk size temporal: one year
 
 base_path = Path(
@@ -41,17 +39,12 @@ def resample_to_flux(arr: xr.DataArray) -> xr.DataArray:
 
 # processing
 print("reading riv-budgets for sys 1")
-ar = (
-    imod.idf.open(modflow_budgets_path / "bdgriv/bdgriv_sys1_*_l*.IDF")
-    .sum(dim="layer")
-    # .drop_vars(["dy", "dx"])  # nog niet, zodat we de cell-size kunnen bepalen
-    .sel(time=time_slice)
-)
-# automatisch cell-size bepalen. Als dat niet lukt, 250 zetten
+ar = imod.idf.open(modflow_budgets_path / "bdgriv/bdgriv_sys1_*_l*.IDF").sum(dim="layer").sel(time=time_slice)
+# automatisch cell-size bepalen. Als niet lukt, 250m
 try:
-    dxy = ar.dx.values
+    dxy = float(ar.dx.values)
 except AttributeError:
-    dxy = 250  # default if no dx
+    dxy = float(250)  # default if no dx
 ar = ar.drop_vars(["dy", "dx"])
 ar.name = "bdgriv_sys1"
 ds = ar.to_dataset()
