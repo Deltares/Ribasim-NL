@@ -115,7 +115,7 @@ ds = ds.chunk(
         "x": n,
     }
 )
-store = zarr.DirectoryStore("LHM_433_budgets_update_makkink.zip")
+store = zarr.DirectoryStore("LHM_433_budgets_update_makkink")
 print("writing to zar-file")
 compressor = numcodecs.Blosc(cname="zstd", clevel=3, shuffle=2)
 ds.to_zarr(
