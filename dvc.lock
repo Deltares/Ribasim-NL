@@ -1186,8 +1186,6 @@ stages:
       hash: md5
       md5: 2fd0bae144991b66ca45429c4b23143b
       size: 7288
-      md5: 2fd0bae144991b66ca45429c4b23143b
-      size: 7288
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
