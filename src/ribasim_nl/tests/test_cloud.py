@@ -138,5 +138,4 @@ def test_settings():
     os.environ["RIBASIM_NL_CLOUD_PASS"] = "test"  # noqa: S105
     nsettings = Settings(_env_file="foo.env", ribasim_home=Path("custom_ribasim"))
     assert nsettings.ribasim_home == Path("custom_ribasim")
-    assert nsettings.ribasim_nl_data_dir == Path("data")
     assert nsettings.ribasim_nl_cloud_pass == "test"  # noqa: S105

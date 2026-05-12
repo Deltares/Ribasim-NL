@@ -101,7 +101,6 @@ Several settings need to be configured via environment variables, managed by [py
 | `ribasim_home` | `RIBASIM_HOME` | Root of the Ribasim core installation |
 | `d3d_home` | `D3D_HOME` | Root of the Delft3D installation |
 | `ribasim_nl_cloud_pass` | `RIBASIM_NL_CLOUD_PASS` | Password for [cloud storage](/cloudstorage.qmd) access |
-| `ribasim_nl_data_dir` | `RIBASIM_NL_DATA_DIR` | Local directory for data files |
 | `overwrite_files_from_cloud` | `OVERWRITE_FILES_FROM_CLOUD` | Whether cloud downloads overwrite local files |
 
 In the root of the repository is a `.env.default` file with the defaults that can serve as a template.
