@@ -6,6 +6,7 @@ import warnings
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
+from peilbeheerst_model.assign_flushing import Flushing
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
@@ -29,7 +30,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -343,10 +344,16 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-# # Add flushing data
-# flush = Flushing(ribasim_model)
-# _, df_demand = flush.add_flushing()
-# from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
+# Add flushing data
+flush = Flushing(
+    ribasim_model,
+    lhm_flushing_path="Delfland/aangeleverd/Na_levering/Delfland_doorspoeling.gpkg",
+    flushing_layer="Delfland_doorspoeling",
+    flushing_id="flushing_id",
+    flushing_col="doorsp_mmj",
+)
+_, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
+from_to_node_function_table = flush.update_function_table(df_demand, from_to_node_function_table)
 
 add_controllers_to_connector_nodes(
     model=ribasim_model,
@@ -354,6 +361,56 @@ add_controllers_to_connector_nodes(
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
+
+LEVEL_DEADBAND = 0.02  # 2 cm
+FLOW_DEADBAND = 1e-4  # m3/s
+
+condition_df = ribasim_model.discrete_control.condition.df
+variable_df = ribasim_model.discrete_control.variable.df
+
+level_variables = variable_df.loc[
+    variable_df["variable"].eq("level"),
+    ["node_id", "compound_variable_id"],
+].drop_duplicates()
+level_variables["is_level_condition"] = True
+
+level_condition_mask = (
+    condition_df[["node_id", "compound_variable_id"]]
+    .merge(
+        level_variables,
+        on=["node_id", "compound_variable_id"],
+        how="left",
+    )["is_level_condition"]
+    .fillna(False)
+    .to_numpy()
+)
+
+condition_df.loc[
+    level_condition_mask,
+    "threshold_low",
+] = condition_df.loc[level_condition_mask, "threshold_high"] - LEVEL_DEADBAND
+
+flow_variables = variable_df.loc[
+    variable_df["variable"].eq("flow_rate"),
+    ["node_id", "compound_variable_id"],
+].drop_duplicates()
+flow_variables["is_flow_condition"] = True
+
+flow_condition_mask = (
+    condition_df[["node_id", "compound_variable_id"]]
+    .merge(
+        flow_variables,
+        on=["node_id", "compound_variable_id"],
+        how="left",
+    )["is_flow_condition"]
+    .fillna(False)
+    .to_numpy()
+)
+
+condition_df.loc[
+    flow_condition_mask,
+    "threshold_low",
+] = condition_df.loc[flow_condition_mask, "threshold_high"] - FLOW_DEADBAND
 
 # replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
 outlet_columns_to_add_back = [
@@ -463,6 +520,53 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         design_potential_evaporation_event=mixed_conditions_design_E,
     )
 )
+
+
+# Identify pumps that are targeted by FlowDemand nodes.
+flow_demand_node_ids = ribasim_model.flow_demand.static.df["node_id"]
+
+link_df = ribasim_model.link.df
+
+flushing_pumps = (
+    link_df.loc[
+        link_df["link_type"].eq("control") & link_df["from_node_id"].isin(flow_demand_node_ids),
+        "to_node_id",
+    ]
+    .dropna()
+    .astype(int)
+    .unique()
+)
+
+pump_df = ribasim_model.pump.static.df
+
+mask_flushing_pump = pump_df["node_id"].isin(flushing_pumps)
+mask_aanvoer = pump_df["control_state"].eq("aanvoer")
+
+# For afvoer pumps, aanvoer should normally be off.
+pump_df.loc[
+    mask_flushing_pump & mask_aanvoer,
+    "flow_rate",
+] = 0.0
+
+# Let FlowDemand impose the flushing minimum
+pump_df.loc[
+    mask_flushing_pump,
+    "min_flow_rate",
+] = 0.0
+
+
+pump_df = ribasim_model.pump.static.df
+mask_flushing_pump = pump_df["node_id"].isin(flushing_pumps)
+mask_aanvoer = pump_df["control_state"] == "aanvoer"
+ribasim_model.pump.static.df.loc[
+    mask_flushing_pump & mask_aanvoer,
+    "flow_rate",
+] = 0.0
+
+ribasim_model.pump.static.df.loc[
+    mask_flushing_pump,
+    "min_flow_rate",
+] = 0.0
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
