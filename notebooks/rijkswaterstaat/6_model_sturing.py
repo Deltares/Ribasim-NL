@@ -4,7 +4,7 @@ import warnings
 import openpyxl
 import pandas as pd
 from ribasim.nodes import (
-    discrete_control,
+    continuous_control,
     outlet,
     pid_control,
     pump,
@@ -12,7 +12,6 @@ from ribasim.nodes import (
 )
 
 from ribasim_nl import CloudStorage, Model
-from ribasim_nl import discrete_control as dc
 
 warnings.filterwarnings(
     action="ignore",
@@ -78,15 +77,8 @@ def read_flow_kwargs(kwk_properties, include_crest_level=True):
 def read_outlet(kwk_df, name=None):
     if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
         qq_properties = read_qq_curve(kwk_df)
-        outlet_df = dc.node_table(
-            values=qq_properties["flow_rate"].to_list(),
-            variable="flow_rate",
-            name=name,
-            node_id=node_id,
-        )
         return outlet.Static(
-            flow_rate=outlet_df.flow_rate.to_list(),
-            control_state=outlet_df.control_state.to_list(),
+            flow_rate=[max(qq_properties["flow_rate"].to_list())],
         )
     else:
         return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df), include_crest_level=True))
@@ -211,41 +203,22 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 
             listen_node_id = model.find_node_id(meta_meetlocatie_code=str(kwk_properties["Meetlocatiecode"]))
 
-            condition_df = dc.condition(
-                values=qq_properties.condition_flow_rate.to_list(),
-                node_id=model.next_node_id,
-                listen_feature_id=listen_node_id,
-                name=kwk.naam,
-            )
-
-            logic_df = dc.logic(
-                node_id=model.next_node_id,
-                length=len(qq_properties),
-                name=kwk.naam,
-            )
-
             data = [
-                discrete_control.Variable(
-                    compound_variable_id=1,
+                continuous_control.Function(
+                    input=qq_properties["condition_flow_rate"].to_list(),
+                    output=qq_properties["flow_rate"].to_list(),
+                    controlled_variable="flow_rate",
+                ),
+                continuous_control.Variable(
                     listen_node_id=[listen_node_id],
-                    # listen_node_type=[model.get_node_type(listen_node_id)],
                     variable=["flow_rate"],
-                ),
-                discrete_control.Condition(
-                    compound_variable_id=1,
-                    threshold_high=condition_df["threshold_high"].to_list(),
-                    condition_id=list(range(1, len(condition_df["threshold_high"]) + 1)),
-                ),
-                discrete_control.Logic(
-                    truth_state=logic_df.truth_state.to_list(),
-                    control_state=logic_df.control_state.to_list(),
                 ),
             ]
 
             model.add_control_node(
                 to_node_id=node_id,
                 data=data,
-                ctrl_type="DiscreteControl",
+                ctrl_type="ContinuousControl",
                 node_offset=20,
             )
 
