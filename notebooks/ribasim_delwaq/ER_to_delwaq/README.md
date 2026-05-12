@@ -15,7 +15,7 @@ The conversion script `ER_data_conversion_delwaq.py` is an adaptation of:
 
 1. **Download Ribasim model** via `notebooks/rwzi/add_rwzi_model.py`
 
-   The model data is located in the `data` directory at the root of the repository.
+   Ensure that the environment variable `RIBASIM_NL_DATA_DIR` is used as the location
 
 2. **Run Ribasim model** for the desired period (can be short for tests)
 

@@ -7,7 +7,7 @@ import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
 from ribasim_nl.aquo import waterbeheercode
-from ribasim_nl.settings import data_dir
+from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
 
@@ -23,6 +23,7 @@ SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
 # Configuration
+data_dir = settings.ribasim_nl_data_dir
 
 remove_nodes = [
     3401752,  # Dokwerd NZV

@@ -21,13 +21,13 @@ geinterpoleerd. 3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steek
 bekend en wordt er tussen deze jaren geinterpoleerd.
 """
 
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from ER_GAF_fractions_func import compute_overlap_df
-from ribasim_nl.settings import data_dir
 
 conv_yr2sec = 60 * 60 * 24 * 365.25
 conv_kg2g = 1000
@@ -181,7 +181,7 @@ schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur kome
 inputdir = (
     "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
 )
-model_path = data_dir / "DeDommel/modellen/DeDommel_2025_7_0"
+model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
 basin_node_path = model_path / "database.gpkg"
 
 # -------------------------------Import data------------------------------------
