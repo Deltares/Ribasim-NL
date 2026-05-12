@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Literal
 
 import geopandas as gpd
+import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim.nodes import flow_demand, outlet
 from ribasim_nl.control import (
@@ -152,7 +153,7 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 92, "min_upstream_level
 model.update_node(node_id=226, node_type="Pump")  # wordt outlet, was outlet
 
 # Teveel inlaten naar Oefeltse Raam
-model.remove_node(295, remove_links=True)
+# model.remove_node(295, remove_links=True)
 model.remove_node(574, remove_links=True)
 
 # Gemaal Veluwe
@@ -162,6 +163,12 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_leve
 # Gemaal Kameren
 model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
+
+# Gemaal Veluwe
+model.update_node(node_id=100, node_type="Pump")  # wordt pump was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 5
+model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.78
+
 
 # %%
 # Toevoegen alle aanvoer-knopen met flow_demand
@@ -251,6 +258,11 @@ discharge_supply_nodes = {
     int(row.node_id): {"summer": row.summer, "winter": row.winter} for row in discharge_supply_df.itertuples()
 }
 
+# checken in laatste file Aa en Maas; dit kúnnen geen inlaten zijn
+discharge_supply_nodes.pop(383, None)
+discharge_supply_nodes.pop(957, None)
+discharge_supply_nodes.pop(100, None)
+
 discharge_supply_df.to_file(cloud.joinpath("AaenMaas/verwerkt/sturing/aanvoerpunten.gpkg"))
 
 
@@ -277,7 +289,6 @@ level_supply_nodes = [
     335,
     369,
     375,
-    379,
     392,
     406,
     510,
@@ -443,7 +454,7 @@ drain_nodes = [
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [186, 251, 278, 379]
+supply_nodes = [186, 251, 278]
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -452,6 +463,7 @@ flow_control_nodes = [
     140,
     347,
     377,
+    379,
     481,
     496,
     628,
@@ -544,7 +556,7 @@ supply_nodes = [183, 375, 521, 640, 1054]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [155, 212, 332, 388, 823, 824, 1051, 1062]
+flow_control_nodes = [155, 212, 332, 388, 823, 824, 1051, 1062, 100]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -750,7 +762,7 @@ drain_nodes = [324]
 supply_nodes = [335]
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = []
+flow_control_nodes = [383]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1050,7 +1062,7 @@ supply_nodes = [734]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [722, 723, 1067, 1070]
+flow_control_nodes = [722, 723, 1070]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1247,11 +1259,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "min_upstream_level"] = 11.85
 
 
-# Gemaal Veluwe
-model.update_node(node_id=100, node_type="Pump")  # wordt pump was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 0
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.78
-
 # Inlaat Waranda pump
 model.update_node(node_id=3089, node_type="Pump")  # wordt pump was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 3089, "flow_rate"] = 0
@@ -1266,6 +1273,11 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 124, "min_upstream_leve
 model.update_node(node_id=226, node_type="Pump")  # wordt pump, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 226, "flow_rate"] = 0
 model.pump.static.df.loc[model.pump.static.df.node_id == 226, "min_upstream_level"] = 14.3
+
+# Inlaten aan Drongelens kanaal krijgen pd.NA bij min_upstream_level
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 98, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 103, "min_upstream_level"] = pd.NA
+
 
 # Alle inlaten met demand_nodes moeten min_upstream_level van streefpeil hebben zodat ze in afvoerstand staan (+0.04m)
 #
