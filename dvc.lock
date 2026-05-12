@@ -1197,24 +1197,24 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: 47b7e670a049fb8a65ab0f813d1def9c.dir
+      md5: bb4f19a6932feb77ded16685587187e3.dir
       size: 22462618
       nfiles: 2
     - path: data/RijnenIJssel/modellen/RijnenIJssel_bergend_model
       hash: md5
-      md5: 6607b7acff6cb03739bc6626742a2112.dir
+      md5: 977161e40c77fa85d1294818f6f438fc.dir
       size: 7458965
       nfiles: 2
     - path: notebooks/07_add_dynamic_forcing.py
       hash: md5
-      md5: a5248565db608045d6dc29d1363602a3
-      size: 7307
+      md5: 6f2606ef29604bc33335310c82177c2b
+      size: 7293
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: 4be7b4bb2f13ee22bccfb69dc0e6f58e.dir
-      size: 24201572
-      nfiles: 4
+      md5: 76cea44bb1539a903c572ad9b36f821c.dir
+      size: 36073596
+      nfiles: 5
   dynamic@stichtse_rijnlanden:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py StichtseRijnlanden
     deps:
