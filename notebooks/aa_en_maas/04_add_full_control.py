@@ -146,28 +146,50 @@ model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 # Schabbert
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 161, "flow_rate"] = 12
 
+# Was manning, wordt outlet, duiker
+model.update_node(node_id=549, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=670, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=486, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=656, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=537, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=627, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=631, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=669, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=712, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=464, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=491, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=483, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=491, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=595, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=697, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=1043, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=720, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=610, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=450, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=706, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=529, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=539, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=652, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=675, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=676, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=511, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=655, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=558, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=1047, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=630, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=444, node_type="Outlet")  # wordt outlet, was Manning
+
+model.remove_node(820, remove_links=True)
+model.remove_node(1054, remove_links=True)
 
 # Mierlo wordt aanvoer als afvoer gemaal
 model.update_node(node_id=92, node_type="Pump")  # wordt outlet, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 92, "min_upstream_level"] = 16.56
 model.update_node(node_id=226, node_type="Pump")  # wordt outlet, was outlet
 
+
 # Teveel inlaten naar Oefeltse Raam
-# model.remove_node(295, remove_links=True)
 model.remove_node(574, remove_links=True)
-
-# Gemaal Veluwe
-model.update_node(node_id=100, node_type="Pump")  # wordt outlet, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.82
-
-# Gemaal Kameren
-model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
-
-# Gemaal Veluwe
-model.update_node(node_id=100, node_type="Pump")  # wordt pump was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 5
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.78
 
 
 # %%
@@ -278,30 +300,41 @@ level_supply_nodes = [
     183,
     186,
     203,
+    208,
     211,
     215,
     227,
+    231,
+    246,
     251,
     276,
     278,
     280,
     308,
     335,
+    355,
     369,
     375,
+    379,
     392,
     406,
     510,
     521,
     527,
     531,
+    566,
+    625,
+    630,
     640,
+    723,
+    731,
     734,
     753,
     850,
     985,
-    1054,
+    1067,
     2020,
+    3086,
 ]
 
 double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes]
@@ -313,6 +346,23 @@ supply_nodes_df = get_node_table_with_from_to_node_ids(model=model, node_ids=lev
 all_nodes = list(discharge_supply_nodes.keys()) + level_supply_nodes
 
 model.node.df[IS_SUPPLY_NODE_COLUMN] = model.node.df.index.isin(all_nodes)
+
+
+# Gemaal Veluwe
+model.update_node(node_id=100, node_type="Pump")  # wordt outlet, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.13
+model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 5
+
+# Gemaal Kameren
+model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
+
+
+# Grote Wetering is een gemaal
+model.update_node(node_id=105, node_type="Pump")  # wordt pump was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 105, "flow_rate"] = 1
+model.pump.static.df.loc[model.pump.static.df.node_id == 105, "min_upstream_level"] = 2
+
 
 # %%
 # Toevoegen Mierlo
@@ -362,7 +412,7 @@ drain_nodes = [85, 92, 312, 353, 400, 1089]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [226]
+supply_nodes = []
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [681, 774, 775, 776, 934, 974]
@@ -432,6 +482,9 @@ flushing_nodes = {}
 #
 
 drain_nodes = [
+    534,
+    558,
+    1047,
     106,
     130,
     153,
@@ -450,11 +503,12 @@ drain_nodes = [
     804,
     628,
     818,
+    1051,
 ]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [186, 251, 278]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -463,7 +517,6 @@ flow_control_nodes = [
     140,
     347,
     377,
-    379,
     481,
     496,
     628,
@@ -483,7 +536,7 @@ flow_control_nodes = [
     819,
     821,
     948,
-    981,
+    957,
     1050,
 ]
 
@@ -548,15 +601,15 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [83, 107, 139, 150, 170, 210, 244, 256, 342, 421, 304, 487, 597, 982, 1051]
+drain_nodes = [83, 107, 139, 150, 170, 210, 244, 256, 342, 388, 421, 304, 487, 597, 982, 1051]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [183, 375, 521, 640, 1054]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [155, 212, 332, 388, 823, 824, 1051, 1062, 100]
+flow_control_nodes = [243, 155, 212, 332, 823, 824, 1051, 1062, 100]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -614,11 +667,11 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [345, 795, 797, 1046]
+drain_nodes = [345, 486, 656, 670, 795, 797, 1046]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [166, 211]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -714,7 +767,7 @@ drain_nodes = [122, 843, 318]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [227]
+supply_nodes = []
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [154, 158, 177, 338, 538, 622, 710, 826, 828, 909, 954]
@@ -756,10 +809,10 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [324]
+drain_nodes = [324, 669, 676]
 
 # handmatig opgegeven supply nodes (inlaten)
-supply_nodes = [335]
+supply_nodes = []
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [383]
@@ -803,11 +856,11 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = []
+drain_nodes = [529, 539]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [246]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -850,7 +903,7 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [217, 294, 668]
+drain_nodes = [217, 294, 668, 549]
 
 # handmatig opgegeven supply nodes (inlaten)
 supply_nodes = []
@@ -901,7 +954,7 @@ drain_nodes = [288, 469, 479, 632]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [355, 510, 531]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -977,11 +1030,11 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [81, 919, 920, 366, 452, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1016, 1067]
+drain_nodes = [81, 919, 920, 366, 452, 615, 922, 194, 151, 182, 144, 509, 594, 667, 1016]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [203, 753, 850]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1012,6 +1065,7 @@ flow_control_nodes = [
     1001,
     1014,
     1018,
+    1051,
     1058,
 ]
 
@@ -1054,15 +1108,15 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [370, 430, 459, 96, 221, 923, 924, 2017]
+drain_nodes = [272, 370, 409, 430, 459, 96, 221, 923, 924, 940, 941, 2017, 998, 937]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [734]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [722, 723, 1070]
+flow_control_nodes = [370, 722, 1070]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1148,11 +1202,12 @@ drain_nodes = [
     341,
     398,
     872,
+    444,
 ]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [80, 160, 308, 181, 985, 392, 215]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1201,13 +1256,10 @@ add_controllers_to_supply_nodes(
 flow_control_nodes = [333, 701, 822, 917, 916]
 
 # handmatig opgegeven supply nodes (inlaten)
+supply_nodes = []
 #
 
-
-supply_nodes = [2020, 2022, 527, 1502, 3086]
-#
-
-drain_nodes = [120, 210, 267, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 777, 748, 891, 971]
+drain_nodes = [120, 210, 267, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 777, 748, 891, 971, 981]
 
 
 # Flushing nodes
@@ -1257,6 +1309,12 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "min_upstream_level"] = 18.2
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "min_upstream_level"] = 18.97
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "min_upstream_level"] = 11.85
+
+reverse_link_ids = [226, 1172]
+
+
+for link_id in reverse_link_ids:
+    model.reverse_link(link_id=link_id)
 
 
 # Inlaat Waranda pump
