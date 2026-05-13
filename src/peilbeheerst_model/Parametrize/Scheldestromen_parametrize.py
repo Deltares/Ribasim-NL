@@ -194,6 +194,13 @@ for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
+# convert all boundary nodes to LevelBoundaries
+ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
+ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
+
+# add outlet
+ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
 # set basin profiles
@@ -202,7 +209,7 @@ implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10
 # set forcing
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update")
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
     cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
     budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
     offline_budgets = AssignOfflineBudgets(budgets)
@@ -233,10 +240,6 @@ else:
 # reset pump capacity for each pump
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
-# convert all boundary nodes to LevelBoundaries
-ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
-ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
-
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
@@ -252,9 +255,6 @@ else:
     ribasim_model.level_boundary.static.df["level"] = default_level
     ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 583, "level"] = -2.0
     ribasim_model.level_boundary.static.df.loc[ribasim_model.level_boundary.static.df.node_id == 585, "level"] = -2.0
-
-# add outlet
-ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")

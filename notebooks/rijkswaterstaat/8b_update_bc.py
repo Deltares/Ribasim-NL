@@ -1,9 +1,8 @@
 # %%
 from datetime import datetime
+from pathlib import Path
 
-import numpy as np
 import pandas as pd
-from ribasim.nodes import flow_boundary
 
 from ribasim_nl import CloudStorage, Model, merge_rwzi_model
 
@@ -13,58 +12,57 @@ ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")
 model = Model.read(ribasim_toml)
 
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
-debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/debieten_Rijn_Maas_2023_2024.xlsx")
-iwp_debieten_xlsx = cloud.joinpath("Basisgegevens/Metingen/RWsOS-IWP_debieten_juni2023_juni2024.xlsx")
-cloud.synchronize([debieten_xlsx, iwp_debieten_xlsx])
-df = pd.read_excel(
-    debieten_xlsx,
-    skiprows=3,
-)
-df.set_index("Unnamed: 0", inplace=True)
-df.index.name = "time"
+debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx")
+cloud.synchronize([debieten_xlsx])
 
-# %%lobith series
-# "2023-09-15 07:00:00" and "2023-09-15 11:00:00" are outliers
-invalid_dt = np.array(["2023-09-15 07:00:00", "2023-09-15 11:00:00"], dtype=np.datetime64)
-lobith_series = df.loc[~df.index.isin(invalid_dt)]["Lobith"]
+time_colname = " Timeseries retrieved from the MATROOS series database"
 
-# interpolate missings
-lobith_series.interpolate(inplace=True)
 
-# resample to daily values
-lobith_series = lobith_series.resample("D").mean()
-lobith_series.name = "flow_rate"
+def read_lobith(debieten_xlsx: Path, starttime, endtime) -> pd.Series:
+    df = pd.read_excel(
+        debieten_xlsx,
+        sheet_name="10min",
+        parse_dates=[time_colname],
+        date_format="%Y/%m/%d %H:%M",
+    )
+    df.set_index(time_colname, inplace=True)
+    df.index.name = "time"
+    df = df.loc[starttime:endtime]
 
-# %% Eijsden series
-eijsden_series = df["Eijsden"]
+    lobith_series = df["Lobith"]
 
-# interpolate missings
-eijsden_series.interpolate(inplace=True)
+    if lobith_series.isna().sum():
+        raise ValueError("Lobith series contains missings.")
+    # resample to daily values
+    lobith_series = lobith_series.resample("D").mean()
+    lobith_series.name = "flow_rate"
+    return lobith_series
 
-# resample to daily values
-eijsden_series = eijsden_series.resample("D").mean()
-eijsden_series = eijsden_series[eijsden_series.notna()]
-eijsden_series.name = "flow_rate"
 
-# %% Monsin series
-df = pd.read_excel(
-    iwp_debieten_xlsx,
-    sheet_name="Maas",
-    skiprows=5,
-    index_col=0,
-)
+def read_monsin(debieten_xlsx: Path, starttime, endtime) -> pd.Series:
+    df = pd.read_excel(
+        debieten_xlsx,
+        sheet_name="hourly",
+        parse_dates=[time_colname],
+        date_format="%Y/%m/%d %H:%M",
+    )
+    df.set_index(time_colname, inplace=True)
+    df.index.name = "time"
+    df = df.loc[starttime:endtime]
 
-monsin_series = df["Monsin"]
+    monsin_series = df["Monsin"]
 
-# interpolate missings
-monsin_series.interpolate(inplace=True)
+    if monsin_series.isna().sum():
+        raise ValueError("Monsin series contains missings.")
+    # resample to daily values
+    monsin_series = monsin_series.resample("D").mean()
+    monsin_series.name = "flow_rate"
 
-monsin_series = monsin_series.resample("D").mean()
+    return monsin_series
 
-# resample to daily values
-monsin_series = monsin_series.resample("D").mean()
-monsin_series = monsin_series[monsin_series.notna()]
-monsin_series.name = "flow_rate"
+
+lobith_series = read_lobith(debieten_xlsx, model.starttime, model.endtime)
+monsin_series = read_monsin(debieten_xlsx, model.starttime, model.endtime)
 
 # %% set FlowBoundary / Time
 
@@ -80,15 +78,13 @@ monsin_node_id = (
 lobith_df = pd.DataFrame(lobith_series).reset_index()
 lobith_df.loc[:, "node_id"] = lobith_node_id
 
-monsin_df = pd.DataFrame(eijsden_series).reset_index()
+monsin_df = pd.DataFrame(monsin_series).reset_index()
 monsin_df.loc[:, "node_id"] = monsin_node_id
 
-bc_time_df = pd.concat([lobith_df, monsin_df])
-
-model.flow_boundary.time = flow_boundary.Time(**bc_time_df.to_dict(orient="list"))
-
-model.starttime = max(eijsden_series.index.min(), lobith_series.index.min())
-model.endtime = min(eijsden_series.index.max(), lobith_series.index.max())
+# TODO fill the gaps before so we don't need dropna here
+# the resample introduces missing from gaps in the timeseries
+bc_time_df = pd.concat([lobith_df, monsin_df]).dropna(subset=["flow_rate"])
+model.flow_boundary.time = bc_time_df
 
 # remove fixed values from static
 model.flow_boundary.static.df = model.flow_boundary.static.df[

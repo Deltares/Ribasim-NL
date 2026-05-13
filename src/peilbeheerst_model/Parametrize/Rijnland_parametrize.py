@@ -75,6 +75,7 @@ cloud.synchronize(
         meteo_path,
         profiles_path,
         splitted_basin_1_path,
+        splitted_basin_15_path,
         splitted_basin_22_path,
     ]
 )
@@ -209,7 +210,7 @@ implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10
 # set forcing
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update")
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
     cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
     budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
     offline_budgets = AssignOfflineBudgets(budgets)
@@ -274,7 +275,9 @@ from_to_node_function_table["demand"] = None
 to_drain = (
     525,
     530,
+    609,
     1096,
+    1179,
     1307,
     1455,
     1456,
@@ -286,7 +289,6 @@ to_flow_control = (
     625,
     963,
     1148,
-    1179,
     1180,
 )
 to_supply = (
