@@ -669,33 +669,6 @@ model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categori
     "hoofdwater"
 )
 
-# Fixes kleine basins
-# model traag door te kleine basins
-model.merge_basins(node_id=1866, to_node_id=1118, are_connected=True)  # Klein oppervlakte basin
-model.merge_basins(node_id=1687, to_node_id=1870, are_connected=True)
-model.merge_basins(node_id=1320, to_node_id=1870, are_connected=True)
-model.merge_basins(node_id=1901, to_node_id=1798, are_connected=True)
-model.merge_basins(node_id=1733, to_node_id=2011, are_connected=True)
-model.merge_basins(node_id=1550, to_node_id=2011, are_connected=True)
-model.merge_basins(node_id=1160, to_node_id=1944, are_connected=True)
-model.merge_basins(node_id=1405, to_node_id=1641, are_connected=True)
-model.merge_basins(node_id=1641, to_node_id=1394, are_connected=True)
-model.merge_basins(node_id=1453, to_node_id=1883, are_connected=True)
-model.merge_basins(node_id=1896, to_node_id=1311, are_connected=True)
-model.merge_basins(node_id=1126, to_node_id=1296, are_connected=True)
-model.merge_basins(node_id=1588, to_node_id=1815, are_connected=True)
-model.merge_basins(node_id=1950, to_node_id=1627, are_connected=True)
-model.merge_basins(node_id=1627, to_node_id=1394, are_connected=True)
-model.merge_basins(node_id=1914, to_node_id=1877, are_connected=True)
-model.merge_basins(node_id=1200, to_node_id=1877, are_connected=True)
-model.merge_basins(node_id=1887, to_node_id=1617, are_connected=True)
-model.merge_basins(node_id=1519, to_node_id=1857, are_connected=True)
-model.merge_basins(node_id=1949, to_node_id=1852, are_connected=True)
-
-# Drongelens kanaal
-model.merge_basins(node_id=1801, to_node_id=1879, are_connected=True)
-model.merge_basins(node_id=1879, to_node_id=1743, are_connected=True)
-model.merge_basins(node_id=1743, to_node_id=1275, are_connected=True)
 
 # somehow Sluis Engelen (beheerregister AAM) has been named Henriettesluis
 model.node.df.loc[
@@ -725,6 +698,33 @@ df = gpd.read_file(hydamo_gpkg, layer="stuw")
 geometry = df.set_index("code").at["261HTE", "geometry"]
 
 model.connect_basins(from_basin_id=1280, to_basin_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
+# Fixes kleine basins
+# model traag door te kleine basins
+model.merge_basins(node_id=1866, to_node_id=1118, are_connected=True)  # Klein oppervlakte basin
+model.merge_basins(node_id=1687, to_node_id=1870, are_connected=True)
+model.merge_basins(node_id=1320, to_node_id=1870, are_connected=True)
+model.merge_basins(node_id=1901, to_node_id=1798, are_connected=True)
+model.merge_basins(node_id=1733, to_node_id=2011, are_connected=True)
+model.merge_basins(node_id=1550, to_node_id=2011, are_connected=True)
+model.merge_basins(node_id=1160, to_node_id=1944, are_connected=True)
+model.merge_basins(node_id=1405, to_node_id=1641, are_connected=True)
+model.merge_basins(node_id=1641, to_node_id=1394, are_connected=True)
+model.merge_basins(node_id=1453, to_node_id=1883, are_connected=True)
+model.merge_basins(node_id=1896, to_node_id=1311, are_connected=True)
+model.merge_basins(node_id=1126, to_node_id=1296, are_connected=True)
+model.merge_basins(node_id=1588, to_node_id=1815, are_connected=True)
+model.merge_basins(node_id=1950, to_node_id=1627, are_connected=True)
+model.merge_basins(node_id=1627, to_node_id=1394, are_connected=True)
+model.merge_basins(node_id=1914, to_node_id=1877, are_connected=True)
+model.merge_basins(node_id=1200, to_node_id=1877, are_connected=True)
+model.merge_basins(node_id=1887, to_node_id=1617, are_connected=True)
+model.merge_basins(node_id=1519, to_node_id=1857, are_connected=True)
+model.merge_basins(node_id=1949, to_node_id=1852, are_connected=True)
+
+# Drongelens kanaal
+model.merge_basins(node_id=1801, to_node_id=1879, are_connected=True)
+model.merge_basins(node_id=1879, to_node_id=1743, are_connected=True)
+model.merge_basins(node_id=1743, to_node_id=1275, are_connected=True)
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
