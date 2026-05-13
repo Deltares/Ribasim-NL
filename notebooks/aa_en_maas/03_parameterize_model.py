@@ -99,6 +99,9 @@ mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin([98, 103, 221]), "min_upstream_level"] = (
+    2.2  # peil drongelens kanaal
+)
 
 # %%
 # optionele checks
