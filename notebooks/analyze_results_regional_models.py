@@ -159,7 +159,7 @@ for waterschap, cfg in WATERSCHAP_CONFIG.items():
     )[-1]
     model_folder = cloud.joinpath(f"{waterschap}/modellen", latest_model_version.path_string)
 
-    # cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, model_folder])
+    cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, model_folder])
 
     # Zoek het .toml bestand dynamisch op in de gesynchroniseerde modelfolder
     toml_path = next(Path(model_folder).glob("*.toml"), None)

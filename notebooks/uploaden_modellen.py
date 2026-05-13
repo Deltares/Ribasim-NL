@@ -1,4 +1,6 @@
 # %%
+import shutil
+
 from ribasim.delwaq import generate, parse, run_delwaq
 
 from ribasim_nl import CloudStorage, Model, settings
@@ -36,6 +38,8 @@ for authority in authorities:
         # write a local copy in root
         print(f"copy {toml_file}")
         toml_file = toml_file.parents[1].joinpath(authority, toml_file.name)
+        if toml_file.parent.exists():  # remove root if exists to start clean
+            shutil.rmtree(toml_file.parent)
         model.write(toml_file)
 
         # run model

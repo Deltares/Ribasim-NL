@@ -151,7 +151,8 @@ node_functions_df = add_controllers_to_supply_area(
 # En de rest toevoegen
 
 supply_nodes = [437, 438]
-# 437 en 438, voor nu inlaten; verifieren bij Waterschap
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 437, "flow_rate"] = 0.025  # i.o waterschap mei 2026
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 438, "flow_rate"] = 0.025  # i.o waterschap mei 2026
 
 add_controllers_to_uncontrolled_connector_nodes(
     model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
