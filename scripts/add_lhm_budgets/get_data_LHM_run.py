@@ -14,9 +14,7 @@ print(f"iMOD version: {imod.__version__}")
 
 # inputs
 time_slice = slice(pd.Timestamp("2013-01-01"), pd.Timestamp("2022-12-31"))  # time slice
-dxy = 250  # cell-size of your raster-set
 distance = 100_000  # total lateral distance in every chunk (reading optimization)
-n = int(distance / dxy)  # chunk size lateral
 time_chunk = 365  # chunk size temporal: one year
 
 base_path = Path(
@@ -24,7 +22,6 @@ base_path = Path(
 )  # Path to MODFLOW-METASWAP
 modflow_budgets_path = base_path / "modflow"  # MODFLOW sub-dir
 metaswap_budgets_path = base_path / "metaswap"  # MODFLOW sub-dir
-
 precipitation_files = r"e:\LHM_4.3.3\Data\2_Model_Input\meteo\RD1\precipitation_*.asc"
 makkink_files = r"e:\LHM_4.3.3\Data\2_Model_Input\meteo\EV24\evaporation_*.asc"
 
@@ -42,14 +39,16 @@ def resample_to_flux(arr: xr.DataArray) -> xr.DataArray:
 
 # processing
 print("reading riv-budgets for sys 1")
-ar = (
-    imod.idf.open(modflow_budgets_path / "bdgriv/bdgriv_sys1_*_l*.IDF")
-    .sum(dim="layer")
-    .drop_vars(["dy", "dx"])
-    .sel(time=time_slice)
-)
+ar = imod.idf.open(modflow_budgets_path / "bdgriv/bdgriv_sys1_*_l*.IDF").sum(dim="layer").sel(time=time_slice)
+# automatisch cell-size bepalen. Als niet lukt, 250m
+try:
+    dxy = float(ar.dx.values)
+except AttributeError:
+    dxy = float(250)  # default if no dx
+ar = ar.drop_vars(["dy", "dx"])
 ar.name = "bdgriv_sys1"
 ds = ar.to_dataset()
+n = int(distance / dxy)  # chunk size lateral
 
 for isys in range(2, 7):
     print(f"reading riv-budgets for sys{isys}")
