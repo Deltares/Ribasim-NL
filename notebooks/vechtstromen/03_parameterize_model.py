@@ -44,6 +44,23 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1060, "max_flow_rat
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 44, "max_flow_rate"] = 1.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 260, "max_flow_rate"] = 0.5
 
+
+basin_level_overrides = [
+    # Paradijssluis ZP peilenkaart
+    ([1544], 8.3),
+    ([1160, 1723, 1554], 7.35),
+    ([1388, 1428, 1554], 4.39),
+    ([1393], 1.25),
+    ([1744], 3.73),
+]
+
+for node_ids, meta_streefpeil in basin_level_overrides:
+    mask = model.basin.area.df.node_id.isin(node_ids)
+    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
+
+# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
+model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+
 # %%
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
