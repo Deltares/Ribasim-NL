@@ -25,6 +25,7 @@ MIN_BASIN_OUTLET_DIFF = 0.5
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
 couple_lhm: bool = True
+sub_models: bool = False
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
@@ -606,16 +607,17 @@ if couple_lhm:
     remove_invalid_topology_nodes(model)
     save_model_and_outputs(model, all_link_table, toml_file)
 
-# couple sub-models if any
-sub_models_dir = data_dir / "Rijkswaterstaat/modellen/lhm_sub_models"
-for model_dir in [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]:
-    try:
-        toml_file = find_toml_path(model_dir)
-    except ValueError:
-        print(f"Geen of >1 toml in {toml_file}")
-        continue
-    model, network, basin_areas_df = initialize_models(toml_file)
-    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-    fix_basin_profiles(model)
-    remove_invalid_topology_nodes(model)
-    save_model_and_outputs(model, all_link_table, toml_file)
+if sub_models:
+    # couple sub-models if any
+    sub_models_dir = data_dir / "Rijkswaterstaat/modellen/lhm_sub_models"
+    for model_dir in [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]:
+        try:
+            toml_file = find_toml_path(model_dir)
+        except ValueError:
+            print(f"Not exactly one TOML in {model_dir}, skipping.")
+            continue
+        model, network, basin_areas_df = initialize_models(toml_file)
+        all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+        fix_basin_profiles(model)
+        remove_invalid_topology_nodes(model)
+        save_model_and_outputs(model, all_link_table, toml_file)
