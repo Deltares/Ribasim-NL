@@ -18,7 +18,7 @@ INCLUDE_MODELS: list[str] = [
     "Rijkswaterstaat",
     "AmstelGooienVecht",
     "Delfland",
-    "HollandsNoorderkwartier",
+    # "HollandsNoorderkwartier",
     "HollandseDelta",
     "Rijnland",
     "Rivierenland",
@@ -144,8 +144,6 @@ model_specs: list[dict[str, Any]] = [
 
 
 def get_model_dir(model_spec: dict[str, Any]) -> Path:
-    if model_spec["model"].endswith("_parameterized"):
-        return data_dir / f"{model_spec['authority']}/verwerkt/Work_dir/{model_spec['model']}"
     return data_dir / f"{model_spec['authority']}/modellen/{model_spec['model']}"
 
 
