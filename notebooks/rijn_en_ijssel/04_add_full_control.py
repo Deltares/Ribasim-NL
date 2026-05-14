@@ -17,7 +17,9 @@ CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {}
+EXCLUDE_NODES = {
+    77,  # spildijksewatergang (0m3/s i.o. waterschap mei 2026)
+}
 
 # %%
 # Definieren paden en syncen met cloud
@@ -43,6 +45,7 @@ model.pump.static.df.max_flow_rate = 30.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 654, "flow_rate"] = 1.4  # schipbeek
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 120, "flow_rate"] = 1.3  # lochem
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 90, "flow_rate"] = 0.6  # herkel
+model.outlet.df.loc[model.outlet.df.node_id.isin(list(EXCLUDE_NODES), "flow_rate")] = 0  # excluded nodes doen niet mee
 
 # markeer inlaten
 model.node.df[IS_SUPPLY_NODE_COLUMN] = False
