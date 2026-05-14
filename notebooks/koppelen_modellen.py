@@ -24,6 +24,8 @@ MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
+couple_lhm: bool = True
+sub_models: bool = False
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
@@ -559,6 +561,12 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
         )
         return
 
+    # only merge if both nodes are controlled
+    controlled_nodes = model.link.df[model.link.df["link_type"] == "control"].to_node_id.values
+    if (from_node_ids in controlled_nodes) != (to_node_ids in controlled_nodes):
+        print(f"Cannot merge {boundary_node} => {neighbor_node}: One of the two is controlled, the other is not")
+        return
+
     # Update listen references for removed boundary nodes
     upstream_basin_id = model.upstream_node_id(from_node_ids)
     if isinstance(upstream_basin_id, pd.Series):
@@ -579,11 +587,37 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
     return merged_outlet
 
 
+def find_toml_path(model_dir: Path) -> Path:
+    tomls = list(model_dir.glob("*.toml"))
+    if len(tomls) == 0:
+        raise ValueError(f"No TOML file found at: {model_dir}")
+    elif len(tomls) > 1:
+        raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
+    return tomls[0]
+
+
 # %% Process lhm_parts model
 
-toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
-model, network, basin_areas_df = initialize_models(toml_file)
-all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-fix_basin_profiles(model)
-remove_invalid_topology_nodes(model)
-save_model_and_outputs(model, all_link_table, toml_file)
+# couple LHM
+if couple_lhm:
+    toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
+    model, network, basin_areas_df = initialize_models(toml_file)
+    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+    fix_basin_profiles(model)
+    remove_invalid_topology_nodes(model)
+    save_model_and_outputs(model, all_link_table, toml_file)
+
+if sub_models:
+    # couple sub-models if any
+    sub_models_dir = data_dir / "Rijkswaterstaat/modellen/lhm_sub_models"
+    for model_dir in [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]:
+        try:
+            toml_file = find_toml_path(model_dir)
+        except ValueError:
+            print(f"Not exactly one TOML in {model_dir}, skipping.")
+            continue
+        model, network, basin_areas_df = initialize_models(toml_file)
+        all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+        fix_basin_profiles(model)
+        remove_invalid_topology_nodes(model)
+        save_model_and_outputs(model, all_link_table, toml_file)
