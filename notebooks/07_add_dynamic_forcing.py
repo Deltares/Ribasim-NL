@@ -79,7 +79,7 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 FIND_POST_FIXES = ["bergend_model"]
 # FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"RijnenIJssel"}
+SELECTION: set = {"DrentsOverijsselseDelta"}
 INCLUDE_RESULTS = False
 REBUILD = True
 
