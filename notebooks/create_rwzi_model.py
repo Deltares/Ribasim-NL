@@ -9,7 +9,6 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pyodbc
 from ribasim import Node
 from ribasim.nodes import flow_boundary
 from shapely.geometry import Point
@@ -30,10 +29,10 @@ root_path_local = cloud.joinpath("Basisgegevens/RWZI")
 zinfo_influentdebieten_path = (
     root_path_local / "aangeleverd/Z-info/metingen/zinfo_20160101_20231231_influentdebieten.csv"
 )
-db_file = root_path_local / "aangeleverd/RwziBase/RwziBase2022_RWS_18032024.accdb"
+db_belasting = root_path_local / "aangeleverd/RwziBase/Belasting.xlsx"
 rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geojson"
 
-cloud.synchronize(filepaths=[zinfo_influentdebieten_path, db_file, rwzi_ligging_path])
+cloud.synchronize(filepaths=[zinfo_influentdebieten_path, db_belasting, rwzi_ligging_path])
 
 # %% create empty model
 starttime = "2017-01-01"
@@ -184,13 +183,13 @@ def process_rwzi_zinfo_data(rwzi_gdf, RWZI_ids_zinfo, df_Zinfo_influentdebieten)
     return rwzi_flow_data, gdf_rwzi_zinfo_incl, gdf_rwzi_zinfo_excl
 
 
-def process_rws_quantity_data(db_file, gdf_excluded):
+def process_rws_quantity_data(db_belasting, gdf_excluded):
     """
     Haalt jaarafvoeren (omgezet naar dagwaardes) uit de RWS database voor de RWZI's die niet in Z-info staan.
 
     Parameters
     ----------
-        db_file (str): Path naar RwziBase2022_RWS_18032024.accdb
+        db_belasting (str): Path naar Belasting.xlsx
         rwzi_codes_excl (array-like): de lijst van RWZI's die niet in de Z-info database zitten.
         gdf_excluded (GeoDataFrame): GeoDataFrame met de metadata van deze RWZI's.
 
@@ -198,21 +197,11 @@ def process_rws_quantity_data(db_file, gdf_excluded):
     -------
         DataFrame: gemiddelde dagafvoeren van de RWZI's die niet in de Zinfo database zitten.
     """
-    logger.info("Connecting to Access database...")
-    conn_str = (
-        r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
-        f"DBQ={db_file};"
-    )
-
+    df_belasting = pd.read_excel(db_belasting)
     rwzi_codes_excl = gdf_excluded["RwziCode"].unique()
 
-    conn = pyodbc.connect(conn_str)
-    df_belasting = pd.read_sql("SELECT * FROM Belasting", conn)
-    conn.close()
-    logger.info("Database connection closed.")
-
     # Filter for parameter code '085' (corresponding with RWZI discharge)
-    df_afvoeren = df_belasting[df_belasting["ParameterCode"] == "085"]
+    df_afvoeren = df_belasting[df_belasting["ParameterCode"] == 85]
     df_afvoeren["RwziCode"] = df_afvoeren["RwziCode"].astype(int)
     df_afvoeren_excluded = df_afvoeren[df_afvoeren["RwziCode"].isin(rwzi_codes_excl)]
 
@@ -494,7 +483,7 @@ print(rwzi_flow_data.head())
 
 
 df_rws_influentdebieten = process_rws_quantity_data(
-    db_file=db_file,
+    db_belasting=db_belasting,
     gdf_excluded=gdf_rwzi_zinfo_excl,
 )
 
