@@ -986,7 +986,6 @@ ribasim_model.pump.static.df.flow_rate = 15
 #         waterschap=waterschap,
 #         cloud=cloud,
 #         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-#         max_iterations=12,
 #         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
 #         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
 #     )

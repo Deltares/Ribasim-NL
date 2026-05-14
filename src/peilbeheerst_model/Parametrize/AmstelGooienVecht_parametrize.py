@@ -559,7 +559,6 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         waterschap=waterschap,
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        max_iterations=15,
         design_precipitation_event=mixed_conditions_design_P,
         design_potential_evaporation_event=mixed_conditions_design_E,
     )
