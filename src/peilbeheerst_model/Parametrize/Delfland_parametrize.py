@@ -24,7 +24,7 @@ from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -485,7 +485,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+run_ribasim(ribasim_work_dir_model_toml)
 ribasim_model.update_state()
 ribasim_model.basin.state.write()
 

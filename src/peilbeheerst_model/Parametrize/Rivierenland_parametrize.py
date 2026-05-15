@@ -25,7 +25,7 @@ from ribasim_nl.profiles import implement
 from shapely import LineString, Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, geometry
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -674,8 +674,8 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         max_iterations=15,
-        initial_guess_flow_rate_outlet=0.01,  # set flow rates higher due to convergence issues. Therefore slightly higher number of iterations to compensate.
-        initial_guess_flow_rate_pump=15,
+        initial_guess_flow_rate_outlet=1.0,  # set flow rates higher due to convergence issues. Therefore slightly higher number of iterations to compensate.
+        initial_guess_flow_rate_pump=15.0,
         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
         simulation_days=365,  # avoid empty basins which causes convergence issues. Lower max_days
@@ -713,7 +713,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+run_ribasim(ribasim_work_dir_model_toml)
 ribasim_model.update_state()
 ribasim_model.basin.state.write()
 

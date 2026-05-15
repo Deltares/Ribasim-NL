@@ -23,7 +23,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -1023,7 +1023,7 @@ if not ribasim_model.use_validation:
     raise ValueError(f"Abort execution of Ribasim: {ribasim_model.use_validation=}")
 
 # run model
-run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+run_ribasim(ribasim_work_dir_model_toml)
 ribasim_model.update_state()
 ribasim_model.basin.state.write()
 
