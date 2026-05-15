@@ -485,8 +485,8 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
-    ribasim_model.basin.node.df["meta_categorie"].isna(), "node_id"
-].tolist()
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
 if missing_meta_categorie_node_ids:
     raise ValueError(
         "Not all basins have a meta_categorie assigned. "

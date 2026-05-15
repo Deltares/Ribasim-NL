@@ -28,8 +28,8 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model,
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
+DYNAMIC_CONDITIONS: bool = False
+RESCALE_FLOW_CAPACITIES: bool = False
 add_lhm_fractions: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -594,8 +594,8 @@ ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 826
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
-    ribasim_model.basin.node.df["meta_categorie"].isna(), "node_id"
-].tolist()
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
 if missing_meta_categorie_node_ids:
     raise ValueError(
         "Not all basins have a meta_categorie assigned. "
