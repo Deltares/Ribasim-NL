@@ -135,7 +135,6 @@ cloud.synchronize(
         primaire_kunstwerken,
     ]
 )
-cloud.synchronize(filepaths=[baseline], overwrite=False)
 
 # output
 hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")

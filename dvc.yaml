@@ -101,7 +101,7 @@ stages:
         - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
       outs:
         - data/${item}/modellen/${item}_parameterized
-  rijkswaterstaat:
+  hws_demand:
     cmd:
       - pixi run python notebooks/rijkswaterstaat/2_basins.py
       - pixi run python notebooks/rijkswaterstaat/3_netwerk.py
@@ -110,14 +110,22 @@ stages:
       - pixi run python notebooks/rijkswaterstaat/6_model_sturing.py
       - pixi run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
       - pixi run python notebooks/rijkswaterstaat/8a_update_state.py
-      - pixi run python notebooks/rijkswaterstaat/8b_update_bc.py
     deps:
+      - data/Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb
       - data/Rijkswaterstaat/verwerkt/bathymetrie
       - data/Rijkswaterstaat/modellen/rwzi
       - notebooks/rijkswaterstaat
     outs:
-      - data/Rijkswaterstaat/modellen/hws_transient
+      - data/Rijkswaterstaat/modellen/hws_demand
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
+  hws_transient:
+    cmd:
+      - pixi run python notebooks/rijkswaterstaat/8b_update_bc.py
+    deps:
+      - data/Rijkswaterstaat/modellen/hws_demand
+      - notebooks/rijkswaterstaat/8b_update_bc.py
+    outs:
+      - data/Rijkswaterstaat/modellen/hws_transient
   samenvoegen:
     cmd: pixi run python notebooks/samenvoegen_modellen.py
     deps:
