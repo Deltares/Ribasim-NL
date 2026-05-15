@@ -5,6 +5,7 @@ import warnings
 
 import geopandas as gpd
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
+import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -21,7 +22,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
-from ribasim_nl.split_basins import SplitBasins
+from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -104,7 +105,7 @@ unknown_streefpeil = (
 
 # forcing settings
 starttime = datetime.datetime(2017, 1, 1)
-endtime = datetime.datetime(2018, 1, 1)
+endtime = datetime.datetime(2020, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
@@ -498,7 +499,10 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
 # loop through all splitted basins
+node_cache = NodeMetaCache(ribasim_model)
 for splitted_basin_path, basin_id in zip(
     [splitted_basin_6_path, splitted_basin_16_path, splitted_basin_21_path], [6, 16, 21], strict=True
 ):
@@ -508,40 +512,30 @@ for splitted_basin_path, basin_id in zip(
     )
     ribasim_model = splitter.run()
 
+node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
+del node_cache
 
+# set basin profiles
 ribasim_model.use_validation = True
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 ribasim_model.write(ribasim_work_dir_model_toml)
 
-# Migrate meta_categorie from the state to the node table as this prior is completely filled
-basin_node_mask = ribasim_model.node.df["node_type"] == "Basin"
-basin_node_meta = ribasim_model.node.df.loc[basin_node_mask, []].merge(
-    ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
-    left_index=True,
-    right_on="node_id",
-    how="left",
-)
-ribasim_model.node.df.loc[basin_node_mask, "meta_categorie"] = basin_node_meta.set_index("node_id")["meta_categorie"]
-
 # set forcing
 if DYNAMIC_CONDITIONS:
-    # Add dynamic meteo
+    # Add dynamic meteo and groundwater from LHM zarr
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
+    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
+    budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
+    offline_budgets = AssignOfflineBudgets(budgets)
+
     forcing = SetDynamicForcing(
         model=ribasim_model,
-        cloud=cloud,
+        budgets=budgets,
         startdate=starttime,
         enddate=endtime,
     )
-
     ribasim_model = forcing.add()
-
-    # Add dynamic groundwater
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
-    precipitation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
-    evaporation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
-    cloud.synchronize(filepaths=[lhm_budget_path, precipitation_path, evaporation_path], overwrite=False)
-    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:

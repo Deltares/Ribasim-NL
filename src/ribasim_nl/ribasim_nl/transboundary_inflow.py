@@ -28,11 +28,39 @@ def fix_date_string(date_str: str | pd.Timestamp) -> pd.Timestamp:
             base_date = datetime.strptime(date_str.split(" ")[0], "%d-%m-%Y")
             # Add one day, time will be 00:00 of the next day
             return pd.Timestamp(base_date + timedelta(days=1))
-        # Use dayfirst=True to parse dates like "23-06-2017"
+        if isinstance(date_str, str) and date_str[:4].isdigit():
+            # ISO format like "2017-06-23 00:00:00"
+            return pd.to_datetime(date_str)
+        # Day-first format like "23-06-2017"
         return pd.to_datetime(date_str, dayfirst=True)
     except Exception as e:
         logger.warning(f"Date parse error: '{date_str}' -> {e}")
         return pd.NaT  # pyrefly: ignore[bad-return]
+
+
+def parse_date_series(date_series: pd.Series) -> pd.Series:
+    """Vectorized variant of ``fix_date_string`` for Excel date columns."""
+    if date_series.empty:
+        return pd.to_datetime(date_series)
+
+    parsed = pd.to_datetime(date_series, errors="coerce")
+
+    string_values = date_series.astype("string")
+    missing = parsed.isna() & string_values.notna()
+    contains_24h = missing & string_values.str.contains("24:00", regex=False)
+
+    if contains_24h.any():
+        parsed.loc[contains_24h] = pd.to_datetime(
+            string_values.loc[contains_24h].str.split(" ").str[0],
+            format="%d-%m-%Y",
+            errors="coerce",
+        ) + pd.Timedelta(days=1)
+
+    remaining = parsed.isna() & string_values.notna()
+    if remaining.any():
+        parsed.loc[remaining] = pd.to_datetime(string_values.loc[remaining], dayfirst=True, errors="coerce")
+
+    return parsed
 
 
 def import_transboundary_inflow(
@@ -62,82 +90,85 @@ def import_transboundary_inflow(
     dict[str, pd.DataFrame]
         Per-location DataFrames with columns 'time', 'flow_rate' and 'node_id'.
     """
-    flowboundaries = model.flow_boundary.node.df.name  # pyrefly: ignore[missing-attribute]
+    flow_boundary_df = model.flow_boundary.node.df.reset_index(drop=False)  # pyrefly: ignore[missing-attribute]
+    node_ids_by_name = flow_boundary_df.set_index("name")["node_id"]
+    relevant_locations = set(node_ids_by_name.index)
+
     xls = pd.ExcelFile(transboundary_data_path)
-    sheet_names = xls.sheet_names
-    print("sheet_names", sheet_names)
     df_raw_data = []
 
-    for sheet in sheet_names:
-        df = pd.read_excel(xls, sheet_name=sheet)
+    for sheet in xls.sheet_names:
+        df = pd.read_excel(
+            xls,
+            sheet_name=sheet,
+            usecols=lambda col: col == "Datum" or col in relevant_locations,
+        )
         if "Datum" in df.columns:
-            logger.info(f"Importeer de data voor: {', '.join(df.columns[1:])}")
-            df["Datum"] = df["Datum"].apply(fix_date_string)
-            df = df.dropna(subset=["Datum"])
-            df.set_index("Datum", inplace=True)
-            df_filtered = df[(df.index >= start_time) & (df.index <= stop_time)].copy()
-            df_numeric = df_filtered.apply(pd.to_numeric, errors="coerce")
+            value_columns = [col for col in df.columns if col != "Datum"]
+            if not value_columns:
+                continue
+
+            logger.info(f"Importeer de data voor: {', '.join(value_columns)}")
+
+            df["Datum"] = parse_date_series(df["Datum"])
+            df = df.dropna(subset=["Datum"]).set_index("Datum").sort_index()
+            df = df.loc[(df.index >= start_time) & (df.index <= stop_time), value_columns]
+
+            if df.empty:
+                continue
+
+            df_numeric = df.apply(pd.to_numeric, errors="coerce")
             df_daily = df_numeric.resample("D").mean()
-            df_raw_data.append(df_daily)
+            if not df_daily.empty:
+                df_raw_data.append(df_daily)
         else:
-            print("sheet without datum:", sheet)
+            logger.warning(f"Sheet without Datum column skipped: {sheet}")
+
+    if not df_raw_data:
+        logger.warning("No transboundary inflow data found for the selected period and model boundaries.")
+        return {}
 
     # Combine data
     df_combined = pd.concat(df_raw_data, axis=0)
-    df_combined = df_combined.groupby("Datum").mean(numeric_only=True)
-
-    # Filter columns that exist in flowboundaries
-    available_columns = [col for col in df_combined.columns if col in flowboundaries.values]
-    df_inflow = df_combined[available_columns].copy()
+    df_combined = df_combined.groupby(level=0).mean(numeric_only=True).sort_index()
+    df_inflow = df_combined.copy()
     df_inflow.index.name = "time"
 
     # Interpolate missing values within the time series
     df_inflow = df_inflow.interpolate(method="time", limit_area="inside")
 
     # Fill NaN's at the edges with the mean flow rate at that location
-    for col in df_inflow.columns:
-        mean_value = df_inflow[col].mean()
-        df_inflow[col] = df_inflow[col].fillna(mean_value)
+    mean_flow = df_inflow.mean()
+    df_inflow = df_inflow.fillna(mean_flow)
 
     # If no data exists in the modelled period: set flow to 0
-    cols_with_nan = df_inflow.columns[df_inflow.isna().any()]
-    for col in cols_with_nan:
-        mean_value = df_inflow[col].mean()
-        if pd.isna(mean_value):  # entire column is empty
-            logger.warning(f"Location '{col}' has no measurements; filling NaNs with 0.")
-            df_inflow[col] = df_inflow[col].fillna(0)
-        else:
-            logger.warning(
-                f"Location '{col}' has no measurements during the modelled period; "
-                f"filling NaNs with mean value ({mean_value:.2f})."
-            )
-            df_inflow[col] = df_inflow[col].fillna(mean_value)
+    cols_without_measurements = mean_flow.index[mean_flow.isna()]
+    for col in cols_without_measurements:
+        logger.warning(f"Location '{col}' has no measurements; filling NaNs with 0.")
+    if len(cols_without_measurements) > 0:
+        df_inflow.loc[:, cols_without_measurements] = df_inflow.loc[:, cols_without_measurements].fillna(0)
+
+    # Negative inflows are not allowed; clip them to zero and warn per location.
+    cols_with_negative_flow = df_inflow.columns[(df_inflow < 0).any()]
+    for col in cols_with_negative_flow:
+        n_negative = int((df_inflow[col] < 0).sum())
+        logger.warning(f"Location '{col}' contains {n_negative} negative flow_rate value(s); setting them to 0.")
+    df_inflow = df_inflow.clip(lower=0)
 
     # Check for remaining NaN values
     assert not df_inflow.isna().any().any(), "There are NaN values remaining!"
 
     # Convert to dictionary
-    dict_flow = {}
-    for loc in df_inflow.columns:
-        df_single = df_inflow[[loc]].copy()
-        df_single.columns = ["flow_rate"]
-        dict_flow[loc] = df_single.reset_index()
-
-    # Add node_id to each location and filter out locations not found in model
-    locations_to_remove = []
-    for loc in dict_flow:
-        try:
-            node_id = model.flow_boundary.node.df.reset_index(drop=False).set_index("name").at[loc, "node_id"]  # pyrefly: ignore[missing-attribute]
-            dict_flow[loc]["node_id"] = node_id
-        except KeyError:
-            logger.warning(
-                f"Warning: '{loc}' not found in model.flow_boundary.node.df. Will be removed from dict_flow."
-            )
-            locations_to_remove.append(loc)
-
-    # Remove locations that were not found in the model
-    for loc in locations_to_remove:
-        dict_flow.pop(loc, None)
+    dict_flow = {
+        loc: pd.DataFrame(
+            {
+                "time": df_inflow.index,
+                "flow_rate": df_inflow[loc].to_numpy(),
+                "node_id": node_ids_by_name.at[loc],
+            }
+        )
+        for loc in df_inflow.columns
+    }
 
     logger.info(f"Transboundary inflow dictionary created: {dict_flow}")
     return dict_flow

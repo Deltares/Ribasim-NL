@@ -3,15 +3,16 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import xarray as xr
 from ribasim.delwaq import generate, parse, run_delwaq
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.set_forcing import SetDynamicForcing
 
 from ribasim_nl import (
     CloudStorage,
     Model,
-    SetDynamicForcing,
     add_transboundary_inflow,
     import_transboundary_inflow,
     merge_rwzi_model,
@@ -20,7 +21,7 @@ from ribasim_nl import (
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
-endtime = datetime(2018, 1, 1)
+endtime = datetime(2020, 1, 1)
 write_budgets: bool = True  # write mfms_budgets.arrow for later verification
 assign_budget_fractions: bool = False  # compute (sub-) fractions from budgets-table
 add_lhm_fractions: bool = True
@@ -38,23 +39,25 @@ secondary_budgets: set[str] = {
     "bdgdrn_sys1",
     "bdgdrn_sys2",
     "bdgdrn_sys3",
-    "bdgpssw",
+    "bdgpssw_m3d",
 }
-surface_runoff_budgets: set[str] = {"bdgqrun"}
+surface_runoff_budgets: set[str] = {"bdgqrun_m3d"}
 
 
 def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix):
 
     # sync files so we're good to go!
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
-    precipitation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc")
-    evaporation_path = cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc")
-    cloud.synchronize(filepaths=[lhm_budget_path, precipitation_path, evaporation_path], overwrite=False)
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
+    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
 
-    # compute forcing
+    # Open zarr budgets, select time range early to reduce data volume
+    budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
+    offline_budgets = AssignOfflineBudgets(budgets)
+
+    # compute meteo forcing from zarr precipitation (and evaporation when available)
     forcing = SetDynamicForcing(
         model=model,
-        cloud=cloud,
+        budgets=budgets,
         startdate=starttime,
         enddate=endtime,
     )
@@ -62,7 +65,6 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
     model = forcing.add()
 
     # Add dynamic groundwater
-    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     _, budgets_df = offline_budgets.compute_budgets(
         model,
         primary_budgets=primary_budgets,
@@ -147,8 +149,6 @@ for authority in authorities:
 
         if check_build(dst_toml_file):
             model = Model.read(toml_file)
-            # update state so we start smooth/empty
-            model.update_state()
 
             # add categorie to basin / state
             series = model.basin.node.df["meta_categorie"]  # type: ignore

@@ -190,7 +190,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(  # pyrefly: ignore[bad-assignment]
         _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
     )[_basin_profile.columns]
-    del _basin_profile
+    del _basin_profile, _profiles
 
     # duplicate all basin-tables
     basin_node = ribasim_model.basin.node.df
@@ -216,6 +216,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     # basin state category ('bergend')
     basin_state["meta_categorie"] = "bergend"
+    basin_node["meta_categorie"] = "bergend"
 
     # move storing basins' location and set Manning's node location
     basin_node["flowing_geometry"] = basin_node["geometry"].copy()

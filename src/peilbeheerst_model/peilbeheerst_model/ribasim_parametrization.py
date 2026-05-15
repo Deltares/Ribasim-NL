@@ -2442,9 +2442,15 @@ def clean_tables(ribasim_model: Model, waterschap: str) -> None:
     # set crs
     ribasim_model.node.df = gpd.GeoDataFrame(ribasim_model.node.df.set_crs(crs="EPSG:28992"))
 
-    # section below as asked by D2HYDRO
+    # update meta category
+    update_meta(ribasim_model, waterschap)
 
-    # #add category in the .node table
+
+def update_meta(ribasim_model: Model, waterschap: str) -> Model:
+    # add category in the .node table
+    if "meta_categorie" in ribasim_model.node.df.columns:
+        ribasim_model.node.df = ribasim_model.node.df.drop(columns=["meta_categorie"])
+
     basin_node = ribasim_model.basin.node.df.merge(
         right=ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
         how="left",
@@ -2457,6 +2463,9 @@ def clean_tables(ribasim_model: Model, waterschap: str) -> None:
 
     # add waterschap name, remove meta_node_id
     ribasim_model.node.df.loc[basin_node.index, "meta_waterbeheerder"] = waterschap
+
+    # return updated model
+    return ribasim_model
 
 
 def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> None:
