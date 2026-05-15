@@ -12,6 +12,7 @@ from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
@@ -24,12 +25,13 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
+add_lhm_fractions: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -483,6 +485,26 @@ if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
+# add the water authority column to couple the model with
+assign = AssignAuthorities(
+    ribasim_model=ribasim_model,
+    waterschap=waterschap,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    RWS_buffer=2000,  # mainly neighbouring RWS, so increase buffer. Not too much, due to nodes within Belgium.
+    custom_nodes={
+        584: "Rijkswaterstaat",  # Westerschelde
+    },
+)
+ribasim_model = assign.assign_authorities()
+
+# merge RWZI model
+ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
+
+# add LHM fractions
+if add_lhm_fractions:
+    assign_lhm_fractions(ribasim_model)
+
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
 ribasim_model.pump.static.df["meta_known_flow_rate"] = True
 ribasim_model.pump.static.df.loc[
@@ -505,19 +527,6 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         max_exceedance_days=5,
     )
 )
-
-# add the water authority column to couple the model with
-assign = AssignAuthorities(
-    ribasim_model=ribasim_model,
-    waterschap=waterschap,
-    ws_grenzen_path=ws_grenzen_path,
-    RWS_grenzen_path=RWS_grenzen_path,
-    RWS_buffer=2000,  # mainly neighbouring RWS, so increase buffer. Not too much, due to nodes within Belgium.
-    custom_nodes={
-        584: "Rijkswaterstaat",  # Westerschelde
-    },
-)
-ribasim_model = assign.assign_authorities()
 
 # set numerical settings
 # write model output

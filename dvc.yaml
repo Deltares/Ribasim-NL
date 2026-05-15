@@ -99,6 +99,7 @@ stages:
         - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py
       deps:
         - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+        - data/Rijkswaterstaat/modellen/rwzi
       outs:
         - data/${item}/modellen/${item}_parameterized
   rijkswaterstaat:

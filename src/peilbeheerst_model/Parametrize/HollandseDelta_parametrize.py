@@ -8,9 +8,11 @@ import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
@@ -23,12 +25,13 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
+add_lhm_fractions: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -959,43 +962,6 @@ if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
-# IMPORTANT !!!!!!!!!!!!!!!!!!!!!! SET ribasim_model.pump.static.df["meta_known_flow_rate"] TO TRUE !!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-ribasim_model.pump.static.df["meta_known_flow_rate"] = False
-ribasim_model.pump.static.df.loc[
-    (ribasim_model.pump.static.df["max_flow_rate"].isna()) | (ribasim_model.pump.static.df["max_flow_rate"] == 0),
-    "meta_known_flow_rate",
-] = False
-
-# ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.flow_rate!= ribasim_model.pump.static.df.max_flow_rate]
-
-# WEGHALEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-ribasim_model.pump.static.df.max_flow_rate = 15
-ribasim_model.pump.static.df.flow_rate = 15
-
-# ribasim_model, from_to_node_table = scale_outlets_pumps(
-#     OutletPumpScalingConfig(
-#         ribasim_model_path=ribasim_work_dir_model_toml,
-#         ribasim_model=ribasim_model,
-#         from_to_node_function_table=from_to_node_function_table,
-#         waterschap=waterschap,
-#         cloud=cloud,
-#         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-#         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-#         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-#     )
-# )
-
-# WEGHALEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-ribasim_model.pump.static.df.max_flow_rate *= 1.1
-ribasim_model.outlet.static.df.max_flow_rate *= 1.1
-
-
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
     ribasim_model=ribasim_model,
@@ -1009,6 +975,41 @@ assign = AssignAuthorities(
     },
 )
 ribasim_model = assign.assign_authorities()
+
+# merge RWZI model
+ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
+
+# add LHM fractions
+if add_lhm_fractions:
+    assign_lhm_fractions(ribasim_model)
+
+
+# There are no reliable flow rates for the pumps (data is mixed in m3/s and m3/min, and most dont have a value). Scale it all, include additional safety margin for the pumps afterwards
+ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df.loc[
+    (ribasim_model.pump.static.df["max_flow_rate"].isna()) | (ribasim_model.pump.static.df["max_flow_rate"] == 0),
+    "meta_known_flow_rate",
+] = False
+
+# ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.flow_rate!= ribasim_model.pump.static.df.max_flow_rate]
+
+
+ribasim_model, from_to_node_table = scale_outlets_pumps(
+    OutletPumpScalingConfig(
+        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model=ribasim_model,
+        from_to_node_function_table=from_to_node_function_table,
+        waterschap=waterschap,
+        cloud=cloud,
+        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+    )
+)
+
+# WEGHALEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ribasim_model.pump.static.df.max_flow_rate *= 1.25
 
 # set numerical settings
 # write model output

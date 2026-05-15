@@ -12,6 +12,7 @@ from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
@@ -23,12 +24,13 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model, settings
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
+add_lhm_fractions: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -542,6 +544,33 @@ if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
 
+# add the water authority column to couple the model with
+assign = AssignAuthorities(
+    ribasim_model=ribasim_model,
+    waterschap=waterschap,
+    ws_grenzen_path=ws_grenzen_path,
+    RWS_grenzen_path=RWS_grenzen_path,
+    custom_nodes={
+        907: "HollandsNoorderkwartier",
+        1050: "HollandsNoorderkwartier",
+        908: "HollandsNoorderkwartier",
+        905: "Rijkswaterstaat",
+        909: "Rijkswaterstaat",
+        931: "Rijkswaterstaat",
+        966: "Rijkswaterstaat",
+        2956: "Rijkswaterstaat",
+        994: "Rijnland",
+    },
+)
+ribasim_model = assign.assign_authorities()
+
+# merge RWZI model
+ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
+
+# add LHM fractions
+if add_lhm_fractions:
+    assign_lhm_fractions(ribasim_model)
+
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
 ribasim_model.pump.static.df["meta_known_flow_rate"] = True
@@ -566,26 +595,6 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
 
 # manually assign max_flow_rates (as suggested by JWV in FF)
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 826, "max_flow_rate"] = 0.05
-
-# assign authorities
-assign = AssignAuthorities(
-    ribasim_model=ribasim_model,
-    waterschap=waterschap,
-    ws_grenzen_path=ws_grenzen_path,
-    RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={
-        907: "HollandsNoorderkwartier",
-        1050: "HollandsNoorderkwartier",
-        908: "HollandsNoorderkwartier",
-        905: "Rijkswaterstaat",
-        909: "Rijkswaterstaat",
-        931: "Rijkswaterstaat",
-        966: "Rijkswaterstaat",
-        2956: "Rijkswaterstaat",
-        994: "Rijnland",
-    },
-)
-ribasim_model = assign.assign_authorities()
 
 # write model output
 ribasim_model.use_validation = True
