@@ -2,7 +2,8 @@
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
-from ribasim_nl.junctions import junctionify
+
+# from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 from ribasim_nl import CloudStorage, Model
@@ -38,6 +39,17 @@ aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergeb
 # Read data
 model = Model.read(ribasim_toml)
 
+# fixes (zo snel mogelijk)
+remove_nodes = [152, 534, 678]
+# 152: Dorkwerdersluis (scheepvaart)
+# 534: Vispassage "de Bult"
+# 678: Koker bij gemaal westerpolder
+for node_id in remove_nodes:
+    model.remove_node(node_id=node_id, remove_links=True)
+
+model.merge_basins(node_id=1908, to_node_id=1372, are_connected=True)
+model.merge_basins(node_id=1763, to_node_id=1381, are_connected=False)
+
 # alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
 model.outlet.static.df.max_flow_rate = 30.0
@@ -46,10 +58,6 @@ model.pump.static.df.max_flow_rate = 30.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0.0
 model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0.0
 
-# markeer inlaten
-model.node.df[IS_SUPPLY_NODE_COLUMN] = False
-mask = model.node.df["name"].str.contains("inlaat", case=False, na=False)
-model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
 
 # capaciteit inlaten/doorlaten
 model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20  # Aanvoergemaal Dorkwerd
@@ -67,6 +75,20 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 847, "flow_rate"] =
 model.node.df[IS_SUPPLY_NODE_COLUMN] = False
 mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False, na=False)
 model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
+
+# user-defined drain_nodes
+drain_nodes = [59, 1046, 196, 325, 892, 514, 316, 233, 88, 99, 256, 369, 792]
+# user-defined supply_nodes
+supply_nodes = [573, 62, 20, 70, 107, 972]
+# user-defined flow_control_nodes
+flow_control_nodes = [330, 573, 634]
+
+
+# markeer inlaten
+model.node.df[IS_SUPPLY_NODE_COLUMN] = False
+mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False, na=False)
+model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
+model.node.df.loc[drain_nodes + flow_control_nodes, IS_SUPPLY_NODE_COLUMN] = False
 
 # %%
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True)
@@ -91,18 +113,6 @@ ignore_intersecting_links: list[int] = []
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-# ###: beschrijving
-
-# handmatig flow_control_nodes
-flow_control_nodes = [573]
-# 573: Inlaat Oude Dijk (richting Hunze)
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -111,7 +121,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -129,19 +139,6 @@ ignore_intersecting_links: list[int] = [2453]
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-# ###: beschrijving
-
-# handmatig flow_control_nodes
-flow_control_nodes = []
-# ###: beschrijving
-
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -150,7 +147,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -168,19 +165,6 @@ ignore_intersecting_links: list[int] = [3650]
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-# ###: beschrijving
-
-# handmatig flow_control_nodes
-flow_control_nodes = []
-# ###: beschrijving
-
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -189,7 +173,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -207,19 +191,6 @@ ignore_intersecting_links: list[int] = []
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = [62]
-# 62: Inlaat bij Gemaal De Poale
-
-# handmatig flow_control_nodes
-flow_control_nodes = []
-# ###: beschrijving
-
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -228,7 +199,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -249,18 +220,6 @@ ignore_intersecting_links: list[int] = [235, 2776, 2778]
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-# ###: beschrijving
-
-# handmatig flow_control_nodes
-flow_control_nodes = []
-# ###: beschrijving
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -269,7 +228,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -287,18 +246,6 @@ ignore_intersecting_links: list[int] = [3650]
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-# ###: beschrijving
-
-# handmatig flow_control_nodes
-flow_control_nodes = []
-# ###: beschrijving
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -307,7 +254,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -325,18 +272,6 @@ ignore_intersecting_links: list[int] = [2751]
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-# ###: beschrijving
-
-# handmatig flow_control_nodes
-flow_control_nodes = []
-# ###: beschrijving
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -345,7 +280,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -365,18 +300,6 @@ ignore_intersecting_links: list[int] = [2286, 2384, 2607]
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-# ###: beschrijving
-
-# handmatig flow_control_nodes
-flow_control_nodes = []
-# ###: beschrijving
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -385,7 +308,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -408,19 +331,6 @@ ignore_intersecting_links: list[int] = [747]
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
 
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-# ###: beschrijving
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-# ###: beschrijving
-
-# handmatig flow_control_nodes
-flow_control_nodes = [573]
-# 573: Inlaat Oude Dijk (richting Hunze)
-
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -429,7 +339,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -439,17 +349,13 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # En de rest toevoegen
 
-supply_nodes = [70, 107, 972]
-# 70 : Gemaal Vennix
-# 107: Aanvoergemaal Ter Apelkanaal
-# 972: Aanvoergemaal Küpers
 
 add_controllers_to_uncontrolled_connector_nodes(
     model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
 )
 
 # %% Junctionfy!
-junctionify(model)
+# junctionify(model)
 
 # %%
 # Model run
