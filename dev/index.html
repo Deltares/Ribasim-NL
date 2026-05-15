@@ -226,6 +226,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Then set up the full development environment by running:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This installs git hooks and pulls data. You can run Python scripts using <code>pixi run python path/to/script.py</code>.</p>
+<p>This step also downloads and installs Ribasim core from GitHub releases to RIBASIM_HOME=‘bin/ribasim’</p>
 <p>The first time you open the Ribasim-NL repo in Visual Studio Code, the <a href="https://github.com/renan-r-santos/pixi-code">pixi-code</a> extension should automatically detect the Pixi environment and configure the Python interpreter.</p>
 <p>If you encounter issues, try running <code>pixi clean</code>and running <code>pixi install</code> again.</p>
 </section>
@@ -265,26 +266,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;"><code>ribasim_home</code></td>
-<td style="text-align: left;"><code>RIBASIM_HOME</code></td>
-<td style="text-align: left;">Root of the Ribasim core installation</td>
-</tr>
-<tr class="even">
 <td style="text-align: left;"><code>d3d_home</code></td>
 <td style="text-align: left;"><code>D3D_HOME</code></td>
 <td style="text-align: left;">Root of the Delft3D installation</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>ribasim_nl_cloud_pass</code></td>
 <td style="text-align: left;"><code>RIBASIM_NL_CLOUD_PASS</code></td>
 <td style="text-align: left;">Password for <a href="../cloudstorage.html">cloud storage</a> access</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>ribasim_nl_data_dir</code></td>
 <td style="text-align: left;"><code>RIBASIM_NL_DATA_DIR</code></td>
 <td style="text-align: left;">Local directory for data files</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>overwrite_files_from_cloud</code></td>
 <td style="text-align: left;"><code>OVERWRITE_FILES_FROM_CLOUD</code></td>
 <td style="text-align: left;">Whether cloud downloads overwrite local files</td>
