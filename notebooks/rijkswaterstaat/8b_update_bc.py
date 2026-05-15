@@ -91,18 +91,6 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
     ~model.flow_boundary.static.df.node_id.isin([lobith_node_id, monsin_node_id])
 ]
 
-start_time = max(lobith_series.index.min(), monsin_series.index.min())
-end_time = min(lobith_series.index.max(), monsin_series.index.max())
-
-# update model start and end time in right order
-# TODO: simplify when https://github.com/Deltares/Ribasim/issues/3081 is implemented
-if start_time < model.endtime:
-    model.starttime = start_time
-    model.endtime = end_time
-else:
-    model.endtime = end_time
-    model.starttime = start_time
-
 # %% update LevelBoundary / Time
 
 node_ids = model.level_boundary.node.df[
