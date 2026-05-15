@@ -1008,7 +1008,14 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
 ribasim_model.pump.static.df.max_flow_rate *= 1.25
 
 # check if meta_categorie in the basin.node.df is completely filled
-assert ribasim_model.basin.node.df["meta_categorie"].notna().all(), "Not all basins have a meta_categorie assigned."
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna(), "node_id"
+].tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
 
 # set numerical settings
 # write model output
