@@ -862,7 +862,6 @@ if RESCALE_FLOW_CAPACITIES:
             waterschap=waterschap,
             cloud=cloud,
             rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-            initial_guess_flow_rate_outlet=1,
             max_iterations=12,
             design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
             design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
