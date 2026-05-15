@@ -91,6 +91,7 @@ start_time = max(lobith_series.index.min(), monsin_series.index.min())
 end_time = min(lobith_series.index.max(), monsin_series.index.max())
 
 # update model start and end time in right order
+# TODO: simplify when https://github.com/Deltares/Ribasim/issues/3081 is implemented
 if start_time < model.endtime:
     model.starttime = start_time
     model.endtime = end_time
