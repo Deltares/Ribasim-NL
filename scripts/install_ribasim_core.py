@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import platform
 import shutil
+import stat
 import sys
 import urllib.request
 import zipfile
@@ -92,6 +93,11 @@ def main() -> int:
             zf.extractall(bin_dir)
     finally:
         zip_path.unlink(missing_ok=True)
+
+    # Restore executable bit on Linux (zip doesn't preserve it).
+    if platform.system() != "Windows":
+        exe = ribasim_home / "bin" / "ribasim"
+        exe.chmod(exe.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     print(f"Installed Ribasim core ({SOURCE}: {NAME}) to {ribasim_home}")
     return 0
