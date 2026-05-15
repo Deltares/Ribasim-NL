@@ -44,7 +44,7 @@ def upload_file(
 cloud = CloudStorage()
 
 
-destination = "doc-image/ribasim-nl/watersystems/"
+destination = "doc-image/watersystems/"
 
 for authority in cloud.water_authorities:
     source = cloud.joinpath(authority, "verwerkt/sturing", f"{authority}.svg")

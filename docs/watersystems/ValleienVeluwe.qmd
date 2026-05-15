@@ -4,7 +4,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/YgWfw7AEWLSbcGa)
 
 ## Systeembeschrijving oppervlaktewater
-![Systeembeschrijving Vallei en Veluwe](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/ValleienVeluwe.svg){.lightbox}
+![Systeembeschrijving Vallei en Veluwe](https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/ValleienVeluwe.svg){.lightbox}
 
 # Waterbeheer droge perioden hoofdsysteem
 Vanuit de `Nederrijn` wordt water ingelaten in het `Valleikanaal` bij inlaat `Grebbesluis (Grebbeberg)`. In het noorden worden vanuit de randmeren (`Eemmeer` en `Drontermeer`) water ingelaten. De `Eem` staat in vrije verbinding met het `Eemmeer`.
