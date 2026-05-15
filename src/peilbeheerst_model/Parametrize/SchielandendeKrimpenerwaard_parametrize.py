@@ -85,10 +85,6 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
-# define variables and model
-# basin area percentage
-# regular_percentage = 10
-# boezem_percentage = 90
 unknown_streefpeil = (
     0.00012345  # we need a streefpeil to create the profiles, Q(h)-relations, and af- and aanslag peil for pumps
 )
