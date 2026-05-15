@@ -48,6 +48,7 @@ quarto = "1.8.*"
 quartodoc = ">=0.11.1"
 rasterstats = ">=0.20"
 requests = ">=2.32"
+# sync with config in install_ribasim_core.py
 ribasim = "==2026.1.1"
 ruff = ">=0.14"
 seaborn = ">=0.13"
@@ -74,13 +75,29 @@ types-requests = ">=2.32"
 pandas-stubs = ">=3"
 xlwings = ">=0.33"
 
+[activation.env]
+# RIBASIM_HOME points to the Ribasim core installation directory.
+# Beware: the install-core task removes and recreates this directory.
+RIBASIM_HOME = "bin/ribasim"
+
 [tasks]
 typecheck = "pyrefly check"
-install = "prek install -f && dvc pull"
+install-prek = "prek install -f"
+install-dvc = "dvc pull"
+install = { depends-on = ["install-core", "install-prek", "install-dvc"] }
 repro = "dvc repro --keep-going && prek run"
 check = "prek run --all-files"
 pycheck = "prek run --all-files --skip dvc-pre-commit --skip dvc-pre-push --skip dvc-post-checkout"
 docs = { cmd = "quartodoc build && quarto preview", cwd = "docs" }
+
+[target.win-64.tasks]
+install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }
+
+[target.linux-64.tasks]
+install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }
+
+[target.osx-arm64.tasks]
+install-core = "echo 'Ribasim core binary not available for macOS; skipping install'"
 
 [system-requirements]
 linux = "3.10.0"
